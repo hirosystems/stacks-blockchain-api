@@ -343,7 +343,6 @@ export function parseAccountTransferSummaryTxQueryResult(
     nft_transfer: result.nft_transfer,
     nft_mint: result.nft_mint,
     nft_burn: result.nft_burn,
-    total_count: result.total_count,
   };
 }
 

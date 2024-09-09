@@ -518,8 +518,8 @@ export class PgStoreV2 extends BasePgStoreModule {
             FROM nft_events
             WHERE sender = ${args.address} OR recipient = ${args.address}
           )
-        )
-        total_count AS (
+        ),
+        count AS (
           SELECT COUNT(*)::int AS total_count
           FROM address_txs
           INNER JOIN txs USING (tx_id, index_block_hash, microblock_hash)
@@ -578,7 +578,7 @@ export class PgStoreV2 extends BasePgStoreModule {
             SELECT COUNT(*)::int FROM nft_events
             WHERE ${eventAcctCond} AND asset_event_type_id = ${DbAssetEventTypeId.Burn}
           ) AS nft_burn,
-          (SELECT total_count FROM total_count) AS total_count
+          (SELECT total_count FROM count) AS count
         FROM address_txs
         INNER JOIN txs USING (tx_id, index_block_hash, microblock_hash)
         WHERE canonical = TRUE AND microblock_canonical = TRUE
@@ -586,7 +586,7 @@ export class PgStoreV2 extends BasePgStoreModule {
         LIMIT ${limit}
         OFFSET ${offset}
       `;
-      const total = resultQuery.length > 0 ? resultQuery[0].total_count : 0;
+      const total = resultQuery.length > 0 ? resultQuery[0].count : 0;
       const parsed = resultQuery.map(r => parseAccountTransferSummaryTxQueryResult(r));
       return {
         total,

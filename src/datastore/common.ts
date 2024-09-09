@@ -251,7 +251,6 @@ export interface DbTxWithAddressTransfers extends DbTx {
   nft_transfer: number;
   nft_mint: number;
   nft_burn: number;
-  total_count: number;
 }
 
 export interface DbTxGlobalStatus {
@@ -1041,7 +1040,6 @@ export interface AddressTransfersTxQueryResult extends TxQueryResult {
   nft_transfer: number;
   nft_mint: number;
   nft_burn: number;
-  total_count: number;
 }
 
 export interface DbAddressTransactionEvent {
