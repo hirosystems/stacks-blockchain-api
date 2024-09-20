@@ -80,6 +80,10 @@ import { logger } from '../logger';
 import * as zoneFileParser from 'zone-file';
 import { hexToBuffer, isProdEnv, PINO_LOGGER_CONFIG, stopwatch } from '@hirosystems/api-toolkit';
 import { POX_2_CONTRACT_NAME, POX_3_CONTRACT_NAME, POX_4_CONTRACT_NAME } from '../pox-helpers';
+import {
+  parseNamespaceFromV2ContractEvent,
+  parseNameV2FromContractEvent,
+} from './bnsV2/bnsV2-helpers';
 
 const IBD_PRUNABLE_ROUTES = ['/new_mempool_tx', '/drop_mempool_tx', '/new_microblocks'];
 
@@ -439,7 +443,9 @@ function parseDataStoreTxEventData(
       contractLogEvents: [],
       smartContracts: [],
       names: [],
+      namesV2: [],
       namespaces: [],
+      namespacesV2: [],
       pox2Events: [],
       pox3Events: [],
       pox4Events: [],
@@ -581,9 +587,21 @@ function parseDataStoreTxEventData(
         if (name) {
           dbTx.names.push(name);
         }
+        const nameV2 = parseNameV2FromContractEvent(event, parsedTx, blockData.block_height);
+        if (nameV2) {
+          dbTx.namesV2.push(nameV2);
+        }
         const namespace = parseNamespaceFromContractEvent(event, parsedTx, blockData.block_height);
         if (namespace) {
           dbTx.namespaces.push(namespace);
+        }
+        const namespaceV2 = parseNamespaceFromV2ContractEvent(
+          event,
+          parsedTx,
+          blockData.block_height
+        );
+        if (namespaceV2) {
+          dbTx.namespacesV2.push(namespaceV2);
         }
         break;
       }
