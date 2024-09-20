@@ -14,6 +14,8 @@ import {
   BnsNameInsertValues,
   BnsZonefileInsertValues,
   DataStoreBlockUpdateData,
+  BnsNameV2InsertValues,
+  DbBnsNameV2,
 } from '../../../datastore/common';
 import { validateZonefileHash } from '../../../datastore/helpers';
 import { logger } from '../../../logger';
@@ -145,6 +147,15 @@ const populateBatchInserters = (db: PgWriteStore) => {
     },
   });
   batchInserters.push(dbNameBatchInserter);
+
+  const dbNameV2BatchInserter = createBatchInserter<BnsNameV2InsertValues>({
+    batchSize: 500,
+    insertFn: entries => {
+      logger.debug({ component: 'event-replay' }, 'Inserting into names_v2 table...');
+      return db.insertNameV2Batch(db.sql, entries);
+    },
+  });
+  batchInserters.push(dbNameV2BatchInserter);
 
   const dbZonefileBatchInserter = createBatchInserter<BnsZonefileInsertValues>({
     batchSize: 500,
@@ -346,6 +357,35 @@ const populateBatchInserters = (db: PgWriteStore) => {
         }
       };
 
+      const insertNamesV2 = async (dbData: DataStoreBlockUpdateData) => {
+        for (const entry of dbData.txs) {
+          await dbNameV2BatchInserter.push(
+            entry.namesV2.map((bnsNameV2: DbBnsNameV2) => ({
+              fullName: bnsNameV2.fullName,
+              name: bnsNameV2.name,
+              namespace_id: bnsNameV2.namespace_id,
+              registered_at: bnsNameV2.registered_at ?? null,
+              imported_at: bnsNameV2.imported_at ?? null,
+              hashed_salted_fqn_preorder: bnsNameV2.hashed_salted_fqn_preorder ?? null,
+              preordered_by: bnsNameV2.preordered_by ?? null,
+              renewal_height: bnsNameV2.renewal_height,
+              stx_burn: bnsNameV2.stx_burn,
+              owner: bnsNameV2.owner,
+              tx_id: bnsNameV2.tx_id,
+              tx_index: bnsNameV2.tx_index,
+              event_index: bnsNameV2.event_index ?? null,
+              status: bnsNameV2.status ?? null,
+              canonical: bnsNameV2.canonical,
+              index_block_hash: entry.tx.index_block_hash,
+              parent_index_block_hash: entry.tx.parent_index_block_hash,
+              microblock_hash: entry.tx.microblock_hash,
+              microblock_sequence: entry.tx.microblock_sequence,
+              microblock_canonical: entry.tx.microblock_canonical,
+            }))
+          );
+        }
+      };
+
       const insertZoneFiles = async (dbData: DataStoreBlockUpdateData) => {
         for (const entry of dbData.txs) {
           await dbZonefileBatchInserter.push(
@@ -370,6 +410,14 @@ const populateBatchInserters = (db: PgWriteStore) => {
         for (const entry of dbData.txs) {
           for (const namespace of entry.namespaces) {
             await db.insertNamespace(db.sql, entry.tx, namespace);
+          }
+        }
+      };
+
+      const insertNamespacesV2 = async (dbData: DataStoreBlockUpdateData) => {
+        for (const entry of dbData.txs) {
+          for (const namespace of entry.namespacesV2) {
+            await db.insertNamespaceV2(db.sql, entry.tx, namespace);
           }
         }
       };
@@ -421,12 +469,14 @@ const populateBatchInserters = (db: PgWriteStore) => {
         insertNFTEvents(dbData),
         // Insert names
         insertNames(dbData),
+        insertNamesV2(dbData),
         // Insert zonefiles
         insertZoneFiles(dbData),
         // Insert smart_contracts
         insertSmartContracts(dbData),
         // Insert namespaces
         insertNamespaces(dbData),
+        insertNamespacesV2(dbData),
         // Insert stx_lock_events
         insertStxLockEvents(dbData),
         // Insert miner_rewards
