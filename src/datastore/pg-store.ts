@@ -64,6 +64,8 @@ import {
   PoxSyntheticEventTable,
   DbPoxStacker,
   DbPoxSyntheticEvent,
+  DbBnsNameV2,
+  DbBnsNamespaceV2,
 } from './common';
 import {
   abiColumn,
@@ -3629,6 +3631,88 @@ export class PgStore extends BasePgStore {
     return { found: false } as const;
   }
 
+  async getNamespacesV2List({ includeUnanchored }: { includeUnanchored: boolean }) {
+    const queryResult = await this.sqlTransaction(async sql => {
+      const maxBlockHeight = await this.getMaxBlockHeight(sql, { includeUnanchored });
+      return await sql<{ namespace_id: string }[]>`
+      SELECT DISTINCT ON (namespace_id) namespace_id
+      FROM namespaces_v2
+      WHERE canonical = true
+      AND (${includeUnanchored} OR microblock_canonical = true)
+      AND launch_block <= ${maxBlockHeight}
+      ORDER BY namespace_id, launch_block DESC, microblock_sequence DESC, tx_index DESC
+    `;
+    });
+    const results = queryResult.map(r => r.namespace_id);
+    return { results };
+  }
+
+  async getNamespacesV2NamesList({
+    namespace,
+    page,
+    includeUnanchored,
+  }: {
+    namespace: string;
+    page: number;
+    includeUnanchored: boolean;
+  }): Promise<{
+    results: string[];
+  }> {
+    const offset = page * 100;
+    const queryResult = await this.sqlTransaction(async sql => {
+      const maxBlockHeight = await this.getMaxBlockHeight(sql, { includeUnanchored });
+      return await sql<{ name: string }[]>`
+      SELECT name FROM (
+        SELECT DISTINCT ON (fullName) name, status
+        FROM names_v2
+        WHERE namespace_id = ${namespace}
+        AND (registered_at IS NULL OR registered_at <= ${maxBlockHeight})
+        AND canonical = true
+        AND (${includeUnanchored} OR microblock_canonical = true)
+        ORDER BY fullName, COALESCE(registered_at, imported_at) DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
+        LIMIT 100
+        OFFSET ${offset}
+      ) AS name_status
+      WHERE status IS NULL OR status <> 'name-revoke'
+    `;
+    });
+    const results = queryResult.map(r => r.name);
+    return { results };
+  }
+
+  async getNamespaceV2({
+    namespace,
+    includeUnanchored,
+  }: {
+    namespace: string;
+    includeUnanchored: boolean;
+  }): Promise<FoundOrNot<DbBnsNamespaceV2 & { index_block_hash: string }>> {
+    const queryResult = await this.sqlTransaction(async sql => {
+      const maxBlockHeight = await this.getMaxBlockHeight(sql, { includeUnanchored });
+      return await sql<(DbBnsNamespaceV2 & { tx_id: string; index_block_hash: string })[]>`
+      SELECT DISTINCT ON (namespace_id) *
+      FROM namespaces_v2
+      WHERE namespace_id = ${namespace}
+      AND launch_block <= ${maxBlockHeight}
+      AND canonical = true
+      AND (${includeUnanchored} OR microblock_canonical = true)
+      ORDER BY namespace_id, launch_block DESC, microblock_sequence DESC, tx_index DESC
+      LIMIT 1
+    `;
+    });
+    if (queryResult.length > 0) {
+      return {
+        found: true,
+        result: {
+          ...queryResult[0],
+          tx_id: queryResult[0].tx_id,
+          index_block_hash: queryResult[0].index_block_hash,
+        },
+      };
+    }
+    return { found: false } as const;
+  }
+
   async getName({
     name,
     includeUnanchored,
@@ -3664,6 +3748,69 @@ export class PgStore extends BasePgStore {
       )
       SELECT * FROM name_results WHERE status IS NULL OR status <> 'name-revoke'
     `;
+  }
+
+  async getNameV2({
+    name,
+    includeUnanchored,
+  }: {
+    name: string;
+    includeUnanchored: boolean;
+  }): Promise<FoundOrNot<DbBnsNameV2>> {
+    return await this.sqlTransaction(async sql => {
+      const blockHeight = await this.getMaxBlockHeight(sql, { includeUnanchored });
+      const result = await this.getNameV2AtBlockHeight({ name, blockHeight, includeUnanchored });
+      return result ? { found: true, result } : { found: false };
+    });
+  }
+
+  async getNameV2AtBlockHeight(args: {
+    name: string;
+    blockHeight: number;
+    includeUnanchored: boolean;
+  }): Promise<DbBnsNameV2 | null> {
+    const query = await this.sql<DbBnsNameV2[]>`
+    WITH name_results AS (
+      SELECT DISTINCT ON (n.fullName) n.*
+      FROM names_v2 AS n
+      WHERE n.fullName = ${args.name}
+        AND (n.registered_at IS NULL OR n.registered_at <= ${args.blockHeight})
+        AND n.canonical = true
+        AND (${args.includeUnanchored} OR n.microblock_canonical = true)
+      ORDER BY n.fullName,
+        COALESCE(n.registered_at, n.imported_at) DESC,
+        n.microblock_sequence DESC,
+        n.tx_index DESC,
+        n.event_index DESC
+    )
+    SELECT * FROM name_results 
+    WHERE status IS NULL OR status <> 'name-revoke'
+  `;
+    return query.length > 0 ? query[0] : null;
+  }
+
+  async getNamesV2AtBlockHeight(args: {
+    names: string[];
+    blockHeight: number;
+    includeUnanchored: boolean;
+  }): Promise<DbBnsNameV2[]> {
+    return await this.sql<DbBnsNameV2[]>`
+    WITH name_results AS (
+      SELECT DISTINCT ON (n.fullName) n.*
+      FROM names_v2 AS n
+      WHERE n.fullName IN ${this.sql(args.names)}
+        AND (n.registered_at IS NULL OR n.registered_at <= ${args.blockHeight})
+        AND n.canonical = true
+        AND (${args.includeUnanchored} OR n.microblock_canonical = true)
+      ORDER BY n.fullName,
+        COALESCE(n.registered_at, n.imported_at) DESC,
+        n.microblock_sequence DESC,
+        n.tx_index DESC,
+        n.event_index DESC
+    )
+    SELECT * FROM name_results 
+    WHERE status IS NULL OR status <> 'name-revoke'
+  `;
   }
 
   async getHistoricalZoneFile(args: {
@@ -3894,6 +4041,45 @@ export class PgStore extends BasePgStore {
     return { found: false } as const;
   }
 
+  async getNamesV2ByAddressList({
+    address,
+    includeUnanchored,
+    chainId,
+  }: {
+    address: string;
+    includeUnanchored: boolean;
+    chainId: ChainID;
+  }): Promise<FoundOrNot<string[]>> {
+    const queryResult = await this.sqlTransaction(async sql => {
+      const maxBlockHeight = await this.getMaxBlockHeight(sql, { includeUnanchored });
+
+      // Get names owned by this address from the names_v2 table
+      const namesQuery = await sql<{ fullName: string }[]>`
+      SELECT DISTINCT ON (fullName)
+        fullName
+      FROM
+        names_v2
+      WHERE
+        owner = ${address}
+        AND renewal_height <= ${maxBlockHeight}
+        AND canonical = TRUE
+        ${includeUnanchored ? sql`` : sql`AND microblock_canonical = TRUE`}
+      ORDER BY
+        fullName, renewal_height DESC
+    `;
+
+      return namesQuery.map(item => item.fullName).sort();
+    });
+
+    if (queryResult.length > 0) {
+      return {
+        found: true,
+        result: queryResult,
+      };
+    }
+    return { found: false } as const;
+  }
+
   /**
    * This function returns the subdomains for a specific name
    * @param name - The name for which subdomains are required
@@ -3976,6 +4162,31 @@ export class PgStore extends BasePgStore {
       `;
     });
     const results = queryResult.map(r => r.name);
+    return { results };
+  }
+
+  async getNamesV2List({ page, includeUnanchored }: { page: number; includeUnanchored: boolean }) {
+    const offset = page * 100;
+    const queryResult = await this.sqlTransaction(async sql => {
+      const maxBlockHeight = await this.getMaxBlockHeight(sql, { includeUnanchored });
+      return await sql<{ fullName: string }[]>`
+      WITH name_results AS (
+        SELECT DISTINCT ON (fullName) fullName, status, renewal_height
+        FROM names_v2
+        WHERE canonical = true
+        ${includeUnanchored ? sql`` : sql`AND microblock_canonical = true`}
+        AND renewal_height <= ${maxBlockHeight}
+        ORDER BY fullName, renewal_height DESC, microblock_sequence DESC, tx_index DESC
+      )
+      SELECT fullName
+      FROM name_results
+      WHERE status <> 'revoked'
+      ORDER BY fullName ASC
+      LIMIT 100
+      OFFSET ${offset}
+    `;
+    });
+    const results = queryResult.map(r => r.fullName);
     return { results };
   }
 
