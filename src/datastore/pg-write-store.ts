@@ -69,6 +69,10 @@ import {
   DbPoxSetSigners,
   PoxSetSignerValues,
   PoxCycleInsertValues,
+  DbBnsNameV2,
+  DbBnsNamespaceV2,
+  BnsNameV2InsertValues,
+  BnsNamespaceV2InsertValues,
 } from './common';
 import {
   BLOCK_COLUMNS,
@@ -301,6 +305,8 @@ export class PgWriteStore extends PgStore {
             q.enqueue(() => this.updateSmartContracts(sql, entry.tx, entry.smartContracts));
             q.enqueue(() => this.updateNamespaces(sql, entry.tx, entry.namespaces));
             q.enqueue(() => this.updateNames(sql, entry.tx, entry.names));
+            q.enqueue(() => this.updateNamespacesV2(sql, entry.tx, entry.namespacesV2));
+            q.enqueue(() => this.updateNamesV2(sql, entry.tx, entry.namesV2));
           }
         }
         q.enqueue(async () => {
@@ -646,6 +652,11 @@ export class PgWriteStore extends PgStore {
           smartContracts: entry.smartContracts.map(e => ({ ...e, block_height: blockHeight })),
           names: entry.names.map(e => ({ ...e, registered_at: blockHeight })),
           namespaces: entry.namespaces.map(e => ({ ...e, ready_block: blockHeight })),
+          namesV2: entry.namesV2.map(e => ({
+            ...e,
+            registered_at: e.registered_at ?? blockHeight,
+          })),
+          namespacesV2: entry.namespacesV2.map(e => ({ ...e, launch_block: blockHeight })),
           pox2Events: entry.pox2Events.map(e => ({ ...e, block_height: blockHeight })),
           pox3Events: entry.pox3Events.map(e => ({ ...e, block_height: blockHeight })),
           pox4Events: entry.pox4Events.map(e => ({ ...e, block_height: blockHeight })),
@@ -2216,6 +2227,94 @@ export class PgWriteStore extends PgStore {
     }
   }
 
+  async updateNamesV2(sql: PgSqlClient, tx: DataStoreBnsBlockTxData, namesV2: DbBnsNameV2[]) {
+    for (const bnsNameV2 of namesV2) {
+      const {
+        fullName,
+        name,
+        namespace_id,
+        registered_at,
+        imported_at,
+        hashed_salted_fqn_preorder,
+        preordered_by,
+        renewal_height,
+        stx_burn,
+        owner,
+        tx_id,
+        tx_index,
+        event_index,
+        status,
+        canonical,
+      } = bnsNameV2;
+
+      const nameV2Values: BnsNameV2InsertValues = {
+        fullName,
+        name,
+        namespace_id,
+        registered_at: registered_at ?? null,
+        imported_at: imported_at ?? null,
+        hashed_salted_fqn_preorder: hashed_salted_fqn_preorder ?? null,
+        preordered_by: preordered_by ?? null,
+        renewal_height,
+        stx_burn,
+        owner,
+        tx_id,
+        tx_index,
+        event_index: event_index ?? null,
+        status: status ?? null,
+        canonical,
+        index_block_hash: tx.index_block_hash,
+        parent_index_block_hash: tx.parent_index_block_hash,
+        microblock_hash: tx.microblock_hash,
+        microblock_sequence: tx.microblock_sequence,
+        microblock_canonical: tx.microblock_canonical,
+      };
+
+      await sql`
+        INSERT INTO names_v2 ${sql(nameV2Values)}
+        ON CONFLICT (fullName, tx_id, index_block_hash, microblock_hash, event_index) 
+        DO UPDATE SET
+          name = EXCLUDED.name,
+          namespace_id = EXCLUDED.namespace_id,
+          registered_at = EXCLUDED.registered_at,
+          imported_at = EXCLUDED.imported_at,
+          hashed_salted_fqn_preorder = EXCLUDED.hashed_salted_fqn_preorder,
+          preordered_by = EXCLUDED.preordered_by,
+          renewal_height = EXCLUDED.renewal_height,
+          stx_burn = EXCLUDED.stx_burn,
+          owner = EXCLUDED.owner,
+          status = EXCLUDED.status,
+          canonical = EXCLUDED.canonical,
+          parent_index_block_hash = EXCLUDED.parent_index_block_hash,
+          microblock_sequence = EXCLUDED.microblock_sequence,
+          microblock_canonical = EXCLUDED.microblock_canonical
+        WHERE names_v2.canonical = false OR EXCLUDED.canonical = true
+        ON CONFLICT (fullName) 
+        DO UPDATE SET
+          name = EXCLUDED.name,
+          namespace_id = EXCLUDED.namespace_id,
+          registered_at = EXCLUDED.registered_at,
+          imported_at = EXCLUDED.imported_at,
+          hashed_salted_fqn_preorder = EXCLUDED.hashed_salted_fqn_preorder,
+          preordered_by = EXCLUDED.preordered_by,
+          renewal_height = EXCLUDED.renewal_height,
+          stx_burn = EXCLUDED.stx_burn,
+          owner = EXCLUDED.owner,
+          tx_id = EXCLUDED.tx_id,
+          tx_index = EXCLUDED.tx_index,
+          event_index = EXCLUDED.event_index,
+          status = EXCLUDED.status,
+          canonical = EXCLUDED.canonical,
+          index_block_hash = EXCLUDED.index_block_hash,
+          parent_index_block_hash = EXCLUDED.parent_index_block_hash,
+          microblock_hash = EXCLUDED.microblock_hash,
+          microblock_sequence = EXCLUDED.microblock_sequence,
+          microblock_canonical = EXCLUDED.microblock_canonical
+        WHERE names_v2.canonical = false OR EXCLUDED.canonical = true
+      `;
+    }
+  }
+
   async updateNamespaces(
     sql: PgSqlClient,
     tx: DataStoreBnsBlockTxData,
@@ -2265,6 +2364,92 @@ export class PgWriteStore extends PgStore {
             microblock_sequence = EXCLUDED.microblock_sequence,
             microblock_canonical = EXCLUDED.microblock_canonical
       `;
+    }
+  }
+
+  async updateNamespacesV2(
+    sql: PgSqlClient,
+    tx: DataStoreBnsBlockTxData,
+    namespacesV2: DbBnsNamespaceV2[]
+  ) {
+    for (const batch of batchIterate(namespacesV2, INSERT_BATCH_SIZE)) {
+      const values: BnsNamespaceV2InsertValues[] = batch.map(namespace => ({
+        namespace_id: namespace.namespace_id,
+        namespace_manager: namespace.namespace_manager ?? null,
+        manager_transferable: namespace.manager_transferable,
+        manager_frozen: namespace.manager_frozen,
+        namespace_import: namespace.namespace_import,
+        reveal_block: namespace.reveal_block,
+        launched_at: namespace.launched_at ?? null,
+        launch_block: namespace.launch_block,
+        lifetime: namespace.lifetime,
+        can_update_price_function: namespace.can_update_price_function,
+        buckets: namespace.buckets,
+        base: namespace.base.toString(),
+        coeff: namespace.coeff.toString(),
+        nonalpha_discount: namespace.nonalpha_discount.toString(),
+        no_vowel_discount: namespace.no_vowel_discount.toString(),
+        status: namespace.status ?? null,
+        tx_index: namespace.tx_index,
+        tx_id: namespace.tx_id,
+        canonical: namespace.canonical,
+        index_block_hash: tx.index_block_hash,
+        parent_index_block_hash: tx.parent_index_block_hash,
+        microblock_hash: tx.microblock_hash,
+        microblock_sequence: tx.microblock_sequence,
+        microblock_canonical: tx.microblock_canonical,
+      }));
+      await sql`
+      INSERT INTO namespaces_v2 ${sql(values)}
+      ON CONFLICT (namespace_id, tx_id, index_block_hash, microblock_hash) 
+      DO UPDATE SET
+        namespace_manager = EXCLUDED.namespace_manager,
+        manager_transferable = EXCLUDED.manager_transferable,
+        manager_frozen = EXCLUDED.manager_frozen,
+        namespace_import = EXCLUDED.namespace_import,
+        reveal_block = EXCLUDED.reveal_block,
+        launched_at = EXCLUDED.launched_at,
+        launch_block = EXCLUDED.launch_block,
+        lifetime = EXCLUDED.lifetime,
+        can_update_price_function = EXCLUDED.can_update_price_function,
+        buckets = EXCLUDED.buckets,
+        base = EXCLUDED.base,
+        coeff = EXCLUDED.coeff,
+        nonalpha_discount = EXCLUDED.nonalpha_discount,
+        no_vowel_discount = EXCLUDED.no_vowel_discount,
+        status = EXCLUDED.status,
+        canonical = EXCLUDED.canonical,
+        parent_index_block_hash = EXCLUDED.parent_index_block_hash,
+        microblock_sequence = EXCLUDED.microblock_sequence,
+        microblock_canonical = EXCLUDED.microblock_canonical
+      WHERE namespaces_v2.canonical = false OR EXCLUDED.canonical = true
+      ON CONFLICT (namespace_id) 
+      DO UPDATE SET
+        namespace_manager = EXCLUDED.namespace_manager,
+        manager_transferable = EXCLUDED.manager_transferable,
+        manager_frozen = EXCLUDED.manager_frozen,
+        namespace_import = EXCLUDED.namespace_import,
+        reveal_block = EXCLUDED.reveal_block,
+        launched_at = EXCLUDED.launched_at,
+        launch_block = EXCLUDED.launch_block,
+        lifetime = EXCLUDED.lifetime,
+        can_update_price_function = EXCLUDED.can_update_price_function,
+        buckets = EXCLUDED.buckets,
+        base = EXCLUDED.base,
+        coeff = EXCLUDED.coeff,
+        nonalpha_discount = EXCLUDED.nonalpha_discount,
+        no_vowel_discount = EXCLUDED.no_vowel_discount,
+        status = EXCLUDED.status,
+        tx_id = EXCLUDED.tx_id,
+        tx_index = EXCLUDED.tx_index,
+        canonical = EXCLUDED.canonical,
+        index_block_hash = EXCLUDED.index_block_hash,
+        parent_index_block_hash = EXCLUDED.parent_index_block_hash,
+        microblock_hash = EXCLUDED.microblock_hash,
+        microblock_sequence = EXCLUDED.microblock_sequence,
+        microblock_canonical = EXCLUDED.microblock_canonical
+      WHERE namespaces_v2.canonical = false OR EXCLUDED.canonical = true
+    `;
     }
   }
 
@@ -3452,6 +3637,12 @@ export class PgWriteStore extends PgStore {
     `;
   }
 
+  async insertNameV2Batch(sql: PgSqlClient, values: BnsNameV2InsertValues[]) {
+    await sql`
+      INSERT INTO names_v2 ${sql(values)}
+    `;
+  }
+
   async insertNamespace(
     sql: PgSqlClient,
     blockData: {
@@ -3487,6 +3678,48 @@ export class PgWriteStore extends PgStore {
     };
     await sql`
       INSERT INTO namespaces ${sql(values)}
+    `;
+  }
+
+  async insertNamespaceV2(
+    sql: PgSqlClient,
+    blockData: {
+      index_block_hash: string;
+      parent_index_block_hash: string;
+      microblock_hash: string;
+      microblock_sequence: number;
+      microblock_canonical: boolean;
+    },
+    bnsNamespace: DbBnsNamespaceV2
+  ) {
+    const values: BnsNamespaceV2InsertValues = {
+      namespace_id: bnsNamespace.namespace_id,
+      namespace_manager: (bnsNamespace as DbBnsNamespaceV2).namespace_manager ?? null,
+      manager_transferable: (bnsNamespace as DbBnsNamespaceV2).manager_transferable,
+      manager_frozen: (bnsNamespace as DbBnsNamespaceV2).manager_frozen,
+      namespace_import: (bnsNamespace as DbBnsNamespaceV2).namespace_import,
+      reveal_block: bnsNamespace.reveal_block,
+      launched_at: bnsNamespace.launched_at ?? null,
+      launch_block: (bnsNamespace as DbBnsNamespaceV2).launch_block,
+      lifetime: bnsNamespace.lifetime,
+      can_update_price_function: (bnsNamespace as DbBnsNamespaceV2).can_update_price_function,
+      buckets: bnsNamespace.buckets,
+      base: bnsNamespace.base.toString(),
+      coeff: bnsNamespace.coeff.toString(),
+      nonalpha_discount: bnsNamespace.nonalpha_discount.toString(),
+      no_vowel_discount: bnsNamespace.no_vowel_discount.toString(),
+      status: bnsNamespace.status ?? null,
+      tx_index: bnsNamespace.tx_index,
+      tx_id: bnsNamespace.tx_id,
+      canonical: bnsNamespace.canonical,
+      index_block_hash: blockData.index_block_hash,
+      parent_index_block_hash: blockData.parent_index_block_hash,
+      microblock_hash: blockData.microblock_hash,
+      microblock_sequence: blockData.microblock_sequence,
+      microblock_canonical: blockData.microblock_canonical,
+    };
+    await sql`
+      INSERT INTO namespaces_v2 ${sql(values)}
     `;
   }
 
