@@ -57,6 +57,11 @@ import FastifyMetrics from 'fastify-metrics';
 import FastifyCors from '@fastify/cors';
 import { TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
 import * as promClient from 'prom-client';
+import { BnsV2NameRoutes } from './routes/bnsV2/names';
+import { BnsV2NamespaceRoutes } from './routes/bnsV2/namespaces';
+import { BnsV2AddressRoutes } from './routes/bnsV2/addresses';
+import { BnsV2PriceRoutes } from './routes/bnsV2/pricing';
+import { BnsV2ReadRoutes } from './routes/bnsV2/reads';
 
 export interface ApiServer {
   fastifyApp: FastifyInstance;
@@ -112,6 +117,11 @@ export const StacksApiRoutes: FastifyPluginAsync<
   await fastify.register(BnsNamespaceRoutes, { prefix: '/v1/namespaces' });
   await fastify.register(BnsAddressRoutes, { prefix: '/v1/addresses' });
   await fastify.register(BnsPriceRoutes, { prefix: '/v2/prices' });
+  await fastify.register(BnsV2NameRoutes, { prefix: '/v2/names' });
+  await fastify.register(BnsV2NamespaceRoutes, { prefix: '/v2/namespaces' });
+  await fastify.register(BnsV2AddressRoutes, { prefix: '/v2/addresses' });
+  await fastify.register(BnsV2ReadRoutes, { prefix: '/v2/read' });
+  await fastify.register(BnsV2PriceRoutes, { prefix: '/v3/prices' });
 
   await Promise.resolve();
 };
