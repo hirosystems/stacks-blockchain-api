@@ -1,3 +1,10 @@
+## [8.0.1](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.0.0...v8.0.1) (2024-09-23)
+
+
+### Bug Fixes
+
+* package.json & package-lock.json to reduce vulnerabilities ([159d0ca](https://github.com/hirosystems/stacks-blockchain-api/commit/159d0ca1a2b55017883661b5c6ffb3cf5aefeb9f))
+
 ## [8.0.0](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.14.1...v8.0.0) (2024-08-28)
 
 
