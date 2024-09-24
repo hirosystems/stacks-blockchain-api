@@ -1,8 +1,8 @@
 import { timeout } from '@hirosystems/api-toolkit';
-import { testnetKeys } from '../api/routes/debug';
-import { CoreRpcPoxInfo } from '../core-rpc/client';
-import { DbTxStatus } from '../datastore/common';
-import { getBitcoinAddressFromKey } from '../ec-helpers';
+import { testnetKeys } from '../../src/api/routes/debug';
+import { CoreRpcPoxInfo } from '../../src/core-rpc/client';
+import { DbTxStatus } from '../../src/datastore/common';
+import { getBitcoinAddressFromKey } from '../../src/ec-helpers';
 import {
   fetchGet,
   stackStxWithRosetta,
@@ -10,7 +10,7 @@ import {
   standByUntilBurnBlock,
   testEnv,
 } from '../utils/test-helpers';
-import { BurnchainRewardSlotHolderListResponse } from '../api/schemas/responses/responses';
+import { BurnchainRewardSlotHolderListResponse } from '../../src/api/schemas/responses/responses';
 
 const BTC_ADDRESS_CASES = [
   { addressFormat: 'p2pkh' },

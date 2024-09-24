@@ -1,6 +1,6 @@
-import { testnetKeys } from '../api/routes/debug';
-import { CoreRpcPoxInfo } from '../core-rpc/client';
-import { getBitcoinAddressFromKey, privateToPublicKey } from '../ec-helpers';
+import { testnetKeys } from '../../src/api/routes/debug';
+import { CoreRpcPoxInfo } from '../../src/core-rpc/client';
+import { getBitcoinAddressFromKey, privateToPublicKey } from '../../src/ec-helpers';
 import {
   AnchorMode,
   StacksPrivateKey,
@@ -12,7 +12,7 @@ import {
   uintCV,
 } from '@stacks/transactions';
 import bignumber from 'bignumber.js';
-import { DbEventTypeId, DbStxLockEvent } from '../datastore/common';
+import { DbEventTypeId, DbStxLockEvent } from '../../src/datastore/common';
 import {
   fetchGet,
   standByForPoxCycle,
@@ -25,12 +25,12 @@ import { hexToBuffer } from '@hirosystems/api-toolkit';
 import * as assert from 'assert';
 import { hexToBytes } from '@stacks/common';
 import { getPublicKeyFromPrivate } from '@stacks/encryption';
-import { AddressStxBalance } from '../api/schemas/entities/addresses';
+import { AddressStxBalance } from '../../src/api/schemas/entities/addresses';
 import {
   BurnchainRewardListResponse,
   BurnchainRewardSlotHolderListResponse,
-} from '../api/schemas/responses/responses';
-import { BurnchainRewardsTotal } from '../api/schemas/entities/burnchain-rewards';
+} from '../../src/api/schemas/responses/responses';
+import { BurnchainRewardsTotal } from '../../src/api/schemas/entities/burnchain-rewards';
 
 describe('PoX-4 - Stack extend and increase operations', () => {
   const account = testnetKeys[1];

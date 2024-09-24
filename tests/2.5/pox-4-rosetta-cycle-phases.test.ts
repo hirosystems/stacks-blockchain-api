@@ -1,6 +1,4 @@
-import { bytesToHex } from '@stacks/common';
-import { randomBytes } from '@stacks/transactions';
-import { testnetKeys } from '../api/routes/debug';
+import { testnetKeys } from '../../src/api/routes/debug';
 import { stackStxWithRosetta, standByUntilBurnBlock, testEnv } from '../utils/test-helpers';
 
 const REWARD_CYCLE_LENGTH = 5; // assuming regtest

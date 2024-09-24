@@ -1,7 +1,7 @@
-import { loadDotEnv } from '../helpers';
-import { StacksCoreRpcClient } from '../core-rpc/client';
-import { PgWriteStore } from '../datastore/pg-write-store';
-import { EventStreamServer, startEventServer } from '../event-stream/event-server';
+import { loadDotEnv } from '../../src/helpers';
+import { StacksCoreRpcClient } from '../../src/core-rpc/client';
+import { PgWriteStore } from '../../src/datastore/pg-write-store';
+import { EventStreamServer, startEventServer } from '../../src/event-stream/event-server';
 import { ChainID } from '@stacks/transactions';
 import { migrate } from '../utils/test-helpers';
 import { timeout } from '@hirosystems/api-toolkit';

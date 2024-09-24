@@ -1,14 +1,14 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import * as supertest from 'supertest';
-import { BlockQueryResult } from '../datastore/common';
-import { parseBlockQueryResult } from '../datastore/helpers';
+import { BlockQueryResult } from '../../src/datastore/common';
+import { parseBlockQueryResult } from '../../src/datastore/helpers';
 import { standByUntilBlock, testEnv } from '../utils/test-helpers';
 import {
   CoinbaseTransaction,
   SmartContractTransaction,
   Transaction,
-} from '../api/schemas/entities/transactions';
-import { Block } from '../api/schemas/entities/block';
+} from '../../src/api/schemas/entities/transactions';
+import { Block } from '../../src/api/schemas/entities/block';
 
 describe('Block-zero event handling', () => {
   const testnetBootAddr = 'ST000000000000000000002AMW42H';

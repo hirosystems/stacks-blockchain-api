@@ -7,8 +7,8 @@ import {
   standByForTxSuccess,
   testEnv,
 } from '../utils/test-helpers';
-import { RunFaucetResponse } from '../api/schemas/responses/responses';
-import { AddressStxBalance } from '../api/schemas/entities/addresses';
+import { RunFaucetResponse } from '../../src/api/schemas/responses/responses';
+import { AddressStxBalance } from '../../src/api/schemas/entities/addresses';
 
 describe('STX Faucet', () => {
   const reqAccountKey = 'b1ee37d996b1cf95ff67996a38426cff398d3adfeccf8ae8b3651a530837dd5801';

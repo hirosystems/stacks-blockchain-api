@@ -14,10 +14,10 @@ import {
   uintCV,
 } from '@stacks/transactions';
 import { ClarityValueTuple, ClarityValueUInt, decodeClarityValue } from 'stacks-encoding-native-js';
-import { testnetKeys } from '../api/routes/debug';
-import { CoreRpcPoxInfo } from '../core-rpc/client';
-import { DbTxStatus } from '../datastore/common';
-import { stxToMicroStx } from '../helpers';
+import { testnetKeys } from '../../src/api/routes/debug';
+import { CoreRpcPoxInfo } from '../../src/core-rpc/client';
+import { DbTxStatus } from '../../src/datastore/common';
+import { stxToMicroStx } from '../../src/helpers';
 import {
   Account,
   accountFromKey,
@@ -31,7 +31,7 @@ import {
 } from '../utils/test-helpers';
 import { hexToBytes } from '@stacks/common';
 import { getPublicKeyFromPrivate } from '@stacks/encryption';
-import { AddressStxBalance } from '../api/schemas/entities/addresses';
+import { AddressStxBalance } from '../../src/api/schemas/entities/addresses';
 
 describe('PoX-4 - Delegate Revoked Stacking', () => {
   const seedKey = testnetKeys[4].secretKey;

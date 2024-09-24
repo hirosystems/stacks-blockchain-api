@@ -1,10 +1,10 @@
 import { StacksTestnet } from '@stacks/network';
 import { ChainID } from '@stacks/transactions';
 import { RPCClient } from 'rpc-bitcoin';
-import { startApiServer } from '../api/init';
-import { StacksCoreRpcClient } from '../core-rpc/client';
-import { PgWriteStore } from '../datastore/pg-write-store';
-import { loadDotEnv } from '../helpers';
+import { startApiServer } from '../../src/api/init';
+import { StacksCoreRpcClient } from '../../src/core-rpc/client';
+import { PgWriteStore } from '../../src/datastore/pg-write-store';
+import { loadDotEnv } from '../../src/helpers';
 import { TestEnvContext } from '../utils/test-helpers';
 
 let testEnv: TestEnvContext;

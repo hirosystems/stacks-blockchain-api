@@ -9,9 +9,8 @@ import {
   randomBytes,
 } from '@stacks/transactions';
 import bignumber from 'bignumber.js';
-import { testnetKeys } from '../api/routes/debug';
-import { CoreRpcPoxInfo } from '../core-rpc/client';
-import { ECPair, getBitcoinAddressFromKey } from '../ec-helpers';
+import { testnetKeys } from '../../src/api/routes/debug';
+import { ECPair, getBitcoinAddressFromKey } from '../../src/ec-helpers';
 import {
   fetchGet,
   getRosettaAccountBalance,
@@ -24,8 +23,8 @@ import {
   standByUntilBurnBlock,
   testEnv,
 } from '../utils/test-helpers';
-import { AddressStxBalance } from '../api/schemas/entities/addresses';
-import { BurnchainRewardListResponse } from '../api/schemas/responses/responses';
+import { AddressStxBalance } from '../../src/api/schemas/entities/addresses';
+import { BurnchainRewardListResponse } from '../../src/api/schemas/responses/responses';
 
 describe('PoX-4 - Rosetta - Stacking with segwit', () => {
   let btcAddr: string;

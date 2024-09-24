@@ -8,10 +8,10 @@ import {
   standardPrincipalCV,
   uintCV,
 } from '@stacks/transactions';
-import { testnetKeys } from '../api/routes/debug';
-import { StacksCoreRpcClient } from '../core-rpc/client';
-import { ECPair } from '../ec-helpers';
-import { BootContractAddress } from '../helpers';
+import { testnetKeys } from '../../src/api/routes/debug';
+import { StacksCoreRpcClient } from '../../src/core-rpc/client';
+import { ECPair } from '../../src/ec-helpers';
+import { BootContractAddress } from '../../src/helpers';
 import {
   Account,
   accountFromKey,
@@ -25,22 +25,22 @@ import {
 } from '../utils/test-helpers';
 import * as btc from 'bitcoinjs-lib';
 import { b58ToC32, c32ToB58 } from 'c32check';
-import { PgWriteStore } from '../datastore/pg-write-store';
-import { ApiServer } from '../api/init';
+import { PgWriteStore } from '../../src/datastore/pg-write-store';
+import { ApiServer } from '../../src/api/init';
 import { StacksNetwork } from '@stacks/network';
 import { RPCClient } from 'rpc-bitcoin';
 import * as supertest from 'supertest';
-import { PoxContractIdentifier } from '../pox-helpers';
+import { PoxContractIdentifier } from '../../src/pox-helpers';
 import { ClarityValueUInt, decodeClarityValue } from 'stacks-encoding-native-js';
 import { decodeBtcAddress, poxAddressToBtcAddress } from '@stacks/stacking';
 import { timeout } from '@hirosystems/api-toolkit';
-import { AddressStxBalance } from '../api/schemas/entities/addresses';
-import { ContractCallTransaction } from '../api/schemas/entities/transactions';
+import { AddressStxBalance } from '../../src/api/schemas/entities/addresses';
+import { ContractCallTransaction } from '../../src/api/schemas/entities/transactions';
 import {
   AddressTransactionsListResponse,
   TransactionEventsResponse,
-} from '../api/schemas/responses/responses';
-import { StxLockTransactionEvent } from '../api/schemas/entities/transaction-events';
+} from '../../src/api/schemas/responses/responses';
+import { StxLockTransactionEvent } from '../../src/api/schemas/entities/transaction-events';
 
 // Perform Delegate-STX operation on Bitcoin.
 // See https://github.com/stacksgov/sips/blob/a7f2e58ec90c12ee1296145562eec75029b89c48/sips/sip-015/sip-015-network-upgrade.md#new-burnchain-transaction-delegate-stx

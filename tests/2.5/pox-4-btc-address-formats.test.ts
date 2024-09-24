@@ -11,10 +11,10 @@ import {
   uintCV,
 } from '@stacks/transactions';
 import bignumber from 'bignumber.js';
-import { testnetKeys } from '../api/routes/debug';
-import { CoreRpcPoxInfo } from '../core-rpc/client';
-import { DbEventTypeId, DbStxLockEvent } from '../datastore/common';
-import { getBitcoinAddressFromKey, privateToPublicKey } from '../ec-helpers';
+import { testnetKeys } from '../../src/api/routes/debug';
+import { CoreRpcPoxInfo } from '../../src/core-rpc/client';
+import { DbEventTypeId, DbStxLockEvent } from '../../src/datastore/common';
+import { getBitcoinAddressFromKey, privateToPublicKey } from '../../src/ec-helpers';
 import {
   fetchGet,
   standByForPoxCycle,
@@ -25,12 +25,12 @@ import {
 import { RPCClient } from 'rpc-bitcoin';
 import { hexToBytes } from '@stacks/common';
 import { getPublicKeyFromPrivate } from '@stacks/encryption';
-import { AddressStxBalance } from '../api/schemas/entities/addresses';
+import { AddressStxBalance } from '../../src/api/schemas/entities/addresses';
 import {
   BurnchainRewardListResponse,
   BurnchainRewardSlotHolderListResponse,
-} from '../api/schemas/responses/responses';
-import { BurnchainRewardsTotal } from '../api/schemas/entities/burnchain-rewards';
+} from '../../src/api/schemas/responses/responses';
+import { BurnchainRewardsTotal } from '../../src/api/schemas/entities/burnchain-rewards';
 
 const BTC_PRIVATE_KEY = '0000000000000000000000000000000000000000000000000000000000000002';
 
