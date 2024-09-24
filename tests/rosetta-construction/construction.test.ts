@@ -16,7 +16,7 @@ import {
   RosettaConstructionPayloadsRequest,
   RosettaConstructionPreprocessRequest,
   RosettaConstructionPreprocessResponse,
-} from '../rosetta/types';
+} from '../../src/rosetta/types';
 import {
   AnchorMode,
   AuthType,
@@ -43,7 +43,7 @@ import {
 } from '@stacks/transactions';
 import * as assert from 'assert';
 import * as supertest from 'supertest';
-import { ApiServer, startApiServer } from '../api/init';
+import { ApiServer, startApiServer } from '../../src/api/init';
 import {
   RosettaConstants,
   RosettaErrors,
@@ -51,13 +51,13 @@ import {
   RosettaOperationStatuses,
   RosettaOperationTypes,
   getRosettaNetworkName,
-} from '../api/rosetta-constants';
-import { getStacksTestnetNetwork, testnetKeys } from '../api/routes/debug';
-import { StacksCoreRpcClient } from '../core-rpc/client';
-import { DbBlock } from '../datastore/common';
-import { PgWriteStore } from '../datastore/pg-write-store';
-import { FoundOrNot } from '../helpers';
-import { getSignature, getStacksNetwork } from '../rosetta/rosetta-helpers';
+} from '../../src/api/rosetta-constants';
+import { getStacksTestnetNetwork, testnetKeys } from '../../src/api/routes/debug';
+import { StacksCoreRpcClient } from '../../src/core-rpc/client';
+import { DbBlock } from '../../src/datastore/common';
+import { PgWriteStore } from '../../src/datastore/pg-write-store';
+import { FoundOrNot } from '../../src/helpers';
+import { getSignature, getStacksNetwork } from '../../src/rosetta/rosetta-helpers';
 import {
   standByForPoxCycle,
   standByForTx as standByForTxShared,

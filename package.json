@@ -12,7 +12,7 @@
     "test:subnets": "npm run test -- --config ./tests/jest.config.subnets.js",
     "test:2.5": "npm run test -- --config ./tests/jest.config.2.5.js",
     "test:rosetta": "npm run test -- --config ./tests/jest.config.rosetta.js",
-    "test:rosetta-construction": "cross-env NODE_ENV=test jest --config ./tests/jest.config.rosetta-construction.js --coverage --runInBand",
+    "test:rosetta-construction": "npm run test -- --config ./tests/jest.config.rosetta-construction.js",
     "test:rosetta-cli:data": "cross-env NODE_ENV=test STACKS_CHAIN_ID=0x80000000 jest --config ./tests/jest.config.rosetta-cli-data.js --coverage --runInBand",
     "test:rosetta-cli:construction": "cross-env NODE_ENV=test STACKS_CHAIN_ID=0x80000000 jest --config ./tests/jest.config.rosetta-cli-construction.js --coverage --runInBand",
     "test:bns": "npm run test -- --config ./tests/jest.config.bns.js",
