@@ -1,5 +1,5 @@
 import * as process from 'process';
-import { getStxFaucetNetworks } from '.../../src/api/routes/faucets';
+import { getStxFaucetNetworks } from '../../src/helpers';
 
 describe('stx faucet', () => {
   test('faucet node env var override', () => {

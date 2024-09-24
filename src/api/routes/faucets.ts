@@ -8,7 +8,7 @@ import {
   SignedTokenTransferOptions,
   StacksTransaction,
 } from '@stacks/transactions';
-import { StacksNetwork, StacksTestnet } from '@stacks/network';
+import { StacksNetwork } from '@stacks/network';
 import {
   makeBtcFaucetPayment,
   getBtcBalance,
@@ -16,8 +16,8 @@ import {
   isValidBtcAddress,
 } from '../../btc-faucet';
 import { DbFaucetRequestCurrency } from '../../datastore/common';
-import { getChainIDNetwork, intMax, stxToMicroStx } from '../../helpers';
-import { testnetKeys, getStacksTestnetNetwork } from './debug';
+import { getChainIDNetwork, getStxFaucetNetworks, intMax, stxToMicroStx } from '../../helpers';
+import { testnetKeys } from './debug';
 import { StacksCoreRpcClient } from '../../core-rpc/client';
 import { logger } from '../../logger';
 import { FastifyPluginAsync, preHandlerHookHandler } from 'fastify';
@@ -26,24 +26,6 @@ import { fastifyFormbody } from '@fastify/formbody';
 import { Server } from 'node:http';
 import { OptionalNullable } from '../schemas/util';
 import { RunFaucetResponseSchema } from '../schemas/responses/responses';
-
-function getStxFaucetNetworks(): StacksNetwork[] {
-  const networks: StacksNetwork[] = [getStacksTestnetNetwork()];
-  const faucetNodeHostOverride: string | undefined = process.env.STACKS_FAUCET_NODE_HOST;
-  if (faucetNodeHostOverride) {
-    const faucetNodePortOverride: string | undefined = process.env.STACKS_FAUCET_NODE_PORT;
-    if (!faucetNodePortOverride) {
-      const error = 'STACKS_FAUCET_NODE_HOST is specified but STACKS_FAUCET_NODE_PORT is missing';
-      logger.error(error);
-      throw new Error(error);
-    }
-    const network = new StacksTestnet({
-      url: `http://${faucetNodeHostOverride}:${faucetNodePortOverride}`,
-    });
-    networks.push(network);
-  }
-  return networks;
-}
 
 enum TxSendResultStatus {
   Success,
