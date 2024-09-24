@@ -98,13 +98,17 @@ jobs:
 
       - name: Setup env vars
         run: echo "STACKS_CORE_EVENT_HOST=http://0.0.0.0" >> $GITHUB_ENV
+      
+      - name: Setup replay directories
+        if: ${{ matrix.suite }} == 'event-replay'
+        run: |
+          mkdir -p tests/event-replay/.tmp/local/
+          sudo chown 999:999 tests/event-replay/.tmp/local/
+          sudo chmod -R 777 tests/event-replay/.tmp/local/
 
       - name: Setup integration environment
         run: |
           sudo ufw disable
-          mkdir -p tests/event-replay/.tmp/local/
-          sudo chown 999:999 tests/event-replay/.tmp/local/
-          sudo chmod -R 777 tests/event-replay/.tmp/local/
           npm run devenv:deploy -- -d
           npm run devenv:logs -- --no-color &> docker-compose-logs.txt &
 
@@ -236,7 +240,8 @@ jobs:
       - name: Setup env vars
         run: echo "STACKS_CORE_EVENT_HOST=http://0.0.0.0" >> $GITHUB_ENV
 
-      - name: Setup cli enviroment variable
+      - name: Setup CLI env vars
+        if: contains(${{ matrix.suite }}, 'cli')
         run: |
           echo STACKS_BLOCKCHAIN_API_HOST=0.0.0.0>> .env
           echo STACKS_CORE_PROXY_HOST=0.0.0.0 >> .env
