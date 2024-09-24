@@ -2,7 +2,7 @@ import {
   parseNamespaceRawValue,
   parseNameRawValue,
   parseZoneFileTxt,
-} from '../event-stream/bns/bns-helpers';
+} from '../../src/event-stream/bns/bns-helpers';
 import * as zoneFileParser from 'zone-file';
 
 describe('BNS helper tests', () => {

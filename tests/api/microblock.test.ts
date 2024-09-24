@@ -74,7 +74,7 @@ describe('microblock tests', () => {
       },
       () => {
         const readStream = fs.createReadStream(
-          'src/tests/api/event-replay-logs/mainnet-out-of-order-microblock.tsv'
+          'tests/api/event-replay-logs/mainnet-out-of-order-microblock.tsv'
         );
         const rawEventsIterator = getRawEventRequests(readStream);
         return [rawEventsIterator, () => readStream.close()] as const;
@@ -134,7 +134,7 @@ describe('microblock tests', () => {
       },
       () => {
         const readStream = fs.createReadStream(
-          'src/tests/api/event-replay-logs/mainnet-reorg-scenario1.tsv'
+          'tests/api/event-replay-logs/mainnet-reorg-scenario1.tsv'
         );
         const rawEventsIterator = getRawEventRequests(readStream);
         return [rawEventsIterator, () => readStream.close()] as const;
@@ -198,7 +198,7 @@ describe('microblock tests', () => {
       },
       () => {
         const readStream = fs.createReadStream(
-          'src/tests/api/event-replay-logs/mainnet-reorg-scenario2.tsv'
+          'tests/api/event-replay-logs/mainnet-reorg-scenario2.tsv'
         );
         const rawEventsIterator = getRawEventRequests(readStream);
         return [rawEventsIterator, () => readStream.close()] as const;

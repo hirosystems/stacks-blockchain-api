@@ -1,10 +1,16 @@
-import { ApiServer, startApiServer } from '../api/init';
+import { ApiServer, startApiServer } from '../../src/api/init';
 import * as supertest from 'supertest';
-import { DbAssetEventTypeId, DbBlock, DbBnsName, DbBnsNamespace, DbBnsSubdomain } from '../datastore/common';
+import {
+  DbAssetEventTypeId,
+  DbBlock,
+  DbBnsName,
+  DbBnsNamespace,
+  DbBnsSubdomain,
+} from '../../src/datastore/common';
 import * as StacksTransactions from '@stacks/transactions';
 import { ChainID } from '@stacks/transactions';
-import { bnsNameCV, I32_MAX } from '../helpers';
-import { PgWriteStore } from '../datastore/pg-write-store';
+import { bnsNameCV, I32_MAX } from '../../src/helpers';
+import { PgWriteStore } from '../../src/datastore/pg-write-store';
 import { TestBlockBuilder, TestMicroblockStreamBuilder } from '../utils/test-builders';
 import { migrate } from '../utils/test-helpers';
 import { PgSqlClient } from '@hirosystems/api-toolkit';
@@ -32,9 +38,10 @@ jest.mock('@stacks/transactions', () => {
   const originalModule = jest.requireActual('@stacks/transactions');
 
   const mockReadOnlyFunction = jest
-    .fn(()=> nameSpaceExpected)
+    .fn(() => nameSpaceExpected)
     .mockImplementationOnce(() => nameSpaceExpected)
     .mockImplementationOnce(() => nameExpected);
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-return
   return {
     __esModule: true,
     ...originalModule,
@@ -200,14 +207,14 @@ describe('BNS API tests', () => {
     const block2 = new TestBlockBuilder({
       block_height: 2,
       index_block_hash: '0x02',
-      parent_index_block_hash: '0x1234'
+      parent_index_block_hash: '0x1234',
     })
       .addTx({ tx_id: '0x1111' })
       .addTxBnsName({
         name: 'xyz.abc',
         namespace_id: 'abc',
         status: 'name-revoke',
-        address: 'ST5RRX0K27GW0SP3GJCEMHD95TQGJMKB7G9Y0X1ZA'
+        address: 'ST5RRX0K27GW0SP3GJCEMHD95TQGJMKB7G9Y0X1ZA',
       })
       .build();
     await db.update(block2);
@@ -288,7 +295,7 @@ describe('BNS API tests', () => {
     const block = new TestBlockBuilder({
       block_height: 2,
       index_block_hash: '0x02',
-      parent_index_block_hash: '0x1234'
+      parent_index_block_hash: '0x1234',
     })
       .addTx({ tx_id: '0x22' })
       .addTxBnsName({
@@ -353,18 +360,18 @@ describe('BNS API tests', () => {
     const block3 = new TestBlockBuilder({
       block_height: 3,
       index_block_hash: '0x03',
-      parent_index_block_hash: '0x02'
+      parent_index_block_hash: '0x02',
     })
       .addTx({ tx_id: '0x1111' })
       .addTxBnsName({
         name: 'test.btc',
         status: 'name-revoke',
-        address: 'ST5RRX0K27GW0SP3GJCEMHD95TQGJMKB7G9Y0X1ZA'
+        address: 'ST5RRX0K27GW0SP3GJCEMHD95TQGJMKB7G9Y0X1ZA',
       })
       .addTxBnsName({
         name: 'id.blockstack',
         status: 'name-revoke',
-        address: 'ST5RRX0K27GW0SP3GJCEMHD95TQGJMKB7G9Y0X1ZA'
+        address: 'ST5RRX0K27GW0SP3GJCEMHD95TQGJMKB7G9Y0X1ZA',
       })
       .build();
     await db.update(block3);
@@ -421,7 +428,7 @@ describe('BNS API tests', () => {
     const block = new TestBlockBuilder({
       block_height: 2,
       index_block_hash: '0x02',
-      parent_index_block_hash: '0x1234'
+      parent_index_block_hash: '0x1234',
     })
       .addTx({ tx_id: '0x22' })
       .addTxBnsName({
@@ -459,7 +466,7 @@ describe('BNS API tests', () => {
     const block = new TestBlockBuilder({
       block_height: 2,
       index_block_hash: '0x02',
-      parent_index_block_hash: dbBlock.index_block_hash
+      parent_index_block_hash: dbBlock.index_block_hash,
     })
       .addTx({ tx_id: '0x22' })
       .addTxBnsName({
@@ -508,10 +515,7 @@ describe('BNS API tests', () => {
 
     const query1 = await supertest(api.server).get(`/v1/addresses/${blockchain}/${address}`);
     expect(query1.status).toBe(200);
-    expect(query1.body.names).toStrictEqual([
-      'imported.btc',
-      'test-name.btc'
-    ]);
+    expect(query1.body.names).toStrictEqual(['imported.btc', 'test-name.btc']);
     expect(query1.type).toBe('application/json');
 
     const subdomain: DbBnsSubdomain = {
@@ -547,69 +551,60 @@ describe('BNS API tests', () => {
     expect(query2.body.names).toStrictEqual([
       'address_test.id.blockstack',
       'imported.btc',
-      'test-name.btc'
+      'test-name.btc',
     ]);
 
     // Transfer name to somebody else.
     const block3 = new TestBlockBuilder({
       block_height: 3,
       index_block_hash: '0x03',
-      parent_index_block_hash: '0x02'
+      parent_index_block_hash: '0x02',
     })
       .addTx({ tx_id: '0xf3f3' })
       .addTxNftEvent({
         sender: address,
         recipient: address2,
         asset_identifier: 'ST000000000000000000002AMW42H.bns::names',
-        value: bnsNameCV(name)
+        value: bnsNameCV(name),
       })
       .build();
     await db.update(block3);
     const query3 = await supertest(api.server).get(`/v1/addresses/${blockchain}/${address}`);
     expect(query3.status).toBe(200);
     expect(query3.type).toBe('application/json');
-    expect(query3.body.names).toStrictEqual([
-      'address_test.id.blockstack',
-      'imported.btc'
-    ]);
+    expect(query3.body.names).toStrictEqual(['address_test.id.blockstack', 'imported.btc']);
 
     // New guy owns the name.
     const query4 = await supertest(api.server).get(`/v1/addresses/${blockchain}/${address2}`);
     expect(query4.status).toBe(200);
     expect(query4.type).toBe('application/json');
-    expect(query4.body.names).toStrictEqual([
-      'test-name.btc'
-    ]);
+    expect(query4.body.names).toStrictEqual(['test-name.btc']);
 
     // Transfer imported name to another user.
     const block4 = new TestBlockBuilder({
       block_height: 4,
       index_block_hash: '0x04',
-      parent_index_block_hash: '0x03'
+      parent_index_block_hash: '0x03',
     })
       .addTx({ tx_id: '0xf3f4' })
       .addTxNftEvent({
         sender: address,
         recipient: address3,
         asset_identifier: 'ST000000000000000000002AMW42H.bns::names',
-        value: bnsNameCV('imported.btc')
+        value: bnsNameCV('imported.btc'),
       })
       .build();
     await db.update(block4);
     const query5 = await supertest(api.server).get(`/v1/addresses/${blockchain}/${address}`);
     expect(query5.status).toBe(200);
     expect(query5.type).toBe('application/json');
-    expect(query5.body.names).toStrictEqual([
-      'address_test.id.blockstack'
-    ]);
+    expect(query5.body.names).toStrictEqual(['address_test.id.blockstack']);
 
     // Other guy owns the name.
     const query6 = await supertest(api.server).get(`/v1/addresses/${blockchain}/${address3}`);
     expect(query6.status).toBe(200);
     expect(query6.type).toBe('application/json');
-    expect(query6.body.names).toStrictEqual([
-      'imported.btc'
-    ]);
+    expect(query6.body.names).toStrictEqual(['imported.btc']);
 
     await db.resolveBnsSubdomains(
       {
@@ -651,7 +646,7 @@ describe('BNS API tests', () => {
           tx_index: 0,
           tx_id: '0x5454',
           canonical: true,
-        }
+        },
       ]
     );
 
@@ -669,18 +664,18 @@ describe('BNS API tests', () => {
     const block5 = new TestBlockBuilder({
       block_height: 5,
       index_block_hash: '0x05',
-      parent_index_block_hash: '0x04'
+      parent_index_block_hash: '0x04',
     })
       .addTx({ tx_id: '0xf3f5' })
       .addTxBnsName({
         name: 'imported.btc',
         status: 'name-revoke',
-        address: address3
+        address: address3,
       })
       .addTxBnsName({
         name: 'id.blockstack',
         status: 'name-revoke',
-        address: address3
+        address: address3,
       })
       .build();
     await db.update(block5);
@@ -702,7 +697,7 @@ describe('BNS API tests', () => {
     const block2 = new TestBlockBuilder({
       block_height: 2,
       index_block_hash: '0x02',
-      parent_index_block_hash: dbBlock.index_block_hash
+      parent_index_block_hash: dbBlock.index_block_hash,
     })
       .addTx({ tx_id: '0x22' })
       .addTxBnsName({
@@ -731,7 +726,7 @@ describe('BNS API tests', () => {
     const block3 = new TestBlockBuilder({
       block_height: 3,
       index_block_hash: '0x03',
-      parent_index_block_hash: '0x02'
+      parent_index_block_hash: '0x02',
     })
       .addTx({ tx_id: '0x23' })
       .addTxBnsName({
@@ -778,7 +773,7 @@ describe('BNS API tests', () => {
     const block = new TestBlockBuilder({
       block_height: 2,
       index_block_hash: '0x02',
-      parent_index_block_hash: '0x1234'
+      parent_index_block_hash: '0x1234',
     })
       .addTx({ tx_id: '0x22' })
       .addTxBnsName({
@@ -843,20 +838,18 @@ describe('BNS API tests', () => {
     const block3 = new TestBlockBuilder({
       block_height: 3,
       index_block_hash: '0x03',
-      parent_index_block_hash: '0x02'
+      parent_index_block_hash: '0x02',
     })
       .addTx({ tx_id: '0x1111' })
       .addTxBnsName({
         name: name,
         status: 'name-revoke',
-        address: 'STRYYQQ9M8KAF4NS7WNZQYY59X93XEKR31JP64CP'
+        address: 'STRYYQQ9M8KAF4NS7WNZQYY59X93XEKR31JP64CP',
       })
       .build();
     await db.update(block3);
 
-    const query3 = await supertest(api.server).get(
-      `/v1/names/${name}/zonefile`
-    );
+    const query3 = await supertest(api.server).get(`/v1/names/${name}/zonefile`);
     expect(query3.status).toBe(404);
 
     const query4 = await supertest(api.server).get(
@@ -882,13 +875,13 @@ describe('BNS API tests', () => {
     const block2 = new TestBlockBuilder({
       block_height: 2,
       index_block_hash: '0x02',
-      parent_index_block_hash: '0x1234'
+      parent_index_block_hash: '0x1234',
     })
       .addTx({ tx_id: '0x1111' })
       .addTxBnsName({
         name: 'xyz.abc',
         status: 'name-revoke',
-        address: 'ST5RRX0K27GW0SP3GJCEMHD95TQGJMKB7G9Y0X1ZA'
+        address: 'ST5RRX0K27GW0SP3GJCEMHD95TQGJMKB7G9Y0X1ZA',
       })
       .build();
     await db.update(block2);
@@ -912,13 +905,13 @@ describe('BNS API tests', () => {
     const block2 = new TestBlockBuilder({
       block_height: 2,
       index_block_hash: '0x02',
-      parent_index_block_hash: '0x1234'
+      parent_index_block_hash: '0x1234',
     })
       .addTx({ tx_id: '0x1111' })
       .addTxBnsName({
         name: 'xyz.abc',
         status: 'name-revoke',
-        address: 'ST5RRX0K27GW0SP3GJCEMHD95TQGJMKB7G9Y0X1ZA'
+        address: 'ST5RRX0K27GW0SP3GJCEMHD95TQGJMKB7G9Y0X1ZA',
       })
       .build();
     await db.update(block2);
@@ -976,13 +969,13 @@ describe('BNS API tests', () => {
     );
     expect(query.status).toBe(200);
     expect(query.body).toStrictEqual({
-      address: "test-address",
-      blockchain: "stacks",
-      last_txid: "0x1234",
-      resolver: "https://registrar.blockstack.org",
-      status: "registered_subdomain",
-      zonefile: "test",
-      zonefile_hash: "test-hash",
+      address: 'test-address',
+      blockchain: 'stacks',
+      last_txid: '0x1234',
+      resolver: 'https://registrar.blockstack.org',
+      status: 'registered_subdomain',
+      zonefile: 'test',
+      zonefile_hash: 'test-hash',
     });
   });
 
@@ -1048,22 +1041,20 @@ describe('BNS API tests', () => {
       [subdomain]
     );
     const query = await supertest(api.server).get(`/v1/names/id.blockstack/subdomains`);
-    const expectedResult =  [
-      'zone_test.id.blockstack',
-    ];
+    const expectedResult = ['zone_test.id.blockstack'];
     expect(query.body).toEqual(expectedResult);
 
     // Revoke name
     const block2 = new TestBlockBuilder({
       block_height: 2,
       index_block_hash: '0x02',
-      parent_index_block_hash: '0x1234'
+      parent_index_block_hash: '0x1234',
     })
       .addTx({ tx_id: '0x1111' })
       .addTxBnsName({
         name: 'id.blockstack',
         status: 'name-revoke',
-        address: 'STRYYQQ9M8KAF4NS7WNZQYY59X93XEKR31JP64CP'
+        address: 'STRYYQQ9M8KAF4NS7WNZQYY59X93XEKR31JP64CP',
       })
       .build();
     await db.update(block2);
@@ -1081,7 +1072,7 @@ describe('BNS API tests', () => {
     const block2 = new TestBlockBuilder({
       block_height: 2,
       index_block_hash: '0x02',
-      parent_index_block_hash: '0x1234'
+      parent_index_block_hash: '0x1234',
     })
       .addTx({ tx_id: '0x1111' })
       .addTxBnsName({ name: name, status: 'name-register', address: addr1 })
@@ -1112,7 +1103,7 @@ describe('BNS API tests', () => {
       .addMicroblock({
         parent_index_block_hash: '0x02',
         microblock_hash: '0x12',
-        microblock_sequence: 0
+        microblock_sequence: 0,
       })
       .addTx({ tx_id: '0xf112' })
       .addTxBnsName({ name: name, status: 'name-update', address: addr3 })
@@ -1129,7 +1120,7 @@ describe('BNS API tests', () => {
       block_height: 3,
       index_block_hash: '0x03',
       parent_index_block_hash: '0x02',
-      parent_microblock_hash: '0x11'
+      parent_microblock_hash: '0x11',
     })
       .addTx()
       .build();
@@ -1138,5 +1129,5 @@ describe('BNS API tests', () => {
     const query = await supertest(api.server).get(`/v1/names/${name}`);
     expect(query.body.address).toEqual(addr2);
     expect(query.body.last_txid).toEqual('0xf111');
-  })
+  });
 });

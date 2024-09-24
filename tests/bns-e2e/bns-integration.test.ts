@@ -1,4 +1,4 @@
-import { ApiServer, startApiServer } from '../api/init';
+import { ApiServer, startApiServer } from '../../src/api/init';
 import * as supertest from 'supertest';
 import { createHash } from 'crypto';
 import { AnchorMode, ChainID, PostConditionMode, someCV } from '@stacks/transactions';
@@ -14,9 +14,9 @@ import {
   SignedContractCallOptions,
   noneCV,
 } from '@stacks/transactions';
-import { logger } from '../logger';
-import { testnetKeys } from '../api/routes/debug';
-import { PgWriteStore } from '../datastore/pg-write-store';
+import { logger } from '../../src/logger';
+import { testnetKeys } from '../../src/api/routes/debug';
+import { PgWriteStore } from '../../src/datastore/pg-write-store';
 import { standByForTx as standByForTxShared } from '../utils/test-helpers';
 
 function hash160(bfr: Buffer): Buffer {
