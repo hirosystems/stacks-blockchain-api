@@ -1,15 +1,15 @@
 import { ChainID } from '@stacks/transactions';
 import * as fs from 'fs';
 import * as path from 'path';
-import { getRawEventRequests } from '../event-replay/event-requests';
-import { PgWriteStore } from '../datastore/pg-write-store';
-import { exportEventsAsTsv, importEventsFromTsv } from '../event-replay/event-replay';
-import { startEventServer } from '../event-stream/event-server';
-import { httpPostRequest } from '../helpers';
+import { getRawEventRequests } from '../../src/event-replay/event-requests';
+import { PgWriteStore } from '../../src/datastore/pg-write-store';
+import { exportEventsAsTsv, importEventsFromTsv } from '../../src/event-replay/event-replay';
+import { startEventServer } from '../../src/event-stream/event-server';
+import { httpPostRequest } from '../../src/helpers';
 import { useWithCleanup } from '../api/test-helpers';
 import { migrate } from '../utils/test-helpers';
 import { PgSqlClient, dangerousDropAllTables, databaseHasData } from '@hirosystems/api-toolkit';
-import { getConnectionArgs } from '../datastore/connection';
+import { getConnectionArgs } from '../../src/datastore/connection';
 
 describe('import/export tests', () => {
   let db: PgWriteStore;
@@ -28,7 +28,7 @@ describe('import/export tests', () => {
 
   test('event import and export cycle - remote', async () => {
     // Import from mocknet TSV
-    await importEventsFromTsv('src/tests-event-replay/tsv/mocknet.tsv', 'archival', true, true);
+    await importEventsFromTsv('tests/event-replay/tsv/mocknet.tsv', 'archival', true, true);
     const chainTip = await db.getChainTip(db.sql);
     expect(chainTip.block_height).toBe(28);
     expect(chainTip.index_block_hash).toBe(
@@ -39,7 +39,7 @@ describe('import/export tests', () => {
     );
 
     // Export into temp TSV
-    const tmpDir = 'src/tests-event-replay/.tmp/remote';
+    const tmpDir = 'tests/event-replay/.tmp/remote';
     fs.mkdirSync(tmpDir, { recursive: true });
     await exportEventsAsTsv(`${tmpDir}/export.tsv`);
 
@@ -55,13 +55,13 @@ describe('import/export tests', () => {
         '0x7682af212d3c1ef62613412f9b5a727269b4548f14eca2e3f941f7ad8b3c11b2'
       );
     } finally {
-      fs.rmSync(`${tmpDir}/export.tsv`);
+      fs.rmSync(`${tmpDir}/export.tsv`, { force: true });
     }
   });
 
   test('event import and export cycle - local', async () => {
     // Import from mocknet TSV
-    await importEventsFromTsv('src/tests-event-replay/tsv/mocknet.tsv', 'archival', true, true);
+    await importEventsFromTsv('tests/event-replay/tsv/mocknet.tsv', 'archival', true, true);
     const chainTip = await db.getChainTip(db.sql);
     expect(chainTip.block_height).toBe(28);
     expect(chainTip.index_block_hash).toBe(
@@ -72,7 +72,7 @@ describe('import/export tests', () => {
     );
 
     // Export into temp TSV
-    const tmpDir = 'src/tests-event-replay/.tmp/local';
+    const tmpDir = 'tests/event-replay/.tmp/local';
     fs.mkdirSync(tmpDir, { recursive: true });
     await exportEventsAsTsv('local:/root/export.tsv');
 
@@ -88,7 +88,7 @@ describe('import/export tests', () => {
         '0x7682af212d3c1ef62613412f9b5a727269b4548f14eca2e3f941f7ad8b3c11b2'
       );
     } finally {
-      fs.rmSync(`${tmpDir}/export.tsv`);
+      fs.rmSync(`${tmpDir}/export.tsv`, { force: true });
     }
   });
 
@@ -96,18 +96,18 @@ describe('import/export tests', () => {
     // Migrate first so we have some data.
     await migrate('up');
     await expect(
-      importEventsFromTsv('src/tests-event-replay/tsv/mocknet.tsv', 'archival', false, false)
+      importEventsFromTsv('tests/event-replay/tsv/mocknet.tsv', 'archival', false, false)
     ).rejects.toThrowError('contains existing data');
 
     // Create strange table
     await db.sql`CREATE TABLE IF NOT EXISTS test (a varchar(10))`;
     await expect(
-      importEventsFromTsv('src/tests-event-replay/tsv/mocknet.tsv', 'archival', true, false)
+      importEventsFromTsv('tests/event-replay/tsv/mocknet.tsv', 'archival', true, false)
     ).rejects.toThrowError('migration cycle failed');
 
     // Force and test
     await expect(
-      importEventsFromTsv('src/tests-event-replay/tsv/mocknet.tsv', 'archival', true, true)
+      importEventsFromTsv('tests/event-replay/tsv/mocknet.tsv', 'archival', true, true)
     ).resolves.not.toThrow();
   });
 
@@ -132,21 +132,16 @@ describe('import/export tests', () => {
   });
 
   test('Bns import occurs (block 1 genesis)', async () => {
-    process.env.BNS_IMPORT_DIR = 'src/tests-bns/import-test-files';
-    await importEventsFromTsv('src/tests-event-replay/tsv/mocknet.tsv', 'archival', true, true);
+    process.env.BNS_IMPORT_DIR = 'tests/bns/import-test-files';
+    await importEventsFromTsv('tests/event-replay/tsv/mocknet.tsv', 'archival', true, true);
     const configState = await db.getConfigState();
     expect(configState.bns_names_onchain_imported).toBe(true);
     expect(configState.bns_subdomains_imported).toBe(true);
   });
 
   test('Bns import occurs (block 0 genesis)', async () => {
-    process.env.BNS_IMPORT_DIR = 'src/tests-bns/import-test-files';
-    await importEventsFromTsv(
-      'src/tests-event-replay/tsv/mainnet-block0.tsv',
-      'archival',
-      true,
-      true
-    );
+    process.env.BNS_IMPORT_DIR = 'tests/bns/import-test-files';
+    await importEventsFromTsv('tests/event-replay/tsv/mainnet-block0.tsv', 'archival', true, true);
     const configState = await db.getConfigState();
     expect(configState.bns_names_onchain_imported).toBe(true);
     expect(configState.bns_subdomains_imported).toBe(true);
@@ -154,8 +149,8 @@ describe('import/export tests', () => {
 
   test('BNS import should be skipped for Stacks subnet nodes', async () => {
     process.env.STACKS_NODE_TYPE = 'subnet';
-    process.env.BNS_IMPORT_DIR = 'src/tests-bns/import-test-files';
-    await importEventsFromTsv('src/tests-event-replay/tsv/mocknet.tsv', 'archival', true, true);
+    process.env.BNS_IMPORT_DIR = 'tests/bns/import-test-files';
+    await importEventsFromTsv('tests/event-replay/tsv/mocknet.tsv', 'archival', true, true);
     const configState = await db.getConfigState();
     expect(configState.bns_names_onchain_imported).toBe(false);
     expect(configState.bns_subdomains_imported).toBe(false);
@@ -186,7 +181,7 @@ describe('IBD', () => {
     let ibdResponses = 0;
     await useWithCleanup(
       () => {
-        const readStream = fs.createReadStream('src/tests-event-replay/tsv/mocknet.tsv');
+        const readStream = fs.createReadStream('tests/event-replay/tsv/mocknet.tsv');
         const rawEventsIterator = getRawEventRequests(readStream);
         return [rawEventsIterator, () => readStream.close()] as const;
       },
@@ -238,7 +233,7 @@ describe('IBD', () => {
   test('IBD mode covers prune mode', async () => {
     // Import from mocknet TSV
     const responses = await importEventsFromTsv(
-      'src/tests-event-replay/tsv/mocknet.tsv',
+      'tests/event-replay/tsv/mocknet.tsv',
       'pruned',
       true,
       true,

@@ -1,6 +1,6 @@
 import { DbTxTypeId } from '../../src/datastore/common';
-import { PgWriteStore } from '../datastore/pg-write-store';
-import { importEventsFromTsv } from '../event-replay/event-replay';
+import { PgWriteStore } from '../../src/datastore/pg-write-store';
+import { importEventsFromTsv } from '../../src/event-replay/event-replay';
 
 describe('poison microblock for height 80743', () => {
   let db: PgWriteStore;
@@ -19,7 +19,7 @@ describe('poison microblock for height 80743', () => {
 
   test('test that it does not give 500 error', async () => {
     await importEventsFromTsv(
-      'src/tests-event-replay/tsv/poisonmicroblock.tsv',
+      'tests/event-replay/tsv/poisonmicroblock.tsv',
       'archival',
       true,
       true

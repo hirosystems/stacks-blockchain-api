@@ -1,6 +1,6 @@
 import * as fs from 'fs';
-import { findTsvBlockHeight } from '../event-replay/helpers';
-import { readLinesReversed } from '../event-replay/reverse-file-stream';
+import { findTsvBlockHeight } from '../../src/event-replay/helpers';
+import { readLinesReversed } from '../../src/event-replay/reverse-file-stream';
 
 describe('helper tests', () => {
   function writeTmpFile(fileName: string, contents: string): string {

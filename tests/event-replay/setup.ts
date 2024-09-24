@@ -1,4 +1,4 @@
-import { loadDotEnv } from '../helpers';
+import { loadDotEnv } from '../../src/helpers';
 
 // ts-unused-exports:disable-next-line
 export default (): void => {

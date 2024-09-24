@@ -37,7 +37,7 @@ describe('Events table', () => {
 
     await useWithCleanup(
       () => {
-        const readStream = fs.createReadStream('src/tests-event-replay/tsv/mainnet.tsv');
+        const readStream = fs.createReadStream('tests/event-replay/tsv/mainnet.tsv');
         const rawEventsIterator = getRawEventRequests(readStream);
         return [rawEventsIterator, () => readStream.close()] as const;
       },
@@ -101,7 +101,7 @@ describe('Events table', () => {
       async eventServer => {
         // split the tsv file into lines, split each line by tab, find the first line that has a cell value of `/new_block`
         const sampleTsv = fs
-          .readFileSync('src/tests-event-replay/tsv/mainnet-block0.tsv', 'utf8')
+          .readFileSync('tests/event-replay/tsv/mainnet-block0.tsv', 'utf8')
           .split('\n')
           .map(line => line.split('\t'))
           .find(line => line[2] === '/new_block');
