@@ -98,9 +98,9 @@ jobs:
 
       - name: Setup env vars
         run: echo "STACKS_CORE_EVENT_HOST=http://0.0.0.0" >> $GITHUB_ENV
-      
+
       - name: Setup replay directories
-        if: ${{ matrix.suite }} == 'event-replay'
+        if: matrix.suite == 'event-replay'
         run: |
           mkdir -p tests/event-replay/.tmp/local/
           sudo chown 999:999 tests/event-replay/.tmp/local/
@@ -241,7 +241,7 @@ jobs:
         run: echo "STACKS_CORE_EVENT_HOST=http://0.0.0.0" >> $GITHUB_ENV
 
       - name: Setup CLI env vars
-        if: contains(${{ matrix.suite }}, 'cli')
+        if: contains(matrix.suite, 'cli')
         run: |
           echo STACKS_BLOCKCHAIN_API_HOST=0.0.0.0>> .env
           echo STACKS_CORE_PROXY_HOST=0.0.0.0 >> .env
