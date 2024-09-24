@@ -1,5 +1,5 @@
-import { loadDotEnv } from '../helpers';
-import { getRpcClient } from '../btc-faucet';
+import { loadDotEnv } from '../../src/helpers';
+import { getRpcClient } from '../../src/btc-faucet';
 import { timeout } from '@hirosystems/api-toolkit';
 
 // ts-unused-exports:disable-next-line

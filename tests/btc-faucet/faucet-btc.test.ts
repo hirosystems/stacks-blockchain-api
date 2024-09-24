@@ -1,17 +1,17 @@
 import * as supertest from 'supertest';
 import * as bitcoin from 'bitcoinjs-lib';
-import { ECPair } from '../ec-helpers';
+import { ECPair } from '../../src/ec-helpers';
 import {
   makeBtcFaucetPayment,
   getRpcClient,
   getFaucetAccount,
   getKeyAddress,
   getBtcBalance,
-} from '../btc-faucet';
-import { ApiServer, startApiServer } from '../api/init';
+} from '../../src/btc-faucet';
+import { ApiServer, startApiServer } from '../../src/api/init';
 import { ChainID } from '@stacks/transactions';
-import { PgStore } from '../datastore/pg-store';
-import { PgWriteStore } from '../datastore/pg-write-store';
+import { PgStore } from '../../src/datastore/pg-store';
+import { PgWriteStore } from '../../src/datastore/pg-write-store';
 import { migrate } from '../utils/test-helpers';
 
 async function getBalanceWithWalletImport(address: string): Promise<number> {
