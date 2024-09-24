@@ -52,7 +52,7 @@ services:
       - ../stacks-blockchain/:/app/config
     networks:
       - backend
-    depends_on: 
+    depends_on:
       - postgres
 
 networks:

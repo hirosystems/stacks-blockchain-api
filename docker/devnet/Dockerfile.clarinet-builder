@@ -1,0 +1,20 @@
+# Dockerfile.clarinet-builder
+
+FROM --platform=$BUILDPLATFORM rust:1.68-alpine as builder
+
+ARG CLARINET_VERSION=v2.8.0
+WORKDIR /usr/src/
+
+RUN apk add --no-cache \
+    git \
+    build-base \
+    curl \
+    pkgconfig
+
+# Build Clarinet from source
+RUN git clone https://github.com/hirosystems/clarinet.git && \
+    cd clarinet && \
+    git checkout 1bdc272 && \
+    cargo build --release
+
+# This image produces the built Clarinet binary

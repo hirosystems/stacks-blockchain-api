@@ -1,4 +1,4 @@
-FROM --platform=$BUILDPLATFORM rust:1.68-alpine as builder
+FROM --platform=$BUILDPLATFORM rust:1.68-alpine as clarinet-builder
 
 ARG CLARINET_VERSION=v2.8.0
 WORKDIR /usr/src/
@@ -9,16 +9,14 @@ RUN apk add --no-cache \
     curl \
     pkgconfig
 
-# building from source because I wasn't able to get the platform working from binary
+# Build Clarinet from source
 RUN git clone https://github.com/hirosystems/clarinet.git && \
     cd clarinet && \
-    git checkout main && \
+    git checkout 1bdc272 && \
     cargo build --release
 
-# Final stage (using Docker-in-Docker)
 FROM --platform=$BUILDPLATFORM docker:dind
 
-# Install necessary packages
 RUN apk add --no-cache \
     ca-certificates \
     docker \
@@ -31,8 +29,8 @@ RUN apk add --no-cache \
 # Add root to the docker group
 RUN usermod -aG docker root
 
-# Copy Clarinet binary from builder stage
-COPY --from=builder /usr/src/clarinet/target/release/clarinet /usr/local/bin/clarinet
+# Copy Clarinet binary from builder image
+COPY --from=clarinet-builder /usr/src/clarinet/target/release/clarinet /usr/local/bin/clarinet
 
 WORKDIR /app
 
@@ -46,7 +44,6 @@ EXPOSE 20443
 EXPOSE 18443
 # Postgres
 EXPOSE 5490
-EXPOSE 5432
 
 # Copy Clarinet config files
 COPY Clarinet.toml .

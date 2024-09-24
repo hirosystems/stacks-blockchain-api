@@ -52,6 +52,7 @@
     "migrate": "node-pg-migrate -m migrations",
     "devenv:build": "docker compose -f docker/devnet/docker-compose.yml build",
     "devenv:deploy": "docker compose -f docker/devnet/docker-compose.yml up --force-recreate -V",
+    "devenv:stop": "docker compose -f docker/devnet/docker-compose.yml down -v -t 0",
     "devenv:deploy:subnets": "docker compose -f docker/docker-compose.dev.postgres.yml -f docker/docker-compose.dev.subnets.yml up --force-recreate -V",
     "devenv:stop:subnets": "docker compose -f docker/docker-compose.dev.postgres.yml -f docker/docker-compose.dev.subnets.yml down -v -t 0",
     "devenv:deploy-krypton": "docker compose -f docker/devnet/docker-compose.yml up -d --force-recreate -V",

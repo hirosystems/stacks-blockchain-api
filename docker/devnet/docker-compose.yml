@@ -1,7 +1,16 @@
 services:
+  # clarinet-builder:
+  #   build:
+  #     context: .
+  #     dockerfile: Dockerfile.clarinet-builder
+  #   networks:
+  #     - backend
+
   clarinet-devnet:
+    # depends_on:
+    #   - clarinet-builder
     networks:
-      - stacks
+      - backend
     restart: on-failure
     build:
       context: .
@@ -23,8 +32,34 @@ services:
       - 'host.docker.internal:host-gateway' # fixes `host.docker.internal` on linux hosts
     privileged: true
 
+  stacks-blockchain-api:
+    build:
+      context: ../..
+    restart: on-failure
+    environment:
+      PG_HOST: postgres
+      PG_PORT: 5490
+      PG_USER: postgres
+      PG_PASSWORD: postgres
+      PG_DATABASE: stacks_blockchain_api
+      STACKS_CORE_EVENT_PORT: 3700
+      STACKS_CORE_EVENT_HOST: http://0.0.0.0
+      STACKS_BLOCKCHAIN_API_PORT: 3999
+      STACKS_BLOCKCHAIN_API_HOST: 0.0.0.0
+      STACKS_CORE_RPC_HOST: stacks-blockchain
+      STACKS_CORE_RPC_PORT: 20443
+      NODE_ENV: development
+    ports:
+      - "3999:3999"
+      - "9153:9153"
+    volumes:
+      - ../stacks-blockchain/:/app/config
+    networks:
+      - backend
+    depends_on:
+      - clarinet-devnet
 
 networks:
-  stacks:
+  backend:
 volumes:
   chainstate:
