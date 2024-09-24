@@ -8,7 +8,7 @@
     "dev:integrated": "npm run devenv:build && concurrently npm:dev npm:devenv:deploy",
     "dev:follower": "npm run devenv:build && concurrently npm:dev npm:devenv:follower",
     "test": "cross-env NODE_ENV=test jest --runInBand",
-    "test:api": "npm run test -- --config ./tests/jest.config.js",
+    "test:api": "npm run test -- --config ./tests/jest.config.api.js",
     "test:subnets": "npm run test -- --config ./tests/jest.config.subnets.js",
     "test:2.5": "npm run test -- --config ./tests/jest.config.2.5.js",
     "test:rosetta": "npm run test -- --config ./tests/jest.config.rosetta.js",

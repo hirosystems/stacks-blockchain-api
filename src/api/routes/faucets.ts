@@ -27,7 +27,7 @@ import { Server } from 'node:http';
 import { OptionalNullable } from '../schemas/util';
 import { RunFaucetResponseSchema } from '../schemas/responses/responses';
 
-export function getStxFaucetNetworks(): StacksNetwork[] {
+function getStxFaucetNetworks(): StacksNetwork[] {
   const networks: StacksNetwork[] = [getStacksTestnetNetwork()];
   const faucetNodeHostOverride: string | undefined = process.env.STACKS_FAUCET_NODE_HOST;
   if (faucetNodeHostOverride) {
