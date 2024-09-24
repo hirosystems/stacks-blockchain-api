@@ -1,5 +1,5 @@
-import { ApiServer, startApiServer } from '../api/init';
-import { startEventServer } from '../event-stream/event-server';
+import { ApiServer, startApiServer } from '../../src/api/init';
+import { startEventServer } from '../../src/event-stream/event-server';
 import { Server } from 'net';
 import {
   AnchorMode,
@@ -10,10 +10,10 @@ import {
 } from '@stacks/transactions';
 import { StacksTestnet } from '@stacks/network';
 import * as fs from 'fs';
-import { StacksCoreRpcClient, getCoreNodeEndpoint } from '../core-rpc/client';
+import { StacksCoreRpcClient, getCoreNodeEndpoint } from '../../src/core-rpc/client';
 import { v2 as compose } from 'docker-compose';
 import * as path from 'path';
-import { PgWriteStore } from '../datastore/pg-write-store';
+import { PgWriteStore } from '../../src/datastore/pg-write-store';
 import { NonceJar, migrate, standByForTxSuccess } from '../utils/test-helpers';
 import { timeout } from '@hirosystems/api-toolkit';
 
@@ -53,7 +53,7 @@ describe('Rosetta API', () => {
         '-f',
         'docker/docker-compose.dev.rosetta-cli.yml',
         '--env-file',
-        'src/tests-rosetta-cli-construction/envs/env.construction',
+        'tests/rosetta-cli-construction/envs/env.construction',
       ],
     });
     console.log('compose build result:', composeBuildResult);
@@ -84,7 +84,7 @@ describe('Rosetta API', () => {
         '-f',
         'docker/docker-compose.dev.rosetta-cli.yml',
         '--env-file',
-        'src/tests-rosetta-cli-construction/envs/env.construction',
+        'tests/rosetta-cli-construction/envs/env.construction',
       ],
       commandOptions: ['--abort-on-container-exit', '--force-recreate'],
       callback: (chunk, source) => {
@@ -120,7 +120,7 @@ describe('Rosetta API', () => {
           '-f',
           'docker/docker-compose.dev.rosetta-cli.yml',
           '--env-file',
-          'src/tests-rosetta-cli-construction/envs/env.construction',
+          'tests/rosetta-cli-construction/envs/env.construction',
         ],
       })
       .catch(error => {

@@ -1,4 +1,4 @@
-import { ApiServer, startApiServer } from '../api/init';
+import { ApiServer, startApiServer } from '../../src/api/init';
 import {
   makeSTXTokenTransfer,
   makeContractDeploy,
@@ -15,12 +15,12 @@ import {
 } from '@stacks/transactions';
 import { StacksTestnet } from '@stacks/network';
 import * as fs from 'fs';
-import { StacksCoreRpcClient, getCoreNodeEndpoint } from '../core-rpc/client';
-import { unwrapOptional } from '../helpers';
+import { StacksCoreRpcClient, getCoreNodeEndpoint } from '../../src/core-rpc/client';
+import { unwrapOptional } from '../../src/helpers';
 import { v2 as compose } from 'docker-compose';
 import * as path from 'path';
-import { PgWriteStore } from '../datastore/pg-write-store';
-import { EventStreamServer, startEventServer } from '../event-stream/event-server';
+import { PgWriteStore } from '../../src/datastore/pg-write-store';
+import { EventStreamServer, startEventServer } from '../../src/event-stream/event-server';
 import { NonceJar, migrate, standByForTxSuccess } from '../utils/test-helpers';
 import { timeout } from '@hirosystems/api-toolkit';
 
@@ -116,7 +116,7 @@ describe('Rosetta API', () => {
         '-f',
         'docker/docker-compose.dev.rosetta-cli.yml',
         '--env-file',
-        'src/tests-rosetta-cli-data/envs/env.data',
+        'tests/rosetta-cli-data/envs/env.data',
       ],
     });
     console.log('compose build result:', composeBuildResult);
@@ -140,7 +140,7 @@ describe('Rosetta API', () => {
     for (const sender of senders) {
       const response = await deployContract(
         sender.privateKey,
-        'src/tests-rosetta-cli-data/contracts/hello-world.clar',
+        'tests/rosetta-cli-data/contracts/hello-world.clar',
         nonceJar
       );
       contracts.push(response.contractId);
@@ -174,7 +174,7 @@ describe('Rosetta API', () => {
           '-f',
           'docker/docker-compose.dev.rosetta-cli.yml',
           '--env-file',
-          'src/tests-rosetta-cli-data/envs/env.data',
+          'tests/rosetta-cli-data/envs/env.data',
         ],
         commandOptions: ['--abort-on-container-exit', '--force-recreate'],
         callback: (chunk, source) => {
@@ -230,7 +230,7 @@ describe('Rosetta API', () => {
           '-f',
           'docker/docker-compose.dev.rosetta-cli.yml',
           '--env-file',
-          'src/tests-rosetta-cli-data/envs/env.data',
+          'tests/rosetta-cli-data/envs/env.data',
         ],
       })
       .catch(error => {
