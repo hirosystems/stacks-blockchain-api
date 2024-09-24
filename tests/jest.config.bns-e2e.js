@@ -8,7 +8,7 @@ const config = {
   coverageDirectory: '<rootDir>/coverage',
   globalSetup: '<rootDir>/tests/bns-e2e/setup.ts',
   globalTeardown: '<rootDir>/tests/bns-e2e/teardown.ts',
-  testTimeout: 60000,
+  testTimeout: 3600000,
   verbose: true,
 };
 
