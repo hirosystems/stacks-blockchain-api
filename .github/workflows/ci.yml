@@ -53,6 +53,19 @@ jobs:
         run: npm run lint:unused-exports
 
   test:
+    strategy:
+      fail-fast: false
+      matrix:
+        suite:
+          [
+            api,
+            bns,
+            bns-e2e,
+            btc-faucet,
+            event-replay,
+            rpc,
+            # subnets,
+          ]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -93,7 +106,7 @@ jobs:
           npm run devenv:logs -- --no-color &> docker-compose-logs.txt &
 
       - name: Run tests
-        run: npm run test
+        run: npm run test:${{ matrix.suite }} -- --coverage
 
       - name: Print integration environment logs
         run: cat docker-compose-logs.txt
@@ -108,319 +121,6 @@ jobs:
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
         if: always()
-
-      - name: Upload coverage to Coveralls
-        uses: coverallsapp/github-action@master
-        if: ${{ false }}
-        with:
-          github-token: ${{ secrets.github_token }}
-          flag-name: run-${{ github.job }}
-          parallel: true
-
-  test-event-replay:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-
-      - name: Use Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version-file: ".nvmrc"
-
-      - name: Cache node modules
-        uses: actions/cache@v3
-        env:
-          cache-name: cache-node-modules
-        with:
-          path: |
-            ~/.npm
-            **/node_modules
-          key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('**/package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-build-${{ env.cache-name }}-
-            ${{ runner.os }}-build-
-            ${{ runner.os }}-
-
-      - name: Install deps
-        run: npm ci --audit=false
-
-      - name: Setup integration environment
-        run: |
-          sudo ufw disable
-          mkdir -p src/tests-event-replay/.tmp/local/
-          sudo chown 999:999 src/tests-event-replay/.tmp/local/
-          sudo chmod -R 777 src/tests-event-replay/.tmp/local/
-          docker compose -f docker/docker-compose.dev.postgres.yml up -d
-          npm run devenv:logs -- --no-color &> docker-compose-logs.txt &
-
-      - name: Run RPC tests
-        run: npm run test:event-replay
-
-      - name: Print integration environment logs
-        run: cat docker-compose-logs.txt
-        if: failure()
-
-      - name: Teardown integration environment
-        run: npm run devenv:stop
-        if: always()
-
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v4
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}
-        if: always()
-
-      - name: Upload coverage to Coveralls
-        uses: coverallsapp/github-action@master
-        if: ${{ false }}
-        with:
-          github-token: ${{ secrets.github_token }}
-          flag-name: run-${{ github.job }}
-          parallel: true
-
-  test-rpc:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-
-      - name: Use Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version-file: ".nvmrc"
-
-      - name: Cache node modules
-        uses: actions/cache@v3
-        env:
-          cache-name: cache-node-modules
-        with:
-          path: |
-            ~/.npm
-            **/node_modules
-          key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('**/package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-build-${{ env.cache-name }}-
-            ${{ runner.os }}-build-
-            ${{ runner.os }}-
-
-      - name: Install deps
-        run: npm ci --audit=false
-
-      - name: Setup env vars
-        run: echo "STACKS_CORE_EVENT_HOST=http://0.0.0.0" >> $GITHUB_ENV
-
-      - name: Setup integration environment
-        run: |
-          sudo ufw disable
-          npm run devenv:deploy-krypton -- -d
-          npm run devenv:logs-krypton -- --no-color &> docker-compose-logs.txt &
-
-      - name: Run RPC tests
-        run: npm run test:rpc
-
-      - name: Print integration environment logs
-        run: cat docker-compose-logs.txt
-        if: failure()
-
-      - name: Teardown integration environment
-        run: npm run devenv:stop-krypton
-        if: always()
-
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v4
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}
-        if: always()
-
-      - name: Upload coverage to Coveralls
-        uses: coverallsapp/github-action@master
-        if: ${{ false }}
-        with:
-          github-token: ${{ secrets.github_token }}
-          flag-name: run-${{ github.job }}
-          parallel: true
-
-  test-btc-faucet:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-
-      - name: Use Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version-file: ".nvmrc"
-
-      - name: Cache node modules
-        uses: actions/cache@v3
-        env:
-          cache-name: cache-node-modules
-        with:
-          path: |
-            ~/.npm
-            **/node_modules
-          key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('**/package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-build-${{ env.cache-name }}-
-            ${{ runner.os }}-build-
-            ${{ runner.os }}-
-
-      - name: Install deps
-        run: npm ci --audit=false
-
-      - name: Setup env vars
-        run: echo "STACKS_CORE_EVENT_HOST=http://0.0.0.0" >> $GITHUB_ENV
-
-      - name: Setup integration environment
-        run: |
-          sudo ufw disable
-          npm run devenv:deploy -- -d
-          npm run devenv:logs -- --no-color &> docker-compose-logs.txt &
-
-      - name: Run btc faucet tests
-        run: npm run test:btc-faucet
-
-      - name: Print integration environment logs
-        run: cat docker-compose-logs.txt
-        if: failure()
-
-      - name: Teardown integration environment
-        run: npm run devenv:stop
-        if: always()
-
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v4
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}
-        if: always()
-
-      - name: Upload coverage to Coveralls
-        uses: coverallsapp/github-action@master
-        if: ${{ false }}
-        with:
-          github-token: ${{ secrets.github_token }}
-          flag-name: run-${{ github.job }}
-          parallel: true
-
-  test-bns:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-
-      - name: Use Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version-file: ".nvmrc"
-
-      - name: Cache node modules
-        uses: actions/cache@v3
-        env:
-          cache-name: cache-node-modules
-        with:
-          path: |
-            ~/.npm
-            **/node_modules
-          key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('**/package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-build-${{ env.cache-name }}-
-            ${{ runner.os }}-build-
-            ${{ runner.os }}-
-
-      - name: Install deps
-        run: npm ci --audit=false
-
-      - name: Setup env vars
-        run: echo "STACKS_CORE_EVENT_HOST=http://0.0.0.0" >> $GITHUB_ENV
-
-      - name: Setup integration environment
-        run: |
-          sudo ufw disable
-          npm run devenv:deploy-krypton -- -d
-          npm run devenv:logs-krypton -- --no-color &> docker-compose-logs.txt &
-
-      - name: Run bns tests
-        run: npm run test:bns
-
-      - name: Print integration environment logs
-        run: cat docker-compose-logs.txt
-        if: failure()
-
-      - name: Teardown integration environment
-        run: npm run devenv:stop-krypton
-        if: always()
-
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v4
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}
-        if: always()
-
-      - name: Upload coverage to Coveralls
-        uses: coverallsapp/github-action@master
-        if: ${{ false }}
-        with:
-          github-token: ${{ secrets.github_token }}
-          flag-name: run-${{ github.job }}
-          parallel: true
-
-  test-bns-e2e:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-
-      - name: Use Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version-file: ".nvmrc"
-
-      - name: Cache node modules
-        uses: actions/cache@v3
-        env:
-          cache-name: cache-node-modules
-        with:
-          path: |
-            ~/.npm
-            **/node_modules
-          key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('**/package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-build-${{ env.cache-name }}-
-            ${{ runner.os }}-build-
-            ${{ runner.os }}-
-
-      - name: Install deps
-        run: npm ci --audit=false
-
-      - name: Setup env vars
-        run: echo "STACKS_CORE_EVENT_HOST=http://0.0.0.0" >> $GITHUB_ENV
-
-      - name: Setup integration environment
-        run: |
-          sudo ufw disable
-          npm run devenv:deploy-krypton -- -d
-          npm run devenv:logs-krypton -- --no-color &> docker-compose-logs.txt &
-
-      - name: Run bns tests
-        run: npm run test:bns-e2e
-
-      - name: Print integration environment logs
-        run: cat docker-compose-logs.txt
-        if: failure()
-
-      - name: Teardown integration environment
-        run: npm run devenv:stop-krypton
-        if: always()
-
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v4
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}
-        if: always()
-
-      - name: Upload coverage to Coveralls
-        uses: coverallsapp/github-action@master
-        if: ${{ false }}
-        with:
-          github-token: ${{ secrets.github_token }}
-          flag-name: run-${{ github.job }}
-          parallel: true
 
   test-2_5:
     strategy:
@@ -477,7 +177,7 @@ jobs:
           npm run devenv:logs-krypton -- --no-color &> docker-compose-logs.txt &
 
       - name: Run tests
-        run: npm run test:2.5 -- --testPathPattern "${{ matrix.suite }}"
+        run: npm run test:2.5 -- --testPathPattern "${{ matrix.suite }}" --coverage
 
       - name: Print integration environment logs
         run: cat docker-compose-logs.txt
@@ -492,16 +192,18 @@ jobs:
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
         if: always()
-
-      - name: Upload coverage to Coveralls
-        uses: coverallsapp/github-action@master
-        if: ${{ false }}
-        with:
-          github-token: ${{ secrets.github_token }}
-          flag-name: run-${{ github.job }}
-          parallel: true
 
   test-rosetta:
+    strategy:
+      fail-fast: false
+      matrix:
+        suite:
+          [
+            rosetta,
+            rosetta-construction,
+            rosetta-cli-data,
+            rosetta-cli-construction,
+          ]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -531,128 +233,6 @@ jobs:
       - name: Setup env vars
         run: echo "STACKS_CORE_EVENT_HOST=http://0.0.0.0" >> $GITHUB_ENV
 
-      - name: Setup integration environment
-        run: |
-          sudo ufw disable
-          npm run devenv:deploy-krypton -- -d
-          npm run devenv:logs-krypton -- --no-color &> docker-compose-logs.txt &
-
-      - name: Run tests
-        run: npm run test:rosetta
-
-      - name: Print integration environment logs
-        run: cat docker-compose-logs.txt
-        if: failure()
-
-      - name: Teardown integration environment
-        run: npm run devenv:stop-krypton
-        if: always()
-
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v4
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}
-        if: always()
-
-      - name: Upload coverage to Coveralls
-        uses: coverallsapp/github-action@master
-        if: ${{ false }}
-        with:
-          github-token: ${{ secrets.github_token }}
-          flag-name: run-${{ github.job }}
-          parallel: true
-
-  test-rosetta-construction:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-
-      - name: Use Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version-file: ".nvmrc"
-
-      - name: Cache node modules
-        uses: actions/cache@v3
-        env:
-          cache-name: cache-node-modules
-        with:
-          path: |
-            ~/.npm
-            **/node_modules
-          key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('**/package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-build-${{ env.cache-name }}-
-            ${{ runner.os }}-build-
-            ${{ runner.os }}-
-
-      - name: Install deps
-        run: npm ci --audit=false
-
-      - name: Setup env vars
-        run: echo "STACKS_CORE_EVENT_HOST=http://0.0.0.0" >> $GITHUB_ENV
-
-      - name: Setup integration environment
-        run: |
-          sudo ufw disable
-          npm run devenv:deploy-krypton -- -d
-          npm run devenv:logs-krypton -- --no-color &> docker-compose-logs.txt &
-
-      - name: Run tests
-        run: npm run test:rosetta-construction
-
-      - name: Print integration environment logs
-        run: cat docker-compose-logs.txt
-        if: failure()
-
-      - name: Teardown integration environment
-        run: npm run devenv:stop-krypton
-        if: always()
-
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v4
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}
-        if: always()
-
-      - name: Upload coverage to Coveralls
-        uses: coverallsapp/github-action@master
-        if: ${{ false }}
-        with:
-          github-token: ${{ secrets.github_token }}
-          flag-name: run-${{ github.job }}
-          parallel: true
-
-  test-rosetta-cli-data:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-
-      - name: Use Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version-file: ".nvmrc"
-
-      - name: Cache node modules
-        uses: actions/cache@v3
-        env:
-          cache-name: cache-node-modules
-        with:
-          path: |
-            ~/.npm
-            **/node_modules
-          key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('**/package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-build-${{ env.cache-name }}-
-            ${{ runner.os }}-build-
-            ${{ runner.os }}-
-
-      - name: Install deps
-        run: npm ci --audit=false
-
-      - name: Setup env vars
-        run: echo "STACKS_CORE_EVENT_HOST=http://0.0.0.0">> $GITHUB_ENV
-
       - name: Setup cli enviroment variable
         run: |
           echo STACKS_BLOCKCHAIN_API_HOST=0.0.0.0>> .env
@@ -668,7 +248,7 @@ jobs:
           npm run devenv:logs-krypton -- --no-color &> docker-compose-logs.txt &
 
       - name: Run tests
-        run: sudo npm run test:rosetta-cli:data
+        run: npm run test:${{ matrix.suite }} -- --coverage
 
       - name: Print integration environment logs
         run: cat docker-compose-logs.txt
@@ -683,83 +263,6 @@ jobs:
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
         if: always()
-
-      - name: Upload coverage to Coveralls
-        uses: coverallsapp/github-action@master
-        if: ${{ false }}
-        with:
-          github-token: ${{ secrets.github_token }}
-          flag-name: run-${{ github.job }}
-          parallel: true
-
-  test-rosetta-cli-construction:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-
-      - name: Use Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version-file: ".nvmrc"
-
-      - name: Cache node modules
-        uses: actions/cache@v3
-        env:
-          cache-name: cache-node-modules
-        with:
-          path: |
-            ~/.npm
-            **/node_modules
-          key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('**/package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-build-${{ env.cache-name }}-
-            ${{ runner.os }}-build-
-            ${{ runner.os }}-
-
-      - name: Install deps
-        run: npm ci --audit=false
-
-      - name: Setup env vars
-        run: echo "STACKS_CORE_EVENT_HOST=http://0.0.0.0">> $GITHUB_ENV
-
-      - name: Setup cli enviroment variable
-        run: |
-          echo STACKS_BLOCKCHAIN_API_HOST=0.0.0.0>> .env
-          echo STACKS_CORE_PROXY_HOST=0.0.0.0 >> .env
-          echo STACKS_CORE_RPC_HOST=0.0.0.0 >> .env
-          echo STACKS_CORE_EVENT_HOST=0.0.0.0 >> .env
-          echo BTC_RPC_HOST=http://0.0.0.0 >> .env
-
-      - name: Setup integration environment
-        run: |
-          sudo ufw disable
-          npm run devenv:deploy-krypton -- -d
-          npm run devenv:logs-krypton -- --no-color &> docker-compose-logs.txt &
-
-      - name: Run tests
-        run: sudo npm run test:rosetta-cli:construction
-
-      - name: Print integration environment logs
-        run: cat docker-compose-logs.txt
-        if: failure()
-
-      - name: Teardown integration environment
-        run: npm run devenv:stop-krypton
-        if: always()
-
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v4
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}
-        if: always()
-
-      - name: Upload coverage to Coveralls
-        uses: coverallsapp/github-action@master
-        if: ${{ false }}
-        with:
-          github-token: ${{ secrets.github_token }}
-          flag-name: run-${{ github.job }}
-          parallel: true
 
   build-publish:
     runs-on: ubuntu-latest
