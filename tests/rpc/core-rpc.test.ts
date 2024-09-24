@@ -1,4 +1,4 @@
-import { StacksCoreRpcClient } from '../core-rpc/client';
+import { StacksCoreRpcClient } from '../../src/core-rpc/client';
 
 describe('core RPC tests', () => {
   let client: StacksCoreRpcClient;
