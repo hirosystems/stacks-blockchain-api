@@ -53,7 +53,7 @@ describe('mempool tests', () => {
           index_block_hash: `0x0${block_height}`,
           parent_index_block_hash: `0x0${block_height - 1}`,
         })
-          .addTx({ tx_id: `0x111${block_height}` })
+          .addTx({ tx_id: `0x111${block_height}`, nonce: block_height })
           .build();
         await db.update(block);
         const mempoolTx = testMempoolTx({ tx_id: `0x0${block_height}` });
@@ -95,18 +95,21 @@ describe('mempool tests', () => {
         type_id: DbTxTypeId.TokenTransfer,
         fee_rate: BigInt(100 * block_height),
         raw_tx: '0x' + 'ff'.repeat(block_height),
+        nonce: block_height,
       });
       const mempoolTx2 = testMempoolTx({
         tx_id: `0x1${block_height}`,
         type_id: DbTxTypeId.ContractCall,
         fee_rate: BigInt(200 * block_height),
         raw_tx: '0x' + 'ff'.repeat(block_height + 10),
+        nonce: block_height + 1,
       });
       const mempoolTx3 = testMempoolTx({
         tx_id: `0x2${block_height}`,
         type_id: DbTxTypeId.SmartContract,
         fee_rate: BigInt(300 * block_height),
         raw_tx: '0x' + 'ff'.repeat(block_height + 20),
+        nonce: block_height + 2,
       });
       await db.updateMempoolTxs({ mempoolTxs: [mempoolTx1, mempoolTx2, mempoolTx3] });
     }
@@ -1519,7 +1522,10 @@ describe('mempool tests', () => {
           .toString()
           .repeat(2)}${chainA_Suffix}`,
       })
-        .addTx({ tx_id: `0x0${txId++}${chainA_Suffix}` })
+        .addTx({
+          tx_id: `0x0${txId++}${chainA_Suffix}`,
+          sender_address: `STACKS${chainA_BlockHeight}`,
+        })
         .build();
       await db.update(block);
     }
@@ -1546,7 +1552,10 @@ describe('mempool tests', () => {
           .toString()
           .repeat(2)}${parentChainSuffix}`,
       })
-        .addTx({ tx_id: `0x0${txId++}${chainB_Suffix}` }) // Txs that don't exist in the mempool and will be reorged
+        .addTx({
+          tx_id: `0x0${txId++}${chainB_Suffix}`,
+          sender_address: `STACKS${chainB_BlockHeight + 1}`,
+        }) // Txs that don't exist in the mempool and will be reorged
         .build();
       await db.update(block);
     }
