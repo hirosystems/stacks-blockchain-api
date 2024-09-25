@@ -86,7 +86,11 @@ describe('socket-io', () => {
     const block = new TestBlockBuilder().addTx().build();
     await db.update(block);
 
-    const mempoolTx = testMempoolTx({ tx_id: '0x01', status: DbTxStatus.Pending });
+    const mempoolTx = testMempoolTx({
+      tx_id: '0x01',
+      status: DbTxStatus.Pending,
+      sender_address: 'TEST',
+    });
     await db.updateMempoolTxs({ mempoolTxs: [mempoolTx] });
     const mempoolResult = await mempoolWaiter;
     const txResult = await txWaiters[0];
@@ -195,7 +199,11 @@ describe('socket-io', () => {
     const block = new TestBlockBuilder().addTx().build();
     await db.update(block);
 
-    const mempoolTx = testMempoolTx({ tx_id: '0x01', status: DbTxStatus.Pending });
+    const mempoolTx = testMempoolTx({
+      tx_id: '0x01',
+      status: DbTxStatus.Pending,
+      sender_address: 'TEST',
+    });
     await db.updateMempoolTxs({ mempoolTxs: [mempoolTx] });
     const mempoolResult = await mempoolWaiter;
     const txResult = await txWaiters[0];
@@ -242,7 +250,11 @@ describe('socket-io', () => {
       .addTx({ tx_id: '0x0101' })
       .build();
     await db.update(block1);
-    const mempoolTx = testMempoolTx({ tx_id: '0x01', status: DbTxStatus.Pending });
+    const mempoolTx = testMempoolTx({
+      tx_id: '0x01',
+      status: DbTxStatus.Pending,
+      sender_address: 'TEST',
+    });
     await db.updateMempoolTxs({ mempoolTxs: [mempoolTx] });
     const pendingResult = await txWaiters[0];
 

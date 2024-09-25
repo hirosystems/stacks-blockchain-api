@@ -101,7 +101,11 @@ describe('websocket notifications', () => {
       const block = new TestBlockBuilder().addTx().build();
       await db.update(block);
 
-      const mempoolTx = testMempoolTx({ tx_id: txId, status: DbTxStatus.Pending });
+      const mempoolTx = testMempoolTx({
+        tx_id: txId,
+        status: DbTxStatus.Pending,
+        sender_address: 'TEST',
+      });
       await db.updateMempoolTxs({ mempoolTxs: [mempoolTx] });
 
       const microblock = new TestMicroblockStreamBuilder()
