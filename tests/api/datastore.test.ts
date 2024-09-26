@@ -4352,7 +4352,7 @@ describe('postgres datastore', () => {
       microblock_sequence: undefined,
       tx_count: 2, // Tx from block 2b now counts, but compensates with tx from block 2
       tx_count_unanchored: 2,
-      mempool_tx_count: 1,
+      mempool_tx_count: 0,
     });
 
     const b1 = await db.getBlock({ hash: block1.block_hash });

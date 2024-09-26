@@ -53,7 +53,7 @@ describe('mempool tests', () => {
           index_block_hash: `0x0${block_height}`,
           parent_index_block_hash: `0x0${block_height - 1}`,
         })
-          .addTx({ tx_id: `0x111${block_height}` })
+          .addTx({ tx_id: `0x111${block_height}`, nonce: block_height })
           .build();
         await db.update(block);
         const mempoolTx = testMempoolTx({ tx_id: `0x0${block_height}` });
@@ -95,18 +95,21 @@ describe('mempool tests', () => {
         type_id: DbTxTypeId.TokenTransfer,
         fee_rate: BigInt(100 * block_height),
         raw_tx: '0x' + 'ff'.repeat(block_height),
+        nonce: block_height,
       });
       const mempoolTx2 = testMempoolTx({
         tx_id: `0x1${block_height}`,
         type_id: DbTxTypeId.ContractCall,
         fee_rate: BigInt(200 * block_height),
         raw_tx: '0x' + 'ff'.repeat(block_height + 10),
+        nonce: block_height + 1,
       });
       const mempoolTx3 = testMempoolTx({
         tx_id: `0x2${block_height}`,
         type_id: DbTxTypeId.SmartContract,
         fee_rate: BigInt(300 * block_height),
         raw_tx: '0x' + 'ff'.repeat(block_height + 20),
+        nonce: block_height + 2,
       });
       await db.updateMempoolTxs({ mempoolTxs: [mempoolTx1, mempoolTx2, mempoolTx3] });
     }
@@ -1519,7 +1522,10 @@ describe('mempool tests', () => {
           .toString()
           .repeat(2)}${chainA_Suffix}`,
       })
-        .addTx({ tx_id: `0x0${txId++}${chainA_Suffix}` })
+        .addTx({
+          tx_id: `0x0${txId++}${chainA_Suffix}`,
+          sender_address: `STACKS${chainA_BlockHeight}`,
+        })
         .build();
       await db.update(block);
     }
@@ -1546,7 +1552,10 @@ describe('mempool tests', () => {
           .toString()
           .repeat(2)}${parentChainSuffix}`,
       })
-        .addTx({ tx_id: `0x0${txId++}${chainB_Suffix}` }) // Txs that don't exist in the mempool and will be reorged
+        .addTx({
+          tx_id: `0x0${txId++}${chainB_Suffix}`,
+          sender_address: `STACKS${chainB_BlockHeight + 1}`,
+        }) // Txs that don't exist in the mempool and will be reorged
         .build();
       await db.update(block);
     }
@@ -2058,5 +2067,65 @@ describe('mempool tests', () => {
         no_priority: 675000,
       },
     });
+  });
+
+  test('prunes transactions with nonces that were already confirmed', async () => {
+    // Initial block
+    await db.update(
+      new TestBlockBuilder({
+        block_height: 1,
+        index_block_hash: `0x0001`,
+        parent_index_block_hash: `0x0000`,
+      }).build()
+    );
+
+    // Add tx with nonce = 1 to the mempool
+    const sender_address = 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6';
+    const mempoolTx = testMempoolTx({ tx_id: `0xff0001`, sender_address, nonce: 1 });
+    await db.updateMempoolTxs({ mempoolTxs: [mempoolTx] });
+    const check0 = await supertest(api.server).get(
+      `/extended/v1/address/${sender_address}/mempool`
+    );
+    expect(check0.body.results).toHaveLength(1);
+
+    // Confirm a different tx with the same nonce = 1 by the same sender without it ever touching
+    // the mempool
+    await db.update(
+      new TestBlockBuilder({
+        block_height: 2,
+        index_block_hash: `0x0002`,
+        parent_index_block_hash: `0x0001`,
+      })
+        .addTx({ tx_id: `0xaa0001`, sender_address, nonce: 1 })
+        .build()
+    );
+
+    // Mempool tx should now be pruned
+    const check1 = await supertest(api.server).get(
+      `/extended/v1/address/${sender_address}/mempool`
+    );
+    expect(check1.body.results).toHaveLength(0);
+
+    // Re-org block 2
+    await db.update(
+      new TestBlockBuilder({
+        block_height: 2,
+        index_block_hash: `0x00b2`,
+        parent_index_block_hash: `0x0001`,
+      }).build()
+    );
+    await db.update(
+      new TestBlockBuilder({
+        block_height: 3,
+        index_block_hash: `0x00b3`,
+        parent_index_block_hash: `0x00b2`,
+      }).build()
+    );
+
+    // Now both conflicting nonce txs should coexist in the mempool (like RBF)
+    const check2 = await supertest(api.server).get(
+      `/extended/v1/address/${sender_address}/mempool`
+    );
+    expect(check2.body.results).toHaveLength(2);
   });
 });
