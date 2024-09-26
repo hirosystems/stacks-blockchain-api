@@ -79,7 +79,7 @@ export const StxSupplyRoutes: FastifyPluginAsync<
               }),
               total_stx_year_2050: Type.String({
                 description:
-                  'The Stacks cryptocurrency has a predefined future supply that reaches approx 1,818M STX by year 2050',
+                  'String quoted decimal number of total circulating STX supply in year 2050. STX supply grows approx 0.3% annually thereafter in perpetuity.',
               }),
               unlocked_stx: Type.String({
                 description:
@@ -207,7 +207,7 @@ export const StxSupplyRoutes: FastifyPluginAsync<
               }),
               totalStacksYear2050: Type.String({
                 description:
-                  'The Stacks cryptocurrency has a predefined future supply that reaches approx 1,818M STX by year 2050',
+                  'String quoted decimal number of total circulating STX supply in year 2050. STX supply grows approx 0.3% annually thereafter in perpetuity.',
               }),
               totalStacksYear2050Formatted: Type.String({
                 description:
