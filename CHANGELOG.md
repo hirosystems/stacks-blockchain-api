@@ -1,3 +1,10 @@
+## [8.0.2-beta.1](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.0.1...v8.0.2-beta.1) (2024-09-26)
+
+
+### Bug Fixes
+
+* use current circulating STX tokens for `stx_supply` endpoint, year 2050 estimate in new field ([b3e08e7](https://github.com/hirosystems/stacks-blockchain-api/commit/b3e08e7872c4a6b5a076d8bbcc22eb388ecef5ab))
+
 ## [8.0.1](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.0.0...v8.0.1) (2024-09-23)
 
 
