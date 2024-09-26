@@ -5,7 +5,7 @@ COPY . .
 COPY --from=qldrsc/duckdb /usr/local/bin/duckdb /bin/duckdb
 
 RUN apt-get update && \
-    apt-get install -y git openjdk-17-jre && \
+    apt-get install -y git && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 RUN echo "GIT_TAG=$(git tag --points-at HEAD)" >> .env
