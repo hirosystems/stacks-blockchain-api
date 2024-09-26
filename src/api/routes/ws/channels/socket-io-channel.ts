@@ -123,7 +123,9 @@ export class SocketIOChannel extends WebSocketChannel {
     if (!this.io && callback) {
       callback();
     }
-    this.io?.close(callback);
+    this.io?.close(callback).catch(err => {
+      logger.error(err, `Error closing socket.io`);
+    });
     this.io = undefined;
   }
 
