@@ -15,7 +15,12 @@ import {
 } from '../controllers/db-controller';
 import { InvalidRequestError, InvalidRequestErrorType, NotFoundError } from '../../errors';
 import { decodeClarityValueToRepr } from 'stacks-encoding-native-js';
-import { handleChainTipCache, handleMempoolCache } from '../controllers/cache-controller';
+import {
+  handleChainTipCache,
+  handleMempoolCache,
+  handlePrincipalCache,
+  handleTransactionCache,
+} from '../controllers/cache-controller';
 import { PgStore } from '../../datastore/pg-store';
 import { logger } from '../../logger';
 import { has0xPrefix } from '@hirosystems/api-toolkit';
@@ -86,7 +91,7 @@ export const AddressRoutes: FastifyPluginAsync<
   fastify.get(
     '/:principal/stx',
     {
-      preHandler: handleChainTipCache,
+      preHandler: handlePrincipalCache,
       schema: {
         operationId: 'get_account_stx_balance',
         summary: 'Get account STX balance',
@@ -142,7 +147,7 @@ export const AddressRoutes: FastifyPluginAsync<
   fastify.get(
     '/:principal/balances',
     {
-      preHandler: handleChainTipCache,
+      preHandler: handlePrincipalCache,
       schema: {
         operationId: 'get_account_balance',
         summary: 'Get account balances',
@@ -234,7 +239,7 @@ export const AddressRoutes: FastifyPluginAsync<
   fastify.get(
     '/:principal/transactions',
     {
-      preHandler: handleChainTipCache,
+      preHandler: handlePrincipalCache,
       schema: {
         deprecated: true,
         operationId: 'get_account_transactions',
@@ -307,7 +312,7 @@ export const AddressRoutes: FastifyPluginAsync<
   fastify.get(
     '/:principal/:tx_id/with_transfers',
     {
-      preHandler: handleChainTipCache,
+      preHandler: handleTransactionCache,
       schema: {
         deprecated: true,
         operationId: 'get_single_transaction_with_transfers',
@@ -373,7 +378,7 @@ export const AddressRoutes: FastifyPluginAsync<
   fastify.get(
     '/:principal/transactions_with_transfers',
     {
-      preHandler: handleChainTipCache,
+      preHandler: handlePrincipalCache,
       schema: {
         deprecated: true,
         operationId: 'get_account_transactions_with_transfers',
@@ -485,7 +490,7 @@ export const AddressRoutes: FastifyPluginAsync<
   fastify.get(
     '/:principal/assets',
     {
-      preHandler: handleChainTipCache,
+      preHandler: handlePrincipalCache,
       schema: {
         operationId: 'get_account_assets',
         summary: 'Get account assets',
@@ -533,7 +538,7 @@ export const AddressRoutes: FastifyPluginAsync<
   fastify.get(
     '/:principal/stx_inbound',
     {
-      preHandler: handleChainTipCache,
+      preHandler: handlePrincipalCache,
       schema: {
         operationId: 'get_account_inbound',
         summary: 'Get inbound STX transfers',
