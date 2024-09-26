@@ -74,7 +74,8 @@ export const StxSupplyRoutes: FastifyPluginAsync<
                   'String quoted decimal number of the percentage of STX that have unlocked',
               }),
               total_stx: Type.String({
-                description: 'String quoted decimal number of the total circulating number of STX',
+                description:
+                  'String quoted decimal number of the total circulating number of STX (at the input block height if provided, otherwise the current block height)',
               }),
               total_stx_year_2050: Type.String({
                 description:
@@ -198,7 +199,8 @@ export const StxSupplyRoutes: FastifyPluginAsync<
                   'String quoted decimal number of the percentage of STX that have unlocked',
               }),
               totalStacks: Type.String({
-                description: 'String quoted decimal number of the total circulating number of STX',
+                description:
+                  'String quoted decimal number of the total circulating number of STX (at the input block height if provided, otherwise the current block height)',
               }),
               totalStacksFormatted: Type.String({
                 description: 'Same as `totalStacks` but formatted with comma thousands separators',
