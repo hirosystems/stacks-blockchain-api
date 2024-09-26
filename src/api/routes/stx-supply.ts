@@ -1,5 +1,5 @@
 import BigNumber from 'bignumber.js';
-import { microStxToStx, STACKS_DECIMAL_PLACES, TOTAL_STACKS } from '../../helpers';
+import { microStxToStx, STACKS_DECIMAL_PLACES, TOTAL_STACKS_YEAR_2050 } from '../../helpers';
 import { handleChainTipCache } from '../controllers/cache-controller';
 
 import { FastifyPluginAsync } from 'fastify';
@@ -23,18 +23,23 @@ export const StxSupplyRoutes: FastifyPluginAsync<
   ): Promise<{
     unlockedPercent: string;
     totalStx: string;
+    totalStxYear2050: string;
     unlockedStx: string;
     blockHeight: number;
   }> {
     const { stx: unlockedSupply, blockHeight } = await fastify.db.getUnlockedStxSupply(args);
-    const totalMicroStx = new BigNumber(TOTAL_STACKS).shiftedBy(STACKS_DECIMAL_PLACES);
+    const totalMicroStx = unlockedSupply;
+    const totalMicroStxYear2050 = new BigNumber(TOTAL_STACKS_YEAR_2050).shiftedBy(
+      STACKS_DECIMAL_PLACES
+    );
     const unlockedPercent = new BigNumber(unlockedSupply.toString())
-      .div(totalMicroStx)
+      .div(new BigNumber(totalMicroStx.toString()))
       .times(100)
       .toFixed(2);
     return {
       unlockedPercent,
       totalStx: microStxToStx(totalMicroStx),
+      totalStxYear2050: microStxToStx(totalMicroStxYear2050),
       unlockedStx: microStxToStx(unlockedSupply),
       blockHeight: blockHeight,
     };
@@ -47,8 +52,7 @@ export const StxSupplyRoutes: FastifyPluginAsync<
       schema: {
         operationId: 'get_stx_supply',
         summary: 'Get total and unlocked STX supply',
-        description: `Retrieves the total and unlocked STX supply. More information on Stacking can be found [here] (https://docs.stacks.co/understand-stacks/stacking).
-        **Note:** This uses the estimated future total supply for the year 2050.`,
+        description: `Retrieves the total and unlocked STX supply. More information on Stacking can be found [here] (https://docs.stacks.co/understand-stacks/stacking).`,
         tags: ['Info'],
         querystring: Type.Object({
           height: Type.Optional(
@@ -70,7 +74,12 @@ export const StxSupplyRoutes: FastifyPluginAsync<
                   'String quoted decimal number of the percentage of STX that have unlocked',
               }),
               total_stx: Type.String({
-                description: 'String quoted decimal number of the total possible number of STX',
+                description:
+                  'String quoted decimal number of the total circulating number of STX (at the input block height if provided, otherwise the current block height)',
+              }),
+              total_stx_year_2050: Type.String({
+                description:
+                  'String quoted decimal number of total circulating STX supply in year 2050. STX supply grows approx 0.3% annually thereafter in perpetuity.',
               }),
               unlocked_stx: Type.String({
                 description:
@@ -98,6 +107,7 @@ export const StxSupplyRoutes: FastifyPluginAsync<
       await reply.send({
         unlocked_percent: supply.unlockedPercent,
         total_stx: supply.totalStx,
+        total_stx_year_2050: supply.totalStxYear2050,
         unlocked_stx: supply.unlockedStx,
         block_height: supply.blockHeight,
       });
@@ -109,10 +119,10 @@ export const StxSupplyRoutes: FastifyPluginAsync<
     {
       preHandler: handleChainTipCache,
       schema: {
+        deprecated: true,
         operationId: 'get_stx_supply_total_supply_plain',
         summary: 'Get total STX supply in plain text format',
-        description: `Retrieves the total supply for STX tokens as plain text.
-        **Note:** this uses the estimated future total supply for the year 2050.`,
+        description: `Retrieves the total circulating STX token supply as plain text.`,
         tags: ['Info'],
         response: {
           200: {
@@ -136,6 +146,7 @@ export const StxSupplyRoutes: FastifyPluginAsync<
     {
       preHandler: handleChainTipCache,
       schema: {
+        deprecated: true,
         operationId: 'get_stx_supply_circulating_plain',
         summary: 'Get circulating STX supply in plain text format',
         description: `Retrieves the STX tokens currently in circulation that have been unlocked as plain text.`,
@@ -162,11 +173,11 @@ export const StxSupplyRoutes: FastifyPluginAsync<
     {
       preHandler: handleChainTipCache,
       schema: {
+        deprecated: true,
         operationId: 'get_total_stx_supply_legacy_format',
         summary:
           'Get total and unlocked STX supply (results formatted the same as the legacy 1.0 API)',
-        description: `Retrieves total supply of STX tokens including those currently in circulation that have been unlocked.
-        **Note:** this uses the estimated future total supply for the year 2050.`,
+        description: `Retrieves total supply of STX tokens including those currently in circulation that have been unlocked.`,
         tags: ['Info'],
         querystring: Type.Object({
           height: Type.Optional(
@@ -188,10 +199,19 @@ export const StxSupplyRoutes: FastifyPluginAsync<
                   'String quoted decimal number of the percentage of STX that have unlocked',
               }),
               totalStacks: Type.String({
-                description: 'String quoted decimal number of the total possible number of STX',
+                description:
+                  'String quoted decimal number of the total circulating number of STX (at the input block height if provided, otherwise the current block height)',
               }),
               totalStacksFormatted: Type.String({
                 description: 'Same as `totalStacks` but formatted with comma thousands separators',
+              }),
+              totalStacksYear2050: Type.String({
+                description:
+                  'String quoted decimal number of total circulating STX supply in year 2050. STX supply grows approx 0.3% annually thereafter in perpetuity.',
+              }),
+              totalStacksYear2050Formatted: Type.String({
+                description:
+                  'Same as `totalStacksYear2050` but formatted with comma thousands separators',
               }),
               unlockedSupply: Type.String({
                 description:
@@ -224,6 +244,11 @@ export const StxSupplyRoutes: FastifyPluginAsync<
         unlockedPercent: supply.unlockedPercent,
         totalStacks: supply.totalStx,
         totalStacksFormatted: new BigNumber(supply.totalStx).toFormat(STACKS_DECIMAL_PLACES, 8),
+        totalStacksYear2050: supply.totalStxYear2050,
+        totalStacksYear2050Formatted: new BigNumber(supply.totalStxYear2050).toFormat(
+          STACKS_DECIMAL_PLACES,
+          8
+        ),
         unlockedSupply: supply.unlockedStx,
         unlockedSupplyFormatted: new BigNumber(supply.unlockedStx).toFormat(
           STACKS_DECIMAL_PLACES,
