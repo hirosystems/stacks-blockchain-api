@@ -661,7 +661,7 @@ describe('cache-control tests', () => {
     const request4 = await supertest(api.server).get(url).set('If-None-Match', etag1);
     expect(request4.status).toBe(200);
     expect(request4.type).toBe('application/json');
-    expect(request4.headers['etag'] !== etag1).toEqual(true);
+    expect(request4.headers['etag']).not.toEqual(etag1);
     const etag2 = request4.headers['etag'];
 
     // Cache works with new ETag.
@@ -685,7 +685,7 @@ describe('cache-control tests', () => {
     const request6 = await supertest(api.server).get(url).set('If-None-Match', etag2);
     expect(request6.status).toBe(200);
     expect(request6.type).toBe('application/json');
-    expect(request6.headers['etag'] !== etag1).toEqual(true);
+    expect(request6.headers['etag']).not.toEqual(etag2);
     const etag3 = request6.headers['etag'];
 
     // Cache works with new ETag.
@@ -693,18 +693,41 @@ describe('cache-control tests', () => {
     expect(request7.status).toBe(304);
     expect(request7.text).toBe('');
 
-    // Advance chain with no changes to this address.
+    // Add sponsored tx.
     await db.update(
       new TestBlockBuilder({
         block_height: 5,
         index_block_hash: '0x05',
         parent_index_block_hash: '0x04',
+      })
+        .addTx({ tx_id: '0x0004', sponsor_address: sender_address })
+        .build()
+    );
+
+    // Cache is now a miss.
+    const request8 = await supertest(api.server).get(url).set('If-None-Match', etag2);
+    expect(request8.status).toBe(200);
+    expect(request8.type).toBe('application/json');
+    expect(request8.headers['etag']).not.toEqual(etag3);
+    const etag4 = request8.headers['etag'];
+
+    // Cache works with new ETag.
+    const request9 = await supertest(api.server).get(url).set('If-None-Match', etag4);
+    expect(request9.status).toBe(304);
+    expect(request9.text).toBe('');
+
+    // Advance chain with no changes to this address.
+    await db.update(
+      new TestBlockBuilder({
+        block_height: 6,
+        index_block_hash: '0x06',
+        parent_index_block_hash: '0x05',
       }).build()
     );
 
     // Cache still works.
-    const request8 = await supertest(api.server).get(url).set('If-None-Match', etag3);
-    expect(request8.status).toBe(304);
-    expect(request8.text).toBe('');
+    const request10 = await supertest(api.server).get(url).set('If-None-Match', etag4);
+    expect(request10.status).toBe(304);
+    expect(request10.text).toBe('');
   });
 });
