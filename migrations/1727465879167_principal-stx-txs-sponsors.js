@@ -17,3 +17,5 @@ exports.up = pgm => {
     ON CONFLICT ON CONSTRAINT unique_principal_tx_id_index_block_hash_microblock_hash DO NOTHING  
   `);
 };
+
+exports.down = pgm => {};
