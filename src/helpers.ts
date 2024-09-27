@@ -149,7 +149,7 @@ export function formatMapToObject<TKey extends string, TValue, TFormatted>(
 //   > 500 STX/block for following 4 yrs;
 //   > 250 for the 4 yrs after that; and then 125 STX/block in perpetuity after that.
 // We are going to use the year 2050 projected supply because "125 STX/block in perpetuity" means the total supply is infinite.
-export const TOTAL_STACKS = new BigNumber(1_818_000_000n.toString());
+export const TOTAL_STACKS_YEAR_2050 = new BigNumber(1_818_000_000n.toString());
 
 const MICROSTACKS_IN_STACKS = 1_000_000n;
 export const STACKS_DECIMAL_PLACES = 6;
