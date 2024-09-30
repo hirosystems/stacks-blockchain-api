@@ -1180,6 +1180,7 @@ export class PgWriteStore extends PgStore {
           tx.token_transfer_recipient_address,
           tx.contract_call_contract_id,
           tx.smart_contract_contract_id,
+          tx.sponsor_address,
         ].filter((p): p is string => !!p)
       );
       for (const event of stxEvents) {

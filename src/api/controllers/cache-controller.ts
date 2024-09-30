@@ -2,16 +2,12 @@ import * as prom from 'prom-client';
 import { normalizeHashString } from '../../helpers';
 import { PgStore } from '../../datastore/pg-store';
 import { logger } from '../../logger';
-import { sha256 } from '@hirosystems/api-toolkit';
+import {
+  CACHE_CONTROL_MUST_REVALIDATE,
+  parseIfNoneMatchHeader,
+  sha256,
+} from '@hirosystems/api-toolkit';
 import { FastifyReply, FastifyRequest } from 'fastify';
-
-/**
- * A `Cache-Control` header used for re-validation based caching.
- * * `public` == allow proxies/CDNs to cache as opposed to only local browsers.
- * * `no-cache` == clients can cache a resource but should revalidate each time before using it.
- * * `must-revalidate` == somewhat redundant directive to assert that cache must be revalidated, required by some CDNs
- */
-const CACHE_CONTROL_MUST_REVALIDATE = 'public, no-cache, must-revalidate';
 
 /**
  * Describes a key-value to be saved into a request's locals, representing the current
@@ -25,6 +21,8 @@ enum ETagType {
   mempool = 'mempool',
   /** ETag based on the status of a single transaction across the mempool or canonical chain. */
   transaction = 'transaction',
+  /** Etag based on the confirmed balance of a single principal (STX address or contract id) */
+  principal = 'principal',
 }
 
 /** Value that means the ETag did get calculated but it is empty. */
@@ -75,52 +73,6 @@ function getETagMetrics(): ETagCacheMetrics {
   return _eTagMetrics;
 }
 
-/**
- * Parses the etag values from a raw `If-None-Match` request header value.
- * The wrapping double quotes (if any) and validation prefix (if any) are stripped.
- * The parsing is permissive to account for commonly non-spec-compliant clients, proxies, CDNs, etc.
- * E.g. the value:
- * ```js
- * `"a", W/"b", c,d,   "e", "f"`
- * ```
- * Would be parsed and returned as:
- * ```js
- * ['a', 'b', 'c', 'd', 'e', 'f']
- * ```
- * @see https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/If-None-Match#syntax
- * ```
- * If-None-Match: "etag_value"
- * If-None-Match: "etag_value", "etag_value", ...
- * If-None-Match: *
- * ```
- * @param ifNoneMatchHeaderValue - raw header value
- * @returns an array of etag values
- */
-export function parseIfNoneMatchHeader(
-  ifNoneMatchHeaderValue: string | undefined
-): string[] | undefined {
-  if (!ifNoneMatchHeaderValue) {
-    return undefined;
-  }
-  // Strip wrapping double quotes like `"hello"` and the ETag validation-prefix like `W/"hello"`.
-  // The API returns compliant, strong-validation ETags (double quoted ASCII), but can't control what
-  // clients, proxies, CDNs, etc may provide.
-  const normalized = /^(?:"|W\/")?(.*?)"?$/gi.exec(ifNoneMatchHeaderValue.trim())?.[1];
-  if (!normalized) {
-    // This should never happen unless handling a buggy request with something like `If-None-Match: ""`,
-    // or if there's a flaw in the above code. Log warning for now.
-    logger.warn(`Normalized If-None-Match header is falsy: ${ifNoneMatchHeaderValue}`);
-    return undefined;
-  } else if (normalized.includes(',')) {
-    // Multiple etag values provided, likely irrelevant extra values added by a proxy/CDN.
-    // Split on comma, also stripping quotes, weak-validation prefixes, and extra whitespace.
-    return normalized.split(/(?:W\/"|")?(?:\s*),(?:\s*)(?:W\/"|")?/gi);
-  } else {
-    // Single value provided (the typical case)
-    return [normalized];
-  }
-}
-
 async function calculateETag(
   db: PgStore,
   etagType: ETagType,
@@ -155,7 +107,7 @@ async function calculateETag(
         }
         return digest.result.digest;
       } catch (error) {
-        logger.error(error, 'Unable to calculate mempool');
+        logger.error(error, 'Unable to calculate mempool etag');
         return;
       }
 
@@ -178,7 +130,20 @@ async function calculateETag(
         ];
         return sha256(elements.join(':'));
       } catch (error) {
-        logger.error(error, 'Unable to calculate transaction');
+        logger.error(error, 'Unable to calculate transaction etag');
+        return;
+      }
+
+    case ETagType.principal:
+      try {
+        const params = req.params as { address?: string; principal?: string };
+        const principal = params.address ?? params.principal;
+        if (!principal) return ETAG_EMPTY;
+        const activity = await db.getPrincipalLastActivityTxIds(principal);
+        const text = `${activity.stx_tx_id}:${activity.ft_tx_id}:${activity.nft_tx_id}`;
+        return sha256(text);
+      } catch (error) {
+        logger.error(error, 'Unable to calculate principal etag');
         return;
       }
   }
@@ -223,4 +188,8 @@ export async function handleMempoolCache(request: FastifyRequest, reply: Fastify
 
 export async function handleTransactionCache(request: FastifyRequest, reply: FastifyReply) {
   return handleCache(ETagType.transaction, request, reply);
+}
+
+export async function handlePrincipalCache(request: FastifyRequest, reply: FastifyReply) {
+  return handleCache(ETagType.principal, request, reply);
 }

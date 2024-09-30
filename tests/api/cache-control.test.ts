@@ -10,7 +10,6 @@ import {
 } from '../../src/datastore/common';
 import { startApiServer, ApiServer } from '../../src/api/init';
 import { I32_MAX } from '../../src/helpers';
-import { parseIfNoneMatchHeader } from '../../src/api/controllers/cache-controller';
 import { TestBlockBuilder, testMempoolTx } from '../utils/test-builders';
 import { PgWriteStore } from '../../src/datastore/pg-write-store';
 import { PgSqlClient, bufferToHex } from '@hirosystems/api-toolkit';
@@ -36,47 +35,6 @@ describe('cache-control tests', () => {
     await api.terminate();
     await db?.close();
     await migrate('down');
-  });
-
-  test('parse if-none-match header', () => {
-    // Test various combinations of etags with and without weak-validation prefix, with and without
-    // wrapping quotes, without and without spaces after commas.
-    const vectors: {
-      input: string | undefined;
-      output: string[] | undefined;
-    }[] = [
-      { input: '""', output: undefined },
-      { input: '', output: undefined },
-      { input: undefined, output: undefined },
-      {
-        input: '"bfc13a64729c4290ef5b2c2730249c88ca92d82d"',
-        output: ['bfc13a64729c4290ef5b2c2730249c88ca92d82d'],
-      },
-      { input: 'W/"67ab43", "54ed21", "7892dd"', output: ['67ab43', '54ed21', '7892dd'] },
-      { input: '"fail space" ', output: ['fail space'] },
-      { input: 'W/"5e15153d-120f"', output: ['5e15153d-120f'] },
-      {
-        input: '"<etag_value>", "<etag_value>" , "asdf"',
-        output: ['<etag_value>', '<etag_value>', 'asdf'],
-      },
-      {
-        input: '"<etag_value>","<etag_value>","asdf"',
-        output: ['<etag_value>', '<etag_value>', 'asdf'],
-      },
-      {
-        input: 'W/"<etag_value>","<etag_value>","asdf"',
-        output: ['<etag_value>', '<etag_value>', 'asdf'],
-      },
-      {
-        input: '"<etag_value>",W/"<etag_value>", W/"asdf", "abcd","123"',
-        output: ['<etag_value>', '<etag_value>', 'asdf', 'abcd', '123'],
-      },
-    ];
-    expect(vectors).toBeTruthy();
-    for (const entry of vectors) {
-      const result = parseIfNoneMatchHeader(entry.input);
-      expect(result).toEqual(entry.output);
-    }
   });
 
   test('block chaintip cache control', async () => {
@@ -643,5 +601,133 @@ describe('cache-control tests', () => {
     expect(request11.headers['etag']).toBeTruthy();
     const etag5 = request11.headers['etag'];
     expect(etag2).not.toBe(etag5);
+  });
+
+  test('principal cache control', async () => {
+    const sender_address = 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6';
+    const url = `/extended/v2/addresses/${sender_address}/transactions`;
+    await db.update(
+      new TestBlockBuilder({
+        block_height: 1,
+        index_block_hash: '0x01',
+        parent_index_block_hash: '0x00',
+      }).build()
+    );
+
+    // ETag zero.
+    const request1 = await supertest(api.server).get(url);
+    expect(request1.status).toBe(200);
+    expect(request1.type).toBe('application/json');
+    const etag0 = request1.headers['etag'];
+
+    // Add STX txs.
+    await db.update(
+      new TestBlockBuilder({
+        block_height: 2,
+        index_block_hash: '0x02',
+        parent_index_block_hash: '0x01',
+      })
+        .addTx({ tx_id: '0x0001', sender_address, token_transfer_amount: 200n })
+        .addTxStxEvent({ sender: sender_address, amount: 200n })
+        .build()
+    );
+
+    // Valid ETag.
+    const request2 = await supertest(api.server).get(url);
+    expect(request2.status).toBe(200);
+    expect(request2.type).toBe('application/json');
+    expect(request2.headers['etag']).toBeTruthy();
+    const etag1 = request2.headers['etag'];
+    expect(etag1).not.toEqual(etag0);
+
+    // Cache works with valid ETag.
+    const request3 = await supertest(api.server).get(url).set('If-None-Match', etag1);
+    expect(request3.status).toBe(304);
+    expect(request3.text).toBe('');
+
+    // Add FT tx.
+    await db.update(
+      new TestBlockBuilder({
+        block_height: 3,
+        index_block_hash: '0x03',
+        parent_index_block_hash: '0x02',
+      })
+        .addTx({ tx_id: '0x0002' })
+        .addTxFtEvent({ recipient: sender_address })
+        .build()
+    );
+
+    // Cache is now a miss.
+    const request4 = await supertest(api.server).get(url).set('If-None-Match', etag1);
+    expect(request4.status).toBe(200);
+    expect(request4.type).toBe('application/json');
+    expect(request4.headers['etag']).not.toEqual(etag1);
+    const etag2 = request4.headers['etag'];
+
+    // Cache works with new ETag.
+    const request5 = await supertest(api.server).get(url).set('If-None-Match', etag2);
+    expect(request5.status).toBe(304);
+    expect(request5.text).toBe('');
+
+    // Add NFT tx.
+    await db.update(
+      new TestBlockBuilder({
+        block_height: 4,
+        index_block_hash: '0x04',
+        parent_index_block_hash: '0x03',
+      })
+        .addTx({ tx_id: '0x0003' })
+        .addTxNftEvent({ recipient: sender_address })
+        .build()
+    );
+
+    // Cache is now a miss.
+    const request6 = await supertest(api.server).get(url).set('If-None-Match', etag2);
+    expect(request6.status).toBe(200);
+    expect(request6.type).toBe('application/json');
+    expect(request6.headers['etag']).not.toEqual(etag2);
+    const etag3 = request6.headers['etag'];
+
+    // Cache works with new ETag.
+    const request7 = await supertest(api.server).get(url).set('If-None-Match', etag3);
+    expect(request7.status).toBe(304);
+    expect(request7.text).toBe('');
+
+    // Add sponsored tx.
+    await db.update(
+      new TestBlockBuilder({
+        block_height: 5,
+        index_block_hash: '0x05',
+        parent_index_block_hash: '0x04',
+      })
+        .addTx({ tx_id: '0x0004', sponsor_address: sender_address })
+        .build()
+    );
+
+    // Cache is now a miss.
+    const request8 = await supertest(api.server).get(url).set('If-None-Match', etag2);
+    expect(request8.status).toBe(200);
+    expect(request8.type).toBe('application/json');
+    expect(request8.headers['etag']).not.toEqual(etag3);
+    const etag4 = request8.headers['etag'];
+
+    // Cache works with new ETag.
+    const request9 = await supertest(api.server).get(url).set('If-None-Match', etag4);
+    expect(request9.status).toBe(304);
+    expect(request9.text).toBe('');
+
+    // Advance chain with no changes to this address.
+    await db.update(
+      new TestBlockBuilder({
+        block_height: 6,
+        index_block_hash: '0x06',
+        parent_index_block_hash: '0x05',
+      }).build()
+    );
+
+    // Cache still works.
+    const request10 = await supertest(api.server).get(url).set('If-None-Match', etag4);
+    expect(request10.status).toBe(304);
+    expect(request10.text).toBe('');
   });
 });
