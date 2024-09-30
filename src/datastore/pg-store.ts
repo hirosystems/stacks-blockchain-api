@@ -4407,9 +4407,10 @@ export class PgStore extends BasePgStore {
 
   /** Retrieves the last transaction IDs with STX, FT and NFT activity for a principal */
   async getPrincipalLastActivityTxIds(
+    sql: PgSqlClient,
     principal: string
   ): Promise<{ stx_tx_id: string | null; ft_tx_id: string | null; nft_tx_id: string | null }> {
-    const result = await this.sql<
+    const result = await sql<
       { stx_tx_id: string | null; ft_tx_id: string | null; nft_tx_id: string | null }[]
     >`
       WITH last_stx AS (
@@ -4443,5 +4444,16 @@ export class PgStore extends BasePgStore {
         (SELECT tx_id FROM last_nft) AS nft_tx_id
     `;
     return result[0];
+  }
+
+  async getPrincipalMempoolTxIds(sql: PgSqlClient, principal: string): Promise<string[]> {
+    const result = await sql<{ tx_id: string }[]>`
+      SELECT tx_id
+      FROM mempool_txs
+      WHERE sender_address = ${principal}
+        OR sponsor_address = ${principal}
+        OR token_transfer_recipient_address = ${principal}
+    `;
+    return result.map(r => r.tx_id);
   }
 }

@@ -301,6 +301,7 @@ interface TestMempoolTxArgs {
   nonce?: number;
   fee_rate?: bigint;
   raw_tx?: string;
+  sponsor_address?: string;
 }
 
 /**
@@ -321,7 +322,7 @@ export function testMempoolTx(args?: TestMempoolTxArgs): DbMempoolTxRaw {
     post_conditions: '0x01f5',
     fee_rate: args?.fee_rate ?? 1234n,
     sponsored: false,
-    sponsor_address: undefined,
+    sponsor_address: args?.sponsor_address,
     origin_hash_mode: 1,
     sender_address: args?.sender_address ?? SENDER_ADDRESS,
     token_transfer_amount: args?.token_transfer_amount ?? 1234n,
