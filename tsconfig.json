@@ -13,11 +13,8 @@
     "outDir": "lib",
     "noEmit": true,
     "baseUrl": ".",
-    "typeRoots": [
-      "./src/@types",
-      "./node_modules/@types"
-    ]
+    "typeRoots": ["./src/@types", "./node_modules/@types"]
   },
-  "include": ["src/**/*"],
+  "include": ["src/**/*", "tests/**/*"],
   "exclude": ["lib", "node_modules"]
 }

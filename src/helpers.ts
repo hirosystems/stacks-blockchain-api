@@ -12,6 +12,8 @@ import { StacksCoreRpcClient } from './core-rpc/client';
 import { DbEventTypeId } from './datastore/common';
 import { logger } from './logger';
 import { has0xPrefix, isDevEnv, numberToHex } from '@hirosystems/api-toolkit';
+import { StacksNetwork, StacksTestnet } from '@stacks/network';
+import { getStacksTestnetNetwork } from './api/routes/debug';
 
 export const apiDocumentationUrl = process.env.API_DOCS_URL;
 
@@ -29,6 +31,24 @@ export function getIbdBlockHeight(): number | undefined {
     const num = Number.parseInt(val);
     return !Number.isNaN(num) ? num : undefined;
   }
+}
+
+export function getStxFaucetNetworks(): StacksNetwork[] {
+  const networks: StacksNetwork[] = [getStacksTestnetNetwork()];
+  const faucetNodeHostOverride: string | undefined = process.env.STACKS_FAUCET_NODE_HOST;
+  if (faucetNodeHostOverride) {
+    const faucetNodePortOverride: string | undefined = process.env.STACKS_FAUCET_NODE_PORT;
+    if (!faucetNodePortOverride) {
+      const error = 'STACKS_FAUCET_NODE_HOST is specified but STACKS_FAUCET_NODE_PORT is missing';
+      logger.error(error);
+      throw new Error(error);
+    }
+    const network = new StacksTestnet({
+      url: `http://${faucetNodeHostOverride}:${faucetNodePortOverride}`,
+    });
+    networks.push(network);
+  }
+  return networks;
 }
 
 function createEnumChecker<T extends string, TEnumValue extends number>(enumVariable: {

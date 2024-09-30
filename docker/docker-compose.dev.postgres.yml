@@ -9,4 +9,4 @@ services:
       POSTGRES_DB: stacks_blockchain_api
       POSTGRES_PORT: 5432
     volumes:
-      - ../src/tests-event-replay/.tmp/local/:/root/
+      - ../tests/event-replay/.tmp/local/:/root/
