@@ -127,15 +127,12 @@ async function calculateETag(
         const params = req.params as { address?: string; principal?: string };
         const principal = params.address ?? params.principal;
         if (!principal) return ETAG_EMPTY;
-        return await db.sqlTransaction(async sql => {
-          const activity = await db.getPrincipalLastActivityTxIds(sql, principal);
-          let text = `${activity.stx_tx_id}:${activity.ft_tx_id}:${activity.nft_tx_id}`;
-          if (etagType == ETagType.principalMempool) {
-            const mempoolTxs = await db.getPrincipalMempoolTxIds(sql, principal);
-            if (mempoolTxs.length) text = `${text}:${mempoolTxs.join(':')}`;
-          }
-          return sha256(text);
-        });
+        const activity = await db.getPrincipalLastActivityTxIds(
+          principal,
+          etagType == ETagType.principalMempool
+        );
+        if (!activity.length) return ETAG_EMPTY;
+        return sha256(activity.join(':'));
     }
   } catch (error) {
     logger.error(error, `Unable to calculate ${etagType} etag`);
