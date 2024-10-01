@@ -120,8 +120,14 @@ export const AddressRoutes: FastifyPluginAsync<
           stxAddress,
           blockHeight
         );
+        let mempoolBalance: bigint | undefined = undefined;
+        if (req.query.until_block === undefined) {
+          const delta = await fastify.db.getPrincipalMempoolStxBalanceDelta(sql, stxAddress);
+          mempoolBalance = stxBalanceResult.balance + delta;
+        }
         const result: AddressStxBalance = {
           balance: stxBalanceResult.balance.toString(),
+          estimated_balance: mempoolBalance?.toString(),
           total_sent: stxBalanceResult.totalSent.toString(),
           total_received: stxBalanceResult.totalReceived.toString(),
           total_fees_sent: stxBalanceResult.totalFeesSent.toString(),
@@ -204,9 +210,16 @@ export const AddressRoutes: FastifyPluginAsync<
           };
         });
 
+        let mempoolBalance: bigint | undefined = undefined;
+        if (req.query.until_block === undefined) {
+          const delta = await fastify.db.getPrincipalMempoolStxBalanceDelta(sql, stxAddress);
+          mempoolBalance = stxBalanceResult.balance + delta;
+        }
+
         const result: AddressBalance = {
           stx: {
             balance: stxBalanceResult.balance.toString(),
+            estimated_balance: mempoolBalance?.toString(),
             total_sent: stxBalanceResult.totalSent.toString(),
             total_received: stxBalanceResult.totalReceived.toString(),
             total_fees_sent: stxBalanceResult.totalFeesSent.toString(),
