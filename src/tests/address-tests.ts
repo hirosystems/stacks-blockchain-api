@@ -1570,6 +1570,12 @@ describe('address tests', () => {
     };
     expect(JSON.parse(fetchAddrBalance1.text)).toEqual(expectedResp1);
 
+    const fetchAddrBalance1AtBlock = await supertest(api.server).get(
+      `/extended/v1/address/${testAddr2}/balances?until_block=1`
+    );
+    expect(fetchAddrBalance1AtBlock.status).toBe(200);
+    expect(fetchAddrBalance1AtBlock.type).toBe('application/json');
+
     const fetchAddrBalance2 = await supertest(api.server).get(
       `/extended/v1/address/${testContractAddr}/balances`
     );
