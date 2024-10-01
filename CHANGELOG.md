@@ -1,3 +1,10 @@
+## [8.0.3](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.0.2...v8.0.3) (2024-10-01)
+
+
+### Bug Fixes
+
+* query param `until_block` not working in several endpoints ([#2101](https://github.com/hirosystems/stacks-blockchain-api/issues/2101)) ([fce15d6](https://github.com/hirosystems/stacks-blockchain-api/commit/fce15d68377b6fe5fabeab65b34bd4e7a8d3bef6))
+
 ## [8.0.2](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.0.1...v8.0.2) (2024-09-27)
 
 
