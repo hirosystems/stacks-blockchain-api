@@ -4407,41 +4407,56 @@ export class PgStore extends BasePgStore {
 
   /** Retrieves the last transaction IDs with STX, FT and NFT activity for a principal */
   async getPrincipalLastActivityTxIds(
-    principal: string
-  ): Promise<{ stx_tx_id: string | null; ft_tx_id: string | null; nft_tx_id: string | null }> {
-    const result = await this.sql<
-      { stx_tx_id: string | null; ft_tx_id: string | null; nft_tx_id: string | null }[]
-    >`
-      WITH last_stx AS (
-        SELECT tx_id
-        FROM principal_stx_txs
-        WHERE principal = ${principal} AND canonical = true AND microblock_canonical = true
-        ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC
-        LIMIT 1
-      ),
-      last_ft AS (
-        SELECT tx_id
-        FROM ft_events
-        WHERE (sender = ${principal} OR recipient = ${principal})
-          AND canonical = true
-          AND microblock_canonical = true
-        ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
-        LIMIT 1
-      ),
-      last_nft AS (
-        SELECT tx_id
-        FROM nft_events
-        WHERE (sender = ${principal} OR recipient = ${principal})
-          AND canonical = true
-          AND microblock_canonical = true
-        ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
-        LIMIT 1
+    principal: string,
+    includeMempool: boolean = false
+  ): Promise<string[]> {
+    const result = await this.sql<{ tx_id: string }[]>`
+      WITH activity AS (
+        (
+          SELECT tx_id
+          FROM principal_stx_txs
+          WHERE principal = ${principal} AND canonical = true AND microblock_canonical = true
+          ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC
+          LIMIT 1
+        )
+        UNION
+        (
+          SELECT tx_id
+          FROM ft_events
+          WHERE (sender = ${principal} OR recipient = ${principal})
+            AND canonical = true
+            AND microblock_canonical = true
+          ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
+          LIMIT 1
+        )
+        UNION
+        (
+          SELECT tx_id
+          FROM nft_events
+          WHERE (sender = ${principal} OR recipient = ${principal})
+            AND canonical = true
+            AND microblock_canonical = true
+          ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
+          LIMIT 1
+        )
+        ${
+          includeMempool
+            ? this.sql`UNION
+            (
+              SELECT tx_id
+              FROM mempool_txs
+              WHERE pruned = false AND
+                (sender_address = ${principal}
+                OR sponsor_address = ${principal}
+                OR token_transfer_recipient_address = ${principal})
+              ORDER BY receipt_time DESC, sender_address DESC, nonce DESC
+              LIMIT 1
+            )`
+            : this.sql``
+        }
       )
-      SELECT
-        (SELECT tx_id FROM last_stx) AS stx_tx_id,
-        (SELECT tx_id FROM last_ft) AS ft_tx_id,
-        (SELECT tx_id FROM last_nft) AS nft_tx_id
+      SELECT DISTINCT tx_id FROM activity WHERE tx_id IS NOT NULL
     `;
-    return result[0];
+    return result.map(r => r.tx_id);
   }
 }

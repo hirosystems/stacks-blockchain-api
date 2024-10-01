@@ -730,4 +730,92 @@ describe('cache-control tests', () => {
     expect(request10.status).toBe(304);
     expect(request10.text).toBe('');
   });
+
+  test('principal mempool cache control', async () => {
+    const sender_address = 'SP3FXEKSA6D4BW3TFP2BWTSREV6FY863Y90YY7D8G';
+    const url = `/extended/v1/address/${sender_address}/mempool`;
+    await db.update(
+      new TestBlockBuilder({
+        block_height: 1,
+        index_block_hash: '0x01',
+        parent_index_block_hash: '0x00',
+      }).build()
+    );
+
+    // ETag zero.
+    const request1 = await supertest(api.server).get(url);
+    expect(request1.status).toBe(200);
+    expect(request1.type).toBe('application/json');
+    const etag0 = request1.headers['etag'];
+
+    // Add STX tx.
+    await db.updateMempoolTxs({
+      mempoolTxs: [testMempoolTx({ tx_id: '0x0001', receipt_time: 1000, sender_address })],
+    });
+
+    // Valid ETag.
+    const request2 = await supertest(api.server).get(url);
+    expect(request2.status).toBe(200);
+    expect(request2.type).toBe('application/json');
+    expect(request2.headers['etag']).toBeTruthy();
+    const etag1 = request2.headers['etag'];
+    expect(etag1).not.toEqual(etag0);
+
+    // Cache works with valid ETag.
+    const request3 = await supertest(api.server).get(url).set('If-None-Match', etag1);
+    expect(request3.status).toBe(304);
+    expect(request3.text).toBe('');
+
+    // Add sponsor tx.
+    await db.updateMempoolTxs({
+      mempoolTxs: [
+        testMempoolTx({ tx_id: '0x0002', receipt_time: 2000, sponsor_address: sender_address }),
+      ],
+    });
+
+    // Cache is now a miss.
+    const request4 = await supertest(api.server).get(url).set('If-None-Match', etag1);
+    expect(request4.status).toBe(200);
+    expect(request4.type).toBe('application/json');
+    expect(request4.headers['etag']).not.toEqual(etag1);
+    const etag2 = request4.headers['etag'];
+
+    // Cache works with new ETag.
+    const request5 = await supertest(api.server).get(url).set('If-None-Match', etag2);
+    expect(request5.status).toBe(304);
+    expect(request5.text).toBe('');
+
+    // Add token recipient tx.
+    await db.updateMempoolTxs({
+      mempoolTxs: [
+        testMempoolTx({
+          tx_id: '0x0003',
+          receipt_time: 3000,
+          token_transfer_recipient_address: sender_address,
+        }),
+      ],
+    });
+
+    // Cache is now a miss.
+    const request6 = await supertest(api.server).get(url).set('If-None-Match', etag2);
+    expect(request6.status).toBe(200);
+    expect(request6.type).toBe('application/json');
+    expect(request6.headers['etag']).not.toEqual(etag2);
+    const etag3 = request6.headers['etag'];
+
+    // Cache works with new ETag.
+    const request7 = await supertest(api.server).get(url).set('If-None-Match', etag3);
+    expect(request7.status).toBe(304);
+    expect(request7.text).toBe('');
+
+    // Change mempool with no changes to this address.
+    await db.updateMempoolTxs({
+      mempoolTxs: [testMempoolTx({ tx_id: '0x0004', receipt_time: 4000 })],
+    });
+
+    // Cache still works.
+    const request8 = await supertest(api.server).get(url).set('If-None-Match', etag3);
+    expect(request8.status).toBe(304);
+    expect(request8.text).toBe('');
+  });
 });

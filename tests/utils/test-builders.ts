@@ -301,6 +301,8 @@ interface TestMempoolTxArgs {
   nonce?: number;
   fee_rate?: bigint;
   raw_tx?: string;
+  sponsor_address?: string;
+  receipt_time?: number;
 }
 
 /**
@@ -316,12 +318,12 @@ export function testMempoolTx(args?: TestMempoolTxArgs): DbMempoolTxRaw {
     nonce: args?.nonce ?? 0,
     raw_tx: args?.raw_tx ?? '0x01234567',
     type_id: args?.type_id ?? DbTxTypeId.TokenTransfer,
-    receipt_time: (new Date().getTime() / 1000) | 0,
+    receipt_time: args?.receipt_time ?? (new Date().getTime() / 1000) | 0,
     status: args?.status ?? DbTxStatus.Pending,
     post_conditions: '0x01f5',
     fee_rate: args?.fee_rate ?? 1234n,
     sponsored: false,
-    sponsor_address: undefined,
+    sponsor_address: args?.sponsor_address,
     origin_hash_mode: 1,
     sender_address: args?.sender_address ?? SENDER_ADDRESS,
     token_transfer_amount: args?.token_transfer_amount ?? 1234n,

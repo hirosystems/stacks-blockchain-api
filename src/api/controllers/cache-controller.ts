@@ -23,6 +23,8 @@ enum ETagType {
   transaction = 'transaction',
   /** Etag based on the confirmed balance of a single principal (STX address or contract id) */
   principal = 'principal',
+  /** Etag based on `principal` but also including its mempool transactions */
+  principalMempool = 'principal_mempool',
 }
 
 /** Value that means the ETag did get calculated but it is empty. */
@@ -78,9 +80,9 @@ async function calculateETag(
   etagType: ETagType,
   req: FastifyRequest
 ): Promise<ETag | undefined> {
-  switch (etagType) {
-    case ETagType.chainTip:
-      try {
+  try {
+    switch (etagType) {
+      case ETagType.chainTip:
         const chainTip = await db.getChainTip(db.sql);
         if (chainTip.block_height === 0) {
           // This should never happen unless the API is serving requests before it has synced any
@@ -88,13 +90,8 @@ async function calculateETag(
           return;
         }
         return chainTip.microblock_hash ?? chainTip.index_block_hash;
-      } catch (error) {
-        logger.error(error, 'Unable to calculate chain_tip ETag');
-        return;
-      }
 
-    case ETagType.mempool:
-      try {
+      case ETagType.mempool:
         const digest = await db.getMempoolTxDigest();
         if (!digest.found) {
           // This should never happen unless the API is serving requests before it has synced any
@@ -106,13 +103,8 @@ async function calculateETag(
           return ETAG_EMPTY;
         }
         return digest.result.digest;
-      } catch (error) {
-        logger.error(error, 'Unable to calculate mempool etag');
-        return;
-      }
 
-    case ETagType.transaction:
-      try {
+      case ETagType.transaction:
         const tx_id = (req.params as { tx_id: string }).tx_id;
         const normalizedTxId = normalizeHashString(tx_id);
         if (normalizedTxId === false) {
@@ -129,23 +121,21 @@ async function calculateETag(
           status.result.status.toString(),
         ];
         return sha256(elements.join(':'));
-      } catch (error) {
-        logger.error(error, 'Unable to calculate transaction etag');
-        return;
-      }
 
-    case ETagType.principal:
-      try {
+      case ETagType.principal:
+      case ETagType.principalMempool:
         const params = req.params as { address?: string; principal?: string };
         const principal = params.address ?? params.principal;
         if (!principal) return ETAG_EMPTY;
-        const activity = await db.getPrincipalLastActivityTxIds(principal);
-        const text = `${activity.stx_tx_id}:${activity.ft_tx_id}:${activity.nft_tx_id}`;
-        return sha256(text);
-      } catch (error) {
-        logger.error(error, 'Unable to calculate principal etag');
-        return;
-      }
+        const activity = await db.getPrincipalLastActivityTxIds(
+          principal,
+          etagType == ETagType.principalMempool
+        );
+        if (!activity.length) return ETAG_EMPTY;
+        return sha256(activity.join(':'));
+    }
+  } catch (error) {
+    logger.error(error, `Unable to calculate ${etagType} etag`);
   }
 }
 
@@ -192,4 +182,8 @@ export async function handleTransactionCache(request: FastifyRequest, reply: Fas
 
 export async function handlePrincipalCache(request: FastifyRequest, reply: FastifyReply) {
   return handleCache(ETagType.principal, request, reply);
+}
+
+export async function handlePrincipalMempoolCache(request: FastifyRequest, reply: FastifyReply) {
+  return handleCache(ETagType.principalMempool, request, reply);
 }

@@ -16,9 +16,8 @@ import {
 import { InvalidRequestError, InvalidRequestErrorType, NotFoundError } from '../../errors';
 import { decodeClarityValueToRepr } from 'stacks-encoding-native-js';
 import {
-  handleChainTipCache,
-  handleMempoolCache,
   handlePrincipalCache,
+  handlePrincipalMempoolCache,
   handleTransactionCache,
 } from '../controllers/cache-controller';
 import { PgStore } from '../../datastore/pg-store';
@@ -45,7 +44,6 @@ import {
   AddressTransactionWithTransfers,
   AddressTransactionWithTransfersSchema,
   InboundStxTransfer,
-  InboundStxTransferSchema,
 } from '../schemas/entities/addresses';
 import { PaginatedResponse } from '../schemas/util';
 import { MempoolTransaction, MempoolTransactionSchema } from '../schemas/entities/transactions';
@@ -151,7 +149,7 @@ export const AddressRoutes: FastifyPluginAsync<
       schema: {
         operationId: 'get_account_balance',
         summary: 'Get account balances',
-        description: `Retrieves total account balance information for a given Address or Contract Identifier. This includes the balances of  STX Tokens, Fungible Tokens and Non-Fungible Tokens for the account.`,
+        description: `Retrieves total account balance information for a given Address or Contract Identifier. This includes the balances of STX Tokens, Fungible Tokens and Non-Fungible Tokens for the account.`,
         tags: ['Accounts'],
         params: Type.Object({
           principal: PrincipalSchema,
@@ -629,7 +627,7 @@ export const AddressRoutes: FastifyPluginAsync<
   fastify.get(
     '/:principal/mempool',
     {
-      preHandler: handleMempoolCache,
+      preHandler: handlePrincipalMempoolCache,
       schema: {
         operationId: 'get_address_mempool_transactions',
         summary: 'Transactions for address',
@@ -676,7 +674,7 @@ export const AddressRoutes: FastifyPluginAsync<
   fastify.get(
     '/:principal/nonces',
     {
-      preHandler: handleMempoolCache,
+      preHandler: handlePrincipalMempoolCache,
       schema: {
         operationId: 'get_account_nonces',
         summary: 'Get the latest nonce used by an account',
