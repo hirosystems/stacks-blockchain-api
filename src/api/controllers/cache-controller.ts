@@ -8,6 +8,7 @@ import {
   sha256,
 } from '@hirosystems/api-toolkit';
 import { FastifyReply, FastifyRequest } from 'fastify';
+import { BlockParams } from '../routes/v2/schemas';
 
 /**
  * Describes a key-value to be saved into a request's locals, representing the current
@@ -21,6 +22,8 @@ enum ETagType {
   mempool = 'mempool',
   /** ETag based on the status of a single transaction across the mempool or canonical chain. */
   transaction = 'transaction',
+  /** Etag based on the status of a single block */
+  block = 'block',
   /** Etag based on the confirmed balance of a single principal (STX address or contract id) */
   principal = 'principal',
   /** Etag based on `principal` but also including its mempool transactions */
@@ -122,6 +125,13 @@ async function calculateETag(
         ];
         return sha256(elements.join(':'));
 
+      case ETagType.block: {
+        const params = req.params as BlockParams;
+        const status = await db.getBlockCanonicalStatus(params.height_or_hash);
+        if (!status) return ETAG_EMPTY;
+        return `${status.index_block_hash}:${status.canonical}`;
+      }
+
       case ETagType.principal:
       case ETagType.principalMempool:
         const params = req.params as { address?: string; principal?: string };
@@ -178,6 +188,10 @@ export async function handleMempoolCache(request: FastifyRequest, reply: Fastify
 
 export async function handleTransactionCache(request: FastifyRequest, reply: FastifyReply) {
   return handleCache(ETagType.transaction, request, reply);
+}
+
+export async function handleBlockCache(request: FastifyRequest, reply: FastifyReply) {
+  return handleCache(ETagType.block, request, reply);
 }
 
 export async function handlePrincipalCache(request: FastifyRequest, reply: FastifyReply) {
