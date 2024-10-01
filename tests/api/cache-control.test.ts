@@ -749,7 +749,9 @@ describe('cache-control tests', () => {
     const etag0 = request1.headers['etag'];
 
     // Add STX tx.
-    await db.updateMempoolTxs({ mempoolTxs: [testMempoolTx({ tx_id: '0x0001', sender_address })] });
+    await db.updateMempoolTxs({
+      mempoolTxs: [testMempoolTx({ tx_id: '0x0001', receipt_time: 1000, sender_address })],
+    });
 
     // Valid ETag.
     const request2 = await supertest(api.server).get(url);
@@ -766,7 +768,9 @@ describe('cache-control tests', () => {
 
     // Add sponsor tx.
     await db.updateMempoolTxs({
-      mempoolTxs: [testMempoolTx({ tx_id: '0x0002', sponsor_address: sender_address })],
+      mempoolTxs: [
+        testMempoolTx({ tx_id: '0x0002', receipt_time: 2000, sponsor_address: sender_address }),
+      ],
     });
 
     // Cache is now a miss.
@@ -784,7 +788,11 @@ describe('cache-control tests', () => {
     // Add token recipient tx.
     await db.updateMempoolTxs({
       mempoolTxs: [
-        testMempoolTx({ tx_id: '0x0003', token_transfer_recipient_address: sender_address }),
+        testMempoolTx({
+          tx_id: '0x0003',
+          receipt_time: 3000,
+          token_transfer_recipient_address: sender_address,
+        }),
       ],
     });
 
@@ -801,7 +809,9 @@ describe('cache-control tests', () => {
     expect(request7.text).toBe('');
 
     // Change mempool with no changes to this address.
-    await db.updateMempoolTxs({ mempoolTxs: [testMempoolTx({ tx_id: '0x0004' })] });
+    await db.updateMempoolTxs({
+      mempoolTxs: [testMempoolTx({ tx_id: '0x0004', receipt_time: 4000 })],
+    });
 
     // Cache still works.
     const request8 = await supertest(api.server).get(url).set('If-None-Match', etag3);

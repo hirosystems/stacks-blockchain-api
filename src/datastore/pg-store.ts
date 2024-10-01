@@ -4475,9 +4475,12 @@ export class PgStore extends BasePgStore {
             (
               SELECT tx_id
               FROM mempool_txs
-              WHERE sender_address = ${principal}
+              WHERE pruned = false AND
+                (sender_address = ${principal}
                 OR sponsor_address = ${principal}
-                OR token_transfer_recipient_address = ${principal}
+                OR token_transfer_recipient_address = ${principal})
+              ORDER BY receipt_time DESC, sender_address DESC, nonce DESC
+              LIMIT 1
             )`
             : this.sql``
         }
