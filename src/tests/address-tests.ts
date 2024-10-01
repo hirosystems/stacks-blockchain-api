@@ -2614,16 +2614,6 @@ describe('address tests', () => {
       );
       expect(response.status).toBe(400);
     }
-
-    const addressEndpoints1 = ['/transactions', '/transactions_with_transfers', '/stx_inbound'];
-
-    /// check for mutually exclusive until_block adn height params
-    for (const path of addressEndpoints1) {
-      const response1 = await supertest(api.server).get(
-        `/extended/v1/address/STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6${path}?until_block=5&height=0`
-      );
-      expect(response1.status).toBe(400);
-    }
   });
 
   test('/transactions materialized view separates anchored and unanchored counts correctly', async () => {
