@@ -12,12 +12,11 @@ import { startApiServer, ApiServer } from '../../src/api/init';
 import { I32_MAX } from '../../src/helpers';
 import { TestBlockBuilder, testMempoolTx } from '../utils/test-builders';
 import { PgWriteStore } from '../../src/datastore/pg-write-store';
-import { PgSqlClient, bufferToHex } from '@hirosystems/api-toolkit';
+import { bufferToHex } from '@hirosystems/api-toolkit';
 import { migrate } from '../utils/test-helpers';
 
 describe('cache-control tests', () => {
   let db: PgWriteStore;
-  let client: PgSqlClient;
   let api: ApiServer;
 
   beforeEach(async () => {
@@ -27,7 +26,6 @@ describe('cache-control tests', () => {
       withNotifier: false,
       skipMigrations: true,
     });
-    client = db.sql;
     api = await startApiServer({ datastore: db, chainId: ChainID.Testnet });
   });
 
@@ -817,5 +815,105 @@ describe('cache-control tests', () => {
     const request8 = await supertest(api.server).get(url).set('If-None-Match', etag3);
     expect(request8.status).toBe(304);
     expect(request8.text).toBe('');
+  });
+
+  test('block cache control', async () => {
+    await db.update(
+      new TestBlockBuilder({
+        block_height: 1,
+        index_block_hash: '0x01',
+        parent_index_block_hash: '0x00',
+      }).build()
+    );
+    await db.update(
+      new TestBlockBuilder({
+        block_height: 2,
+        index_block_hash: '0x8f652ee1f26bfbffe3cf111994ade25286687b76e6a2f64c33b4632a1f4545ac',
+        parent_index_block_hash: '0x01',
+      }).build()
+    );
+
+    // Valid latest Etag.
+    const request1 = await supertest(api.server).get(`/extended/v2/blocks/latest`);
+    expect(request1.status).toBe(200);
+    expect(request1.type).toBe('application/json');
+    const etag0 = request1.headers['etag'];
+
+    // Same block hash Etag.
+    const request2 = await supertest(api.server).get(
+      `/extended/v2/blocks/0x8f652ee1f26bfbffe3cf111994ade25286687b76e6a2f64c33b4632a1f4545ac`
+    );
+    expect(request2.status).toBe(200);
+    expect(request2.type).toBe('application/json');
+    expect(request2.headers['etag']).toEqual(etag0);
+
+    // Same block height Etag.
+    const request3 = await supertest(api.server).get(`/extended/v2/blocks/2`);
+    expect(request3.status).toBe(200);
+    expect(request3.type).toBe('application/json');
+    expect(request3.headers['etag']).toEqual(etag0);
+
+    // Cache works with valid ETag.
+    const request4 = await supertest(api.server)
+      .get(`/extended/v2/blocks/2`)
+      .set('If-None-Match', etag0);
+    expect(request4.status).toBe(304);
+    expect(request4.text).toBe('');
+
+    // Add new block.
+    await db.update(
+      new TestBlockBuilder({
+        block_height: 3,
+        index_block_hash: '0x03',
+        parent_index_block_hash:
+          '0x8f652ee1f26bfbffe3cf111994ade25286687b76e6a2f64c33b4632a1f4545ac',
+      }).build()
+    );
+
+    // Cache still works with same ETag.
+    const request5 = await supertest(api.server)
+      .get(`/extended/v2/blocks/2`)
+      .set('If-None-Match', etag0);
+    expect(request5.status).toBe(304);
+    expect(request5.text).toBe('');
+
+    // Re-org block 2
+    await db.update(
+      new TestBlockBuilder({
+        block_height: 2,
+        index_block_hash: '0x02bb',
+        parent_index_block_hash: '0x01',
+      }).build()
+    );
+    await db.update(
+      new TestBlockBuilder({
+        block_height: 3,
+        index_block_hash: '0x03bb',
+        parent_index_block_hash: '0x02bb',
+      }).build()
+    );
+    await db.update(
+      new TestBlockBuilder({
+        block_height: 4,
+        index_block_hash: '0x04bb',
+        parent_index_block_hash: '0x03bb',
+      }).build()
+    );
+
+    // Cache is now a miss.
+    const request6 = await supertest(api.server)
+      .get(`/extended/v2/blocks/2`)
+      .set('If-None-Match', etag0);
+    expect(request6.status).toBe(200);
+    expect(request6.type).toBe('application/json');
+    expect(request6.headers['etag']).not.toEqual(etag0);
+    const etag1 = request6.headers['etag'];
+
+    // Cache works with new ETag.
+    const request7 = await supertest(api.server)
+      .get(`/extended/v2/blocks/2`)
+      .set('If-None-Match', etag1);
+    expect(request7.status).toBe(304);
+    expect(request7.text).toBe('');
   });
 });

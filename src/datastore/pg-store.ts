@@ -97,6 +97,7 @@ import {
 import * as path from 'path';
 import { PgStoreV2 } from './pg-store-v2';
 import { Fragment } from 'postgres';
+import { parseBlockParam } from '../api/routes/v2/schemas';
 
 export const MIGRATIONS_DIR = path.join(REPO_DIR, 'migrations');
 
@@ -4488,5 +4489,26 @@ export class PgStore extends BasePgStore {
       SELECT DISTINCT tx_id FROM activity WHERE tx_id IS NOT NULL
     `;
     return result.map(r => r.tx_id);
+  }
+
+  /** Returns the `index_block_hash` and canonical status of a single block */
+  async getBlockCanonicalStatus(
+    height_or_hash: string | number
+  ): Promise<{ index_block_hash: string; canonical: boolean } | undefined> {
+    const param = parseBlockParam(height_or_hash);
+    const result = await this.sql<{ index_block_hash: string; canonical: boolean }[]>`
+      SELECT index_block_hash, canonical
+      FROM blocks
+      WHERE
+        ${
+          param.type == 'latest'
+            ? this.sql`index_block_hash = (SELECT index_block_hash FROM chain_tip)`
+            : param.type == 'hash'
+            ? this.sql`index_block_hash = ${param.hash}`
+            : this.sql`block_height = ${param.height} AND canonical = true`
+        }
+      LIMIT 1
+    `;
+    if (result.count) return result[0];
   }
 }
