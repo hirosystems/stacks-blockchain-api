@@ -89,7 +89,7 @@ export const AddressRoutes: FastifyPluginAsync<
   fastify.get(
     '/:principal/stx',
     {
-      preHandler: handlePrincipalCache,
+      preHandler: handlePrincipalMempoolCache,
       schema: {
         operationId: 'get_account_stx_balance',
         summary: 'Get account STX balance',
@@ -151,7 +151,7 @@ export const AddressRoutes: FastifyPluginAsync<
   fastify.get(
     '/:principal/balances',
     {
-      preHandler: handlePrincipalCache,
+      preHandler: handlePrincipalMempoolCache,
       schema: {
         operationId: 'get_account_balance',
         summary: 'Get account balances',
