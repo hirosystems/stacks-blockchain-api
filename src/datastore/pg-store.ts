@@ -2493,7 +2493,7 @@ export class PgStore extends BasePgStore {
         WHERE sponsor_address = ${principal}
       ),
       received AS (
-        SELECT token_transfer_amount
+        SELECT token_transfer_amount AS total
         FROM mempool_txs
         WHERE token_transfer_recipient_address = ${principal}
       )
