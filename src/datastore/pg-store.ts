@@ -2485,17 +2485,17 @@ export class PgStore extends BasePgStore {
       WITH sent AS (
         SELECT token_transfer_amount + fee_rate AS total
         FROM mempool_txs
-        WHERE sender_address = ${principal}
+        WHERE pruned = false AND sender_address = ${principal}
       ),
       sponsored AS (
         SELECT fee_rate AS total
         FROM mempool_txs
-        WHERE sponsor_address = ${principal}
+        WHERE pruned = false AND sponsor_address = ${principal}
       ),
       received AS (
         SELECT token_transfer_amount AS total
         FROM mempool_txs
-        WHERE token_transfer_recipient_address = ${principal}
+        WHERE pruned = false AND token_transfer_recipient_address = ${principal}
       )
       SELECT
         COALESCE((SELECT total FROM received), 0)
