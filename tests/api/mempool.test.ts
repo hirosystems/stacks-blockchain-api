@@ -2167,6 +2167,25 @@ describe('mempool tests', () => {
     expect(balance1.body.balance).toEqual('2000');
     expect(balance1.body.estimated_balance).toEqual('1850'); // Minus amount and fee
 
+    // Contract call in mempool
+    await db.updateMempoolTxs({
+      mempoolTxs: [
+        testMempoolTx({
+          tx_id: '0x0002aa',
+          sender_address: address,
+          type_id: DbTxTypeId.ContractCall,
+          token_transfer_amount: 0n,
+          contract_call_contract_id: 'ST27W5M8BRKA7C5MZE2R1S1F4XTPHFWFRNHA9M04Y.hello-world',
+          contract_call_function_args: '',
+          contract_call_function_name: 'test',
+          fee_rate: 50n,
+        }),
+      ],
+    });
+    const balance1b = await supertest(api.server).get(url);
+    expect(balance1b.body.balance).toEqual('2000');
+    expect(balance1b.body.estimated_balance).toEqual('1800'); // Minus fee
+
     // Sponsored tx in mempool
     await db.updateMempoolTxs({
       mempoolTxs: [
@@ -2181,7 +2200,7 @@ describe('mempool tests', () => {
     });
     const balance2 = await supertest(api.server).get(url);
     expect(balance2.body.balance).toEqual('2000');
-    expect(balance2.body.estimated_balance).toEqual('1800'); // Minus fee
+    expect(balance2.body.estimated_balance).toEqual('1750'); // Minus fee
 
     // STX received in mempool
     await db.updateMempoolTxs({
@@ -2196,7 +2215,7 @@ describe('mempool tests', () => {
     });
     const balance3 = await supertest(api.server).get(url);
     expect(balance3.body.balance).toEqual('2000');
-    expect(balance3.body.estimated_balance).toEqual('1900'); // Plus amount
+    expect(balance3.body.estimated_balance).toEqual('1850'); // Plus amount
 
     // Confirm all txs
     await db.update(
@@ -2212,6 +2231,16 @@ describe('mempool tests', () => {
           fee_rate: 50n,
         })
         .addTxStxEvent({ sender: address, amount: 100n })
+        .addTx({
+          tx_id: '0x0002aa',
+          sender_address: address,
+          type_id: DbTxTypeId.ContractCall,
+          token_transfer_amount: 0n,
+          contract_call_contract_id: 'ST27W5M8BRKA7C5MZE2R1S1F4XTPHFWFRNHA9M04Y.hello-world',
+          contract_call_function_args: '',
+          contract_call_function_name: 'test',
+          fee_rate: 50n,
+        })
         .addTx({
           tx_id: '0x0003',
           sponsor_address: address,
@@ -2229,7 +2258,7 @@ describe('mempool tests', () => {
         .build()
     );
     const balance4 = await supertest(api.server).get(url);
-    expect(balance4.body.balance).toEqual('1900');
-    expect(balance4.body.estimated_balance).toEqual('1900');
+    expect(balance4.body.balance).toEqual('1850');
+    expect(balance4.body.estimated_balance).toEqual('1850');
   });
 });

@@ -2483,17 +2483,17 @@ export class PgStore extends BasePgStore {
   async getPrincipalMempoolStxBalanceDelta(sql: PgSqlClient, principal: string): Promise<bigint> {
     const results = await sql<{ delta: string }[]>`
       WITH sent AS (
-        SELECT token_transfer_amount + COALESCE(fee_rate, 0) AS total
+        SELECT SUM(COALESCE(token_transfer_amount, 0) + fee_rate) AS total
         FROM mempool_txs
         WHERE pruned = false AND sender_address = ${principal}
       ),
       sponsored AS (
-        SELECT COALESCE(fee_rate, 0) AS total
+        SELECT SUM(fee_rate) AS total
         FROM mempool_txs
         WHERE pruned = false AND sponsor_address = ${principal} AND sponsored = true
       ),
       received AS (
-        SELECT token_transfer_amount AS total
+        SELECT SUM(COALESCE(token_transfer_amount, 0)) AS total
         FROM mempool_txs
         WHERE pruned = false AND token_transfer_recipient_address = ${principal}
       )
