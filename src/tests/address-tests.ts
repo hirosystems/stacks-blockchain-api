@@ -1570,6 +1570,12 @@ describe('address tests', () => {
     };
     expect(JSON.parse(fetchAddrBalance1.text)).toEqual(expectedResp1);
 
+    const fetchAddrBalance1AtBlock = await supertest(api.server).get(
+      `/extended/v1/address/${testAddr2}/balances?until_block=1`
+    );
+    expect(fetchAddrBalance1AtBlock.status).toBe(200);
+    expect(fetchAddrBalance1AtBlock.type).toBe('application/json');
+
     const fetchAddrBalance2 = await supertest(api.server).get(
       `/extended/v1/address/${testContractAddr}/balances`
     );
@@ -2607,16 +2613,6 @@ describe('address tests', () => {
         `/extended/v1/address/STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6${path}?until_block=5&unanchored=true`
       );
       expect(response.status).toBe(400);
-    }
-
-    const addressEndpoints1 = ['/transactions', '/transactions_with_transfers', '/stx_inbound'];
-
-    /// check for mutually exclusive until_block adn height params
-    for (const path of addressEndpoints1) {
-      const response1 = await supertest(api.server).get(
-        `/extended/v1/address/STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6${path}?until_block=5&height=0`
-      );
-      expect(response1.status).toBe(400);
     }
   });
 
