@@ -141,11 +141,13 @@ describe('other tests', () => {
     expect(result1.status).toBe(200);
     expect(result1.type).toBe('application/json');
     const expectedResp1 = {
-      unlocked_percent: '12.93',
-      total_stx: '1818000000.000000',
-      unlocked_stx: microStxToStx(expectedTotalStx1),
-      block_height: dbBlock1.block_height,
+      unlocked_percent: '100.00',
+      total_stx: '235000000.000000',
+      total_stx_year_2050: '1818000000.000000',
+      unlocked_stx: '235000000.000000',
+      block_height: 1,
     };
+
     expect(JSON.parse(result1.text)).toEqual(expectedResp1);
 
     // ensure burned STX reduce the unlocked stx supply
@@ -166,9 +168,10 @@ describe('other tests', () => {
     expect(result2.status).toBe(200);
     expect(result2.type).toBe('application/json');
     const expectedResp2 = {
-      unlocked_percent: '12.38',
-      total_stx: '1818000000.000000',
+      unlocked_percent: '100.00',
+      total_stx: microStxToStx(expectedTotalStx2),
       unlocked_stx: microStxToStx(expectedTotalStx2),
+      total_stx_year_2050: '1818000000.000000',
       block_height: dbBlock1.block_height,
     };
     expect(JSON.parse(result2.text)).toEqual(expectedResp2);
@@ -197,8 +200,9 @@ describe('other tests', () => {
     expect(result3.status).toBe(200);
     expect(result3.type).toBe('application/json');
     const expectedResp3 = {
-      unlocked_percent: '13.20',
-      total_stx: '1818000000.000000',
+      unlocked_percent: '100.00',
+      total_stx: microStxToStx(expectedTotalStx3),
+      total_stx_year_2050: '1818000000.000000',
       unlocked_stx: microStxToStx(expectedTotalStx3),
       block_height: dbBlock1.block_height,
     };
@@ -207,7 +211,7 @@ describe('other tests', () => {
     const result4 = await supertest(api.server).get(`/extended/v1/stx_supply/total/plain`);
     expect(result4.status).toBe(200);
     expect(result4.type).toBe('text/plain');
-    expect(result4.text).toEqual('1818000000.000000');
+    expect(result4.text).toEqual('240000000.000000');
 
     const result5 = await supertest(api.server).get(`/extended/v1/stx_supply/circulating/plain`);
     expect(result5.status).toBe(200);
@@ -219,13 +223,17 @@ describe('other tests', () => {
     expect(result6.status).toBe(200);
     expect(result6.type).toBe('application/json');
     const expectedResp6 = {
-      unlockedPercent: '13.20',
-      totalStacks: '1818000000.000000',
-      totalStacksFormatted: '1,818,000,000.000000',
+      unlockedPercent: '100.00',
+      totalStacks: microStxToStx(expectedTotalStx3),
+      totalStacksFormatted: new Intl.NumberFormat('en', {
+        minimumFractionDigits: STACKS_DECIMAL_PLACES,
+      }).format(parseInt(microStxToStx(expectedTotalStx3))),
       unlockedSupply: microStxToStx(expectedTotalStx3),
       unlockedSupplyFormatted: new Intl.NumberFormat('en', {
         minimumFractionDigits: STACKS_DECIMAL_PLACES,
       }).format(parseInt(microStxToStx(expectedTotalStx3))),
+      totalStacksYear2050: '1818000000.000000',
+      totalStacksYear2050Formatted: '1,818,000,000.000000',
       blockHeight: dbBlock1.block_height.toString(),
     };
     expect(JSON.parse(result6.text)).toEqual(expectedResp6);

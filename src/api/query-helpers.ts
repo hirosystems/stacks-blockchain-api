@@ -41,10 +41,10 @@ export function parseUntilBlockQuery(
 ): undefined | number | string {
   if (!untilBlock) return;
   if (typeof untilBlock === 'string') {
-    if (unanchored !== undefined) {
+    if (unanchored) {
       // if mutually exclusive unachored is also specified, throw bad request error
       throw new InvalidRequestError(
-        `can't handle both 'unanchored' and 'until_block' in the same request`,
+        `can't handle both 'unanchored=true' and 'until_block' in the same request`,
         InvalidRequestErrorType.bad_request
       );
     }
