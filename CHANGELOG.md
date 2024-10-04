@@ -1,7 +1,115 @@
-## [7.14.1](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.14.0...v7.14.1) (2024-08-21)
+## [8.0.3](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.0.2...v8.0.3) (2024-10-01)
 
 
 ### Bug Fixes
+
+* query param `until_block` not working in several endpoints ([#2101](https://github.com/hirosystems/stacks-blockchain-api/issues/2101)) ([fce15d6](https://github.com/hirosystems/stacks-blockchain-api/commit/fce15d68377b6fe5fabeab65b34bd4e7a8d3bef6))
+
+## [8.0.2](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.0.1...v8.0.2) (2024-09-27)
+
+
+### Bug Fixes
+
+* tests ([689ff18](https://github.com/hirosystems/stacks-blockchain-api/commit/689ff183dd0bdd1779f0220835123a0cc99e37c6))
+
+
+## [8.0.2-beta.1](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.0.1...v8.0.2-beta.1) (2024-09-26)
+
+### Bug Fixes
+
+* use current circulating STX tokens for `stx_supply` endpoint, year 2050 estimate in new field ([b3e08e7](https://github.com/hirosystems/stacks-blockchain-api/commit/b3e08e7872c4a6b5a076d8bbcc22eb388ecef5ab))
+
+## [8.0.1](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.0.0...v8.0.1) (2024-09-23)
+
+
+### Bug Fixes
+
+* package.json & package-lock.json to reduce vulnerabilities ([159d0ca](https://github.com/hirosystems/stacks-blockchain-api/commit/159d0ca1a2b55017883661b5c6ffb3cf5aefeb9f))
+
+## [8.0.0](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.14.1...v8.0.0) (2024-08-28)
+
+
+### ⚠ BREAKING CHANGES
+
+> [!NOTE]
+> This is only a breaking change because significant changes were made to the JavaScript client library's interface and how its types are generated, and because its library version always matches the API version.
+> There are **no changes** to endpoints or database schemas that necessitate a full Stacks node event replay i.e. you may upgrade to v8.0.0 from v7.x directly.
+
+* refactor from express to fastify (#2045)
+* refactor from Express to Fastify
+
+### Features
+
+* cursor-based pagination on blocks endpoint ([#2060](https://github.com/hirosystems/stacks-blockchain-api/issues/2060)) ([bfdcce1](https://github.com/hirosystems/stacks-blockchain-api/commit/bfdcce1c2936980299c90bf36f3d45fe74bd573c))
+* export events tsv directly to postgres instance ([#2048](https://github.com/hirosystems/stacks-blockchain-api/issues/2048)) ([f401a0f](https://github.com/hirosystems/stacks-blockchain-api/commit/f401a0f676ced14572b9f3f263dcc8559e831cdf))
+* refactor from Express to Fastify ([aa0e51e](https://github.com/hirosystems/stacks-blockchain-api/commit/aa0e51e557491daff1a98dd36c4e952e05c58dd4)), closes [#2042](https://github.com/hirosystems/stacks-blockchain-api/issues/2042)
+* refactor from express to fastify ([#2045](https://github.com/hirosystems/stacks-blockchain-api/issues/2045)) ([bd65fcf](https://github.com/hirosystems/stacks-blockchain-api/commit/bd65fcf93984c37a9de3cb284c43a49cb6b3694a)), closes [#2042](https://github.com/hirosystems/stacks-blockchain-api/issues/2042)
+
+
+### Bug Fixes
+
+* missing event limit max overrides on a few endpoints ([4f70930](https://github.com/hirosystems/stacks-blockchain-api/commit/4f709308fb95721866b523142536b738aa64a3eb))
+* pagination and query param parsing bugs ([a382d2b](https://github.com/hirosystems/stacks-blockchain-api/commit/a382d2b80fc8d3e7ff49ce96047f1621749172b2)), closes [#2042](https://github.com/hirosystems/stacks-blockchain-api/issues/2042)
+* perform status endpoint sql inside transactions ([b23445c](https://github.com/hirosystems/stacks-blockchain-api/commit/b23445c85f826d0e6cf98695f985c3670d00c1db))
+* tx event-limit default should be 100 ([32d0670](https://github.com/hirosystems/stacks-blockchain-api/commit/32d0670a531582b8eb269790fa7a3695a8ce7610))
+
+## [8.0.0-beta.6](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.0.0-beta.5...v8.0.0-beta.6) (2024-08-27)
+
+
+### ⚠ BREAKING CHANGES
+
+* refactor from express to fastify (#2045)
+
+### Features
+
+* cursor-based pagination on blocks endpoint ([#2060](https://github.com/hirosystems/stacks-blockchain-api/issues/2060)) ([bfdcce1](https://github.com/hirosystems/stacks-blockchain-api/commit/bfdcce1c2936980299c90bf36f3d45fe74bd573c))
+* export events tsv directly to postgres instance ([#2048](https://github.com/hirosystems/stacks-blockchain-api/issues/2048)) ([f401a0f](https://github.com/hirosystems/stacks-blockchain-api/commit/f401a0f676ced14572b9f3f263dcc8559e831cdf))
+* export events tsv directly to postgres instance ([#2048](https://github.com/hirosystems/stacks-blockchain-api/issues/2048)) ([#2058](https://github.com/hirosystems/stacks-blockchain-api/issues/2058)) ([a1f5b12](https://github.com/hirosystems/stacks-blockchain-api/commit/a1f5b12675118f6d7742c54e3420c38151aef4a7))
+* refactor from express to fastify ([#2045](https://github.com/hirosystems/stacks-blockchain-api/issues/2045)) ([bd65fcf](https://github.com/hirosystems/stacks-blockchain-api/commit/bd65fcf93984c37a9de3cb284c43a49cb6b3694a)), closes [#2042](https://github.com/hirosystems/stacks-blockchain-api/issues/2042)
+
+
+### Bug Fixes
+
+* index on `principal_stx_txs` table for faster `/v1/address/{addr}/transactions` lookups ([#2059](https://github.com/hirosystems/stacks-blockchain-api/issues/2059)) ([ab64ab7](https://github.com/hirosystems/stacks-blockchain-api/commit/ab64ab7148a3656f81f0a3c5a176c40caca3345a))
+
+## [8.0.0-beta.5](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.0.0-beta.4...v8.0.0-beta.5) (2024-08-16)
+
+
+### Bug Fixes
+
+* perform status endpoint sql inside transactions ([b23445c](https://github.com/hirosystems/stacks-blockchain-api/commit/b23445c85f826d0e6cf98695f985c3670d00c1db))
+
+## [8.0.0-beta.4](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.0.0-beta.3...v8.0.0-beta.4) (2024-08-15)
+
+
+### Bug Fixes
+
+* missing event limit max overrides on a few endpoints ([4f70930](https://github.com/hirosystems/stacks-blockchain-api/commit/4f709308fb95721866b523142536b738aa64a3eb))
+
+## [8.0.0-beta.3](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.0.0-beta.2...v8.0.0-beta.3) (2024-08-15)
+
+
+### Bug Fixes
+
+* tx event-limit default should be 100 ([32d0670](https://github.com/hirosystems/stacks-blockchain-api/commit/32d0670a531582b8eb269790fa7a3695a8ce7610))
+
+## [8.0.0-beta.2](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.0.0-beta.1...v8.0.0-beta.2) (2024-08-15)
+
+
+### Bug Fixes
+
+* pagination and query param parsing bugs ([a382d2b](https://github.com/hirosystems/stacks-blockchain-api/commit/a382d2b80fc8d3e7ff49ce96047f1621749172b2)), closes [#2042](https://github.com/hirosystems/stacks-blockchain-api/issues/2042)
+
+## [8.0.0-beta.1](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.13.2...v8.0.0-beta.1) (2024-08-13)
+
+
+### ⚠ BREAKING CHANGES
+
+* refactor from Express to Fastify
+
+### Features
+
+* refactor from Express to Fastify ([aa0e51e](https://github.com/hirosystems/stacks-blockchain-api/commit/aa0e51e557491daff1a98dd36c4e952e05c58dd4)), closes [#2042](https://github.com/hirosystems/stacks-blockchain-api/issues/2042)
 
 * index on `principal_stx_txs` table for faster `/v1/address/{addr}/transactions` lookups ([#2059](https://github.com/hirosystems/stacks-blockchain-api/issues/2059)) ([ab64ab7](https://github.com/hirosystems/stacks-blockchain-api/commit/ab64ab7148a3656f81f0a3c5a176c40caca3345a))
 
