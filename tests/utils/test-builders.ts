@@ -302,6 +302,7 @@ interface TestMempoolTxArgs {
   fee_rate?: bigint;
   raw_tx?: string;
   sponsor_address?: string;
+  sponsored?: boolean;
   receipt_time?: number;
 }
 
@@ -322,7 +323,7 @@ export function testMempoolTx(args?: TestMempoolTxArgs): DbMempoolTxRaw {
     status: args?.status ?? DbTxStatus.Pending,
     post_conditions: '0x01f5',
     fee_rate: args?.fee_rate ?? 1234n,
-    sponsored: false,
+    sponsored: args?.sponsored ?? false,
     sponsor_address: args?.sponsor_address,
     origin_hash_mode: 1,
     sender_address: args?.sender_address ?? SENDER_ADDRESS,

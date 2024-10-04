@@ -2476,6 +2476,36 @@ export class PgStore extends BasePgStore {
     };
   }
 
+  /**
+   * Returns the total STX balance delta affecting a principal from transactions currently in the
+   * mempool.
+   */
+  async getPrincipalMempoolStxBalanceDelta(sql: PgSqlClient, principal: string): Promise<bigint> {
+    const results = await sql<{ delta: string }[]>`
+      WITH sent AS (
+        SELECT SUM(COALESCE(token_transfer_amount, 0) + fee_rate) AS total
+        FROM mempool_txs
+        WHERE pruned = false AND sender_address = ${principal}
+      ),
+      sponsored AS (
+        SELECT SUM(fee_rate) AS total
+        FROM mempool_txs
+        WHERE pruned = false AND sponsor_address = ${principal} AND sponsored = true
+      ),
+      received AS (
+        SELECT SUM(COALESCE(token_transfer_amount, 0)) AS total
+        FROM mempool_txs
+        WHERE pruned = false AND token_transfer_recipient_address = ${principal}
+      )
+      SELECT
+        COALESCE((SELECT total FROM received), 0)
+        - COALESCE((SELECT total FROM sent), 0)
+        - COALESCE((SELECT total FROM sponsored), 0)
+        AS delta
+    `;
+    return BigInt(results[0]?.delta ?? '0');
+  }
+
   async getUnlockedStxSupply(
     args:
       | {

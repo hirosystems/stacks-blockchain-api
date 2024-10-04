@@ -2128,4 +2128,137 @@ describe('mempool tests', () => {
     );
     expect(check2.body.results).toHaveLength(2);
   });
+
+  test('account estimated balance from mempool activity', async () => {
+    const address = 'SP3FXEKSA6D4BW3TFP2BWTSREV6FY863Y90YY7D8G';
+    const url = `/extended/v1/address/${address}/stx`;
+    await db.update(
+      new TestBlockBuilder({
+        block_height: 1,
+        index_block_hash: '0x01',
+        parent_index_block_hash: '0x00',
+      })
+        .addTx({
+          tx_id: '0x0001',
+          token_transfer_recipient_address: address,
+          token_transfer_amount: 2000n,
+        })
+        .addTxStxEvent({ recipient: address, amount: 2000n })
+        .build()
+    );
+
+    // Base balance
+    const balance0 = await supertest(api.server).get(url);
+    expect(balance0.body.balance).toEqual('2000');
+    expect(balance0.body.estimated_balance).toEqual('2000');
+
+    // STX transfer in mempool
+    await db.updateMempoolTxs({
+      mempoolTxs: [
+        testMempoolTx({
+          tx_id: '0x0002',
+          sender_address: address,
+          token_transfer_amount: 100n,
+          fee_rate: 50n,
+        }),
+      ],
+    });
+    const balance1 = await supertest(api.server).get(url);
+    expect(balance1.body.balance).toEqual('2000');
+    expect(balance1.body.estimated_balance).toEqual('1850'); // Minus amount and fee
+
+    // Contract call in mempool
+    await db.updateMempoolTxs({
+      mempoolTxs: [
+        testMempoolTx({
+          tx_id: '0x0002aa',
+          sender_address: address,
+          type_id: DbTxTypeId.ContractCall,
+          token_transfer_amount: 0n,
+          contract_call_contract_id: 'ST27W5M8BRKA7C5MZE2R1S1F4XTPHFWFRNHA9M04Y.hello-world',
+          contract_call_function_args: '',
+          contract_call_function_name: 'test',
+          fee_rate: 50n,
+        }),
+      ],
+    });
+    const balance1b = await supertest(api.server).get(url);
+    expect(balance1b.body.balance).toEqual('2000');
+    expect(balance1b.body.estimated_balance).toEqual('1800'); // Minus fee
+
+    // Sponsored tx in mempool
+    await db.updateMempoolTxs({
+      mempoolTxs: [
+        testMempoolTx({
+          tx_id: '0x0003',
+          sponsor_address: address,
+          sponsored: true,
+          token_transfer_amount: 100n,
+          fee_rate: 50n,
+        }),
+      ],
+    });
+    const balance2 = await supertest(api.server).get(url);
+    expect(balance2.body.balance).toEqual('2000');
+    expect(balance2.body.estimated_balance).toEqual('1750'); // Minus fee
+
+    // STX received in mempool
+    await db.updateMempoolTxs({
+      mempoolTxs: [
+        testMempoolTx({
+          tx_id: '0x0004',
+          token_transfer_recipient_address: address,
+          token_transfer_amount: 100n,
+          fee_rate: 50n,
+        }),
+      ],
+    });
+    const balance3 = await supertest(api.server).get(url);
+    expect(balance3.body.balance).toEqual('2000');
+    expect(balance3.body.estimated_balance).toEqual('1850'); // Plus amount
+
+    // Confirm all txs
+    await db.update(
+      new TestBlockBuilder({
+        block_height: 2,
+        index_block_hash: '0x02',
+        parent_index_block_hash: '0x01',
+      })
+        .addTx({
+          tx_id: '0x0002',
+          sender_address: address,
+          token_transfer_amount: 100n,
+          fee_rate: 50n,
+        })
+        .addTxStxEvent({ sender: address, amount: 100n })
+        .addTx({
+          tx_id: '0x0002aa',
+          sender_address: address,
+          type_id: DbTxTypeId.ContractCall,
+          token_transfer_amount: 0n,
+          contract_call_contract_id: 'ST27W5M8BRKA7C5MZE2R1S1F4XTPHFWFRNHA9M04Y.hello-world',
+          contract_call_function_args: '',
+          contract_call_function_name: 'test',
+          fee_rate: 50n,
+        })
+        .addTx({
+          tx_id: '0x0003',
+          sponsor_address: address,
+          sponsored: true,
+          token_transfer_amount: 100n,
+          fee_rate: 50n,
+        })
+        .addTx({
+          tx_id: '0x0004',
+          token_transfer_recipient_address: address,
+          token_transfer_amount: 100n,
+          fee_rate: 50n,
+        })
+        .addTxStxEvent({ recipient: address, amount: 100n })
+        .build()
+    );
+    const balance4 = await supertest(api.server).get(url);
+    expect(balance4.body.balance).toEqual('1850');
+    expect(balance4.body.estimated_balance).toEqual('1850');
+  });
 });
