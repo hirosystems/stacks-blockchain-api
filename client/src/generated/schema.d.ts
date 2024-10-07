@@ -249,7 +249,6 @@ export interface paths {
         /**
          * Get total and unlocked STX supply
          * @description Retrieves the total and unlocked STX supply. More information on Stacking can be found [here] (https://docs.stacks.co/understand-stacks/stacking).
-         *             **Note:** This uses the estimated future total supply for the year 2050.
          */
         get: operations["get_stx_supply"];
         put?: never;
@@ -269,8 +268,8 @@ export interface paths {
         };
         /**
          * Get total STX supply in plain text format
-         * @description Retrieves the total supply for STX tokens as plain text.
-         *             **Note:** this uses the estimated future total supply for the year 2050.
+         * @deprecated
+         * @description Retrieves the total circulating STX token supply as plain text.
          */
         get: operations["get_stx_supply_total_supply_plain"];
         put?: never;
@@ -290,6 +289,7 @@ export interface paths {
         };
         /**
          * Get circulating STX supply in plain text format
+         * @deprecated
          * @description Retrieves the STX tokens currently in circulation that have been unlocked as plain text.
          */
         get: operations["get_stx_supply_circulating_plain"];
@@ -310,8 +310,8 @@ export interface paths {
         };
         /**
          * Get total and unlocked STX supply (results formatted the same as the legacy 1.0 API)
+         * @deprecated
          * @description Retrieves total supply of STX tokens including those currently in circulation that have been unlocked.
-         *             **Note:** this uses the estimated future total supply for the year 2050.
          */
         get: operations["get_total_stx_supply_legacy_format"];
         put?: never;
@@ -840,7 +840,7 @@ export interface paths {
         };
         /**
          * Get account balances
-         * @description Retrieves total account balance information for a given Address or Contract Identifier. This includes the balances of  STX Tokens, Fungible Tokens and Non-Fungible Tokens for the account.
+         * @description Retrieves total account balance information for a given Address or Contract Identifier. This includes the balances of STX Tokens, Fungible Tokens and Non-Fungible Tokens for the account.
          */
         get: operations["get_account_balance"];
         put?: never;
@@ -11266,8 +11266,10 @@ export interface operations {
                     "application/json": {
                         /** @description String quoted decimal number of the percentage of STX that have unlocked */
                         unlocked_percent: string;
-                        /** @description String quoted decimal number of the total possible number of STX */
+                        /** @description String quoted decimal number of the total circulating number of STX (at the input block height if provided, otherwise the current block height) */
                         total_stx: string;
+                        /** @description String quoted decimal number of total circulating STX supply in year 2050. STX supply grows approx 0.3% annually thereafter in perpetuity. */
+                        total_stx_year_2050: string;
                         /** @description String quoted decimal number of the STX that have been mined or unlocked */
                         unlocked_stx: string;
                         /** @description The block height at which this information was queried */
@@ -11350,10 +11352,14 @@ export interface operations {
                     "application/json": {
                         /** @description String quoted decimal number of the percentage of STX that have unlocked */
                         unlockedPercent: string;
-                        /** @description String quoted decimal number of the total possible number of STX */
+                        /** @description String quoted decimal number of the total circulating number of STX (at the input block height if provided, otherwise the current block height) */
                         totalStacks: string;
                         /** @description Same as `totalStacks` but formatted with comma thousands separators */
                         totalStacksFormatted: string;
+                        /** @description String quoted decimal number of total circulating STX supply in year 2050. STX supply grows approx 0.3% annually thereafter in perpetuity. */
+                        totalStacksYear2050: string;
+                        /** @description Same as `totalStacksYear2050` but formatted with comma thousands separators */
+                        totalStacksYear2050Formatted: string;
                         /** @description String quoted decimal number of the STX that have been mined or unlocked */
                         unlockedSupply: string;
                         /** @description Same as `unlockedSupply` but formatted with comma thousands separators */
@@ -11419,10 +11425,6 @@ export interface operations {
     get_nft_holdings: {
         parameters: {
             query: {
-                /**
-                 * @description token owner's STX address or Smart Contract ID
-                 * @example SPNWZ5V2TPWGQGVDR6T7B6RQ4XMGZ4PXTEE0VQ0S.marketplace-v3
-                 */
                 principal: string;
                 asset_identifiers?: string[];
                 /** @description max number of tokens to fetch */
@@ -17816,10 +17818,6 @@ export interface operations {
             };
             header?: never;
             path: {
-                /**
-                 * @description Stacks address or a Contract identifier
-                 * @example SP31DA6FTSJX2WGTZ69SFY11BH51NZMB0ZW97B5P0
-                 */
                 principal: string;
             };
             cookie?: never;
@@ -17834,6 +17832,8 @@ export interface operations {
                 content: {
                     "application/json": {
                         balance: string;
+                        /** @description Total STX balance considering pending mempool transactions */
+                        estimated_balance?: string;
                         total_sent: string;
                         total_received: string;
                         total_fees_sent: string;
@@ -17882,10 +17882,6 @@ export interface operations {
             };
             header?: never;
             path: {
-                /**
-                 * @description Stacks address or a Contract identifier
-                 * @example SP31DA6FTSJX2WGTZ69SFY11BH51NZMB0ZW97B5P0
-                 */
                 principal: string;
             };
             cookie?: never;
@@ -17902,6 +17898,8 @@ export interface operations {
                         /** StxBalance */
                         stx: {
                             balance: string;
+                            /** @description Total STX balance considering pending mempool transactions */
+                            estimated_balance?: string;
                             total_sent: string;
                             total_received: string;
                             total_fees_sent: string;
@@ -17970,10 +17968,6 @@ export interface operations {
             };
             header?: never;
             path: {
-                /**
-                 * @description Stacks address or a Contract identifier
-                 * @example SP31DA6FTSJX2WGTZ69SFY11BH51NZMB0ZW97B5P0
-                 */
                 principal: string;
             };
             cookie?: never;
@@ -19302,10 +19296,6 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                /**
-                 * @description Stacks address or a Contract identifier
-                 * @example SP31DA6FTSJX2WGTZ69SFY11BH51NZMB0ZW97B5P0
-                 */
                 principal: string;
                 /**
                  * @description Transaction ID
@@ -20682,10 +20672,6 @@ export interface operations {
             };
             header?: never;
             path: {
-                /**
-                 * @description Stacks address or a Contract identifier
-                 * @example SP31DA6FTSJX2WGTZ69SFY11BH51NZMB0ZW97B5P0
-                 */
                 principal: string;
             };
             cookie?: never;
@@ -22063,10 +22049,6 @@ export interface operations {
             };
             header?: never;
             path: {
-                /**
-                 * @description Stacks address or a Contract identifier
-                 * @example SP31DA6FTSJX2WGTZ69SFY11BH51NZMB0ZW97B5P0
-                 */
                 principal: string;
             };
             cookie?: never;
@@ -22178,10 +22160,6 @@ export interface operations {
             };
             header?: never;
             path: {
-                /**
-                 * @description Stacks address or a Contract identifier
-                 * @example SP31DA6FTSJX2WGTZ69SFY11BH51NZMB0ZW97B5P0
-                 */
                 principal: string;
             };
             cookie?: never;
@@ -22237,10 +22215,6 @@ export interface operations {
             };
             header?: never;
             path: {
-                /**
-                 * @description Stacks address or a Contract identifier
-                 * @example SP31DA6FTSJX2WGTZ69SFY11BH51NZMB0ZW97B5P0
-                 */
                 principal: string;
             };
             cookie?: never;
@@ -22890,10 +22864,6 @@ export interface operations {
             };
             header?: never;
             path: {
-                /**
-                 * @description Stacks address or a Contract identifier
-                 * @example SP31DA6FTSJX2WGTZ69SFY11BH51NZMB0ZW97B5P0
-                 */
                 principal: string;
             };
             cookie?: never;
@@ -22958,6 +22928,8 @@ export interface operations {
                              */
                             metadata?: {
                                 balance: string;
+                                /** @description Total STX balance considering pending mempool transactions */
+                                estimated_balance?: string;
                                 total_sent: string;
                                 total_received: string;
                                 total_fees_sent: string;
@@ -27156,6 +27128,8 @@ export interface operations {
                 limit?: number;
                 /** @description Result offset */
                 offset?: number;
+                /** @description Cursor for pagination */
+                cursor?: string;
             };
             header?: never;
             path?: never;
@@ -27176,6 +27150,9 @@ export interface operations {
                         offset: number;
                         /** @example 1 */
                         total: number;
+                        next_cursor: string | null;
+                        prev_cursor: string | null;
+                        cursor: string | null;
                         results: {
                             /** @description Set to `true` if block corresponds to the canonical chain tip */
                             canonical: boolean;
