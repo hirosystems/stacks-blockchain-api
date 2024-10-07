@@ -251,6 +251,7 @@ const populateBatchInserters = (db: PgWriteStore) => {
             entry.tx.token_transfer_recipient_address,
             entry.tx.contract_call_contract_id,
             entry.tx.smart_contract_contract_id,
+            entry.tx.sponsor_address,
           ]
             .filter((p): p is string => !!p)
             .forEach(p => principals.add(p));

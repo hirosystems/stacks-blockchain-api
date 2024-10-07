@@ -229,14 +229,14 @@
     {
       "type": "node",
       "request": "launch",
-      "name": "Jest",
+      "name": "Jest: API",
       "program": "${workspaceFolder}/node_modules/.bin/jest",
       "args": [
         "--testTimeout=3600000",
         "--runInBand",
         "--no-cache",
         "--config",
-        "${workspaceRoot}/tests/jest.config.js"
+        "${workspaceRoot}/tests/jest.config.api.js"
       ],
       "outputCapture": "std",
       "console": "integratedTerminal",

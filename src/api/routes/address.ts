@@ -15,7 +15,11 @@ import {
 } from '../controllers/db-controller';
 import { InvalidRequestError, InvalidRequestErrorType, NotFoundError } from '../../errors';
 import { decodeClarityValueToRepr } from 'stacks-encoding-native-js';
-import { handleChainTipCache, handleMempoolCache } from '../controllers/cache-controller';
+import {
+  handlePrincipalCache,
+  handlePrincipalMempoolCache,
+  handleTransactionCache,
+} from '../controllers/cache-controller';
 import { PgStore } from '../../datastore/pg-store';
 import { logger } from '../../logger';
 import { has0xPrefix } from '@hirosystems/api-toolkit';
@@ -40,7 +44,6 @@ import {
   AddressTransactionWithTransfers,
   AddressTransactionWithTransfersSchema,
   InboundStxTransfer,
-  InboundStxTransferSchema,
 } from '../schemas/entities/addresses';
 import { PaginatedResponse } from '../schemas/util';
 import { MempoolTransaction, MempoolTransactionSchema } from '../schemas/entities/transactions';
@@ -86,7 +89,7 @@ export const AddressRoutes: FastifyPluginAsync<
   fastify.get(
     '/:principal/stx',
     {
-      preHandler: handleChainTipCache,
+      preHandler: handlePrincipalMempoolCache,
       schema: {
         operationId: 'get_account_stx_balance',
         summary: 'Get account STX balance',
@@ -117,8 +120,14 @@ export const AddressRoutes: FastifyPluginAsync<
           stxAddress,
           blockHeight
         );
+        let mempoolBalance: bigint | undefined = undefined;
+        if (req.query.until_block === undefined) {
+          const delta = await fastify.db.getPrincipalMempoolStxBalanceDelta(sql, stxAddress);
+          mempoolBalance = stxBalanceResult.balance + delta;
+        }
         const result: AddressStxBalance = {
           balance: stxBalanceResult.balance.toString(),
+          estimated_balance: mempoolBalance?.toString(),
           total_sent: stxBalanceResult.totalSent.toString(),
           total_received: stxBalanceResult.totalReceived.toString(),
           total_fees_sent: stxBalanceResult.totalFeesSent.toString(),
@@ -142,11 +151,11 @@ export const AddressRoutes: FastifyPluginAsync<
   fastify.get(
     '/:principal/balances',
     {
-      preHandler: handleChainTipCache,
+      preHandler: handlePrincipalMempoolCache,
       schema: {
         operationId: 'get_account_balance',
         summary: 'Get account balances',
-        description: `Retrieves total account balance information for a given Address or Contract Identifier. This includes the balances of  STX Tokens, Fungible Tokens and Non-Fungible Tokens for the account.`,
+        description: `Retrieves total account balance information for a given Address or Contract Identifier. This includes the balances of STX Tokens, Fungible Tokens and Non-Fungible Tokens for the account.`,
         tags: ['Accounts'],
         params: Type.Object({
           principal: PrincipalSchema,
@@ -201,9 +210,16 @@ export const AddressRoutes: FastifyPluginAsync<
           };
         });
 
+        let mempoolBalance: bigint | undefined = undefined;
+        if (req.query.until_block === undefined) {
+          const delta = await fastify.db.getPrincipalMempoolStxBalanceDelta(sql, stxAddress);
+          mempoolBalance = stxBalanceResult.balance + delta;
+        }
+
         const result: AddressBalance = {
           stx: {
             balance: stxBalanceResult.balance.toString(),
+            estimated_balance: mempoolBalance?.toString(),
             total_sent: stxBalanceResult.totalSent.toString(),
             total_received: stxBalanceResult.totalReceived.toString(),
             total_fees_sent: stxBalanceResult.totalFeesSent.toString(),
@@ -234,7 +250,7 @@ export const AddressRoutes: FastifyPluginAsync<
   fastify.get(
     '/:principal/transactions',
     {
-      preHandler: handleChainTipCache,
+      preHandler: handlePrincipalCache,
       schema: {
         deprecated: true,
         operationId: 'get_account_transactions',
@@ -307,7 +323,7 @@ export const AddressRoutes: FastifyPluginAsync<
   fastify.get(
     '/:principal/:tx_id/with_transfers',
     {
-      preHandler: handleChainTipCache,
+      preHandler: handleTransactionCache,
       schema: {
         deprecated: true,
         operationId: 'get_single_transaction_with_transfers',
@@ -373,7 +389,7 @@ export const AddressRoutes: FastifyPluginAsync<
   fastify.get(
     '/:principal/transactions_with_transfers',
     {
-      preHandler: handleChainTipCache,
+      preHandler: handlePrincipalCache,
       schema: {
         deprecated: true,
         operationId: 'get_account_transactions_with_transfers',
@@ -485,7 +501,7 @@ export const AddressRoutes: FastifyPluginAsync<
   fastify.get(
     '/:principal/assets',
     {
-      preHandler: handleChainTipCache,
+      preHandler: handlePrincipalCache,
       schema: {
         operationId: 'get_account_assets',
         summary: 'Get account assets',
@@ -533,7 +549,7 @@ export const AddressRoutes: FastifyPluginAsync<
   fastify.get(
     '/:principal/stx_inbound',
     {
-      preHandler: handleChainTipCache,
+      preHandler: handlePrincipalCache,
       schema: {
         operationId: 'get_account_inbound',
         summary: 'Get inbound STX transfers',
@@ -624,7 +640,7 @@ export const AddressRoutes: FastifyPluginAsync<
   fastify.get(
     '/:principal/mempool',
     {
-      preHandler: handleMempoolCache,
+      preHandler: handlePrincipalMempoolCache,
       schema: {
         operationId: 'get_address_mempool_transactions',
         summary: 'Transactions for address',
@@ -671,7 +687,7 @@ export const AddressRoutes: FastifyPluginAsync<
   fastify.get(
     '/:principal/nonces',
     {
-      preHandler: handleMempoolCache,
+      preHandler: handlePrincipalMempoolCache,
       schema: {
         operationId: 'get_account_nonces',
         summary: 'Get the latest nonce used by an account',

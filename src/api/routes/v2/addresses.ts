@@ -1,4 +1,7 @@
-import { handleChainTipCache } from '../../../api/controllers/cache-controller';
+import {
+  handlePrincipalCache,
+  handleTransactionCache,
+} from '../../../api/controllers/cache-controller';
 import { AddressParamsSchema, AddressTransactionParamsSchema } from './schemas';
 import { parseDbAddressTransactionTransfer, parseDbTxWithAccountTransferSummary } from './helpers';
 import { InvalidRequestError, NotFoundError } from '../../../errors';
@@ -23,7 +26,7 @@ export const AddressRoutesV2: FastifyPluginAsync<
   fastify.get(
     '/:address/transactions',
     {
-      preHandler: handleChainTipCache,
+      preHandler: handlePrincipalCache,
       schema: {
         operationId: 'get_address_transactions',
         summary: 'Get address transactions',
@@ -71,7 +74,7 @@ export const AddressRoutesV2: FastifyPluginAsync<
   fastify.get(
     '/:address/transactions/:tx_id/events',
     {
-      preHandler: handleChainTipCache,
+      preHandler: handleTransactionCache,
       schema: {
         operationId: 'get_address_transaction_events',
         summary: 'Get events for an address transaction',
