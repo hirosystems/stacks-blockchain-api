@@ -9,6 +9,7 @@ services:
   clarinet-devnet:
     # depends_on:
     #   - clarinet-builder
+    # network_mode: "host"  # equivalent to --network host
     networks:
       - backend
     restart: on-failure
@@ -28,6 +29,7 @@ services:
     environment:
       - CLARINET_VERSION=v2.8.0
       - STACKS_EVENT_OBSERVER=host.docker.internal:3700
+      - PG_DATABASE=stacks_api
     extra_hosts:
       - 'host.docker.internal:host-gateway' # fixes `host.docker.internal` on linux hosts
     privileged: true

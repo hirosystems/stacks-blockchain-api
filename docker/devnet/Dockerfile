@@ -12,7 +12,7 @@ RUN apk add --no-cache \
 # Build Clarinet from source
 RUN git clone https://github.com/hirosystems/clarinet.git && \
     cd clarinet && \
-    git checkout 1bdc272 && \
+    git checkout 1717a4e && \
     cargo build --release
 
 FROM --platform=$BUILDPLATFORM docker:dind
@@ -37,7 +37,7 @@ WORKDIR /app
 VOLUME /chainstate
 
 # Stacks API
-EXPOSE 3700
+# EXPOSE 3700
 # Stacks-node RPC
 EXPOSE 20443
 # Bitcoind JSON-RPC
