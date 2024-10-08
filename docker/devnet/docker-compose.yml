@@ -28,6 +28,7 @@ services:
     environment:
       - CLARINET_VERSION=v2.8.0
       - STACKS_EVENT_OBSERVER=host.docker.internal:3700
+      - PG_DATABASE=stacks_api
     extra_hosts:
       - 'host.docker.internal:host-gateway' # fixes `host.docker.internal` on linux hosts
     privileged: true
