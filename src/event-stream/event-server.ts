@@ -1064,6 +1064,17 @@ export async function startEventServer(opts: {
     }
   });
 
+  app.post('/proposal_response', async (req, res) => {
+    try {
+      await handleRawEventRequest(req);
+      logger.info('Received proposal_response message (stored in db but otherwise not processed)');
+      await res.status(200).send({ result: 'ok' });
+    } catch (error) {
+      logger.error(error, 'error processing core-node /proposal_response');
+      await res.status(500).send({ error: error });
+    }
+  });
+
   app.post('*', async (req, res) => {
     await res.status(404).send({ error: `no route handler for ${req.url}` });
     logger.error(`Unexpected event on path ${req.url}`);
