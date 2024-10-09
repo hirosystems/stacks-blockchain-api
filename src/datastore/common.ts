@@ -660,7 +660,9 @@ export interface DataStoreTxEventData {
   contractLogEvents: DbSmartContractEvent[];
   smartContracts: DbSmartContract[];
   names: DbBnsName[];
+  namesV2: DbBnsNameV2[];
   namespaces: DbBnsNamespace[];
+  namespacesV2: DbBnsNamespaceV2[];
   pox2Events: DbPoxSyntheticEvent[];
   pox3Events: DbPoxSyntheticEvent[];
   pox4Events: DbPoxSyntheticEvent[];
@@ -760,6 +762,29 @@ export interface DbBnsNamespace {
   canonical: boolean;
 }
 
+export interface DbBnsNamespaceV2 {
+  id?: number;
+  namespace_id: string;
+  namespace_manager?: string;
+  manager_transferable: boolean;
+  manager_frozen: boolean;
+  namespace_import: string;
+  reveal_block: number;
+  launched_at?: number;
+  launch_block: number;
+  lifetime: number;
+  can_update_price_function: boolean;
+  buckets: string;
+  base: bigint;
+  coeff: bigint;
+  nonalpha_discount: bigint;
+  no_vowel_discount: bigint;
+  status?: string;
+  tx_id: string;
+  tx_index: number;
+  canonical: boolean;
+}
+
 export interface DbBnsName {
   id?: number;
   name: string;
@@ -772,6 +797,25 @@ export interface DbBnsName {
   resolver?: string;
   zonefile: string;
   zonefile_hash: string;
+  tx_id: string;
+  tx_index: number;
+  event_index?: number;
+  status?: string;
+  canonical: boolean;
+}
+
+export interface DbBnsNameV2 {
+  id?: number;
+  fullName: string;
+  name: string;
+  namespace_id: string;
+  registered_at?: number;
+  imported_at?: number;
+  hashed_salted_fqn_preorder?: string;
+  preordered_by?: string;
+  renewal_height: number;
+  stx_burn: number;
+  owner: string;
   tx_id: string;
   tx_index: number;
   event_index?: number;
@@ -1114,6 +1158,8 @@ interface ReOrgEntities {
   smartContracts: number;
   names: number;
   namespaces: number;
+  namesV2: number;
+  namespacesV2: number;
   subdomains: number;
   poxSigners: number;
   poxCycles: number;
@@ -1585,6 +1631,29 @@ export interface BnsNameInsertValues {
   microblock_canonical: boolean;
 }
 
+export interface BnsNameV2InsertValues {
+  fullName: string;
+  name: string;
+  namespace_id: string;
+  registered_at: number | null;
+  imported_at: number | null;
+  hashed_salted_fqn_preorder: string | null;
+  preordered_by: string | null;
+  renewal_height: number;
+  stx_burn: number;
+  owner: string;
+  tx_id: PgBytea;
+  tx_index: number;
+  event_index: number | null;
+  status: string | null;
+  canonical: boolean;
+  index_block_hash: PgBytea;
+  parent_index_block_hash: PgBytea;
+  microblock_hash: PgBytea;
+  microblock_sequence: number;
+  microblock_canonical: boolean;
+}
+
 export interface BnsSubdomainInsertValues {
   name: string;
   namespace_id: string;
@@ -1618,6 +1687,33 @@ export interface BnsNamespaceInsertValues {
   nonalpha_discount: PgNumeric;
   no_vowel_discount: PgNumeric;
   lifetime: number;
+  status: string | null;
+  tx_index: number;
+  tx_id: PgBytea;
+  canonical: boolean;
+  index_block_hash: PgBytea;
+  parent_index_block_hash: PgBytea;
+  microblock_hash: PgBytea;
+  microblock_sequence: number;
+  microblock_canonical: boolean;
+}
+
+export interface BnsNamespaceV2InsertValues {
+  namespace_id: string;
+  namespace_manager: string | null;
+  manager_transferable: boolean;
+  manager_frozen: boolean;
+  namespace_import: string;
+  reveal_block: number;
+  launched_at: number | null;
+  launch_block: number;
+  lifetime: number;
+  can_update_price_function: boolean;
+  buckets: string;
+  base: string;
+  coeff: string;
+  nonalpha_discount: string;
+  no_vowel_discount: string;
   status: string | null;
   tx_index: number;
   tx_id: PgBytea;
