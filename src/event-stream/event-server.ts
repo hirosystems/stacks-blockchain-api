@@ -1056,7 +1056,11 @@ export async function startEventServer(opts: {
   app.post('/stackerdb_chunks', async (req, res) => {
     try {
       await handleRawEventRequest(req);
-      logger.info('Received stackerdb_chunks message (stored in db but otherwise not processed)');
+      if (isProdEnv) {
+        logger.warn(
+          'Received stackerdb_chunks message -- event not required for API operations and can cause db bloat and performance degradation in production'
+        );
+      }
       await res.status(200).send({ result: 'ok' });
     } catch (error) {
       logger.error(error, 'error processing core-node /stackerdb_chunks');
@@ -1067,7 +1071,11 @@ export async function startEventServer(opts: {
   app.post('/proposal_response', async (req, res) => {
     try {
       await handleRawEventRequest(req);
-      logger.info('Received proposal_response message (stored in db but otherwise not processed)');
+      if (isProdEnv) {
+        logger.warn(
+          'Received proposal_response message -- event not required for API operations and can cause db bloat and performance degradation in production'
+        );
+      }
       await res.status(200).send({ result: 'ok' });
     } catch (error) {
       logger.error(error, 'error processing core-node /proposal_response');
