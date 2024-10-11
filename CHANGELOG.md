@@ -1,3 +1,10 @@
+## [8.1.0-beta.2](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.1.0-beta.1...v8.1.0-beta.2) (2024-10-11)
+
+
+### Bug Fixes
+
+* add declaration copy step in build ([#2110](https://github.com/hirosystems/stacks-blockchain-api/issues/2110)) ([2b6aa6a](https://github.com/hirosystems/stacks-blockchain-api/commit/2b6aa6a6971e029bca8b7a7cd4c171ae8aca4a03))
+
 ## [8.1.0-beta.1](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.0.3...v8.1.0-beta.1) (2024-10-07)
 
 
