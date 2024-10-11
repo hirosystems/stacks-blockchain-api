@@ -236,9 +236,7 @@
         "--runInBand",
         "--no-cache",
         "--config",
-        "${workspaceRoot}/tests/jest.config.api.js",
-        "-t",
-        "socket-io"
+        "${workspaceRoot}/tests/jest.config.api.js"
       ],
       "outputCapture": "std",
       "console": "integratedTerminal",
