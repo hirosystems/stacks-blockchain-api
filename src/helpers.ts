@@ -33,8 +33,7 @@ export function getIbdBlockHeight(): number | undefined {
   }
 }
 
-export function getStxFaucetNetworks(): StacksNetwork[] {
-  const networks: StacksNetwork[] = [getStacksTestnetNetwork()];
+export function getStxFaucetNetwork(): StacksNetwork {
   const faucetNodeHostOverride: string | undefined = process.env.STACKS_FAUCET_NODE_HOST;
   if (faucetNodeHostOverride) {
     const faucetNodePortOverride: string | undefined = process.env.STACKS_FAUCET_NODE_PORT;
@@ -46,9 +45,9 @@ export function getStxFaucetNetworks(): StacksNetwork[] {
     const network = new StacksTestnet({
       url: `http://${faucetNodeHostOverride}:${faucetNodePortOverride}`,
     });
-    networks.push(network);
+    return network;
   }
-  return networks;
+  return getStacksTestnetNetwork();
 }
 
 function createEnumChecker<T extends string, TEnumValue extends number>(enumVariable: {
