@@ -1,3 +1,10 @@
+## [8.0.4](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.0.3...v8.0.4) (2024-10-14)
+
+
+### Bug Fixes
+
+* /extended/v2/pox/cycles/{n}/signers/{key}/stackers returning 500 error ([d6e0010](https://github.com/hirosystems/stacks-blockchain-api/commit/d6e0010ca7104d4fdf3a1593a41b29e6d56578bc))
+
 ## [8.0.3](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.0.2...v8.0.3) (2024-10-01)
 
 
