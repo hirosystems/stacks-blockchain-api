@@ -2768,21 +2768,35 @@ export class PgWriteStore extends PgStore {
   }
 
   /**
-   * Deletes mempool txs older than `STACKS_MEMPOOL_TX_GARBAGE_COLLECTION_THRESHOLD` blocks (default 256).
+   * Deletes mempool txs that should be dropped by block age or time age depending on which Stacks
+   * epoch we're on.
    * @param sql - DB client
    * @returns List of deleted `tx_id`s
    */
   async deleteGarbageCollectedMempoolTxs(sql: PgSqlClient): Promise<{ deletedTxs: string[] }> {
-    const blockThreshold = parseInt(
-      process.env['STACKS_MEMPOOL_TX_GARBAGE_COLLECTION_THRESHOLD'] ?? '256'
-    );
-    // TODO: Use DELETE instead of UPDATE once we implement a non-archival API replay mode.
+    // Is 3.0 active? Check if the latest block was signed by signers.
+    const nakamotoActive =
+      (
+        await sql<{ index_block_hash: string }[]>`
+          SELECT b.index_block_hash
+          FROM blocks AS b
+          INNER JOIN chain_tip AS c ON c.index_block_hash = b.index_block_hash
+          WHERE b.signer_bitvec IS NOT NULL
+          LIMIT 1
+        `
+      ).count > 0;
+    // If 3.0 is active, drop transactions older than 2560 minutes.
+    // If 2.5 or earlier is active, drop transactions older than 256 blocks.
     const deletedTxResults = await sql<{ tx_id: string }[]>`
       WITH pruned AS (
         UPDATE mempool_txs
         SET pruned = TRUE, status = ${DbTxStatus.DroppedApiGarbageCollect}
-        WHERE pruned = FALSE
-          AND receipt_block_height <= (SELECT block_height - ${blockThreshold} FROM chain_tip)
+        WHERE pruned = FALSE AND
+          ${
+            nakamotoActive
+              ? sql`receipt_time <= EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - INTERVAL '2560 minutes'))::int`
+              : sql`receipt_block_height <= (SELECT block_height - 256 FROM chain_tip)`
+          }
         RETURNING tx_id
       ),
       count_update AS (

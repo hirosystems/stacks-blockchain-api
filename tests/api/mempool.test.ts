@@ -42,41 +42,74 @@ describe('mempool tests', () => {
     await migrate('down');
   });
 
-  test('garbage collection', async () => {
-    const garbageThresholdOrig = process.env.STACKS_MEMPOOL_TX_GARBAGE_COLLECTION_THRESHOLD;
-    process.env.STACKS_MEMPOOL_TX_GARBAGE_COLLECTION_THRESHOLD = '2';
-    try {
-      // Insert 5 blocks with 1 mempool tx each.
-      for (let block_height = 1; block_height <= 5; block_height++) {
-        const block = new TestBlockBuilder({
-          block_height: block_height,
-          index_block_hash: `0x0${block_height}`,
-          parent_index_block_hash: `0x0${block_height - 1}`,
-        })
-          .addTx({ tx_id: `0x111${block_height}`, nonce: block_height })
-          .build();
-        await db.update(block);
-        const mempoolTx = testMempoolTx({ tx_id: `0x0${block_height}` });
-        await db.updateMempoolTxs({ mempoolTxs: [mempoolTx] });
-      }
-
-      // Make sure we only have mempool txs for block_height >= 3
-      const mempoolTxResult = await db.getMempoolTxList({
-        limit: 10,
-        offset: 0,
-        includeUnanchored: false,
-      });
-      const mempoolTxs = mempoolTxResult.results;
-      expect(mempoolTxs.length).toEqual(3);
-      const txIds = mempoolTxs.map(e => e.tx_id).sort();
-      expect(txIds).toEqual(['0x03', '0x04', '0x05']);
-    } finally {
-      if (typeof garbageThresholdOrig === 'undefined') {
-        delete process.env.STACKS_MEMPOOL_TX_GARBAGE_COLLECTION_THRESHOLD;
-      } else {
-        process.env.STACKS_MEMPOOL_TX_GARBAGE_COLLECTION_THRESHOLD = garbageThresholdOrig;
-      }
+  test('garbage collection pre 3.0', async () => {
+    const hexFromHeight = (height: number) => {
+      const hex = height.toString(16);
+      return hex.length % 2 == 1 ? `0${hex}` : hex;
+    };
+    // Insert more than 256 blocks with 1 mempool tx each.
+    for (let block_height = 1; block_height <= 259; block_height++) {
+      const block = new TestBlockBuilder({
+        block_height: block_height,
+        index_block_hash: `0x${hexFromHeight(block_height)}`,
+        parent_index_block_hash: `0x${hexFromHeight(block_height - 1)}`,
+      })
+        .addTx({ tx_id: `0x11${hexFromHeight(block_height)}`, nonce: block_height })
+        .build();
+      await db.update(block);
+      const mempoolTx = testMempoolTx({ tx_id: `0x${hexFromHeight(block_height)}` });
+      await db.updateMempoolTxs({ mempoolTxs: [mempoolTx] });
     }
+    await db.update(
+      new TestBlockBuilder({
+        block_height: 260,
+        index_block_hash: `0xff`,
+        parent_index_block_hash: `0x0103`,
+      }).build()
+    );
+
+    // Make sure we only have mempool txs for block_height >= 3
+    const mempoolTxResult = await db.getMempoolTxList({
+      limit: 10,
+      offset: 0,
+      includeUnanchored: false,
+    });
+    expect(mempoolTxResult.total).toEqual(257);
+  });
+
+  test('garbage collection post 3.0', async () => {
+    // Insert 3 txs spaced out so garbage collection kicks in.
+    for (let block_height = 1; block_height <= 3; block_height++) {
+      const block = new TestBlockBuilder({
+        block_height: block_height,
+        index_block_hash: `0x0${block_height}`,
+        parent_index_block_hash: `0x0${block_height - 1}`,
+        signer_bitvec: '1111',
+      })
+        .addTx({ tx_id: `0x111${block_height}`, nonce: block_height })
+        .build();
+      await db.update(block);
+      const mempoolTx = testMempoolTx({ tx_id: `0x0${block_height}`, receipt_time: 1 });
+      await db.updateMempoolTxs({ mempoolTxs: [mempoolTx] });
+    }
+
+    const mempoolTx = testMempoolTx({ tx_id: `0x0fff` });
+    await db.updateMempoolTxs({ mempoolTxs: [mempoolTx] });
+    await db.update(
+      new TestBlockBuilder({
+        block_height: 4,
+        index_block_hash: `0xff`,
+        parent_index_block_hash: `0x03`,
+      }).build()
+    );
+
+    // Make sure we only have the latest mempool tx
+    const mempoolTxResult = await db.getMempoolTxList({
+      limit: 10,
+      offset: 0,
+      includeUnanchored: false,
+    });
+    expect(mempoolTxResult.total).toEqual(1);
   });
 
   test('mempool stats', async () => {

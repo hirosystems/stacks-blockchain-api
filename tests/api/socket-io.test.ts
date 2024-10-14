@@ -230,19 +230,15 @@ describe('socket-io', () => {
   });
 
   test('socket-io > mempool txs', async () => {
-    process.env.STACKS_MEMPOOL_TX_GARBAGE_COLLECTION_THRESHOLD = '0';
-
     const address = apiServer.address;
     const socket = io(`http://${address}`, {
       reconnection: false,
       query: { subscriptions: 'mempool' },
     });
-    const txWaiters: Waiter<MempoolTransaction | Transaction>[] = [waiter(), waiter()];
+    const txWaiters: Waiter<MempoolTransaction>[] = [waiter()];
     socket.on('mempool', tx => {
       if (tx.tx_status === 'pending') {
         txWaiters[0].finish(tx);
-      } else {
-        txWaiters[1].finish(tx);
       }
     });
 
@@ -258,21 +254,9 @@ describe('socket-io', () => {
     await db.updateMempoolTxs({ mempoolTxs: [mempoolTx] });
     const pendingResult = await txWaiters[0];
 
-    const block2 = new TestBlockBuilder({
-      block_height: 2,
-      index_block_hash: '0x02',
-      parent_index_block_hash: '0x01',
-    })
-      .addTx({ tx_id: '0x0201' })
-      .build();
-    await db.update(block2);
-    const droppedResult = await txWaiters[1];
-
     try {
       expect(pendingResult.tx_id).toEqual('0x01');
       expect(pendingResult.tx_status).toEqual('pending');
-      expect(droppedResult.tx_id).toEqual('0x01');
-      expect(droppedResult.tx_status).toEqual('dropped_stale_garbage_collect');
     } finally {
       socket.emit('unsubscribe', 'mempool');
       socket.close();
