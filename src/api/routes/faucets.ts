@@ -363,7 +363,7 @@ export const FaucetRoutes: FastifyPluginAsync<
           .map(r => now - r.occurred_at)
           .filter(r => r <= window);
         if (requestsInWindow.length >= triggerCount) {
-          logger.warn(`STX faucet rate limit hit for address ${recipientAddress}`);
+          logger.warn(`StxFaucet rate limit hit for address ${recipientAddress}`);
           return await reply.status(429).send({
             error: 'Too many requests',
             success: false,
@@ -372,12 +372,12 @@ export const FaucetRoutes: FastifyPluginAsync<
 
         // Start with a random key index. We will try others in order if this one fails.
         let keyIndex = Math.round(Math.random() * (STX_FAUCET_KEYS.length - 1));
-        let attempts = 0;
+        let keysAttempted = 0;
         let sendSuccess: { txId: string; txRaw: string } | undefined;
         const stxAmount = await calculateSTXFaucetAmount(STX_FAUCET_NETWORK, isStackingReq);
         const rpcClient = clientFromNetwork(STX_FAUCET_NETWORK);
         do {
-          attempts++;
+          keysAttempted++;
           const senderKey = STX_FAUCET_KEYS[keyIndex];
           const senderAddress = getAddressFromPrivateKey(senderKey, TransactionVersion.Testnet);
           logger.debug(`StxFaucet attempting faucet transaction from sender: ${senderAddress}`);
@@ -401,8 +401,8 @@ export const FaucetRoutes: FastifyPluginAsync<
               error.message?.includes('ConflictingNonceInMempool') ||
               error.message?.includes('TooMuchChaining')
             ) {
-              if (attempts == STX_FAUCET_KEYS.length) {
-                logger.error(
+              if (keysAttempted == STX_FAUCET_KEYS.length) {
+                logger.warn(
                   `StxFaucet attempts exhausted for all faucet keys. Last error: ${error}`
                 );
                 throw error;
