@@ -468,22 +468,6 @@ export function assertNotNullish<T>(
   }
 }
 
-function intMax(args: bigint[]): bigint;
-function intMax(args: number[]): number;
-function intMax(args: bigint[] | number[]): any {
-  if (args.length === 0) {
-    throw new Error(`empty array not supported in intMax`);
-  } else if (typeof args[0] === 'bigint') {
-    return (args as bigint[]).reduce((m, e) => (e > m ? e : m));
-  } else if (typeof args[0] === 'number') {
-    return Math.max(...(args as number[]));
-  } else {
-    // eslint-disable-next-line @typescript-eslint/ban-types
-    throw new Error(`Unsupported type for intMax: ${(args[0] as object).constructor.name}`);
-  }
-}
-export { intMax };
-
 export class BigIntMath {
   static abs(a: bigint): bigint {
     return a < 0n ? -a : a;
