@@ -409,7 +409,7 @@ export const FaucetRoutes: FastifyPluginAsync<
               }
               // Try with the next key. Wrap around the keys array if necessary.
               keyIndex++;
-              if (keyIndex > STX_FAUCET_KEYS.length) keyIndex = 0;
+              if (keyIndex >= STX_FAUCET_KEYS.length) keyIndex = 0;
               logger.warn(
                 `StxFaucet transaction failed for sender ${senderAddress}, trying with next key: ${error}`
               );
