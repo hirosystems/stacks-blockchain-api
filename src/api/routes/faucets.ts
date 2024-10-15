@@ -214,7 +214,7 @@ export const FaucetRoutes: FastifyPluginAsync<
   const FAUCET_STACKING_WINDOW = 2 * 24 * 60 * 60 * 1000; // 2 days
   const FAUCET_STACKING_TRIGGER_COUNT = 1;
 
-  const STX_FAUCET_NETWORK = getStxFaucetNetwork();
+  const STX_FAUCET_NETWORK = () => getStxFaucetNetwork();
   const STX_FAUCET_KEYS = (process.env.FAUCET_PRIVATE_KEY ?? testnetKeys[0].secretKey).split(',');
 
   async function calculateSTXFaucetAmount(
@@ -374,8 +374,8 @@ export const FaucetRoutes: FastifyPluginAsync<
         let keyIndex = Math.round(Math.random() * (STX_FAUCET_KEYS.length - 1));
         let keysAttempted = 0;
         let sendSuccess: { txId: string; txRaw: string } | undefined;
-        const stxAmount = await calculateSTXFaucetAmount(STX_FAUCET_NETWORK, isStackingReq);
-        const rpcClient = clientFromNetwork(STX_FAUCET_NETWORK);
+        const stxAmount = await calculateSTXFaucetAmount(STX_FAUCET_NETWORK(), isStackingReq);
+        const rpcClient = clientFromNetwork(STX_FAUCET_NETWORK());
         do {
           keysAttempted++;
           const senderKey = STX_FAUCET_KEYS[keyIndex];
@@ -385,7 +385,7 @@ export const FaucetRoutes: FastifyPluginAsync<
           const tx = await buildSTXFaucetTx(
             recipientAddress,
             stxAmount,
-            STX_FAUCET_NETWORK,
+            STX_FAUCET_NETWORK(),
             senderKey,
             BigInt(nonces.possibleNextNonce)
           );
