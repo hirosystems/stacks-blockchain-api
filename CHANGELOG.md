@@ -1,3 +1,11 @@
+## [8.1.0-beta.3](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.1.0-beta.2...v8.1.0-beta.3) (2024-10-15)
+
+
+### Bug Fixes
+
+* randomize key order for testnet stx faucet transactions ([#2120](https://github.com/hirosystems/stacks-blockchain-api/issues/2120)) ([f7265f9](https://github.com/hirosystems/stacks-blockchain-api/commit/f7265f952d3e4232546c1cd0792eaf12444a0af7))
+* update mempool garbage collection logic for 3.0 ([#2117](https://github.com/hirosystems/stacks-blockchain-api/issues/2117)) ([8b10b69](https://github.com/hirosystems/stacks-blockchain-api/commit/8b10b693861b2ab7a0f9a8c2bfc321886e9d1f3d))
+
 ## [8.1.0-beta.2](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.1.0-beta.1...v8.1.0-beta.2) (2024-10-11)
 
 
