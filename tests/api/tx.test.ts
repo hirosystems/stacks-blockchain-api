@@ -2326,6 +2326,76 @@ describe('tx tests', () => {
     );
   });
 
+  test('tx list - filter by searchTerm using trigram', async () => {
+    const transferTokenTx = {
+      tx_id: '0x1111',
+      contract_call_function_name: 'transferToken',
+    };
+
+    const stakeTokenTx = {
+      tx_id: '0x2222',
+      contract_call_function_name: 'stakeToken',
+    };
+
+    const burnTokenTx = {
+      tx_id: '0x3333',
+      contract_call_function_name: 'burnToken',
+    };
+
+    const block1 = new TestBlockBuilder({ block_height: 1, index_block_hash: '0x01' })
+      .addTx(transferTokenTx)
+      .build();
+    await db.update(block1);
+
+    const block2 = new TestBlockBuilder({
+      block_height: 2,
+      index_block_hash: '0x02',
+      parent_block_hash: block1.block.block_hash,
+      parent_index_block_hash: block1.block.index_block_hash,
+    })
+      .addTx(stakeTokenTx)
+      .addTx(burnTokenTx)
+      .build();
+    await db.update(block2);
+
+    const searchTerm = 'transfer';
+
+    const txsReq = await supertest(api.server).get(`/extended/v1/tx?search_term=${searchTerm}`);
+    expect(txsReq.status).toBe(200);
+    expect(txsReq.body).toEqual(
+      expect.objectContaining({
+        results: [
+          expect.objectContaining({
+            tx_id: transferTokenTx.tx_id,
+          }),
+        ],
+      })
+    );
+
+    const broadSearchTerm = 'token';
+
+    const txsReqBroad = await supertest(api.server).get(
+      `/extended/v1/tx?search_term=${broadSearchTerm}`
+    );
+    expect(txsReqBroad.status).toBe(200);
+
+    expect(txsReqBroad.body).toEqual(
+      expect.objectContaining({
+        results: [
+          expect.objectContaining({
+            tx_id: burnTokenTx.tx_id,
+          }),
+          expect.objectContaining({
+            tx_id: stakeTokenTx.tx_id,
+          }),
+          expect.objectContaining({
+            tx_id: transferTokenTx.tx_id,
+          }),
+        ],
+      })
+    );
+  });
+
   test('tx list - filter by contract id/name', async () => {
     const testContractAddr = 'ST27W5M8BRKA7C5MZE2R1S1F4XTPHFWFRNHA9M04Y.hello-world';
     const testContractFnName = 'test-contract-fn';
