@@ -1,6 +1,5 @@
-FROM --platform=$BUILDPLATFORM rust:1.68-alpine as clarinet-builder
+FROM --platform=$BUILDPLATFORM rust:alpine as clarinet-builder
 
-ARG CLARINET_VERSION=v2.8.0
 WORKDIR /usr/src/
 
 RUN apk add --no-cache \
@@ -12,7 +11,7 @@ RUN apk add --no-cache \
 # Build Clarinet from source
 RUN git clone https://github.com/hirosystems/clarinet.git && \
     cd clarinet && \
-    git checkout 1717a4e && \
+    git checkout main && \
     cargo build --release
 
 FROM --platform=$BUILDPLATFORM docker:dind
