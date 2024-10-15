@@ -29,6 +29,12 @@
 * prune and restore mempool transactions with equal nonces for the same sender ([#2091](https://github.com/hirosystems/stacks-blockchain-api/issues/2091)) ([1ce75de](https://github.com/hirosystems/stacks-blockchain-api/commit/1ce75de8f7866c6e528b56706e624c4600b17412))
 * use total_count CTE and return it with the parsed results ([#2073](https://github.com/hirosystems/stacks-blockchain-api/issues/2073)) ([bb30911](https://github.com/hirosystems/stacks-blockchain-api/commit/bb30911bae0d3cb5fb26312d84dce7b04f5ffa97))
 
+## [8.0.4](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.0.3...v8.0.4) (2024-10-14)
+
+### Bug Fixes
+
+* /extended/v2/pox/cycles/{n}/signers/{key}/stackers returning 500 error ([d6e0010](https://github.com/hirosystems/stacks-blockchain-api/commit/d6e0010ca7104d4fdf3a1593a41b29e6d56578bc))
+
 ## [8.0.3](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.0.2...v8.0.3) (2024-10-01)
 
 

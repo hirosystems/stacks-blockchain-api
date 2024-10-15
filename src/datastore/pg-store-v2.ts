@@ -914,9 +914,9 @@ export class PgStoreV2 extends BasePgStoreModule {
             cs.stacker_type,
             COUNT(*) OVER()::int AS total
         FROM pox_sets ps
-        LEFT JOIN combined_stackers cs ON ps.signing_key = cs.signer_key
-        WHERE ps.canonical = TRUE
-          AND ps.cycle_number = ${cycleNumber}
+        INNER JOIN combined_stackers cs ON ps.signing_key = cs.signer_key
+        WHERE ps.canonical = TRUE 
+          AND ps.cycle_number = ${cycleNumber} 
           AND ps.signing_key = ${signerKey}
         ORDER BY locked DESC
         LIMIT ${limit}
