@@ -239,6 +239,12 @@ export const FaucetRoutes: FastifyPluginAsync<
     return FAUCET_DEFAULT_STX_AMOUNT;
   }
 
+  async function fetchNetworkChainID(network: StacksNetwork): Promise<number> {
+    const rpcClient = clientFromNetwork(network);
+    const info = await rpcClient.getInfo();
+    return info.network_id;
+  }
+
   async function buildSTXFaucetTx(
     recipient: string,
     amount: bigint,
@@ -258,6 +264,10 @@ export const FaucetRoutes: FastifyPluginAsync<
         nonce,
       };
       if (fee) options.fee = fee;
+
+      // Detect possible custom network chain ID
+      network.chainId = await fetchNetworkChainID(network);
+
       return await makeSTXTokenTransfer(options);
     } catch (error: any) {
       if (
