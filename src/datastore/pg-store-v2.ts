@@ -81,7 +81,7 @@ export class PgStoreV2 extends BasePgStoreModule {
           ORDER BY block_height DESC
         )
         SELECT offset_block_height as block_height
-        FROM ordered_blocks 
+        FROM ordered_blocks
         WHERE index_block_hash = ${cursor ?? sql`(SELECT index_block_hash FROM chain_tip LIMIT 1)`}
         LIMIT 1
       ),
@@ -518,6 +518,12 @@ export class PgStoreV2 extends BasePgStoreModule {
             FROM nft_events
             WHERE sender = ${args.address} OR recipient = ${args.address}
           )
+        ),
+        count AS (
+          SELECT COUNT(*)::int AS total_count
+          FROM address_txs
+          INNER JOIN txs USING (tx_id, index_block_hash, microblock_hash)
+          WHERE canonical = TRUE AND microblock_canonical = TRUE
         )
         SELECT
           ${sql(TX_COLUMNS)},
@@ -572,7 +578,7 @@ export class PgStoreV2 extends BasePgStoreModule {
             SELECT COUNT(*)::int FROM nft_events
             WHERE ${eventAcctCond} AND asset_event_type_id = ${DbAssetEventTypeId.Burn}
           ) AS nft_burn,
-          (COUNT(*) OVER())::int AS count
+          (SELECT total_count FROM count) AS count
         FROM address_txs
         INNER JOIN txs USING (tx_id, index_block_hash, microblock_hash)
         WHERE canonical = TRUE AND microblock_canonical = TRUE
@@ -712,33 +718,33 @@ export class PgStoreV2 extends BasePgStoreModule {
                 AND end_cycle_id = ${cycleNumber + 1}
             ORDER BY stacker, block_height DESC, tx_index DESC, event_index DESC
         ), delegated_stackers AS (
-            SELECT DISTINCT ON (main.stacker) 
-                main.stacker, 
+            SELECT DISTINCT ON (main.stacker)
+                main.stacker,
                 sk.signer_key
             FROM pox4_events main
             LEFT JOIN signer_keys sk ON main.delegator = sk.stacker
-            WHERE main.canonical = true 
+            WHERE main.canonical = true
                 AND main.microblock_canonical = true
                 AND main.name IN ('delegate-stack-stx', 'delegate-stack-increase', 'delegate-stack-extend')
-                AND main.start_cycle_id <= ${cycleNumber} 
+                AND main.start_cycle_id <= ${cycleNumber}
                 AND main.end_cycle_id > ${cycleNumber}
             ORDER BY main.stacker, main.block_height DESC, main.microblock_sequence DESC, main.tx_index DESC, main.event_index DESC
         ), solo_stackers AS (
-            SELECT DISTINCT ON (stacker) 
-                stacker, 
+            SELECT DISTINCT ON (stacker)
+                stacker,
                 signer_key
             FROM pox4_events
             WHERE canonical = true AND microblock_canonical = true
                 AND name in ('stack-stx', 'stacks-increase', 'stack-extend')
-                AND start_cycle_id <= ${cycleNumber} 
+                AND start_cycle_id <= ${cycleNumber}
                 AND end_cycle_id > ${cycleNumber}
             ORDER BY stacker, block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
         )
-        SELECT 
+        SELECT
             ps.signing_key,
-            ps.weight, 
-            ps.stacked_amount, 
-            ps.weight_percent, 
+            ps.weight,
+            ps.stacked_amount,
+            ps.weight_percent,
             ps.stacked_amount_percent,
             COUNT(DISTINCT ds.stacker)::int AS pooled_stacker_count,
             COUNT(DISTINCT ss.stacker)::int AS solo_stacker_count,
@@ -782,20 +788,20 @@ export class PgStoreV2 extends BasePgStoreModule {
                 AND end_cycle_id = ${cycleNumber + 1}
             ORDER BY stacker, block_height DESC, tx_index DESC, event_index DESC
         ), delegated_stackers AS (
-            SELECT DISTINCT ON (main.stacker) 
-                main.stacker, 
+            SELECT DISTINCT ON (main.stacker)
+                main.stacker,
                 sk.signer_key
             FROM pox4_events main
             LEFT JOIN signer_keys sk ON main.delegator = sk.stacker
-            WHERE main.canonical = true 
+            WHERE main.canonical = true
                 AND main.microblock_canonical = true
                 AND main.name IN ('delegate-stack-stx', 'delegate-stack-increase', 'delegate-stack-extend')
-                AND main.start_cycle_id <= ${cycleNumber} 
+                AND main.start_cycle_id <= ${cycleNumber}
                 AND main.end_cycle_id > ${cycleNumber}
             ORDER BY main.stacker, main.block_height DESC, main.microblock_sequence DESC, main.tx_index DESC, main.event_index DESC
         ), solo_stackers AS (
-            SELECT DISTINCT ON (stacker) 
-                stacker, 
+            SELECT DISTINCT ON (stacker)
+                stacker,
                 signer_key
             FROM pox4_events
             WHERE canonical = true AND microblock_canonical = true
@@ -804,19 +810,19 @@ export class PgStoreV2 extends BasePgStoreModule {
                 AND end_cycle_id > ${cycleNumber}
             ORDER BY stacker, block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
         )
-        SELECT 
+        SELECT
             ps.signing_key,
-            ps.weight, 
-            ps.stacked_amount, 
-            ps.weight_percent, 
+            ps.weight,
+            ps.stacked_amount,
+            ps.weight_percent,
             ps.stacked_amount_percent,
             COUNT(DISTINCT ds.stacker)::int AS pooled_stacker_count,
             COUNT(DISTINCT ss.stacker)::int AS solo_stacker_count
         FROM pox_sets ps
         LEFT JOIN delegated_stackers ds ON ps.signing_key = ds.signer_key
         LEFT JOIN solo_stackers ss ON ps.signing_key = ss.signer_key
-        WHERE ps.canonical = TRUE 
-          AND ps.cycle_number = ${cycleNumber} 
+        WHERE ps.canonical = TRUE
+          AND ps.cycle_number = ${cycleNumber}
           AND ps.signing_key = ${signerKey}
         GROUP BY ps.signing_key, ps.weight, ps.stacked_amount, ps.weight_percent, ps.stacked_amount_percent
         LIMIT 1
@@ -862,8 +868,8 @@ export class PgStoreV2 extends BasePgStoreModule {
                 AND end_cycle_id = ${cycleNumber + 1}
             ORDER BY stacker, block_height DESC, tx_index DESC, event_index DESC
         ), delegated_stackers AS (
-            SELECT DISTINCT ON (main.stacker) 
-                main.stacker, 
+            SELECT DISTINCT ON (main.stacker)
+                main.stacker,
                 sk.signer_key,
                 main.locked,
                 main.pox_addr,
@@ -872,15 +878,15 @@ export class PgStoreV2 extends BasePgStoreModule {
                 'pooled' as stacker_type
             FROM pox4_events main
             LEFT JOIN signer_keys sk ON main.delegator = sk.stacker
-            WHERE main.canonical = true 
+            WHERE main.canonical = true
                 AND main.microblock_canonical = true
                 AND main.name IN ('delegate-stack-stx', 'delegate-stack-increase', 'delegate-stack-extend')
                 AND main.start_cycle_id <= ${cycleNumber}
                 AND main.end_cycle_id > ${cycleNumber}
             ORDER BY main.stacker, main.block_height DESC, main.microblock_sequence DESC, main.tx_index DESC, main.event_index DESC
         ), solo_stackers AS (
-            SELECT DISTINCT ON (stacker) 
-                stacker, 
+            SELECT DISTINCT ON (stacker)
+                stacker,
                 signer_key,
                 locked,
                 pox_addr,

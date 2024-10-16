@@ -1,11 +1,5 @@
 import * as assert from 'assert';
-import {
-  getOrAdd,
-  I32_MAX,
-  getIbdBlockHeight,
-  getUintEnvOrDefault,
-  unwrapOptionalProp,
-} from '../helpers';
+import { getOrAdd, I32_MAX, getIbdBlockHeight, getUintEnvOrDefault } from '../helpers';
 import {
   DbBlock,
   DbTx,
@@ -92,7 +86,6 @@ import { parseResolver, parseZoneFileTxt } from '../event-stream/bns/bns-helpers
 import { SyntheticPoxEventName } from '../pox-helpers';
 import { logger } from '../logger';
 import {
-  PgJsonb,
   PgSqlClient,
   batchIterate,
   connectPostgres,
@@ -121,6 +114,8 @@ class MicroblockGapError extends Error {
     this.name = this.constructor.name;
   }
 }
+
+type TransactionHeader = { txId: string; sender: string; nonce: number };
 
 /**
  * Extends `PgStore` to provide data insertion functions. These added features are usually called by
@@ -208,8 +203,12 @@ export class PgWriteStore extends PgStore {
       if (!isCanonical) {
         markBlockUpdateDataAsNonCanonical(data);
       } else {
-        const txIds = data.txs.map(d => d.tx.tx_id);
-        await this.pruneMempoolTxs(sql, txIds);
+        const prunableTxs: TransactionHeader[] = data.txs.map(d => ({
+          txId: d.tx.tx_id,
+          sender: d.tx.sender_address,
+          nonce: d.tx.nonce,
+        }));
+        await this.pruneMempoolTxs(sql, prunableTxs);
       }
       setTotalBlockUpdateDataExecutionCost(data);
 
@@ -245,7 +244,11 @@ export class PgWriteStore extends PgStore {
         );
         const restoredMempoolTxs = await this.restoreMempoolTxs(
           sql,
-          orphanedAndMissingTxs.map(tx => tx.tx_id)
+          orphanedAndMissingTxs.map(tx => ({
+            txId: tx.tx_id,
+            sender: tx.sender_address,
+            nonce: tx.nonce,
+          }))
         );
         restoredMempoolTxs.restoredTxs.forEach(txId => {
           logger.info(`Restored micro-orphaned tx to mempool ${txId}`);
@@ -688,15 +691,23 @@ export class PgWriteStore extends PgStore {
         // Restore any micro-orphaned txs into the mempool
         const restoredMempoolTxs = await this.restoreMempoolTxs(
           sql,
-          microOrphanedTxs.map(tx => tx.tx_id)
+          microOrphanedTxs.map(tx => ({
+            txId: tx.tx_id,
+            sender: tx.sender_address,
+            nonce: tx.nonce,
+          }))
         );
         restoredMempoolTxs.restoredTxs.forEach(txId => {
           logger.info(`Restored micro-orphaned tx to mempool ${txId}`);
         });
       }
 
-      const candidateTxIds = data.txs.map(d => d.tx.tx_id);
-      const removedTxsResult = await this.pruneMempoolTxs(sql, candidateTxIds);
+      const prunableTxs: TransactionHeader[] = data.txs.map(d => ({
+        txId: d.tx.tx_id,
+        sender: d.tx.sender_address,
+        nonce: d.tx.nonce,
+      }));
+      const removedTxsResult = await this.pruneMempoolTxs(sql, prunableTxs);
       if (removedTxsResult.removedTxs.length > 0) {
         logger.debug(
           `Removed ${removedTxsResult.removedTxs.length} microblock-txs from mempool table during microblock ingestion`
@@ -1169,6 +1180,7 @@ export class PgWriteStore extends PgStore {
           tx.token_transfer_recipient_address,
           tx.contract_call_contract_id,
           tx.smart_contract_contract_id,
+          tx.sponsor_address,
         ].filter((p): p is string => !!p)
       );
       for (const event of stxEvents) {
@@ -2471,9 +2483,9 @@ export class PgWriteStore extends PgStore {
     `;
     // Any txs restored need to be pruned from the mempool
     const updatedMbTxs = updatedMbTxsQuery.map(r => parseTxQueryResult(r));
-    const txsToPrune = updatedMbTxs
+    const txsToPrune: TransactionHeader[] = updatedMbTxs
       .filter(tx => tx.canonical && tx.microblock_canonical)
-      .map(tx => tx.tx_id);
+      .map(tx => ({ txId: tx.tx_id, sender: tx.sender_address, nonce: tx.nonce }));
     const removedTxsResult = await this.pruneMempoolTxs(sql, txsToPrune);
     if (removedTxsResult.removedTxs.length > 0) {
       logger.debug(
@@ -2648,17 +2660,31 @@ export class PgWriteStore extends PgStore {
    * marked from canonical to non-canonical.
    * @param txIds - List of transactions to update in the mempool
    */
-  async restoreMempoolTxs(sql: PgSqlClient, txIds: string[]): Promise<{ restoredTxs: string[] }> {
-    if (txIds.length === 0) return { restoredTxs: [] };
-    for (const txId of txIds) {
-      logger.debug(`Restoring mempool tx: ${txId}`);
-    }
+  async restoreMempoolTxs(
+    sql: PgSqlClient,
+    transactions: TransactionHeader[]
+  ): Promise<{ restoredTxs: string[] }> {
+    if (transactions.length === 0) return { restoredTxs: [] };
+    if (logger.isLevelEnabled('debug'))
+      for (const tx of transactions)
+        logger.debug(`Restoring mempool tx: ${tx.txId} sender: ${tx.sender} nonce: ${tx.nonce}`);
 
+    // Also restore transactions for the same `sender_address` with the same `nonce`.
+    const inputData = transactions.map(t => [t.txId.replace('0x', '\\x'), t.sender, t.nonce]);
     const updatedRows = await sql<{ tx_id: string }[]>`
-      WITH restored AS (
+      WITH input_data (tx_id, sender_address, nonce) AS (VALUES ${sql(inputData)}),
+      affected_mempool_tx_ids AS (
+        SELECT m.tx_id
+          FROM mempool_txs AS m
+          INNER JOIN input_data AS i
+          ON m.sender_address = i.sender_address AND m.nonce = i.nonce::int
+        UNION
+        SELECT tx_id::bytea FROM input_data
+      ),
+      restored AS (
         UPDATE mempool_txs
-        SET pruned = FALSE, status = ${DbTxStatus.Pending}
-        WHERE tx_id IN ${sql(txIds)} AND pruned = TRUE
+        SET pruned = false, status = ${DbTxStatus.Pending}
+        WHERE pruned = true AND tx_id IN (SELECT DISTINCT tx_id FROM affected_mempool_tx_ids)
         RETURNING tx_id
       ),
       count_update AS (
@@ -2668,43 +2694,35 @@ export class PgWriteStore extends PgStore {
       )
       SELECT tx_id FROM restored
     `;
+    const restoredTxIds = updatedRows.map(r => r.tx_id);
+    if (logger.isLevelEnabled('debug'))
+      for (const txId of restoredTxIds) logger.debug(`Restored mempool tx: ${txId}`);
 
-    const updatedTxs = updatedRows.map(r => r.tx_id);
-    for (const tx of updatedTxs) {
-      logger.debug(`Updated mempool tx: ${tx}`);
-    }
-
-    let restoredTxs = updatedRows.map(r => r.tx_id);
-
-    // txs that didnt exist in the mempool need to be inserted into the mempool
-    if (updatedRows.length < txIds.length) {
-      const txsRequiringInsertion = txIds.filter(txId => !updatedTxs.includes(txId));
-
-      logger.debug(`To restore mempool txs, ${txsRequiringInsertion.length} txs require insertion`);
-
+    // Transactions that didn't exist in the mempool need to be inserted into the mempool
+    const txIdsRequiringInsertion = transactions
+      .filter(tx => !restoredTxIds.includes(tx.txId))
+      .map(tx => tx.txId);
+    if (txIdsRequiringInsertion.length) {
+      logger.debug(
+        `To restore mempool txs, ${txIdsRequiringInsertion.length} txs require insertion`
+      );
       const txs: TxQueryResult[] = await sql`
         SELECT DISTINCT ON(tx_id) ${sql(TX_COLUMNS)}
         FROM txs
-        WHERE tx_id IN ${sql(txsRequiringInsertion)}
+        WHERE tx_id IN ${sql(txIdsRequiringInsertion)}
         ORDER BY tx_id, block_height DESC, microblock_sequence DESC, tx_index DESC
       `;
-
-      if (txs.length !== txsRequiringInsertion.length) {
+      if (txs.length !== txIdsRequiringInsertion.length) {
         logger.error(`Not all txs requiring insertion were found`);
       }
 
       const mempoolTxs = convertTxQueryResultToDbMempoolTx(txs);
-
       await this.updateMempoolTxs({ mempoolTxs });
-
-      restoredTxs = [...restoredTxs, ...txsRequiringInsertion];
-
-      for (const tx of mempoolTxs) {
-        logger.debug(`Inserted mempool tx: ${tx.tx_id}`);
-      }
+      if (logger.isLevelEnabled('debug'))
+        for (const tx of mempoolTxs) logger.debug(`Inserted non-existing mempool tx: ${tx.tx_id}`);
     }
 
-    return { restoredTxs: restoredTxs };
+    return { restoredTxs: [...restoredTxIds, ...txIdsRequiringInsertion] };
   }
 
   /**
@@ -2712,16 +2730,31 @@ export class PgWriteStore extends PgStore {
    * mined into a block.
    * @param txIds - List of transactions to update in the mempool
    */
-  async pruneMempoolTxs(sql: PgSqlClient, txIds: string[]): Promise<{ removedTxs: string[] }> {
-    if (txIds.length === 0) return { removedTxs: [] };
-    for (const txId of txIds) {
-      logger.debug(`Pruning mempool tx: ${txId}`);
-    }
+  async pruneMempoolTxs(
+    sql: PgSqlClient,
+    transactions: TransactionHeader[]
+  ): Promise<{ removedTxs: string[] }> {
+    if (transactions.length === 0) return { removedTxs: [] };
+    if (logger.isLevelEnabled('debug'))
+      for (const tx of transactions)
+        logger.debug(`Pruning mempool tx: ${tx.txId} sender: ${tx.sender} nonce: ${tx.nonce}`);
+
+    // Also prune transactions for the same `sender_address` with the same `nonce`.
+    const inputData = transactions.map(t => [t.txId.replace('0x', '\\x'), t.sender, t.nonce]);
     const updateResults = await sql<{ tx_id: string }[]>`
-      WITH pruned AS (
+      WITH input_data (tx_id, sender_address, nonce) AS (VALUES ${sql(inputData)}),
+      affected_mempool_tx_ids AS (
+        SELECT m.tx_id
+          FROM mempool_txs AS m
+          INNER JOIN input_data AS i
+          ON m.sender_address = i.sender_address AND m.nonce = i.nonce::int
+        UNION
+        SELECT tx_id::bytea FROM input_data
+      ),
+      pruned AS (
         UPDATE mempool_txs
         SET pruned = true
-        WHERE tx_id IN ${sql(txIds)} AND pruned = FALSE
+        WHERE pruned = false AND tx_id IN (SELECT DISTINCT tx_id FROM affected_mempool_tx_ids)
         RETURNING tx_id
       ),
       count_update AS (
@@ -2735,21 +2768,35 @@ export class PgWriteStore extends PgStore {
   }
 
   /**
-   * Deletes mempool txs older than `STACKS_MEMPOOL_TX_GARBAGE_COLLECTION_THRESHOLD` blocks (default 256).
+   * Deletes mempool txs that should be dropped by block age or time age depending on which Stacks
+   * epoch we're on.
    * @param sql - DB client
    * @returns List of deleted `tx_id`s
    */
   async deleteGarbageCollectedMempoolTxs(sql: PgSqlClient): Promise<{ deletedTxs: string[] }> {
-    const blockThreshold = parseInt(
-      process.env['STACKS_MEMPOOL_TX_GARBAGE_COLLECTION_THRESHOLD'] ?? '256'
-    );
-    // TODO: Use DELETE instead of UPDATE once we implement a non-archival API replay mode.
+    // Is 3.0 active? Check if the latest block was signed by signers.
+    const nakamotoActive =
+      (
+        await sql<{ index_block_hash: string }[]>`
+          SELECT b.index_block_hash
+          FROM blocks AS b
+          INNER JOIN chain_tip AS c ON c.index_block_hash = b.index_block_hash
+          WHERE b.signer_bitvec IS NOT NULL
+          LIMIT 1
+        `
+      ).count > 0;
+    // If 3.0 is active, drop transactions older than 2560 minutes.
+    // If 2.5 or earlier is active, drop transactions older than 256 blocks.
     const deletedTxResults = await sql<{ tx_id: string }[]>`
       WITH pruned AS (
         UPDATE mempool_txs
         SET pruned = TRUE, status = ${DbTxStatus.DroppedApiGarbageCollect}
-        WHERE pruned = FALSE
-          AND receipt_block_height <= (SELECT block_height - ${blockThreshold} FROM chain_tip)
+        WHERE pruned = FALSE AND
+          ${
+            nakamotoActive
+              ? sql`receipt_time <= EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - INTERVAL '2560 minutes'))::int`
+              : sql`receipt_block_height <= (SELECT block_height - 256 FROM chain_tip)`
+          }
         RETURNING tx_id
       ),
       count_update AS (
@@ -2769,20 +2816,28 @@ export class PgWriteStore extends PgStore {
     indexBlockHash: string,
     canonical: boolean,
     updatedEntities: ReOrgUpdatedEntities
-  ): Promise<{ txsMarkedCanonical: string[]; txsMarkedNonCanonical: string[] }> {
-    const result: { txsMarkedCanonical: string[]; txsMarkedNonCanonical: string[] } = {
+  ): Promise<{
+    txsMarkedCanonical: TransactionHeader[];
+    txsMarkedNonCanonical: TransactionHeader[];
+  }> {
+    const result: {
+      txsMarkedCanonical: TransactionHeader[];
+      txsMarkedNonCanonical: TransactionHeader[];
+    } = {
       txsMarkedCanonical: [],
       txsMarkedNonCanonical: [],
     };
 
     const q = new PgWriteQueue();
     q.enqueue(async () => {
-      const txResult = await sql<{ tx_id: string; update_balances_count: number }[]>`
+      const txResult = await sql<
+        { tx_id: string; sender_address: string; nonce: number; update_balances_count: number }[]
+      >`
         WITH updated_txs AS (
           UPDATE txs
           SET canonical = ${canonical}
           WHERE index_block_hash = ${indexBlockHash} AND canonical != ${canonical}
-          RETURNING tx_id, sender_address, sponsor_address, fee_rate, sponsored, canonical
+          RETURNING tx_id, sender_address, nonce, sponsor_address, fee_rate, sponsored, canonical
         ),
         affected_addresses AS (
             SELECT 
@@ -2817,22 +2872,26 @@ export class PgWriteStore extends PgStore {
           SET balance = ft_balances.balance + EXCLUDED.balance
           RETURNING ft_balances.address
         )
-        SELECT tx_id, (SELECT COUNT(*)::int FROM update_ft_balances) AS update_balances_count
+        SELECT tx_id, sender_address, nonce, (SELECT COUNT(*)::int FROM update_ft_balances) AS update_balances_count
         FROM updated_txs
       `;
-      const txIds = txResult.map(row => row.tx_id);
+      const txs = txResult.map(row => ({
+        txId: row.tx_id,
+        sender: row.sender_address,
+        nonce: row.nonce,
+      }));
       if (canonical) {
         updatedEntities.markedCanonical.txs += txResult.count;
-        result.txsMarkedCanonical = txIds;
+        result.txsMarkedCanonical = txs;
       } else {
         updatedEntities.markedNonCanonical.txs += txResult.count;
-        result.txsMarkedNonCanonical = txIds;
+        result.txsMarkedNonCanonical = txs;
       }
       if (txResult.count) {
         await sql`
           UPDATE principal_stx_txs
           SET canonical = ${canonical}
-          WHERE tx_id IN ${sql(txIds)}
+          WHERE tx_id IN ${sql(txs.map(t => t.txId))}
             AND index_block_hash = ${indexBlockHash} AND canonical != ${canonical}
         `;
       }

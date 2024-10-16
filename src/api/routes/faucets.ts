@@ -4,11 +4,14 @@ import PQueue from 'p-queue';
 import { BigNumber } from 'bignumber.js';
 import {
   AnchorMode,
+  estimateTransactionFeeWithFallback,
+  getAddressFromPrivateKey,
   makeSTXTokenTransfer,
   SignedTokenTransferOptions,
   StacksTransaction,
+  TransactionVersion,
 } from '@stacks/transactions';
-import { StacksNetwork, StacksTestnet } from '@stacks/network';
+import { StacksNetwork } from '@stacks/network';
 import {
   makeBtcFaucetPayment,
   getBtcBalance,
@@ -16,8 +19,8 @@ import {
   isValidBtcAddress,
 } from '../../btc-faucet';
 import { DbFaucetRequestCurrency } from '../../datastore/common';
-import { getChainIDNetwork, intMax, stxToMicroStx } from '../../helpers';
-import { testnetKeys, getStacksTestnetNetwork } from './debug';
+import { getChainIDNetwork, getStxFaucetNetwork, stxToMicroStx } from '../../helpers';
+import { testnetKeys } from './debug';
 import { StacksCoreRpcClient } from '../../core-rpc/client';
 import { logger } from '../../logger';
 import { FastifyPluginAsync, preHandlerHookHandler } from 'fastify';
@@ -26,43 +29,6 @@ import { fastifyFormbody } from '@fastify/formbody';
 import { Server } from 'node:http';
 import { OptionalNullable } from '../schemas/util';
 import { RunFaucetResponseSchema } from '../schemas/responses/responses';
-
-export function getStxFaucetNetworks(): StacksNetwork[] {
-  const networks: StacksNetwork[] = [getStacksTestnetNetwork()];
-  const faucetNodeHostOverride: string | undefined = process.env.STACKS_FAUCET_NODE_HOST;
-  if (faucetNodeHostOverride) {
-    const faucetNodePortOverride: string | undefined = process.env.STACKS_FAUCET_NODE_PORT;
-    if (!faucetNodePortOverride) {
-      const error = 'STACKS_FAUCET_NODE_HOST is specified but STACKS_FAUCET_NODE_PORT is missing';
-      logger.error(error);
-      throw new Error(error);
-    }
-    const network = new StacksTestnet({
-      url: `http://${faucetNodeHostOverride}:${faucetNodePortOverride}`,
-    });
-    networks.push(network);
-  }
-  return networks;
-}
-
-enum TxSendResultStatus {
-  Success,
-  ConflictingNonce,
-  TooMuchChaining,
-  Error,
-}
-
-interface TxSendResultSuccess {
-  status: TxSendResultStatus.Success;
-  txId: string;
-}
-
-interface TxSendResultError {
-  status: TxSendResultStatus;
-  error: Error;
-}
-
-type TxSendResult = TxSendResultSuccess | TxSendResultError;
 
 function clientFromNetwork(network: StacksNetwork): StacksCoreRpcClient {
   const coreUrl = new URL(network.coreApiUrl);
@@ -248,8 +214,72 @@ export const FaucetRoutes: FastifyPluginAsync<
   const FAUCET_STACKING_WINDOW = 2 * 24 * 60 * 60 * 1000; // 2 days
   const FAUCET_STACKING_TRIGGER_COUNT = 1;
 
-  const STX_FAUCET_NETWORKS = () => getStxFaucetNetworks();
+  const STX_FAUCET_NETWORK = () => getStxFaucetNetwork();
   const STX_FAUCET_KEYS = (process.env.FAUCET_PRIVATE_KEY ?? testnetKeys[0].secretKey).split(',');
+
+  async function calculateSTXFaucetAmount(
+    network: StacksNetwork,
+    stacking: boolean
+  ): Promise<bigint> {
+    if (stacking) {
+      try {
+        const poxInfo = await clientFromNetwork(network).getPox();
+        let stxAmount = BigInt(poxInfo.min_amount_ustx);
+        const padPercent = new BigNumber(0.2);
+        const padAmount = new BigNumber(stxAmount.toString())
+          .times(padPercent)
+          .integerValue()
+          .toString();
+        stxAmount = stxAmount + BigInt(padAmount);
+        return stxAmount;
+      } catch (error) {
+        // ignore
+      }
+    }
+    return FAUCET_DEFAULT_STX_AMOUNT;
+  }
+
+  async function fetchNetworkChainID(network: StacksNetwork): Promise<number> {
+    const rpcClient = clientFromNetwork(network);
+    const info = await rpcClient.getInfo();
+    return info.network_id;
+  }
+
+  async function buildSTXFaucetTx(
+    recipient: string,
+    amount: bigint,
+    network: StacksNetwork,
+    senderKey: string,
+    nonce: bigint,
+    fee?: bigint
+  ): Promise<StacksTransaction> {
+    try {
+      const options: SignedTokenTransferOptions = {
+        recipient,
+        amount,
+        senderKey,
+        network,
+        memo: 'faucet',
+        anchorMode: AnchorMode.Any,
+        nonce,
+      };
+      if (fee) options.fee = fee;
+
+      // Detect possible custom network chain ID
+      network.chainId = await fetchNetworkChainID(network);
+
+      return await makeSTXTokenTransfer(options);
+    } catch (error: any) {
+      if (
+        fee === undefined &&
+        (error as Error).message &&
+        /estimating transaction fee|NoEstimateAvailable/.test(error.message)
+      ) {
+        return await buildSTXFaucetTx(recipient, amount, network, senderKey, nonce, 200n);
+      }
+      throw error;
+    }
+  }
 
   fastify.post(
     '/stx',
@@ -320,8 +350,8 @@ export const FaucetRoutes: FastifyPluginAsync<
         });
       }
 
-      const address = req.query.address;
-      if (!address) {
+      const recipientAddress = req.query.address;
+      if (!recipientAddress) {
         return await reply.status(400).send({
           error: 'address required',
           success: false,
@@ -329,183 +359,87 @@ export const FaucetRoutes: FastifyPluginAsync<
       }
 
       await stxFaucetRequestQueue.add(async () => {
-        const ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
-        const lastRequests = await fastify.db.getSTXFaucetRequests(address);
-
-        const isStackingReq = req.query.stacking ?? false;
-
         // Guard condition: requests are limited to x times per y minutes.
         // Only based on address for now, but we're keeping the IP in case
         // we want to escalate and implement a per IP policy
+        const ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
+        const lastRequests = await fastify.db.getSTXFaucetRequests(recipientAddress);
         const now = Date.now();
+        const isStackingReq = req.query.stacking ?? false;
         const [window, triggerCount] = isStackingReq
           ? [FAUCET_STACKING_WINDOW, FAUCET_STACKING_TRIGGER_COUNT]
           : [FAUCET_DEFAULT_WINDOW, FAUCET_DEFAULT_TRIGGER_COUNT];
-
         const requestsInWindow = lastRequests.results
           .map(r => now - r.occurred_at)
           .filter(r => r <= window);
         if (requestsInWindow.length >= triggerCount) {
-          logger.warn(`STX faucet rate limit hit for address ${address}`);
+          logger.warn(`StxFaucet rate limit hit for address ${recipientAddress}`);
           return await reply.status(429).send({
             error: 'Too many requests',
             success: false,
           });
         }
 
-        const stxAmounts: bigint[] = [];
-        for (const network of STX_FAUCET_NETWORKS()) {
+        // Start with a random key index. We will try others in order if this one fails.
+        let keyIndex = Math.round(Math.random() * (STX_FAUCET_KEYS.length - 1));
+        let keysAttempted = 0;
+        let sendSuccess: { txId: string; txRaw: string } | undefined;
+        const stxAmount = await calculateSTXFaucetAmount(STX_FAUCET_NETWORK(), isStackingReq);
+        const rpcClient = clientFromNetwork(STX_FAUCET_NETWORK());
+        do {
+          keysAttempted++;
+          const senderKey = STX_FAUCET_KEYS[keyIndex];
+          const senderAddress = getAddressFromPrivateKey(senderKey, TransactionVersion.Testnet);
+          logger.debug(`StxFaucet attempting faucet transaction from sender: ${senderAddress}`);
+          const nonces = await fastify.db.getAddressNonces({ stxAddress: senderAddress });
+          const tx = await buildSTXFaucetTx(
+            recipientAddress,
+            stxAmount,
+            STX_FAUCET_NETWORK(),
+            senderKey,
+            BigInt(nonces.possibleNextNonce)
+          );
+          const rawTx = Buffer.from(tx.serialize());
           try {
-            let stxAmount = FAUCET_DEFAULT_STX_AMOUNT;
-            if (isStackingReq) {
-              const poxInfo = await clientFromNetwork(network).getPox();
-              stxAmount = BigInt(poxInfo.min_amount_ustx);
-              const padPercent = new BigNumber(0.2);
-              const padAmount = new BigNumber(stxAmount.toString())
-                .times(padPercent)
-                .integerValue()
-                .toString();
-              stxAmount = stxAmount + BigInt(padAmount);
-            }
-            stxAmounts.push(stxAmount);
-          } catch (error) {
-            // ignore
-          }
-        }
-        const stxAmount = intMax(stxAmounts);
-
-        const generateTx = async (
-          network: StacksNetwork,
-          keyIndex: number,
-          nonce?: bigint,
-          fee?: bigint
-        ): Promise<StacksTransaction> => {
-          const txOpts: SignedTokenTransferOptions = {
-            recipient: address,
-            amount: stxAmount,
-            senderKey: STX_FAUCET_KEYS[keyIndex],
-            network: network,
-            memo: 'Faucet',
-            anchorMode: AnchorMode.Any,
-          };
-          if (fee !== undefined) {
-            txOpts.fee = fee;
-          }
-          if (nonce !== undefined) {
-            txOpts.nonce = nonce;
-          }
-          try {
-            return await makeSTXTokenTransfer(txOpts);
+            const res = await rpcClient.sendTransaction(rawTx);
+            sendSuccess = { txId: res.txId, txRaw: rawTx.toString('hex') };
+            logger.info(
+              `StxFaucet success. Sent ${stxAmount} uSTX from ${senderAddress} to ${recipientAddress}.`
+            );
           } catch (error: any) {
             if (
-              fee === undefined &&
-              (error as Error).message &&
-              /estimating transaction fee|NoEstimateAvailable/.test(error.message)
+              error.message?.includes('ConflictingNonceInMempool') ||
+              error.message?.includes('TooMuchChaining')
             ) {
-              const defaultFee = 200n;
-              return await generateTx(network, keyIndex, nonce, defaultFee);
-            }
-            throw error;
-          }
-        };
-
-        const nonces: bigint[] = [];
-        const fees: bigint[] = [];
-        let txGenFetchError: Error | undefined;
-        for (const network of STX_FAUCET_NETWORKS()) {
-          try {
-            const tx = await generateTx(network, 0);
-            nonces.push(tx.auth.spendingCondition?.nonce ?? BigInt(0));
-            fees.push(tx.auth.spendingCondition.fee);
-          } catch (error: any) {
-            txGenFetchError = error;
-          }
-        }
-        if (nonces.length === 0) {
-          throw txGenFetchError;
-        }
-        let nextNonce = intMax(nonces);
-        const fee = intMax(fees);
-
-        const sendTxResults: TxSendResult[] = [];
-        let retrySend = false;
-        let sendSuccess: { txId: string; txRaw: string } | undefined;
-        let lastSendError: Error | undefined;
-        let stxKeyIndex = 0;
-        do {
-          const tx = await generateTx(STX_FAUCET_NETWORKS()[0], stxKeyIndex, nextNonce, fee);
-          const rawTx = Buffer.from(tx.serialize());
-          for (const network of STX_FAUCET_NETWORKS()) {
-            const rpcClient = clientFromNetwork(network);
-            try {
-              const res = await rpcClient.sendTransaction(rawTx);
-              sendSuccess = { txId: res.txId, txRaw: rawTx.toString('hex') };
-              sendTxResults.push({
-                status: TxSendResultStatus.Success,
-                txId: res.txId,
-              });
-            } catch (error: any) {
-              lastSendError = error;
-              if (error.message?.includes('ConflictingNonceInMempool')) {
-                sendTxResults.push({
-                  status: TxSendResultStatus.ConflictingNonce,
-                  error,
-                });
-              } else if (error.message?.includes('TooMuchChaining')) {
-                sendTxResults.push({
-                  status: TxSendResultStatus.TooMuchChaining,
-                  error,
-                });
-              } else {
-                sendTxResults.push({
-                  status: TxSendResultStatus.Error,
-                  error,
-                });
+              if (keysAttempted == STX_FAUCET_KEYS.length) {
+                logger.warn(
+                  `StxFaucet attempts exhausted for all faucet keys. Last error: ${error}`
+                );
+                throw error;
               }
-            }
-          }
-          if (sendTxResults.every(res => res.status === TxSendResultStatus.Success)) {
-            retrySend = false;
-          } else if (
-            sendTxResults.every(res => res.status === TxSendResultStatus.ConflictingNonce)
-          ) {
-            retrySend = true;
-            sendTxResults.length = 0;
-            nextNonce = nextNonce + 1n;
-          } else if (
-            sendTxResults.every(res => res.status === TxSendResultStatus.TooMuchChaining)
-          ) {
-            // Try with the next key in case we have one.
-            if (stxKeyIndex + 1 === STX_FAUCET_KEYS.length) {
-              retrySend = false;
+              // Try with the next key. Wrap around the keys array if necessary.
+              keyIndex++;
+              if (keyIndex >= STX_FAUCET_KEYS.length) keyIndex = 0;
+              logger.warn(
+                `StxFaucet transaction failed for sender ${senderAddress}, trying with next key: ${error}`
+              );
             } else {
-              retrySend = true;
-              stxKeyIndex++;
+              logger.warn(`StxFaucet unexpected error when sending transaction: ${error}`);
+              throw error;
             }
-          } else {
-            retrySend = false;
           }
-        } while (retrySend);
-
-        if (!sendSuccess) {
-          if (lastSendError) {
-            throw lastSendError;
-          } else {
-            throw new Error(`Unexpected failure to send or capture error`);
-          }
-        } else {
-          await reply.send({
-            success: true,
-            txId: sendSuccess.txId,
-            txRaw: sendSuccess.txRaw,
-          });
-        }
+        } while (!sendSuccess);
 
         await fastify.writeDb?.insertFaucetRequest({
           ip: `${ip}`,
-          address: address,
+          address: recipientAddress,
           currency: DbFaucetRequestCurrency.STX,
           occurred_at: now,
+        });
+        await reply.send({
+          success: true,
+          txId: sendSuccess.txId,
+          txRaw: sendSuccess.txRaw,
         });
       });
     }

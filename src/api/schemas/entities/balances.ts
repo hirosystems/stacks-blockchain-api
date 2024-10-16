@@ -21,6 +21,11 @@ export const NftBalanceSchema = Type.Object(
 export const StxBalanceSchema = Type.Object(
   {
     balance: Type.String(),
+    estimated_balance: Type.Optional(
+      Type.String({
+        description: 'Total STX balance considering pending mempool transactions',
+      })
+    ),
     total_sent: Type.String(),
     total_received: Type.String(),
     total_fees_sent: Type.String(),

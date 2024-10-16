@@ -97,6 +97,7 @@ import {
 import * as path from 'path';
 import { PgStoreV2 } from './pg-store-v2';
 import { Fragment } from 'postgres';
+import { parseBlockParam } from '../api/routes/v2/schemas';
 
 export const MIGRATIONS_DIR = path.join(REPO_DIR, 'migrations');
 
@@ -2475,6 +2476,36 @@ export class PgStore extends BasePgStore {
     };
   }
 
+  /**
+   * Returns the total STX balance delta affecting a principal from transactions currently in the
+   * mempool.
+   */
+  async getPrincipalMempoolStxBalanceDelta(sql: PgSqlClient, principal: string): Promise<bigint> {
+    const results = await sql<{ delta: string }[]>`
+      WITH sent AS (
+        SELECT SUM(COALESCE(token_transfer_amount, 0) + fee_rate) AS total
+        FROM mempool_txs
+        WHERE pruned = false AND sender_address = ${principal}
+      ),
+      sponsored AS (
+        SELECT SUM(fee_rate) AS total
+        FROM mempool_txs
+        WHERE pruned = false AND sponsor_address = ${principal} AND sponsored = true
+      ),
+      received AS (
+        SELECT SUM(COALESCE(token_transfer_amount, 0)) AS total
+        FROM mempool_txs
+        WHERE pruned = false AND token_transfer_recipient_address = ${principal}
+      )
+      SELECT
+        COALESCE((SELECT total FROM received), 0)
+        - COALESCE((SELECT total FROM sent), 0)
+        - COALESCE((SELECT total FROM sponsored), 0)
+        AS delta
+    `;
+    return BigInt(results[0]?.delta ?? '0');
+  }
+
   async getUnlockedStxSupply(
     args:
       | {
@@ -4403,5 +4434,81 @@ export class PgStore extends BasePgStore {
       });
     }
     return result;
+  }
+
+  /** Retrieves the last transaction IDs with STX, FT and NFT activity for a principal */
+  async getPrincipalLastActivityTxIds(
+    principal: string,
+    includeMempool: boolean = false
+  ): Promise<string[]> {
+    const result = await this.sql<{ tx_id: string }[]>`
+      WITH activity AS (
+        (
+          SELECT tx_id
+          FROM principal_stx_txs
+          WHERE principal = ${principal} AND canonical = true AND microblock_canonical = true
+          ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC
+          LIMIT 1
+        )
+        UNION
+        (
+          SELECT tx_id
+          FROM ft_events
+          WHERE (sender = ${principal} OR recipient = ${principal})
+            AND canonical = true
+            AND microblock_canonical = true
+          ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
+          LIMIT 1
+        )
+        UNION
+        (
+          SELECT tx_id
+          FROM nft_events
+          WHERE (sender = ${principal} OR recipient = ${principal})
+            AND canonical = true
+            AND microblock_canonical = true
+          ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
+          LIMIT 1
+        )
+        ${
+          includeMempool
+            ? this.sql`UNION
+            (
+              SELECT tx_id
+              FROM mempool_txs
+              WHERE pruned = false AND
+                (sender_address = ${principal}
+                OR sponsor_address = ${principal}
+                OR token_transfer_recipient_address = ${principal})
+              ORDER BY receipt_time DESC, sender_address DESC, nonce DESC
+              LIMIT 1
+            )`
+            : this.sql``
+        }
+      )
+      SELECT DISTINCT tx_id FROM activity WHERE tx_id IS NOT NULL
+    `;
+    return result.map(r => r.tx_id);
+  }
+
+  /** Returns the `index_block_hash` and canonical status of a single block */
+  async getBlockCanonicalStatus(
+    height_or_hash: string | number
+  ): Promise<{ index_block_hash: string; canonical: boolean } | undefined> {
+    const param = parseBlockParam(height_or_hash);
+    const result = await this.sql<{ index_block_hash: string; canonical: boolean }[]>`
+      SELECT index_block_hash, canonical
+      FROM blocks
+      WHERE
+        ${
+          param.type == 'latest'
+            ? this.sql`index_block_hash = (SELECT index_block_hash FROM chain_tip)`
+            : param.type == 'hash'
+            ? this.sql`index_block_hash = ${param.hash}`
+            : this.sql`block_height = ${param.height} AND canonical = true`
+        }
+      LIMIT 1
+    `;
+    if (result.count) return result[0];
   }
 }

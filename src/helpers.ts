@@ -12,6 +12,8 @@ import { StacksCoreRpcClient } from './core-rpc/client';
 import { DbEventTypeId } from './datastore/common';
 import { logger } from './logger';
 import { has0xPrefix, isDevEnv, numberToHex } from '@hirosystems/api-toolkit';
+import { StacksNetwork, StacksTestnet } from '@stacks/network';
+import { getStacksTestnetNetwork } from './api/routes/debug';
 
 export const apiDocumentationUrl = process.env.API_DOCS_URL;
 
@@ -29,6 +31,23 @@ export function getIbdBlockHeight(): number | undefined {
     const num = Number.parseInt(val);
     return !Number.isNaN(num) ? num : undefined;
   }
+}
+
+export function getStxFaucetNetwork(): StacksNetwork {
+  const faucetNodeHostOverride: string | undefined = process.env.STACKS_FAUCET_NODE_HOST;
+  if (faucetNodeHostOverride) {
+    const faucetNodePortOverride: string | undefined = process.env.STACKS_FAUCET_NODE_PORT;
+    if (!faucetNodePortOverride) {
+      const error = 'STACKS_FAUCET_NODE_HOST is specified but STACKS_FAUCET_NODE_PORT is missing';
+      logger.error(error);
+      throw new Error(error);
+    }
+    const network = new StacksTestnet({
+      url: `http://${faucetNodeHostOverride}:${faucetNodePortOverride}`,
+    });
+    return network;
+  }
+  return getStacksTestnetNetwork();
 }
 
 function createEnumChecker<T extends string, TEnumValue extends number>(enumVariable: {
@@ -448,22 +467,6 @@ export function assertNotNullish<T>(
     throw new Error(onNullish?.() ?? 'value is nullish');
   }
 }
-
-function intMax(args: bigint[]): bigint;
-function intMax(args: number[]): number;
-function intMax(args: bigint[] | number[]): any {
-  if (args.length === 0) {
-    throw new Error(`empty array not supported in intMax`);
-  } else if (typeof args[0] === 'bigint') {
-    return (args as bigint[]).reduce((m, e) => (e > m ? e : m));
-  } else if (typeof args[0] === 'number') {
-    return Math.max(...(args as number[]));
-  } else {
-    // eslint-disable-next-line @typescript-eslint/ban-types
-    throw new Error(`Unsupported type for intMax: ${(args[0] as object).constructor.name}`);
-  }
-}
-export { intMax };
 
 export class BigIntMath {
   static abs(a: bigint): bigint {
