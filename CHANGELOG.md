@@ -1,3 +1,22 @@
+## [8.1.0](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.0.4...v8.1.0) (2024-10-16)
+
+
+### Features
+
+* add block etag ([#2103](https://github.com/hirosystems/stacks-blockchain-api/issues/2103)) ([66e6800](https://github.com/hirosystems/stacks-blockchain-api/commit/66e680051061f25de2acc87898aeac145b5c9093))
+* add cache handler for principal activity including mempool transactions ([#2100](https://github.com/hirosystems/stacks-blockchain-api/issues/2100)) ([2370c21](https://github.com/hirosystems/stacks-blockchain-api/commit/2370c211e957ed2191f52710b93e4456c0b2fb89))
+* add principal cache etag to account endpoints ([#2097](https://github.com/hirosystems/stacks-blockchain-api/issues/2097)) ([28e9864](https://github.com/hirosystems/stacks-blockchain-api/commit/28e9864844a22994205f44fc279be6b019d4b019))
+* return estimated balance in account balance endpoints ([#2104](https://github.com/hirosystems/stacks-blockchain-api/issues/2104)) ([e217cea](https://github.com/hirosystems/stacks-blockchain-api/commit/e217ceac6bb3340688445fa346bc2d01b212f6d2))
+
+
+### Bug Fixes
+
+* add declaration copy step in build ([#2110](https://github.com/hirosystems/stacks-blockchain-api/issues/2110)) ([2b6aa6a](https://github.com/hirosystems/stacks-blockchain-api/commit/2b6aa6a6971e029bca8b7a7cd4c171ae8aca4a03))
+* prune and restore mempool transactions with equal nonces for the same sender ([#2091](https://github.com/hirosystems/stacks-blockchain-api/issues/2091)) ([1ce75de](https://github.com/hirosystems/stacks-blockchain-api/commit/1ce75de8f7866c6e528b56706e624c4600b17412))
+* randomize key order for testnet stx faucet transactions ([#2120](https://github.com/hirosystems/stacks-blockchain-api/issues/2120)) ([f7265f9](https://github.com/hirosystems/stacks-blockchain-api/commit/f7265f952d3e4232546c1cd0792eaf12444a0af7))
+* update mempool garbage collection logic for 3.0 ([#2117](https://github.com/hirosystems/stacks-blockchain-api/issues/2117)) ([8b10b69](https://github.com/hirosystems/stacks-blockchain-api/commit/8b10b693861b2ab7a0f9a8c2bfc321886e9d1f3d))
+* use total_count CTE and return it with the parsed results ([#2073](https://github.com/hirosystems/stacks-blockchain-api/issues/2073)) ([bb30911](https://github.com/hirosystems/stacks-blockchain-api/commit/bb30911bae0d3cb5fb26312d84dce7b04f5ffa97))
+
 ## [8.1.0-beta.4](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.1.0-beta.3...v8.1.0-beta.4) (2024-10-15)
 
 
