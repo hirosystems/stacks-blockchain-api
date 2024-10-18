@@ -321,6 +321,7 @@ export interface CoreNodeBlockMessage {
   };
   block_time: number;
   signer_bitvec?: string | null;
+  signer_signature?: string[];
 }
 
 export interface CoreNodeParsedTxMessage {

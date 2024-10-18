@@ -77,6 +77,7 @@ describe('v2-proxy tests', () => {
           execution_cost_write_length: 0,
           tx_count: 1,
           signer_bitvec: null,
+          signer_signatures: null,
         };
 
         // Ensure db has a block so that current block height queries return a found result
