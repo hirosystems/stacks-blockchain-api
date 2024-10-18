@@ -817,6 +817,76 @@ describe('cache-control tests', () => {
     expect(request8.text).toBe('');
   });
 
+  test('principal mempool cache on received tx balance confirmation', async () => {
+    const address = 'SP3FXEKSA6D4BW3TFP2BWTSREV6FY863Y90YY7D8G';
+    const url = `/extended/v1/address/${address}/balances`;
+    await db.update(
+      new TestBlockBuilder({
+        block_height: 1,
+        index_block_hash: '0x01',
+        parent_index_block_hash: '0x00',
+      }).build()
+    );
+
+    // ETag zero.
+    const request1 = await supertest(api.server).get(url);
+    expect(request1.status).toBe(200);
+    expect(request1.type).toBe('application/json');
+    const etag0 = request1.headers['etag'];
+
+    // Add receiving STX tx.
+    await db.updateMempoolTxs({
+      mempoolTxs: [
+        testMempoolTx({
+          tx_id: '0x0001',
+          token_transfer_amount: 2000n,
+          token_transfer_recipient_address: address,
+        }),
+      ],
+    });
+
+    // Valid ETag.
+    const request2 = await supertest(api.server).get(url);
+    expect(request2.status).toBe(200);
+    expect(request2.type).toBe('application/json');
+    expect(request2.headers['etag']).toBeTruthy();
+    const json2 = JSON.parse(request2.text);
+    expect(json2.stx.balance).toBe('0');
+    expect(json2.stx.estimated_balance).toBe('2000');
+    const etag1 = request2.headers['etag'];
+    expect(etag1).not.toEqual(etag0);
+
+    // Cache works with valid ETag.
+    const request3 = await supertest(api.server).get(url).set('If-None-Match', etag1);
+    expect(request3.status).toBe(304);
+    expect(request3.text).toBe('');
+
+    // Confirm mempool tx.
+    await db.update(
+      new TestBlockBuilder({
+        block_height: 2,
+        index_block_hash: '0x02',
+        parent_index_block_hash: '0x01',
+      })
+        .addTx({
+          tx_id: '0x0001',
+          token_transfer_amount: 2000n,
+          token_transfer_recipient_address: address,
+        })
+        .addTxStxEvent({ amount: 2000n, recipient: address })
+        .build()
+    );
+
+    // Cache is now a miss.
+    const request4 = await supertest(api.server).get(url).set('If-None-Match', etag1);
+    expect(request4.status).toBe(200);
+    expect(request4.type).toBe('application/json');
+    expect(request4.headers['etag']).not.toEqual(etag1);
+    const json4 = JSON.parse(request4.text);
+    expect(json4.stx.balance).toBe('2000');
+    expect(json4.stx.estimated_balance).toBe('2000');
+  });
+
   test('block cache control', async () => {
     await db.update(
       new TestBlockBuilder({

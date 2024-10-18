@@ -4444,7 +4444,7 @@ export class PgStore extends BasePgStore {
     const result = await this.sql<{ tx_id: string }[]>`
       WITH activity AS (
         (
-          SELECT tx_id
+          SELECT '0x' || encode(tx_id, 'hex') AS tx_id
           FROM principal_stx_txs
           WHERE principal = ${principal} AND canonical = true AND microblock_canonical = true
           ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC
@@ -4452,7 +4452,7 @@ export class PgStore extends BasePgStore {
         )
         UNION
         (
-          SELECT tx_id
+          SELECT '0x' || encode(tx_id, 'hex') AS tx_id
           FROM ft_events
           WHERE (sender = ${principal} OR recipient = ${principal})
             AND canonical = true
@@ -4462,7 +4462,7 @@ export class PgStore extends BasePgStore {
         )
         UNION
         (
-          SELECT tx_id
+          SELECT '0x' || encode(tx_id, 'hex') AS tx_id
           FROM nft_events
           WHERE (sender = ${principal} OR recipient = ${principal})
             AND canonical = true
@@ -4474,7 +4474,7 @@ export class PgStore extends BasePgStore {
           includeMempool
             ? this.sql`UNION
             (
-              SELECT tx_id
+              SELECT 'mempool-' || '0x' || encode(tx_id, 'hex') AS tx_id
               FROM mempool_txs
               WHERE pruned = false AND
                 (sender_address = ${principal}
@@ -4486,7 +4486,7 @@ export class PgStore extends BasePgStore {
             : this.sql``
         }
       )
-      SELECT DISTINCT tx_id FROM activity WHERE tx_id IS NOT NULL
+      SELECT tx_id FROM activity WHERE tx_id IS NOT NULL
     `;
     return result.map(r => r.tx_id);
   }
