@@ -1,3 +1,10 @@
+## [8.1.1](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.1.0...v8.1.1) (2024-10-18)
+
+
+### Bug Fixes
+
+* identify mempool transactions separately when calculating principal etag ([#2126](https://github.com/hirosystems/stacks-blockchain-api/issues/2126)) ([b9dee2a](https://github.com/hirosystems/stacks-blockchain-api/commit/b9dee2a85cb6e733cb0ab2f4d1c7c12cd303bec4))
+
 ## [8.1.0](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.0.4...v8.1.0) (2024-10-16)
 
 
