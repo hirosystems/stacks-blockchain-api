@@ -11,7 +11,9 @@ RUN apk add --no-cache \
 # Build Clarinet from source
 RUN git clone https://github.com/hirosystems/clarinet.git && \
     cd clarinet && \
-    git checkout docker-sock-bind && \
+    # git checkout docker-sock-bind && \
+    # git checkout main && \
+    git checkout 4cb70b0c && \
     cargo build --release
 
 FROM --platform=$BUILDPLATFORM docker:dind

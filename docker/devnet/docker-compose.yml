@@ -10,8 +10,8 @@ services:
     # depends_on:
     #   - clarinet-builder
     # network_mode: "host"  # equivalent to --network host
-    # networks:
-    #   - backend
+    networks:
+      - backend
     restart: on-failure
     build:
       context: .
@@ -31,7 +31,7 @@ services:
       - 'host.docker.internal:host-gateway' # fixes `host.docker.internal` on linux hosts
     privileged: true
 
-# networks:
-#   backend:
+networks:
+  backend:
 volumes:
   chainstate:
