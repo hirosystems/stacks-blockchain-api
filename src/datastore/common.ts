@@ -863,7 +863,6 @@ export interface BlockQueryResult {
   execution_cost_write_length: string;
   tx_count: number;
   signer_bitvec: string | null;
-  signer_signature: string[] | null;
 }
 
 export interface MicroblockQueryResult {

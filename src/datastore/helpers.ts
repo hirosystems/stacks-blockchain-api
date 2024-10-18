@@ -487,7 +487,7 @@ export function parseBlockQueryResult(row: BlockQueryResult): DbBlock {
     execution_cost_write_length: Number.parseInt(row.execution_cost_write_length),
     tx_count: row.tx_count,
     signer_bitvec: row.signer_bitvec,
-    signer_signature: row.signer_signature,
+    signer_signature: null, // this field is not queried from db by default due to size constraints
   };
   return block;
 }
