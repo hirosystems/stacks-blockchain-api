@@ -182,7 +182,7 @@ export const BlockRoutesV2: FastifyPluginAsync<
   );
 
   fastify.get(
-    '/:height_or_hash/signer-signature',
+    '/:height_or_hash/signer-signatures',
     {
       preHandler: handleBlockCache,
       preValidation: (req, _reply, done) => {
@@ -190,9 +190,9 @@ export const BlockRoutesV2: FastifyPluginAsync<
         done();
       },
       schema: {
-        operationId: 'get_signer_signature_for_block',
-        summary: 'Get signer signature for block',
-        description: `Retrieves the "signer signature" (typically an array of signature byte strings) in a single block`,
+        operationId: 'get_signer_signatures_for_block',
+        summary: 'Get signer signatures for block',
+        description: `Retrieves the signer signatures (an array of signature byte strings) in a single block`,
         tags: ['Blocks'],
         params: BlockParamsSchema,
         querystring: Type.Object({

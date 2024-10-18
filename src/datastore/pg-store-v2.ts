@@ -245,10 +245,10 @@ export class PgStoreV2 extends BasePgStoreModule {
               OR index_block_hash = ${normalizeHashString(blockId.hash)}
             )`
           : sql`block_height = ${blockId.height}`;
-      const blockQuery = await sql<{ signer_signature: string[]; total: number }[]>`
+      const blockQuery = await sql<{ signer_signatures: string[]; total: number }[]>`
         SELECT
-          signer_signature[${offset + 1}:${offset + limit}] as signer_signature,
-          array_length(signer_signature, 1)::integer AS total
+          signer_signatures[${offset + 1}:${offset + limit}] as signer_signatures,
+          array_length(signer_signatures, 1)::integer AS total
         FROM blocks
         WHERE canonical = true AND ${filter}
         LIMIT 1
@@ -263,7 +263,7 @@ export class PgStoreV2 extends BasePgStoreModule {
       return {
         limit,
         offset,
-        results: blockQuery[0].signer_signature,
+        results: blockQuery[0].signer_signatures,
         total: blockQuery[0].total,
       };
     });

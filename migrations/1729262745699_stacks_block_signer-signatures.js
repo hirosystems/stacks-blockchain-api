@@ -4,11 +4,11 @@
 exports.up = pgm => {
 
   pgm.addColumn('blocks', {
-    signer_signature: {
+    signer_signatures: {
       type: 'bytea[]',
     }
   });
 
-  pgm.createIndex('blocks', 'signer_signature', { method: 'gin' });
+  pgm.createIndex('blocks', 'signer_signatures', { method: 'gin' });
 
 };

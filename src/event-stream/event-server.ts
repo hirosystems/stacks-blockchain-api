@@ -299,7 +299,7 @@ async function handleBlockMessage(
     : null;
 
   // Stacks-core does not include the '0x' prefix in the signer signature hex strings
-  const signerSignature =
+  const signerSignatures =
     msg.signer_signature?.map(s => (s.startsWith('0x') ? s : '0x' + s)) ?? null;
 
   const dbBlock: DbBlock = {
@@ -323,7 +323,7 @@ async function handleBlockMessage(
     tx_count: msg.transactions.length,
     block_time: blockData.block_time,
     signer_bitvec: signerBitvec,
-    signer_signature: signerSignature,
+    signer_signatures: signerSignatures,
   };
 
   logger.debug(`Received block ${msg.block_hash} (${msg.block_height}) from node`, dbBlock);
@@ -1163,7 +1163,7 @@ export function parseNewBlockMessage(chainId: ChainID, msg: CoreNodeBlockMessage
     execution_cost_write_length: totalCost.execution_cost_write_length,
     tx_count: msg.transactions.length,
     signer_bitvec: msg.signer_bitvec ?? null,
-    signer_signature: msg.signer_signature ?? null,
+    signer_signatures: msg.signer_signature ?? null,
   };
 
   const dbMinerRewards: DbMinerReward[] = [];

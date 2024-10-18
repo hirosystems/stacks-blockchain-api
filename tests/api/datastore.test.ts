@@ -279,7 +279,7 @@ describe('postgres datastore', () => {
       execution_cost_write_length: 0,
       tx_count: 1,
       signer_bitvec: null,
-      signer_signature: null,
+      signer_signatures: null,
     };
     const tx: DbTxRaw = {
       tx_id: '0x1234',
@@ -448,7 +448,7 @@ describe('postgres datastore', () => {
       execution_cost_write_length: 0,
       tx_count: 1,
       signer_bitvec: null,
-      signer_signature: null,
+      signer_signatures: null,
     };
     const tx: DbTxRaw = {
       tx_id: '0x1234',
@@ -623,7 +623,7 @@ describe('postgres datastore', () => {
       execution_cost_write_length: 0,
       tx_count: 1,
       signer_bitvec: null,
-      signer_signature: null,
+      signer_signatures: null,
     };
     await db.updateBlock(client, block);
     const blockQuery = await db.getBlock({ hash: block.block_hash });
@@ -694,7 +694,7 @@ describe('postgres datastore', () => {
       execution_cost_write_length: 0,
       tx_count: 1,
       signer_bitvec: null,
-      signer_signature: null,
+      signer_signatures: null,
     };
 
     let indexIdIndex = 0;
@@ -959,7 +959,7 @@ describe('postgres datastore', () => {
       execution_cost_write_length: 0,
       tx_count: 1,
       signer_bitvec: null,
-      signer_signature: null,
+      signer_signatures: null,
     };
     const txs1 = [
       createStxTx('addrA', 'addrB', 100, dbBlock1),
@@ -1035,7 +1035,7 @@ describe('postgres datastore', () => {
       execution_cost_write_length: 0,
       tx_count: 1,
       signer_bitvec: null,
-      signer_signature: null,
+      signer_signatures: null,
     };
     const tx1: DbTxRaw = {
       tx_id: '0x1234',
@@ -2010,7 +2010,7 @@ describe('postgres datastore', () => {
       execution_cost_write_length: 0,
       tx_count: 1,
       signer_bitvec: null,
-      signer_signature: null,
+      signer_signatures: null,
     };
     const tx: DbTx = {
       tx_id: '0x1234',
@@ -2095,7 +2095,7 @@ describe('postgres datastore', () => {
       execution_cost_write_length: 0,
       tx_count: 1,
       signer_bitvec: null,
-      signer_signature: null,
+      signer_signatures: null,
     };
     const tx: DbTx = {
       tx_id: '0x421234',
@@ -2185,7 +2185,7 @@ describe('postgres datastore', () => {
       execution_cost_write_length: 0,
       tx_count: 1,
       signer_bitvec: null,
-      signer_signature: null,
+      signer_signatures: null,
     };
     const tx: DbTx = {
       tx_id: '0x421234',
@@ -2283,7 +2283,7 @@ describe('postgres datastore', () => {
       execution_cost_write_length: 0,
       tx_count: 1,
       signer_bitvec: null,
-      signer_signature: null,
+      signer_signatures: null,
     };
     const tx: DbTxRaw = {
       tx_id: '0x421234',
@@ -2425,7 +2425,7 @@ describe('postgres datastore', () => {
       execution_cost_write_length: 0,
       tx_count: 1,
       signer_bitvec: null,
-      signer_signature: null,
+      signer_signatures: null,
     };
     const tx: DbTx = {
       tx_id: '0x421234',
@@ -2515,7 +2515,7 @@ describe('postgres datastore', () => {
       execution_cost_write_length: 0,
       tx_count: 1,
       signer_bitvec: null,
-      signer_signature: null,
+      signer_signatures: null,
     };
     const tx: DbTx = {
       tx_id: '0x421234',
@@ -2604,7 +2604,7 @@ describe('postgres datastore', () => {
       execution_cost_write_length: 0,
       tx_count: 1,
       signer_bitvec: null,
-      signer_signature: null,
+      signer_signatures: null,
     };
     const tx: DbTx = {
       tx_id: '0x421234',
@@ -2692,7 +2692,7 @@ describe('postgres datastore', () => {
       execution_cost_write_length: 0,
       tx_count: 1,
       signer_bitvec: null,
-      signer_signature: null,
+      signer_signatures: null,
     };
     await db.updateBlock(client, dbBlock);
 
@@ -2767,7 +2767,7 @@ describe('postgres datastore', () => {
       execution_cost_write_length: 0,
       tx_count: 1,
       signer_bitvec: null,
-      signer_signature: null,
+      signer_signatures: null,
     };
     const tx1: DbTx = {
       tx_id: '0x421234',
@@ -3142,7 +3142,7 @@ describe('postgres datastore', () => {
       execution_cost_write_length: 0,
       tx_count: 1,
       signer_bitvec: null,
-      signer_signature: null,
+      signer_signatures: null,
     };
     const block2: DbBlock = {
       block_hash: '0x22',
@@ -3165,7 +3165,7 @@ describe('postgres datastore', () => {
       execution_cost_write_length: 0,
       tx_count: 1,
       signer_bitvec: null,
-      signer_signature: null,
+      signer_signatures: null,
     };
     const block3: DbBlock = {
       block_hash: '0x33',
@@ -3188,7 +3188,7 @@ describe('postgres datastore', () => {
       execution_cost_write_length: 0,
       tx_count: 1,
       signer_bitvec: null,
-      signer_signature: null,
+      signer_signatures: null,
     };
     const block3B: DbBlock = {
       ...block3,
@@ -3217,7 +3217,7 @@ describe('postgres datastore', () => {
       execution_cost_write_length: 0,
       tx_count: 1,
       signer_bitvec: null,
-      signer_signature: null,
+      signer_signatures: null,
     };
     const block4: DbBlock = {
       block_hash: '0x44',
@@ -3240,7 +3240,7 @@ describe('postgres datastore', () => {
       execution_cost_write_length: 0,
       tx_count: 1,
       signer_bitvec: null,
-      signer_signature: null,
+      signer_signatures: null,
     };
     const block5: DbBlock = {
       block_hash: '0x55',
@@ -3263,7 +3263,7 @@ describe('postgres datastore', () => {
       execution_cost_write_length: 0,
       tx_count: 1,
       signer_bitvec: null,
-      signer_signature: null,
+      signer_signatures: null,
     };
     const block6: DbBlock = {
       block_hash: '0x66',
@@ -3286,7 +3286,7 @@ describe('postgres datastore', () => {
       execution_cost_write_length: 0,
       tx_count: 1,
       signer_bitvec: null,
-      signer_signature: null,
+      signer_signatures: null,
     };
 
     const tx1Mempool: DbMempoolTxRaw = {
@@ -3479,7 +3479,7 @@ describe('postgres datastore', () => {
       execution_cost_write_length: 0,
       tx_count: 1,
       signer_bitvec: null,
-      signer_signature: null,
+      signer_signatures: null,
     };
     const block2: DbBlock = {
       block_hash: '0x22',
@@ -3502,7 +3502,7 @@ describe('postgres datastore', () => {
       execution_cost_write_length: 0,
       tx_count: 1,
       signer_bitvec: null,
-      signer_signature: null,
+      signer_signatures: null,
     };
     const block3: DbBlock = {
       block_hash: '0x33',
@@ -3525,7 +3525,7 @@ describe('postgres datastore', () => {
       execution_cost_write_length: 0,
       tx_count: 1,
       signer_bitvec: null,
-      signer_signature: null,
+      signer_signatures: null,
     };
     const block3B: DbBlock = {
       ...block3,
@@ -3554,7 +3554,7 @@ describe('postgres datastore', () => {
       execution_cost_write_length: 0,
       tx_count: 1,
       signer_bitvec: null,
-      signer_signature: null,
+      signer_signatures: null,
     };
 
     const minerReward1: DbMinerReward = {
@@ -3690,7 +3690,7 @@ describe('postgres datastore', () => {
       execution_cost_write_length: 0,
       tx_count: 1,
       signer_bitvec: null,
-      signer_signature: null,
+      signer_signatures: null,
     };
 
     const reorgResult = await db.handleReorg(client, block5, 0);
@@ -3772,7 +3772,7 @@ describe('postgres datastore', () => {
       execution_cost_write_length: 0,
       tx_count: 1,
       signer_bitvec: null,
-      signer_signature: null,
+      signer_signatures: null,
     };
     const block2: DbBlock = {
       block_hash: '0x22',
@@ -3795,7 +3795,7 @@ describe('postgres datastore', () => {
       execution_cost_write_length: 0,
       tx_count: 1,
       signer_bitvec: null,
-      signer_signature: null,
+      signer_signatures: null,
     };
 
     const minerReward1: DbMinerReward = {
@@ -4076,7 +4076,7 @@ describe('postgres datastore', () => {
       execution_cost_write_length: 0,
       tx_count: 1,
       signer_bitvec: null,
-      signer_signature: null,
+      signer_signatures: null,
     };
     await db.update({ block: block3, microblocks: [], minerRewards: [], txs: [] });
 
@@ -4101,7 +4101,7 @@ describe('postgres datastore', () => {
       execution_cost_write_length: 0,
       tx_count: 1,
       signer_bitvec: null,
-      signer_signature: null,
+      signer_signatures: null,
     };
     const tx3: DbTxRaw = {
       tx_id: '0x03',
@@ -4313,7 +4313,7 @@ describe('postgres datastore', () => {
       execution_cost_write_length: 0,
       tx_count: 1,
       signer_bitvec: null,
-      signer_signature: null,
+      signer_signatures: null,
     };
     await db.update({ block: block3b, microblocks: [], minerRewards: [], txs: [] });
     const blockQuery2 = await db.getBlock({ hash: block3b.block_hash });
@@ -4355,7 +4355,7 @@ describe('postgres datastore', () => {
       execution_cost_write_length: 0,
       tx_count: 1,
       signer_bitvec: null,
-      signer_signature: null,
+      signer_signatures: null,
     };
     await db.update({ block: block4b, microblocks: [], minerRewards: [], txs: [] });
 
@@ -4466,7 +4466,7 @@ describe('postgres datastore', () => {
       execution_cost_write_length: 0,
       tx_count: 1,
       signer_bitvec: null,
-      signer_signature: null,
+      signer_signatures: null,
     };
 
     const block2: DbBlock = {
@@ -4490,7 +4490,7 @@ describe('postgres datastore', () => {
       execution_cost_write_length: 0,
       tx_count: 1,
       signer_bitvec: null,
-      signer_signature: null,
+      signer_signatures: null,
     };
 
     const block2b: DbBlock = {
@@ -4514,7 +4514,7 @@ describe('postgres datastore', () => {
       execution_cost_write_length: 0,
       tx_count: 1,
       signer_bitvec: null,
-      signer_signature: null,
+      signer_signatures: null,
     };
 
     const block3: DbBlock = {
@@ -4538,7 +4538,7 @@ describe('postgres datastore', () => {
       execution_cost_write_length: 0,
       tx_count: 1,
       signer_bitvec: null,
-      signer_signature: null,
+      signer_signatures: null,
     };
 
     const block3b: DbBlock = {
@@ -4562,7 +4562,7 @@ describe('postgres datastore', () => {
       execution_cost_write_length: 0,
       tx_count: 1,
       signer_bitvec: null,
-      signer_signature: null,
+      signer_signatures: null,
     };
 
     const block4b: DbBlock = {
@@ -4586,7 +4586,7 @@ describe('postgres datastore', () => {
       execution_cost_write_length: 0,
       tx_count: 1,
       signer_bitvec: null,
-      signer_signature: null,
+      signer_signatures: null,
     };
 
     const minerReward1: DbMinerReward = {
@@ -5085,7 +5085,7 @@ describe('postgres datastore', () => {
       execution_cost_write_length: 0,
       tx_count: 1,
       signer_bitvec: null,
-      signer_signature: null,
+      signer_signatures: null,
     };
     const tx1: DbTxRaw = {
       tx_id: '0x421234',
@@ -5173,7 +5173,7 @@ describe('postgres datastore', () => {
       execution_cost_write_length: 0,
       tx_count: 1,
       signer_bitvec: null,
-      signer_signature: null,
+      signer_signatures: null,
     };
     const tx1: DbTxRaw = {
       tx_id: '0x421234',
@@ -5260,7 +5260,7 @@ describe('postgres datastore', () => {
       execution_cost_write_length: 0,
       tx_count: 1,
       signer_bitvec: null,
-      signer_signature: null,
+      signer_signatures: null,
     };
     const tx1: DbTxRaw = {
       tx_id: '0x421234',
@@ -5418,7 +5418,7 @@ describe('postgres datastore', () => {
       execution_cost_write_length: 0,
       tx_count: 1,
       signer_bitvec: null,
-      signer_signature: null,
+      signer_signatures: null,
     };
     await db.update({
       block: dbBlock,
@@ -5481,7 +5481,7 @@ describe('postgres datastore', () => {
       execution_cost_write_length: 0,
       tx_count: 1,
       signer_bitvec: null,
-      signer_signature: null,
+      signer_signatures: null,
     };
     await db.update({
       block: dbBlock,
@@ -5545,7 +5545,7 @@ describe('postgres datastore', () => {
       execution_cost_write_length: 0,
       tx_count: 1,
       signer_bitvec: null,
-      signer_signature: null,
+      signer_signatures: null,
     };
     await db.update({
       block: dbBlock,
@@ -5609,7 +5609,7 @@ describe('postgres datastore', () => {
       execution_cost_write_length: 0,
       tx_count: 1,
       signer_bitvec: null,
-      signer_signature: null,
+      signer_signatures: null,
     };
     await db.updateBlock(client, block);
     const blockQuery = await db.getBlock({ hash: block.block_hash });
@@ -5720,7 +5720,7 @@ describe('postgres datastore', () => {
       execution_cost_write_length: 0,
       tx_count: 1,
       signer_bitvec: null,
-      signer_signature: null,
+      signer_signatures: null,
     };
     await db.updateBlock(client, block);
     const blockQuery = await db.getBlock({ hash: block.block_hash });

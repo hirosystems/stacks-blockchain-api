@@ -87,7 +87,7 @@ describe('block tests', () => {
       execution_cost_write_length: 0,
       tx_count: 1,
       signer_bitvec: null,
-      signer_signature: null,
+      signer_signatures: null,
     };
     await db.updateBlock(client, block);
     const tx: DbTxRaw = {
@@ -283,7 +283,7 @@ describe('block tests', () => {
     expect(result.body).toEqual(expectedResp);
   });
 
-  test('/block signer signature', async () => {
+  test('/block signer signatures', async () => {
     const block_hash = '0x1234',
       index_block_hash = '0xabcd',
       tx_id = '0x12ff';
@@ -297,7 +297,7 @@ describe('block tests', () => {
       index_block_hash,
       // parent_index_block_hash: genesis_index_block_hash,
       block_height: 1,
-      signer_signature: signerSignatures,
+      signer_signatures: signerSignatures,
     })
       .addTx({ block_hash, tx_id, index_block_hash })
       .build();
@@ -338,7 +338,7 @@ describe('block tests', () => {
     expect(result.body).toEqual(expectedResp);
 
     const sigReq = await supertest(api.server).get(
-      `/extended/v2/blocks/${block1.block.block_height}/signer-signature?limit=3&offset=70`
+      `/extended/v2/blocks/${block1.block.block_height}/signer-signatures?limit=3&offset=70`
     );
     const sigResult: BlockSignerSignatureResponse = sigReq.body;
     expect(sigResult).toEqual({
@@ -619,7 +619,7 @@ describe('block tests', () => {
       execution_cost_write_length: 0,
       tx_count: 1,
       signer_bitvec: null,
-      signer_signature: null,
+      signer_signatures: null,
     };
     const dbTx1: DbTxRaw = {
       ...dbBlock,
