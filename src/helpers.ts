@@ -33,8 +33,7 @@ export function getIbdBlockHeight(): number | undefined {
   }
 }
 
-export function getStxFaucetNetworks(): StacksNetwork[] {
-  const networks: StacksNetwork[] = [getStacksTestnetNetwork()];
+export function getStxFaucetNetwork(): StacksNetwork {
   const faucetNodeHostOverride: string | undefined = process.env.STACKS_FAUCET_NODE_HOST;
   if (faucetNodeHostOverride) {
     const faucetNodePortOverride: string | undefined = process.env.STACKS_FAUCET_NODE_PORT;
@@ -46,9 +45,9 @@ export function getStxFaucetNetworks(): StacksNetwork[] {
     const network = new StacksTestnet({
       url: `http://${faucetNodeHostOverride}:${faucetNodePortOverride}`,
     });
-    networks.push(network);
+    return network;
   }
-  return networks;
+  return getStacksTestnetNetwork();
 }
 
 function createEnumChecker<T extends string, TEnumValue extends number>(enumVariable: {
@@ -468,22 +467,6 @@ export function assertNotNullish<T>(
     throw new Error(onNullish?.() ?? 'value is nullish');
   }
 }
-
-function intMax(args: bigint[]): bigint;
-function intMax(args: number[]): number;
-function intMax(args: bigint[] | number[]): any {
-  if (args.length === 0) {
-    throw new Error(`empty array not supported in intMax`);
-  } else if (typeof args[0] === 'bigint') {
-    return (args as bigint[]).reduce((m, e) => (e > m ? e : m));
-  } else if (typeof args[0] === 'number') {
-    return Math.max(...(args as number[]));
-  } else {
-    // eslint-disable-next-line @typescript-eslint/ban-types
-    throw new Error(`Unsupported type for intMax: ${(args[0] as object).constructor.name}`);
-  }
-}
-export { intMax };
 
 export class BigIntMath {
   static abs(a: bigint): bigint {
