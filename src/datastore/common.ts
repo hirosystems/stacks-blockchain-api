@@ -25,6 +25,7 @@ export interface DbBlock {
   tx_count: number;
   block_time: number;
   signer_bitvec: string | null;
+  signer_signature: string[] | null;
 }
 
 /** An interface representing the microblock data that can be constructed _only_ from the /new_microblocks payload */
@@ -862,6 +863,7 @@ export interface BlockQueryResult {
   execution_cost_write_length: string;
   tx_count: number;
   signer_bitvec: string | null;
+  signer_signature: string[] | null;
 }
 
 export interface MicroblockQueryResult {
@@ -1286,6 +1288,7 @@ export interface BlockInsertValues {
   execution_cost_write_length: number;
   tx_count: number;
   signer_bitvec: string | null;
+  signer_signature: PgBytea[] | null;
 }
 
 export interface MicroblockInsertValues {

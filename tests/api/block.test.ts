@@ -14,7 +14,10 @@ import { TestBlockBuilder, TestMicroblockStreamBuilder } from '../utils/test-bui
 import { PgWriteStore } from '../../src/datastore/pg-write-store';
 import { PgSqlClient, bufferToHex } from '@hirosystems/api-toolkit';
 import { migrate } from '../utils/test-helpers';
-import { BlockListV2Response } from 'src/api/schemas/responses/responses';
+import {
+  BlockListV2Response,
+  BlockSignerSignatureResponse,
+} from '../../src/api/schemas/responses/responses';
 
 describe('block tests', () => {
   let db: PgWriteStore;
@@ -84,6 +87,7 @@ describe('block tests', () => {
       execution_cost_write_length: 0,
       tx_count: 1,
       signer_bitvec: null,
+      signer_signature: null,
     };
     await db.updateBlock(client, block);
     const tx: DbTxRaw = {
@@ -277,6 +281,72 @@ describe('block tests', () => {
     };
     const result = await supertest(api.server).get(`/extended/v1/block/`);
     expect(result.body).toEqual(expectedResp);
+  });
+
+  test('/block signer signature', async () => {
+    const block_hash = '0x1234',
+      index_block_hash = '0xabcd',
+      tx_id = '0x12ff';
+    const signerSignatures: string[] = [];
+    // 65 bytes each, up to 4000 signatures byte strings possible
+    for (let i = 0; i < 4000; i++) {
+      signerSignatures.push(`0x${i.toString(16).padStart(130, '0')}`);
+    }
+    const block1 = new TestBlockBuilder({
+      block_hash,
+      index_block_hash,
+      // parent_index_block_hash: genesis_index_block_hash,
+      block_height: 1,
+      signer_signature: signerSignatures,
+    })
+      .addTx({ block_hash, tx_id, index_block_hash })
+      .build();
+    await db.update(block1);
+    const expectedResp = {
+      limit: 20,
+      offset: 0,
+      total: 1,
+      results: [
+        {
+          canonical: true,
+          height: 1,
+          hash: block_hash,
+          block_time: 94869287,
+          block_time_iso: '1973-01-03T00:34:47.000Z',
+          parent_block_hash: '0x',
+          burn_block_time: 94869286,
+          burn_block_time_iso: '1973-01-03T00:34:46.000Z',
+          burn_block_hash: '0xf44f44',
+          burn_block_height: 713000,
+          miner_txid: '0x4321',
+          parent_microblock_hash: '0x00',
+          index_block_hash: '0xabcd',
+          parent_microblock_sequence: 0,
+          txs: [tx_id],
+          microblocks_accepted: [],
+          microblocks_streamed: [],
+          execution_cost_read_count: 0,
+          execution_cost_read_length: 0,
+          execution_cost_runtime: 0,
+          execution_cost_write_count: 0,
+          execution_cost_write_length: 0,
+          microblock_tx_count: {},
+        },
+      ],
+    };
+    const result = await supertest(api.server).get(`/extended/v1/block/`);
+    expect(result.body).toEqual(expectedResp);
+
+    const sigReq = await supertest(api.server).get(
+      `/extended/v2/blocks/${block1.block.block_height}/signer-signature?limit=3&offset=70`
+    );
+    const sigResult: BlockSignerSignatureResponse = sigReq.body;
+    expect(sigResult).toEqual({
+      limit: 3,
+      offset: 70,
+      total: 4000,
+      results: signerSignatures.slice(70, 73),
+    });
   });
 
   test('/burn_block', async () => {
@@ -549,6 +619,7 @@ describe('block tests', () => {
       execution_cost_write_length: 0,
       tx_count: 1,
       signer_bitvec: null,
+      signer_signature: null,
     };
     const dbTx1: DbTxRaw = {
       ...dbBlock,

@@ -99,6 +99,7 @@ export interface TestBlockArgs {
   parent_microblock_sequence?: number;
   canonical?: boolean;
   signer_bitvec?: string;
+  signer_signature?: string[];
 }
 
 /**
@@ -128,6 +129,7 @@ function testBlock(args?: TestBlockArgs): DbBlock {
     execution_cost_write_length: 0,
     tx_count: 1,
     signer_bitvec: args?.signer_bitvec ?? null,
+    signer_signature: args?.signer_signature ?? null,
   };
 }
 

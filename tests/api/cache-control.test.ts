@@ -60,6 +60,7 @@ describe('cache-control tests', () => {
       execution_cost_write_length: 0,
       tx_count: 1,
       signer_bitvec: null,
+      signer_signature: null,
     };
     const tx: DbTxRaw = {
       tx_id: '0x1234',

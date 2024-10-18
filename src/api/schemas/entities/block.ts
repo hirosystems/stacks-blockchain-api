@@ -116,3 +116,8 @@ export const NakamotoBlockSchema = Type.Object({
   execution_cost_write_length: Type.Integer({ description: 'Execution cost write length.' }),
 });
 export type NakamotoBlock = Static<typeof NakamotoBlockSchema>;
+
+export const SignerSignatureSchema = Type.String({
+  description: "Array of hex strings representing the block's signer signature",
+});
+export type SignerSignature = Static<typeof SignerSignatureSchema>;

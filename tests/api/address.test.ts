@@ -93,6 +93,7 @@ describe('address tests', () => {
       execution_cost_write_length: 0,
       tx_count: 1,
       signer_bitvec: null,
+      signer_signature: null,
     };
     let indexIdIndex = 0;
     const createStxTx = (
@@ -1169,6 +1170,7 @@ describe('address tests', () => {
       execution_cost_write_length: 0,
       tx_count: 1,
       signer_bitvec: null,
+      signer_signature: null,
     };
 
     let indexIdIndex = 0;
@@ -2386,6 +2388,7 @@ describe('address tests', () => {
       execution_cost_write_length: 0,
       tx_count: 1,
       signer_bitvec: null,
+      signer_signature: null,
     };
     const txBuilder = await makeContractCall({
       contractAddress: 'ST11NJTTKGVT6D1HY4NJRVQWMQM7TVAR091EJ8P2Y',
