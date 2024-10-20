@@ -25,6 +25,7 @@ import * as btc from 'bitcoinjs-lib';
 import {
   getTxFromDataStore,
   getTxStatus,
+  getTxTenureChangeCauseString,
   getTxTypeString,
   parseContractCallMetadata,
 } from '../api/controllers/db-controller';
@@ -169,6 +170,9 @@ async function getOperationsInternal(
       break;
     case RosettaOperationType.PoisonMicroblock:
       operations.push(makePoisonMicroblockOperation(tx, 0));
+      break;
+    case RosettaOperationType.TenureChange:
+      operations.push(makeTenureChangeOperation(tx, operations.length));
       break;
     default:
       throw new Error(`Unexpected tx type: ${JSON.stringify(txType)}`);
@@ -725,6 +729,23 @@ function makePoisonMicroblockOperation(tx: BaseTx, index: number): RosettaOperat
   };
 
   return sender;
+}
+
+function makeTenureChangeOperation(tx: BaseTx, index: number): RosettaOperation {
+  return {
+    operation_identifier: { index: index },
+    type: RosettaOperationType.TenureChange,
+    status: getTxStatus(tx.status),
+    metadata: {
+      tenure_consensus_hash: tx.tenure_change_tenure_consensus_hash as string,
+      prev_tenure_consensus_hash: tx.tenure_change_prev_tenure_consensus_hash as string,
+      burn_view_consensus_hash: tx.tenure_change_burn_view_consensus_hash as string,
+      previous_tenure_end: tx.tenure_change_previous_tenure_end as string,
+      previous_tenure_blocks: tx.tenure_change_previous_tenure_blocks as number,
+      cause: getTxTenureChangeCauseString(tx.tenure_change_cause as number),
+      pubkey_hash: tx.tenure_change_pubkey_hash as string,
+    },
+  };
 }
 
 export function publicKeyToBitcoinAddress(publicKey: string, network: string): string | undefined {
