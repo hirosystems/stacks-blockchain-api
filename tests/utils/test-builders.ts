@@ -100,6 +100,7 @@ export interface TestBlockArgs {
   canonical?: boolean;
   signer_bitvec?: string;
   signer_signatures?: string[];
+  tenure_height?: number;
 }
 
 /**
@@ -130,6 +131,7 @@ function testBlock(args?: TestBlockArgs): DbBlock {
     tx_count: 1,
     signer_bitvec: args?.signer_bitvec ?? null,
     signer_signatures: args?.signer_signatures ?? null,
+    tenure_height: args?.tenure_height ?? args?.block_height ?? BLOCK_HEIGHT,
   };
 }
 

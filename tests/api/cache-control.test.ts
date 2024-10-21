@@ -47,6 +47,7 @@ describe('cache-control tests', () => {
       parent_microblock_hash: '0x00',
       parent_microblock_sequence: 0,
       block_height: 1,
+      tenure_height: 1,
       block_time: 1594647996,
       burn_block_time: 1594647996,
       burn_block_hash: '0x1234',

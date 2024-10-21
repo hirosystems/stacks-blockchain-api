@@ -273,6 +273,7 @@ describe('microblock tests', () => {
           parent_block_hash: '0x00',
           parent_microblock_hash: '',
           block_height: 1,
+          tenure_height: 1,
           block_time: 1234,
           burn_block_time: 1234,
           burn_block_hash: '0x1234',

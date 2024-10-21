@@ -465,7 +465,6 @@ export function parseFaucetRequestQueryResult(result: FaucetRequestQueryResult):
 }
 
 export function parseBlockQueryResult(row: BlockQueryResult): DbBlock {
-  // TODO(mb): is the tx_index preserved between microblocks and committed anchor blocks?
   const block: DbBlock = {
     block_hash: row.block_hash,
     index_block_hash: row.index_block_hash,
@@ -488,6 +487,8 @@ export function parseBlockQueryResult(row: BlockQueryResult): DbBlock {
     tx_count: row.tx_count,
     signer_bitvec: row.signer_bitvec,
     signer_signatures: null, // this field is not queried from db by default due to size constraints
+    // If `tenure_height` is not available, but `signer_bitvec` is set we can safely assume it's same as `block_height` (epoch2.x rules)
+    tenure_height: row.tenure_height ?? (row.signer_bitvec ? -1 : row.block_height),
   };
   return block;
 }

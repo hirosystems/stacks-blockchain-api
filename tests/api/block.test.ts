@@ -74,6 +74,7 @@ describe('block tests', () => {
       parent_microblock_hash: '',
       parent_microblock_sequence: 0,
       block_height: 1235,
+      tenure_height: 1235,
       block_time: 1594647996,
       burn_block_time: 1594647996,
       burn_block_hash: '0x1234',
