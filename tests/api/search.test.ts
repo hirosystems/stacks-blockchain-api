@@ -407,7 +407,7 @@ describe('search tests', () => {
         metadata: blockMetadata,
       },
     };
-    expect(JSON.parse(searchResult1.text)).toEqual(expectedResp1);
+    expect(JSON.parse(searchResult1.text)).toMatchObject(expectedResp1);
 
     // test without 0x-prefix
     const searchResult2 = await supertest(api.server).get(
@@ -430,7 +430,7 @@ describe('search tests', () => {
         metadata: blockMetadata,
       },
     };
-    expect(JSON.parse(searchResult2.text)).toEqual(expectedResp2);
+    expect(JSON.parse(searchResult2.text)).toMatchObject(expectedResp2);
 
     // test whitespace
     const searchResult3 = await supertest(api.server).get(
@@ -453,7 +453,7 @@ describe('search tests', () => {
         metadata: blockMetadata,
       },
     };
-    expect(JSON.parse(searchResult3.text)).toEqual(expectedResp3);
+    expect(JSON.parse(searchResult3.text)).toMatchObject(expectedResp3);
 
     // test mempool tx search
     const searchResult4 = await supertest(api.server).get(

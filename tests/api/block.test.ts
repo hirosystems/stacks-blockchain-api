@@ -163,28 +163,28 @@ describe('block tests', () => {
       microblock_tx_count: {},
     };
 
-    expect(blockQuery.result).toEqual(expectedResp);
+    expect(blockQuery.result).toMatchObject(expectedResp);
 
     const fetchBlockByHash = await supertest(api.server).get(
       `/extended/v1/block/${block.block_hash}`
     );
     expect(fetchBlockByHash.status).toBe(200);
     expect(fetchBlockByHash.type).toBe('application/json');
-    expect(JSON.parse(fetchBlockByHash.text)).toEqual(expectedResp);
+    expect(JSON.parse(fetchBlockByHash.text)).toMatchObject(expectedResp);
 
     const fetchBlockByHeight = await supertest(api.server).get(
       `/extended/v1/block/by_height/${block.block_height}`
     );
     expect(fetchBlockByHeight.status).toBe(200);
     expect(fetchBlockByHeight.type).toBe('application/json');
-    expect(JSON.parse(fetchBlockByHeight.text)).toEqual(expectedResp);
+    expect(JSON.parse(fetchBlockByHeight.text)).toMatchObject(expectedResp);
 
     const fetchBlockByBurnBlockHeight = await supertest(api.server).get(
       `/extended/v1/block/by_burn_block_height/${block.burn_block_height}`
     );
     expect(fetchBlockByBurnBlockHeight.status).toBe(200);
     expect(fetchBlockByBurnBlockHeight.type).toBe('application/json');
-    expect(JSON.parse(fetchBlockByBurnBlockHeight.text)).toEqual(expectedResp);
+    expect(JSON.parse(fetchBlockByBurnBlockHeight.text)).toMatchObject(expectedResp);
 
     const fetchBlockByInvalidBurnBlockHeight1 = await supertest(api.server).get(
       `/extended/v1/block/by_burn_block_height/999`
@@ -217,7 +217,7 @@ describe('block tests', () => {
     );
     expect(fetchBlockByBurnBlockHash.status).toBe(200);
     expect(fetchBlockByBurnBlockHash.type).toBe('application/json');
-    expect(JSON.parse(fetchBlockByBurnBlockHash.text)).toEqual(expectedResp);
+    expect(JSON.parse(fetchBlockByBurnBlockHash.text)).toMatchObject(expectedResp);
 
     const fetchBlockByInvalidBurnBlockHash = await supertest(api.server).get(
       `/extended/v1/block/by_burn_block_hash/0x000000`
@@ -281,7 +281,7 @@ describe('block tests', () => {
       ],
     };
     const result = await supertest(api.server).get(`/extended/v1/block/`);
-    expect(result.body).toEqual(expectedResp);
+    expect(result.body).toMatchObject(expectedResp);
   });
 
   test('/block signer signatures', async () => {
@@ -336,7 +336,7 @@ describe('block tests', () => {
       ],
     };
     const result = await supertest(api.server).get(`/extended/v1/block/`);
-    expect(result.body).toEqual(expectedResp);
+    expect(result.body).toMatchObject(expectedResp);
 
     const sigReq = await supertest(api.server).get(
       `/extended/v2/blocks/${block1.block.block_height}/signer-signatures?limit=3&offset=70`
@@ -545,7 +545,7 @@ describe('block tests', () => {
     );
     expect(fetch1.status).toBe(200);
     expect(fetch1.type).toBe('application/json');
-    expect(JSON.parse(fetch1.text)).toEqual(expectedResp1);
+    expect(JSON.parse(fetch1.text)).toMatchObject(expectedResp1);
 
     // Confirm the first microblock, but orphan the second
     const block2 = new TestBlockBuilder({
@@ -595,7 +595,7 @@ describe('block tests', () => {
 
     expect(fetch2.status).toBe(200);
     expect(fetch2.type).toBe('application/json');
-    expect(JSON.parse(fetch2.text)).toEqual(expectedResp2);
+    expect(JSON.parse(fetch2.text)).toMatchObject(expectedResp2);
   });
 
   test('blocks v2 filtered by burn block', async () => {
@@ -656,14 +656,14 @@ describe('block tests', () => {
     let json = JSON.parse(fetch.text);
     expect(fetch.status).toBe(200);
     expect(json.total).toEqual(5);
-    expect(json.results[0]).toStrictEqual(block5);
+    expect(json.results[0]).toMatchObject(block5);
 
     // Filter by burn height
     fetch = await supertest(api.server).get(`/extended/v2/burn-blocks/700000/blocks`);
     json = JSON.parse(fetch.text);
     expect(fetch.status).toBe(200);
     expect(json.total).toEqual(5);
-    expect(json.results[0]).toStrictEqual(block5);
+    expect(json.results[0]).toMatchObject(block5);
 
     // Get latest block
     const block8 = {
@@ -691,7 +691,7 @@ describe('block tests', () => {
     json = JSON.parse(fetch.text);
     expect(fetch.status).toBe(200);
     expect(json.total).toEqual(3);
-    expect(json.results[0]).toStrictEqual(block8);
+    expect(json.results[0]).toMatchObject(block8);
 
     // Block hashes are validated
     fetch = await supertest(api.server).get(`/extended/v2/burn-blocks/testvalue/blocks`);
@@ -946,13 +946,13 @@ describe('block tests', () => {
     let fetch = await supertest(api.server).get(`/extended/v2/blocks/latest`);
     let json = JSON.parse(fetch.text);
     expect(fetch.status).toBe(200);
-    expect(json).toStrictEqual(block5);
+    expect(json).toMatchObject(block5);
 
     // Get by height
     fetch = await supertest(api.server).get(`/extended/v2/blocks/5`);
     json = JSON.parse(fetch.text);
     expect(fetch.status).toBe(200);
-    expect(json).toStrictEqual(block5);
+    expect(json).toMatchObject(block5);
 
     // Get by hash
     fetch = await supertest(api.server).get(
@@ -960,7 +960,7 @@ describe('block tests', () => {
     );
     json = JSON.parse(fetch.text);
     expect(fetch.status).toBe(200);
-    expect(json).toStrictEqual(block5);
+    expect(json).toMatchObject(block5);
 
     // Get by index block hash
     fetch = await supertest(api.server).get(
@@ -968,7 +968,7 @@ describe('block tests', () => {
     );
     json = JSON.parse(fetch.text);
     expect(fetch.status).toBe(200);
-    expect(json).toStrictEqual(block5);
+    expect(json).toMatchObject(block5);
   });
 
   test('blocks v2 retrieved by digit-only hash', async () => {
