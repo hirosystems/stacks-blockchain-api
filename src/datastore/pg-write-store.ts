@@ -66,7 +66,6 @@ import {
 } from './common';
 import {
   BLOCK_COLUMNS,
-  setTotalBlockUpdateDataExecutionCost,
   convertTxQueryResultToDbMempoolTx,
   markBlockUpdateDataAsNonCanonical,
   MICROBLOCK_COLUMNS,
@@ -210,7 +209,6 @@ export class PgWriteStore extends PgStore {
         }));
         await this.pruneMempoolTxs(sql, prunableTxs);
       }
-      setTotalBlockUpdateDataExecutionCost(data);
 
       // Insert microblocks, if any. Clear already inserted microblock txs from the anchor-block
       // update data to avoid duplicate inserts.
