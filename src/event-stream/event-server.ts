@@ -992,23 +992,6 @@ export function parseNewBlockMessage(
     counts.events[event.type] += 1;
   }
 
-  const executionCost = parsedTxs.reduce(
-    (acc, { core_tx: { execution_cost } }) => ({
-      read_count: acc.read_count + execution_cost.read_count,
-      read_length: acc.read_length + execution_cost.read_length,
-      runtime: acc.runtime + execution_cost.runtime,
-      write_count: acc.write_count + execution_cost.write_count,
-      write_length: acc.write_length + execution_cost.write_length,
-    }),
-    {
-      read_count: 0,
-      read_length: 0,
-      runtime: 0,
-      write_count: 0,
-      write_length: 0,
-    }
-  );
-
   const signerBitvec = msg.signer_bitvec
     ? BitVec.consensusDeserializeToString(msg.signer_bitvec)
     : null;
@@ -1030,11 +1013,11 @@ export function parseNewBlockMessage(
     burn_block_hash: msg.burn_block_hash,
     burn_block_height: msg.burn_block_height,
     miner_txid: msg.miner_txid,
-    execution_cost_read_count: executionCost.read_count,
-    execution_cost_read_length: executionCost.read_length,
-    execution_cost_runtime: executionCost.runtime,
-    execution_cost_write_count: executionCost.write_count,
-    execution_cost_write_length: executionCost.write_length,
+    execution_cost_read_count: msg.anchored_cost.read_count,
+    execution_cost_read_length: msg.anchored_cost.read_length,
+    execution_cost_runtime: msg.anchored_cost.runtime,
+    execution_cost_write_count: msg.anchored_cost.write_count,
+    execution_cost_write_length: msg.anchored_cost.write_length,
     tx_count: msg.transactions.length,
     block_time: blockData.block_time,
     signer_bitvec: signerBitvec,

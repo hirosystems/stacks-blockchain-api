@@ -301,6 +301,8 @@ export interface CoreNodeBlockMessage {
     /** String quoted micro-STX amount. */
     tx_fees_streamed_produced: string;
   }[];
+  anchored_cost: CoreNodeExecutionCostMessage;
+  confirmed_microblocks_cost: CoreNodeExecutionCostMessage;
   pox_v1_unlock_height?: number;
   pox_v2_unlock_height?: number;
   pox_v3_unlock_height?: number;
