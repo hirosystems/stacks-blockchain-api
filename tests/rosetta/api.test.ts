@@ -460,6 +460,94 @@ describe('Rosetta API', () => {
     });
   });
 
+  test('block - Nakamoto timestamps', async () => {
+    const parentData = new TestBlockBuilder({
+      block_height: 0,
+    }).build();
+
+    // Epoch2.x block
+    const block1 = new TestBlockBuilder({
+      block_height: 1,
+      block_hash: '0x1234',
+      index_block_hash: '0x123456',
+      parent_block_hash: parentData.block.block_hash,
+      parent_index_block_hash: parentData.block.index_block_hash,
+    }).build();
+    block1.block.burn_block_time = 1222;
+    block1.block.block_time = 1333;
+    block1.block.signer_bitvec = null;
+
+    // Epoch3 block
+    const block2 = new TestBlockBuilder({
+      block_height: 2,
+      block_hash: '0x2234',
+      index_block_hash: '0x223456',
+      parent_block_hash: block1.block.block_hash,
+      parent_index_block_hash: block1.block.index_block_hash,
+    }).build();
+    block2.block.burn_block_time = 2222;
+    block2.block.block_time = 2333;
+    block2.block.signer_bitvec = '1111';
+
+    await db.update(parentData);
+    await db.update(block1);
+    await db.update(block2);
+
+    const query1 = await supertest(api.address)
+      .post(`/rosetta/v1/block`)
+      .send({
+        network_identifier: { blockchain: 'stacks', network: 'testnet' },
+        block_identifier: { index: block1.block.block_height },
+      });
+    expect(query1.status).toBe(200);
+    expect(query1.type).toBe('application/json');
+    const expected1: RosettaBlockResponse = {
+      block: {
+        block_identifier: {
+          index: block1.block.block_height,
+          hash: block1.block.block_hash,
+        },
+        parent_block_identifier: {
+          index: 1,
+          hash: '0x1234',
+        },
+        timestamp: block1.block.burn_block_time * 1000, // epoch2.x, should be burn-block-time
+        transactions: [],
+        metadata: {
+          burn_block_height: block1.block.burn_block_height,
+        },
+      },
+    };
+    expect(query1.body).toEqual(expected1);
+
+    const query2 = await supertest(api.address)
+      .post(`/rosetta/v1/block`)
+      .send({
+        network_identifier: { blockchain: 'stacks', network: 'testnet' },
+        block_identifier: { index: block2.block.block_height },
+      });
+    expect(query2.status).toBe(200);
+    expect(query2.type).toBe('application/json');
+    const expected2: RosettaBlockResponse = {
+      block: {
+        block_identifier: {
+          index: block2.block.block_height,
+          hash: block2.block.block_hash,
+        },
+        parent_block_identifier: {
+          index: block2.block.block_height - 1,
+          hash: block2.block.parent_block_hash,
+        },
+        timestamp: block2.block.block_time * 1000, // epoch3, should be Stacks-block-time
+        transactions: [],
+        metadata: {
+          burn_block_height: block2.block.burn_block_height,
+        },
+      },
+    };
+    expect(query2.body).toEqual(expected2);
+  });
+
   test('stx-transfer-memo block/transaction', async () => {
     const parentData = new TestBlockBuilder().addTx().build();
     const block: TestBlockArgs = {
