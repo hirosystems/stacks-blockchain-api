@@ -1283,43 +1283,6 @@ export function convertTxQueryResultToDbMempoolTx(txs: TxQueryResult[]): DbMempo
   return dbMempoolTxs;
 }
 
-export function setTotalBlockUpdateDataExecutionCost(data: DataStoreBlockUpdateData) {
-  const cost = data.txs.reduce(
-    (previousValue, currentValue) => {
-      const {
-        execution_cost_read_count,
-        execution_cost_read_length,
-        execution_cost_runtime,
-        execution_cost_write_count,
-        execution_cost_write_length,
-      } = previousValue;
-      return {
-        execution_cost_read_count:
-          execution_cost_read_count + currentValue.tx.execution_cost_read_count,
-        execution_cost_read_length:
-          execution_cost_read_length + currentValue.tx.execution_cost_read_length,
-        execution_cost_runtime: execution_cost_runtime + currentValue.tx.execution_cost_runtime,
-        execution_cost_write_count:
-          execution_cost_write_count + currentValue.tx.execution_cost_write_count,
-        execution_cost_write_length:
-          execution_cost_write_length + currentValue.tx.execution_cost_write_length,
-      };
-    },
-    {
-      execution_cost_read_count: 0,
-      execution_cost_read_length: 0,
-      execution_cost_runtime: 0,
-      execution_cost_write_count: 0,
-      execution_cost_write_length: 0,
-    }
-  );
-  data.block.execution_cost_read_count = cost.execution_cost_read_count;
-  data.block.execution_cost_read_length = cost.execution_cost_read_length;
-  data.block.execution_cost_runtime = cost.execution_cost_runtime;
-  data.block.execution_cost_write_count = cost.execution_cost_write_count;
-  data.block.execution_cost_write_length = cost.execution_cost_write_length;
-}
-
 export function markBlockUpdateDataAsNonCanonical(data: DataStoreBlockUpdateData): void {
   data.block = { ...data.block, canonical: false };
   data.microblocks = data.microblocks.map(mb => ({ ...mb, canonical: false }));
