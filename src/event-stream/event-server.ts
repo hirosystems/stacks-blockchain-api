@@ -1000,6 +1000,26 @@ export function parseNewBlockMessage(
   const signerSignatures =
     msg.signer_signature?.map(s => (s.startsWith('0x') ? s : '0x' + s)) ?? null;
 
+  // `anchored_cost` is not available in very old versions of stacks-core
+  const execCost =
+    msg.anchored_cost ??
+    parsedTxs.reduce(
+      (acc, { core_tx: { execution_cost } }) => ({
+        read_count: acc.read_count + execution_cost.read_count,
+        read_length: acc.read_length + execution_cost.read_length,
+        runtime: acc.runtime + execution_cost.runtime,
+        write_count: acc.write_count + execution_cost.write_count,
+        write_length: acc.write_length + execution_cost.write_length,
+      }),
+      {
+        read_count: 0,
+        read_length: 0,
+        runtime: 0,
+        write_count: 0,
+        write_length: 0,
+      }
+    );
+
   const dbBlock: DbBlock = {
     canonical: true,
     block_hash: msg.block_hash,
@@ -1013,11 +1033,11 @@ export function parseNewBlockMessage(
     burn_block_hash: msg.burn_block_hash,
     burn_block_height: msg.burn_block_height,
     miner_txid: msg.miner_txid,
-    execution_cost_read_count: msg.anchored_cost.read_count,
-    execution_cost_read_length: msg.anchored_cost.read_length,
-    execution_cost_runtime: msg.anchored_cost.runtime,
-    execution_cost_write_count: msg.anchored_cost.write_count,
-    execution_cost_write_length: msg.anchored_cost.write_length,
+    execution_cost_read_count: execCost.read_count,
+    execution_cost_read_length: execCost.read_length,
+    execution_cost_runtime: execCost.runtime,
+    execution_cost_write_count: execCost.write_count,
+    execution_cost_write_length: execCost.write_length,
     tx_count: msg.transactions.length,
     block_time: blockData.block_time,
     signer_bitvec: signerBitvec,
