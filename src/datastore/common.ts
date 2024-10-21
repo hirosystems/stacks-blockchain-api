@@ -26,7 +26,7 @@ export interface DbBlock {
   block_time: number;
   signer_bitvec: string | null;
   signer_signatures: string[] | null;
-  tenure_height: number;
+  tenure_height: number | null;
 }
 
 /** An interface representing the microblock data that can be constructed _only_ from the /new_microblocks payload */
@@ -1290,6 +1290,7 @@ export interface BlockInsertValues {
   tx_count: number;
   signer_bitvec: string | null;
   signer_signatures: PgBytea[] | null;
+  tenure_height: number | null;
 }
 
 export interface MicroblockInsertValues {

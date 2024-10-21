@@ -483,6 +483,7 @@ export class PgWriteStore extends PgStore {
       tx_count: block.tx_count,
       signer_bitvec: block.signer_bitvec,
       signer_signatures: block.signer_signatures,
+      tenure_height: block.tenure_height,
     };
     const result = await sql`
       INSERT INTO blocks ${sql(values)}
@@ -3384,6 +3385,7 @@ export class PgWriteStore extends PgStore {
       tx_count: block.tx_count,
       signer_bitvec: block.signer_bitvec,
       signer_signatures: block.signer_signatures,
+      tenure_height: block.tenure_height,
     }));
     await sql`
       INSERT INTO blocks ${sql(values)}

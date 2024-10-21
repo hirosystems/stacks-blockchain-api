@@ -186,6 +186,7 @@ export const BLOCK_COLUMNS = [
   'execution_cost_write_length',
   'tx_count',
   'signer_bitvec',
+  'tenure_height',
 ];
 
 export const MICROBLOCK_COLUMNS = [
@@ -487,8 +488,7 @@ export function parseBlockQueryResult(row: BlockQueryResult): DbBlock {
     tx_count: row.tx_count,
     signer_bitvec: row.signer_bitvec,
     signer_signatures: null, // this field is not queried from db by default due to size constraints
-    // If `tenure_height` is not available, but `signer_bitvec` is set we can safely assume it's same as `block_height` (epoch2.x rules)
-    tenure_height: row.tenure_height ?? (row.signer_bitvec ? -1 : row.block_height),
+    tenure_height: row.tenure_height,
   };
   return block;
 }
