@@ -1,3 +1,11 @@
+## [8.1.2](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.1.1...v8.1.2) (2024-10-21)
+
+
+### Bug Fixes
+
+* **rosetta:** support tenure change transactions ([#2128](https://github.com/hirosystems/stacks-blockchain-api/issues/2128)) ([bfbf65c](https://github.com/hirosystems/stacks-blockchain-api/commit/bfbf65c6f3a7baf869e3d5124e53b7c5861c5afb))
+* **rosetta:** use Nakamoto block timestamps for epoch3/Nakamoto block responses ([#2132](https://github.com/hirosystems/stacks-blockchain-api/issues/2132)) ([bd13962](https://github.com/hirosystems/stacks-blockchain-api/commit/bd13962dacc4023a247da40e06c6861cd1e8f2bf))
+
 ## [8.1.1](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.1.0...v8.1.1) (2024-10-18)
 
 
