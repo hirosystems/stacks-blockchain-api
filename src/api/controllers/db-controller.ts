@@ -540,10 +540,17 @@ export async function getRosettaBlockFromDataStore(
       }
     }
 
+    // In epoch2.x, only the burn_block_time is consensus-level. Starting in epoch3, Stacks blocks include a consensus-level timestamp.
+    // Use `signer_bitvec` field to determine if the block is from epoch3.
+    let timestamp = dbBlock.burn_block_time * 1000;
+    if (dbBlock.signer_bitvec) {
+      timestamp = dbBlock.block_time * 1000;
+    }
+
     const apiBlock: RosettaBlock = {
       block_identifier: { index: dbBlock.block_height, hash: dbBlock.block_hash },
       parent_block_identifier,
-      timestamp: dbBlock.burn_block_time * 1000,
+      timestamp: timestamp,
       transactions: blockTxs.found ? blockTxs.result : [],
       metadata: {
         burn_block_height: dbBlock.burn_block_height,
