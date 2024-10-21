@@ -284,6 +284,102 @@ describe('block tests', () => {
     expect(result.body).toMatchObject(expectedResp);
   });
 
+  test('block tenure-change', async () => {
+    const parentData = new TestBlockBuilder({
+      block_height: 0,
+    }).build();
+
+    // Epoch2.x block (missing tenure-change in event payload)
+    const block1 = new TestBlockBuilder({
+      block_height: 1,
+      block_hash: '0x1234',
+      index_block_hash: '0x123456',
+      parent_block_hash: parentData.block.block_hash,
+      parent_index_block_hash: parentData.block.index_block_hash,
+    }).build();
+    block1.block.signer_bitvec = null;
+    block1.block.tenure_height = null;
+
+    // Epoch2.x block
+    const block2 = new TestBlockBuilder({
+      block_height: 2,
+      block_hash: '0x2234',
+      index_block_hash: '0x223456',
+      parent_block_hash: block1.block.block_hash,
+      parent_index_block_hash: block1.block.index_block_hash,
+    }).build();
+    block2.block.signer_bitvec = null;
+    block2.block.tenure_height = 22;
+
+    // Epoch3 block (missing tenure-change in event payload)
+    const block3 = new TestBlockBuilder({
+      block_height: 3,
+      block_hash: '0x3234',
+      index_block_hash: '0x323456',
+      parent_block_hash: block2.block.block_hash,
+      parent_index_block_hash: block2.block.index_block_hash,
+    }).build();
+    block3.block.signer_bitvec = '1111';
+    block3.block.tenure_height = null;
+
+    // Epoch3 block
+    const block4 = new TestBlockBuilder({
+      block_height: 4,
+      block_hash: '0x4234',
+      index_block_hash: '0x423456',
+      parent_block_hash: block3.block.block_hash,
+      parent_index_block_hash: block3.block.index_block_hash,
+    }).build();
+    block4.block.signer_bitvec = '1111';
+    block4.block.tenure_height = 33;
+
+    await db.update(parentData);
+    await db.update(block1);
+    await db.update(block2);
+    await db.update(block3);
+    await db.update(block4);
+
+    const result1 = await supertest(api.server).get(
+      `/extended/v1/block/${block1.block.block_hash}`
+    );
+    expect(result1.body).toMatchObject({
+      canonical: true,
+      height: block1.block.block_height,
+      hash: block1.block.block_hash,
+      tenure_height: block1.block.block_height, // epoch2.x w/ missing tenure-change should default to block_height
+    });
+
+    const result2 = await supertest(api.server).get(
+      `/extended/v1/block/${block2.block.block_hash}`
+    );
+    expect(result2.body).toMatchObject({
+      canonical: true,
+      height: block2.block.block_height,
+      hash: block2.block.block_hash,
+      tenure_height: block2.block.tenure_height, // epoch2.x w/ tenure-change should use tenure_height
+    });
+
+    const result3 = await supertest(api.server).get(
+      `/extended/v1/block/${block3.block.block_hash}`
+    );
+    expect(result3.body).toMatchObject({
+      canonical: true,
+      height: block3.block.block_height,
+      hash: block3.block.block_hash,
+      tenure_height: -1, // epoch3 w/ missing tenure-change should return -1 to indicate problem
+    });
+
+    const result4 = await supertest(api.server).get(
+      `/extended/v1/block/${block4.block.block_hash}`
+    );
+    expect(result4.body).toMatchObject({
+      canonical: true,
+      height: block4.block.block_height,
+      hash: block4.block.block_hash,
+      tenure_height: block4.block.tenure_height, // epoch3 w/ tenure-change should use tenure_height
+    });
+  });
+
   test('/block signer signatures', async () => {
     const block_hash = '0x1234',
       index_block_hash = '0xabcd',
@@ -902,6 +998,7 @@ describe('block tests', () => {
   });
 
   test('blocks v2 retrieved by hash or height', async () => {
+    const blocks: DataStoreBlockUpdateData[] = [];
     for (let i = 1; i < 6; i++) {
       const block = new TestBlockBuilder({
         block_height: i,
@@ -918,6 +1015,14 @@ describe('block tests', () => {
       })
         .addTx({ tx_id: `0x000${i}` })
         .build();
+      blocks.push(block);
+    }
+
+    // set tenure-height on last block
+    const testTenureHeight = 4555;
+    blocks.slice(-1)[0].block.tenure_height = testTenureHeight;
+
+    for (const block of blocks) {
       await db.update(block);
     }
 
@@ -942,6 +1047,7 @@ describe('block tests', () => {
       parent_block_hash: '0x0000000000000000000000000000000000000000000000000000000000000004',
       parent_index_block_hash: '0x0000000000000000000000000000000000000000000000000000000000000114',
       tx_count: 1,
+      tenure_height: testTenureHeight,
     };
     let fetch = await supertest(api.server).get(`/extended/v2/blocks/latest`);
     let json = JSON.parse(fetch.text);

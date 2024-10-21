@@ -1020,19 +1020,10 @@ export function parseNewBlockMessage(
       }
     );
 
-  let tenureHeight: number;
-  if (typeof msg.tenure_height === 'number') {
-    tenureHeight = msg.tenure_height;
-  } else {
-    if (msg.signer_bitvec) {
-      logger.warn(
-        `Nakamoto block ${msg.block_height} has no tenure_height, defaulting to -1. Use stacks-core version 3.0.0.0.0-rc6 or newer!`
-      );
-      tenureHeight = -1;
-    } else {
-      // `tenure_height` is not available in the block message, but this is an epoch2.x block so we can safely assume it's same as `block_height`
-      tenureHeight = msg.block_height;
-    }
+  if (typeof msg.tenure_height !== 'number' && msg.signer_bitvec) {
+    logger.warn(
+      `Nakamoto block ${msg.block_height} event payload has no tenure_height. Use stacks-core version 3.0.0.0.0-rc6 or newer!`
+    );
   }
 
   const dbBlock: DbBlock = {
@@ -1057,7 +1048,7 @@ export function parseNewBlockMessage(
     block_time: blockData.block_time,
     signer_bitvec: signerBitvec,
     signer_signatures: signerSignatures,
-    tenure_height: tenureHeight,
+    tenure_height: msg.tenure_height ?? null,
   };
 
   logger.debug(`Received block ${msg.block_hash} (${msg.block_height}) from node`, dbBlock);
