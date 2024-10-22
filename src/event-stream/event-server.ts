@@ -1020,6 +1020,12 @@ export function parseNewBlockMessage(
       }
     );
 
+  if (typeof msg.tenure_height !== 'number' && msg.signer_bitvec) {
+    logger.warn(
+      `Nakamoto block ${msg.block_height} event payload has no tenure_height. Use stacks-core version 3.0.0.0.0-rc6 or newer!`
+    );
+  }
+
   const dbBlock: DbBlock = {
     canonical: true,
     block_hash: msg.block_hash,
@@ -1042,6 +1048,7 @@ export function parseNewBlockMessage(
     block_time: blockData.block_time,
     signer_bitvec: signerBitvec,
     signer_signatures: signerSignatures,
+    tenure_height: msg.tenure_height ?? null,
   };
 
   logger.debug(`Received block ${msg.block_hash} (${msg.block_height}) from node`, dbBlock);

@@ -17,6 +17,9 @@ export const BlockSchema = Type.Object(
     block_time_iso: Type.String({
       description: 'An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) indicating when this block was mined.',
     }),
+    tenure_height: Type.Integer({
+      description: 'The tenure height (AKA coinbase height) of this block',
+    }),
     index_block_hash: Type.String({
       description:
         'The only hash that can uniquely identify an anchored block or an unconfirmed state trie',
@@ -92,6 +95,9 @@ export const NakamotoBlockSchema = Type.Object({
   }),
   block_time_iso: Type.String({
     description: 'An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) indicating when this block was mined.',
+  }),
+  tenure_height: Type.Integer({
+    description: 'The tenure height (AKA coinbase height) of this block',
   }),
   index_block_hash: Type.String({
     description:

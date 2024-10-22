@@ -31,6 +31,8 @@ export function parseDbNakamotoBlock(block: DbBlock): NakamotoBlock {
     hash: block.block_hash,
     block_time: block.block_time,
     block_time_iso: unixEpochToIso(block.block_time),
+    // If `tenure_height` is not available, but `signer_bitvec` is set we can safely assume it's same as `block_height` (epoch2.x rules)
+    tenure_height: block.tenure_height ?? (block.signer_bitvec ? -1 : block.block_height),
     index_block_hash: block.index_block_hash,
     parent_block_hash: block.parent_block_hash,
     parent_index_block_hash: block.parent_index_block_hash,

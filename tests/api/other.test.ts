@@ -49,6 +49,7 @@ describe('other tests', () => {
       parent_microblock_hash: '',
       parent_microblock_sequence: 0,
       block_height: 1,
+      tenure_height: 1,
       block_time: 39486,
       burn_block_time: 39486,
       burn_block_hash: '0x1234',

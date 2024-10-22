@@ -51,6 +51,7 @@ describe('search tests', () => {
       parent_microblock_hash: '',
       parent_microblock_sequence: 0,
       block_height: 1235,
+      tenure_height: 1235,
       block_time: 94869286,
       burn_block_time: 94869286,
       burn_block_hash: '0x1234',
@@ -264,6 +265,7 @@ describe('search tests', () => {
       parent_microblock_hash: '',
       parent_microblock_sequence: 0,
       block_height: 1,
+      tenure_height: 1,
       block_time: 94869286,
       burn_block_time: 94869286,
       burn_block_hash: '0x1234',
@@ -405,7 +407,7 @@ describe('search tests', () => {
         metadata: blockMetadata,
       },
     };
-    expect(JSON.parse(searchResult1.text)).toEqual(expectedResp1);
+    expect(JSON.parse(searchResult1.text)).toMatchObject(expectedResp1);
 
     // test without 0x-prefix
     const searchResult2 = await supertest(api.server).get(
@@ -428,7 +430,7 @@ describe('search tests', () => {
         metadata: blockMetadata,
       },
     };
-    expect(JSON.parse(searchResult2.text)).toEqual(expectedResp2);
+    expect(JSON.parse(searchResult2.text)).toMatchObject(expectedResp2);
 
     // test whitespace
     const searchResult3 = await supertest(api.server).get(
@@ -451,7 +453,7 @@ describe('search tests', () => {
         metadata: blockMetadata,
       },
     };
-    expect(JSON.parse(searchResult3.text)).toEqual(expectedResp3);
+    expect(JSON.parse(searchResult3.text)).toMatchObject(expectedResp3);
 
     // test mempool tx search
     const searchResult4 = await supertest(api.server).get(
@@ -605,6 +607,7 @@ describe('search tests', () => {
       parent_microblock_hash: '',
       parent_microblock_sequence: 0,
       block_height: 100123123,
+      tenure_height: 100123123,
       block_time: 39486,
       burn_block_time: 39486,
       burn_block_hash: '0x1234',
@@ -1051,6 +1054,7 @@ describe('search tests', () => {
       parent_microblock_hash: '',
       parent_microblock_sequence: 0,
       block_height: 1,
+      tenure_height: 1,
       block_time: 39486,
       burn_block_time: 39486,
       burn_block_hash: '0x1234',

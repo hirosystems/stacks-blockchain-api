@@ -186,6 +186,7 @@ export const BLOCK_COLUMNS = [
   'execution_cost_write_length',
   'tx_count',
   'signer_bitvec',
+  'tenure_height',
 ];
 
 export const MICROBLOCK_COLUMNS = [
@@ -465,7 +466,6 @@ export function parseFaucetRequestQueryResult(result: FaucetRequestQueryResult):
 }
 
 export function parseBlockQueryResult(row: BlockQueryResult): DbBlock {
-  // TODO(mb): is the tx_index preserved between microblocks and committed anchor blocks?
   const block: DbBlock = {
     block_hash: row.block_hash,
     index_block_hash: row.index_block_hash,
@@ -488,6 +488,7 @@ export function parseBlockQueryResult(row: BlockQueryResult): DbBlock {
     tx_count: row.tx_count,
     signer_bitvec: row.signer_bitvec,
     signer_signatures: null, // this field is not queried from db by default due to size constraints
+    tenure_height: row.tenure_height,
   };
   return block;
 }

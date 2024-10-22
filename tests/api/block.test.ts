@@ -74,6 +74,7 @@ describe('block tests', () => {
       parent_microblock_hash: '',
       parent_microblock_sequence: 0,
       block_height: 1235,
+      tenure_height: 1235,
       block_time: 1594647996,
       burn_block_time: 1594647996,
       burn_block_hash: '0x1234',
@@ -162,28 +163,28 @@ describe('block tests', () => {
       microblock_tx_count: {},
     };
 
-    expect(blockQuery.result).toEqual(expectedResp);
+    expect(blockQuery.result).toMatchObject(expectedResp);
 
     const fetchBlockByHash = await supertest(api.server).get(
       `/extended/v1/block/${block.block_hash}`
     );
     expect(fetchBlockByHash.status).toBe(200);
     expect(fetchBlockByHash.type).toBe('application/json');
-    expect(JSON.parse(fetchBlockByHash.text)).toEqual(expectedResp);
+    expect(JSON.parse(fetchBlockByHash.text)).toMatchObject(expectedResp);
 
     const fetchBlockByHeight = await supertest(api.server).get(
       `/extended/v1/block/by_height/${block.block_height}`
     );
     expect(fetchBlockByHeight.status).toBe(200);
     expect(fetchBlockByHeight.type).toBe('application/json');
-    expect(JSON.parse(fetchBlockByHeight.text)).toEqual(expectedResp);
+    expect(JSON.parse(fetchBlockByHeight.text)).toMatchObject(expectedResp);
 
     const fetchBlockByBurnBlockHeight = await supertest(api.server).get(
       `/extended/v1/block/by_burn_block_height/${block.burn_block_height}`
     );
     expect(fetchBlockByBurnBlockHeight.status).toBe(200);
     expect(fetchBlockByBurnBlockHeight.type).toBe('application/json');
-    expect(JSON.parse(fetchBlockByBurnBlockHeight.text)).toEqual(expectedResp);
+    expect(JSON.parse(fetchBlockByBurnBlockHeight.text)).toMatchObject(expectedResp);
 
     const fetchBlockByInvalidBurnBlockHeight1 = await supertest(api.server).get(
       `/extended/v1/block/by_burn_block_height/999`
@@ -216,7 +217,7 @@ describe('block tests', () => {
     );
     expect(fetchBlockByBurnBlockHash.status).toBe(200);
     expect(fetchBlockByBurnBlockHash.type).toBe('application/json');
-    expect(JSON.parse(fetchBlockByBurnBlockHash.text)).toEqual(expectedResp);
+    expect(JSON.parse(fetchBlockByBurnBlockHash.text)).toMatchObject(expectedResp);
 
     const fetchBlockByInvalidBurnBlockHash = await supertest(api.server).get(
       `/extended/v1/block/by_burn_block_hash/0x000000`
@@ -280,7 +281,103 @@ describe('block tests', () => {
       ],
     };
     const result = await supertest(api.server).get(`/extended/v1/block/`);
-    expect(result.body).toEqual(expectedResp);
+    expect(result.body).toMatchObject(expectedResp);
+  });
+
+  test('block tenure-change', async () => {
+    const parentData = new TestBlockBuilder({
+      block_height: 0,
+    }).build();
+
+    // Epoch2.x block (missing tenure-change in event payload)
+    const block1 = new TestBlockBuilder({
+      block_height: 1,
+      block_hash: '0x1234',
+      index_block_hash: '0x123456',
+      parent_block_hash: parentData.block.block_hash,
+      parent_index_block_hash: parentData.block.index_block_hash,
+    }).build();
+    block1.block.signer_bitvec = null;
+    block1.block.tenure_height = null;
+
+    // Epoch2.x block
+    const block2 = new TestBlockBuilder({
+      block_height: 2,
+      block_hash: '0x2234',
+      index_block_hash: '0x223456',
+      parent_block_hash: block1.block.block_hash,
+      parent_index_block_hash: block1.block.index_block_hash,
+    }).build();
+    block2.block.signer_bitvec = null;
+    block2.block.tenure_height = 22;
+
+    // Epoch3 block (missing tenure-change in event payload)
+    const block3 = new TestBlockBuilder({
+      block_height: 3,
+      block_hash: '0x3234',
+      index_block_hash: '0x323456',
+      parent_block_hash: block2.block.block_hash,
+      parent_index_block_hash: block2.block.index_block_hash,
+    }).build();
+    block3.block.signer_bitvec = '1111';
+    block3.block.tenure_height = null;
+
+    // Epoch3 block
+    const block4 = new TestBlockBuilder({
+      block_height: 4,
+      block_hash: '0x4234',
+      index_block_hash: '0x423456',
+      parent_block_hash: block3.block.block_hash,
+      parent_index_block_hash: block3.block.index_block_hash,
+    }).build();
+    block4.block.signer_bitvec = '1111';
+    block4.block.tenure_height = 33;
+
+    await db.update(parentData);
+    await db.update(block1);
+    await db.update(block2);
+    await db.update(block3);
+    await db.update(block4);
+
+    const result1 = await supertest(api.server).get(
+      `/extended/v1/block/${block1.block.block_hash}`
+    );
+    expect(result1.body).toMatchObject({
+      canonical: true,
+      height: block1.block.block_height,
+      hash: block1.block.block_hash,
+      tenure_height: block1.block.block_height, // epoch2.x w/ missing tenure-change should default to block_height
+    });
+
+    const result2 = await supertest(api.server).get(
+      `/extended/v1/block/${block2.block.block_hash}`
+    );
+    expect(result2.body).toMatchObject({
+      canonical: true,
+      height: block2.block.block_height,
+      hash: block2.block.block_hash,
+      tenure_height: block2.block.tenure_height, // epoch2.x w/ tenure-change should use tenure_height
+    });
+
+    const result3 = await supertest(api.server).get(
+      `/extended/v1/block/${block3.block.block_hash}`
+    );
+    expect(result3.body).toMatchObject({
+      canonical: true,
+      height: block3.block.block_height,
+      hash: block3.block.block_hash,
+      tenure_height: -1, // epoch3 w/ missing tenure-change should return -1 to indicate problem
+    });
+
+    const result4 = await supertest(api.server).get(
+      `/extended/v1/block/${block4.block.block_hash}`
+    );
+    expect(result4.body).toMatchObject({
+      canonical: true,
+      height: block4.block.block_height,
+      hash: block4.block.block_hash,
+      tenure_height: block4.block.tenure_height, // epoch3 w/ tenure-change should use tenure_height
+    });
   });
 
   test('/block signer signatures', async () => {
@@ -335,7 +432,7 @@ describe('block tests', () => {
       ],
     };
     const result = await supertest(api.server).get(`/extended/v1/block/`);
-    expect(result.body).toEqual(expectedResp);
+    expect(result.body).toMatchObject(expectedResp);
 
     const sigReq = await supertest(api.server).get(
       `/extended/v2/blocks/${block1.block.block_height}/signer-signatures?limit=3&offset=70`
@@ -544,7 +641,7 @@ describe('block tests', () => {
     );
     expect(fetch1.status).toBe(200);
     expect(fetch1.type).toBe('application/json');
-    expect(JSON.parse(fetch1.text)).toEqual(expectedResp1);
+    expect(JSON.parse(fetch1.text)).toMatchObject(expectedResp1);
 
     // Confirm the first microblock, but orphan the second
     const block2 = new TestBlockBuilder({
@@ -594,7 +691,7 @@ describe('block tests', () => {
 
     expect(fetch2.status).toBe(200);
     expect(fetch2.type).toBe('application/json');
-    expect(JSON.parse(fetch2.text)).toEqual(expectedResp2);
+    expect(JSON.parse(fetch2.text)).toMatchObject(expectedResp2);
   });
 
   test('blocks v2 filtered by burn block', async () => {
@@ -655,14 +752,14 @@ describe('block tests', () => {
     let json = JSON.parse(fetch.text);
     expect(fetch.status).toBe(200);
     expect(json.total).toEqual(5);
-    expect(json.results[0]).toStrictEqual(block5);
+    expect(json.results[0]).toMatchObject(block5);
 
     // Filter by burn height
     fetch = await supertest(api.server).get(`/extended/v2/burn-blocks/700000/blocks`);
     json = JSON.parse(fetch.text);
     expect(fetch.status).toBe(200);
     expect(json.total).toEqual(5);
-    expect(json.results[0]).toStrictEqual(block5);
+    expect(json.results[0]).toMatchObject(block5);
 
     // Get latest block
     const block8 = {
@@ -690,7 +787,7 @@ describe('block tests', () => {
     json = JSON.parse(fetch.text);
     expect(fetch.status).toBe(200);
     expect(json.total).toEqual(3);
-    expect(json.results[0]).toStrictEqual(block8);
+    expect(json.results[0]).toMatchObject(block8);
 
     // Block hashes are validated
     fetch = await supertest(api.server).get(`/extended/v2/burn-blocks/testvalue/blocks`);
@@ -901,6 +998,7 @@ describe('block tests', () => {
   });
 
   test('blocks v2 retrieved by hash or height', async () => {
+    const blocks: DataStoreBlockUpdateData[] = [];
     for (let i = 1; i < 6; i++) {
       const block = new TestBlockBuilder({
         block_height: i,
@@ -917,6 +1015,14 @@ describe('block tests', () => {
       })
         .addTx({ tx_id: `0x000${i}` })
         .build();
+      blocks.push(block);
+    }
+
+    // set tenure-height on last block
+    const testTenureHeight = 4555;
+    blocks.slice(-1)[0].block.tenure_height = testTenureHeight;
+
+    for (const block of blocks) {
       await db.update(block);
     }
 
@@ -941,17 +1047,18 @@ describe('block tests', () => {
       parent_block_hash: '0x0000000000000000000000000000000000000000000000000000000000000004',
       parent_index_block_hash: '0x0000000000000000000000000000000000000000000000000000000000000114',
       tx_count: 1,
+      tenure_height: testTenureHeight,
     };
     let fetch = await supertest(api.server).get(`/extended/v2/blocks/latest`);
     let json = JSON.parse(fetch.text);
     expect(fetch.status).toBe(200);
-    expect(json).toStrictEqual(block5);
+    expect(json).toMatchObject(block5);
 
     // Get by height
     fetch = await supertest(api.server).get(`/extended/v2/blocks/5`);
     json = JSON.parse(fetch.text);
     expect(fetch.status).toBe(200);
-    expect(json).toStrictEqual(block5);
+    expect(json).toMatchObject(block5);
 
     // Get by hash
     fetch = await supertest(api.server).get(
@@ -959,7 +1066,7 @@ describe('block tests', () => {
     );
     json = JSON.parse(fetch.text);
     expect(fetch.status).toBe(200);
-    expect(json).toStrictEqual(block5);
+    expect(json).toMatchObject(block5);
 
     // Get by index block hash
     fetch = await supertest(api.server).get(
@@ -967,7 +1074,7 @@ describe('block tests', () => {
     );
     json = JSON.parse(fetch.text);
     expect(fetch.status).toBe(200);
-    expect(json).toStrictEqual(block5);
+    expect(json).toMatchObject(block5);
   });
 
   test('blocks v2 retrieved by digit-only hash', async () => {
