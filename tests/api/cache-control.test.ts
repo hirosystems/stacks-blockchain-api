@@ -377,7 +377,7 @@ describe('cache-control tests', () => {
     expect(request3.text).toBe('');
 
     // Drop one tx.
-    await db.dropMempoolTxs({ status: DbTxStatus.DroppedReplaceByFee, txIds: ['0x1101'] });
+    await db.dropMempoolTxs({ status: DbTxStatus.DroppedReplaceByFee, txIds: ['0x1101'], replacing_txid: '0x1109' });
 
     // Cache is now a miss.
     const request4 = await supertest(api.server)

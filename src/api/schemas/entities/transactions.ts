@@ -428,6 +428,9 @@ export const AbstractMempoolTransactionProperties = {
       description: 'Status of the transaction',
     }
   ),
+  replacing_txid: Type.Optional(Type.String({
+    description: 'The transaction ID used which is used to replace the previous',
+  })),
   receipt_time: Type.Integer({
     description:
       'A unix timestamp (in seconds) indicating when the transaction broadcast was received by the node.',

@@ -298,6 +298,7 @@ interface TestMempoolTxArgs {
   smart_contract_clarity_version?: number;
   smart_contract_contract_id?: string;
   status?: DbTxStatus;
+  replacing_txid?: string,
   token_transfer_recipient_address?: string;
   token_transfer_amount?: bigint;
   token_transfer_memo?: string;
@@ -326,6 +327,7 @@ export function testMempoolTx(args?: TestMempoolTxArgs): DbMempoolTxRaw {
     type_id: args?.type_id ?? DbTxTypeId.TokenTransfer,
     receipt_time: args?.receipt_time ?? (new Date().getTime() / 1000) | 0,
     status: args?.status ?? DbTxStatus.Pending,
+    replacing_txid: args?.replacing_txid,
     post_conditions: '0x01f5',
     fee_rate: args?.fee_rate ?? 1234n,
     sponsored: args?.sponsored ?? false,
