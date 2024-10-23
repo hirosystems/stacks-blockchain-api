@@ -52,7 +52,7 @@ export enum RosettaOperationType {
   StackStx = 'stack_stx',
   DelegateStx = 'delegate_stx',
   RevokeDelegateStx = 'revoke_delegate_stx',
-  // todo: add new pox-2 methods
+  TenureChange = 'tenure_change',
 }
 
 type RosettaOperationTypeUnion = `${RosettaOperationType}`;
@@ -77,6 +77,7 @@ export const RosettaOperationTypes = arrayOfAllOpTypes([
   'stack_stx',
   'delegate_stx',
   'revoke_delegate_stx',
+  'tenure_change',
 ]) as RosettaOperationType[];
 
 export const RosettaOperationStatuses = [
