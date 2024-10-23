@@ -51,6 +51,7 @@ describe('smart contract tests', () => {
       parent_microblock_hash: '',
       parent_microblock_sequence: 0,
       block_height: 1,
+      tenure_height: 1,
       block_time: 1594647996,
       burn_block_time: 1594647996,
       burn_block_hash: '0x1234',
@@ -64,6 +65,7 @@ describe('smart contract tests', () => {
       execution_cost_write_length: 0,
       tx_count: 1,
       signer_bitvec: null,
+      signer_signatures: null,
     };
     const tx1: DbTxRaw = {
       tx_id: '0x421234',
@@ -204,6 +206,7 @@ describe('smart contract tests', () => {
       parent_microblock_hash: '',
       parent_microblock_sequence: 0,
       block_height: 1,
+      tenure_height: 1,
       block_time: 1594647996,
       burn_block_time: 1594647996,
       burn_block_hash: '0x1234',
@@ -217,6 +220,7 @@ describe('smart contract tests', () => {
       execution_cost_write_length: 0,
       tx_count: 1,
       signer_bitvec: null,
+      signer_signatures: null,
     };
     const txId1 = '0x421234';
     const smartContract1: DbSmartContract = {
@@ -316,6 +320,7 @@ describe('smart contract tests', () => {
       parent_microblock_hash: '',
       parent_microblock_sequence: 0,
       block_height: 1,
+      tenure_height: 1,
       block_time: 1594647996,
       burn_block_time: 1594647996,
       burn_block_hash: '0x1234',
@@ -329,6 +334,7 @@ describe('smart contract tests', () => {
       execution_cost_write_length: 0,
       tx_count: 1,
       signer_bitvec: null,
+      signer_signatures: null,
     };
     const txId1 = '0x421234';
     const smartContract1: DbSmartContract = {
@@ -426,6 +432,7 @@ describe('smart contract tests', () => {
       parent_microblock_hash: '',
       parent_microblock_sequence: 0,
       block_height: 1,
+      tenure_height: 1,
       block_time: 1594647996,
       burn_block_time: 1594647996,
       burn_block_hash: '0x1235',
@@ -439,6 +446,7 @@ describe('smart contract tests', () => {
       execution_cost_write_length: 0,
       tx_count: 1,
       signer_bitvec: null,
+      signer_signatures: null,
     };
     const tx1: DbTxRaw = {
       tx_id: '0x421235',

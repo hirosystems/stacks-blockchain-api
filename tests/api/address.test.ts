@@ -80,6 +80,7 @@ describe('address tests', () => {
       parent_microblock_hash: '',
       parent_microblock_sequence: 0,
       block_height: 1,
+      tenure_height: 1,
       block_time: 39486,
       burn_block_time: 39486,
       burn_block_hash: '0x1234',
@@ -93,6 +94,7 @@ describe('address tests', () => {
       execution_cost_write_length: 0,
       tx_count: 1,
       signer_bitvec: null,
+      signer_signatures: null,
     };
     let indexIdIndex = 0;
     const createStxTx = (
@@ -1156,6 +1158,7 @@ describe('address tests', () => {
       parent_microblock_hash: '',
       parent_microblock_sequence: 0,
       block_height: 1,
+      tenure_height: 1,
       block_time: 39486,
       burn_block_time: 39486,
       burn_block_hash: '0x1234',
@@ -1169,6 +1172,7 @@ describe('address tests', () => {
       execution_cost_write_length: 0,
       tx_count: 1,
       signer_bitvec: null,
+      signer_signatures: null,
     };
 
     let indexIdIndex = 0;
@@ -2373,6 +2377,7 @@ describe('address tests', () => {
       parent_microblock_hash: '',
       parent_microblock_sequence: 0,
       block_height: 1,
+      tenure_height: 1,
       block_time: 1594647995,
       burn_block_time: 1594647995,
       burn_block_hash: '0x1234',
@@ -2386,6 +2391,7 @@ describe('address tests', () => {
       execution_cost_write_length: 0,
       tx_count: 1,
       signer_bitvec: null,
+      signer_signatures: null,
     };
     const txBuilder = await makeContractCall({
       contractAddress: 'ST11NJTTKGVT6D1HY4NJRVQWMQM7TVAR091EJ8P2Y',

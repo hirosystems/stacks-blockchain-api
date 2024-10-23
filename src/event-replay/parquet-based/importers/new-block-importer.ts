@@ -160,7 +160,7 @@ const populateBatchInserters = (db: PgWriteStore) => {
     write: async (data: CoreNodeBlockMessage, _encoding, next) => {
       let dbData: DataStoreBlockUpdateData;
       try {
-        dbData = parseNewBlockMessage(chainID, data);
+        ({ dbData } = parseNewBlockMessage(chainID, data, true));
       } catch (err) {
         logger.error({ component: 'event-replay' }, 'Error when parsing new_block event');
         console.error(err);

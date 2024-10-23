@@ -266,6 +266,7 @@ describe('postgres datastore', () => {
       parent_microblock_hash: '0x00',
       parent_microblock_sequence: 0,
       block_height: 1,
+      tenure_height: 1,
       block_time: 1594647995,
       burn_block_time: 1594647995,
       burn_block_hash: '0x1234',
@@ -279,6 +280,7 @@ describe('postgres datastore', () => {
       execution_cost_write_length: 0,
       tx_count: 1,
       signer_bitvec: null,
+      signer_signatures: null,
     };
     const tx: DbTxRaw = {
       tx_id: '0x1234',
@@ -434,6 +436,7 @@ describe('postgres datastore', () => {
       parent_microblock_hash: '0x00',
       parent_microblock_sequence: 0,
       block_height: 1,
+      tenure_height: 1,
       block_time: 1594647995,
       burn_block_time: 1594647995,
       burn_block_hash: '0x1234',
@@ -447,6 +450,7 @@ describe('postgres datastore', () => {
       execution_cost_write_length: 0,
       tx_count: 1,
       signer_bitvec: null,
+      signer_signatures: null,
     };
     const tx: DbTxRaw = {
       tx_id: '0x1234',
@@ -607,6 +611,7 @@ describe('postgres datastore', () => {
       parent_block_hash: '0xff0011',
       parent_microblock_hash: '0x00',
       block_height: 1235,
+      tenure_height: 1235,
       block_time: 94869287,
       burn_block_time: 94869286,
       burn_block_hash: '0x1234',
@@ -621,6 +626,7 @@ describe('postgres datastore', () => {
       execution_cost_write_length: 0,
       tx_count: 1,
       signer_bitvec: null,
+      signer_signatures: null,
     };
     await db.updateBlock(client, block);
     const blockQuery = await db.getBlock({ hash: block.block_hash });
@@ -678,6 +684,7 @@ describe('postgres datastore', () => {
       parent_microblock_hash: '0x00',
       parent_microblock_sequence: 0,
       block_height: 1,
+      tenure_height: 1,
       block_time: 1594647995,
       burn_block_time: 1594647995,
       burn_block_hash: '0x1234',
@@ -691,6 +698,7 @@ describe('postgres datastore', () => {
       execution_cost_write_length: 0,
       tx_count: 1,
       signer_bitvec: null,
+      signer_signatures: null,
     };
 
     let indexIdIndex = 0;
@@ -942,6 +950,7 @@ describe('postgres datastore', () => {
       parent_microblock_hash: '0x00',
       parent_microblock_sequence: 0,
       block_height: 2,
+      tenure_height: 2,
       block_time: 1594647996,
       burn_block_time: 1594647996,
       burn_block_hash: '0x1235',
@@ -955,6 +964,7 @@ describe('postgres datastore', () => {
       execution_cost_write_length: 0,
       tx_count: 1,
       signer_bitvec: null,
+      signer_signatures: null,
     };
     const txs1 = [
       createStxTx('addrA', 'addrB', 100, dbBlock1),
@@ -1017,6 +1027,7 @@ describe('postgres datastore', () => {
       parent_microblock_hash: '0x00',
       parent_microblock_sequence: 0,
       block_height: 1,
+      tenure_height: 1,
       block_time: 1594647995,
       burn_block_time: 1594647995,
       burn_block_hash: '0x1234',
@@ -1030,6 +1041,7 @@ describe('postgres datastore', () => {
       execution_cost_write_length: 0,
       tx_count: 1,
       signer_bitvec: null,
+      signer_signatures: null,
     };
     const tx1: DbTxRaw = {
       tx_id: '0x1234',
@@ -1991,6 +2003,7 @@ describe('postgres datastore', () => {
       parent_microblock_hash: '0x00',
       parent_microblock_sequence: 0,
       block_height: 1,
+      tenure_height: 1,
       block_time: 1594647995,
       burn_block_time: 1594647995,
       burn_block_hash: '0x1234',
@@ -2004,6 +2017,7 @@ describe('postgres datastore', () => {
       execution_cost_write_length: 0,
       tx_count: 1,
       signer_bitvec: null,
+      signer_signatures: null,
     };
     const tx: DbTx = {
       tx_id: '0x1234',
@@ -2075,6 +2089,7 @@ describe('postgres datastore', () => {
       parent_microblock_hash: '0x00',
       parent_microblock_sequence: 0,
       block_height: 1,
+      tenure_height: 1,
       block_time: 1594647995,
       burn_block_time: 1594647995,
       burn_block_hash: '0x1234',
@@ -2088,6 +2103,7 @@ describe('postgres datastore', () => {
       execution_cost_write_length: 0,
       tx_count: 1,
       signer_bitvec: null,
+      signer_signatures: null,
     };
     const tx: DbTx = {
       tx_id: '0x421234',
@@ -2164,6 +2180,7 @@ describe('postgres datastore', () => {
       parent_microblock_hash: '0x00',
       parent_microblock_sequence: 0,
       block_height: 1,
+      tenure_height: 1,
       block_time: 1594647995,
       burn_block_time: 1594647995,
       burn_block_hash: '0x1234',
@@ -2177,6 +2194,7 @@ describe('postgres datastore', () => {
       execution_cost_write_length: 0,
       tx_count: 1,
       signer_bitvec: null,
+      signer_signatures: null,
     };
     const tx: DbTx = {
       tx_id: '0x421234',
@@ -2261,6 +2279,7 @@ describe('postgres datastore', () => {
       parent_microblock_hash: '0x00',
       parent_microblock_sequence: 0,
       block_height: 1,
+      tenure_height: 1,
       block_time: 1594647995,
       burn_block_time: 1594647995,
       burn_block_hash: '0x1234',
@@ -2274,6 +2293,7 @@ describe('postgres datastore', () => {
       execution_cost_write_length: 0,
       tx_count: 1,
       signer_bitvec: null,
+      signer_signatures: null,
     };
     const tx: DbTxRaw = {
       tx_id: '0x421234',
@@ -2402,6 +2422,7 @@ describe('postgres datastore', () => {
       parent_microblock_hash: '0x00',
       parent_microblock_sequence: 0,
       block_height: 1,
+      tenure_height: 1,
       block_time: 1594647995,
       burn_block_time: 1594647995,
       burn_block_hash: '0x1234',
@@ -2415,6 +2436,7 @@ describe('postgres datastore', () => {
       execution_cost_write_length: 0,
       tx_count: 1,
       signer_bitvec: null,
+      signer_signatures: null,
     };
     const tx: DbTx = {
       tx_id: '0x421234',
@@ -2491,6 +2513,7 @@ describe('postgres datastore', () => {
       parent_microblock_hash: '0x00',
       parent_microblock_sequence: 0,
       block_height: 1,
+      tenure_height: 1,
       block_time: 1594647995,
       burn_block_time: 1594647995,
       burn_block_hash: '0x1234',
@@ -2504,6 +2527,7 @@ describe('postgres datastore', () => {
       execution_cost_write_length: 0,
       tx_count: 1,
       signer_bitvec: null,
+      signer_signatures: null,
     };
     const tx: DbTx = {
       tx_id: '0x421234',
@@ -2579,6 +2603,7 @@ describe('postgres datastore', () => {
       parent_microblock_hash: '0x00',
       parent_microblock_sequence: 0,
       block_height: 1,
+      tenure_height: 1,
       block_time: 1594647995,
       burn_block_time: 1594647995,
       burn_block_hash: '0x1234',
@@ -2592,6 +2617,7 @@ describe('postgres datastore', () => {
       execution_cost_write_length: 0,
       tx_count: 1,
       signer_bitvec: null,
+      signer_signatures: null,
     };
     const tx: DbTx = {
       tx_id: '0x421234',
@@ -2666,6 +2692,7 @@ describe('postgres datastore', () => {
       parent_microblock_hash: '0x00',
       parent_microblock_sequence: 0,
       block_height: 1,
+      tenure_height: 1,
       block_time: 1594647995,
       burn_block_time: 1594647995,
       burn_block_hash: '0x1234',
@@ -2679,6 +2706,7 @@ describe('postgres datastore', () => {
       execution_cost_write_length: 0,
       tx_count: 1,
       signer_bitvec: null,
+      signer_signatures: null,
     };
     await db.updateBlock(client, dbBlock);
 
@@ -2739,6 +2767,7 @@ describe('postgres datastore', () => {
       parent_block_hash: '0xff0011',
       parent_microblock_hash: '0x00',
       block_height: 1,
+      tenure_height: 1,
       block_time: 94869286,
       burn_block_time: 94869286,
       burn_block_hash: '0x1234',
@@ -2753,6 +2782,7 @@ describe('postgres datastore', () => {
       execution_cost_write_length: 0,
       tx_count: 1,
       signer_bitvec: null,
+      signer_signatures: null,
     };
     const tx1: DbTx = {
       tx_id: '0x421234',
@@ -3113,6 +3143,7 @@ describe('postgres datastore', () => {
       parent_block_hash: '0x00',
       parent_microblock_hash: '0x00',
       block_height: 1,
+      tenure_height: 1,
       block_time: 1234,
       burn_block_time: 1234,
       burn_block_hash: '0x1234',
@@ -3127,6 +3158,7 @@ describe('postgres datastore', () => {
       execution_cost_write_length: 0,
       tx_count: 1,
       signer_bitvec: null,
+      signer_signatures: null,
     };
     const block2: DbBlock = {
       block_hash: '0x22',
@@ -3135,6 +3167,7 @@ describe('postgres datastore', () => {
       parent_block_hash: block1.block_hash,
       parent_microblock_hash: '0x00',
       block_height: 2,
+      tenure_height: 2,
       block_time: 1234,
       burn_block_time: 1234,
       burn_block_hash: '0x1234',
@@ -3149,6 +3182,7 @@ describe('postgres datastore', () => {
       execution_cost_write_length: 0,
       tx_count: 1,
       signer_bitvec: null,
+      signer_signatures: null,
     };
     const block3: DbBlock = {
       block_hash: '0x33',
@@ -3157,6 +3191,7 @@ describe('postgres datastore', () => {
       parent_block_hash: block2.block_hash,
       parent_microblock_hash: '0x00',
       block_height: 3,
+      tenure_height: 3,
       block_time: 1234,
       burn_block_time: 1234,
       burn_block_hash: '0x1234',
@@ -3171,6 +3206,7 @@ describe('postgres datastore', () => {
       execution_cost_write_length: 0,
       tx_count: 1,
       signer_bitvec: null,
+      signer_signatures: null,
     };
     const block3B: DbBlock = {
       ...block3,
@@ -3185,6 +3221,7 @@ describe('postgres datastore', () => {
       parent_block_hash: block3B.block_hash,
       parent_microblock_hash: '0x00',
       block_height: 4,
+      tenure_height: 4,
       block_time: 1234,
       burn_block_time: 1234,
       burn_block_hash: '0x1234',
@@ -3199,6 +3236,7 @@ describe('postgres datastore', () => {
       execution_cost_write_length: 0,
       tx_count: 1,
       signer_bitvec: null,
+      signer_signatures: null,
     };
     const block4: DbBlock = {
       block_hash: '0x44',
@@ -3207,6 +3245,7 @@ describe('postgres datastore', () => {
       parent_block_hash: block3.block_hash,
       parent_microblock_hash: '0x00',
       block_height: 4,
+      tenure_height: 4,
       block_time: 1234,
       burn_block_time: 1234,
       burn_block_hash: '0x1234',
@@ -3221,6 +3260,7 @@ describe('postgres datastore', () => {
       execution_cost_write_length: 0,
       tx_count: 1,
       signer_bitvec: null,
+      signer_signatures: null,
     };
     const block5: DbBlock = {
       block_hash: '0x55',
@@ -3229,6 +3269,7 @@ describe('postgres datastore', () => {
       parent_block_hash: block4.block_hash,
       parent_microblock_hash: '0x00',
       block_height: 5,
+      tenure_height: 5,
       block_time: 1234,
       burn_block_time: 1234,
       burn_block_hash: '0x1234',
@@ -3243,6 +3284,7 @@ describe('postgres datastore', () => {
       execution_cost_write_length: 0,
       tx_count: 1,
       signer_bitvec: null,
+      signer_signatures: null,
     };
     const block6: DbBlock = {
       block_hash: '0x66',
@@ -3251,6 +3293,7 @@ describe('postgres datastore', () => {
       parent_block_hash: block5.block_hash,
       parent_microblock_hash: '0x00',
       block_height: 6,
+      tenure_height: 6,
       block_time: 1234,
       burn_block_time: 1234,
       burn_block_hash: '0x1234',
@@ -3265,6 +3308,7 @@ describe('postgres datastore', () => {
       execution_cost_write_length: 0,
       tx_count: 1,
       signer_bitvec: null,
+      signer_signatures: null,
     };
 
     const tx1Mempool: DbMempoolTxRaw = {
@@ -3443,6 +3487,7 @@ describe('postgres datastore', () => {
       parent_block_hash: '0x00',
       parent_microblock_hash: '0x00',
       block_height: 1,
+      tenure_height: 1,
       block_time: 1234,
       burn_block_time: 1234,
       burn_block_hash: '0x1234',
@@ -3457,6 +3502,7 @@ describe('postgres datastore', () => {
       execution_cost_write_length: 0,
       tx_count: 1,
       signer_bitvec: null,
+      signer_signatures: null,
     };
     const block2: DbBlock = {
       block_hash: '0x22',
@@ -3465,6 +3511,7 @@ describe('postgres datastore', () => {
       parent_block_hash: block1.block_hash,
       parent_microblock_hash: '0x00',
       block_height: 2,
+      tenure_height: 2,
       block_time: 1234,
       burn_block_time: 1234,
       burn_block_hash: '0x1234',
@@ -3479,6 +3526,7 @@ describe('postgres datastore', () => {
       execution_cost_write_length: 0,
       tx_count: 1,
       signer_bitvec: null,
+      signer_signatures: null,
     };
     const block3: DbBlock = {
       block_hash: '0x33',
@@ -3487,6 +3535,7 @@ describe('postgres datastore', () => {
       parent_block_hash: block2.block_hash,
       parent_microblock_hash: '0x00',
       block_height: 3,
+      tenure_height: 3,
       block_time: 1234,
       burn_block_time: 1234,
       burn_block_hash: '0x1234',
@@ -3501,6 +3550,7 @@ describe('postgres datastore', () => {
       execution_cost_write_length: 0,
       tx_count: 1,
       signer_bitvec: null,
+      signer_signatures: null,
     };
     const block3B: DbBlock = {
       ...block3,
@@ -3515,6 +3565,7 @@ describe('postgres datastore', () => {
       parent_block_hash: block3.block_hash,
       parent_microblock_hash: '0x00',
       block_height: 4,
+      tenure_height: 4,
       block_time: 1234,
       burn_block_time: 1234,
       burn_block_hash: '0x1234',
@@ -3529,6 +3580,7 @@ describe('postgres datastore', () => {
       execution_cost_write_length: 0,
       tx_count: 1,
       signer_bitvec: null,
+      signer_signatures: null,
     };
 
     const minerReward1: DbMinerReward = {
@@ -3650,6 +3702,7 @@ describe('postgres datastore', () => {
       parent_block_hash: block4.block_hash,
       parent_microblock_hash: '0x00',
       block_height: 5,
+      tenure_height: 5,
       block_time: 1234,
       burn_block_time: 1234,
       burn_block_hash: '0x1234',
@@ -3664,6 +3717,7 @@ describe('postgres datastore', () => {
       execution_cost_write_length: 0,
       tx_count: 1,
       signer_bitvec: null,
+      signer_signatures: null,
     };
 
     const reorgResult = await db.handleReorg(client, block5, 0);
@@ -3731,6 +3785,7 @@ describe('postgres datastore', () => {
       parent_block_hash: '0x00',
       parent_microblock_hash: '0x00',
       block_height: 1,
+      tenure_height: 1,
       block_time: 1234,
       burn_block_time: 1234,
       burn_block_hash: '0x1234',
@@ -3745,6 +3800,7 @@ describe('postgres datastore', () => {
       execution_cost_write_length: 0,
       tx_count: 1,
       signer_bitvec: null,
+      signer_signatures: null,
     };
     const block2: DbBlock = {
       block_hash: '0x22',
@@ -3753,6 +3809,7 @@ describe('postgres datastore', () => {
       parent_block_hash: block1.block_hash,
       parent_microblock_hash: '0x00',
       block_height: 2,
+      tenure_height: 2,
       block_time: 1234,
       burn_block_time: 1234,
       burn_block_hash: '0x1234',
@@ -3767,6 +3824,7 @@ describe('postgres datastore', () => {
       execution_cost_write_length: 0,
       tx_count: 1,
       signer_bitvec: null,
+      signer_signatures: null,
     };
 
     const minerReward1: DbMinerReward = {
@@ -4033,6 +4091,7 @@ describe('postgres datastore', () => {
       parent_block_hash: block2.block_hash,
       parent_microblock_hash: '0x00',
       block_height: 3,
+      tenure_height: 3,
       block_time: 1234,
       burn_block_time: 1234,
       burn_block_hash: '0x1234',
@@ -4047,6 +4106,7 @@ describe('postgres datastore', () => {
       execution_cost_write_length: 0,
       tx_count: 1,
       signer_bitvec: null,
+      signer_signatures: null,
     };
     await db.update({ block: block3, microblocks: [], minerRewards: [], txs: [] });
 
@@ -4057,6 +4117,7 @@ describe('postgres datastore', () => {
       parent_block_hash: block1.block_hash,
       parent_microblock_hash: '0x00',
       block_height: 2,
+      tenure_height: 2,
       block_time: 1234,
       burn_block_time: 1234,
       burn_block_hash: '0x1234',
@@ -4071,6 +4132,7 @@ describe('postgres datastore', () => {
       execution_cost_write_length: 0,
       tx_count: 1,
       signer_bitvec: null,
+      signer_signatures: null,
     };
     const tx3: DbTxRaw = {
       tx_id: '0x03',
@@ -4268,6 +4330,7 @@ describe('postgres datastore', () => {
       parent_block_hash: block2b.block_hash,
       parent_microblock_hash: '0x00',
       block_height: 3,
+      tenure_height: 3,
       block_time: 1234,
       burn_block_time: 1234,
       burn_block_hash: '0x1234',
@@ -4282,6 +4345,7 @@ describe('postgres datastore', () => {
       execution_cost_write_length: 0,
       tx_count: 1,
       signer_bitvec: null,
+      signer_signatures: null,
     };
     await db.update({ block: block3b, microblocks: [], minerRewards: [], txs: [] });
     const blockQuery2 = await db.getBlock({ hash: block3b.block_hash });
@@ -4309,6 +4373,7 @@ describe('postgres datastore', () => {
       parent_block_hash: block3b.block_hash,
       parent_microblock_hash: '0x00',
       block_height: 4,
+      tenure_height: 4,
       block_time: 1234,
       burn_block_time: 1234,
       burn_block_hash: '0x1234',
@@ -4323,6 +4388,7 @@ describe('postgres datastore', () => {
       execution_cost_write_length: 0,
       tx_count: 1,
       signer_bitvec: null,
+      signer_signatures: null,
     };
     await db.update({ block: block4b, microblocks: [], minerRewards: [], txs: [] });
 
@@ -4419,6 +4485,7 @@ describe('postgres datastore', () => {
       parent_block_hash: '0x00',
       parent_microblock_hash: '0x00',
       block_height: 1,
+      tenure_height: 1,
       block_time: 1234,
       burn_block_time: 1234,
       burn_block_hash: '0x1234',
@@ -4433,6 +4500,7 @@ describe('postgres datastore', () => {
       execution_cost_write_length: 0,
       tx_count: 1,
       signer_bitvec: null,
+      signer_signatures: null,
     };
 
     const block2: DbBlock = {
@@ -4442,6 +4510,7 @@ describe('postgres datastore', () => {
       parent_block_hash: block1.block_hash,
       parent_microblock_hash: '0x00',
       block_height: 2,
+      tenure_height: 2,
       block_time: 1234,
       burn_block_time: 1234,
       burn_block_hash: '0x1234',
@@ -4456,6 +4525,7 @@ describe('postgres datastore', () => {
       execution_cost_write_length: 0,
       tx_count: 1,
       signer_bitvec: null,
+      signer_signatures: null,
     };
 
     const block2b: DbBlock = {
@@ -4465,6 +4535,7 @@ describe('postgres datastore', () => {
       parent_block_hash: block1.block_hash,
       parent_microblock_hash: '0x00',
       block_height: 2,
+      tenure_height: 2,
       block_time: 1234,
       burn_block_time: 1234,
       burn_block_hash: '0x1234',
@@ -4479,6 +4550,7 @@ describe('postgres datastore', () => {
       execution_cost_write_length: 0,
       tx_count: 1,
       signer_bitvec: null,
+      signer_signatures: null,
     };
 
     const block3: DbBlock = {
@@ -4488,6 +4560,7 @@ describe('postgres datastore', () => {
       parent_block_hash: block2.block_hash,
       parent_microblock_hash: '0x00',
       block_height: 3,
+      tenure_height: 3,
       block_time: 1234,
       burn_block_time: 1234,
       burn_block_hash: '0x1234',
@@ -4502,6 +4575,7 @@ describe('postgres datastore', () => {
       execution_cost_write_length: 0,
       tx_count: 1,
       signer_bitvec: null,
+      signer_signatures: null,
     };
 
     const block3b: DbBlock = {
@@ -4511,6 +4585,7 @@ describe('postgres datastore', () => {
       parent_block_hash: block2b.block_hash,
       parent_microblock_hash: '0x00',
       block_height: 3,
+      tenure_height: 3,
       block_time: 1234,
       burn_block_time: 1234,
       burn_block_hash: '0x1234',
@@ -4525,6 +4600,7 @@ describe('postgres datastore', () => {
       execution_cost_write_length: 0,
       tx_count: 1,
       signer_bitvec: null,
+      signer_signatures: null,
     };
 
     const block4b: DbBlock = {
@@ -4534,6 +4610,7 @@ describe('postgres datastore', () => {
       parent_block_hash: block3b.block_hash,
       parent_microblock_hash: '0x00',
       block_height: 4,
+      tenure_height: 4,
       block_time: 1234,
       burn_block_time: 1234,
       burn_block_hash: '0x1234',
@@ -4548,6 +4625,7 @@ describe('postgres datastore', () => {
       execution_cost_write_length: 0,
       tx_count: 1,
       signer_bitvec: null,
+      signer_signatures: null,
     };
 
     const minerReward1: DbMinerReward = {
@@ -5032,6 +5110,7 @@ describe('postgres datastore', () => {
       parent_block_hash: '0xff0011',
       parent_microblock_hash: '0x00',
       block_height: 1,
+      tenure_height: 1,
       block_time: 94869286,
       burn_block_time: 94869286,
       burn_block_hash: '0x1234',
@@ -5046,6 +5125,7 @@ describe('postgres datastore', () => {
       execution_cost_write_length: 0,
       tx_count: 1,
       signer_bitvec: null,
+      signer_signatures: null,
     };
     const tx1: DbTxRaw = {
       tx_id: '0x421234',
@@ -5119,6 +5199,7 @@ describe('postgres datastore', () => {
       parent_block_hash: '0xff0011',
       parent_microblock_hash: '0x00',
       block_height: 1,
+      tenure_height: 1,
       block_time: 94869286,
       burn_block_time: 94869286,
       burn_block_hash: '0x1234',
@@ -5133,6 +5214,7 @@ describe('postgres datastore', () => {
       execution_cost_write_length: 0,
       tx_count: 1,
       signer_bitvec: null,
+      signer_signatures: null,
     };
     const tx1: DbTxRaw = {
       tx_id: '0x421234',
@@ -5205,6 +5287,7 @@ describe('postgres datastore', () => {
       parent_block_hash: '0xff0011',
       parent_microblock_hash: '0x00',
       block_height: 1,
+      tenure_height: 1,
       block_time: 94869286,
       burn_block_time: 94869286,
       burn_block_hash: '0x1234',
@@ -5219,6 +5302,7 @@ describe('postgres datastore', () => {
       execution_cost_write_length: 0,
       tx_count: 1,
       signer_bitvec: null,
+      signer_signatures: null,
     };
     const tx1: DbTxRaw = {
       tx_id: '0x421234',
@@ -5363,6 +5447,7 @@ describe('postgres datastore', () => {
       parent_microblock_hash: '0x00',
       parent_microblock_sequence: 0,
       block_height: 1,
+      tenure_height: 1,
       block_time: 1594647995,
       burn_block_time: 1594647995,
       burn_block_hash: '0x1234',
@@ -5376,6 +5461,7 @@ describe('postgres datastore', () => {
       execution_cost_write_length: 0,
       tx_count: 1,
       signer_bitvec: null,
+      signer_signatures: null,
     };
     await db.update({
       block: dbBlock,
@@ -5425,6 +5511,7 @@ describe('postgres datastore', () => {
       parent_microblock_hash: '0x00',
       parent_microblock_sequence: 0,
       block_height: 1,
+      tenure_height: 1,
       block_time: 1594647995,
       burn_block_time: 1594647995,
       burn_block_hash: '0x1234',
@@ -5438,6 +5525,7 @@ describe('postgres datastore', () => {
       execution_cost_write_length: 0,
       tx_count: 1,
       signer_bitvec: null,
+      signer_signatures: null,
     };
     await db.update({
       block: dbBlock,
@@ -5488,6 +5576,7 @@ describe('postgres datastore', () => {
       parent_microblock_hash: '0x00',
       parent_microblock_sequence: 0,
       block_height: 1,
+      tenure_height: 1,
       block_time: 1594647995,
       burn_block_time: 1594647995,
       burn_block_hash: '0x1234',
@@ -5501,6 +5590,7 @@ describe('postgres datastore', () => {
       execution_cost_write_length: 0,
       tx_count: 1,
       signer_bitvec: null,
+      signer_signatures: null,
     };
     await db.update({
       block: dbBlock,
@@ -5550,6 +5640,7 @@ describe('postgres datastore', () => {
       parent_block_hash: '0xff0011',
       parent_microblock_hash: '0x00',
       block_height: 1235,
+      tenure_height: 1235,
       block_time: 94869286,
       burn_block_time: 94869286,
       burn_block_hash: '0x1234',
@@ -5564,6 +5655,7 @@ describe('postgres datastore', () => {
       execution_cost_write_length: 0,
       tx_count: 1,
       signer_bitvec: null,
+      signer_signatures: null,
     };
     await db.updateBlock(client, block);
     const blockQuery = await db.getBlock({ hash: block.block_hash });
@@ -5660,6 +5752,7 @@ describe('postgres datastore', () => {
       parent_block_hash: '0xff0011',
       parent_microblock_hash: '0x00',
       block_height: 1235,
+      tenure_height: 1235,
       block_time: 94869286,
       burn_block_time: 94869286,
       burn_block_hash: '0x1234',
@@ -5674,6 +5767,7 @@ describe('postgres datastore', () => {
       execution_cost_write_length: 0,
       tx_count: 1,
       signer_bitvec: null,
+      signer_signatures: null,
     };
     await db.updateBlock(client, block);
     const blockQuery = await db.getBlock({ hash: block.block_hash });

@@ -12,7 +12,7 @@ import {
   BurnchainRewardSchema,
   BurnchainRewardSlotHolderSchema,
 } from '../entities/burnchain-rewards';
-import { NakamotoBlockSchema } from '../entities/block';
+import { NakamotoBlockSchema, SignerSignatureSchema } from '../entities/block';
 
 export const ErrorResponseSchema = Type.Object(
   {
@@ -182,3 +182,6 @@ export type RunFaucetResponse = Static<typeof RunFaucetResponseSchema>;
 
 export const BlockListV2ResponseSchema = PaginatedCursorResponse(NakamotoBlockSchema);
 export type BlockListV2Response = Static<typeof BlockListV2ResponseSchema>;
+
+export const BlockSignerSignatureResponseSchema = PaginatedResponse(SignerSignatureSchema);
+export type BlockSignerSignatureResponse = Static<typeof BlockSignerSignatureResponseSchema>;

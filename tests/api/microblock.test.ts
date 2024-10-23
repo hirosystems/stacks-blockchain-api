@@ -273,6 +273,7 @@ describe('microblock tests', () => {
           parent_block_hash: '0x00',
           parent_microblock_hash: '',
           block_height: 1,
+          tenure_height: 1,
           block_time: 1234,
           burn_block_time: 1234,
           burn_block_hash: '0x1234',
@@ -287,6 +288,7 @@ describe('microblock tests', () => {
           execution_cost_write_length: 0,
           tx_count: 1,
           signer_bitvec: null,
+          signer_signatures: null,
         };
 
         const tx1: DbTxRaw = {

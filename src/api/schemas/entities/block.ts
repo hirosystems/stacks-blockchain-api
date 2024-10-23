@@ -17,6 +17,9 @@ export const BlockSchema = Type.Object(
     block_time_iso: Type.String({
       description: 'An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) indicating when this block was mined.',
     }),
+    tenure_height: Type.Integer({
+      description: 'The tenure height (AKA coinbase height) of this block',
+    }),
     index_block_hash: Type.String({
       description:
         'The only hash that can uniquely identify an anchored block or an unconfirmed state trie',
@@ -93,6 +96,9 @@ export const NakamotoBlockSchema = Type.Object({
   block_time_iso: Type.String({
     description: 'An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) indicating when this block was mined.',
   }),
+  tenure_height: Type.Integer({
+    description: 'The tenure height (AKA coinbase height) of this block',
+  }),
   index_block_hash: Type.String({
     description:
       'The only hash that can uniquely identify an anchored block or an unconfirmed state trie',
@@ -116,3 +122,7 @@ export const NakamotoBlockSchema = Type.Object({
   execution_cost_write_length: Type.Integer({ description: 'Execution cost write length.' }),
 });
 export type NakamotoBlock = Static<typeof NakamotoBlockSchema>;
+
+export const SignerSignatureSchema = Type.String({
+  description: "Array of hex strings representing the block's signer signature",
+});

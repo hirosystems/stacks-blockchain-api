@@ -66,7 +66,6 @@ import {
 } from './common';
 import {
   BLOCK_COLUMNS,
-  setTotalBlockUpdateDataExecutionCost,
   convertTxQueryResultToDbMempoolTx,
   markBlockUpdateDataAsNonCanonical,
   MICROBLOCK_COLUMNS,
@@ -210,7 +209,6 @@ export class PgWriteStore extends PgStore {
         }));
         await this.pruneMempoolTxs(sql, prunableTxs);
       }
-      setTotalBlockUpdateDataExecutionCost(data);
 
       // Insert microblocks, if any. Clear already inserted microblock txs from the anchor-block
       // update data to avoid duplicate inserts.
@@ -484,6 +482,8 @@ export class PgWriteStore extends PgStore {
       execution_cost_write_length: block.execution_cost_write_length,
       tx_count: block.tx_count,
       signer_bitvec: block.signer_bitvec,
+      signer_signatures: block.signer_signatures,
+      tenure_height: block.tenure_height,
     };
     const result = await sql`
       INSERT INTO blocks ${sql(values)}
@@ -3384,6 +3384,8 @@ export class PgWriteStore extends PgStore {
       execution_cost_write_length: block.execution_cost_write_length,
       tx_count: block.tx_count,
       signer_bitvec: block.signer_bitvec,
+      signer_signatures: block.signer_signatures,
+      tenure_height: block.tenure_height,
     }));
     await sql`
       INSERT INTO blocks ${sql(values)}
