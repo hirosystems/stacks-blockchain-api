@@ -132,6 +132,7 @@ export const MEMPOOL_TX_COLUMNS = [
   'type_id',
   'anchor_mode',
   'status',
+  'replacing_txid',
   'receipt_time',
   'receipt_block_height',
   'post_conditions',
@@ -300,6 +301,7 @@ export function parseMempoolTxQueryResult(result: MempoolTxQueryResult): DbMempo
     type_id: result.type_id as DbTxTypeId,
     anchor_mode: result.anchor_mode as DbTxAnchorMode,
     status: result.status,
+    replacing_txid: result.replacing_txid,
     receipt_time: result.receipt_time,
     post_conditions: result.post_conditions,
     fee_rate: BigInt(result.fee_rate),
@@ -1042,6 +1044,16 @@ export function getTxDbStatus(
       return DbTxStatus.DroppedProblematic;
     default:
       throw new Error(`Unexpected tx status: ${txCoreStatus}`);
+  }
+}
+
+export function getReplacingTx(
+  new_txid : string | null
+): string {
+  if (new_txid === null){
+    return '';
+  } else{
+    return new_txid;
   }
 }
 

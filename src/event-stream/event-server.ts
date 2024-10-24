@@ -72,6 +72,7 @@ import { PgWriteStore } from '../datastore/pg-write-store';
 import {
   createDbMempoolTxFromCoreMsg,
   createDbTxFromCoreMsg,
+  getReplacingTx,
   getTxDbStatus,
 } from '../datastore/helpers';
 import { handleBnsImport } from '../import-v1';
@@ -169,7 +170,8 @@ async function handleDroppedMempoolTxsMessage(
 ): Promise<void> {
   logger.debug(`Received ${msg.dropped_txids.length} dropped mempool txs`);
   const dbTxStatus = getTxDbStatus(msg.reason);
-  await db.dropMempoolTxs({ status: dbTxStatus, txIds: msg.dropped_txids });
+  const replacing_txid = msg.new_txid;
+  await db.dropMempoolTxs({ status: dbTxStatus, txIds: msg.dropped_txids, replacing_txid });
 }
 
 async function handleMicroblockMessage(
