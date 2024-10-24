@@ -1449,6 +1449,42 @@ export class PgWriteStore extends PgStore {
               AND EXCLUDED.event_index > ${table}.event_index
             )
         `;
+
+        if(microblock == false){
+          const unanchored_table = sql`nft_custody_unanchored`;
+          await sql`
+            INSERT INTO ${unanchored_table} ${sql(Array.from(custodyInsertsMap.values()))}
+            ON CONFLICT ON CONSTRAINT ${unanchored_table}_unique DO UPDATE SET
+              tx_id = EXCLUDED.tx_id,
+              index_block_hash = EXCLUDED.index_block_hash,
+              parent_index_block_hash = EXCLUDED.parent_index_block_hash,
+              microblock_hash = EXCLUDED.microblock_hash,
+              microblock_sequence = EXCLUDED.microblock_sequence,
+              recipient = EXCLUDED.recipient,
+              event_index = EXCLUDED.event_index,
+              tx_index = EXCLUDED.tx_index,
+              block_height = EXCLUDED.block_height
+            WHERE
+              (
+                EXCLUDED.block_height > ${unanchored_table}.block_height
+              )
+              OR (
+                EXCLUDED.block_height = ${unanchored_table}.block_height
+                AND EXCLUDED.microblock_sequence > ${unanchored_table}.microblock_sequence
+              )
+              OR (
+                EXCLUDED.block_height = ${unanchored_table}.block_height
+                AND EXCLUDED.microblock_sequence = ${unanchored_table}.microblock_sequence
+                AND EXCLUDED.tx_index > ${unanchored_table}.tx_index
+              )
+              OR (
+                EXCLUDED.block_height = ${unanchored_table}.block_height
+                AND EXCLUDED.microblock_sequence = ${unanchored_table}.microblock_sequence
+                AND EXCLUDED.tx_index = ${unanchored_table}.tx_index
+                AND EXCLUDED.event_index > ${unanchored_table}.event_index
+              )
+          `;
+        }
       }
     }
   }
