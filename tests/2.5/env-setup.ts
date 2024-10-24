@@ -16,7 +16,7 @@ beforeAll(async () => {
   }
   loadDotEnv();
 
-  process.env.PG_DATABASE = 'postgres';
+  process.env.PG_DATABASE = 'stacks_api';
   process.env.STACKS_CHAIN_ID = '0x80000000';
 
   const db = await PgWriteStore.connect({ usageName: 'tests' });

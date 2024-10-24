@@ -27,7 +27,7 @@ export function getPgConnectionEnvValue(
 
 export function getConnectionArgs(server: PgServer = PgServer.default): PgConnectionArgs {
   const conn = getPgConnectionEnvValue('CONNECTION_URI', server) ?? {
-    database: getPgConnectionEnvValue('DATABASE', server),
+    database: 'stacks_api', // getPgConnectionEnvValue('DATABASE', server),
     user: getPgConnectionEnvValue('USER', server),
     password: getPgConnectionEnvValue('PASSWORD', server),
     host: getPgConnectionEnvValue('HOST', server),

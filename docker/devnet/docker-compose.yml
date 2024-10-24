@@ -26,7 +26,9 @@ services:
       - ../stacks-blockchain/:/app/config
       - ../stacks-blockchain/.chaindata:/tmp/stacks-blockchain-data
     environment:
-      - PG_DATABASE=stacks_api
+      - PG_DATABASE=stacks_blockchain_api
+      - POSTGRES_DB=stacks_blockchain_api
+      - STACKS_CHAIN_ID=0x80000000
     extra_hosts:
       - 'host.docker.internal:host-gateway' # fixes `host.docker.internal` on linux hosts
     privileged: true
