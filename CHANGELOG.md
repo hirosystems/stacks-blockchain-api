@@ -1,3 +1,17 @@
+## [8.2.0](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.1.2...v8.2.0) (2024-10-25)
+
+
+### Features
+
+* allow stackerdb_chunks messages to be stored in db raw events table ([d03f2ef](https://github.com/hirosystems/stacks-blockchain-api/commit/d03f2ef940fd90e9b9e99d9b3636aaf2d348f0e7))
+* include `tenure-height` in block responses ([#2134](https://github.com/hirosystems/stacks-blockchain-api/issues/2134)) ([07426a2](https://github.com/hirosystems/stacks-blockchain-api/commit/07426a2e0060029ffe908597120a820c16cb3db3))
+* ingest `signer_signature` from `/new_block` event and expose in new endpoint ([#2125](https://github.com/hirosystems/stacks-blockchain-api/issues/2125)) ([c389154](https://github.com/hirosystems/stacks-blockchain-api/commit/c389154a47fee6f382be2343abdb9e01bc093300))
+
+
+### Bug Fixes
+
+* event-replay block parsing outdated and incorrect ([#2133](https://github.com/hirosystems/stacks-blockchain-api/issues/2133)) ([2cd69fa](https://github.com/hirosystems/stacks-blockchain-api/commit/2cd69face8953541fcc2697a5a3b7b350de33383))
+
 ## [8.1.2](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.1.1...v8.1.2) (2024-10-21)
 
 
