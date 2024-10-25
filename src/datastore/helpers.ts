@@ -186,6 +186,7 @@ export const BLOCK_COLUMNS = [
   'execution_cost_write_length',
   'tx_count',
   'signer_bitvec',
+  'tenure_height',
 ];
 
 export const MICROBLOCK_COLUMNS = [
@@ -465,7 +466,6 @@ export function parseFaucetRequestQueryResult(result: FaucetRequestQueryResult):
 }
 
 export function parseBlockQueryResult(row: BlockQueryResult): DbBlock {
-  // TODO(mb): is the tx_index preserved between microblocks and committed anchor blocks?
   const block: DbBlock = {
     block_hash: row.block_hash,
     index_block_hash: row.index_block_hash,
@@ -487,6 +487,8 @@ export function parseBlockQueryResult(row: BlockQueryResult): DbBlock {
     execution_cost_write_length: Number.parseInt(row.execution_cost_write_length),
     tx_count: row.tx_count,
     signer_bitvec: row.signer_bitvec,
+    signer_signatures: null, // this field is not queried from db by default due to size constraints
+    tenure_height: row.tenure_height,
   };
   return block;
 }
@@ -1280,43 +1282,6 @@ export function convertTxQueryResultToDbMempoolTx(txs: TxQueryResult[]): DbMempo
     dbMempoolTxs.push(dbMempoolTx);
   }
   return dbMempoolTxs;
-}
-
-export function setTotalBlockUpdateDataExecutionCost(data: DataStoreBlockUpdateData) {
-  const cost = data.txs.reduce(
-    (previousValue, currentValue) => {
-      const {
-        execution_cost_read_count,
-        execution_cost_read_length,
-        execution_cost_runtime,
-        execution_cost_write_count,
-        execution_cost_write_length,
-      } = previousValue;
-      return {
-        execution_cost_read_count:
-          execution_cost_read_count + currentValue.tx.execution_cost_read_count,
-        execution_cost_read_length:
-          execution_cost_read_length + currentValue.tx.execution_cost_read_length,
-        execution_cost_runtime: execution_cost_runtime + currentValue.tx.execution_cost_runtime,
-        execution_cost_write_count:
-          execution_cost_write_count + currentValue.tx.execution_cost_write_count,
-        execution_cost_write_length:
-          execution_cost_write_length + currentValue.tx.execution_cost_write_length,
-      };
-    },
-    {
-      execution_cost_read_count: 0,
-      execution_cost_read_length: 0,
-      execution_cost_runtime: 0,
-      execution_cost_write_count: 0,
-      execution_cost_write_length: 0,
-    }
-  );
-  data.block.execution_cost_read_count = cost.execution_cost_read_count;
-  data.block.execution_cost_read_length = cost.execution_cost_read_length;
-  data.block.execution_cost_runtime = cost.execution_cost_runtime;
-  data.block.execution_cost_write_count = cost.execution_cost_write_count;
-  data.block.execution_cost_write_length = cost.execution_cost_write_length;
 }
 
 export function markBlockUpdateDataAsNonCanonical(data: DataStoreBlockUpdateData): void {

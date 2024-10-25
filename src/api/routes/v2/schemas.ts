@@ -47,6 +47,14 @@ export const TransactionLimitParamSchema = Type.Integer({
   description: 'Transactions per page',
 });
 
+export const BlockSignerSignatureLimitParamSchema = Type.Integer({
+  minimum: 1,
+  maximum: pagingQueryLimits[ResourceType.BlockSignerSignature].maxLimit,
+  default: pagingQueryLimits[ResourceType.BlockSignerSignature].defaultLimit,
+  title: 'Block signer signature limit',
+  description: 'Block signer signatures per page',
+});
+
 export const PoxCycleLimitParamSchema = Type.Integer({
   minimum: 1,
   maximum: pagingQueryLimits[ResourceType.PoxCycle].maxLimit,

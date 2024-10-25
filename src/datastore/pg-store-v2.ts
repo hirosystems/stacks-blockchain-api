@@ -15,6 +15,7 @@ import {
   PoxSignerPaginationQueryParams,
   PoxSignerLimitParamSchema,
   BlockIdParam,
+  BlockSignerSignatureLimitParamSchema,
 } from '../api/routes/v2/schemas';
 import { InvalidRequestError, InvalidRequestErrorType } from '../errors';
 import { normalizeHashString } from '../helpers';
@@ -223,6 +224,48 @@ export class PgStoreV2 extends BasePgStoreModule {
         LIMIT 1
       `;
       if (blockQuery.count > 0) return parseBlockQueryResult(blockQuery[0]);
+    });
+  }
+
+  async getBlockSignerSignature(args: {
+    blockId: BlockIdParam;
+    limit?: number;
+    offset?: number;
+  }): Promise<DbPaginatedResult<string>> {
+    return await this.sqlTransaction(async sql => {
+      const limit = args.limit ?? BlockSignerSignatureLimitParamSchema.default;
+      const offset = args.offset ?? 0;
+      const blockId = args.blockId;
+      const filter =
+        blockId.type === 'latest'
+          ? sql`index_block_hash = (SELECT index_block_hash FROM blocks WHERE canonical = TRUE ORDER BY block_height DESC LIMIT 1)`
+          : blockId.type === 'hash'
+          ? sql`(
+              block_hash = ${normalizeHashString(blockId.hash)}
+              OR index_block_hash = ${normalizeHashString(blockId.hash)}
+            )`
+          : sql`block_height = ${blockId.height}`;
+      const blockQuery = await sql<{ signer_signatures: string[]; total: number }[]>`
+        SELECT
+          signer_signatures[${offset + 1}:${offset + limit}] as signer_signatures,
+          array_length(signer_signatures, 1)::integer AS total
+        FROM blocks
+        WHERE canonical = true AND ${filter}
+        LIMIT 1
+      `;
+      if (blockQuery.count === 0)
+        return {
+          limit,
+          offset,
+          results: [],
+          total: 0,
+        };
+      return {
+        limit,
+        offset,
+        results: blockQuery[0].signer_signatures,
+        total: blockQuery[0].total,
+      };
     });
   }
 

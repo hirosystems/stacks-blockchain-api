@@ -560,6 +560,7 @@ describe('mempool tests', () => {
       parent_microblock_hash: '',
       parent_microblock_sequence: 0,
       block_height: 2,
+      tenure_height: 2,
       block_time: 39486,
       burn_block_time: 39486,
       burn_block_hash: '0x1234',
@@ -573,6 +574,7 @@ describe('mempool tests', () => {
       execution_cost_write_length: 0,
       tx_count: 1,
       signer_bitvec: null,
+      signer_signatures: null,
     };
     const dbTx1: DbTxRaw = {
       ...mempoolTx1,
@@ -1340,6 +1342,7 @@ describe('mempool tests', () => {
       parent_microblock_hash: '',
       parent_microblock_sequence: 0,
       block_height: 1,
+      tenure_height: 1,
       block_time: 1594647995,
       burn_block_time: 1594647995,
       burn_block_hash: '0x1234',
@@ -1353,6 +1356,7 @@ describe('mempool tests', () => {
       execution_cost_write_length: 0,
       tx_count: 1,
       signer_bitvec: null,
+      signer_signatures: null,
     };
     await db.updateBlock(client, dbBlock);
     const senderAddress = 'SP25YGP221F01S9SSCGN114MKDAK9VRK8P3KXGEMB';
@@ -1415,6 +1419,7 @@ describe('mempool tests', () => {
       parent_microblock_hash: '',
       parent_microblock_sequence: 0,
       block_height: 1,
+      tenure_height: 1,
       block_time: 1594647995,
       burn_block_time: 1594647995,
       burn_block_hash: '0x1234',
@@ -1428,6 +1433,7 @@ describe('mempool tests', () => {
       execution_cost_write_length: 0,
       tx_count: 1,
       signer_bitvec: null,
+      signer_signatures: null,
     };
     await db.updateBlock(client, dbBlock);
     const senderAddress = 'SP25YGP221F01S9SSCGN114MKDAK9VRK8P3KXGEMB';
@@ -1642,6 +1648,7 @@ describe('mempool tests', () => {
       parent_microblock_hash: '',
       parent_microblock_sequence: 0,
       block_height: 1,
+      tenure_height: 2,
       block_time: 39486,
       burn_block_time: 39486,
       burn_block_hash: '0x1234',
@@ -1655,6 +1662,7 @@ describe('mempool tests', () => {
       execution_cost_write_length: 0,
       tx_count: 1,
       signer_bitvec: null,
+      signer_signatures: null,
     };
     const dbBlock2: DbBlock = {
       block_hash: '0x2123',
@@ -1664,6 +1672,7 @@ describe('mempool tests', () => {
       parent_microblock_hash: '',
       parent_microblock_sequence: 0,
       block_height: 2,
+      tenure_height: 2,
       block_time: 39486,
       burn_block_time: 39486,
       burn_block_hash: '0x1234',
@@ -1677,6 +1686,7 @@ describe('mempool tests', () => {
       execution_cost_write_length: 0,
       tx_count: 1,
       signer_bitvec: null,
+      signer_signatures: null,
     };
     const mempoolTx: DbMempoolTxRaw = {
       tx_id: txId,
@@ -1789,6 +1799,7 @@ describe('mempool tests', () => {
       parent_microblock_hash: '0x00',
       parent_microblock_sequence: 0,
       block_height: 1,
+      tenure_height: 1,
       block_time: 39486,
       burn_block_time: 39486,
       burn_block_hash: '0x1234',
@@ -1802,6 +1813,7 @@ describe('mempool tests', () => {
       execution_cost_write_length: 0,
       tx_count: 1,
       signer_bitvec: null,
+      signer_signatures: null,
     };
     const dbBlock1b: DbBlock = {
       block_hash: '0x0123bb',
@@ -1811,6 +1823,7 @@ describe('mempool tests', () => {
       parent_microblock_hash: '0x00',
       parent_microblock_sequence: 0,
       block_height: 1,
+      tenure_height: 1,
       block_time: 39486,
       burn_block_time: 39486,
       burn_block_hash: '0x1234bb',
@@ -1824,6 +1837,7 @@ describe('mempool tests', () => {
       execution_cost_write_length: 0,
       tx_count: 1,
       signer_bitvec: null,
+      signer_signatures: null,
     };
     const dbBlock2b: DbBlock = {
       block_hash: '0x2123',
@@ -1833,6 +1847,7 @@ describe('mempool tests', () => {
       parent_microblock_hash: '0x00',
       parent_microblock_sequence: 0,
       block_height: 2,
+      tenure_height: 2,
       block_time: 39486,
       burn_block_time: 39486,
       burn_block_hash: '0x1234',
@@ -1846,6 +1861,7 @@ describe('mempool tests', () => {
       execution_cost_write_length: 0,
       tx_count: 1,
       signer_bitvec: null,
+      signer_signatures: null,
     };
     const mempoolTx: DbMempoolTxRaw = {
       tx_id: txId,

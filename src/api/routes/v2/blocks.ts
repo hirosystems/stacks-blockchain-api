@@ -9,9 +9,16 @@ import { Server } from 'node:http';
 import { CursorOffsetParam, LimitParam, OffsetParam } from '../../schemas/params';
 import { getPagingQueryLimit, pagingQueryLimits, ResourceType } from '../../pagination';
 import { PaginatedResponse } from '../../schemas/util';
-import { NakamotoBlock, NakamotoBlockSchema } from '../../schemas/entities/block';
+import {
+  NakamotoBlock,
+  NakamotoBlockSchema,
+  SignerSignatureSchema,
+} from '../../schemas/entities/block';
 import { TransactionSchema } from '../../schemas/entities/transactions';
-import { BlockListV2ResponseSchema } from '../../schemas/responses/responses';
+import {
+  BlockListV2ResponseSchema,
+  BlockSignerSignatureResponseSchema,
+} from '../../schemas/responses/responses';
 
 export const BlockRoutesV2: FastifyPluginAsync<
   Record<never, never>,
@@ -163,6 +170,54 @@ export const BlockRoutesV2: FastifyPluginAsync<
           offset,
           total,
           results: results.map(r => parseDbTx(r)),
+        };
+        await reply.send(response);
+      } catch (error) {
+        if (error instanceof InvalidRequestError) {
+          throw new NotFoundError('Block not found');
+        }
+        throw error;
+      }
+    }
+  );
+
+  fastify.get(
+    '/:height_or_hash/signer-signatures',
+    {
+      preHandler: handleBlockCache,
+      preValidation: (req, _reply, done) => {
+        cleanBlockHeightOrHashParam(req.params);
+        done();
+      },
+      schema: {
+        operationId: 'get_signer_signatures_for_block',
+        summary: 'Get signer signatures for block',
+        description: `Retrieves the signer signatures (an array of signature byte strings) in a single block`,
+        tags: ['Blocks'],
+        params: BlockParamsSchema,
+        querystring: Type.Object({
+          limit: LimitParam(ResourceType.BlockSignerSignature),
+          offset: OffsetParam(),
+        }),
+        response: {
+          200: BlockSignerSignatureResponseSchema,
+        },
+      },
+    },
+    async (req, reply) => {
+      const params = parseBlockParam(req.params.height_or_hash);
+      const query = req.query;
+
+      try {
+        const { limit, offset, results, total } = await fastify.db.v2.getBlockSignerSignature({
+          blockId: params,
+          ...query,
+        });
+        const response = {
+          limit,
+          offset,
+          total,
+          results: results,
         };
         await reply.send(response);
       } catch (error) {

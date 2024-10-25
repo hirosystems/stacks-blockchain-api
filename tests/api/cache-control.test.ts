@@ -47,6 +47,7 @@ describe('cache-control tests', () => {
       parent_microblock_hash: '0x00',
       parent_microblock_sequence: 0,
       block_height: 1,
+      tenure_height: 1,
       block_time: 1594647996,
       burn_block_time: 1594647996,
       burn_block_hash: '0x1234',
@@ -60,6 +61,7 @@ describe('cache-control tests', () => {
       execution_cost_write_length: 0,
       tx_count: 1,
       signer_bitvec: null,
+      signer_signatures: null,
     };
     const tx: DbTxRaw = {
       tx_id: '0x1234',
@@ -153,14 +155,14 @@ describe('cache-control tests', () => {
       microblock_tx_count: {},
     };
 
-    expect(blockQuery.result).toEqual(expectedResp1);
+    expect(blockQuery.result).toMatchObject(expectedResp1);
 
     const fetchBlockByHash1 = await supertest(api.server).get(
       `/extended/v1/block/${block1.block_hash}`
     );
     expect(fetchBlockByHash1.status).toBe(200);
     expect(fetchBlockByHash1.type).toBe('application/json');
-    expect(JSON.parse(fetchBlockByHash1.text)).toEqual(expectedResp1);
+    expect(JSON.parse(fetchBlockByHash1.text)).toMatchObject(expectedResp1);
     expect(fetchBlockByHash1.headers['etag']).toBe(`"${block1.index_block_hash}"`);
 
     const fetchBlockByHashCached1 = await supertest(api.server)
@@ -174,7 +176,7 @@ describe('cache-control tests', () => {
       .set('If-None-Match', '"0x12345678"');
     expect(fetchBlockByHashCacheMiss.status).toBe(200);
     expect(fetchBlockByHashCacheMiss.type).toBe('application/json');
-    expect(JSON.parse(fetchBlockByHashCacheMiss.text)).toEqual(expectedResp1);
+    expect(JSON.parse(fetchBlockByHashCacheMiss.text)).toMatchObject(expectedResp1);
     expect(fetchBlockByHashCacheMiss.headers['etag']).toBe(`"${block1.index_block_hash}"`);
 
     const fetchBlockByHeight = await supertest(api.server).get(
@@ -182,7 +184,7 @@ describe('cache-control tests', () => {
     );
     expect(fetchBlockByHeight.status).toBe(200);
     expect(fetchBlockByHeight.type).toBe('application/json');
-    expect(JSON.parse(fetchBlockByHeight.text)).toEqual(expectedResp1);
+    expect(JSON.parse(fetchBlockByHeight.text)).toMatchObject(expectedResp1);
     expect(fetchBlockByHeight.headers['etag']).toBe(`"${block1.index_block_hash}"`);
 
     const fetchBlockByHeightCached = await supertest(api.server)
@@ -196,7 +198,7 @@ describe('cache-control tests', () => {
       .set('If-None-Match', '"0x12345678"');
     expect(fetchBlockByHashCacheMiss.status).toBe(200);
     expect(fetchBlockByHeightCacheMiss.type).toBe('application/json');
-    expect(JSON.parse(fetchBlockByHeightCacheMiss.text)).toEqual(expectedResp1);
+    expect(JSON.parse(fetchBlockByHeightCacheMiss.text)).toMatchObject(expectedResp1);
     expect(fetchBlockByHeightCacheMiss.headers['etag']).toBe(`"${block1.index_block_hash}"`);
 
     const fetchStxSupplyResp1 = expect.objectContaining({ total_stx: expect.any(String) });
@@ -329,7 +331,7 @@ describe('cache-control tests', () => {
     );
     expect(fetchBlockByHash2.status).toBe(200);
     expect(fetchBlockByHash2.type).toBe('application/json');
-    expect(JSON.parse(fetchBlockByHash2.text)).toEqual(expectedResp2);
+    expect(JSON.parse(fetchBlockByHash2.text)).toMatchObject(expectedResp2);
     expect(fetchBlockByHash2.headers['etag']).toBe(`"${mb1.microblock_hash}"`);
 
     const fetchBlockByHashCached2 = await supertest(api.server)

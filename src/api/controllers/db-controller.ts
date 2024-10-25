@@ -682,6 +682,8 @@ function parseDbBlock(
       dbBlock.block_time > 0
         ? unixEpochToIso(dbBlock.block_time)
         : unixEpochToIso(dbBlock.burn_block_time),
+    // If `tenure_height` is not available, but `signer_bitvec` is set we can safely assume it's same as `block_height` (epoch2.x rules)
+    tenure_height: dbBlock.tenure_height ?? (dbBlock.signer_bitvec ? -1 : dbBlock.block_height),
     index_block_hash: dbBlock.index_block_hash,
     parent_block_hash: dbBlock.parent_block_hash,
     burn_block_time: dbBlock.burn_block_time,

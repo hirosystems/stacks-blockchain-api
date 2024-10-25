@@ -205,7 +205,7 @@ describe('synthetic stx txs', () => {
     if (!txMsg) {
       throw new Error(`Cound not find tx ${txid}`);
     }
-    const parsed = parseNewBlockMessage(ChainID.Mainnet, blockMsg);
+    const { dbData: parsed } = parseNewBlockMessage(ChainID.Mainnet, blockMsg, false);
     if (!parsed) {
       throw new Error(`Failed to parse ${txid}`);
     }

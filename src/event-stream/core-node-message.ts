@@ -301,11 +301,15 @@ export interface CoreNodeBlockMessage {
     /** String quoted micro-STX amount. */
     tx_fees_streamed_produced: string;
   }[];
+  anchored_cost?: CoreNodeExecutionCostMessage;
+  confirmed_microblocks_cost?: CoreNodeExecutionCostMessage;
   pox_v1_unlock_height?: number;
   pox_v2_unlock_height?: number;
   pox_v3_unlock_height?: number;
   /** Available starting in epoch3, only included in blocks where the pox cycle rewards are first calculated */
   cycle_number?: number;
+  /** AKA `coinbase_height`. In epoch2.x this is the same as `block_height`. In epoch3 this is used to track tenure heights. Only available starting in stacks-core 3.0.0.0.0-rc6 */
+  tenure_height?: number | null;
   /** Available starting in epoch3, only included in blocks where the pox cycle rewards are first calculated */
   reward_set?: {
     pox_ustx_threshold: string; // "666720000000000"
@@ -321,6 +325,7 @@ export interface CoreNodeBlockMessage {
   };
   block_time: number;
   signer_bitvec?: string | null;
+  signer_signature?: string[];
 }
 
 export interface CoreNodeParsedTxMessage {
