@@ -117,6 +117,12 @@ const BurnBlockHeightParamSchema = Type.Integer({
   examples: [777678],
 });
 
+const TenureHeightParamSchema = Type.Integer({
+  title: 'Tenure height',
+  description: 'Tenure height',
+  examples: [777678],
+});
+
 const BlockHeightParamSchema = Type.Integer({
   title: 'Block height',
   description: 'Block height',
@@ -206,6 +212,16 @@ export const BurnBlockParamsSchema = Type.Object(
   { additionalProperties: false }
 );
 export type BurnBlockParams = Static<typeof BurnBlockParamsSchema>;
+
+export const TenureParamsSchema = Type.Object(
+  {
+    height: Type.Union([
+      TenureHeightParamSchema,
+    ]),
+  },
+  { additionalProperties: false }
+);
+export type TenureParams = Static<typeof TenureParamsSchema>;
 
 export const SmartContractStatusParamsSchema = Type.Object(
   {
