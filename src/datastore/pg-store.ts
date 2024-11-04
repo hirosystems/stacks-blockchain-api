@@ -4480,7 +4480,7 @@ export class PgStore extends BasePgStore {
                 (sender_address = ${principal}
                 OR sponsor_address = ${principal}
                 OR token_transfer_recipient_address = ${principal})
-              ORDER BY receipt_time DESC, sender_address DESC, nonce DESC
+              ORDER BY receipt_time DESC
               LIMIT 1
             )`
             : this.sql``

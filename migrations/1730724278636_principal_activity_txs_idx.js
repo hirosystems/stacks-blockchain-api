@@ -42,9 +42,7 @@ exports.up = pgm => {
       'sender_address',
       'sponsor_address',
       'token_transfer_recipient_address',
-      { name: 'receipt_time', order: 'DESC' },
-      { name: 'sender_address', order: 'DESC' },
-      { name: 'nonce', order: 'DESC' }
+      { name: 'receipt_time', order: 'DESC' }
     ],
     {
       name: 'idx_mempool_txs_optimized',
@@ -55,7 +53,7 @@ exports.up = pgm => {
 
 /** @param { import("node-pg-migrate").MigrationBuilder } pgm */
 exports.down = pgm => {
-  pgm.dropIndex('ft_events', 'idx_ft_events_optimized');
-  pgm.dropIndex('nft_events', 'idx_nft_events_optimized');
-  pgm.dropIndex('mempool_txs', 'idx_mempool_txs_optimized');
+  pgm.dropIndex('ft_events', ['sender', 'recipient', 'block_height', 'microblock_sequence', 'tx_index', 'event_index'], { name: 'idx_ft_events_optimized' });
+  pgm.dropIndex('nft_events', ['sender', 'recipient', 'block_height', 'microblock_sequence', 'tx_index', 'event_index'], { name: 'idx_nft_events_optimized' });
+  pgm.dropIndex('mempool_txs', ['sender_address', 'sponsor_address', 'token_transfer_recipient_address', 'receipt_time'], { name: 'idx_mempool_txs_optimized' });
 };
