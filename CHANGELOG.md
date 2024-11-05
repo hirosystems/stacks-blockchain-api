@@ -1,3 +1,10 @@
+## [8.2.1](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.2.0...v8.2.1) (2024-11-05)
+
+
+### Bug Fixes
+
+* indexes to optimize principal-based etag db lookups ([#2157](https://github.com/hirosystems/stacks-blockchain-api/issues/2157)) ([9da4dcd](https://github.com/hirosystems/stacks-blockchain-api/commit/9da4dcde18291d0e251820cc2e8fadaca568a4af))
+
 ## [8.2.0](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.1.2...v8.2.0) (2024-10-25)
 
 
