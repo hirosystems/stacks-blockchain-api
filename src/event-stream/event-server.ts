@@ -764,7 +764,7 @@ export async function startEventServer(opts: {
     version: req.headers?.['accept-version'] as string,
     hostname: req.hostname,
     remoteAddress: req.ip,
-    remotePort: req.socket ? req.socket.remotePort : undefined,
+    remotePort: req.socket?.remotePort,
     bodySize: parseInt(req.headers?.['content-length'] as string) || 'unknown',
   });
 
@@ -777,8 +777,7 @@ export async function startEventServer(opts: {
         statusCode: reply.statusCode,
         method: reply.request?.method,
         url: reply.request?.url,
-        requestBodySize:
-          parseInt(reply.request?.headers?.['content-length'] as string) || 'unknown',
+        requestBodySize: parseInt(reply.request?.headers['content-length'] as string) || 'unknown',
         responseBodySize: parseInt(reply.getHeader?.('content-length') as string) || 'unknown',
       }),
     },
