@@ -463,6 +463,13 @@
     {
       "type": "node",
       "request": "launch",
+      "name": "docs: openapi-generator",
+      "runtimeArgs": ["-r", "ts-node/register/transpile-only"],
+      "args": ["${workspaceFolder}/src/openapi-generator.ts"]
+    },
+    {
+      "type": "node",
+      "request": "launch",
       "name": "docs: generate-types",
       "runtimeArgs": ["-r", "ts-node/register/transpile-only"],
       "cwd": "${workspaceFolder}/docs",
