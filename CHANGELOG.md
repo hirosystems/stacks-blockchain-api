@@ -1,3 +1,10 @@
+## [8.2.2](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.2.1...v8.2.2) (2024-11-10)
+
+
+### Bug Fixes
+
+* **rosetta:** add support for Nakamoto coinbase for unlock events ([#2162](https://github.com/hirosystems/stacks-blockchain-api/issues/2162)) ([2370799](https://github.com/hirosystems/stacks-blockchain-api/commit/2370799b8b29a74b0b273a6662a91f376e857fdc))
+
 ## [8.2.1](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.2.0...v8.2.1) (2024-11-05)
 
 
