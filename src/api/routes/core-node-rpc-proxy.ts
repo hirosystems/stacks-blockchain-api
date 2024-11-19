@@ -152,9 +152,7 @@ export const CoreNodeRpcProxyRouter: FastifyPluginAsync<
     upstream: `http://${stacksNodeRpcEndpoint}`,
     rewritePrefix: '/v2',
     http2: false,
-    // Use the `node:http` agent for requests https://github.com/fastify/fastify-reply-from?tab=readme-ov-file#globalagent
     globalAgent: true,
-    http: {},
     preValidation: async (req, reply) => {
       if (getReqUrl(req).pathname !== '/v2/transactions') {
         return;

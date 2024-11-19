@@ -9,6 +9,7 @@ import * as nock from 'nock';
 import { DbBlock } from '../../src/datastore/common';
 import { PgWriteStore } from '../../src/datastore/pg-write-store';
 import { migrate } from '../utils/test-helpers';
+import { MockAgent, setGlobalDispatcher, getGlobalDispatcher } from 'undici';
 
 describe('v2-proxy tests', () => {
   let db: PgWriteStore;
@@ -39,6 +40,12 @@ describe('v2-proxy tests', () => {
         );
         return [, () => restoreEnvVars()] as const;
       },
+      () => {
+        const agent = new MockAgent();
+        const originalAgent = getGlobalDispatcher();
+        setGlobalDispatcher(agent);
+        return [agent, () => setGlobalDispatcher(originalAgent)] as const;
+      },
       async () => {
         const apiServer = await startApiServer({
           datastore: db,
@@ -46,7 +53,7 @@ describe('v2-proxy tests', () => {
         });
         return [apiServer, apiServer.terminate] as const;
       },
-      async (_, api) => {
+      async (_, mockAgent, api) => {
         const primaryStubbedResponse = {
           cost_scalar_change_by_byte: 0.00476837158203125,
           estimated_cost: {
@@ -77,12 +84,17 @@ describe('v2-proxy tests', () => {
           transaction_payload:
             '021af942874ce525e87f21bbe8c121b12fac831d02f4086765742d696e666f0b7570646174652d696e666f00000000',
         };
-        nock(`http://${primaryProxyEndpoint}`)
-          .post('/v2/fees/transaction')
-          .once()
+
+        mockAgent
+          .get(`http://${primaryProxyEndpoint}`)
+          .intercept({
+            path: '/v2/fees/transaction',
+            method: 'POST',
+          })
           .reply(200, JSON.stringify(primaryStubbedResponse), {
-            'Content-Type': 'application/json',
+            headers: { 'Content-Type': 'application/json' },
           });
+
         const postTxReq = await supertest(api.server)
           .post(`/v2/fees/transaction`)
           .set('Content-Type', 'application/json')
