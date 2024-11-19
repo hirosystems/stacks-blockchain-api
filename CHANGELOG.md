@@ -1,3 +1,10 @@
+## [8.3.0-beta.1](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.2.2...v8.3.0-beta.1) (2024-11-19)
+
+
+### Features
+
+* option to modify estimated fees in /v2/fees/transaction proxy ([#2172](https://github.com/hirosystems/stacks-blockchain-api/issues/2172)) ([9b7e97d](https://github.com/hirosystems/stacks-blockchain-api/commit/9b7e97d8d3faf94b1d17162cb2bf17f214afe172))
+
 ## [8.2.2](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.2.1...v8.2.2) (2024-11-10)
 
 
