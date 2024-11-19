@@ -24,18 +24,6 @@ function getReqUrl(req: { url: string; hostname: string }): URL {
 // https://github.com/stacks-network/stacks-core/blob/20d5137438c7d169ea97dd2b6a4d51b8374a4751/stackslib/src/chainstate/stacks/db/blocks.rs#L338
 const MINIMUM_TX_FEE_RATE_PER_BYTE = 1;
 
-function getFeeEstimationModifier(): number | null {
-  const feeEstimationModifier = process.env['STACKS_CORE_FEE_ESTIMATION_MODIFIER'];
-  if (!feeEstimationModifier) {
-    return null;
-  }
-  const parsed = parseFloat(feeEstimationModifier);
-  if (isNaN(parsed) || parsed <= 0) {
-    return null;
-  }
-  return parsed;
-}
-
 interface FeeEstimation {
   fee: number;
   fee_rate: number;
@@ -149,6 +137,17 @@ export const CoreNodeRpcProxyRouter: FastifyPluginAsync<
     }
   );
 
+  let feeEstimationModifier: number | null = null;
+  fastify.addHook('onReady', () => {
+    const feeEstEnvVar = process.env['STACKS_CORE_FEE_ESTIMATION_MODIFIER'];
+    if (feeEstEnvVar) {
+      const parsed = parseFloat(feeEstEnvVar);
+      if (!isNaN(parsed) && parsed > 0) {
+        feeEstimationModifier = parsed;
+      }
+    }
+  });
+
   await fastify.register(fastifyHttpProxy, {
     upstream: `http://${stacksNodeRpcEndpoint}`,
     rewritePrefix: '/v2',
@@ -236,29 +235,29 @@ export const CoreNodeRpcProxyRouter: FastifyPluginAsync<
           const txId = responseBuffer.toString();
           await logTxBroadcast(txId);
           await reply.send(responseBuffer);
-        } else if (getReqUrl(req).pathname === '/v2/fees/transaction' && reply.statusCode === 200) {
-          const feeEstimationModifier = getFeeEstimationModifier();
-          if (feeEstimationModifier !== null) {
-            const reqBody = req.body as {
-              estimated_len?: number;
-              transaction_payload: string;
-            };
-            // https://github.com/stacks-network/stacks-core/blob/20d5137438c7d169ea97dd2b6a4d51b8374a4751/stackslib/src/net/api/postfeerate.rs#L200-L201
-            const txSize = Math.max(
-              reqBody.estimated_len ?? 0,
-              reqBody.transaction_payload.length / 2
-            );
-            const minFee = txSize * MINIMUM_TX_FEE_RATE_PER_BYTE;
-            const responseBuffer = await readRequestBody(response as ServerResponse);
-            const responseJson = JSON.parse(responseBuffer.toString()) as FeeEstimateResponse;
-            responseJson.estimations.forEach(estimation => {
-              // max(min fee, estimate returned by node * configurable modifier)
-              estimation.fee = Math.max(minFee, Math.round(estimation.fee * feeEstimationModifier));
-            });
-            await reply.removeHeader('content-length').send(JSON.stringify(responseJson));
-          } else {
-            await reply.send(response);
-          }
+        } else if (
+          getReqUrl(req).pathname === '/v2/fees/transaction' &&
+          reply.statusCode === 200 &&
+          feeEstimationModifier !== null
+        ) {
+          const reqBody = req.body as {
+            estimated_len?: number;
+            transaction_payload: string;
+          };
+          // https://github.com/stacks-network/stacks-core/blob/20d5137438c7d169ea97dd2b6a4d51b8374a4751/stackslib/src/net/api/postfeerate.rs#L200-L201
+          const txSize = Math.max(
+            reqBody.estimated_len ?? 0,
+            reqBody.transaction_payload.length / 2
+          );
+          const minFee = txSize * MINIMUM_TX_FEE_RATE_PER_BYTE;
+          const modifier = feeEstimationModifier;
+          const responseBuffer = await readRequestBody(response as ServerResponse);
+          const responseJson = JSON.parse(responseBuffer.toString()) as FeeEstimateResponse;
+          responseJson.estimations.forEach(estimation => {
+            // max(min fee, estimate returned by node * configurable modifier)
+            estimation.fee = Math.max(minFee, Math.round(estimation.fee * modifier));
+          });
+          await reply.removeHeader('content-length').send(JSON.stringify(responseJson));
         } else {
           await reply.send(response);
         }
