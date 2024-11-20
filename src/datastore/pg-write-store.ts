@@ -1904,6 +1904,7 @@ export class PgWriteStore extends PgStore {
         type_id: tx.type_id,
         anchor_mode: tx.anchor_mode,
         status: tx.status,
+        replacing_txid: tx.replacing_txid ?? null,
         receipt_time: tx.receipt_time,
         receipt_block_height: chainTip.block_height,
         post_conditions: tx.post_conditions,
@@ -1943,6 +1944,7 @@ export class PgWriteStore extends PgStore {
         UPDATE mempool_txs
         SET pruned = false,
             status = ${DbTxStatus.Pending},
+            replacing_txid = NULL,
             receipt_block_height = ${values[0].receipt_block_height},
             receipt_time = ${values[0].receipt_time}
         WHERE tx_id IN ${sql(values.map(v => v.tx_id))}
@@ -2069,12 +2071,12 @@ export class PgWriteStore extends PgStore {
     }
   }
 
-  async dropMempoolTxs({ status, txIds }: { status: DbTxStatus; txIds: string[] }): Promise<void> {
+  async dropMempoolTxs({ status, txIds, replacing_txid }: { status: DbTxStatus; txIds: string[]; replacing_txid: string | null }): Promise<void> {
     for (const batch of batchIterate(txIds, INSERT_BATCH_SIZE)) {
       const updateResults = await this.sql<{ tx_id: string }[]>`
         WITH pruned AS (
           UPDATE mempool_txs
-          SET pruned = TRUE, status = ${status}
+          SET pruned = TRUE, status = ${status}, replacing_txid = ${replacing_txid}
           WHERE tx_id IN ${this.sql(batch)} AND pruned = FALSE
           RETURNING tx_id
         ),
@@ -2683,7 +2685,7 @@ export class PgWriteStore extends PgStore {
       ),
       restored AS (
         UPDATE mempool_txs
-        SET pruned = false, status = ${DbTxStatus.Pending}
+        SET pruned = false, status = ${DbTxStatus.Pending}, replacing_txid = NULL
         WHERE pruned = true AND tx_id IN (SELECT DISTINCT tx_id FROM affected_mempool_tx_ids)
         RETURNING tx_id
       ),
