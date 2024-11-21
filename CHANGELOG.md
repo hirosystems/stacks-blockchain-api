@@ -1,3 +1,10 @@
+## [8.3.0-beta.2](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.3.0-beta.1...v8.3.0-beta.2) (2024-11-21)
+
+
+### Bug Fixes
+
+* socket-io reconnection bug ([#2174](https://github.com/hirosystems/stacks-blockchain-api/issues/2174)) ([b99c672](https://github.com/hirosystems/stacks-blockchain-api/commit/b99c672112c92f92bf1421f3eae44b6861292de9))
+
 ## [8.3.0-beta.1](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.2.2...v8.3.0-beta.1) (2024-11-19)
 
 
