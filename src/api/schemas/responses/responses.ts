@@ -17,8 +17,9 @@ import { NakamotoBlockSchema, SignerSignatureSchema } from '../entities/block';
 export const ErrorResponseSchema = Type.Object(
   {
     error: Type.String(),
+    message: Type.Optional(Type.String()),
   },
-  { title: 'Error Response' }
+  { title: 'Error Response', additionalProperties: true }
 );
 
 export const ServerStatusResponseSchema = Type.Object(
