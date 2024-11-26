@@ -90,7 +90,10 @@ export class SocketIOChannel extends WebSocketChannel {
     io.use((socket, next) => {
       const subscriptions = socket.handshake.query['subscriptions'];
       if (subscriptions) {
-        const topics = [...[subscriptions]].flat().flatMap(r => r.split(','));
+        const topics = [...[subscriptions]]
+          .flat()
+          .flatMap(r => r.split(','))
+          .filter(r => !!r);
         const invalidSubs = this.getInvalidSubscriptionTopics(topics as Topic[]);
         if (invalidSubs) {
           const error = new Error(`Invalid topic: ${invalidSubs.join(', ')}`);

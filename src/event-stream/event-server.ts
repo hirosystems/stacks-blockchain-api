@@ -757,15 +757,49 @@ export async function startEventServer(opts: {
   }
 
   const bodyLimit = 1_000_000 * 500; // 500MB body limit
+
+  const reqLogSerializer = (req: FastifyRequest) => ({
+    method: req.method,
+    url: req.url,
+    version: req.headers?.['accept-version'] as string,
+    hostname: req.hostname,
+    remoteAddress: req.ip,
+    remotePort: req.socket?.remotePort,
+    bodySize: parseInt(req.headers?.['content-length'] as string) || 'unknown',
+  });
+
   const loggerOpts: FastifyServerOptions['logger'] = {
     ...PINO_LOGGER_CONFIG,
     name: 'stacks-node-event',
+    serializers: {
+      req: reqLogSerializer,
+      res: reply => ({
+        statusCode: reply.statusCode,
+        method: reply.request?.method,
+        url: reply.request?.url,
+        requestBodySize: parseInt(reply.request?.headers['content-length'] as string) || 'unknown',
+        responseBodySize: parseInt(reply.getHeader?.('content-length') as string) || 'unknown',
+      }),
+    },
   };
+
   const app = Fastify({
     bodyLimit,
     trustProxy: true,
     logger: loggerOpts,
     ignoreTrailingSlash: true,
+  });
+
+  app.addHook('onRequest', (req, reply, done) => {
+    req.raw.on('close', () => {
+      if (req.raw.aborted) {
+        req.log.warn(
+          reqLogSerializer(req),
+          `Request was aborted by the client: ${req.method} ${req.url}`
+        );
+      }
+    });
+    done();
   });
 
   const handleRawEventRequest = async (req: FastifyRequest) => {
