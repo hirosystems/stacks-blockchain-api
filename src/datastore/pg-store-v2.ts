@@ -629,7 +629,7 @@ export class PgStoreV2 extends BasePgStoreModule {
         LIMIT ${limit}
         OFFSET ${offset}
       `;
-      const total = resultQuery.length > 0 ? resultQuery[0].count : 0;
+      const total = resultQuery[0].count;
       const parsed = resultQuery.map(r => parseAccountTransferSummaryTxQueryResult(r));
       return {
         total,
@@ -958,8 +958,8 @@ export class PgStoreV2 extends BasePgStoreModule {
             COUNT(*) OVER()::int AS total
         FROM pox_sets ps
         INNER JOIN combined_stackers cs ON ps.signing_key = cs.signer_key
-        WHERE ps.canonical = TRUE 
-          AND ps.cycle_number = ${cycleNumber} 
+        WHERE ps.canonical = TRUE
+          AND ps.cycle_number = ${cycleNumber}
           AND ps.signing_key = ${signerKey}
         ORDER BY locked DESC
         LIMIT ${limit}

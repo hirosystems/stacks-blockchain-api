@@ -616,6 +616,13 @@ describe('address tests', () => {
     expect(v2Fetch1offset.type).toBe('application/json');
     const v2Fetch1offsetJson = JSON.parse(v2Fetch1offset.text);
     expect(v2Fetch1offsetJson.total).toBe(7);
+    const v2Fetch7offset = await supertest(api.server).get(
+      `/extended/v2/addresses/${testAddr2}/transactions?offset=7`
+    );
+    expect(v2Fetch7offset.status).toBe(200);
+    expect(v2Fetch7offset.type).toBe('application/json');
+    const v2Fetch7offsetJson = JSON.parse(v2Fetch7offset.text);
+    expect(v2Fetch7offsetJson.total).toBe(7);
 
     const v2Fetch2 = await supertest(api.server).get(
       `/extended/v2/addresses/${testAddr2}/transactions/${v2Fetch1Json.results[0].tx.tx_id}/events?limit=3`
