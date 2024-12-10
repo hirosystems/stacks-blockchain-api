@@ -1,16 +1,9 @@
-## [8.3.0-beta.2](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.3.0-beta.1...v8.3.0-beta.2) (2024-11-21)
+## [8.2.3](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.2.2...v8.2.3) (2024-12-10)
 
 
 ### Bug Fixes
 
-* socket-io reconnection bug ([#2174](https://github.com/hirosystems/stacks-blockchain-api/issues/2174)) ([b99c672](https://github.com/hirosystems/stacks-blockchain-api/commit/b99c672112c92f92bf1421f3eae44b6861292de9))
-
-## [8.3.0-beta.1](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.2.2...v8.3.0-beta.1) (2024-11-19)
-
-
-### Features
-
-* option to modify estimated fees in /v2/fees/transaction proxy ([#2172](https://github.com/hirosystems/stacks-blockchain-api/issues/2172)) ([9b7e97d](https://github.com/hirosystems/stacks-blockchain-api/commit/9b7e97d8d3faf94b1d17162cb2bf17f214afe172))
+* bug in multisig tx decoding ([#2181](https://github.com/hirosystems/stacks-blockchain-api/issues/2181)) ([1f4125d](https://github.com/hirosystems/stacks-blockchain-api/commit/1f4125dacfe98ccefacf77f2e0f3ed33026f25ad))
 
 ## [8.2.2](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.2.1...v8.2.2) (2024-11-10)
 
