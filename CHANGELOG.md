@@ -1,3 +1,10 @@
+## [8.2.3](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.2.2...v8.2.3) (2024-12-10)
+
+
+### Bug Fixes
+
+* bug in multisig tx decoding ([#2181](https://github.com/hirosystems/stacks-blockchain-api/issues/2181)) ([1f4125d](https://github.com/hirosystems/stacks-blockchain-api/commit/1f4125dacfe98ccefacf77f2e0f3ed33026f25ad))
+
 ## [8.2.2](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.2.1...v8.2.2) (2024-11-10)
 
 
