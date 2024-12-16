@@ -47,6 +47,7 @@ import {
 } from '@hirosystems/api-toolkit';
 import { BlockRoutesV2 } from './routes/v2/blocks';
 import { BurnBlockRoutesV2 } from './routes/v2/burn-blocks';
+import { TenureHeightRoutesV2 } from './routes/v2/tenure-heights';
 import { MempoolRoutesV2 } from './routes/v2/mempool';
 import { SmartContractRoutesV2 } from './routes/v2/smart-contracts';
 import { AddressRoutesV2 } from './routes/v2/addresses';
@@ -99,6 +100,7 @@ export const StacksApiRoutes: FastifyPluginAsync<
     async fastify => {
       await fastify.register(BlockRoutesV2, { prefix: '/blocks' });
       await fastify.register(BurnBlockRoutesV2, { prefix: '/burn-blocks' });
+      await fastify.register(TenureHeightRoutesV2, { prefix: '/tenure-height' });
       await fastify.register(SmartContractRoutesV2, { prefix: '/smart-contracts' });
       await fastify.register(MempoolRoutesV2, { prefix: '/mempool' });
       await fastify.register(PoxRoutesV2, { prefix: '/pox' });
