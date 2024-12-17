@@ -156,6 +156,40 @@ describe('btc faucet', () => {
         `/extended/v1/faucets/btc/${addr}`
       );
       expect(balanceResponse.status).toBe(200);
+      expect(JSON.parse(balanceResponse.text)).toEqual({ balance: 0.0001 });
+    });
+
+    test('faucet http balance endpoint large', async () => {
+      const addr = getKeyAddress(ECPair.makeRandom({ network: regtest }));
+      const response = await supertest(apiServer.server).post(
+        `/extended/v1/faucets/btc?address=${addr}&large=true`
+      );
+      expect(response.status).toBe(200);
+      await getRpcClient().generatetoaddress({
+        address: getKeyAddress(ECPair.makeRandom({ network: regtest })),
+        nblocks: 1,
+      });
+      const balanceResponse = await supertest(apiServer.server).get(
+        `/extended/v1/faucets/btc/${addr}`
+      );
+      expect(balanceResponse.status).toBe(200);
+      expect(JSON.parse(balanceResponse.text)).toEqual({ balance: 0.01 });
+    });
+
+    test('faucet http balance endpoint xlarge', async () => {
+      const addr = getKeyAddress(ECPair.makeRandom({ network: regtest }));
+      const response = await supertest(apiServer.server).post(
+        `/extended/v1/faucets/btc?address=${addr}&xlarge=true`
+      );
+      expect(response.status).toBe(200);
+      await getRpcClient().generatetoaddress({
+        address: getKeyAddress(ECPair.makeRandom({ network: regtest })),
+        nblocks: 1,
+      });
+      const balanceResponse = await supertest(apiServer.server).get(
+        `/extended/v1/faucets/btc/${addr}`
+      );
+      expect(balanceResponse.status).toBe(200);
       expect(JSON.parse(balanceResponse.text)).toEqual({ balance: 0.5 });
     });
 

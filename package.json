@@ -116,7 +116,7 @@
     "dotenv-flow": "3.2.0",
     "duckdb": "0.9.2",
     "ecpair": "2.1.0",
-    "elliptic": "6.5.7",
+    "elliptic": "6.6.0",
     "escape-goat": "3.0.0",
     "evt": "1.10.1",
     "express": "4.21.2",

@@ -74,19 +74,31 @@ export const FaucetRoutes: FastifyPluginAsync<
       preHandler: missingBtcConfigMiddleware,
       schema: {
         operationId: 'run_faucet_btc',
-        summary: 'Add testnet BTC tokens to address',
-        description: `Add 1 BTC token to the specified testnet BTC address.
+        summary: 'Add regtest BTC tokens to address',
+        description: `Add 0.01 BTC token to the specified regtest BTC address.
 
-        The endpoint returns the transaction ID, which you can use to view the transaction in a testnet Bitcoin block
+        The endpoint returns the transaction ID, which you can use to view the transaction in a regtest Bitcoin block
         explorer. The tokens are delivered once the transaction has been included in a block.
 
-        **Note:** This is a testnet only endpoint. This endpoint will not work on the mainnet.`,
+        **Note:** This is a Bitcoin regtest-only endpoint. This endpoint will not work on the Bitcoin mainnet.`,
         tags: ['Faucets'],
         querystring: Type.Object({
           address: Type.Optional(
             Type.String({
-              description: 'A valid testnet BTC address',
+              description: 'A valid regtest BTC address',
               examples: ['2N4M94S1ZPt8HfxydXzL2P7qyzgVq7MHWts'],
+            })
+          ),
+          large: Type.Optional(
+            Type.Boolean({
+              description: 'Request a large amount of regtest BTC than the default',
+              default: false,
+            })
+          ),
+          xlarge: Type.Optional(
+            Type.Boolean({
+              description: 'Request an extra large amount of regtest BTC than the default',
+              default: false,
             })
           ),
         }),
@@ -94,7 +106,7 @@ export const FaucetRoutes: FastifyPluginAsync<
           Type.Object({
             address: Type.Optional(
               Type.String({
-                description: 'A valid testnet BTC address',
+                description: 'A valid regtest BTC address',
                 examples: ['2N4M94S1ZPt8HfxydXzL2P7qyzgVq7MHWts'],
               })
             ),
@@ -112,7 +124,7 @@ export const FaucetRoutes: FastifyPluginAsync<
             {
               title: 'RunFaucetResponse',
               description:
-                'POST request that initiates a transfer of tokens to a specified testnet address',
+                'POST request that initiates a transfer of tokens to a specified Bitcoin regtest address',
             }
           ),
           '4xx': Type.Object({
@@ -125,6 +137,21 @@ export const FaucetRoutes: FastifyPluginAsync<
     async (req, reply) => {
       await btcFaucetRequestQueue.add(async () => {
         const address = req.query.address || req.body?.address;
+        let btcAmount = 0.0001;
+
+        if (req.query.large && req.query.xlarge) {
+          return await reply.status(400).send({
+            error: 'cannot simultaneously request a large and xlarge amount',
+            success: false,
+          });
+        }
+
+        if (req.query.large) {
+          btcAmount = 0.01;
+        } else if (req.query.xlarge) {
+          btcAmount = 0.5;
+        }
+
         if (!address) {
           return await reply.status(400).send({
             error: 'address required',
@@ -156,7 +183,7 @@ export const FaucetRoutes: FastifyPluginAsync<
           });
         }
 
-        const tx = await makeBtcFaucetPayment(btc.networks.regtest, address, 0.5);
+        const tx = await makeBtcFaucetPayment(btc.networks.regtest, address, btcAmount);
         await fastify.writeDb?.insertFaucetRequest({
           ip: `${ip}`,
           address: address,
@@ -183,7 +210,7 @@ export const FaucetRoutes: FastifyPluginAsync<
         tags: ['Faucets'],
         params: Type.Object({
           address: Type.String({
-            description: 'A valid testnet BTC address',
+            description: 'A valid regtest BTC address',
             examples: ['2N4M94S1ZPt8HfxydXzL2P7qyzgVq7MHWts'],
           }),
         }),
