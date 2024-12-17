@@ -1,3 +1,16 @@
+## [8.4.0](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.3.0...v8.4.0) (2024-12-17)
+
+
+### Features
+
+* adjust rBTC default amount, add xlarge url param, add tests ([b30f16a](https://github.com/hirosystems/stacks-blockchain-api/commit/b30f16ac5ab7f3c3cd1e1a66e815013a268bfc4f))
+* change tbtc faucet default, allow user to request more than default ([8e3f288](https://github.com/hirosystems/stacks-blockchain-api/commit/8e3f288ec8680ebf5b32974b6897ad56c6c87995))
+
+
+### Bug Fixes
+
+* update BTC faucet comments to use regtest instead of testnet ([ced8242](https://github.com/hirosystems/stacks-blockchain-api/commit/ced8242f3cb3670d5f84405cfceb408e696fa286))
+
 ## [8.3.0](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.2.3...v8.3.0) (2024-12-10)
 
 
