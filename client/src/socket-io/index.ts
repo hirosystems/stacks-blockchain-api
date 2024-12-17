@@ -72,7 +72,7 @@ export class StacksApiSocketClient {
 
   handleSubscription(topic: Topic, subscribe = false, listener?: (...args: any[]) => void) {
     const subsQuery = this.socket.io.opts.query?.subscriptions as string | undefined;
-    const subscriptions = new Set(subsQuery?.split(',') ?? []);
+    const subscriptions = new Set(subsQuery ? subsQuery.split(',') : []);
     if (subscribe) {
       this.socket.emit('subscribe', topic, error => {
         if (error) console.error(`Error subscribing: ${error}`);

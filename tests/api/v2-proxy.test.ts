@@ -9,6 +9,7 @@ import * as nock from 'nock';
 import { DbBlock } from '../../src/datastore/common';
 import { PgWriteStore } from '../../src/datastore/pg-write-store';
 import { migrate } from '../utils/test-helpers';
+import { MockAgent, setGlobalDispatcher, getGlobalDispatcher } from 'undici';
 
 describe('v2-proxy tests', () => {
   let db: PgWriteStore;
@@ -25,6 +26,95 @@ describe('v2-proxy tests', () => {
   afterEach(async () => {
     await db?.close();
     await migrate('down');
+  });
+
+  test('tx fee estimation', async () => {
+    const primaryProxyEndpoint = 'proxy-stacks-node:12345';
+    const feeEstimationModifier = 0.5;
+    await useWithCleanup(
+      () => {
+        const restoreEnvVars = withEnvVars(
+          ['STACKS_CORE_FEE_ESTIMATION_MODIFIER', feeEstimationModifier.toString()],
+          ['STACKS_CORE_PROXY_HOST', primaryProxyEndpoint.split(':')[0]],
+          ['STACKS_CORE_PROXY_PORT', primaryProxyEndpoint.split(':')[1]]
+        );
+        return [, () => restoreEnvVars()] as const;
+      },
+      () => {
+        const agent = new MockAgent();
+        const originalAgent = getGlobalDispatcher();
+        setGlobalDispatcher(agent);
+        return [agent, () => setGlobalDispatcher(originalAgent)] as const;
+      },
+      async () => {
+        const apiServer = await startApiServer({
+          datastore: db,
+          chainId: ChainID.Mainnet,
+        });
+        return [apiServer, apiServer.terminate] as const;
+      },
+      async (_, mockAgent, api) => {
+        const primaryStubbedResponse = {
+          cost_scalar_change_by_byte: 0.00476837158203125,
+          estimated_cost: {
+            read_count: 19,
+            read_length: 4814,
+            runtime: 7175000,
+            write_count: 2,
+            write_length: 1020,
+          },
+          estimated_cost_scalar: 14,
+          estimations: [
+            {
+              fee: 400,
+              fee_rate: 1.2410714285714286,
+            },
+            {
+              fee: 800,
+              fee_rate: 8.958333333333332,
+            },
+            {
+              fee: 1000,
+              fee_rate: 10,
+            },
+          ],
+        };
+        const testRequest = {
+          estimated_len: 350,
+          transaction_payload:
+            '021af942874ce525e87f21bbe8c121b12fac831d02f4086765742d696e666f0b7570646174652d696e666f00000000',
+        };
+
+        mockAgent
+          .get(`http://${primaryProxyEndpoint}`)
+          .intercept({
+            path: '/v2/fees/transaction',
+            method: 'POST',
+          })
+          .reply(200, JSON.stringify(primaryStubbedResponse), {
+            headers: { 'Content-Type': 'application/json' },
+          });
+
+        const postTxReq = await supertest(api.server)
+          .post(`/v2/fees/transaction`)
+          .set('Content-Type', 'application/json')
+          .send(JSON.stringify(testRequest));
+        expect(postTxReq.status).toBe(200);
+        // Expected min fee is the byte size because MINIMUM_TX_FEE_RATE_PER_BYTE=1
+        const expectedMinFee = Math.max(
+          testRequest.estimated_len ?? 0,
+          testRequest.transaction_payload.length / 2
+        );
+        const expectedResponse = {
+          ...primaryStubbedResponse,
+        };
+        expectedResponse.estimations = expectedResponse.estimations.map(est => ({
+          ...est,
+          fee: Math.max(expectedMinFee, Math.round(est.fee * feeEstimationModifier)),
+        }));
+        expect(postTxReq.body).toEqual(expectedResponse);
+      }
+    );
   });
 
   test('tx post multicast', async () => {

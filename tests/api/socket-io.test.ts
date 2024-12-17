@@ -20,6 +20,7 @@ import {
   NftEvent,
   Transaction,
 } from 'client/src/types';
+import { Socket } from 'node:net';
 
 describe('socket-io', () => {
   let apiServer: ApiServer;
@@ -38,6 +39,62 @@ describe('socket-io', () => {
     await apiServer.terminate();
     await db?.close();
     await migrate('down');
+  });
+
+  test('socket-io-client > reconnect', async () => {
+    const serverSocketConnectWaiter = waiter<Socket>();
+    apiServer.server.once('upgrade', (_req, socket: Socket) => {
+      serverSocketConnectWaiter.finish(socket);
+    });
+
+    const client = new StacksApiSocketClient({
+      url: `http://${apiServer.address}`,
+      // socketOpts: { reconnection: false },
+    });
+
+    const updateWaiter: Waiter<Block> = waiter();
+    const subResult = client.subscribeBlocks(block => updateWaiter.finish(block));
+
+    // subscriptions should be saved in the client query obj
+    expect(client.socket.io.opts.query).toMatchObject({ subscriptions: 'block' });
+
+    // wait for initial client connection
+    await new Promise<void>(resolve => client.socket.once('connect', resolve));
+
+    const connectAttempt = waiter();
+    client.socket.io.once('reconnect_attempt', attempt => {
+      // subscriptions should be saved in the client query obj
+      expect(client.socket.io.opts.query).toMatchObject({ subscriptions: 'block' });
+      connectAttempt.finish();
+    });
+
+    const reconnectWaiter = waiter();
+    client.socket.io.once('reconnect', () => reconnectWaiter.finish());
+
+    // force kill client connection on the server to trigger reconnect
+    const serverSocket = await serverSocketConnectWaiter;
+    serverSocket.resetAndDestroy();
+
+    await connectAttempt;
+    await reconnectWaiter;
+
+    // ensure client still waiting for block update
+    expect(updateWaiter.isFinished).toBe(false);
+
+    const block = new TestBlockBuilder({ block_hash: '0x1234', burn_block_hash: '0x5454' })
+      .addTx({ tx_id: '0x4321' })
+      .build();
+    await db.update(block);
+
+    const result = await updateWaiter;
+    try {
+      expect(result.hash).toEqual('0x1234');
+      expect(result.burn_block_hash).toEqual('0x5454');
+      expect(result.txs[0]).toEqual('0x4321');
+    } finally {
+      subResult.unsubscribe();
+      client.socket.close();
+    }
   });
 
   test('socket-io-client > block updates', async () => {

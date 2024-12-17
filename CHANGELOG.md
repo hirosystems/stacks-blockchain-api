@@ -1,3 +1,63 @@
+## [8.4.0](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.3.0...v8.4.0) (2024-12-17)
+
+
+### Features
+
+* adjust rBTC default amount, add xlarge url param, add tests ([b30f16a](https://github.com/hirosystems/stacks-blockchain-api/commit/b30f16ac5ab7f3c3cd1e1a66e815013a268bfc4f))
+* change tbtc faucet default, allow user to request more than default ([8e3f288](https://github.com/hirosystems/stacks-blockchain-api/commit/8e3f288ec8680ebf5b32974b6897ad56c6c87995))
+
+
+### Bug Fixes
+
+* update BTC faucet comments to use regtest instead of testnet ([ced8242](https://github.com/hirosystems/stacks-blockchain-api/commit/ced8242f3cb3670d5f84405cfceb408e696fa286))
+
+## [8.3.0](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.2.3...v8.3.0) (2024-12-10)
+
+
+### Features
+
+* option to modify estimated fees in /v2/fees/transaction proxy ([#2172](https://github.com/hirosystems/stacks-blockchain-api/issues/2172)) ([9b7e97d](https://github.com/hirosystems/stacks-blockchain-api/commit/9b7e97d8d3faf94b1d17162cb2bf17f214afe172))
+
+
+### Bug Fixes
+
+* socket-io reconnection bug ([#2174](https://github.com/hirosystems/stacks-blockchain-api/issues/2174)) ([b99c672](https://github.com/hirosystems/stacks-blockchain-api/commit/b99c672112c92f92bf1421f3eae44b6861292de9))
+
+## [8.2.3](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.2.2...v8.2.3) (2024-12-10)
+
+
+### Bug Fixes
+
+* bug in multisig tx decoding ([#2181](https://github.com/hirosystems/stacks-blockchain-api/issues/2181)) ([1f4125d](https://github.com/hirosystems/stacks-blockchain-api/commit/1f4125dacfe98ccefacf77f2e0f3ed33026f25ad))
+
+## [8.2.2](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.2.1...v8.2.2) (2024-11-10)
+
+
+### Bug Fixes
+
+* **rosetta:** add support for Nakamoto coinbase for unlock events ([#2162](https://github.com/hirosystems/stacks-blockchain-api/issues/2162)) ([2370799](https://github.com/hirosystems/stacks-blockchain-api/commit/2370799b8b29a74b0b273a6662a91f376e857fdc))
+
+## [8.2.1](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.2.0...v8.2.1) (2024-11-05)
+
+
+### Bug Fixes
+
+* indexes to optimize principal-based etag db lookups ([#2157](https://github.com/hirosystems/stacks-blockchain-api/issues/2157)) ([9da4dcd](https://github.com/hirosystems/stacks-blockchain-api/commit/9da4dcde18291d0e251820cc2e8fadaca568a4af))
+
+## [8.2.0](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.1.2...v8.2.0) (2024-10-25)
+
+
+### Features
+
+* allow stackerdb_chunks messages to be stored in db raw events table ([d03f2ef](https://github.com/hirosystems/stacks-blockchain-api/commit/d03f2ef940fd90e9b9e99d9b3636aaf2d348f0e7))
+* include `tenure-height` in block responses ([#2134](https://github.com/hirosystems/stacks-blockchain-api/issues/2134)) ([07426a2](https://github.com/hirosystems/stacks-blockchain-api/commit/07426a2e0060029ffe908597120a820c16cb3db3))
+* ingest `signer_signature` from `/new_block` event and expose in new endpoint ([#2125](https://github.com/hirosystems/stacks-blockchain-api/issues/2125)) ([c389154](https://github.com/hirosystems/stacks-blockchain-api/commit/c389154a47fee6f382be2343abdb9e01bc093300))
+
+
+### Bug Fixes
+
+* event-replay block parsing outdated and incorrect ([#2133](https://github.com/hirosystems/stacks-blockchain-api/issues/2133)) ([2cd69fa](https://github.com/hirosystems/stacks-blockchain-api/commit/2cd69face8953541fcc2697a5a3b7b350de33383))
+
 ## [8.1.2](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.1.1...v8.1.2) (2024-10-21)
 
 
