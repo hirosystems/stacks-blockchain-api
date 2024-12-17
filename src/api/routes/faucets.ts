@@ -91,15 +91,13 @@ export const FaucetRoutes: FastifyPluginAsync<
           ),
           large: Type.Optional(
             Type.Boolean({
-              description:
-                'Request a large amount of regtest BTC than the default',
+              description: 'Request a large amount of regtest BTC than the default',
               default: false,
             })
           ),
           xlarge: Type.Optional(
             Type.Boolean({
-              description:
-                'Request an extra large amount of regtest BTC than the default',
+              description: 'Request an extra large amount of regtest BTC than the default',
               default: false,
             })
           ),
