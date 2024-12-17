@@ -92,7 +92,14 @@ export const FaucetRoutes: FastifyPluginAsync<
           large: Type.Optional(
             Type.Boolean({
               description:
-                'Request a larger amount of regtest BTC than the default',
+                'Request a large amount of regtest BTC than the default',
+              default: false,
+            })
+          ),
+          xlarge: Type.Optional(
+            Type.Boolean({
+              description:
+                'Request an extra large amount of regtest BTC than the default',
               default: false,
             })
           ),
@@ -132,7 +139,21 @@ export const FaucetRoutes: FastifyPluginAsync<
     async (req, reply) => {
       await btcFaucetRequestQueue.add(async () => {
         const address = req.query.address || req.body?.address;
-        const btcAmount = req.query.large ? 0.5 : 0.01;
+        let btcAmount = 0.0001;
+
+        if (req.query.large && req.query.xlarge) {
+          return await reply.status(400).send({
+            error: 'cannot simultaneously request a large and xlarge amount',
+            success: false,
+          });
+        }
+
+        if (req.query.large) {
+          btcAmount = 0.01;
+        } else if (req.query.xlarge) {
+          btcAmount = 0.5;
+        }
+
         if (!address) {
           return await reply.status(400).send({
             error: 'address required',
