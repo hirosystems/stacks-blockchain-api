@@ -3323,6 +3323,7 @@ describe('postgres datastore', () => {
       token_transfer_memo: bufferToHex(Buffer.from('hi')),
       token_transfer_recipient_address: 'stx-recipient-addr',
       status: DbTxStatus.Pending,
+      replacing_txid: '',
       post_conditions: '0x',
       fee_rate: 1234n,
       sponsored: false,
