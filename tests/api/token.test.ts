@@ -164,24 +164,6 @@ describe('/extended/v1/tokens tests', () => {
       .build();
     await db.updateMicroblocks(microblock1);
 
-    // Request: unanchored shows addr2 with 0 NFTs
-    const request7 = await supertest(api.server).get(
-      `/extended/v1/tokens/nft/holdings?principal=${addr2}&unanchored=true`
-    );
-    expect(request7.status).toBe(200);
-    expect(request7.type).toBe('application/json');
-    const result7 = JSON.parse(request7.text);
-    expect(result7.total).toEqual(0);
-
-    // Request: anchored shows addr2 still with 1 NFT
-    const request8 = await supertest(api.server).get(
-      `/extended/v1/tokens/nft/holdings?principal=${addr2}`
-    );
-    expect(request8.status).toBe(200);
-    expect(request8.type).toBe('application/json');
-    const result8 = JSON.parse(request8.text);
-    expect(result8.total).toEqual(1);
-
     // Confirm unanchored txs
     const block4 = new TestBlockBuilder({
       block_height: 4,
@@ -189,18 +171,15 @@ describe('/extended/v1/tokens tests', () => {
       parent_index_block_hash: '0x03',
       parent_microblock_hash: '0x11',
     })
-      .addTx({ tx_id: '0x5555' })
+      .addTx({ tx_id: '0x5499' })
+      .addTxNftEvent({
+        asset_identifier: assetId2,
+        asset_event_type_id: DbAssetEventTypeId.Transfer,
+        sender: addr2,
+        recipient: addr3,
+      })
       .build();
     await db.update(block4);
-
-    // Request: unanchored still shows addr2 with 0 NFTs
-    const request9 = await supertest(api.server).get(
-      `/extended/v1/tokens/nft/holdings?principal=${addr2}&unanchored=true`
-    );
-    expect(request9.status).toBe(200);
-    expect(request9.type).toBe('application/json');
-    const result9 = JSON.parse(request9.text);
-    expect(result9.total).toEqual(0);
 
     // Request: anchored now shows addr2 with 0 NFTs
     const request10 = await supertest(api.server).get(
@@ -249,31 +228,19 @@ describe('/extended/v1/tokens tests', () => {
       .build();
     await db.updateMicroblocks(microblock2);
 
-    // Request: addr2 still has 0 NFTs unanchored
-    const request12 = await supertest(api.server).get(
-      `/extended/v1/tokens/nft/holdings?principal=${addr2}&unanchored=true`
-    );
-    expect(request12.status).toBe(200);
-    expect(request12.type).toBe('application/json');
-    const result12 = JSON.parse(request12.text);
-    expect(result12.total).toEqual(0);
-
-    // Request: addr2 still has 0 NFTs anchored
-    const request13 = await supertest(api.server).get(
-      `/extended/v1/tokens/nft/holdings?principal=${addr2}`
-    );
-    expect(request13.status).toBe(200);
-    expect(request13.type).toBe('application/json');
-    const result13 = JSON.parse(request13.text);
-    expect(result13.total).toEqual(0);
-
     // Confirm txs
     const block6 = new TestBlockBuilder({
       block_height: 6,
       index_block_hash: '0x06',
       parent_index_block_hash: '0x05',
     })
-      .addTx({ tx_id: '0xf7f8' })
+      .addTx({ tx_id: '0xf7f7', microblock_canonical: false })
+      .addTxNftEvent({
+        asset_identifier: assetId2,
+        asset_event_type_id: DbAssetEventTypeId.Transfer,
+        sender: addr3,
+        recipient: addr2,
+      })
       .build();
     await db.update(block6);
 
@@ -314,7 +281,23 @@ describe('/extended/v1/tokens tests', () => {
       index_block_hash: '0x07',
       parent_index_block_hash: '0x06',
     })
-      .addTx({ tx_id: '0x100b' })
+      .addTx({ tx_id: '0x1009' })
+      .addTxStxEvent({ event_index: 0 })
+      .addTxNftEvent({
+        asset_identifier: assetId2,
+        asset_event_type_id: DbAssetEventTypeId.Transfer,
+        sender: addr3,
+        recipient: addr2,
+        event_index: 1, // Higher event index
+      })
+      .addTx({ tx_id: '0x100a' })
+      .addTxNftEvent({
+        asset_identifier: assetId2,
+        asset_event_type_id: DbAssetEventTypeId.Transfer,
+        sender: addr2,
+        recipient: addr3,
+        event_index: 0, // Lower event index but higher microblock index
+      })
       .build();
     await db.update(block7);
 

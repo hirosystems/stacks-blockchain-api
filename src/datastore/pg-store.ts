@@ -3356,16 +3356,12 @@ export class PgStore extends BasePgStore {
     assetIdentifiers?: string[];
     limit: number;
     offset: number;
-    includeUnanchored: boolean;
     includeTxMetadata: boolean;
   }): Promise<{ results: NftHoldingInfoWithTxMetadata[]; total: number }> {
     const queryArgs: (string | string[] | number)[] = [args.principal, args.limit, args.offset];
     if (args.assetIdentifiers) {
       queryArgs.push(args.assetIdentifiers);
     }
-    const nftCustody = args.includeUnanchored
-      ? this.sql(`nft_custody_unanchored`)
-      : this.sql(`nft_custody`);
     const assetIdFilter =
       args.assetIdentifiers && args.assetIdentifiers.length > 0
         ? this.sql`AND nft.asset_identifier IN ${this.sql(args.assetIdentifiers)}`
@@ -3375,7 +3371,7 @@ export class PgStore extends BasePgStore {
     >`
       WITH nft AS (
         SELECT *, (COUNT(*) OVER())::INTEGER AS count
-        FROM ${nftCustody} AS nft
+        FROM nft_custody AS nft
         WHERE nft.recipient = ${args.principal}
         ${assetIdFilter}
         ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC

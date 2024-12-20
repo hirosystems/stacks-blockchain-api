@@ -49,7 +49,6 @@ export const TokenRoutes: FastifyPluginAsync<
           ),
           limit: LimitParam(ResourceType.Token, 'Limit', 'max number of tokens to fetch'),
           offset: OffsetParam('Offset', 'index of first tokens to fetch'),
-          unanchored: UnanchoredParamSchema,
           tx_metadata: Type.Boolean({
             default: false,
             description:
@@ -95,7 +94,6 @@ export const TokenRoutes: FastifyPluginAsync<
 
       const limit = getPagingQueryLimit(ResourceType.Token, req.query.limit);
       const offset = parsePagingQueryInput(req.query.offset ?? 0);
-      const includeUnanchored = req.query.unanchored ?? false;
       const includeTxMetadata = req.query.tx_metadata ?? false;
 
       const { results, total } = await fastify.db.getNftHoldings({
@@ -103,7 +101,6 @@ export const TokenRoutes: FastifyPluginAsync<
         assetIdentifiers: assetIdentifiers,
         offset: offset,
         limit: limit,
-        includeUnanchored: includeUnanchored,
         includeTxMetadata: includeTxMetadata,
       });
       const parsedResults = results.map(result => {
