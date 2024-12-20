@@ -171,7 +171,13 @@ describe('/extended/v1/tokens tests', () => {
       parent_index_block_hash: '0x03',
       parent_microblock_hash: '0x11',
     })
-      .addTx({ tx_id: '0x5555' })
+      .addTx({ tx_id: '0x5499' })
+      .addTxNftEvent({
+        asset_identifier: assetId2,
+        asset_event_type_id: DbAssetEventTypeId.Transfer,
+        sender: addr2,
+        recipient: addr3,
+      })
       .build();
     await db.update(block4);
 
@@ -228,7 +234,13 @@ describe('/extended/v1/tokens tests', () => {
       index_block_hash: '0x06',
       parent_index_block_hash: '0x05',
     })
-      .addTx({ tx_id: '0xf7f8' })
+      .addTx({ tx_id: '0xf7f7', microblock_canonical: false })
+      .addTxNftEvent({
+        asset_identifier: assetId2,
+        asset_event_type_id: DbAssetEventTypeId.Transfer,
+        sender: addr3,
+        recipient: addr2,
+      })
       .build();
     await db.update(block6);
 
@@ -269,7 +281,23 @@ describe('/extended/v1/tokens tests', () => {
       index_block_hash: '0x07',
       parent_index_block_hash: '0x06',
     })
-      .addTx({ tx_id: '0x100b' })
+      .addTx({ tx_id: '0x1009' })
+      .addTxStxEvent({ event_index: 0 })
+      .addTxNftEvent({
+        asset_identifier: assetId2,
+        asset_event_type_id: DbAssetEventTypeId.Transfer,
+        sender: addr3,
+        recipient: addr2,
+        event_index: 1, // Higher event index
+      })
+      .addTx({ tx_id: '0x100a' })
+      .addTxNftEvent({
+        asset_identifier: assetId2,
+        asset_event_type_id: DbAssetEventTypeId.Transfer,
+        sender: addr2,
+        recipient: addr3,
+        event_index: 0, // Lower event index but higher microblock index
+      })
       .build();
     await db.update(block7);
 
