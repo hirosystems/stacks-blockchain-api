@@ -5884,7 +5884,6 @@ describe('postgres datastore', () => {
         limit: 10,
         offset: 0,
         includeTxMetadata: false,
-        includeUnanchored: true,
       })
     ).resolves.not.toThrow();
     // Tx list details with empty txIds
