@@ -1415,7 +1415,7 @@ export class PgWriteStore extends PgStore {
       await sql`
         INSERT INTO nft_events ${sql(nftEventInserts)}
       `;
-      if (tx.canonical && tx.microblock_canonical && !microblock) {
+      if (tx.canonical && tx.microblock_canonical) {
         await sql`
           INSERT INTO nft_custody ${sql(Array.from(custodyInsertsMap.values()))}
           ON CONFLICT ON CONSTRAINT nft_custody_unique DO UPDATE SET
