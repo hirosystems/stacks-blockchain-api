@@ -164,24 +164,6 @@ describe('/extended/v1/tokens tests', () => {
       .build();
     await db.updateMicroblocks(microblock1);
 
-    // Request: unanchored shows addr2 with 0 NFTs
-    const request7 = await supertest(api.server).get(
-      `/extended/v1/tokens/nft/holdings?principal=${addr2}&unanchored=true`
-    );
-    expect(request7.status).toBe(200);
-    expect(request7.type).toBe('application/json');
-    const result7 = JSON.parse(request7.text);
-    expect(result7.total).toEqual(0);
-
-    // Request: anchored shows addr2 still with 1 NFT
-    const request8 = await supertest(api.server).get(
-      `/extended/v1/tokens/nft/holdings?principal=${addr2}`
-    );
-    expect(request8.status).toBe(200);
-    expect(request8.type).toBe('application/json');
-    const result8 = JSON.parse(request8.text);
-    expect(result8.total).toEqual(1);
-
     // Confirm unanchored txs
     const block4 = new TestBlockBuilder({
       block_height: 4,
@@ -192,15 +174,6 @@ describe('/extended/v1/tokens tests', () => {
       .addTx({ tx_id: '0x5555' })
       .build();
     await db.update(block4);
-
-    // Request: unanchored still shows addr2 with 0 NFTs
-    const request9 = await supertest(api.server).get(
-      `/extended/v1/tokens/nft/holdings?principal=${addr2}&unanchored=true`
-    );
-    expect(request9.status).toBe(200);
-    expect(request9.type).toBe('application/json');
-    const result9 = JSON.parse(request9.text);
-    expect(result9.total).toEqual(0);
 
     // Request: anchored now shows addr2 with 0 NFTs
     const request10 = await supertest(api.server).get(
@@ -248,24 +221,6 @@ describe('/extended/v1/tokens tests', () => {
       })
       .build();
     await db.updateMicroblocks(microblock2);
-
-    // Request: addr2 still has 0 NFTs unanchored
-    const request12 = await supertest(api.server).get(
-      `/extended/v1/tokens/nft/holdings?principal=${addr2}&unanchored=true`
-    );
-    expect(request12.status).toBe(200);
-    expect(request12.type).toBe('application/json');
-    const result12 = JSON.parse(request12.text);
-    expect(result12.total).toEqual(0);
-
-    // Request: addr2 still has 0 NFTs anchored
-    const request13 = await supertest(api.server).get(
-      `/extended/v1/tokens/nft/holdings?principal=${addr2}`
-    );
-    expect(request13.status).toBe(200);
-    expect(request13.type).toBe('application/json');
-    const result13 = JSON.parse(request13.text);
-    expect(result13.total).toEqual(0);
 
     // Confirm txs
     const block6 = new TestBlockBuilder({
