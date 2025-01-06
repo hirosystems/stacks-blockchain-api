@@ -4,7 +4,7 @@
 import { Readable, Writable } from 'stream';
 import { pipeline } from 'stream/promises';
 import { PgWriteStore } from '../../../datastore/pg-write-store';
-import { parseAttachment } from '../../../event-stream/event-server';
+import { parseAttachment } from '../../../event-stream/event-message-handler';
 import { logger } from '../../../logger';
 import { CoreNodeAttachmentMessage } from '../../../event-stream/core-node-message';
 import { DataStoreAttachmentSubdomainData } from '../../../datastore/common';
