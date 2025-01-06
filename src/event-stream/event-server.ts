@@ -14,7 +14,7 @@ import { logger } from '../logger';
 import { isProdEnv, PINO_LOGGER_CONFIG } from '@hirosystems/api-toolkit';
 import { EventMessageHandler, newEventMessageHandler } from './event-message-handler';
 
-export const IBD_PRUNABLE_ROUTES = ['/new_mempool_tx', '/drop_mempool_tx', '/new_microblocks'];
+const IBD_PRUNABLE_ROUTES = ['/new_mempool_tx', '/drop_mempool_tx', '/new_microblocks'];
 
 export type EventStreamServer = net.Server & {
   serverAddress: net.AddressInfo;
