@@ -1,3 +1,10 @@
+## [8.5.0-redis-stream.1](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.4.0...v8.5.0-redis-stream.1) (2025-01-07)
+
+
+### Features
+
+* support redis stream as event source ([#2192](https://github.com/hirosystems/stacks-blockchain-api/issues/2192)) ([cba79fb](https://github.com/hirosystems/stacks-blockchain-api/commit/cba79fb4cb5cbd1376aaf6631dbb18c303a0b8c9))
+
 ## [8.4.0](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.3.0...v8.4.0) (2024-12-17)
 
 
