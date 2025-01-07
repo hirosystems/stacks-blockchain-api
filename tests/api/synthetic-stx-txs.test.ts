@@ -4,7 +4,7 @@ import * as path from 'path';
 import { DecodedTxResult, TxPayloadTypeID } from 'stacks-encoding-native-js';
 import { CoreNodeBlockMessage } from '../../src/event-stream/core-node-message';
 import { parseMessageTransaction } from '../../src/event-stream/reader';
-import { parseNewBlockMessage } from '../../src/event-stream/event-server';
+import { parseNewBlockMessage } from '../../src/event-stream/event-message-handler';
 
 // Test processing of the psuedo-Stacks transactions, i.e. the ones that
 // originate on the Bitcoin chain, and have a `raw_tx == '0x00'.

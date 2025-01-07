@@ -1,7 +1,6 @@
 import { Readable, Writable, Transform } from 'stream';
 import { pipeline } from 'stream/promises';
 import { PgWriteStore } from '../../../datastore/pg-write-store';
-import { parseNewBlockMessage } from '../../../event-stream/event-server';
 import {
   DbBlock,
   DbMicroblock,
@@ -21,6 +20,7 @@ import { getApiConfiguredChainID } from '../../../helpers';
 import { CoreNodeBlockMessage } from '../../../event-stream/core-node-message';
 import { DatasetStore } from '../dataset/store';
 import { batchIterate } from '@hirosystems/api-toolkit';
+import { parseNewBlockMessage } from '../../../event-stream/event-message-handler';
 
 const chainID = getApiConfiguredChainID();
 

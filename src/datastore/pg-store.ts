@@ -4524,4 +4524,11 @@ export class PgStore extends BasePgStore {
     `;
     if (result.count) return result[0];
   }
+
+  async getLastEventObserverRequestSequenceId(): Promise<string | undefined> {
+    const result = await this.sql<{ sequence_id: string }[]>`
+      SELECT sequence_id FROM event_observer_requests ORDER BY id DESC LIMIT 1
+    `;
+    return result[0]?.sequence_id ?? undefined;
+  }
 }

@@ -170,8 +170,14 @@ export class PgWriteStore extends PgStore {
     return store;
   }
 
-  async storeRawEventRequest(eventPath: string, payload: any): Promise<void> {
+  async storeRawEventRequest(
+    eventPath: string,
+    payload: any,
+    sequenceId?: string,
+    timestamp?: string
+  ): Promise<void> {
     await this.sqlWriteTransaction(async sql => {
+      const receive_timestamp = timestamp ? sql`TO_TIMESTAMP(${timestamp})` : sql`NOW()`;
       const insertResult = await sql<
         {
           id: string;
@@ -179,8 +185,8 @@ export class PgWriteStore extends PgStore {
           event_path: string;
         }[]
       >`INSERT INTO event_observer_requests(
-          event_path, payload
-        ) values(${eventPath}, ${payload})
+          event_path, payload, receive_timestamp, sequence_id
+        ) values(${eventPath}, ${payload}, ${receive_timestamp}, ${sequenceId ?? sql`NULL`})
         RETURNING id, receive_timestamp::text, event_path
       `;
       if (insertResult.length !== 1) {

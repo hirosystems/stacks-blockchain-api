@@ -7,8 +7,8 @@
       "prerelease": true
     },
     {
-      "name": "nakamoto",
-      "channel": "nakamoto",
+      "name": "redis-stream",
+      "channel": "redis-stream",
       "prerelease": true
     }
   ],

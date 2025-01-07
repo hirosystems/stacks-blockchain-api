@@ -1,15 +1,12 @@
 import { StacksCoreRpcClient } from '../../src/core-rpc/client';
 import { loadDotEnv } from '../../src/helpers';
 import { PgWriteStore } from '../../src/datastore/pg-write-store';
-import {
-  DummyEventMessageHandler,
-  EventStreamServer,
-  startEventServer,
-} from '../../src/event-stream/event-server';
+import { EventStreamServer, startEventServer } from '../../src/event-stream/event-server';
 import { ChainID } from '@stacks/common';
 import * as isCI from 'is-ci';
 import { migrate } from './test-helpers';
 import { timeout } from '@hirosystems/api-toolkit';
+import { DummyEventMessageHandler } from '../../src/event-stream/event-message-handler';
 
 interface GlobalTestEnv {
   db: PgWriteStore;

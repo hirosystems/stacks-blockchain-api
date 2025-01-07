@@ -28,6 +28,7 @@ import {
   timeout,
 } from '@hirosystems/api-toolkit';
 import Fastify from 'fastify';
+import { startEventStream } from './event-stream/event-stream';
 
 enum StacksApiMode {
   /**
@@ -135,15 +136,27 @@ async function init(): Promise<void> {
 
   if (apiMode === StacksApiMode.default || apiMode === StacksApiMode.writeOnly) {
     const configuredChainID = getApiConfiguredChainID();
-    const eventServer = await startEventServer({
-      datastore: dbWriteStore,
-      chainId: configuredChainID,
-    });
-    registerShutdownConfig({
-      name: 'Event Server',
-      handler: () => eventServer.closeAsync(),
-      forceKillable: false,
-    });
+    if (process.env['STACKS_API_EVENT_SOURCE'] == 'redis') {
+      const eventStream = await startEventStream({
+        datastore: dbWriteStore,
+        chainId: configuredChainID,
+      });
+      registerShutdownConfig({
+        name: 'Event Stream',
+        handler: () => eventStream.stop(),
+        forceKillable: false,
+      });
+    } else {
+      const eventServer = await startEventServer({
+        datastore: dbWriteStore,
+        chainId: configuredChainID,
+      });
+      registerShutdownConfig({
+        name: 'Event Server',
+        handler: () => eventServer.closeAsync(),
+        forceKillable: false,
+      });
+    }
 
     const skipChainIdCheck = parseBoolean(process.env['SKIP_STACKS_CHAIN_ID_CHECK']);
     if (!skipChainIdCheck) {
