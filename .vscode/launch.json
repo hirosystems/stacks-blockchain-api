@@ -25,7 +25,8 @@
       "env": {
         "NODE_ENV": "development",
         "TS_NODE_SKIP_IGNORE": "true"
-      }
+      },
+      "killBehavior": "polite",
     },
     {
       "type": "node",
