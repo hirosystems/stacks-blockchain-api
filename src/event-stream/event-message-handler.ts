@@ -74,7 +74,13 @@ import { POX_2_CONTRACT_NAME, POX_3_CONTRACT_NAME, POX_4_CONTRACT_NAME } from '.
 
 /// Parses and stores raw events received from a Stacks node.
 export interface EventMessageHandler {
-  handleRawEventRequest(eventPath: string, payload: any, db: PgWriteStore): Promise<void> | void;
+  handleRawEventRequest(
+    eventPath: string,
+    payload: any,
+    db: PgWriteStore,
+    sequenceId?: string,
+    timestamp?: string
+  ): Promise<void> | void;
   handleBlockMessage(
     chainId: ChainID,
     msg: CoreNodeBlockMessage,
@@ -734,9 +740,11 @@ async function handleNewAttachmentMessage(msg: CoreNodeAttachmentMessage[], db: 
 async function handleRawEventRequest(
   eventPath: string,
   payload: any,
-  db: PgWriteStore
+  db: PgWriteStore,
+  sequenceId?: string,
+  timestamp?: string
 ): Promise<void> {
-  await db.storeRawEventRequest(eventPath, payload);
+  await db.storeRawEventRequest(eventPath, payload, sequenceId, timestamp);
 }
 
 async function handleBurnBlockMessage(
@@ -919,9 +927,19 @@ export function newEventMessageHandler(): EventMessageHandler {
   };
 
   const handler: EventMessageHandler = {
-    handleRawEventRequest: (eventPath: string, payload: any, db: PgWriteStore) => {
+    handleRawEventRequest: (
+      eventPath: string,
+      payload: any,
+      db: PgWriteStore,
+      sequenceId?: string,
+      timestamp?: string
+    ) => {
       return processorQueue
-        .add(() => observeEvent('raw_event', () => handleRawEventRequest(eventPath, payload, db)))
+        .add(() =>
+          observeEvent('raw_event', () =>
+            handleRawEventRequest(eventPath, payload, db, sequenceId, timestamp)
+          )
+        )
         .catch(e => {
           logger.error(e, 'Error storing raw core node request data');
           throw e;
