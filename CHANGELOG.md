@@ -1,3 +1,10 @@
+## [8.5.0-redis-stream.2](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.5.0-redis-stream.1...v8.5.0-redis-stream.2) (2025-01-09)
+
+
+### Bug Fixes
+
+* logger import typo ([#2193](https://github.com/hirosystems/stacks-blockchain-api/issues/2193)) ([486ea9b](https://github.com/hirosystems/stacks-blockchain-api/commit/486ea9b302f3ece0018691a7d76baebee98ae1c4))
+
 ## [8.5.0-redis-stream.1](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.4.0...v8.5.0-redis-stream.1) (2025-01-07)
 
 
