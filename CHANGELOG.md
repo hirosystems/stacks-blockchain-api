@@ -1,3 +1,10 @@
+## [8.5.0-redis-stream.3](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.5.0-redis-stream.2...v8.5.0-redis-stream.3) (2025-01-09)
+
+
+### Bug Fixes
+
+* update to latest snp client ([#2194](https://github.com/hirosystems/stacks-blockchain-api/issues/2194)) ([f085257](https://github.com/hirosystems/stacks-blockchain-api/commit/f0852574cd4a042b380196366223b87252721621))
+
 ## [8.5.0-redis-stream.2](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.5.0-redis-stream.1...v8.5.0-redis-stream.2) (2025-01-09)
 
 
