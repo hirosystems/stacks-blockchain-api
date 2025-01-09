@@ -10,7 +10,7 @@ import {
   CoreNodeMicroblockMessage,
 } from './core-node-message';
 import { handleBnsImport } from '../import-v1';
-import { logger } from 'src/logger';
+import { logger } from '../logger';
 
 export async function startEventStream(opts: {
   datastore: PgWriteStore;
