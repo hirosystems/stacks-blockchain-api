@@ -4540,7 +4540,9 @@ export class PgStore extends BasePgStore {
       }[]
     >`
       WITH current AS (
-        SELECT MAX(burn_block_height) AS height FROM blocks
+        SELECT MAX(burn_block_height) AS height
+        FROM blocks
+        WHERE canonical = TRUE
       ),
       current_count AS (
         SELECT COUNT(*) AS count
@@ -4550,6 +4552,7 @@ export class PgStore extends BasePgStore {
       previous AS (
         SELECT DISTINCT burn_block_height AS height
         FROM blocks
+        WHERE canonical = TRUE
         ORDER BY burn_block_height DESC
         LIMIT 1 OFFSET 1
       ),
