@@ -130,6 +130,7 @@ async function handleBurnBlockMessage(
     burnchainBlockHeight: burnBlockMsg.burn_block_height,
     slotHolders: slotHolders,
   });
+  await db.updateBurnChainBlockHeight({ blockHeight: burnBlockMsg.burn_block_height });
 }
 
 async function handleMempoolTxsMessage(rawTxs: string[], db: PgWriteStore): Promise<void> {
@@ -638,10 +639,7 @@ function createMessageProcessorQueue(): EventMessageHandler {
   let metrics:
     | {
         eventTimer: prom.Histogram;
-        blocksInPreviousTenure: prom.Gauge;
-        previousTenureBurnBlockHeight: prom.Gauge;
-        blocksInCurrentTenure: prom.Gauge;
-        currentTenureBurnBlockHeight: prom.Gauge;
+        blocksInPreviousBurnBlock: prom.Gauge;
       }
     | undefined;
   if (isProdEnv) {
@@ -652,21 +650,9 @@ function createMessageProcessorQueue(): EventMessageHandler {
         labelNames: ['event'],
         buckets: prom.exponentialBuckets(50, 3, 10), // 10 buckets, from 50 ms to 15 minutes
       }),
-      blocksInPreviousTenure: new prom.Gauge({
-        name: 'stacks_blocks_in_previous_tenure',
-        help: 'Number of Stacks blocks produced in previous tenure',
-      }),
-      previousTenureBurnBlockHeight: new prom.Gauge({
-        name: 'stacks_previous_tenure_burn_block_height',
-        help: 'Burn block height of previous tenure',
-      }),
-      blocksInCurrentTenure: new prom.Gauge({
-        name: 'stacks_blocks_in_current_tenure',
-        help: 'Number of Stacks blocks produced in current tenure',
-      }),
-      currentTenureBurnBlockHeight: new prom.Gauge({
-        name: 'stacks_current_tenure_burn_block_height',
-        help: 'Burn block height of current tenure',
+      blocksInPreviousBurnBlock: new prom.Gauge({
+        name: 'stacks_blocks_in_previous_burn_block',
+        help: 'Number of Stacks blocks produced in the previous burn block',
       }),
     };
   }
@@ -692,16 +678,7 @@ function createMessageProcessorQueue(): EventMessageHandler {
     },
     handleBlockMessage: (chainId: ChainID, msg: CoreNodeBlockMessage, db: PgWriteStore) => {
       return processorQueue
-        .add(async () => {
-          await observeEvent('block', () => handleBlockMessage(chainId, msg, db));
-          if (metrics) {
-            const stats = await db.getCurrentAndPreviousTenureBlockCounts();
-            metrics.currentTenureBurnBlockHeight.set(stats.current_burn_block_height ?? 0);
-            metrics.blocksInCurrentTenure.set(stats.current_block_count);
-            metrics.previousTenureBurnBlockHeight.set(stats.previous_burn_block_height ?? 0);
-            metrics.blocksInPreviousTenure.set(stats.previous_block_count);
-          }
-        })
+        .add(() => observeEvent('block', () => handleBlockMessage(chainId, msg, db)))
         .catch(e => {
           logger.error(e, 'Error processing core node block message');
           throw e;
@@ -721,7 +698,14 @@ function createMessageProcessorQueue(): EventMessageHandler {
     },
     handleBurnBlock: (msg: CoreNodeBurnBlockMessage, db: PgWriteStore) => {
       return processorQueue
-        .add(() => observeEvent('burn_block', () => handleBurnBlockMessage(msg, db)))
+        .add(async () => {
+          await observeEvent('burn_block', () => handleBurnBlockMessage(msg, db));
+          if (metrics) {
+            metrics.blocksInPreviousBurnBlock.set(
+              await db.getStacksBlockCountAtBurnBlock(msg.burn_block_height - 1)
+            );
+          }
+        })
         .catch(e => {
           logger.error(e, 'Error processing core node burn block message');
           throw e;

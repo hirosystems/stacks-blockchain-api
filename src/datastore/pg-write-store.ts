@@ -1780,6 +1780,12 @@ export class PgWriteStore extends PgStore {
     });
   }
 
+  async updateBurnChainBlockHeight(args: { blockHeight: number }): Promise<void> {
+    await this.sql`
+      UPDATE chain_tip SET burn_block_height = GREATEST(${args.blockHeight}, burn_block_height)
+    `;
+  }
+
   async insertSlotHoldersBatch(sql: PgSqlClient, slotHolders: DbRewardSlotHolder[]): Promise<void> {
     const slotValues: RewardSlotHolderInsertValues[] = slotHolders.map(slot => ({
       canonical: true,

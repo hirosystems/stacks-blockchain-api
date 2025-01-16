@@ -4525,48 +4525,12 @@ export class PgStore extends BasePgStore {
     if (result.count) return result[0];
   }
 
-  async getCurrentAndPreviousTenureBlockCounts(): Promise<{
-    current_burn_block_height: number | null;
-    current_block_count: number;
-    previous_burn_block_height: number | null;
-    previous_block_count: number;
-  }> {
-    const result = await this.sql<
-      {
-        current_burn_block_height: number | null;
-        current_block_count: number;
-        previous_burn_block_height: number | null;
-        previous_block_count: number;
-      }[]
-    >`
-      WITH current AS (
-        SELECT MAX(burn_block_height) AS height
-        FROM blocks
-        WHERE canonical = TRUE
-      ),
-      current_count AS (
-        SELECT COUNT(*) AS count
-        FROM blocks
-        WHERE burn_block_height = (SELECT height FROM current) AND canonical = TRUE
-      ),
-      previous AS (
-        SELECT DISTINCT burn_block_height AS height
-        FROM blocks
-        WHERE canonical = TRUE
-        ORDER BY burn_block_height DESC
-        LIMIT 1 OFFSET 1
-      ),
-      previous_count AS (
-        SELECT COUNT(*) AS count
-        FROM blocks
-        WHERE burn_block_height = (SELECT height FROM previous) AND canonical = TRUE
-      )
-      SELECT
-        (SELECT height FROM current) AS current_burn_block_height,
-        (SELECT count FROM current_count) AS current_block_count,
-        (SELECT height FROM previous) AS previous_burn_block_height,
-        (SELECT count FROM previous_count) AS previous_block_count
+  async getStacksBlockCountAtBurnBlock(burnBlockHeight: number): Promise<number> {
+    const result = await this.sql<{ count: number }[]>`
+      SELECT COUNT(*) AS count
+      FROM blocks
+      WHERE burn_block_height = ${burnBlockHeight} AND canonical = TRUE
     `;
-    return result[0];
+    return result[0].count ?? 0;
   }
 }
