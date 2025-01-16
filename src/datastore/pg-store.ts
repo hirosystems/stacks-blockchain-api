@@ -4531,6 +4531,6 @@ export class PgStore extends BasePgStore {
       FROM blocks
       WHERE burn_block_height = ${burnBlockHeight} AND canonical = TRUE
     `;
-    return parseInt(result[0].count ?? '0');
+    return parseInt(result[0]?.count ?? '0');
   }
 }
