@@ -635,14 +635,40 @@ function createMessageProcessorQueue(): EventMessageHandler {
   // Create a promise queue so that only one message is handled at a time.
   const processorQueue = new PQueue({ concurrency: 1 });
 
-  let eventTimer: prom.Histogram<'event'> | undefined;
+  let metrics:
+    | {
+        eventTimer: prom.Histogram;
+        blocksInPreviousTenure: prom.Gauge;
+        previousTenureBurnBlockHeight: prom.Gauge;
+        blocksInCurrentTenure: prom.Gauge;
+        currentTenureBurnBlockHeight: prom.Gauge;
+      }
+    | undefined;
   if (isProdEnv) {
-    eventTimer = new prom.Histogram({
-      name: 'stacks_event_ingestion_timers',
-      help: 'Event ingestion timers',
-      labelNames: ['event'],
-      buckets: prom.exponentialBuckets(50, 3, 10), // 10 buckets, from 50 ms to 15 minutes
-    });
+    metrics = {
+      eventTimer: new prom.Histogram({
+        name: 'stacks_event_ingestion_timers',
+        help: 'Event ingestion timers',
+        labelNames: ['event'],
+        buckets: prom.exponentialBuckets(50, 3, 10), // 10 buckets, from 50 ms to 15 minutes
+      }),
+      blocksInPreviousTenure: new prom.Gauge({
+        name: 'stacks_blocks_in_previous_tenure',
+        help: 'Number of Stacks blocks produced in previous tenure',
+      }),
+      previousTenureBurnBlockHeight: new prom.Gauge({
+        name: 'stacks_previous_tenure_burn_block_height',
+        help: 'Burn block height of previous tenure',
+      }),
+      blocksInCurrentTenure: new prom.Gauge({
+        name: 'stacks_blocks_in_current_tenure',
+        help: 'Number of Stacks blocks produced in current tenure',
+      }),
+      currentTenureBurnBlockHeight: new prom.Gauge({
+        name: 'stacks_current_tenure_burn_block_height',
+        help: 'Burn block height of current tenure',
+      }),
+    };
   }
 
   const observeEvent = async (event: string, fn: () => Promise<void>) => {
@@ -651,7 +677,7 @@ function createMessageProcessorQueue(): EventMessageHandler {
       await fn();
     } finally {
       const elapsedMs = timer.getElapsed();
-      eventTimer?.observe({ event }, elapsedMs);
+      metrics?.eventTimer.observe({ event }, elapsedMs);
     }
   };
 
@@ -666,7 +692,16 @@ function createMessageProcessorQueue(): EventMessageHandler {
     },
     handleBlockMessage: (chainId: ChainID, msg: CoreNodeBlockMessage, db: PgWriteStore) => {
       return processorQueue
-        .add(() => observeEvent('block', () => handleBlockMessage(chainId, msg, db)))
+        .add(async () => {
+          await observeEvent('block', () => handleBlockMessage(chainId, msg, db));
+          if (metrics) {
+            const stats = await db.getCurrentAndPreviousTenureBlockCounts();
+            metrics.currentTenureBurnBlockHeight.set(stats.current_burn_block_height ?? 0);
+            metrics.blocksInCurrentTenure.set(stats.current_block_count);
+            metrics.previousTenureBurnBlockHeight.set(stats.previous_burn_block_height ?? 0);
+            metrics.blocksInPreviousTenure.set(stats.previous_block_count);
+          }
+        })
         .catch(e => {
           logger.error(e, 'Error processing core node block message');
           throw e;
