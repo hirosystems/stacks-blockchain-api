@@ -4526,11 +4526,11 @@ export class PgStore extends BasePgStore {
   }
 
   async getStacksBlockCountAtBurnBlock(burnBlockHeight: number): Promise<number> {
-    const result = await this.sql<{ count: number }[]>`
+    const result = await this.sql<{ count: string }[]>`
       SELECT COUNT(*) AS count
       FROM blocks
       WHERE burn_block_height = ${burnBlockHeight} AND canonical = TRUE
     `;
-    return result[0].count ?? 0;
+    return parseInt(result[0].count ?? '0');
   }
 }

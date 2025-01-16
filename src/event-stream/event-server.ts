@@ -655,6 +655,7 @@ function createMessageProcessorQueue(): EventMessageHandler {
         help: 'Number of Stacks blocks produced in the previous burn block',
       }),
     };
+    metrics.blocksInPreviousBurnBlock.remove();
   }
 
   const observeEvent = async (event: string, fn: () => Promise<void>) => {
