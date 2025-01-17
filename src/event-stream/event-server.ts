@@ -130,6 +130,7 @@ async function handleBurnBlockMessage(
     burnchainBlockHeight: burnBlockMsg.burn_block_height,
     slotHolders: slotHolders,
   });
+  await db.updateBurnChainBlockHeight({ blockHeight: burnBlockMsg.burn_block_height });
 }
 
 async function handleMempoolTxsMessage(rawTxs: string[], db: PgWriteStore): Promise<void> {
@@ -631,18 +632,32 @@ interface EventMessageHandler {
   handleNewAttachment(msg: CoreNodeAttachmentMessage[], db: PgWriteStore): Promise<void> | void;
 }
 
-function createMessageProcessorQueue(): EventMessageHandler {
+function createMessageProcessorQueue(db: PgWriteStore): EventMessageHandler {
   // Create a promise queue so that only one message is handled at a time.
   const processorQueue = new PQueue({ concurrency: 1 });
 
-  let eventTimer: prom.Histogram<'event'> | undefined;
+  let metrics:
+    | {
+        eventTimer: prom.Histogram;
+        blocksInPreviousBurnBlock: prom.Gauge;
+      }
+    | undefined;
   if (isProdEnv) {
-    eventTimer = new prom.Histogram({
-      name: 'stacks_event_ingestion_timers',
-      help: 'Event ingestion timers',
-      labelNames: ['event'],
-      buckets: prom.exponentialBuckets(50, 3, 10), // 10 buckets, from 50 ms to 15 minutes
-    });
+    metrics = {
+      eventTimer: new prom.Histogram({
+        name: 'stacks_event_ingestion_timers',
+        help: 'Event ingestion timers',
+        labelNames: ['event'],
+        buckets: prom.exponentialBuckets(50, 3, 10), // 10 buckets, from 50 ms to 15 minutes
+      }),
+      blocksInPreviousBurnBlock: new prom.Gauge({
+        name: 'stacks_blocks_in_previous_burn_block',
+        help: 'Number of Stacks blocks produced in the previous burn block',
+        async collect() {
+          this.set(await db.getStacksBlockCountAtPreviousBurnBlock());
+        },
+      }),
+    };
   }
 
   const observeEvent = async (event: string, fn: () => Promise<void>) => {
@@ -651,7 +666,7 @@ function createMessageProcessorQueue(): EventMessageHandler {
       await fn();
     } finally {
       const elapsedMs = timer.getElapsed();
-      eventTimer?.observe({ event }, elapsedMs);
+      metrics?.eventTimer.observe({ event }, elapsedMs);
     }
   };
 
@@ -738,7 +753,7 @@ export async function startEventServer(opts: {
   serverPort?: number;
 }): Promise<EventStreamServer> {
   const db = opts.datastore;
-  const messageHandler = opts.messageHandler ?? createMessageProcessorQueue();
+  const messageHandler = opts.messageHandler ?? createMessageProcessorQueue(db);
 
   let eventHost = opts.serverHost ?? process.env['STACKS_CORE_EVENT_HOST'];
   const eventPort = opts.serverPort ?? parseInt(process.env['STACKS_CORE_EVENT_PORT'] ?? '', 10);
