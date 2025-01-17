@@ -653,8 +653,8 @@ function createMessageProcessorQueue(db: PgWriteStore): EventMessageHandler {
       blocksInPreviousBurnBlock: new prom.Gauge({
         name: 'stacks_blocks_in_previous_burn_block',
         help: 'Number of Stacks blocks produced in the previous burn block',
-        collect: async () => {
-          metrics?.blocksInPreviousBurnBlock.set(await db.getStacksBlockCountAtPreviousBurnBlock());
+        async collect() {
+          this.set(await db.getStacksBlockCountAtPreviousBurnBlock());
         },
       }),
     };
