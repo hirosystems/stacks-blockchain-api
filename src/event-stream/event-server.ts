@@ -632,7 +632,7 @@ interface EventMessageHandler {
   handleNewAttachment(msg: CoreNodeAttachmentMessage[], db: PgWriteStore): Promise<void> | void;
 }
 
-function createMessageProcessorQueue(): EventMessageHandler {
+function createMessageProcessorQueue(db: PgWriteStore): EventMessageHandler {
   // Create a promise queue so that only one message is handled at a time.
   const processorQueue = new PQueue({ concurrency: 1 });
 
@@ -653,9 +653,11 @@ function createMessageProcessorQueue(): EventMessageHandler {
       blocksInPreviousBurnBlock: new prom.Gauge({
         name: 'stacks_blocks_in_previous_burn_block',
         help: 'Number of Stacks blocks produced in the previous burn block',
+        collect: async () => {
+          metrics?.blocksInPreviousBurnBlock.set(await db.getStacksBlockCountAtPreviousBurnBlock());
+        },
       }),
     };
-    metrics.blocksInPreviousBurnBlock.remove();
   }
 
   const observeEvent = async (event: string, fn: () => Promise<void>) => {
@@ -699,14 +701,7 @@ function createMessageProcessorQueue(): EventMessageHandler {
     },
     handleBurnBlock: (msg: CoreNodeBurnBlockMessage, db: PgWriteStore) => {
       return processorQueue
-        .add(async () => {
-          await observeEvent('burn_block', () => handleBurnBlockMessage(msg, db));
-          if (metrics) {
-            metrics.blocksInPreviousBurnBlock.set(
-              await db.getStacksBlockCountAtBurnBlock(msg.burn_block_height - 1)
-            );
-          }
-        })
+        .add(() => observeEvent('burn_block', () => handleBurnBlockMessage(msg, db)))
         .catch(e => {
           logger.error(e, 'Error processing core node burn block message');
           throw e;
@@ -758,7 +753,7 @@ export async function startEventServer(opts: {
   serverPort?: number;
 }): Promise<EventStreamServer> {
   const db = opts.datastore;
-  const messageHandler = opts.messageHandler ?? createMessageProcessorQueue();
+  const messageHandler = opts.messageHandler ?? createMessageProcessorQueue(db);
 
   let eventHost = opts.serverHost ?? process.env['STACKS_CORE_EVENT_HOST'];
   const eventPort = opts.serverPort ?? parseInt(process.env['STACKS_CORE_EVENT_PORT'] ?? '', 10);
