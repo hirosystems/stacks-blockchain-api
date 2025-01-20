@@ -1,3 +1,10 @@
+## [8.5.0](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.4.0...v8.5.0) (2025-01-20)
+
+
+### Features
+
+* add prom metrics for stacks block count at previous burn block ([#2200](https://github.com/hirosystems/stacks-blockchain-api/issues/2200)) ([26c53dc](https://github.com/hirosystems/stacks-blockchain-api/commit/26c53dc09deca906196547b7680ed44ea517fcd9))
+
 ## [8.4.0](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.3.0...v8.4.0) (2024-12-17)
 
 
