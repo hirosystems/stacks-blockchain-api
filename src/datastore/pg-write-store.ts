@@ -1416,10 +1416,9 @@ export class PgWriteStore extends PgStore {
         INSERT INTO nft_events ${sql(nftEventInserts)}
       `;
       if (tx.canonical && tx.microblock_canonical) {
-        const table = microblock ? sql`nft_custody_unanchored` : sql`nft_custody`;
         await sql`
-          INSERT INTO ${table} ${sql(Array.from(custodyInsertsMap.values()))}
-          ON CONFLICT ON CONSTRAINT ${table}_unique DO UPDATE SET
+          INSERT INTO nft_custody ${sql(Array.from(custodyInsertsMap.values()))}
+          ON CONFLICT ON CONSTRAINT nft_custody_unique DO UPDATE SET
             tx_id = EXCLUDED.tx_id,
             index_block_hash = EXCLUDED.index_block_hash,
             parent_index_block_hash = EXCLUDED.parent_index_block_hash,
@@ -1431,22 +1430,22 @@ export class PgWriteStore extends PgStore {
             block_height = EXCLUDED.block_height
           WHERE
             (
-              EXCLUDED.block_height > ${table}.block_height
+              EXCLUDED.block_height > nft_custody.block_height
             )
             OR (
-              EXCLUDED.block_height = ${table}.block_height
-              AND EXCLUDED.microblock_sequence > ${table}.microblock_sequence
+              EXCLUDED.block_height = nft_custody.block_height
+              AND EXCLUDED.microblock_sequence > nft_custody.microblock_sequence
             )
             OR (
-              EXCLUDED.block_height = ${table}.block_height
-              AND EXCLUDED.microblock_sequence = ${table}.microblock_sequence
-              AND EXCLUDED.tx_index > ${table}.tx_index
+              EXCLUDED.block_height = nft_custody.block_height
+              AND EXCLUDED.microblock_sequence = nft_custody.microblock_sequence
+              AND EXCLUDED.tx_index > nft_custody.tx_index
             )
             OR (
-              EXCLUDED.block_height = ${table}.block_height
-              AND EXCLUDED.microblock_sequence = ${table}.microblock_sequence
-              AND EXCLUDED.tx_index = ${table}.tx_index
-              AND EXCLUDED.event_index > ${table}.event_index
+              EXCLUDED.block_height = nft_custody.block_height
+              AND EXCLUDED.microblock_sequence = nft_custody.microblock_sequence
+              AND EXCLUDED.tx_index = nft_custody.tx_index
+              AND EXCLUDED.event_index > nft_custody.event_index
             )
         `;
       }
@@ -1779,6 +1778,12 @@ export class PgWriteStore extends PgStore {
         }
       }
     });
+  }
+
+  async updateBurnChainBlockHeight(args: { blockHeight: number }): Promise<void> {
+    await this.sql`
+      UPDATE chain_tip SET burn_block_height = GREATEST(${args.blockHeight}, burn_block_height)
+    `;
   }
 
   async insertSlotHoldersBatch(sql: PgSqlClient, slotHolders: DbRewardSlotHolder[]): Promise<void> {
@@ -2515,10 +2520,6 @@ export class PgWriteStore extends PgStore {
           AND (index_block_hash = ${args.indexBlockHash} OR index_block_hash = '\\x'::bytea)
           AND tx_id IN ${sql(txIds)}
       `;
-      await this.updateNftCustodyFromReOrg(sql, {
-        index_block_hash: args.indexBlockHash,
-        microblocks: args.microblocks,
-      });
     }
 
     // Update unanchored tx count in `chain_tip` table
@@ -2539,54 +2540,46 @@ export class PgWriteStore extends PgStore {
     sql: PgSqlClient,
     args: {
       index_block_hash: string;
-      microblocks: string[];
     }
   ): Promise<void> {
-    for (const table of [sql`nft_custody`, sql`nft_custody_unanchored`]) {
-      await sql`
-        INSERT INTO ${table}
-        (asset_identifier, value, tx_id, index_block_hash, parent_index_block_hash, microblock_hash,
-          microblock_sequence, recipient, event_index, tx_index, block_height)
-        (
-          SELECT
-            DISTINCT ON(asset_identifier, value) asset_identifier, value, tx_id, txs.index_block_hash,
-            txs.parent_index_block_hash, txs.microblock_hash, txs.microblock_sequence, recipient,
-            nft.event_index, txs.tx_index, txs.block_height
-          FROM
-            nft_events AS nft
-          INNER JOIN
-            txs USING (tx_id)
-          WHERE
-            txs.canonical = true
-            AND txs.microblock_canonical = true
-            AND nft.canonical = true
-            AND nft.microblock_canonical = true
-            AND nft.index_block_hash = ${args.index_block_hash}
-            ${
-              args.microblocks.length > 0
-                ? sql`AND nft.microblock_hash IN ${sql(args.microblocks)}`
-                : sql``
-            }
-          ORDER BY
-            asset_identifier,
-            value,
-            txs.block_height DESC,
-            txs.microblock_sequence DESC,
-            txs.tx_index DESC,
-            nft.event_index DESC
-        )
-        ON CONFLICT ON CONSTRAINT ${table}_unique DO UPDATE SET
-          tx_id = EXCLUDED.tx_id,
-          index_block_hash = EXCLUDED.index_block_hash,
-          parent_index_block_hash = EXCLUDED.parent_index_block_hash,
-          microblock_hash = EXCLUDED.microblock_hash,
-          microblock_sequence = EXCLUDED.microblock_sequence,
-          recipient = EXCLUDED.recipient,
-          event_index = EXCLUDED.event_index,
-          tx_index = EXCLUDED.tx_index,
-          block_height = EXCLUDED.block_height
-      `;
-    }
+    await sql`
+      INSERT INTO nft_custody
+      (asset_identifier, value, tx_id, index_block_hash, parent_index_block_hash, microblock_hash,
+        microblock_sequence, recipient, event_index, tx_index, block_height)
+      (
+        SELECT
+          DISTINCT ON(asset_identifier, value) asset_identifier, value, tx_id, txs.index_block_hash,
+          txs.parent_index_block_hash, txs.microblock_hash, txs.microblock_sequence, recipient,
+          nft.event_index, txs.tx_index, txs.block_height
+        FROM
+          nft_events AS nft
+        INNER JOIN
+          txs USING (tx_id)
+        WHERE
+          txs.canonical = true
+          AND txs.microblock_canonical = true
+          AND nft.canonical = true
+          AND nft.microblock_canonical = true
+          AND nft.index_block_hash = ${args.index_block_hash}
+        ORDER BY
+          asset_identifier,
+          value,
+          txs.block_height DESC,
+          txs.microblock_sequence DESC,
+          txs.tx_index DESC,
+          nft.event_index DESC
+      )
+      ON CONFLICT ON CONSTRAINT nft_custody_unique DO UPDATE SET
+        tx_id = EXCLUDED.tx_id,
+        index_block_hash = EXCLUDED.index_block_hash,
+        parent_index_block_hash = EXCLUDED.parent_index_block_hash,
+        microblock_hash = EXCLUDED.microblock_hash,
+        microblock_sequence = EXCLUDED.microblock_sequence,
+        recipient = EXCLUDED.recipient,
+        event_index = EXCLUDED.event_index,
+        tx_index = EXCLUDED.tx_index,
+        block_height = EXCLUDED.block_height
+    `;
   }
 
   /**
@@ -3050,10 +3043,7 @@ export class PgWriteStore extends PgStore {
         updatedEntities.markedNonCanonical.nftEvents += nftResult.count;
       }
       if (nftResult.count)
-        await this.updateNftCustodyFromReOrg(sql, {
-          index_block_hash: indexBlockHash,
-          microblocks: [],
-        });
+        await this.updateNftCustodyFromReOrg(sql, { index_block_hash: indexBlockHash });
     });
     q.enqueue(async () => {
       const pox2Result = await sql`
