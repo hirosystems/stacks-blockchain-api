@@ -21,6 +21,16 @@ function getReqUrl(req: { url: string; hostname: string }): URL {
   return new URL(req.url, `http://${req.hostname}`);
 }
 
+function parseFloatEnv(env: string) {
+  const envValue = process.env[env];
+  if (envValue) {
+    const parsed = parseFloat(envValue);
+    if (!isNaN(parsed) && parsed > 0) {
+      return parsed;
+    }
+  }
+}
+
 // https://github.com/stacks-network/stacks-core/blob/20d5137438c7d169ea97dd2b6a4d51b8374a4751/stackslib/src/chainstate/stacks/db/blocks.rs#L338
 const MINIMUM_TX_FEE_RATE_PER_BYTE = 1;
 // https://github.com/stacks-network/stacks-core/blob/eb865279406d0700474748dc77df100cba6fa98e/stackslib/src/core/mod.rs#L212-L218
@@ -29,6 +39,8 @@ const BLOCK_LIMIT_WRITE_COUNT = 15_000;
 const BLOCK_LIMIT_READ_LENGTH = 100_000_000;
 const BLOCK_LIMIT_READ_COUNT = 15_000;
 const BLOCK_LIMIT_RUNTIME = 5_000_000_000;
+// https://github.com/stacks-network/stacks-core/blob/9c8ed7b9df51a0b5d96135cb594843091311b20e/stackslib/src/chainstate/stacks/mod.rs#L1096
+const BLOCK_LIMIT_SIZE = 2 * 1024 * 1024;
 
 interface FeeEstimation {
   fee: number;
@@ -134,22 +146,6 @@ export const CoreNodeRpcProxyRouter: FastifyPluginAsync<
     }
   }
 
-  /// Checks if we should modify all transaction fee estimations to always use the minimum fee. This
-  /// only happens if there is no fee market i.e. if the last N block tenures have not been full. We
-  /// use a threshold of 90% to determine if a block size dimension is full.
-  async function shouldUseTransactionMinimumFee(): Promise<boolean> {
-    const tenureWindow = parseInt(process.env['STACKS_CORE_FEE_TENURE_FULLNESS_WINDOW'] ?? '5');
-    const averageCosts = await fastify.db.getTenureAverageExecutionCosts(tenureWindow);
-    if (!averageCosts) return false;
-    return (
-      averageCosts.read_count < BLOCK_LIMIT_READ_COUNT * 0.9 &&
-      averageCosts.read_length < BLOCK_LIMIT_READ_LENGTH * 0.9 &&
-      averageCosts.write_count < BLOCK_LIMIT_WRITE_COUNT * 0.9 &&
-      averageCosts.write_length < BLOCK_LIMIT_WRITE_LENGTH * 0.9 &&
-      averageCosts.runtime < BLOCK_LIMIT_RUNTIME * 0.9
-    );
-  }
-
   const maxBodySize = 10_000_000; // 10 MB max POST body size
   fastify.addContentTypeParser(
     'application/octet-stream',
@@ -159,16 +155,33 @@ export const CoreNodeRpcProxyRouter: FastifyPluginAsync<
     }
   );
 
-  let feeEstimationModifier: number | null = null;
+  let feeEstimationModifier = 1.0;
+  let feeTenureWindow = 5;
+  let feeDimensionFullnessThreshold = 0.9;
   fastify.addHook('onReady', () => {
-    const feeEstEnvVar = process.env['STACKS_CORE_FEE_ESTIMATION_MODIFIER'];
-    if (feeEstEnvVar) {
-      const parsed = parseFloat(feeEstEnvVar);
-      if (!isNaN(parsed) && parsed > 0) {
-        feeEstimationModifier = parsed;
-      }
-    }
+    feeEstimationModifier =
+      parseFloatEnv('STACKS_CORE_FEE_ESTIMATION_MODIFIER') ?? feeEstimationModifier;
+    feeTenureWindow = parseFloatEnv('STACKS_CORE_FEE_TENURE_FULLNESS_WINDOW') ?? feeTenureWindow;
+    feeDimensionFullnessThreshold =
+      parseFloatEnv('STACKS_CORE_FEE_DIMENSION_FULLNESS_THRESHOLD') ??
+      feeDimensionFullnessThreshold;
   });
+
+  /// Checks if we should modify all transaction fee estimations to always use the minimum fee. This
+  /// only happens if there is no fee market i.e. if the last N block tenures have not been full. We
+  /// use a threshold to determine if a block size dimension is full.
+  async function shouldUseTransactionMinimumFee(): Promise<boolean> {
+    const averageCosts = await fastify.db.getTenureAverageExecutionCosts(feeTenureWindow);
+    if (!averageCosts) return false;
+    return (
+      averageCosts.read_count < BLOCK_LIMIT_READ_COUNT * feeDimensionFullnessThreshold &&
+      averageCosts.read_length < BLOCK_LIMIT_READ_LENGTH * feeDimensionFullnessThreshold &&
+      averageCosts.write_count < BLOCK_LIMIT_WRITE_COUNT * feeDimensionFullnessThreshold &&
+      averageCosts.write_length < BLOCK_LIMIT_WRITE_LENGTH * feeDimensionFullnessThreshold &&
+      averageCosts.runtime < BLOCK_LIMIT_RUNTIME * feeDimensionFullnessThreshold &&
+      averageCosts.size < BLOCK_LIMIT_SIZE * feeDimensionFullnessThreshold
+    );
+  }
 
   await fastify.register(fastifyHttpProxy, {
     upstream: `http://${stacksNodeRpcEndpoint}`,
