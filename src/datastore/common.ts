@@ -1289,7 +1289,7 @@ export interface BlockInsertValues {
   execution_cost_runtime: number;
   execution_cost_write_count: number;
   execution_cost_write_length: number;
-  size: number;
+  tx_total_size: number;
   tx_count: number;
   signer_bitvec: string | null;
   signer_signatures: PgBytea[] | null;

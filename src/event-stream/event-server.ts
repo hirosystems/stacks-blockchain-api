@@ -1068,6 +1068,8 @@ export function parseNewBlockMessage(
         write_length: 0,
       }
     );
+  // Compute total transaction size in this block. Remove `0x` prefix and check byte length on all
+  // raw txs.
   const txTotalSize = parsedTxs.reduce(
     (acc, { core_tx: { raw_tx } }) => acc + Math.ceil((raw_tx.length - 2) / 2),
     0
