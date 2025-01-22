@@ -64,6 +64,7 @@ describe('smart contract tests', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
       tx_count: 1,
+      tx_total_size: 1,
       signer_bitvec: null,
       signer_signatures: null,
     };
@@ -219,6 +220,7 @@ describe('smart contract tests', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
       tx_count: 1,
+      tx_total_size: 1,
       signer_bitvec: null,
       signer_signatures: null,
     };
@@ -333,6 +335,7 @@ describe('smart contract tests', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
       tx_count: 1,
+      tx_total_size: 1,
       signer_bitvec: null,
       signer_signatures: null,
     };
@@ -445,6 +448,7 @@ describe('smart contract tests', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
       tx_count: 1,
+      tx_total_size: 1,
       signer_bitvec: null,
       signer_signatures: null,
     };
