@@ -23,6 +23,12 @@ function getReqUrl(req: { url: string; hostname: string }): URL {
 
 // https://github.com/stacks-network/stacks-core/blob/20d5137438c7d169ea97dd2b6a4d51b8374a4751/stackslib/src/chainstate/stacks/db/blocks.rs#L338
 const MINIMUM_TX_FEE_RATE_PER_BYTE = 1;
+// https://github.com/stacks-network/stacks-core/blob/eb865279406d0700474748dc77df100cba6fa98e/stackslib/src/core/mod.rs#L212-L218
+const BLOCK_LIMIT_WRITE_LENGTH = 15_000_000;
+const BLOCK_LIMIT_WRITE_COUNT = 15_000;
+const BLOCK_LIMIT_READ_LENGTH = 100_000_000;
+const BLOCK_LIMIT_READ_COUNT = 15_000;
+const BLOCK_LIMIT_RUNTIME = 5_000_000_000;
 
 interface FeeEstimation {
   fee: number;
@@ -126,6 +132,22 @@ export const CoreNodeRpcProxyRouter: FastifyPluginAsync<
     } catch (error) {
       logger.error(error, 'Error logging tx broadcast');
     }
+  }
+
+  /// Checks if we should modify all transaction fee estimations to always use the minimum fee. This
+  /// only happens if there is no fee market i.e. if the last N block tenures have not been full. We
+  /// use a threshold of 90% to determine if a block size dimension is full.
+  async function shouldUseTransactionMinimumFee(): Promise<boolean> {
+    const tenureWindow = parseInt(process.env['STACKS_CORE_FEE_TENURE_FULLNESS_WINDOW'] ?? '5');
+    const averageCosts = await fastify.db.getTenureAverageExecutionCosts(tenureWindow);
+    if (!averageCosts) return false;
+    return (
+      averageCosts.read_count < BLOCK_LIMIT_READ_COUNT * 0.9 &&
+      averageCosts.read_length < BLOCK_LIMIT_READ_LENGTH * 0.9 &&
+      averageCosts.write_count < BLOCK_LIMIT_WRITE_COUNT * 0.9 &&
+      averageCosts.write_length < BLOCK_LIMIT_WRITE_LENGTH * 0.9 &&
+      averageCosts.runtime < BLOCK_LIMIT_RUNTIME * 0.9
+    );
   }
 
   const maxBodySize = 10_000_000; // 10 MB max POST body size
@@ -233,11 +255,7 @@ export const CoreNodeRpcProxyRouter: FastifyPluginAsync<
           const txId = responseBuffer.toString();
           await logTxBroadcast(txId);
           await reply.send(responseBuffer);
-        } else if (
-          getReqUrl(req).pathname === '/v2/fees/transaction' &&
-          reply.statusCode === 200 &&
-          feeEstimationModifier !== null
-        ) {
+        } else if (getReqUrl(req).pathname === '/v2/fees/transaction' && reply.statusCode === 200) {
           const reqBody = req.body as {
             estimated_len?: number;
             transaction_payload: string;
@@ -248,13 +266,23 @@ export const CoreNodeRpcProxyRouter: FastifyPluginAsync<
             reqBody.transaction_payload.length / 2
           );
           const minFee = txSize * MINIMUM_TX_FEE_RATE_PER_BYTE;
-          const modifier = feeEstimationModifier;
+          const modifier = feeEstimationModifier ?? 1.0;
           const responseBuffer = await readRequestBody(response as ServerResponse);
           const responseJson = JSON.parse(responseBuffer.toString()) as FeeEstimateResponse;
-          responseJson.estimations.forEach(estimation => {
-            // max(min fee, estimate returned by node * configurable modifier)
-            estimation.fee = Math.max(minFee, Math.round(estimation.fee * modifier));
-          });
+
+          if (await shouldUseTransactionMinimumFee()) {
+            // Tenures are not full i.e. there's no fee market. Return the minimum fee.
+            responseJson.estimations.forEach(estimation => {
+              estimation.fee = minFee;
+            });
+          } else {
+            // Fall back to Stacks core's estimate, but modify it according to the ENV configured
+            // multiplier.
+            responseJson.estimations.forEach(estimation => {
+              // max(min fee, estimate returned by node * configurable modifier)
+              estimation.fee = Math.max(minFee, Math.round(estimation.fee * modifier));
+            });
+          }
           await reply.removeHeader('content-length').send(JSON.stringify(responseJson));
         } else {
           await reply.send(response);
