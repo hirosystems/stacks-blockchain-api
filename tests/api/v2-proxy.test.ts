@@ -6,10 +6,11 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
 import * as nock from 'nock';
-import { DbBlock } from '../../src/datastore/common';
+import { DbBlock, DbTxTypeId } from '../../src/datastore/common';
 import { PgWriteStore } from '../../src/datastore/pg-write-store';
 import { migrate } from '../utils/test-helpers';
 import { MockAgent, setGlobalDispatcher, getGlobalDispatcher } from 'undici';
+import { TestBlockBuilder } from '../utils/test-builders';
 
 describe('v2-proxy tests', () => {
   let db: PgWriteStore;
@@ -84,6 +85,39 @@ describe('v2-proxy tests', () => {
           transaction_payload:
             '021af942874ce525e87f21bbe8c121b12fac831d02f4086765742d696e666f0b7570646174652d696e666f00000000',
         };
+
+        // Write 6 tenures, 10 blocks each
+        await db.update(new TestBlockBuilder({ block_height: 0, block_hash: '0x00' }).build());
+        for (let t = 0; t < 6; t++) {
+          for (let b = 0; b < 10; b++) {
+            const block_height = t * 10 + b + 1;
+            const block = new TestBlockBuilder({
+              block_height,
+              index_block_hash: `0x${block_height.toString(16).padStart(2, '0')}`,
+              parent_index_block_hash: `0x${(block_height - 1).toString(16).padStart(2, '0')}`,
+              // Empty blocks
+              execution_cost_read_count: 1,
+              execution_cost_read_length: 1,
+              execution_cost_runtime: 1,
+              execution_cost_write_count: 1,
+              execution_cost_write_length: 1,
+              tx_total_size: 10,
+            });
+            if (b == 0) {
+              block.addTx({
+                type_id: DbTxTypeId.TenureChange,
+                tenure_change_burn_view_consensus_hash: '0x01',
+                tenure_change_cause: 0,
+                tenure_change_prev_tenure_consensus_hash: '0x00',
+                tenure_change_previous_tenure_blocks: 0,
+                tenure_change_previous_tenure_end: '0x00',
+                tenure_change_pubkey_hash: '0x01',
+                tenure_change_tenure_consensus_hash: '0x01',
+              });
+            }
+            await db.update(block.build());
+          }
+        }
 
         mockAgent
           .get(`http://${primaryProxyEndpoint}`)

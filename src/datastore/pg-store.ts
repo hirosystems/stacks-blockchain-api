@@ -4534,7 +4534,7 @@ export class PgStore extends BasePgStore {
     return parseInt(result[0]?.count ?? '0');
   }
 
-  async getTenureAverageExecutionCosts(numTenures: number) {
+  async getLastTenureWeightedAverageExecutionCosts(numTenures: number) {
     return await this.sqlTransaction(async sql => {
       // Get the last N+1 tenure change blocks so we can get a total of N tenures.
       const tenureChanges = await sql<{ block_height: number }[]>`
@@ -4559,12 +4559,13 @@ export class PgStore extends BasePgStore {
       let high = low;
       for (let i = 1; i < tenureChanges.length; i++) {
         high = tenureChanges[i].block_height;
-        tenureCond = sql`${tenureCond} WHEN block_height BETWEEN ${low} AND ${high} THEN ${i}`;
+        tenureCond = sql`${tenureCond} WHEN block_height BETWEEN ${low} AND ${high} THEN ${i}::int`;
         low = high + 1;
       }
       tenureCond = sql`${tenureCond} ELSE ${tenureChanges.length}`;
 
-      // Sum and return each tenure's execution costs.
+      // Sum and return weighted average tenure execution costs. Weight will lean towards latest
+      // tenure.
       const result = await sql<
         {
           runtime: number;
@@ -4572,6 +4573,7 @@ export class PgStore extends BasePgStore {
           read_length: number;
           write_count: number;
           write_length: number;
+          tx_total_size: number;
         }[]
       >`
         WITH grouped_blocks AS (
@@ -4582,6 +4584,7 @@ export class PgStore extends BasePgStore {
             execution_cost_read_length,
             execution_cost_write_count,
             execution_cost_write_length,
+            tx_total_size,
             CASE
               ${tenureCond}
             END AS tenure_index
@@ -4590,24 +4593,27 @@ export class PgStore extends BasePgStore {
             AND block_height < ${currentTenureBlock}
           ORDER BY block_height DESC
         ),
-        tenure_costs AS (
+        weighed_tenure_costs AS (
           SELECT
-            SUM(execution_cost_runtime) AS runtime,
-            SUM(execution_cost_read_count) AS read_count,
-            SUM(execution_cost_read_length) AS read_length,
-            SUM(execution_cost_write_count) AS write_count,
-            SUM(execution_cost_write_length) AS write_length
+            SUM(execution_cost_runtime * tenure_index) AS runtime,
+            SUM(execution_cost_read_count * tenure_index) AS read_count,
+            SUM(execution_cost_read_length * tenure_index) AS read_length,
+            SUM(execution_cost_write_count * tenure_index) AS write_count,
+            SUM(execution_cost_write_length * tenure_index) AS write_length,
+            SUM(tx_total_size * tenure_index) AS tx_total_size,
+            tenure_index AS weight
           FROM grouped_blocks
           GROUP BY tenure_index
           ORDER BY tenure_index DESC
         )
         SELECT
-          AVG(runtime) AS runtime,
-          AVG(read_count) AS read_count,
-          AVG(read_length) AS read_length,
-          AVG(write_count) AS write_count,
-          AVG(write_length) AS write_length
-        FROM tenure_costs
+          SUM(runtime) / SUM(weight) AS runtime,
+          SUM(read_count) / SUM(weight) AS read_count,
+          SUM(read_length) / SUM(weight) AS read_length,
+          SUM(write_count) / SUM(weight) AS write_count,
+          SUM(write_length) / SUM(weight) AS write_length,
+          SUM(tx_total_size) / SUM(weight) AS tx_total_size
+        FROM weighed_tenure_costs
       `;
       return result[0];
     });

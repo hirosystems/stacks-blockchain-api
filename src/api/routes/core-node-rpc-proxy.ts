@@ -34,13 +34,17 @@ function parseFloatEnv(env: string) {
 // https://github.com/stacks-network/stacks-core/blob/20d5137438c7d169ea97dd2b6a4d51b8374a4751/stackslib/src/chainstate/stacks/db/blocks.rs#L338
 const MINIMUM_TX_FEE_RATE_PER_BYTE = 1;
 // https://github.com/stacks-network/stacks-core/blob/eb865279406d0700474748dc77df100cba6fa98e/stackslib/src/core/mod.rs#L212-L218
-const BLOCK_LIMIT_WRITE_LENGTH = 15_000_000;
-const BLOCK_LIMIT_WRITE_COUNT = 15_000;
-const BLOCK_LIMIT_READ_LENGTH = 100_000_000;
-const BLOCK_LIMIT_READ_COUNT = 15_000;
-const BLOCK_LIMIT_RUNTIME = 5_000_000_000;
+const DEFAULT_BLOCK_LIMIT_WRITE_LENGTH = 15_000_000;
+const DEFAULT_BLOCK_LIMIT_WRITE_COUNT = 15_000;
+const DEFAULT_BLOCK_LIMIT_READ_LENGTH = 100_000_000;
+const DEFAULT_BLOCK_LIMIT_READ_COUNT = 15_000;
+const DEFAULT_BLOCK_LIMIT_RUNTIME = 5_000_000_000;
 // https://github.com/stacks-network/stacks-core/blob/9c8ed7b9df51a0b5d96135cb594843091311b20e/stackslib/src/chainstate/stacks/mod.rs#L1096
 const BLOCK_LIMIT_SIZE = 2 * 1024 * 1024;
+
+const DEFAULT_FEE_ESTIMATION_MODIFIER = 1.0;
+const DEFAULT_FEE_TENURE_FULLNESS_WINDOW = 5;
+const DEFAULT_FEE_DIMENSION_FULLNESS_THRESHOLD = 0.9;
 
 interface FeeEstimation {
   fee: number;
@@ -155,31 +159,43 @@ export const CoreNodeRpcProxyRouter: FastifyPluginAsync<
     }
   );
 
-  let feeEstimationModifier = 1.0;
-  let feeTenureWindow = 5;
-  let feeDimensionFullnessThreshold = 0.9;
+  const feeOpts = {
+    estimationModifier: DEFAULT_FEE_ESTIMATION_MODIFIER,
+    tenureFullnessWindow: DEFAULT_FEE_TENURE_FULLNESS_WINDOW,
+    dimensionFullnessThreshold: DEFAULT_FEE_DIMENSION_FULLNESS_THRESHOLD,
+    readCountLimit: DEFAULT_BLOCK_LIMIT_READ_COUNT,
+    readLengthLimit: DEFAULT_BLOCK_LIMIT_READ_LENGTH,
+    writeCountLimit: DEFAULT_BLOCK_LIMIT_WRITE_COUNT,
+    writeLengthLimit: DEFAULT_BLOCK_LIMIT_WRITE_LENGTH,
+    runtimeLimit: DEFAULT_BLOCK_LIMIT_RUNTIME,
+    sizeLimit: BLOCK_LIMIT_SIZE,
+  };
   fastify.addHook('onReady', () => {
-    feeEstimationModifier =
-      parseFloatEnv('STACKS_CORE_FEE_ESTIMATION_MODIFIER') ?? feeEstimationModifier;
-    feeTenureWindow = parseFloatEnv('STACKS_CORE_FEE_TENURE_FULLNESS_WINDOW') ?? feeTenureWindow;
-    feeDimensionFullnessThreshold =
+    feeOpts.estimationModifier =
+      parseFloatEnv('STACKS_CORE_FEE_ESTIMATION_MODIFIER') ?? feeOpts.estimationModifier;
+    feeOpts.tenureFullnessWindow =
+      parseFloatEnv('STACKS_CORE_FEE_TENURE_FULLNESS_WINDOW') ?? feeOpts.tenureFullnessWindow;
+    feeOpts.dimensionFullnessThreshold =
       parseFloatEnv('STACKS_CORE_FEE_DIMENSION_FULLNESS_THRESHOLD') ??
-      feeDimensionFullnessThreshold;
+      feeOpts.dimensionFullnessThreshold;
+    // TODO: Get tenure limits from /v2/pox
   });
 
   /// Checks if we should modify all transaction fee estimations to always use the minimum fee. This
   /// only happens if there is no fee market i.e. if the last N block tenures have not been full. We
   /// use a threshold to determine if a block size dimension is full.
   async function shouldUseTransactionMinimumFee(): Promise<boolean> {
-    const averageCosts = await fastify.db.getTenureAverageExecutionCosts(feeTenureWindow);
+    const averageCosts = await fastify.db.getLastTenureWeightedAverageExecutionCosts(
+      feeOpts.tenureFullnessWindow
+    );
     if (!averageCosts) return false;
     return (
-      averageCosts.read_count < BLOCK_LIMIT_READ_COUNT * feeDimensionFullnessThreshold &&
-      averageCosts.read_length < BLOCK_LIMIT_READ_LENGTH * feeDimensionFullnessThreshold &&
-      averageCosts.write_count < BLOCK_LIMIT_WRITE_COUNT * feeDimensionFullnessThreshold &&
-      averageCosts.write_length < BLOCK_LIMIT_WRITE_LENGTH * feeDimensionFullnessThreshold &&
-      averageCosts.runtime < BLOCK_LIMIT_RUNTIME * feeDimensionFullnessThreshold &&
-      averageCosts.size < BLOCK_LIMIT_SIZE * feeDimensionFullnessThreshold
+      averageCosts.read_count < feeOpts.readCountLimit * feeOpts.dimensionFullnessThreshold &&
+      averageCosts.read_length < feeOpts.readLengthLimit * feeOpts.dimensionFullnessThreshold &&
+      averageCosts.write_count < feeOpts.writeCountLimit * feeOpts.dimensionFullnessThreshold &&
+      averageCosts.write_length < feeOpts.writeLengthLimit * feeOpts.dimensionFullnessThreshold &&
+      averageCosts.runtime < feeOpts.runtimeLimit * feeOpts.dimensionFullnessThreshold &&
+      averageCosts.tx_total_size < feeOpts.sizeLimit * feeOpts.dimensionFullnessThreshold
     );
   }
 
@@ -279,7 +295,6 @@ export const CoreNodeRpcProxyRouter: FastifyPluginAsync<
             reqBody.transaction_payload.length / 2
           );
           const minFee = txSize * MINIMUM_TX_FEE_RATE_PER_BYTE;
-          const modifier = feeEstimationModifier ?? 1.0;
           const responseBuffer = await readRequestBody(response as ServerResponse);
           const responseJson = JSON.parse(responseBuffer.toString()) as FeeEstimateResponse;
 
@@ -293,7 +308,10 @@ export const CoreNodeRpcProxyRouter: FastifyPluginAsync<
             // multiplier.
             responseJson.estimations.forEach(estimation => {
               // max(min fee, estimate returned by node * configurable modifier)
-              estimation.fee = Math.max(minFee, Math.round(estimation.fee * modifier));
+              estimation.fee = Math.max(
+                minFee,
+                Math.round(estimation.fee * feeOpts.estimationModifier)
+              );
             });
           }
           await reply.removeHeader('content-length').send(JSON.stringify(responseJson));

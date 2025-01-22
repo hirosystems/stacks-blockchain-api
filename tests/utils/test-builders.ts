@@ -101,6 +101,12 @@ export interface TestBlockArgs {
   signer_bitvec?: string;
   signer_signatures?: string[];
   tenure_height?: number;
+  execution_cost_read_count?: number;
+  execution_cost_read_length?: number;
+  execution_cost_runtime?: number;
+  execution_cost_write_count?: number;
+  execution_cost_write_length?: number;
+  tx_total_size?: number;
 }
 
 /**
