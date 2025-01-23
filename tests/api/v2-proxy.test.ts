@@ -57,6 +57,7 @@ describe('v2-proxy tests', () => {
     await useWithCleanup(
       () => {
         const restoreEnvVars = withEnvVars(
+          ['STACKS_CORE_FEE_ESTIMATOR_ENABLED', '1'],
           ['STACKS_CORE_FEE_ESTIMATION_MODIFIER', feeEstimationModifier.toString()],
           ['STACKS_CORE_PROXY_HOST', primaryProxyEndpoint.split(':')[0]],
           ['STACKS_CORE_PROXY_PORT', primaryProxyEndpoint.split(':')[1]],

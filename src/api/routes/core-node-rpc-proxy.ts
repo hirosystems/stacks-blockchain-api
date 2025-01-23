@@ -8,6 +8,7 @@ import { TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
 import { Server, ServerResponse } from 'node:http';
 import { fastifyHttpProxy } from '@fastify/http-proxy';
 import { StacksCoreRpcClient } from '../../core-rpc/client';
+import { parseBoolean } from '@hirosystems/api-toolkit';
 
 function GetStacksNodeProxyEndpoint() {
   // Use STACKS_CORE_PROXY env vars if available, otherwise fallback to `STACKS_CORE_RPC
@@ -178,6 +179,7 @@ export const CoreNodeRpcProxyRouter: FastifyPluginAsync<
   );
 
   // Fee estimator options
+  let feeEstimatorEnabled = false;
   const feeOpts: FeeEstimateProxyOptions = {
     estimationModifier: DEFAULT_FEE_ESTIMATION_MODIFIER,
     pastTenureFullnessWindow: DEFAULT_FEE_PAST_TENURE_FULLNESS_WINDOW,
@@ -193,6 +195,9 @@ export const CoreNodeRpcProxyRouter: FastifyPluginAsync<
     minTxFeeRatePerByte: MINIMUM_TX_FEE_RATE_PER_BYTE,
   };
   fastify.addHook('onReady', async () => {
+    feeEstimatorEnabled = parseBoolean(process.env['STACKS_CORE_FEE_ESTIMATOR_ENABLED']);
+    if (!feeEstimatorEnabled) return;
+
     feeOpts.estimationModifier =
       parseFloatEnv('STACKS_CORE_FEE_ESTIMATION_MODIFIER') ?? feeOpts.estimationModifier;
     feeOpts.pastTenureFullnessWindow =
@@ -345,7 +350,11 @@ export const CoreNodeRpcProxyRouter: FastifyPluginAsync<
           const txId = responseBuffer.toString();
           await logTxBroadcast(txId);
           await reply.send(responseBuffer);
-        } else if (getReqUrl(req).pathname === '/v2/fees/transaction' && reply.statusCode === 200) {
+        } else if (
+          getReqUrl(req).pathname === '/v2/fees/transaction' &&
+          reply.statusCode === 200 &&
+          feeEstimatorEnabled
+        ) {
           const reqBody = req.body as {
             estimated_len?: number;
             transaction_payload: string;
