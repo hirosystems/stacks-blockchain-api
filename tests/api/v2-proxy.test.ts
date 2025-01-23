@@ -32,12 +32,24 @@ describe('v2-proxy tests', () => {
   test('tx fee estimation', async () => {
     const primaryProxyEndpoint = 'proxy-stacks-node:12345';
     const feeEstimationModifier = 0.5;
+    const epochLimits = {
+      write_length: 15000000,
+      write_count: 15000,
+      read_length: 100000000,
+      read_count: 15000,
+      runtime: 5000000000,
+    };
+
     await useWithCleanup(
       () => {
         const restoreEnvVars = withEnvVars(
           ['STACKS_CORE_FEE_ESTIMATION_MODIFIER', feeEstimationModifier.toString()],
           ['STACKS_CORE_PROXY_HOST', primaryProxyEndpoint.split(':')[0]],
-          ['STACKS_CORE_PROXY_PORT', primaryProxyEndpoint.split(':')[1]]
+          ['STACKS_CORE_PROXY_PORT', primaryProxyEndpoint.split(':')[1]],
+          ['STACKS_CORE_FEE_PAST_TENURE_FULLNESS_WINDOW', '5'],
+          ['STACKS_CORE_FEE_PAST_DIMENSION_FULLNESS_THRESHOLD', '0.9'],
+          ['STACKS_CORE_FEE_CURRENT_DIMENSION_FULLNESS_THRESHOLD', '0.5'],
+          ['STACKS_CORE_FEE_CURRENT_BLOCK_COUNT_MINIMUM', '5']
         );
         return [, () => restoreEnvVars()] as const;
       },
@@ -45,6 +57,20 @@ describe('v2-proxy tests', () => {
         const agent = new MockAgent();
         const originalAgent = getGlobalDispatcher();
         setGlobalDispatcher(agent);
+        // Set Stacks node tenure limits.
+        nock('http://127.0.0.1:20443')
+          .get('/v2/pox')
+          .reply(200, {
+            epochs: [
+              {
+                epoch_id: 'Epoch31',
+                start_height: 0,
+                end_height: 200000,
+                block_limit: epochLimits,
+                network_epoch: 12,
+              },
+            ],
+          });
         return [agent, () => setGlobalDispatcher(originalAgent)] as const;
       },
       async () => {
@@ -85,40 +111,24 @@ describe('v2-proxy tests', () => {
           transaction_payload:
             '021af942874ce525e87f21bbe8c121b12fac831d02f4086765742d696e666f0b7570646174652d696e666f00000000',
         };
-
-        // Write 6 tenures, 10 blocks each
-        await db.update(new TestBlockBuilder({ block_height: 0, block_hash: '0x00' }).build());
-        for (let t = 0; t < 6; t++) {
-          for (let b = 0; b < 10; b++) {
-            const block_height = t * 10 + b + 1;
-            const block = new TestBlockBuilder({
-              block_height,
-              index_block_hash: `0x${block_height.toString(16).padStart(2, '0')}`,
-              parent_index_block_hash: `0x${(block_height - 1).toString(16).padStart(2, '0')}`,
-              // Empty blocks
-              execution_cost_read_count: 1,
-              execution_cost_read_length: 1,
-              execution_cost_runtime: 1,
-              execution_cost_write_count: 1,
-              execution_cost_write_length: 1,
-              tx_total_size: 10,
-            });
-            if (b == 0) {
-              block.addTx({
-                type_id: DbTxTypeId.TenureChange,
-                tenure_change_burn_view_consensus_hash: '0x01',
-                tenure_change_cause: 0,
-                tenure_change_prev_tenure_consensus_hash: '0x00',
-                tenure_change_previous_tenure_blocks: 0,
-                tenure_change_previous_tenure_end: '0x00',
-                tenure_change_pubkey_hash: '0x01',
-                tenure_change_tenure_consensus_hash: '0x01',
-              });
-            }
-            await db.update(block.build());
-          }
-        }
-
+        const expectedMinFee = Math.max(
+          testRequest.estimated_len ?? 0,
+          testRequest.transaction_payload.length / 2
+        );
+        const expectedMinResponse = {
+          ...primaryStubbedResponse,
+        };
+        expectedMinResponse.estimations = expectedMinResponse.estimations.map(est => ({
+          ...est,
+          fee: expectedMinFee,
+        }));
+        const expectedModifiedResponse = {
+          ...primaryStubbedResponse,
+        };
+        expectedModifiedResponse.estimations = expectedModifiedResponse.estimations.map(est => ({
+          ...est,
+          fee: Math.max(expectedMinFee, Math.round(est.fee * feeEstimationModifier)),
+        }));
         mockAgent
           .get(`http://${primaryProxyEndpoint}`)
           .intercept({
@@ -127,26 +137,78 @@ describe('v2-proxy tests', () => {
           })
           .reply(200, JSON.stringify(primaryStubbedResponse), {
             headers: { 'Content-Type': 'application/json' },
-          });
+          })
+          .persist();
+        const writeTenures = async (
+          count: number,
+          blocksPerTenure: number,
+          currentHeight: number,
+          cost: {
+            execution_cost_read_count?: number;
+            execution_cost_read_length?: number;
+            execution_cost_runtime?: number;
+            execution_cost_write_count?: number;
+            execution_cost_write_length?: number;
+            tx_total_size?: number;
+          }
+        ) => {
+          let block_height = currentHeight;
+          for (let t = 0; t < count; t++) {
+            for (let b = 0; b < blocksPerTenure; b++) {
+              block_height++;
+              const block = new TestBlockBuilder({
+                block_height,
+                index_block_hash: `0x${block_height.toString(16).padStart(6, '0')}`,
+                parent_index_block_hash: `0x${(block_height - 1).toString(16).padStart(6, '0')}`,
+                execution_cost_read_count: cost.execution_cost_read_count ?? 0,
+                execution_cost_read_length: cost.execution_cost_read_length ?? 0,
+                execution_cost_runtime: cost.execution_cost_runtime ?? 0,
+                execution_cost_write_count: cost.execution_cost_write_count ?? 0,
+                execution_cost_write_length: cost.execution_cost_write_length ?? 0,
+                tx_total_size: cost.tx_total_size ?? 0,
+              });
+              if (b == 0) {
+                block.addTx({
+                  type_id: DbTxTypeId.TenureChange,
+                  tenure_change_burn_view_consensus_hash: '0x01',
+                  tenure_change_cause: 0,
+                  tenure_change_prev_tenure_consensus_hash: '0x00',
+                  tenure_change_previous_tenure_blocks: 0,
+                  tenure_change_previous_tenure_end: '0x00',
+                  tenure_change_pubkey_hash: '0x01',
+                  tenure_change_tenure_consensus_hash: '0x01',
+                });
+              }
+              await db.update(block.build());
+            }
+          }
+          return block_height;
+        };
 
-        const postTxReq = await supertest(api.server)
+        await db.update(new TestBlockBuilder({ block_height: 0, block_hash: '0x00' }).build());
+        let block_height = 0;
+
+        // TEST 1 ==> Past tenures are empty, including the current tenure. Fee returned is the
+        // minimum.
+        block_height = await writeTenures(7, 10, block_height, {});
+        let postTxReq = await supertest(api.server)
           .post(`/v2/fees/transaction`)
           .set('Content-Type', 'application/json')
           .send(JSON.stringify(testRequest));
         expect(postTxReq.status).toBe(200);
-        // Expected min fee is the byte size because MINIMUM_TX_FEE_RATE_PER_BYTE=1
-        const expectedMinFee = Math.max(
-          testRequest.estimated_len ?? 0,
-          testRequest.transaction_payload.length / 2
-        );
-        const expectedResponse = {
-          ...primaryStubbedResponse,
-        };
-        expectedResponse.estimations = expectedResponse.estimations.map(est => ({
-          ...est,
-          fee: Math.max(expectedMinFee, Math.round(est.fee * feeEstimationModifier)),
-        }));
-        expect(postTxReq.body).toEqual(expectedResponse);
+        expect(postTxReq.body).toEqual(expectedMinResponse);
+
+        // TEST 2 ==> Current tenure gets a cost spike above 50%, so we start looking at the moving
+        // cost average of latest tenures. Since they're empty, though, we also get minimum fees.
+        block_height = await writeTenures(1, 10, block_height, {
+          execution_cost_read_count: epochLimits.read_count * 0.6,
+        });
+        postTxReq = await supertest(api.server)
+          .post(`/v2/fees/transaction`)
+          .set('Content-Type', 'application/json')
+          .send(JSON.stringify(testRequest));
+        expect(postTxReq.status).toBe(200);
+        expect(postTxReq.body).toEqual(expectedMinResponse);
       }
     );
   });
