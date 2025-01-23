@@ -14,6 +14,13 @@ import { TestBlockBuilder } from '../utils/test-builders';
 
 describe('v2-proxy tests', () => {
   let db: PgWriteStore;
+  const epochLimits = {
+    write_length: 15000000,
+    write_count: 15000,
+    read_length: 100000000,
+    read_count: 15000,
+    runtime: 5000000000,
+  };
 
   beforeEach(async () => {
     await migrate('up');
@@ -22,6 +29,20 @@ describe('v2-proxy tests', () => {
       withNotifier: false,
       skipMigrations: true,
     });
+    // Set Stacks node tenure limits.
+    nock('http://127.0.0.1:20443')
+      .get('/v2/pox')
+      .reply(200, {
+        epochs: [
+          {
+            epoch_id: 'Epoch31',
+            start_height: 0,
+            end_height: 200000,
+            block_limit: epochLimits,
+            network_epoch: 12,
+          },
+        ],
+      });
   });
 
   afterEach(async () => {
@@ -32,13 +53,6 @@ describe('v2-proxy tests', () => {
   test('tx fee estimation', async () => {
     const primaryProxyEndpoint = 'proxy-stacks-node:12345';
     const feeEstimationModifier = 0.5;
-    const epochLimits = {
-      write_length: 15000000,
-      write_count: 15000,
-      read_length: 100000000,
-      read_count: 15000,
-      runtime: 5000000000,
-    };
 
     await useWithCleanup(
       () => {
@@ -57,20 +71,6 @@ describe('v2-proxy tests', () => {
         const agent = new MockAgent();
         const originalAgent = getGlobalDispatcher();
         setGlobalDispatcher(agent);
-        // Set Stacks node tenure limits.
-        nock('http://127.0.0.1:20443')
-          .get('/v2/pox')
-          .reply(200, {
-            epochs: [
-              {
-                epoch_id: 'Epoch31',
-                start_height: 0,
-                end_height: 200000,
-                block_limit: epochLimits,
-                network_epoch: 12,
-              },
-            ],
-          });
         return [agent, () => setGlobalDispatcher(originalAgent)] as const;
       },
       async () => {
@@ -81,6 +81,7 @@ describe('v2-proxy tests', () => {
         return [apiServer, apiServer.terminate] as const;
       },
       async (_, mockAgent, api) => {
+        // Stub responses.
         const primaryStubbedResponse = {
           cost_scalar_change_by_byte: 0.00476837158203125,
           estimated_cost: {
@@ -139,6 +140,8 @@ describe('v2-proxy tests', () => {
             headers: { 'Content-Type': 'application/json' },
           })
           .persist();
+
+        // Creates tenures with total cost per tenure divided into its blocks.
         const writeTenures = async (
           count: number,
           blocksPerTenure: number,
@@ -160,12 +163,22 @@ describe('v2-proxy tests', () => {
                 block_height,
                 index_block_hash: `0x${block_height.toString(16).padStart(6, '0')}`,
                 parent_index_block_hash: `0x${(block_height - 1).toString(16).padStart(6, '0')}`,
-                execution_cost_read_count: cost.execution_cost_read_count ?? 0,
-                execution_cost_read_length: cost.execution_cost_read_length ?? 0,
-                execution_cost_runtime: cost.execution_cost_runtime ?? 0,
-                execution_cost_write_count: cost.execution_cost_write_count ?? 0,
-                execution_cost_write_length: cost.execution_cost_write_length ?? 0,
-                tx_total_size: cost.tx_total_size ?? 0,
+                execution_cost_read_count: Math.round(
+                  (cost.execution_cost_read_count ?? 0) / blocksPerTenure
+                ),
+                execution_cost_read_length: Math.round(
+                  (cost.execution_cost_read_length ?? 0) / blocksPerTenure
+                ),
+                execution_cost_runtime: Math.round(
+                  (cost.execution_cost_runtime ?? 0) / blocksPerTenure
+                ),
+                execution_cost_write_count: Math.round(
+                  (cost.execution_cost_write_count ?? 0) / blocksPerTenure
+                ),
+                execution_cost_write_length: Math.round(
+                  (cost.execution_cost_write_length ?? 0) / blocksPerTenure
+                ),
+                tx_total_size: Math.round((cost.tx_total_size ?? 0) / blocksPerTenure),
               });
               if (b == 0) {
                 block.addTx({
@@ -184,7 +197,6 @@ describe('v2-proxy tests', () => {
           }
           return block_height;
         };
-
         await db.update(new TestBlockBuilder({ block_height: 0, block_hash: '0x00' }).build());
         let block_height = 0;
 
@@ -198,10 +210,47 @@ describe('v2-proxy tests', () => {
         expect(postTxReq.status).toBe(200);
         expect(postTxReq.body).toEqual(expectedMinResponse);
 
-        // TEST 2 ==> Current tenure gets a cost spike above 50%, so we start looking at the moving
-        // cost average of latest tenures. Since they're empty, though, we also get minimum fees.
+        // TEST 2 ==> New tenure gets a cost spike above 50%, so we start looking at the moving cost
+        // average of latest tenures. Since they're empty, though, we also get minimum fees.
         block_height = await writeTenures(1, 10, block_height, {
           execution_cost_read_count: epochLimits.read_count * 0.6,
+        });
+        postTxReq = await supertest(api.server)
+          .post(`/v2/fees/transaction`)
+          .set('Content-Type', 'application/json')
+          .send(JSON.stringify(testRequest));
+        expect(postTxReq.status).toBe(200);
+        expect(postTxReq.body).toEqual(expectedMinResponse);
+
+        // TEST 3 ==> New tenures consistently get usage around 70%, which is not enough to be
+        // considered full. We still get minimum fees.
+        block_height = await writeTenures(7, 10, block_height, {
+          execution_cost_runtime: epochLimits.runtime * 0.7,
+        });
+        postTxReq = await supertest(api.server)
+          .post(`/v2/fees/transaction`)
+          .set('Content-Type', 'application/json')
+          .send(JSON.stringify(testRequest));
+        expect(postTxReq.status).toBe(200);
+        expect(postTxReq.body).toEqual(expectedMinResponse);
+
+        // TEST 4 ==> Tenures are now completely full. We go back to Stacks core's fee estimation
+        // with our multiplier.
+        block_height = await writeTenures(7, 10, block_height, {
+          execution_cost_runtime: epochLimits.runtime * 0.95,
+          tx_total_size: 2 * 1024 * 1024,
+        });
+        postTxReq = await supertest(api.server)
+          .post(`/v2/fees/transaction`)
+          .set('Content-Type', 'application/json')
+          .send(JSON.stringify(testRequest));
+        expect(postTxReq.status).toBe(200);
+        expect(postTxReq.body).toEqual(expectedModifiedResponse);
+
+        // TEST 5 ==> New tenure comes by which confirms the rest of pending transactions and goes
+        // back to empty. We immediately return to minimum fees.
+        block_height = await writeTenures(1, 10, block_height, {
+          execution_cost_read_count: epochLimits.read_count * 0.1,
         });
         postTxReq = await supertest(api.server)
           .post(`/v2/fees/transaction`)
