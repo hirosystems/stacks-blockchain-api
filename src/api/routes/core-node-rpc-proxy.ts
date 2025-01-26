@@ -214,7 +214,8 @@ export const CoreNodeRpcProxyRouter: FastifyPluginAsync<
       feeOpts.currentBlockCountMinimum;
 
     // Get block limits from current Stacks epoch PoX info.
-    const client = new StacksCoreRpcClient();
+    const clientInfo = stacksNodeRpcEndpoint.split(':');
+    const client = new StacksCoreRpcClient({ host: clientInfo[0], port: clientInfo[1] });
     const poxData = await client.getPox();
     const epochLimits = poxData.epochs.pop()?.block_limit;
     if (epochLimits) {
