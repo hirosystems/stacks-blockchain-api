@@ -4563,7 +4563,7 @@ export class PgStore extends BasePgStore {
         SUM(execution_cost_read_length) AS read_length,
         SUM(execution_cost_write_count) AS write_count,
         SUM(execution_cost_write_length) AS write_length,
-        SUM(tx_total_size) AS tx_total_size,
+        SUM(COALESCE(tx_total_size, 0)) AS tx_total_size,
         COUNT(*) AS block_count
       FROM blocks
       WHERE block_height >= (SELECT block_height FROM tenure_change_block)
@@ -4630,7 +4630,7 @@ export class PgStore extends BasePgStore {
           execution_cost_read_length,
           execution_cost_write_count,
           execution_cost_write_length,
-          tx_total_size,
+          COALESCE(tx_total_size, 0) AS tx_total_size,
           CASE
             ${tenureCond}
           END AS tenure_index
