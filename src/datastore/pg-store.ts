@@ -2502,7 +2502,7 @@ export class PgStore extends BasePgStore {
           COALESCE((SELECT total FROM received), 0) AS inbound,
           COALESCE((SELECT total FROM sent), 0) + COALESCE((SELECT total FROM sponsored), 0) AS outbound
       )
-      SELECT inbound, outbound, (inbound - outbound) AS delta
+      SELECT inbound, outbound, (inbound - outbound) AS delta FROM values
     `;
     return {
       inbound: BigInt(results[0]?.inbound ?? '0'),
