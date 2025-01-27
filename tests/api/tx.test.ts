@@ -1031,6 +1031,8 @@ describe('tx tests', () => {
     const expectedSponsoredRespBefore = {
       balance: '0',
       estimated_balance: '0',
+      pending_balance_inbound: '0',
+      pending_balance_outbound: '0',
       total_sent: '0',
       total_received: '0',
       total_fees_sent: '0',
@@ -1139,6 +1141,8 @@ describe('tx tests', () => {
     const expectedResp = {
       balance: '0',
       estimated_balance: '0',
+      pending_balance_inbound: '0',
+      pending_balance_outbound: '0',
       total_sent: '0',
       total_received: '0',
       total_fees_sent: '0',
@@ -1158,6 +1162,8 @@ describe('tx tests', () => {
       stx: {
         balance: '0',
         estimated_balance: '0',
+        pending_balance_inbound: '0',
+        pending_balance_outbound: '0',
         total_sent: '0',
         total_received: '0',
         total_fees_sent: '0',
@@ -1181,6 +1187,8 @@ describe('tx tests', () => {
     const expectedSponsoredRespAfter = {
       balance: '-300',
       estimated_balance: '-300',
+      pending_balance_inbound: '0',
+      pending_balance_outbound: '0',
       total_sent: '0',
       total_received: '0',
       total_fees_sent: '300',

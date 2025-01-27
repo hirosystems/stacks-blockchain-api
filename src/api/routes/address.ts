@@ -132,8 +132,8 @@ export const AddressRoutes: FastifyPluginAsync<
         const result: AddressStxBalance = {
           balance: stxBalanceResult.balance.toString(),
           estimated_balance: mempoolBalance?.toString(),
-          estimated_balance_inbound: mempoolInbound?.toString(),
-          estimated_balance_outbound: mempoolOutbound?.toString(),
+          pending_balance_inbound: mempoolInbound?.toString(),
+          pending_balance_outbound: mempoolOutbound?.toString(),
           total_sent: stxBalanceResult.totalSent.toString(),
           total_received: stxBalanceResult.totalReceived.toString(),
           total_fees_sent: stxBalanceResult.totalFeesSent.toString(),
@@ -230,8 +230,8 @@ export const AddressRoutes: FastifyPluginAsync<
           stx: {
             balance: stxBalanceResult.balance.toString(),
             estimated_balance: mempoolBalance?.toString(),
-            estimated_balance_inbound: mempoolInbound?.toString(),
-            estimated_balance_outbound: mempoolOutbound?.toString(),
+            pending_balance_inbound: mempoolInbound?.toString(),
+            pending_balance_outbound: mempoolOutbound?.toString(),
             total_sent: stxBalanceResult.totalSent.toString(),
             total_received: stxBalanceResult.totalReceived.toString(),
             total_fees_sent: stxBalanceResult.totalFeesSent.toString(),
