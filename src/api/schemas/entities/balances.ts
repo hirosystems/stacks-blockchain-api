@@ -26,6 +26,16 @@ export const StxBalanceSchema = Type.Object(
         description: 'Total STX balance considering pending mempool transactions',
       })
     ),
+    estimated_balance_inbound: Type.Optional(
+      Type.String({
+        description: 'Inbound STX balance from pending mempool transactions',
+      })
+    ),
+    estimated_balance_outbound: Type.Optional(
+      Type.String({
+        description: 'Outbound STX balance from pending mempool transactions',
+      })
+    ),
     total_sent: Type.String(),
     total_received: Type.String(),
     total_fees_sent: Type.String(),
