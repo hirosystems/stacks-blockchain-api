@@ -91,6 +91,24 @@ export const CoreNodeRpcProxyRouter: FastifyPluginAsync<
 
   logger.info(`/v2/* proxying to: ${stacksNodeRpcEndpoint}`);
 
+  // Default fee estimator options
+  let feeEstimatorEnabled = false;
+  let didReadTenureCostsFromCore = false;
+  const feeOpts: FeeEstimateProxyOptions = {
+    estimationModifier: DEFAULT_FEE_ESTIMATION_MODIFIER,
+    pastTenureFullnessWindow: DEFAULT_FEE_PAST_TENURE_FULLNESS_WINDOW,
+    pastDimensionFullnessThreshold: DEFAULT_FEE_PAST_DIMENSION_FULLNESS_THRESHOLD,
+    currentDimensionFullnessThreshold: DEFAULT_FEE_CURRENT_DIMENSION_FULLNESS_THRESHOLD,
+    currentBlockCountMinimum: DEFAULT_FEE_CURRENT_BLOCK_COUNT_MINIMUM,
+    readCountLimit: DEFAULT_BLOCK_LIMIT_READ_COUNT,
+    readLengthLimit: DEFAULT_BLOCK_LIMIT_READ_LENGTH,
+    writeCountLimit: DEFAULT_BLOCK_LIMIT_WRITE_COUNT,
+    writeLengthLimit: DEFAULT_BLOCK_LIMIT_WRITE_LENGTH,
+    runtimeLimit: DEFAULT_BLOCK_LIMIT_RUNTIME,
+    sizeLimit: BLOCK_LIMIT_SIZE,
+    minTxFeeRatePerByte: MINIMUM_TX_FEE_RATE_PER_BYTE,
+  };
+
   /**
    * Check for any extra endpoints that have been configured for performing a "multicast" for a tx submission.
    */
@@ -169,63 +187,33 @@ export const CoreNodeRpcProxyRouter: FastifyPluginAsync<
     }
   }
 
-  const maxBodySize = 10_000_000; // 10 MB max POST body size
-  fastify.addContentTypeParser(
-    'application/octet-stream',
-    { parseAs: 'buffer', bodyLimit: maxBodySize },
-    (_req, body, done) => {
-      done(null, body);
-    }
-  );
-
-  // Fee estimator options
-  let feeEstimatorEnabled = false;
-  const feeOpts: FeeEstimateProxyOptions = {
-    estimationModifier: DEFAULT_FEE_ESTIMATION_MODIFIER,
-    pastTenureFullnessWindow: DEFAULT_FEE_PAST_TENURE_FULLNESS_WINDOW,
-    pastDimensionFullnessThreshold: DEFAULT_FEE_PAST_DIMENSION_FULLNESS_THRESHOLD,
-    currentDimensionFullnessThreshold: DEFAULT_FEE_CURRENT_DIMENSION_FULLNESS_THRESHOLD,
-    currentBlockCountMinimum: DEFAULT_FEE_CURRENT_BLOCK_COUNT_MINIMUM,
-    readCountLimit: DEFAULT_BLOCK_LIMIT_READ_COUNT,
-    readLengthLimit: DEFAULT_BLOCK_LIMIT_READ_LENGTH,
-    writeCountLimit: DEFAULT_BLOCK_LIMIT_WRITE_COUNT,
-    writeLengthLimit: DEFAULT_BLOCK_LIMIT_WRITE_LENGTH,
-    runtimeLimit: DEFAULT_BLOCK_LIMIT_RUNTIME,
-    sizeLimit: BLOCK_LIMIT_SIZE,
-    minTxFeeRatePerByte: MINIMUM_TX_FEE_RATE_PER_BYTE,
-  };
-  fastify.addHook('onReady', async () => {
-    feeEstimatorEnabled = parseBoolean(process.env['STACKS_CORE_FEE_ESTIMATOR_ENABLED']);
-    if (!feeEstimatorEnabled) return;
-
-    feeOpts.estimationModifier =
-      parseFloatEnv('STACKS_CORE_FEE_ESTIMATION_MODIFIER') ?? feeOpts.estimationModifier;
-    feeOpts.pastTenureFullnessWindow =
-      parseFloatEnv('STACKS_CORE_FEE_PAST_TENURE_FULLNESS_WINDOW') ??
-      feeOpts.pastTenureFullnessWindow;
-    feeOpts.pastDimensionFullnessThreshold =
-      parseFloatEnv('STACKS_CORE_FEE_PAST_DIMENSION_FULLNESS_THRESHOLD') ??
-      feeOpts.pastDimensionFullnessThreshold;
-    feeOpts.currentDimensionFullnessThreshold =
-      parseFloatEnv('STACKS_CORE_FEE_CURRENT_DIMENSION_FULLNESS_THRESHOLD') ??
-      feeOpts.currentDimensionFullnessThreshold;
-    feeOpts.currentBlockCountMinimum =
-      parseFloatEnv('STACKS_CORE_FEE_CURRENT_BLOCK_COUNT_MINIMUM') ??
-      feeOpts.currentBlockCountMinimum;
-
-    // Get block limits from current Stacks epoch PoX info.
+  /// Retrieves the current Stacks tenure cost limits from the active PoX epoch.
+  async function readEpochTenureCostLimits(): Promise<void> {
     const clientInfo = stacksNodeRpcEndpoint.split(':');
     const client = new StacksCoreRpcClient({ host: clientInfo[0], port: clientInfo[1] });
-    const poxData = await client.getPox();
-    const epochLimits = poxData.epochs.pop()?.block_limit;
-    if (epochLimits) {
-      feeOpts.readCountLimit = epochLimits.read_count;
-      feeOpts.readLengthLimit = epochLimits.read_length;
-      feeOpts.writeCountLimit = epochLimits.write_count;
-      feeOpts.writeLengthLimit = epochLimits.write_length;
-      feeOpts.runtimeLimit = epochLimits.runtime;
+    let attempts = 0;
+    while (attempts < 5) {
+      try {
+        const poxData = await client.getPox();
+        const epochLimits = poxData.epochs.pop()?.block_limit;
+        if (epochLimits) {
+          feeOpts.readCountLimit = epochLimits.read_count;
+          feeOpts.readLengthLimit = epochLimits.read_length;
+          feeOpts.writeCountLimit = epochLimits.write_count;
+          feeOpts.writeLengthLimit = epochLimits.write_length;
+          feeOpts.runtimeLimit = epochLimits.runtime;
+        }
+        logger.info(`CoreNodeRpcProxy successfully retrieved tenure cost limits from core`);
+        return;
+      } catch (error) {
+        logger.warn(error, `CoreNodeRpcProxy unable to get current tenure cost limits`);
+        attempts++;
+      }
     }
-  });
+    logger.warn(
+      `CoreNodeRpcProxy failed to get tenure cost limits after ${attempts} attempts. Using defaults.`
+    );
+  }
 
   /// Checks if we should modify all transaction fee estimations to always use the minimum fee. This
   /// only happens if there is no fee market i.e. if the last N block tenures have not been full. We
@@ -265,6 +253,35 @@ export const CoreNodeRpcProxyRouter: FastifyPluginAsync<
       );
     });
   }
+
+  const maxBodySize = 10_000_000; // 10 MB max POST body size
+  fastify.addContentTypeParser(
+    'application/octet-stream',
+    { parseAs: 'buffer', bodyLimit: maxBodySize },
+    (_req, body, done) => {
+      done(null, body);
+    }
+  );
+
+  fastify.addHook('onReady', () => {
+    feeEstimatorEnabled = parseBoolean(process.env['STACKS_CORE_FEE_ESTIMATOR_ENABLED']);
+    if (!feeEstimatorEnabled) return;
+
+    feeOpts.estimationModifier =
+      parseFloatEnv('STACKS_CORE_FEE_ESTIMATION_MODIFIER') ?? feeOpts.estimationModifier;
+    feeOpts.pastTenureFullnessWindow =
+      parseFloatEnv('STACKS_CORE_FEE_PAST_TENURE_FULLNESS_WINDOW') ??
+      feeOpts.pastTenureFullnessWindow;
+    feeOpts.pastDimensionFullnessThreshold =
+      parseFloatEnv('STACKS_CORE_FEE_PAST_DIMENSION_FULLNESS_THRESHOLD') ??
+      feeOpts.pastDimensionFullnessThreshold;
+    feeOpts.currentDimensionFullnessThreshold =
+      parseFloatEnv('STACKS_CORE_FEE_CURRENT_DIMENSION_FULLNESS_THRESHOLD') ??
+      feeOpts.currentDimensionFullnessThreshold;
+    feeOpts.currentBlockCountMinimum =
+      parseFloatEnv('STACKS_CORE_FEE_CURRENT_BLOCK_COUNT_MINIMUM') ??
+      feeOpts.currentBlockCountMinimum;
+  });
 
   await fastify.register(fastifyHttpProxy, {
     upstream: `http://${stacksNodeRpcEndpoint}`,
@@ -356,6 +373,10 @@ export const CoreNodeRpcProxyRouter: FastifyPluginAsync<
           reply.statusCode === 200 &&
           feeEstimatorEnabled
         ) {
+          if (!didReadTenureCostsFromCore) {
+            await readEpochTenureCostLimits();
+            didReadTenureCostsFromCore = true;
+          }
           const reqBody = req.body as {
             estimated_len?: number;
             transaction_payload: string;
