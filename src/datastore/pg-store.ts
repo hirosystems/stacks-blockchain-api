@@ -2498,8 +2498,9 @@ export class PgStore extends BasePgStore {
         WHERE pruned = false AND token_transfer_recipient_address = ${principal}
       ),
       values AS (
-        COALESCE((SELECT total FROM received), 0) AS inbound,
-        COALESCE((SELECT total FROM sent), 0) + COALESCE((SELECT total FROM sponsored), 0) AS outbound
+        SELECT
+          COALESCE((SELECT total FROM received), 0) AS inbound,
+          COALESCE((SELECT total FROM sent), 0) + COALESCE((SELECT total FROM sponsored), 0) AS outbound
       )
       SELECT inbound, outbound, (inbound - outbound) AS delta
     `;
