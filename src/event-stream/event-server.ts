@@ -1068,6 +1068,12 @@ export function parseNewBlockMessage(
         write_length: 0,
       }
     );
+  // Compute total transaction size in this block. Remove `0x` prefix and check byte length on all
+  // raw txs.
+  const txTotalSize = parsedTxs.reduce(
+    (acc, { core_tx: { raw_tx } }) => acc + Math.ceil((raw_tx.length - 2) / 2),
+    0
+  );
 
   if (typeof msg.tenure_height !== 'number' && msg.signer_bitvec) {
     logger.warn(
@@ -1093,6 +1099,7 @@ export function parseNewBlockMessage(
     execution_cost_runtime: execCost.runtime,
     execution_cost_write_count: execCost.write_count,
     execution_cost_write_length: execCost.write_length,
+    tx_total_size: txTotalSize,
     tx_count: msg.transactions.length,
     block_time: blockData.block_time,
     signer_bitvec: signerBitvec,

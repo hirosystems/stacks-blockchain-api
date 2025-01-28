@@ -185,6 +185,7 @@ export const BLOCK_COLUMNS = [
   'execution_cost_write_count',
   'execution_cost_write_length',
   'tx_count',
+  'tx_total_size',
   'signer_bitvec',
   'tenure_height',
 ];
@@ -485,6 +486,7 @@ export function parseBlockQueryResult(row: BlockQueryResult): DbBlock {
     execution_cost_runtime: Number.parseInt(row.execution_cost_runtime),
     execution_cost_write_count: Number.parseInt(row.execution_cost_write_count),
     execution_cost_write_length: Number.parseInt(row.execution_cost_write_length),
+    tx_total_size: row.tx_total_size,
     tx_count: row.tx_count,
     signer_bitvec: row.signer_bitvec,
     signer_signatures: null, // this field is not queried from db by default due to size constraints

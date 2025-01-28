@@ -59,6 +59,19 @@ export interface CoreRpcPoxInfo {
     blocks_until_reward_phase: number;
     ustx_until_pox_rejection: number;
   };
+  epochs: {
+    epoch_id: string;
+    start_height: number;
+    end_height: number;
+    block_limit: {
+      write_length: number;
+      write_count: number;
+      read_length: number;
+      read_count: number;
+      runtime: number;
+    };
+    network_epoch: number;
+  }[];
 
   /** @deprecated included for backwards-compatibility */
   min_amount_ustx: number;
