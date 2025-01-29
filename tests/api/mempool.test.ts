@@ -2208,6 +2208,8 @@ describe('mempool tests', () => {
     const balance0 = await supertest(api.server).get(url);
     expect(balance0.body.balance).toEqual('2000');
     expect(balance0.body.estimated_balance).toEqual('2000');
+    expect(balance0.body.pending_balance_inbound).toEqual('0');
+    expect(balance0.body.pending_balance_outbound).toEqual('0');
 
     // STX transfer in mempool
     await db.updateMempoolTxs({
@@ -2223,6 +2225,8 @@ describe('mempool tests', () => {
     const balance1 = await supertest(api.server).get(url);
     expect(balance1.body.balance).toEqual('2000');
     expect(balance1.body.estimated_balance).toEqual('1850'); // Minus amount and fee
+    expect(balance1.body.pending_balance_inbound).toEqual('0');
+    expect(balance1.body.pending_balance_outbound).toEqual('150');
 
     // Contract call in mempool
     await db.updateMempoolTxs({
@@ -2242,6 +2246,8 @@ describe('mempool tests', () => {
     const balance1b = await supertest(api.server).get(url);
     expect(balance1b.body.balance).toEqual('2000');
     expect(balance1b.body.estimated_balance).toEqual('1800'); // Minus fee
+    expect(balance1b.body.pending_balance_inbound).toEqual('0');
+    expect(balance1b.body.pending_balance_outbound).toEqual('200');
 
     // Sponsored tx in mempool
     await db.updateMempoolTxs({
@@ -2258,6 +2264,8 @@ describe('mempool tests', () => {
     const balance2 = await supertest(api.server).get(url);
     expect(balance2.body.balance).toEqual('2000');
     expect(balance2.body.estimated_balance).toEqual('1750'); // Minus fee
+    expect(balance2.body.pending_balance_inbound).toEqual('0');
+    expect(balance2.body.pending_balance_outbound).toEqual('250');
 
     // STX received in mempool
     await db.updateMempoolTxs({
@@ -2273,6 +2281,8 @@ describe('mempool tests', () => {
     const balance3 = await supertest(api.server).get(url);
     expect(balance3.body.balance).toEqual('2000');
     expect(balance3.body.estimated_balance).toEqual('1850'); // Plus amount
+    expect(balance3.body.pending_balance_inbound).toEqual('100');
+    expect(balance3.body.pending_balance_outbound).toEqual('250');
 
     // Confirm all txs
     await db.update(
@@ -2317,5 +2327,7 @@ describe('mempool tests', () => {
     const balance4 = await supertest(api.server).get(url);
     expect(balance4.body.balance).toEqual('1850');
     expect(balance4.body.estimated_balance).toEqual('1850');
+    expect(balance4.body.pending_balance_inbound).toEqual('0');
+    expect(balance4.body.pending_balance_outbound).toEqual('0');
   });
 });
