@@ -4533,4 +4533,141 @@ export class PgStore extends BasePgStore {
     `;
     return parseInt(result[0]?.count ?? '0');
   }
+
+  /// Returns the total execution costs for the current tenure so far, including a count of the
+  /// number of blocks it contains.
+  async getCurrentTenureExecutionCosts(sql: PgSqlClient) {
+    const result = await sql<
+      {
+        runtime: string;
+        read_count: string;
+        read_length: string;
+        write_count: string;
+        write_length: string;
+        tx_total_size: string;
+        block_count: string;
+      }[]
+    >`
+      WITH tenure_change_block AS (
+        SELECT COALESCE(block_height, 0) AS block_height
+        FROM txs
+        WHERE type_id = ${DbTxTypeId.TenureChange}
+          AND canonical = TRUE
+          AND microblock_canonical = TRUE
+        ORDER BY block_height DESC
+        LIMIT 1
+      )
+      SELECT
+        SUM(execution_cost_runtime) AS runtime,
+        SUM(execution_cost_read_count) AS read_count,
+        SUM(execution_cost_read_length) AS read_length,
+        SUM(execution_cost_write_count) AS write_count,
+        SUM(execution_cost_write_length) AS write_length,
+        SUM(COALESCE(tx_total_size, 0)) AS tx_total_size,
+        COUNT(*) AS block_count
+      FROM blocks
+      WHERE block_height >= (SELECT block_height FROM tenure_change_block)
+    `;
+    return {
+      runtime: parseInt(result[0].runtime),
+      read_count: parseInt(result[0].read_count),
+      read_length: parseInt(result[0].read_length),
+      write_count: parseInt(result[0].write_count),
+      write_length: parseInt(result[0].write_length),
+      tx_total_size: parseInt(result[0].tx_total_size),
+      block_count: parseInt(result[0].block_count),
+    };
+  }
+
+  /// Returns a weighed average of all costs for the last `numTenures` tenures, excluding the
+  /// current tenure. Weight prefers most recent tenure.
+  async getLastTenureWeightedAverageExecutionCosts(sql: PgSqlClient, numTenures: number) {
+    // Get the last N+1 tenure change blocks so we can get a total of N tenures.
+    const tenureChanges = await sql<{ block_height: number }[]>`
+      WITH tenure_change_blocks AS (
+        SELECT block_height
+        FROM txs
+        WHERE type_id = ${DbTxTypeId.TenureChange}
+          AND canonical = TRUE
+          AND microblock_canonical = TRUE
+        ORDER BY block_height DESC
+        LIMIT ${numTenures + 1}
+      )
+      SELECT block_height FROM tenure_change_blocks ORDER BY block_height ASC
+    `;
+    if (tenureChanges.count != numTenures + 1) return undefined;
+    const firstTenureBlock = tenureChanges[0].block_height;
+    const currentTenureBlock = tenureChanges[numTenures].block_height;
+
+    // Group blocks by tenure.
+    let tenureCond = sql``;
+    let low = firstTenureBlock;
+    let high = low;
+    for (let i = 1; i < tenureChanges.length; i++) {
+      high = tenureChanges[i].block_height - 1;
+      tenureCond = sql`${tenureCond} WHEN block_height BETWEEN ${low} AND ${high} THEN ${i}::int`;
+      low = tenureChanges[i].block_height;
+    }
+    tenureCond = sql`${tenureCond} ELSE ${tenureChanges.length}::int`;
+
+    // Sum and return weighted average tenure execution costs. Weight will lean towards latest
+    // tenure.
+    const result = await sql<
+      {
+        runtime: string;
+        read_count: string;
+        read_length: string;
+        write_count: string;
+        write_length: string;
+        tx_total_size: string;
+      }[]
+    >`
+      WITH grouped_blocks AS (
+        SELECT
+          block_height,
+          execution_cost_runtime,
+          execution_cost_read_count,
+          execution_cost_read_length,
+          execution_cost_write_count,
+          execution_cost_write_length,
+          COALESCE(tx_total_size, 0) AS tx_total_size,
+          CASE
+            ${tenureCond}
+          END AS tenure_index
+        FROM blocks
+        WHERE block_height >= ${firstTenureBlock}
+          AND block_height < ${currentTenureBlock}
+        ORDER BY block_height DESC
+      ),
+      total_tenure_costs AS (
+        SELECT
+          SUM(execution_cost_runtime) AS runtime,
+          SUM(execution_cost_read_count) AS read_count,
+          SUM(execution_cost_read_length) AS read_length,
+          SUM(execution_cost_write_count) AS write_count,
+          SUM(execution_cost_write_length) AS write_length,
+          SUM(tx_total_size) AS tx_total_size,
+          tenure_index AS weight
+        FROM grouped_blocks
+        GROUP BY tenure_index
+        ORDER BY tenure_index DESC
+      )
+      SELECT
+        ROUND(SUM(runtime * weight) / SUM(weight)) AS runtime,
+        ROUND(SUM(read_count * weight) / SUM(weight)) AS read_count,
+        ROUND(SUM(read_length * weight) / SUM(weight)) AS read_length,
+        ROUND(SUM(write_count * weight) / SUM(weight)) AS write_count,
+        ROUND(SUM(write_length * weight) / SUM(weight)) AS write_length,
+        ROUND(SUM(tx_total_size * weight) / SUM(weight)) AS tx_total_size
+      FROM total_tenure_costs
+    `;
+    return {
+      runtime: parseInt(result[0].runtime),
+      read_count: parseInt(result[0].read_count),
+      read_length: parseInt(result[0].read_length),
+      write_count: parseInt(result[0].write_count),
+      write_length: parseInt(result[0].write_length),
+      tx_total_size: parseInt(result[0].tx_total_size),
+    };
+  }
 }

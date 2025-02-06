@@ -1,3 +1,23 @@
+## [8.6.0-beta.2](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.6.0-beta.1...v8.6.0-beta.2) (2025-02-06)
+
+
+### Bug Fixes
+
+* use an independent sql connection for mempool stats ([#2217](https://github.com/hirosystems/stacks-blockchain-api/issues/2217)) ([f8137e4](https://github.com/hirosystems/stacks-blockchain-api/commit/f8137e477db98eaf4045d6372f5825502cdd547f))
+
+## [8.6.0-beta.1](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.5.0...v8.6.0-beta.1) (2025-01-28)
+
+
+### Features
+
+* consider tenure block fullness for transaction fee estimations ([#2203](https://github.com/hirosystems/stacks-blockchain-api/issues/2203)) ([396e2ea](https://github.com/hirosystems/stacks-blockchain-api/commit/396e2ea09f02a832205b67a5d595ab7f9ab4c579))
+* store total transaction size in blocks table ([#2204](https://github.com/hirosystems/stacks-blockchain-api/issues/2204)) ([ac7c41b](https://github.com/hirosystems/stacks-blockchain-api/commit/ac7c41b86d7ead4f534a407f22f5680014ea0db0))
+
+
+### Bug Fixes
+
+* make tx_total_size column nullable ([#2207](https://github.com/hirosystems/stacks-blockchain-api/issues/2207)) ([77bd2f8](https://github.com/hirosystems/stacks-blockchain-api/commit/77bd2f884b3ad1537af917e951e1d6609df90d3c))
+
 ## [8.5.0](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.4.0...v8.5.0) (2025-01-20)
 
 

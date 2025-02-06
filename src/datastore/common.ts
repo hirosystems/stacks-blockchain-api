@@ -22,6 +22,7 @@ export interface DbBlock {
   execution_cost_runtime: number;
   execution_cost_write_count: number;
   execution_cost_write_length: number;
+  tx_total_size: number | null;
   tx_count: number;
   block_time: number;
   signer_bitvec: string | null;
@@ -862,6 +863,7 @@ export interface BlockQueryResult {
   execution_cost_runtime: string;
   execution_cost_write_count: string;
   execution_cost_write_length: string;
+  tx_total_size: number | null;
   tx_count: number;
   signer_bitvec: string | null;
   tenure_height: number | null;
@@ -1287,6 +1289,7 @@ export interface BlockInsertValues {
   execution_cost_runtime: number;
   execution_cost_write_count: number;
   execution_cost_write_length: number;
+  tx_total_size: number | null;
   tx_count: number;
   signer_bitvec: string | null;
   signer_signatures: PgBytea[] | null;

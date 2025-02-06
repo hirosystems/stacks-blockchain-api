@@ -101,6 +101,12 @@ export interface TestBlockArgs {
   signer_bitvec?: string;
   signer_signatures?: string[];
   tenure_height?: number;
+  execution_cost_read_count?: number;
+  execution_cost_read_length?: number;
+  execution_cost_runtime?: number;
+  execution_cost_write_count?: number;
+  execution_cost_write_length?: number;
+  tx_total_size?: number;
 }
 
 /**
@@ -123,12 +129,13 @@ function testBlock(args?: TestBlockArgs): DbBlock {
     burn_block_height: args?.burn_block_height ?? BURN_BLOCK_HEIGHT,
     miner_txid: args?.miner_txid ?? '0x4321',
     canonical: args?.canonical ?? true,
-    execution_cost_read_count: 0,
-    execution_cost_read_length: 0,
-    execution_cost_runtime: 0,
-    execution_cost_write_count: 0,
-    execution_cost_write_length: 0,
+    execution_cost_read_count: args?.execution_cost_read_count ?? 0,
+    execution_cost_read_length: args?.execution_cost_read_length ?? 0,
+    execution_cost_runtime: args?.execution_cost_runtime ?? 0,
+    execution_cost_write_count: args?.execution_cost_write_count ?? 0,
+    execution_cost_write_length: args?.execution_cost_write_length ?? 0,
     tx_count: 1,
+    tx_total_size: args?.tx_total_size ?? 1,
     signer_bitvec: args?.signer_bitvec ?? null,
     signer_signatures: args?.signer_signatures ?? null,
     tenure_height: args?.tenure_height ?? args?.block_height ?? BLOCK_HEIGHT,
@@ -240,11 +247,11 @@ function testTx(args?: TestTxArgs): DataStoreTxEventData {
       smart_contract_clarity_version: args?.smart_contract_clarity_version,
       smart_contract_contract_id: args?.smart_contract_contract_id,
       smart_contract_source_code: args?.smart_contract_source_code,
-      execution_cost_read_count: 0,
-      execution_cost_read_length: 0,
-      execution_cost_runtime: 0,
-      execution_cost_write_count: 0,
-      execution_cost_write_length: 0,
+      execution_cost_read_count: args?.execution_cost_read_count ?? 0,
+      execution_cost_read_length: args?.execution_cost_read_length ?? 0,
+      execution_cost_runtime: args?.execution_cost_runtime ?? 0,
+      execution_cost_write_count: args?.execution_cost_write_count ?? 0,
+      execution_cost_write_length: args?.execution_cost_write_length ?? 0,
       poison_microblock_header_1: args?.poison_microblock_header_1,
       poison_microblock_header_2: args?.poison_microblock_header_2,
       sponsor_nonce: args?.sponsor_nonce,

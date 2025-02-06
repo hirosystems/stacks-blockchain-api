@@ -480,6 +480,7 @@ export class PgWriteStore extends PgStore {
       execution_cost_runtime: block.execution_cost_runtime,
       execution_cost_write_count: block.execution_cost_write_count,
       execution_cost_write_length: block.execution_cost_write_length,
+      tx_total_size: block.tx_total_size,
       tx_count: block.tx_count,
       signer_bitvec: block.signer_bitvec,
       signer_signatures: block.signer_signatures,
@@ -2033,8 +2034,13 @@ export class PgWriteStore extends PgStore {
     this._debounceMempoolStat.debounce = setTimeout(async () => {
       this._debounceMempoolStat.running = true;
       this._debounceMempoolStat.triggeredAt = null;
+      const sql = await connectPostgres({
+        usageName: `mempool-debounce`,
+        connectionArgs: getConnectionArgs(PgServer.primary),
+        connectionConfig: getConnectionConfig(PgServer.primary),
+      });
       try {
-        const mempoolStats = await this.sqlTransaction(async sql => {
+        const mempoolStats = await sql.begin(async sql => {
           return await this.getMempoolStatsInternal({ sql });
         });
         this.eventEmitter.emit('mempoolStatsUpdate', mempoolStats);
@@ -2051,6 +2057,7 @@ export class PgWriteStore extends PgStore {
           logger.error(e, `failed to run mempool stats update`);
         }
       } finally {
+        await sql.end();
         this._debounceMempoolStat.running = false;
         this._debounceMempoolStat.debounce = null;
         if (this._debounceMempoolStat.triggeredAt != null) {
@@ -3372,6 +3379,7 @@ export class PgWriteStore extends PgStore {
       execution_cost_runtime: block.execution_cost_runtime,
       execution_cost_write_count: block.execution_cost_write_count,
       execution_cost_write_length: block.execution_cost_write_length,
+      tx_total_size: block.tx_total_size,
       tx_count: block.tx_count,
       signer_bitvec: block.signer_bitvec,
       signer_signatures: block.signer_signatures,

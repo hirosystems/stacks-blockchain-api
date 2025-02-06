@@ -7,6 +7,8 @@ import { FastifyPluginAsync } from 'fastify';
 import { TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
 import { Server, ServerResponse } from 'node:http';
 import { fastifyHttpProxy } from '@fastify/http-proxy';
+import { StacksCoreRpcClient } from '../../core-rpc/client';
+import { parseBoolean } from '@hirosystems/api-toolkit';
 
 function GetStacksNodeProxyEndpoint() {
   // Use STACKS_CORE_PROXY env vars if available, otherwise fallback to `STACKS_CORE_RPC
@@ -21,8 +23,32 @@ function getReqUrl(req: { url: string; hostname: string }): URL {
   return new URL(req.url, `http://${req.hostname}`);
 }
 
+function parseFloatEnv(env: string) {
+  const envValue = process.env[env];
+  if (envValue) {
+    const parsed = parseFloat(envValue);
+    if (!isNaN(parsed) && parsed > 0) {
+      return parsed;
+    }
+  }
+}
+
 // https://github.com/stacks-network/stacks-core/blob/20d5137438c7d169ea97dd2b6a4d51b8374a4751/stackslib/src/chainstate/stacks/db/blocks.rs#L338
 const MINIMUM_TX_FEE_RATE_PER_BYTE = 1;
+// https://github.com/stacks-network/stacks-core/blob/eb865279406d0700474748dc77df100cba6fa98e/stackslib/src/core/mod.rs#L212-L218
+const DEFAULT_BLOCK_LIMIT_WRITE_LENGTH = 15_000_000;
+const DEFAULT_BLOCK_LIMIT_WRITE_COUNT = 15_000;
+const DEFAULT_BLOCK_LIMIT_READ_LENGTH = 100_000_000;
+const DEFAULT_BLOCK_LIMIT_READ_COUNT = 15_000;
+const DEFAULT_BLOCK_LIMIT_RUNTIME = 5_000_000_000;
+// https://github.com/stacks-network/stacks-core/blob/9c8ed7b9df51a0b5d96135cb594843091311b20e/stackslib/src/chainstate/stacks/mod.rs#L1096
+const BLOCK_LIMIT_SIZE = 2 * 1024 * 1024;
+
+const DEFAULT_FEE_ESTIMATION_MODIFIER = 1.0;
+const DEFAULT_FEE_PAST_TENURE_FULLNESS_WINDOW = 5;
+const DEFAULT_FEE_PAST_DIMENSION_FULLNESS_THRESHOLD = 0.9;
+const DEFAULT_FEE_CURRENT_DIMENSION_FULLNESS_THRESHOLD = 0.5;
+const DEFAULT_FEE_CURRENT_BLOCK_COUNT_MINIMUM = 5;
 
 interface FeeEstimation {
   fee: number;
@@ -41,6 +67,21 @@ interface FeeEstimateResponse {
   estimations: [FeeEstimation, FeeEstimation, FeeEstimation];
 }
 
+interface FeeEstimateProxyOptions {
+  estimationModifier: number;
+  pastTenureFullnessWindow: number;
+  pastDimensionFullnessThreshold: number;
+  currentDimensionFullnessThreshold: number;
+  currentBlockCountMinimum: number;
+  readCountLimit: number;
+  readLengthLimit: number;
+  writeCountLimit: number;
+  writeLengthLimit: number;
+  runtimeLimit: number;
+  sizeLimit: number;
+  minTxFeeRatePerByte: number;
+}
+
 export const CoreNodeRpcProxyRouter: FastifyPluginAsync<
   Record<never, never>,
   Server,
@@ -49,6 +90,24 @@ export const CoreNodeRpcProxyRouter: FastifyPluginAsync<
   const stacksNodeRpcEndpoint = GetStacksNodeProxyEndpoint();
 
   logger.info(`/v2/* proxying to: ${stacksNodeRpcEndpoint}`);
+
+  // Default fee estimator options
+  let feeEstimatorEnabled = false;
+  let didReadTenureCostsFromCore = false;
+  const feeOpts: FeeEstimateProxyOptions = {
+    estimationModifier: DEFAULT_FEE_ESTIMATION_MODIFIER,
+    pastTenureFullnessWindow: DEFAULT_FEE_PAST_TENURE_FULLNESS_WINDOW,
+    pastDimensionFullnessThreshold: DEFAULT_FEE_PAST_DIMENSION_FULLNESS_THRESHOLD,
+    currentDimensionFullnessThreshold: DEFAULT_FEE_CURRENT_DIMENSION_FULLNESS_THRESHOLD,
+    currentBlockCountMinimum: DEFAULT_FEE_CURRENT_BLOCK_COUNT_MINIMUM,
+    readCountLimit: DEFAULT_BLOCK_LIMIT_READ_COUNT,
+    readLengthLimit: DEFAULT_BLOCK_LIMIT_READ_LENGTH,
+    writeCountLimit: DEFAULT_BLOCK_LIMIT_WRITE_COUNT,
+    writeLengthLimit: DEFAULT_BLOCK_LIMIT_WRITE_LENGTH,
+    runtimeLimit: DEFAULT_BLOCK_LIMIT_RUNTIME,
+    sizeLimit: BLOCK_LIMIT_SIZE,
+    minTxFeeRatePerByte: MINIMUM_TX_FEE_RATE_PER_BYTE,
+  };
 
   /**
    * Check for any extra endpoints that have been configured for performing a "multicast" for a tx submission.
@@ -128,6 +187,73 @@ export const CoreNodeRpcProxyRouter: FastifyPluginAsync<
     }
   }
 
+  /// Retrieves the current Stacks tenure cost limits from the active PoX epoch.
+  async function readEpochTenureCostLimits(): Promise<void> {
+    const clientInfo = stacksNodeRpcEndpoint.split(':');
+    const client = new StacksCoreRpcClient({ host: clientInfo[0], port: clientInfo[1] });
+    let attempts = 0;
+    while (attempts < 5) {
+      try {
+        const poxData = await client.getPox();
+        const epochLimits = poxData.epochs.pop()?.block_limit;
+        if (epochLimits) {
+          feeOpts.readCountLimit = epochLimits.read_count;
+          feeOpts.readLengthLimit = epochLimits.read_length;
+          feeOpts.writeCountLimit = epochLimits.write_count;
+          feeOpts.writeLengthLimit = epochLimits.write_length;
+          feeOpts.runtimeLimit = epochLimits.runtime;
+        }
+        logger.info(`CoreNodeRpcProxy successfully retrieved tenure cost limits from core`);
+        return;
+      } catch (error) {
+        logger.warn(error, `CoreNodeRpcProxy unable to get current tenure cost limits`);
+        attempts++;
+      }
+    }
+    logger.warn(
+      `CoreNodeRpcProxy failed to get tenure cost limits after ${attempts} attempts. Using defaults.`
+    );
+  }
+
+  /// Checks if we should modify all transaction fee estimations to always use the minimum fee. This
+  /// only happens if there is no fee market i.e. if the last N block tenures have not been full. We
+  /// use a threshold to determine if a block size dimension is full.
+  async function shouldUseTransactionMinimumFee(): Promise<boolean> {
+    return await fastify.db.sqlTransaction(async sql => {
+      // Check current tenure first. If it's empty after a few blocks, go back to minimum fee.
+      const currThreshold = feeOpts.currentDimensionFullnessThreshold;
+      const currentCosts = await fastify.db.getCurrentTenureExecutionCosts(sql);
+      if (
+        currentCosts.block_count >= feeOpts.currentBlockCountMinimum &&
+        currentCosts.read_count < feeOpts.readCountLimit * currThreshold &&
+        currentCosts.read_length < feeOpts.readLengthLimit * currThreshold &&
+        currentCosts.write_count < feeOpts.writeCountLimit * currThreshold &&
+        currentCosts.write_length < feeOpts.writeLengthLimit * currThreshold &&
+        currentCosts.runtime < feeOpts.runtimeLimit * currThreshold &&
+        currentCosts.tx_total_size < feeOpts.sizeLimit * currThreshold
+      ) {
+        return true;
+      }
+
+      // Current tenure is either full-ish or it has just begun. Take a look at past averages. If
+      // they are below our past threshold, go to min fee.
+      const pastThreshold = feeOpts.pastDimensionFullnessThreshold;
+      const pastCosts = await fastify.db.getLastTenureWeightedAverageExecutionCosts(
+        sql,
+        feeOpts.pastTenureFullnessWindow
+      );
+      if (!pastCosts) return true;
+      return (
+        pastCosts.read_count < feeOpts.readCountLimit * pastThreshold &&
+        pastCosts.read_length < feeOpts.readLengthLimit * pastThreshold &&
+        pastCosts.write_count < feeOpts.writeCountLimit * pastThreshold &&
+        pastCosts.write_length < feeOpts.writeLengthLimit * pastThreshold &&
+        pastCosts.runtime < feeOpts.runtimeLimit * pastThreshold &&
+        pastCosts.tx_total_size < feeOpts.sizeLimit * pastThreshold
+      );
+    });
+  }
+
   const maxBodySize = 10_000_000; // 10 MB max POST body size
   fastify.addContentTypeParser(
     'application/octet-stream',
@@ -137,15 +263,24 @@ export const CoreNodeRpcProxyRouter: FastifyPluginAsync<
     }
   );
 
-  let feeEstimationModifier: number | null = null;
   fastify.addHook('onReady', () => {
-    const feeEstEnvVar = process.env['STACKS_CORE_FEE_ESTIMATION_MODIFIER'];
-    if (feeEstEnvVar) {
-      const parsed = parseFloat(feeEstEnvVar);
-      if (!isNaN(parsed) && parsed > 0) {
-        feeEstimationModifier = parsed;
-      }
-    }
+    feeEstimatorEnabled = parseBoolean(process.env['STACKS_CORE_FEE_ESTIMATOR_ENABLED']);
+    if (!feeEstimatorEnabled) return;
+
+    feeOpts.estimationModifier =
+      parseFloatEnv('STACKS_CORE_FEE_ESTIMATION_MODIFIER') ?? feeOpts.estimationModifier;
+    feeOpts.pastTenureFullnessWindow =
+      parseFloatEnv('STACKS_CORE_FEE_PAST_TENURE_FULLNESS_WINDOW') ??
+      feeOpts.pastTenureFullnessWindow;
+    feeOpts.pastDimensionFullnessThreshold =
+      parseFloatEnv('STACKS_CORE_FEE_PAST_DIMENSION_FULLNESS_THRESHOLD') ??
+      feeOpts.pastDimensionFullnessThreshold;
+    feeOpts.currentDimensionFullnessThreshold =
+      parseFloatEnv('STACKS_CORE_FEE_CURRENT_DIMENSION_FULLNESS_THRESHOLD') ??
+      feeOpts.currentDimensionFullnessThreshold;
+    feeOpts.currentBlockCountMinimum =
+      parseFloatEnv('STACKS_CORE_FEE_CURRENT_BLOCK_COUNT_MINIMUM') ??
+      feeOpts.currentBlockCountMinimum;
   });
 
   await fastify.register(fastifyHttpProxy, {
@@ -236,8 +371,12 @@ export const CoreNodeRpcProxyRouter: FastifyPluginAsync<
         } else if (
           getReqUrl(req).pathname === '/v2/fees/transaction' &&
           reply.statusCode === 200 &&
-          feeEstimationModifier !== null
+          feeEstimatorEnabled
         ) {
+          if (!didReadTenureCostsFromCore) {
+            await readEpochTenureCostLimits();
+            didReadTenureCostsFromCore = true;
+          }
           const reqBody = req.body as {
             estimated_len?: number;
             transaction_payload: string;
@@ -247,14 +386,25 @@ export const CoreNodeRpcProxyRouter: FastifyPluginAsync<
             reqBody.estimated_len ?? 0,
             reqBody.transaction_payload.length / 2
           );
-          const minFee = txSize * MINIMUM_TX_FEE_RATE_PER_BYTE;
-          const modifier = feeEstimationModifier;
+          const minFee = txSize * feeOpts.minTxFeeRatePerByte;
           const responseBuffer = await readRequestBody(response as ServerResponse);
           const responseJson = JSON.parse(responseBuffer.toString()) as FeeEstimateResponse;
-          responseJson.estimations.forEach(estimation => {
-            // max(min fee, estimate returned by node * configurable modifier)
-            estimation.fee = Math.max(minFee, Math.round(estimation.fee * modifier));
-          });
+
+          if (await shouldUseTransactionMinimumFee()) {
+            responseJson.estimations.forEach(estimation => {
+              estimation.fee = minFee;
+            });
+          } else {
+            // Fall back to Stacks core's estimate, but modify it according to the ENV configured
+            // multiplier.
+            responseJson.estimations.forEach(estimation => {
+              // max(min fee, estimate returned by node * configurable modifier)
+              estimation.fee = Math.max(
+                minFee,
+                Math.round(estimation.fee * feeOpts.estimationModifier)
+              );
+            });
+          }
           await reply.removeHeader('content-length').send(JSON.stringify(responseJson));
         } else {
           await reply.send(response);
