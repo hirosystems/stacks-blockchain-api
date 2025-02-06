@@ -1,3 +1,10 @@
+## [8.6.0-beta.2](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.6.0-beta.1...v8.6.0-beta.2) (2025-02-06)
+
+
+### Bug Fixes
+
+* use an independent sql connection for mempool stats ([#2217](https://github.com/hirosystems/stacks-blockchain-api/issues/2217)) ([f8137e4](https://github.com/hirosystems/stacks-blockchain-api/commit/f8137e477db98eaf4045d6372f5825502cdd547f))
+
 ## [8.6.0-beta.1](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.5.0...v8.6.0-beta.1) (2025-01-28)
 
 
