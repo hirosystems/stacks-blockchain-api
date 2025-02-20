@@ -1,3 +1,11 @@
+## [8.7.0](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.6.0...v8.7.0) (2025-02-20)
+
+
+### Features
+
+* **metrics:** add metrics for last event receipt timestamps ([#2223](https://github.com/hirosystems/stacks-blockchain-api/issues/2223)) ([9ce9a33](https://github.com/hirosystems/stacks-blockchain-api/commit/9ce9a3311a5ad80028a83eeb89aba27d65d0f8df))
+* show pending inbound and outbound stx balances ([#2208](https://github.com/hirosystems/stacks-blockchain-api/issues/2208)) ([5330c07](https://github.com/hirosystems/stacks-blockchain-api/commit/5330c07d599fdff34f64dc9c158d8e322d385cf5))
+
 ## [8.6.0](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.5.0...v8.6.0) (2025-02-06)
 
 
