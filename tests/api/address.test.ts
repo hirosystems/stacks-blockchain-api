@@ -1551,6 +1551,8 @@ describe('address tests', () => {
       stx: {
         balance: '88679',
         estimated_balance: '88679',
+        pending_balance_inbound: '0',
+        pending_balance_outbound: '0',
         total_sent: '6385',
         total_received: '100000',
         total_fees_sent: '4936',
@@ -1601,6 +1603,8 @@ describe('address tests', () => {
       stx: {
         balance: '91',
         estimated_balance: '91',
+        pending_balance_inbound: '0',
+        pending_balance_outbound: '0',
         total_sent: '15',
         total_received: '1350',
         total_fees_sent: '1244',
@@ -1637,6 +1641,8 @@ describe('address tests', () => {
     const expectedStxResp1 = {
       balance: '91',
       estimated_balance: '91',
+      pending_balance_inbound: '0',
+      pending_balance_outbound: '0',
       total_sent: '15',
       total_received: '1350',
       total_fees_sent: '1244',
@@ -1668,6 +1674,8 @@ describe('address tests', () => {
     const expectedStxResp1Sponsored = {
       balance: '3766',
       estimated_balance: '3766',
+      pending_balance_inbound: '0',
+      pending_balance_outbound: '0',
       total_sent: '0',
       total_received: '5000',
       total_fees_sent: '1234',

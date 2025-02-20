@@ -2480,8 +2480,8 @@ export class PgStore extends BasePgStore {
    * Returns the total STX balance delta affecting a principal from transactions currently in the
    * mempool.
    */
-  async getPrincipalMempoolStxBalanceDelta(sql: PgSqlClient, principal: string): Promise<bigint> {
-    const results = await sql<{ delta: string }[]>`
+  async getPrincipalMempoolStxBalanceDelta(sql: PgSqlClient, principal: string) {
+    const results = await sql<{ inbound: string; outbound: string; delta: string }[]>`
       WITH sent AS (
         SELECT SUM(COALESCE(token_transfer_amount, 0) + fee_rate) AS total
         FROM mempool_txs
@@ -2496,14 +2496,19 @@ export class PgStore extends BasePgStore {
         SELECT SUM(COALESCE(token_transfer_amount, 0)) AS total
         FROM mempool_txs
         WHERE pruned = false AND token_transfer_recipient_address = ${principal}
+      ),
+      values AS (
+        SELECT
+          COALESCE((SELECT total FROM received), 0) AS inbound,
+          COALESCE((SELECT total FROM sent), 0) + COALESCE((SELECT total FROM sponsored), 0) AS outbound
       )
-      SELECT
-        COALESCE((SELECT total FROM received), 0)
-        - COALESCE((SELECT total FROM sent), 0)
-        - COALESCE((SELECT total FROM sponsored), 0)
-        AS delta
+      SELECT inbound, outbound, (inbound - outbound) AS delta FROM values
     `;
-    return BigInt(results[0]?.delta ?? '0');
+    return {
+      inbound: BigInt(results[0]?.inbound ?? '0'),
+      outbound: BigInt(results[0]?.outbound ?? '0'),
+      delta: BigInt(results[0]?.delta ?? '0'),
+    };
   }
 
   async getUnlockedStxSupply(
@@ -4669,5 +4674,15 @@ export class PgStore extends BasePgStore {
       write_length: parseInt(result[0].write_length),
       tx_total_size: parseInt(result[0].tx_total_size),
     };
+  }
+
+  /// Returns timestamps for the last Stacks node events received by the API Event Server, grouped
+  /// by event type.
+  async getLastStacksNodeEventTimestamps() {
+    return await this.sql<{ event_path: string; receive_timestamp: Date }[]>`
+      SELECT DISTINCT ON (event_path) event_path, receive_timestamp
+      FROM event_observer_requests
+      ORDER BY event_path, receive_timestamp DESC
+    `;
   }
 }
