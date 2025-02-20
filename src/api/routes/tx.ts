@@ -113,6 +113,12 @@ export const TxRoutes: FastifyPluginAsync<
               examples: [1706745599],
             })
           ),
+          search_term: Type.Optional(
+            Type.String({
+              description: 'Option to search for transactions by a search term',
+              examples: ['swap'],
+            })
+          ),
           contract_id: Type.Optional(
             Type.String({
               description: 'Option to filter results by contract ID',
@@ -178,6 +184,11 @@ export const TxRoutes: FastifyPluginAsync<
         contractId = req.query.contract_id;
       }
 
+      let searchTerm: string | undefined;
+      if (typeof req.query.search_term === 'string') {
+        searchTerm = req.query.search_term;
+      }
+
       const { results: txResults, total } = await fastify.db.getTxList({
         offset,
         limit,
@@ -188,6 +199,7 @@ export const TxRoutes: FastifyPluginAsync<
         startTime: req.query.start_time,
         endTime: req.query.end_time,
         contractId,
+        searchTerm,
         functionName: req.query.function_name,
         nonce: req.query.nonce,
         order: req.query.order,
