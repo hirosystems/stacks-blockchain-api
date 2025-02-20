@@ -4675,4 +4675,14 @@ export class PgStore extends BasePgStore {
       tx_total_size: parseInt(result[0].tx_total_size),
     };
   }
+
+  /// Returns timestamps for the last Stacks node events received by the API Event Server, grouped
+  /// by event type.
+  async getLastStacksNodeEventTimestamps() {
+    return await this.sql<{ event_path: string; receive_timestamp: Date }[]>`
+      SELECT DISTINCT ON (event_path) event_path, receive_timestamp
+      FROM event_observer_requests
+      ORDER BY event_path, receive_timestamp DESC
+    `;
+  }
 }
