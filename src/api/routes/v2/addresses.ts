@@ -151,7 +151,7 @@ export const AddressRoutesV2: FastifyPluginAsync<
         const chainTip = await fastify.db.getChainTip(sql);
 
         // Get balances for fungible tokens
-        const ftBalancesResult = await fastify.db.getFungibleTokenHolderBalances({
+        const ftBalancesResult = await fastify.db.v2.getFungibleTokenHolderBalances({
           sql,
           stxAddress,
         });
@@ -172,7 +172,7 @@ export const AddressRoutesV2: FastifyPluginAsync<
         let stxBalance = stxBalanceResult?.balance ?? 0n;
 
         // Get pox-locked info for STX token
-        const stxPoxLockedResult = await fastify.db.getStxPoxLockedAtBlock({
+        const stxPoxLockedResult = await fastify.db.v2.getStxPoxLockedAtBlock({
           sql,
           stxAddress,
           blockHeight: chainTip.block_height,
@@ -180,7 +180,7 @@ export const AddressRoutesV2: FastifyPluginAsync<
         });
 
         // Get miner rewards
-        const { totalMinerRewardsReceived } = await fastify.db.getStxMinerRewardsAtBlock({
+        const { totalMinerRewardsReceived } = await fastify.db.v2.getStxMinerRewardsAtBlock({
           sql,
           stxAddress,
           blockHeight: chainTip.block_height,
