@@ -131,9 +131,9 @@ export const AddressRoutesV2: FastifyPluginAsync<
     {
       preHandler: handlePrincipalMempoolCache,
       schema: {
-        operationId: 'get_account_balance_v2',
-        summary: 'Get account balances',
-        description: `Retrieves total account balance information for a given Address or Contract Identifier. This includes the balances of STX Tokens, Fungible Tokens and Non-Fungible Tokens for the account.`,
+        operationId: 'get_principal_balances',
+        summary: 'Get principal balances',
+        description: `Retrieves total account balance information for a given Address or Contract Identifier. This includes the balances of STX Tokens and Fungible Tokens for the account.`,
         tags: ['Accounts'],
         params: Type.Object({
           principal: PrincipalSchema,
