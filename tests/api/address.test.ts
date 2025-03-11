@@ -1626,6 +1626,28 @@ describe('address tests', () => {
     };
     expect(JSON.parse(fetchAddrBalance2.text)).toEqual(expectedResp2);
 
+    const fetchAddrV2Balance = await supertest(api.server).get(
+      `/extended/v2/addresses/${testContractAddr}/balances`
+    );
+    expect(fetchAddrV2Balance.status).toBe(200);
+    expect(fetchAddrV2Balance.type).toBe('application/json');
+    const expectedRespV2 = {
+      stx: {
+        balance: '131',
+        estimated_balance: '131',
+        pending_balance_inbound: '0',
+        pending_balance_outbound: '0',
+        total_miner_rewards_received: '0',
+        lock_tx_id: '',
+        locked: '0',
+        lock_height: 0,
+        burnchain_lock_height: 0,
+        burnchain_unlock_height: 0,
+      },
+      fungible_tokens: { bux: '375', gox: '585' },
+    };
+    expect(fetchAddrV2Balance.body).toEqual(expectedRespV2);
+
     const tokenLocked: DbTokenOfferingLocked = {
       address: testContractAddr,
       value: BigInt(4139391122),
