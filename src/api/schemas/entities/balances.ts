@@ -52,3 +52,33 @@ export const StxBalanceSchema = Type.Object(
   },
   { title: 'StxBalance' }
 );
+
+export const StxBalanceV2Schema = Type.Object(
+  {
+    balance: Type.String(),
+    estimated_balance: Type.String({
+      description: 'Total STX balance considering pending mempool transactions',
+    }),
+    total_miner_rewards_received: Type.String(),
+    lock_tx_id: Type.String({
+      description: 'The transaction where the lock event occurred. Empty if no tokens are locked.',
+    }),
+    locked: Type.String({
+      description:
+        'The amount of locked STX, as string quoted micro-STX. Zero if no tokens are locked.',
+    }),
+    lock_height: Type.Integer({
+      description:
+        'The STX chain block height of when the lock event occurred. Zero if no tokens are locked.',
+    }),
+    burnchain_lock_height: Type.Integer({
+      description:
+        'The burnchain block height of when the lock event occurred. Zero if no tokens are locked.',
+    }),
+    burnchain_unlock_height: Type.Integer({
+      description:
+        'The burnchain block height of when the tokens unlock. Zero if no tokens are locked.',
+    }),
+  },
+  { title: 'StxBalanceV2' }
+);
