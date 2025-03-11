@@ -639,6 +639,7 @@ function createMessageProcessorQueue(db: PgWriteStore): EventMessageHandler {
   let metrics:
     | {
         eventTimer: prom.Histogram;
+        lastEventTimestamps: prom.Gauge;
         blocksInPreviousBurnBlock: prom.Gauge;
       }
     | undefined;
@@ -649,6 +650,18 @@ function createMessageProcessorQueue(db: PgWriteStore): EventMessageHandler {
         help: 'Event ingestion timers',
         labelNames: ['event'],
         buckets: prom.exponentialBuckets(50, 3, 10), // 10 buckets, from 50 ms to 15 minutes
+      }),
+      lastEventTimestamps: new prom.Gauge({
+        name: 'stacks_last_event_timestamps',
+        help: 'Last Stacks node events received timestamp',
+        labelNames: ['event'] as const,
+        async collect() {
+          const events = await db.getLastStacksNodeEventTimestamps();
+          this.reset();
+          for (const event of events) {
+            this.set({ event: event.event_path }, event.receive_timestamp.getTime());
+          }
+        },
       }),
       blocksInPreviousBurnBlock: new prom.Gauge({
         name: 'stacks_blocks_in_previous_burn_block',
