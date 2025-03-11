@@ -717,10 +717,6 @@ export interface DbFtBalance {
   totalReceived: bigint;
 }
 
-export interface DbFtHolderBalance {
-  balance: bigint;
-}
-
 export interface DbStxBalance {
   balance: bigint;
   totalSent: bigint;

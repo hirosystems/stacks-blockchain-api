@@ -38,7 +38,6 @@ import {
   DbPoxCycleSigner,
   DbPoxCycleSignerStacker,
   DbCursorPaginatedResult,
-  DbFtHolderBalance,
   PoxSyntheticEventQueryResult,
 } from './common';
 import {
@@ -1001,29 +1000,19 @@ export class PgStoreV2 extends BasePgStoreModule {
     };
   }
 
-  async getFungibleTokenHolderBalances(args: {
-    sql: PgSqlClient;
-    stxAddress: string;
-  }): Promise<Map<string, DbFtHolderBalance>> {
+  async getFungibleTokenHolderBalances(args: { sql: PgSqlClient; stxAddress: string }) {
     const result = await args.sql<
       {
         token: string;
         balance: string;
       }[]
     >`
-        SELECT token, balance FROM ft_balances
-        WHERE address = ${args.stxAddress}
+      SELECT token, balance FROM ft_balances
+      WHERE address = ${args.stxAddress}
         AND balance > 0
-      `;
-    // sort by asset name (case-insensitive)
-    const rows = result.sort((r1, r2) => r1.token.localeCompare(r2.token));
-    const assetBalances = new Map<string, DbFtHolderBalance>(
-      rows.map(r => {
-        const balance = BigInt(r.balance);
-        return [r.token, { balance }];
-      })
-    );
-    return assetBalances;
+      ORDER BY LOWER(token)
+    `;
+    return result;
   }
 
   async getStxPoxLockedAtBlock({

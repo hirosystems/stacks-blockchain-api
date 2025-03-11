@@ -275,8 +275,10 @@ export type AddressBalance = Static<typeof AddressBalanceSchema>;
 export const AddressBalanceV2Schema = Type.Object(
   {
     stx: StxBalanceV2Schema,
-    fungible_tokens: Type.Record(Type.String(), Type.Object({ balance: Type.String() })),
-    non_fungible_tokens: Type.Record(Type.String(), NftBalanceSchema),
+    fungible_tokens: Type.Record(
+      Type.String({ description: 'token' }),
+      Type.String({ description: 'balance' })
+    ),
   },
   { title: 'AddressBalanceResponseV2', description: 'GET request that returns address balances' }
 );

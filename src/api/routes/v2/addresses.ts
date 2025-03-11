@@ -155,21 +155,16 @@ export const AddressRoutesV2: FastifyPluginAsync<
           sql,
           stxAddress,
         });
-        const ftBalances: Record<
-          string,
-          {
-            balance: string;
-          }
-        > = {};
-        for (const [key, value] of ftBalancesResult) {
-          if (key !== 'stx') {
-            ftBalances[key] = { balance: value.balance.toString() };
+        const ftBalances: Record<string, string> = {};
+        for (const { token, balance } of ftBalancesResult) {
+          if (token !== 'stx') {
+            ftBalances[token] = balance;
           }
         }
 
         // Get stx balance (sum of credits, debits, and fees) for address
-        const stxBalanceResult = ftBalancesResult.get('stx');
-        let stxBalance = stxBalanceResult?.balance ?? 0n;
+        const stxBalanceResult = ftBalancesResult.find(entry => entry.token === 'stx');
+        let stxBalance = BigInt(stxBalanceResult?.balance ?? '0');
 
         // Get pox-locked info for STX token
         const stxPoxLockedResult = await fastify.db.v2.getStxPoxLockedAtBlock({
@@ -186,19 +181,6 @@ export const AddressRoutesV2: FastifyPluginAsync<
           blockHeight: chainTip.block_height,
         });
         stxBalance += totalMinerRewardsReceived;
-
-        // Get counts for non-fungible tokens
-        const nftBalancesResult = await fastify.db.getNonFungibleTokenCounts({
-          stxAddress,
-          untilBlock: chainTip.block_height,
-        });
-        const nftBalances = formatMapToObject(nftBalancesResult, val => {
-          return {
-            count: val.count.toString(),
-            total_sent: val.totalSent.toString(),
-            total_received: val.totalReceived.toString(),
-          };
-        });
 
         const mempoolResult = await fastify.db.getPrincipalMempoolStxBalanceDelta(sql, stxAddress);
         const mempoolBalance: bigint = stxBalance + mempoolResult.delta;
@@ -217,7 +199,6 @@ export const AddressRoutesV2: FastifyPluginAsync<
             burnchain_unlock_height: stxPoxLockedResult.burnchainUnlockHeight,
           },
           fungible_tokens: ftBalances,
-          non_fungible_tokens: nftBalances,
         };
         return result;
       });
