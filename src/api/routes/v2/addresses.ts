@@ -201,12 +201,14 @@ export const AddressRoutesV2: FastifyPluginAsync<
         });
 
         const mempoolResult = await fastify.db.getPrincipalMempoolStxBalanceDelta(sql, stxAddress);
-        const mempoolBalance: bigint = stxBalance + mempoolResult;
+        const mempoolBalance: bigint = stxBalance + mempoolResult.delta;
 
         const result: AddressBalanceV2 = {
           stx: {
             balance: stxBalance.toString(),
             estimated_balance: mempoolBalance.toString(),
+            pending_balance_inbound: mempoolResult.inbound.toString(),
+            pending_balance_outbound: mempoolResult.outbound.toString(),
             total_miner_rewards_received: totalMinerRewardsReceived.toString(),
             lock_tx_id: stxPoxLockedResult.lockTxId,
             locked: stxPoxLockedResult.locked.toString(),

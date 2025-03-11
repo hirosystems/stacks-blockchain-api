@@ -69,6 +69,12 @@ export const StxBalanceV2Schema = Type.Object(
     estimated_balance: Type.String({
       description: 'Total STX balance considering pending mempool transactions',
     }),
+    pending_balance_inbound: Type.String({
+      description: 'Inbound STX balance from pending mempool transactions',
+    }),
+    pending_balance_outbound: Type.String({
+      description: 'Outbound STX balance from pending mempool transactions',
+    }),
     total_miner_rewards_received: Type.String(),
     lock_tx_id: Type.String({
       description: 'The transaction where the lock event occurred. Empty if no tokens are locked.',
