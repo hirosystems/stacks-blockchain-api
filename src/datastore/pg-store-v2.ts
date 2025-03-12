@@ -18,7 +18,7 @@ import {
   BlockSignerSignatureLimitParamSchema,
 } from '../api/routes/v2/schemas';
 import { InvalidRequestError, InvalidRequestErrorType } from '../errors';
-import { normalizeHashString } from '../helpers';
+import { FoundOrNot, normalizeHashString } from '../helpers';
 import {
   DbPaginatedResult,
   DbBlock,
@@ -1000,19 +1000,58 @@ export class PgStoreV2 extends BasePgStoreModule {
     };
   }
 
-  async getFungibleTokenHolderBalances(args: { sql: PgSqlClient; stxAddress: string }) {
-    const result = await args.sql<
-      {
-        token: string;
-        balance: string;
-      }[]
-    >`
+  async getFungibleTokenHolderBalances(args: {
+    sql: PgSqlClient;
+    stxAddress: string;
+    limit: number;
+    offset: number;
+  }): Promise<
+    DbPaginatedResult<{
+      token: string;
+      balance: string;
+    }>
+  > {
+    const queryResp = await args.sql<{ token: string; balance: string; total: string }[]>`
+      WITH filtered AS (
+        SELECT token, balance
+        FROM ft_balances
+        WHERE address = ${args.stxAddress}
+          AND balance > 0
+          AND token != 'stx'
+      )
+      SELECT token, balance, COUNT(*) OVER() AS total
+      FROM filtered
+      ORDER BY LOWER(token)
+      LIMIT ${args.limit}
+      OFFSET ${args.offset};
+    `;
+    const parsed = queryResp.map(({ token, balance }) => ({ token, balance }));
+    const total = queryResp.length > 0 ? parseInt(queryResp[0].total) : 0;
+    return {
+      limit: args.limit,
+      offset: args.offset,
+      total,
+      results: parsed,
+    };
+  }
+
+  async getStxHolderBalance(args: {
+    sql: PgSqlClient;
+    stxAddress: string;
+  }): Promise<FoundOrNot<{ balance: bigint }>> {
+    const [result] = await args.sql<{ balance: string }[]>`
       SELECT token, balance FROM ft_balances
       WHERE address = ${args.stxAddress}
-        AND balance > 0
-      ORDER BY LOWER(token)
+        AND token = 'stx'
+      LIMIT 1
     `;
-    return result;
+    if (!result) {
+      return { found: false };
+    }
+    return {
+      found: true,
+      result: { balance: BigInt(result.balance) },
+    };
   }
 
   async getStxPoxLockedAtBlock({
@@ -1064,6 +1103,7 @@ export class PgStoreV2 extends BasePgStoreModule {
         const [burnBlockQuery] = await sql<{ burn_block_height: string }[]>`
           SELECT burn_block_height FROM blocks
           WHERE block_height = ${blockHeight} AND canonical = true
+          LIMIT 1
         `;
         burnchainLockHeight = parseInt(burnBlockQuery?.burn_block_height ?? '0');
       }

@@ -2,12 +2,7 @@ import { Static, Type } from '@sinclair/typebox';
 import { TransactionSchema } from './transactions';
 import { TransactionEventAssetTypeSchema } from './transaction-events';
 import { Nullable } from '../util';
-import {
-  FtBalanceSchema,
-  NftBalanceSchema,
-  StxBalanceSchema,
-  StxBalanceV2Schema,
-} from './balances';
+import { FtBalanceSchema, NftBalanceSchema, StxBalanceSchema } from './balances';
 
 export const AddressNoncesSchema = Type.Object(
   {
@@ -272,17 +267,11 @@ export const AddressBalanceSchema = Type.Object(
 );
 export type AddressBalance = Static<typeof AddressBalanceSchema>;
 
-export const AddressBalanceV2Schema = Type.Object(
-  {
-    stx: StxBalanceV2Schema,
-    fungible_tokens: Type.Record(
-      Type.String({ description: 'token' }),
-      Type.String({ description: 'balance' })
-    ),
-  },
-  { title: 'AddressBalanceResponseV2', description: 'GET request that returns address balances' }
-);
-export type AddressBalanceV2 = Static<typeof AddressBalanceV2Schema>;
+export const PrincipalFtBalanceSchema = Type.Object({
+  token: Type.String(),
+  balance: Type.String(),
+});
+export type PrincipalFtBalance = Static<typeof PrincipalFtBalanceSchema>;
 
 enum InboundStxTransferType {
   bulkSend = 'bulk-send',

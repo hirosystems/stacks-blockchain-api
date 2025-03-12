@@ -2285,12 +2285,12 @@ describe('mempool tests', () => {
     expect(balance3.body.pending_balance_outbound).toEqual('250');
 
     const balanceV2_1 = await supertest(api.server).get(
-      `/extended/v2/addresses/${address}/balances`
+      `/extended/v2/addresses/${address}/balances/stx?include_mempool=true`
     );
-    expect(balanceV2_1.body.stx.balance).toEqual('2000');
-    expect(balanceV2_1.body.stx.estimated_balance).toEqual('1850'); // Plus amount
-    expect(balanceV2_1.body.stx.pending_balance_inbound).toEqual('100');
-    expect(balanceV2_1.body.stx.pending_balance_outbound).toEqual('250');
+    expect(balanceV2_1.body.balance).toEqual('2000');
+    expect(balanceV2_1.body.estimated_balance).toEqual('1850'); // Plus amount
+    expect(balanceV2_1.body.pending_balance_inbound).toEqual('100');
+    expect(balanceV2_1.body.pending_balance_outbound).toEqual('250');
 
     // Confirm all txs
     await db.update(
@@ -2339,11 +2339,11 @@ describe('mempool tests', () => {
     expect(balance4.body.pending_balance_outbound).toEqual('0');
 
     const balanceV2_2 = await supertest(api.server).get(
-      `/extended/v2/addresses/${address}/balances`
+      `/extended/v2/addresses/${address}/balances/stx?include_mempool=true`
     );
-    expect(balanceV2_2.body.stx.balance).toEqual('1850');
-    expect(balanceV2_2.body.stx.estimated_balance).toEqual('1850');
-    expect(balanceV2_2.body.stx.pending_balance_inbound).toEqual('0');
-    expect(balanceV2_2.body.stx.pending_balance_outbound).toEqual('0');
+    expect(balanceV2_2.body.balance).toEqual('1850');
+    expect(balanceV2_2.body.estimated_balance).toEqual('1850');
+    expect(balanceV2_2.body.pending_balance_inbound).toEqual('0');
+    expect(balanceV2_2.body.pending_balance_outbound).toEqual('0');
   });
 });
