@@ -213,7 +213,7 @@ export const AddressRoutesV2: FastifyPluginAsync<
   fastify.get(
     '/:principal/balances/ft',
     {
-      preHandler: handlePrincipalMempoolCache,
+      preHandler: handlePrincipalCache,
       schema: {
         operationId: 'get_principal_ft_balances',
         summary: 'Get principal FT balances',
