@@ -1,3 +1,10 @@
+## [8.8.0-beta.1](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.7.0...v8.8.0-beta.1) (2025-03-13)
+
+
+### Features
+
+* new account balances endpoints, optimized for high tx volume ([#2229](https://github.com/hirosystems/stacks-blockchain-api/issues/2229)) ([0fe8fd5](https://github.com/hirosystems/stacks-blockchain-api/commit/0fe8fd5d6ae0254e98a0b26069eb05f41d86b437))
+
 ## [8.7.0](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.6.0...v8.7.0) (2025-02-20)
 
 
