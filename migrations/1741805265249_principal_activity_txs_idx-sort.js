@@ -25,22 +25,6 @@ exports.up = pgm => {
   );
 
   pgm.createIndex(
-    'ft_events', 
-    [
-      'sender',
-      'recipient',
-      { name: 'block_height', sort: 'DESC' },
-      { name: 'microblock_sequence', sort: 'DESC' },
-      { name: 'tx_index', sort: 'DESC' },
-      { name: 'event_index', sort: 'DESC' }
-    ],
-    {
-      name: 'idx_ft_events_optimized',
-      where: 'canonical = TRUE AND microblock_canonical = TRUE',
-    }
-  );
-
-  pgm.createIndex(
     'nft_events', 
     [
       'sender',
@@ -57,11 +41,38 @@ exports.up = pgm => {
   );
 
   pgm.createIndex(
+    'ft_events', 
+    [
+      'sender',
+      { name: 'block_height', sort: 'DESC' },
+      { name: 'microblock_sequence', sort: 'DESC' },
+      { name: 'tx_index', sort: 'DESC' },
+      { name: 'event_index', sort: 'DESC' }
+    ],
+    {
+      name: 'idx_ft_events_optimized_sender',
+      where: 'canonical = TRUE AND microblock_canonical = TRUE',
+    }
+  );
+
+  pgm.createIndex(
+    'ft_events', 
+    [
+      'recipient',
+      { name: 'block_height', sort: 'DESC' },
+      { name: 'microblock_sequence', sort: 'DESC' },
+      { name: 'tx_index', sort: 'DESC' },
+      { name: 'event_index', sort: 'DESC' }
+    ],
+    {
+      name: 'idx_ft_events_optimized_recipient',
+      where: 'canonical = TRUE AND microblock_canonical = TRUE',
+    }
+  );
+
+  pgm.createIndex(
     'mempool_txs', 
     [
-      'sender_address',
-      'sponsor_address',
-      'token_transfer_recipient_address',
       { name: 'receipt_time', sort: 'DESC' }
     ],
     {
@@ -69,12 +80,14 @@ exports.up = pgm => {
       where: 'pruned = FALSE',
     }
   );
+
 };
 
 /** @param { import("node-pg-migrate").MigrationBuilder } pgm */
 exports.down = pgm => {
   pgm.dropIndex('principal_stx_txs', [], { name: 'idx_principal_stx_txs_optimized' });
-  pgm.dropIndex('ft_events', [], { name: 'idx_ft_events_optimized' });
+  pgm.dropIndex('ft_events', [], { name: 'idx_ft_events_optimized_sender' });
+  pgm.dropIndex('ft_events', [], { name: 'idx_ft_events_optimized_recipient' });
   pgm.dropIndex('nft_events', [], { name: 'idx_nft_events_optimized' });
   pgm.dropIndex('mempool_txs', [], { name: 'idx_mempool_txs_optimized' });
 

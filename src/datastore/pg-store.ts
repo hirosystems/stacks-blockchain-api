@@ -2482,20 +2482,25 @@ export class PgStore extends BasePgStore {
    */
   async getPrincipalMempoolStxBalanceDelta(sql: PgSqlClient, principal: string) {
     const results = await sql<{ inbound: string; outbound: string; delta: string }[]>`
-      WITH sent AS (
+      WITH latest AS (
+        SELECT * FROM mempool_txs
+        WHERE pruned = false
+        ORDER BY receipt_time DESC
+      ),
+      sent AS (
         SELECT SUM(COALESCE(token_transfer_amount, 0) + fee_rate) AS total
-        FROM mempool_txs
-        WHERE pruned = false AND sender_address = ${principal}
+        FROM latest
+        WHERE sender_address = ${principal}
       ),
       sponsored AS (
         SELECT SUM(fee_rate) AS total
-        FROM mempool_txs
-        WHERE pruned = false AND sponsor_address = ${principal} AND sponsored = true
+        FROM latest
+        WHERE sponsor_address = ${principal} AND sponsored = true
       ),
       received AS (
         SELECT SUM(COALESCE(token_transfer_amount, 0)) AS total
-        FROM mempool_txs
-        WHERE pruned = false AND token_transfer_recipient_address = ${principal}
+        FROM latest
+        WHERE token_transfer_recipient_address = ${principal}
       ),
       values AS (
         SELECT
