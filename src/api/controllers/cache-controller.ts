@@ -15,7 +15,7 @@ import { BlockParams } from '../routes/v2/schemas';
  * state of the chain depending on the type of information being requested by the endpoint.
  * This entry will have an `ETag` string as the value.
  */
-enum ETagType {
+export enum ETagType {
   /** ETag based on the latest `index_block_hash` or `microblock_hash`. */
   chainTip = 'chain_tip',
   /** ETag based on a digest of all pending mempool `tx_id`s. */
@@ -149,7 +149,7 @@ async function calculateETag(
   }
 }
 
-async function handleCache(type: ETagType, request: FastifyRequest, reply: FastifyReply) {
+export async function handleCache(type: ETagType, request: FastifyRequest, reply: FastifyReply) {
   const metrics = getETagMetrics();
   const ifNoneMatch = parseIfNoneMatchHeader(request.headers['if-none-match']);
   const etag = await calculateETag(request.server.db, type, request);
