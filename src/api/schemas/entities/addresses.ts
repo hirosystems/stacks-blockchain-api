@@ -267,6 +267,12 @@ export const AddressBalanceSchema = Type.Object(
 );
 export type AddressBalance = Static<typeof AddressBalanceSchema>;
 
+export const PrincipalFtBalanceSchema = Type.Object({
+  token: Type.String(),
+  balance: Type.String(),
+});
+export type PrincipalFtBalance = Static<typeof PrincipalFtBalanceSchema>;
+
 enum InboundStxTransferType {
   bulkSend = 'bulk-send',
   stxTransfer = 'stx-transfer',

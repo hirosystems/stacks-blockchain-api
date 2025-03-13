@@ -40,6 +40,7 @@ export enum ResourceType {
   PoxCycle,
   TokenHolders,
   BlockSignerSignature,
+  FtBalance,
 }
 
 export const pagingQueryLimits: Record<ResourceType, { defaultLimit: number; maxLimit: number }> = {
@@ -98,6 +99,10 @@ export const pagingQueryLimits: Record<ResourceType, { defaultLimit: number; max
   [ResourceType.BlockSignerSignature]: {
     defaultLimit: 500,
     maxLimit: 1000,
+  },
+  [ResourceType.FtBalance]: {
+    defaultLimit: 100,
+    maxLimit: 200,
   },
 };
 
