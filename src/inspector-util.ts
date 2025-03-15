@@ -415,8 +415,8 @@ export async function startProfilerServer(httpServerPort?: number | string): Pro
     try {
       profilerResults = stopProfiler();
     } catch (error: any) {
-      console.error(error);
-      res.status(500).end(error);
+      logger.error("Exception occurred", error);
+      res.status(500).end("An internal server error occurred");
       return;
     }
     const fileName = `profile-${Date.now()}.svg`;
