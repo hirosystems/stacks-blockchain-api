@@ -288,6 +288,7 @@ jobs:
 #      - test
 #      - test-2_5
 #      - test-rosetta
+    environment: ${{ matrix.environment }}
     steps:
       - uses: actions/checkout@v4
         with:
