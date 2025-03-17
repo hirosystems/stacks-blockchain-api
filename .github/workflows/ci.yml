@@ -273,6 +273,14 @@ jobs:
         if: always()
 
   build-publish:
+    permissions:
+      contents: 'read'
+      id-token: 'write'
+
+    strategy:
+      matrix:
+        environment: [Development, Staging, Production]
+
     runs-on: ubuntu-latest
     needs:
       - lint
@@ -320,12 +328,28 @@ jobs:
           images: |
             blockstack/${{ github.event.repository.name }}
             hirosystems/${{ github.event.repository.name }}
+            us-east4-docker.pkg.dev/${{ vars.GOOGLE_PROJECT_ID }}/hirosystems/${{ github.event.repository.name }}
           tags: |
             type=ref,event=branch
             type=ref,event=pr
             type=semver,pattern={{version}},value=${{ steps.semantic.outputs.new_release_version }},enable=${{ steps.semantic.outputs.new_release_version != '' }}
             type=semver,pattern={{major}}.{{minor}},value=${{ steps.semantic.outputs.new_release_version }},enable=${{ steps.semantic.outputs.new_release_version != '' }}
             type=raw,value=latest,enable=${{ github.ref == format('refs/heads/{0}', 'master') }}
+
+      - name: Authenticate with Google Cloud
+        id: auth
+        uses: "google-github-actions/auth@v2"
+        with:
+          token_format: access_token
+          workload_identity_provider: 'projects/${{ vars.GOOGLE_PROJECT_NUM }}/locations/global/workloadIdentityPools/gha-identity-pool/providers/gha-identity-pool'
+          service_account: 'gha-artifact-registry-writer@${{ vars.GOOGLE_PROJECT_ID }}.iam.gserviceaccount.com'
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Google artifact registry auth
+        run: |-
+          gcloud auth configure-docker us-east4-docker.pkg.dev
 
       - name: Login to DockerHub
         uses: docker/login-action@v3
