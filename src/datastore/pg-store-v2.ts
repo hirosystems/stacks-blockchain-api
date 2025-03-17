@@ -18,7 +18,7 @@ import {
   BlockSignerSignatureLimitParamSchema,
 } from '../api/routes/v2/schemas';
 import { InvalidRequestError, InvalidRequestErrorType } from '../errors';
-import { normalizeHashString } from '../helpers';
+import { FoundOrNot, normalizeHashString } from '../helpers';
 import {
   DbPaginatedResult,
   DbBlock,
@@ -38,6 +38,7 @@ import {
   DbPoxCycleSigner,
   DbPoxCycleSignerStacker,
   DbCursorPaginatedResult,
+  PoxSyntheticEventQueryResult,
 } from './common';
 import {
   BLOCK_COLUMNS,
@@ -45,7 +46,10 @@ import {
   TX_COLUMNS,
   parseTxQueryResult,
   parseAccountTransferSummaryTxQueryResult,
+  POX4_SYNTHETIC_EVENT_COLUMNS,
+  parseDbPoxSyntheticEvent,
 } from './helpers';
+import { SyntheticPoxEventName } from '../pox-helpers';
 
 async function assertAddressExists(sql: PgSqlClient, address: string) {
   const addressCheck =
@@ -972,5 +976,165 @@ export class PgStoreV2 extends BasePgStoreModule {
         total: results.count > 0 ? results[0].total : 0,
       };
     });
+  }
+
+  async getStxMinerRewardsAtBlock({
+    sql,
+    stxAddress,
+    blockHeight,
+  }: {
+    sql: PgSqlClient;
+    stxAddress: string;
+    blockHeight: number;
+  }) {
+    const minerRewardQuery = await sql<{ amount: string }[]>`
+      SELECT sum(
+        coinbase_amount + tx_fees_anchored + tx_fees_streamed_confirmed + tx_fees_streamed_produced
+      ) amount
+      FROM miner_rewards
+      WHERE canonical = true AND recipient = ${stxAddress} AND mature_block_height <= ${blockHeight}
+    `;
+    const totalRewards = BigInt(minerRewardQuery[0]?.amount ?? 0);
+    return {
+      totalMinerRewardsReceived: totalRewards,
+    };
+  }
+
+  async getFungibleTokenHolderBalances(args: {
+    sql: PgSqlClient;
+    stxAddress: string;
+    limit: number;
+    offset: number;
+  }): Promise<
+    DbPaginatedResult<{
+      token: string;
+      balance: string;
+    }>
+  > {
+    const queryResp = await args.sql<{ token: string; balance: string; total: string }[]>`
+      WITH filtered AS (
+        SELECT token, balance
+        FROM ft_balances
+        WHERE address = ${args.stxAddress}
+          AND balance > 0
+          AND token != 'stx'
+      )
+      SELECT token, balance, COUNT(*) OVER() AS total
+      FROM filtered
+      ORDER BY LOWER(token)
+      LIMIT ${args.limit}
+      OFFSET ${args.offset};
+    `;
+    const parsed = queryResp.map(({ token, balance }) => ({ token, balance }));
+    const total = queryResp.length > 0 ? parseInt(queryResp[0].total) : 0;
+    return {
+      limit: args.limit,
+      offset: args.offset,
+      total,
+      results: parsed,
+    };
+  }
+
+  async getStxHolderBalance(args: {
+    sql: PgSqlClient;
+    stxAddress: string;
+  }): Promise<FoundOrNot<{ balance: bigint }>> {
+    const [result] = await args.sql<{ balance: string }[]>`
+      SELECT token, balance FROM ft_balances
+      WHERE address = ${args.stxAddress}
+        AND token = 'stx'
+      LIMIT 1
+    `;
+    if (!result) {
+      return { found: false };
+    }
+    return {
+      found: true,
+      result: { balance: BigInt(result.balance) },
+    };
+  }
+
+  async getFtHolderBalance(args: {
+    sql: PgSqlClient;
+    stxAddress: string;
+    token: string;
+  }): Promise<FoundOrNot<{ balance: bigint }>> {
+    const [result] = await args.sql<{ balance: string }[]>`
+      SELECT token, balance FROM ft_balances
+      WHERE address = ${args.stxAddress}
+        AND token = ${args.token}
+      LIMIT 1
+    `;
+    if (!result) {
+      return { found: false };
+    }
+    return {
+      found: true,
+      result: { balance: BigInt(result.balance) },
+    };
+  }
+
+  async getStxPoxLockedAtBlock({
+    sql,
+    stxAddress,
+    blockHeight,
+    burnBlockHeight,
+  }: {
+    sql: PgSqlClient;
+    stxAddress: string;
+    blockHeight: number;
+    burnBlockHeight: number;
+  }) {
+    let lockTxId: string = '';
+    let locked: bigint = 0n;
+    let lockHeight = 0;
+    let burnchainLockHeight = 0;
+    let burnchainUnlockHeight = 0;
+
+    // == PoX-4 ================================================================
+    // Query for the latest lock event that still applies to the current burn block height.
+    // Special case for `handle-unlock` which should be returned if it is the last received event.
+
+    const pox4EventQuery = await sql<PoxSyntheticEventQueryResult[]>`
+          SELECT ${sql(POX4_SYNTHETIC_EVENT_COLUMNS)}
+          FROM pox4_events
+          WHERE canonical = true AND microblock_canonical = true AND stacker = ${stxAddress}
+          AND block_height <= ${blockHeight}
+          AND (
+            (name != ${
+              SyntheticPoxEventName.HandleUnlock
+            } AND burnchain_unlock_height >= ${burnBlockHeight})
+            OR
+            (name = ${
+              SyntheticPoxEventName.HandleUnlock
+            } AND burnchain_unlock_height < ${burnBlockHeight})
+          )
+          ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
+          LIMIT 1
+        `;
+    if (pox4EventQuery.length > 0) {
+      const pox4Event = parseDbPoxSyntheticEvent(pox4EventQuery[0]);
+      if (pox4Event.name !== SyntheticPoxEventName.HandleUnlock) {
+        lockTxId = pox4Event.tx_id;
+        locked = pox4Event.locked;
+        burnchainUnlockHeight = Number(pox4Event.burnchain_unlock_height);
+        lockHeight = pox4Event.block_height;
+
+        const [burnBlockQuery] = await sql<{ burn_block_height: string }[]>`
+          SELECT burn_block_height FROM blocks
+          WHERE block_height = ${blockHeight} AND canonical = true
+          LIMIT 1
+        `;
+        burnchainLockHeight = parseInt(burnBlockQuery?.burn_block_height ?? '0');
+      }
+    }
+
+    return {
+      lockTxId,
+      locked,
+      lockHeight,
+      burnchainLockHeight,
+      burnchainUnlockHeight,
+    };
   }
 }
