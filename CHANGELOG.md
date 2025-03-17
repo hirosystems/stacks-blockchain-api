@@ -1,3 +1,10 @@
+## [8.8.0-beta.2](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.8.0-beta.1...v8.8.0-beta.2) (2025-03-17)
+
+
+### Features
+
+* endpoint to get the balance of a specific ft for a given account ([#2240](https://github.com/hirosystems/stacks-blockchain-api/issues/2240)) ([8b27809](https://github.com/hirosystems/stacks-blockchain-api/commit/8b278098a2e914de02b16461904dd0e283c81d26))
+
 ## [8.8.0-beta.1](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.7.0...v8.8.0-beta.1) (2025-03-13)
 
 
