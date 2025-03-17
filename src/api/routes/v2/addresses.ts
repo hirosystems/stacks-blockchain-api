@@ -264,5 +264,50 @@ export const AddressRoutesV2: FastifyPluginAsync<
     }
   );
 
+  fastify.get(
+    '/:principal/balances/ft/:token',
+    {
+      preHandler: handleChainTipCache, // TODO: use handlePrincipalCache once it's optimized
+      schema: {
+        operationId: 'get_principal_ft_balance',
+        summary: 'Get principal FT balance',
+        description: `Retrieves a specific fungible-token balance for a given principal.`,
+        tags: ['Accounts'],
+        params: Type.Object({
+          principal: PrincipalSchema,
+          token: Type.String({
+            description: 'fungible token identifier',
+            examples: [
+              'SM3VDXK3WZZSA84XXFKAFAF15NNZX32CTSG82JFQ4.sbtc-token::sbtc-token',
+              'SP3Y2ZSH8P7D50B0VBTSX11S7XSG24M1VB9YFQA4K.token-aeusdc::aeUSDC',
+            ],
+          }),
+        }),
+        response: {
+          200: Type.Object({
+            balance: Type.String(),
+          }),
+        },
+      },
+    },
+    async (req, reply) => {
+      const stxAddress = req.params.principal;
+      validatePrincipal(stxAddress);
+      const result = await fastify.db.sqlTransaction(async sql => {
+        const ftBalanceResult = await fastify.db.v2.getFtHolderBalance({
+          sql,
+          stxAddress,
+          token: req.params.token,
+        });
+        const balance = ftBalanceResult.found ? ftBalanceResult.result.balance : 0n;
+        const result = {
+          balance: balance.toString(),
+        };
+        return result;
+      });
+      await reply.send(result);
+    }
+  );
+
   await Promise.resolve();
 };

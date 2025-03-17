@@ -1054,6 +1054,26 @@ export class PgStoreV2 extends BasePgStoreModule {
     };
   }
 
+  async getFtHolderBalance(args: {
+    sql: PgSqlClient;
+    stxAddress: string;
+    token: string;
+  }): Promise<FoundOrNot<{ balance: bigint }>> {
+    const [result] = await args.sql<{ balance: string }[]>`
+      SELECT token, balance FROM ft_balances
+      WHERE address = ${args.stxAddress}
+        AND token = ${args.token}
+      LIMIT 1
+    `;
+    if (!result) {
+      return { found: false };
+    }
+    return {
+      found: true,
+      result: { balance: BigInt(result.balance) },
+    };
+  }
+
   async getStxPoxLockedAtBlock({
     sql,
     stxAddress,

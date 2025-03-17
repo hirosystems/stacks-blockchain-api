@@ -1686,6 +1686,27 @@ describe('address tests', () => {
       results: [{ token: 'gox', balance: '585' }],
     });
 
+    const fetchAddrV2BalanceFt1 = await supertest(api.server).get(
+      `/extended/v2/addresses/${testContractAddr}/balances/ft/bux`
+    );
+    expect(fetchAddrV2BalanceFt1.status).toBe(200);
+    expect(fetchAddrV2BalanceFt1.type).toBe('application/json');
+    expect(fetchAddrV2BalanceFt1.body).toEqual({ balance: '375' });
+
+    const fetchAddrV2BalanceFt2 = await supertest(api.server).get(
+      `/extended/v2/addresses/${testContractAddr}/balances/ft/gox`
+    );
+    expect(fetchAddrV2BalanceFt2.status).toBe(200);
+    expect(fetchAddrV2BalanceFt2.type).toBe('application/json');
+    expect(fetchAddrV2BalanceFt2.body).toEqual({ balance: '585' });
+
+    const fetchAddrV2BalanceFt3 = await supertest(api.server).get(
+      `/extended/v2/addresses/${testContractAddr}/balances/ft/none`
+    );
+    expect(fetchAddrV2BalanceFt3.status).toBe(200);
+    expect(fetchAddrV2BalanceFt3.type).toBe('application/json');
+    expect(fetchAddrV2BalanceFt3.body).toEqual({ balance: '0' });
+
     const tokenLocked: DbTokenOfferingLocked = {
       address: testContractAddr,
       value: BigInt(4139391122),
