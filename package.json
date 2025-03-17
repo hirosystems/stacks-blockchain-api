@@ -39,7 +39,7 @@
     "generate:client": "openapi-typescript ./docs/openapi.yaml -o ./client/src/generated/schema.d.ts",
     "build": "npm run generate:git-info && rimraf ./lib && tsc -p tsconfig.build.json",
     "build:tests": "tsc -p tsconfig.json",
-    "build:docs": "npm run generate:git-info && npm run generate:openapi && npm run generate:redoc",
+    "build:docs": "npm run generate:git-info && npm run generate:openapi && npm run generate:redoc && mv ./docs/openapi* ./docs/.tmp/",
     "build:client": "npm run generate:git-info && npm run generate:openapi && npm run generate:client",
     "start": "node ./lib/index.js",
     "lint": "npm run lint:eslint && npm run lint:prettier",
