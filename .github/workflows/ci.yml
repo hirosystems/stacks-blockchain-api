@@ -367,7 +367,9 @@ jobs:
       id-token: 'write'
 
     runs-on: ubuntu-latest
-
+    needs:
+      - semantic-versioning
+      - build-publish
     strategy:
       matrix:
         environment: [Development, Staging, Production]
