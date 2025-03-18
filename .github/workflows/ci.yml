@@ -377,7 +377,7 @@ jobs:
     steps:
       - name: Sanitize tag
         run: |-
-          echo "SANITIZED_BRANCH=$(echo "$GIT_BRANCH" | sed 's/\//-/g')" >> $GITHUB_ENV
+          echo "SANITIZED_BRANCH=$(echo "${{ github.ref_name }}" | sed 's/\//-/g')" >> $GITHUB_ENV
 
       - name: Login to Dockerhub
         uses: docker/login-action@v3
