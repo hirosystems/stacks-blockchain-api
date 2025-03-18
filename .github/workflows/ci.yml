@@ -361,53 +361,53 @@ jobs:
         with:
           args: ":rocket: A new version (${{ steps.semantic.outputs.new_release_version }}) of the Stacks Blockchain API is available on Github!"
 
-    replicate-to-gar:
-      permissions:
-        content: 'read'
-        id-token: 'write'
-      strategy:
-        matrix:
-          environment: [Development, Staging, Production]
+  replicate-to-gar:
+    permissions:
+      content: 'read'
+      id-token: 'write'
+    strategy:
+      matrix:
+        environment: [Development, Staging, Production]
 
-      environment: ${{ matrix.environment }}
-      steps:
-        - name: Sanitize tag
-          run: |-
-            echo "SANITIZED_BRANCH=$(echo "$GIT_BRANCH" | sed 's/\//-/g')" >> $GITHUB_ENV
+    environment: ${{ matrix.environment }}
+    steps:
+      - name: Sanitize tag
+        run: |-
+          echo "SANITIZED_BRANCH=$(echo "$GIT_BRANCH" | sed 's/\//-/g')" >> $GITHUB_ENV
 
-        - name: Login to Dockerhub
-          uses: docker/login-action@v3
-          with:
-            username: ${{ secrets.DOCKERHUB_USERNAME }}
-            password: ${{ secrets.DOCKERHUB_PASSWORD }}
+      - name: Login to Dockerhub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_PASSWORD }}
 
-        - name: Authenticate with Google Cloud
-          id: auth
-          uses: "google-github-actions/auth@v2"
-          with:
-            token_format: access_token
-            workload_identity_provider: 'projects/${{ vars.GOOGLE_PROJECT_NUM }}/locations/global/workloadIdentityPools/gha-identity-pool/providers/gha-identity-pool'
-            service_account: 'gha-artifact-registry-writer@${{ vars.GOOGLE_PROJECT_ID }}.iam.gserviceaccount.com'
+      - name: Authenticate with Google Cloud
+        id: auth
+        uses: "google-github-actions/auth@v2"
+        with:
+          token_format: access_token
+          workload_identity_provider: 'projects/${{ vars.GOOGLE_PROJECT_NUM }}/locations/global/workloadIdentityPools/gha-identity-pool/providers/gha-identity-pool'
+          service_account: 'gha-artifact-registry-writer@${{ vars.GOOGLE_PROJECT_ID }}.iam.gserviceaccount.com'
 
-        - name: Set up Cloud SDK
-          uses: google-github-actions/setup-gcloud@v2
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
 
-        - name: Google artifact registry auth
-          run: |-
-            gcloud auth configure-docker us-east4-docker.pkg.dev
-        - name: Install Golang
-          uses: actions/setup-go@v2
-          with:
-            go-version: 1.15
+      - name: Google artifact registry auth
+        run: |-
+          gcloud auth configure-docker us-east4-docker.pkg.dev
+      - name: Install Golang
+        uses: actions/setup-go@v2
+        with:
+          go-version: 1.15
 
-        - name: Set up action and replicate to GAR
-          uses: imjasonh/setup-crane@v0.4
+      - name: Set up action and replicate to GAR
+        uses: imjasonh/setup-crane@v0.4
 
-        - run: |-
-            IMAGES=("frontend" "backend" "vscode" "chain-observer" "chain-action-processor" "jobs-delete-inactive-user-resources" "custodian")
-            for IMAGE in "${IMAGES[@]}"; do
-              echo "Replicating platform-$IMAGE to GAR"
-              crane digest hirosystems/platform-$IMAGE:$SANITIZED_BRANCH
-              crane manifest hirosystems/platform-$IMAGE:$SANITIZED_BRANCH | jq
-              crane copy hirosystems/platform-$IMAGE:$SANITIZED_BRANCH us-east4-docker.pkg.dev/${{ vars.GOOGLE_PROJECT_ID }}/hirosystems/${{ github.event.repository.name }}:$SANITIZED_BRANCH
-            done
+      - run: |-
+          IMAGES=("frontend" "backend" "vscode" "chain-observer" "chain-action-processor" "jobs-delete-inactive-user-resources" "custodian")
+          for IMAGE in "${IMAGES[@]}"; do
+            echo "Replicating platform-$IMAGE to GAR"
+            crane digest hirosystems/platform-$IMAGE:$SANITIZED_BRANCH
+            crane manifest hirosystems/platform-$IMAGE:$SANITIZED_BRANCH | jq
+            crane copy hirosystems/platform-$IMAGE:$SANITIZED_BRANCH us-east4-docker.pkg.dev/${{ vars.GOOGLE_PROJECT_ID }}/hirosystems/${{ github.event.repository.name }}:$SANITIZED_BRANCH
+          done
