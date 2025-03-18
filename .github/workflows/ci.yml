@@ -363,8 +363,11 @@ jobs:
 
   replicate-to-gar:
     permissions:
-      content: 'read'
+      contents: 'read'
       id-token: 'write'
+
+    runs-on: ubuntu-latest
+
     strategy:
       matrix:
         environment: [Development, Staging, Production]
@@ -404,10 +407,7 @@ jobs:
         uses: imjasonh/setup-crane@v0.4
 
       - run: |-
-          IMAGES=("frontend" "backend" "vscode" "chain-observer" "chain-action-processor" "jobs-delete-inactive-user-resources" "custodian")
-          for IMAGE in "${IMAGES[@]}"; do
-            echo "Replicating platform-$IMAGE to GAR"
-            crane digest hirosystems/platform-$IMAGE:$SANITIZED_BRANCH
-            crane manifest hirosystems/platform-$IMAGE:$SANITIZED_BRANCH | jq
-            crane copy hirosystems/platform-$IMAGE:$SANITIZED_BRANCH us-east4-docker.pkg.dev/${{ vars.GOOGLE_PROJECT_ID }}/hirosystems/${{ github.event.repository.name }}:$SANITIZED_BRANCH
-          done
+          echo "Replicating Stack Blockchain API to GAR"
+          crane digest hirosystems/stacks-blockchain-api:$SANITIZED_BRANCH
+          crane manifest hirosystems/stacks-blockchain-api:$SANITIZED_BRANCH | jq
+          crane copy hirosystems/stacks-blockchain-api:$SANITIZED_BRANCH us-east4-docker.pkg.dev/${{ vars.GOOGLE_PROJECT_ID }}/hirosystems/${{ github.event.repository.name }}:$SANITIZED_BRANCH
