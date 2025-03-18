@@ -8,17 +8,17 @@ on:
       - beta
       - nakamoto
       - ci/image-stream
-#    tags-ignore:
-#      - "**"
-#    paths-ignore:
-#      - "**/CHANGELOG.md"
-#      - "**/package.json"
-#  pull_request:
-#  workflow_dispatch:
-#env:
-#  GIT_BRANCH: ${{ github.ref_name }}
-#
-#jobs:
+    tags-ignore:
+      - "**"
+    paths-ignore:
+      - "**/CHANGELOG.md"
+      - "**/package.json"
+  pull_request:
+  workflow_dispatch:
+env:
+  GIT_BRANCH: ${{ github.ref_name }}
+
+jobs:
 #  lint:
 #    runs-on: ubuntu-latest
 #    steps:
@@ -277,12 +277,11 @@ on:
 
   build-publish:
     runs-on: ubuntu-latest
-    needs:
-      - lint
-      - test
-      - test-2_5
-      - test-rosetta
-    environment: ${{ matrix.environment }}
+#    needs:
+#      - lint
+#      - test
+#      - test-2_5
+#      - test-rosetta
     steps:
       - uses: actions/checkout@v4
         with:
