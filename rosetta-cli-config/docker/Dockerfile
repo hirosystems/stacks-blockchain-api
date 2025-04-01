@@ -5,7 +5,7 @@ RUN mkdir -p /bin
 ENV ROSETTA_CLI_VERSION "0.5.10"
 
 RUN curl -L --output rosetta-cli-${ROSETTA_CLI_VERSION}-linux-amd64.tar.gz \
-  https://github.com/coinbase/rosetta-cli/releases/download/v${ROSETTA_CLI_VERSION}/rosetta-cli-${ROSETTA_CLI_VERSION}-linux-amd64.tar.gz \
+  https://github.com/coinbase/mesh-cli/releases/download/v${ROSETTA_CLI_VERSION}/rosetta-cli-${ROSETTA_CLI_VERSION}-linux-amd64.tar.gz \
   && tar xzf rosetta-cli-${ROSETTA_CLI_VERSION}-linux-amd64.tar.gz \
   && mv rosetta-cli-${ROSETTA_CLI_VERSION}-linux-amd64 /bin/rosetta-cli \
   && chmod +x /bin/rosetta-cli
