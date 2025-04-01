@@ -36,6 +36,7 @@ export enum ResourceType {
   Pox2Event,
   Stacker,
   BurnBlock,
+  TenureHeight,
   Signer,
   PoxCycle,
   TokenHolders,
@@ -49,6 +50,10 @@ export const pagingQueryLimits: Record<ResourceType, { defaultLimit: number; max
     maxLimit: 30,
   },
   [ResourceType.BurnBlock]: {
+    defaultLimit: 20,
+    maxLimit: 30,
+  },
+  [ResourceType.TenureHeight]: {
     defaultLimit: 20,
     maxLimit: 30,
   },
