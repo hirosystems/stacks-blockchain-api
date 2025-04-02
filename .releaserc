@@ -38,6 +38,12 @@
         "prepareCmd": "npm ci"
       }
     ],
+    [
+      "@semantic-release/npm",
+      {
+        "pkgRoot": "./client"
+      }
+    ],
     "@semantic-release/github",
     "@semantic-release/changelog",
     "@semantic-release/git"
