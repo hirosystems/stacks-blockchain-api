@@ -342,7 +342,6 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: |
-            blockstack/${{ github.event.repository.name }}
             hirosystems/${{ github.event.repository.name }}
           tags: |
             type=ref,event=branch
