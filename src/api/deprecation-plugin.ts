@@ -34,6 +34,6 @@ const pluginCb: FastifyPluginAsync<{ defaultDeprecatedMessage: string }> = async
  * - If not, the plugin uses the `defaultDeprecatedMessage` provided in the plugin options.
  * - If neither is available, a generic warning message `299 - "Deprecated"` is used.
  */
-export const DeprecationPlugin = fp(pluginCb);
+const DeprecationPlugin = fp(pluginCb);
 
 export default DeprecationPlugin;
