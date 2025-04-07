@@ -57,6 +57,7 @@ import FastifyMetrics from 'fastify-metrics';
 import FastifyCors from '@fastify/cors';
 import { TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
 import * as promClient from 'prom-client';
+import DeprecationPlugin from './deprecation-plugin';
 
 export interface ApiServer {
   fastifyApp: FastifyInstance;
@@ -270,6 +271,11 @@ export async function startApiServer(opts: {
 
   // Setup direct proxy to core-node RPC endpoints (/v2)
   await fastify.register(CoreNodeRpcProxyRouter, { prefix: '/v2' });
+
+  // Middleware to annotate http responses with deprecation warnings
+  await fastify.register(DeprecationPlugin, {
+    defaultDeprecatedMessage: 'See https://docs.hiro.so/stacks/api for more information',
+  });
 
   // Wait for all routes and middleware to be ready before starting the server
   await fastify.ready();
