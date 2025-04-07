@@ -1,5 +1,9 @@
 ## [8.8.0](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.7.0...v8.8.0) (2025-04-02)
 
+> [!IMPORTANT]
+> This release deprecates the [`/extended/v1/address/:addr/balances`](https://docs.hiro.so/stacks/api/accounts/balances) and [`/extended/v1/address/:addr/stx`](https://docs.hiro.so/stacks/api/accounts/stx-balances) endpoints in favor of new endpoints [`/extended/v2/addresses/:addr/balances/stx`](https://docs.hiro.so/stacks/api/accounts/principal-stx-balance) and [`/extended/v2/addresses/:addr/balances/ft`](https://docs.hiro.so/stacks/api/accounts/principal-ft-balances) that are optimized for higher performance.
+>
+> We strongly encourage applications and developers to use the new endpoints as soon as possible, as we plan on eventually removing access the now deprecated endpoints.
 
 ### Features
 
