@@ -8,5 +8,6 @@ export default (): void => {
   }
   loadDotEnv();
   process.env.PG_DATABASE = 'postgres';
+  process.env.STACKS_API_ENABLE_LEGACY_ENDPOINTS = '1';
   console.log('Jest - setup done');
 };
