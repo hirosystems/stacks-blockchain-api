@@ -16,7 +16,7 @@ import {
   handleTransactionCache,
 } from '../controllers/cache-controller';
 import { DbEventTypeId } from '../../datastore/common';
-import { has0xPrefix } from '@hirosystems/api-toolkit';
+import { has0xPrefix, parseBoolean } from '@hirosystems/api-toolkit';
 
 import { FastifyPluginAsync } from 'fastify';
 import { Server } from 'node:http';
@@ -318,43 +318,46 @@ export const TxRoutes: FastifyPluginAsync<
     }
   );
 
-  fastify.get(
-    '/mempool/dropped',
-    {
-      preHandler: handleMempoolCache,
-      schema: {
-        operationId: 'get_dropped_mempool_transaction_list',
-        summary: 'Get dropped mempool transactions',
-        description: `Retrieves all recently-broadcast transactions that have been dropped from the mempool.
+  if (parseBoolean(process.env['STACKS_API_ENABLE_LEGACY_ENDPOINTS'])) {
+    fastify.get(
+      '/mempool/dropped',
+      {
+        preHandler: handleMempoolCache,
+        schema: {
+          deprecated: true,
+          operationId: 'get_dropped_mempool_transaction_list',
+          summary: 'Get dropped mempool transactions',
+          description: `Retrieves all recently-broadcast transactions that have been dropped from the mempool.
 
-        Transactions are dropped from the mempool if:
-         * they were stale and awaiting garbage collection or,
-         * were expensive, or
-         * were replaced with a new fee`,
-        tags: ['Transactions'],
-        querystring: Type.Object({
-          offset: OffsetParam(),
-          limit: LimitParam(ResourceType.Tx),
-        }),
-        response: {
-          200: PaginatedResponse(MempoolTransactionSchema, {
-            description: 'List of dropped mempool transactions',
+          Transactions are dropped from the mempool if:
+           * they were stale and awaiting garbage collection or,
+           * were expensive, or
+           * were replaced with a new fee`,
+          tags: ['Transactions'],
+          querystring: Type.Object({
+            offset: OffsetParam(),
+            limit: LimitParam(ResourceType.Tx),
           }),
+          response: {
+            200: PaginatedResponse(MempoolTransactionSchema, {
+              description: 'List of dropped mempool transactions',
+            }),
+          },
         },
       },
-    },
-    async (req, reply) => {
-      const limit = getPagingQueryLimit(ResourceType.Tx, req.query.limit);
-      const offset = parsePagingQueryInput(req.query.offset ?? 0);
-      const { results: txResults, total } = await fastify.db.getDroppedTxs({
-        offset,
-        limit,
-      });
-      const results = txResults.map(tx => parseDbMempoolTx(tx));
-      const response = { limit, offset, total, results };
-      await reply.send(response);
-    }
-  );
+      async (req, reply) => {
+        const limit = getPagingQueryLimit(ResourceType.Tx, req.query.limit);
+        const offset = parsePagingQueryInput(req.query.offset ?? 0);
+        const { results: txResults, total } = await fastify.db.getDroppedTxs({
+          offset,
+          limit,
+        });
+        const results = txResults.map(tx => parseDbMempoolTx(tx));
+        const response = { limit, offset, total, results };
+        await reply.send(response);
+      }
+    );
+  }
 
   fastify.get(
     '/mempool/stats',
