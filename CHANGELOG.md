@@ -1,5 +1,8 @@
 ## [8.9.0](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.8.0...v8.9.0) (2025-04-10)
 
+> [!IMPORTANT]
+> This release marks the `/mempool/dropped` endpoint as legacy deprecated, which means we will keep its code in the API but will no longer respond to it from our production deployments.
+> If you still need to use this endpoint in your own API deployment, set the `STACKS_API_ENABLE_LEGACY_ENDPOINTS` to `true` in your environment before starting the API.
 
 ### Features
 
