@@ -1,3 +1,10 @@
+## [8.9.0](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.8.0...v8.9.0) (2025-04-10)
+
+
+### Features
+
+* mark /mempool/dropped endpoint as legacy deprecated ([#2255](https://github.com/hirosystems/stacks-blockchain-api/issues/2255)) ([576d05b](https://github.com/hirosystems/stacks-blockchain-api/commit/576d05bfb843852bd4d6fc2e1f863f983568fbe6))
+
 ## [8.8.0](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.7.0...v8.8.0) (2025-04-02)
 
 > [!IMPORTANT]
