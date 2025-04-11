@@ -1547,6 +1547,9 @@ describe('address tests', () => {
     );
     expect(fetchAddrBalance1.status).toBe(200);
     expect(fetchAddrBalance1.type).toBe('application/json');
+    expect(fetchAddrBalance1.headers['warning']).toBe(
+      '299 - "Deprecated: See https://docs.hiro.so/stacks/api for more information"'
+    );
     const expectedResp1 = {
       stx: {
         balance: '88679',
