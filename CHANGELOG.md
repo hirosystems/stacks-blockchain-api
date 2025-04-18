@@ -1,3 +1,16 @@
+## [8.10.0](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.9.0...v8.10.0) (2025-04-18)
+
+
+### Features
+
+* add `Warning` http response deprecation notices ([#2253](https://github.com/hirosystems/stacks-blockchain-api/issues/2253)) ([e62ce79](https://github.com/hirosystems/stacks-blockchain-api/commit/e62ce79756338fdcc43a1641787c704ef1202143))
+
+
+### Bug Fixes
+
+* optimize contract event list db index ([#2258](https://github.com/hirosystems/stacks-blockchain-api/issues/2258)) ([e1044d1](https://github.com/hirosystems/stacks-blockchain-api/commit/e1044d1f2cdbe4a202193794d04a8bbdd0ac9592))
+* optimize query for transactions in block ([#2259](https://github.com/hirosystems/stacks-blockchain-api/issues/2259)) ([e69f9e4](https://github.com/hirosystems/stacks-blockchain-api/commit/e69f9e4149d3bcedee4d47a3e4a8f1ea2b8ff964))
+
 ## [8.9.0](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.8.0...v8.9.0) (2025-04-10)
 
 > [!IMPORTANT]
