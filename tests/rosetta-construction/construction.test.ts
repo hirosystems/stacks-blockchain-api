@@ -1679,6 +1679,7 @@ describe('Rosetta Construction', () => {
     expect(result.body.metadata.contract_name).toBe(metadataResponse.metadata.contract_name);
     expect(result.body.metadata.fee).toBe(metadataResponse.metadata.fee);
     expect(result.body.metadata.nonce).toBe(metadataResponse.metadata.nonce);
+    expect(result.body.metadata.recent_block_hash).toBeTruthy();
   });
 
   test('stacking rosetta transaction cycle', async () => {
@@ -2584,7 +2585,6 @@ describe('Rosetta Construction', () => {
 
       const genesisBlock = genesisData.result;
 
-      await timeout(2000);
       const query1 = await supertest(api.address)
         .post(`/rosetta/v1/network/status`)
         .send({ network_identifier: { blockchain: 'stacks', network: 'testnet' } });

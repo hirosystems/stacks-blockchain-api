@@ -248,7 +248,6 @@ describe('PoX-4 - Stack using Bitcoin-chain delegate ops', () => {
 
     const stxXferTx1 = await standByForTxSuccess(stxXferId1);
     expect(stxXferTx1.token_transfer_recipient_address).toBe(account.stxAddr);
-    await standByUntilBlock(stxXferTx1.block_height + 1);
   });
 
   test('Verify expected amount of STX are funded', async () => {
