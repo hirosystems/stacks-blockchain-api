@@ -137,6 +137,7 @@ describe('PoX-4 - Rosetta - Stacking with segwit', () => {
     expect(stackingResult.constructionMetadata.metadata.burn_block_height as number).toBeTruthy();
     expect(stackingResult.submitResult.transaction_identifier.hash).toBe(stackingResult.txId);
     expect(stackingResult.tx.contract_call_contract_id).toBe('ST000000000000000000002AMW42H.pox-4');
+    await standByUntilBlock(stackingResult.tx.block_height + 1);
   });
 
   test('Verify expected amount of STX are locked', async () => {
