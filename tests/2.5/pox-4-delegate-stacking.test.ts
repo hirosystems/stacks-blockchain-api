@@ -476,10 +476,7 @@ describe('PoX-4 - Delegate Stacking operations', () => {
   });
 
   test('BTC stacking reward received', async () => {
-    const curBlock = await testEnv.db.getCurrentBlock();
-    assert(curBlock.found);
-    await standByUntilBurnBlock(curBlock.result.burn_block_height + 1);
-
+    await standByForPoxCycle();
     const received: number = await testEnv.bitcoinRpcClient.getreceivedbyaddress({
       address: delegateeAccount.btcAddr,
       minconf: 0,
