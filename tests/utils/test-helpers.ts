@@ -467,6 +467,7 @@ async function fetchRosetta<TPostBody, TRes>(endpoint: string, body: TPostBody) 
   const result = await supertest(testEnv.api.server)
     .post(endpoint)
     .send(body as any);
+  if (result.status != 200) console.log(result.body.toString());
   expect(result.status).toBe(200);
   expect(result.type).toBe('application/json');
   return result.body as TRes;
