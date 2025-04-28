@@ -383,7 +383,7 @@ export class PgStore extends BasePgStore {
     const result = await sql<BlockQueryResult[]>`
       SELECT ${sql(BLOCK_COLUMNS.map(c => `b.${c}`))}
       FROM blocks b
-      INNER JOIN chain_tip t USING (index_block_hash, block_hash, block_height, burn_block_height)
+      INNER JOIN chain_tip t USING (index_block_hash, block_hash, block_height)
       LIMIT 1
     `;
     if (result.length === 0) {
