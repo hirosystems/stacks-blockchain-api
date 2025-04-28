@@ -513,7 +513,9 @@ describe('BNS API tests', () => {
       [dbName2]
     );
 
-    const query1 = await supertest(api.server).get(`/v1/addresses/${blockchain}/${address}`);
+    const query1 = await supertest(api.server).get(
+      `/v1/addresses/${blockchain}/${address}?unanchored=true`
+    );
     expect(query1.status).toBe(200);
     expect(query1.body.names).toStrictEqual(['imported.btc', 'test-name.btc']);
     expect(query1.type).toBe('application/json');

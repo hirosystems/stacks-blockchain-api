@@ -3825,7 +3825,6 @@ export class PgStore extends BasePgStore {
 
   async getNamesByAddressList({
     address,
-    includeUnanchored,
     chainId,
   }: {
     address: string;
@@ -3833,7 +3832,7 @@ export class PgStore extends BasePgStore {
     chainId: ChainID;
   }): Promise<FoundOrNot<string[]>> {
     const queryResult = await this.sqlTransaction(async sql => {
-      const maxBlockHeight = await this.getMaxBlockHeight(sql, { includeUnanchored });
+      const maxBlockHeight = await this.getMaxBlockHeight(sql, { includeUnanchored: false });
       // 1. Get subdomains owned by this address. These don't produce NFT events so we have to look
       //    directly at the `subdomains` table.
       const subdomainsQuery = await sql<{ name: string; fully_qualified_subdomain: string }[]>`
@@ -3886,7 +3885,7 @@ export class PgStore extends BasePgStore {
         const nameCVs = importedNamesQuery.map(i => bnsNameCV(i.name));
         const oldImportedNamesQuery = await sql<{ value: string }[]>`
           SELECT value
-          FROM ${includeUnanchored ? sql`nft_custody_unanchored` : sql`nft_custody`}
+          FROM nft_custody
           WHERE recipient <> ${address} AND value IN ${sql(nameCVs)}
         `;
         oldImportedNames = oldImportedNamesQuery.map(i => bnsHexValueToName(i.value));
@@ -3897,7 +3896,7 @@ export class PgStore extends BasePgStore {
       // 3. Get newer NFT names owned by this address.
       const nftNamesQuery = await sql<{ value: string }[]>`
         SELECT value
-        FROM ${includeUnanchored ? sql`nft_custody_unanchored` : sql`nft_custody`}
+        FROM nft_custody
         WHERE recipient = ${address} AND asset_identifier = ${getBnsSmartContractId(chainId)}
       `;
       namesToValidate.push(...nftNamesQuery.map(i => bnsHexValueToName(i.value)));
