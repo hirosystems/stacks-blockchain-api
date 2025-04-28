@@ -2585,6 +2585,7 @@ describe('Rosetta Construction', () => {
 
       const genesisBlock = genesisData.result;
 
+      await timeout(2000);
       const query1 = await supertest(api.address)
         .post(`/rosetta/v1/network/status`)
         .send({ network_identifier: { blockchain: 'stacks', network: 'testnet' } });
