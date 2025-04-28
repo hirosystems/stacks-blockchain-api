@@ -88,7 +88,7 @@ describe('PoX-4 - Rosetta - Stacking with segwit', () => {
 
     const stxXferTx1 = await standByForTxSuccess(stxXferId1);
     expect(stxXferTx1.token_transfer_recipient_address).toBe(account.stxAddr);
-    await standByUntilBlock(stxXferTx1.block_height);
+    await standByUntilBlock(stxXferTx1.block_height + 1);
   });
 
   test('Validate test account balance', async () => {
@@ -180,6 +180,7 @@ describe('PoX-4 - Rosetta - Stacking with segwit', () => {
     expect(BigInt(apiBalance.locked)).toBe(0n);
 
     // verify STX unlocked - Rosetta address endpoint balance
+    await standByUntilBlock(coreNodeBalance.unlock_height + 1);
     const rosettaBalance = await getRosettaAccountBalance(account.stxAddr);
     expect(BigInt(rosettaBalance.locked.balances[0].value)).toBe(0n);
 
