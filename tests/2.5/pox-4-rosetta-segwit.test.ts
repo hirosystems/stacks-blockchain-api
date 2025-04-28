@@ -168,7 +168,6 @@ describe('PoX-4 - Rosetta - Stacking with segwit', () => {
     await standByForPoxCycle();
     await standByForPoxCycle();
     await standByForPoxCycle();
-    await standByForPoxCycle();
 
     // verify STX unlocked - stacks-node account RPC balance
     const coreNodeBalance = await testEnv.client.getAccount(account.stxAddr);
