@@ -168,6 +168,7 @@ describe('PoX-4 - Rosetta - Stacking with segwit', () => {
     await standByForPoxCycle();
     await standByForPoxCycle();
     await standByForPoxCycle();
+    await standByForPoxCycle();
 
     // verify STX unlocked - stacks-node account RPC balance
     const coreNodeBalance = await testEnv.client.getAccount(account.stxAddr);
@@ -181,11 +182,9 @@ describe('PoX-4 - Rosetta - Stacking with segwit', () => {
     expect(BigInt(apiBalance.locked)).toBe(0n);
 
     // verify STX unlocked - Rosetta address endpoint balance
-    await standByUntilBlock(coreNodeBalance.unlock_height + 1);
     const rosettaBalance = await getRosettaAccountBalance(account.stxAddr);
     expect(BigInt(rosettaBalance.locked.balances[0].value)).toBe(0n);
 
-    await timeout(1000); // wait a bit for block to be processed
     // Get Stacks block associated with the burn block `unlock_height` reported by RPC
     const unlockRstaBlock = await getRosettaBlockByBurnBlockHeight(rpcAccountInfo.unlock_height);
 
