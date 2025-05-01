@@ -3057,4 +3057,215 @@ describe('address tests', () => {
     expect(json6.results.length).toEqual(4);
     expect(json6.results[0].tx_id).toEqual('0xffa1');
   });
+
+  test('stx balances during reorgs', async () => {
+    const addr1 = 'SP3D6PV2ACBPEKYJTCMH7HEN02KP87QSP8KTEH335';
+    const addr2 = 'SP2TBW1RSC44JZA4XQ1C2G5SZRGSMM14C5NWAKSDD';
+
+    await db.update(
+      new TestBlockBuilder({
+        block_height: 1,
+        index_block_hash: '0x0001',
+        parent_index_block_hash: '',
+      })
+        .addTx({
+          tx_id: '0x1101',
+          token_transfer_recipient_address: addr1,
+          type_id: DbTxTypeId.TokenTransfer,
+          token_transfer_amount: 20_000n, // Initial balance for addr1
+          fee_rate: 50n,
+        })
+        .addTxStxEvent({
+          amount: 20_000n,
+          block_height: 1,
+          recipient: addr1,
+          tx_id: '0x1101',
+        })
+        .addTx({
+          tx_id: '0x1111',
+          sender_address: addr1,
+          token_transfer_recipient_address: addr2,
+          type_id: DbTxTypeId.TokenTransfer,
+          token_transfer_amount: 1000n,
+          fee_rate: 100n,
+        })
+        .addTxStxEvent({
+          amount: 1000n,
+          block_height: 1,
+          sender: addr1,
+          recipient: addr2,
+          tx_id: '0x1111',
+        })
+        .build()
+    );
+    await db.update(
+      new TestBlockBuilder({
+        block_height: 2,
+        index_block_hash: '0x0002',
+        parent_index_block_hash: '0x0001',
+      })
+        .addTx({
+          tx_id: '0x1102',
+          sender_address: addr1,
+          token_transfer_recipient_address: addr2,
+          type_id: DbTxTypeId.TokenTransfer,
+          token_transfer_amount: 2000n,
+          fee_rate: 100n,
+        })
+        .addTxStxEvent({
+          amount: 2000n,
+          block_height: 2,
+          sender: addr1,
+          recipient: addr2,
+          tx_id: '0x1102',
+        })
+        .build()
+    );
+    await db.update(
+      new TestBlockBuilder({
+        block_height: 3,
+        index_block_hash: '0x0003',
+        parent_index_block_hash: '0x0002',
+      })
+        .addTx({
+          tx_id: '0x1103',
+          sender_address: addr1,
+          token_transfer_recipient_address: addr2,
+          type_id: DbTxTypeId.TokenTransfer,
+          token_transfer_amount: 3000n,
+          fee_rate: 100n,
+        })
+        .addTxStxEvent({
+          amount: 3000n,
+          block_height: 3,
+          sender: addr1,
+          recipient: addr2,
+          tx_id: '0x1103',
+        })
+        .build()
+    );
+    await db.update(
+      new TestBlockBuilder({
+        block_height: 4,
+        index_block_hash: '0x0004',
+        parent_index_block_hash: '0x0003',
+      })
+        .addTx({
+          tx_id: '0x1104',
+          sender_address: addr1,
+          token_transfer_recipient_address: addr2,
+          type_id: DbTxTypeId.TokenTransfer,
+          token_transfer_amount: 4000n,
+          fee_rate: 100n,
+        })
+        .addTxStxEvent({
+          amount: 4000n,
+          block_height: 4,
+          sender: addr1,
+          recipient: addr2,
+          tx_id: '0x1104',
+        })
+        .build()
+    );
+
+    let result = await supertest(api.server).get(`/extended/v2/addresses/${addr1}/balances/stx`);
+    expect(result.status).toBe(200);
+    expect(result.type).toBe('application/json');
+    expect(JSON.parse(result.text).balance).toBe('9600');
+    result = await supertest(api.server).get(`/extended/v2/addresses/${addr2}/balances/stx`);
+    expect(result.status).toBe(200);
+    expect(result.type).toBe('application/json');
+    expect(JSON.parse(result.text).balance).toBe('10000');
+
+    // Reorg last 2 blocks
+    await db.update(
+      new TestBlockBuilder({
+        block_height: 3,
+        index_block_hash: '0xaa03',
+        parent_index_block_hash: '0x0002',
+      })
+        .addTx({
+          tx_id: '0x1a03',
+          sender_address: addr1,
+          token_transfer_recipient_address: addr2,
+          type_id: DbTxTypeId.TokenTransfer,
+          token_transfer_amount: 500n,
+          fee_rate: 150n,
+        })
+        .addTxStxEvent({
+          amount: 500n,
+          block_height: 3,
+          sender: addr1,
+          recipient: addr2,
+          tx_id: '0x1a03',
+        })
+        .build()
+    );
+    await db.update(
+      new TestBlockBuilder({
+        block_height: 4,
+        index_block_hash: '0xaa04',
+        parent_index_block_hash: '0xaa03',
+      })
+        .addTx({
+          tx_id: '0x1a04',
+          sender_address: addr1,
+          token_transfer_recipient_address: addr2,
+          type_id: DbTxTypeId.TokenTransfer,
+          token_transfer_amount: 500n,
+          fee_rate: 150n,
+        })
+        .addTxStxEvent({
+          amount: 500n,
+          block_height: 4,
+          sender: addr1,
+          recipient: addr2,
+          tx_id: '0x1a04',
+        })
+        .build()
+    );
+    await db.update(
+      new TestBlockBuilder({
+        block_height: 5,
+        index_block_hash: '0xaa05',
+        parent_index_block_hash: '0xaa04',
+      })
+        .addTx({
+          tx_id: '0x1a05',
+          sender_address: addr1,
+          token_transfer_recipient_address: addr2,
+          type_id: DbTxTypeId.TokenTransfer,
+          token_transfer_amount: 500n,
+          fee_rate: 150n,
+        })
+        .addTxStxEvent({
+          amount: 500n,
+          block_height: 5,
+          sender: addr1,
+          recipient: addr2,
+          tx_id: '0x1a05',
+        })
+        .build()
+    );
+
+    result = await supertest(api.server).get(`/extended/v1/address/${addr1}/stx`);
+    expect(result.status).toBe(200);
+    expect(result.type).toBe('application/json');
+    let v1balance = JSON.parse(result.text).balance;
+    expect(v1balance).toBe('14850');
+    result = await supertest(api.server).get(`/extended/v2/addresses/${addr1}/balances/stx`);
+    expect(result.status).toBe(200);
+    expect(result.type).toBe('application/json');
+    expect(JSON.parse(result.text).balance).toBe(v1balance);
+
+    result = await supertest(api.server).get(`/extended/v1/address/${addr2}/stx`);
+    expect(result.status).toBe(200);
+    expect(result.type).toBe('application/json');
+    v1balance = JSON.parse(result.text).balance;
+    expect(v1balance).toBe('14');
+    result = await supertest(api.server).get(`/extended/v2/addresses/${addr2}/balances/stx`);
+    expect(result.status).toBe(200);
+    expect(result.type).toBe('application/json');
+    expect(JSON.parse(result.text).balance).toBe(v1balance);
+  });
 });
