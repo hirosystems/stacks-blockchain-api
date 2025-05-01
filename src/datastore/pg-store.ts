@@ -4684,9 +4684,7 @@ export class PgStore extends BasePgStore {
   /// by event type.
   async getLastStacksNodeEventTimestamps() {
     return await this.sql<{ event_path: string; receive_timestamp: Date }[]>`
-      SELECT DISTINCT ON (event_path) event_path, receive_timestamp
-      FROM event_observer_requests
-      ORDER BY event_path, receive_timestamp DESC
+      SELECT event_path, receive_timestamp FROM event_observer_timestamps
     `;
   }
 }
