@@ -1359,12 +1359,7 @@ export class PgWriteStore extends PgStore {
     }
   }
 
-  async updateNftEvents(
-    sql: PgSqlClient,
-    tx: DbTx,
-    events: DbNftEvent[],
-    microblock: boolean = false
-  ) {
+  async updateNftEvents(sql: PgSqlClient, tx: DbTx, events: DbNftEvent[]) {
     for (const batch of batchIterate(events, INSERT_BATCH_SIZE)) {
       const custodyInsertsMap = new Map<string, NftCustodyInsertValues>();
       const nftEventInserts: NftEventInsertValues[] = [];
@@ -2448,7 +2443,7 @@ export class PgWriteStore extends PgStore {
       q.enqueue(() => this.updateStxLockEvents(sql, txs));
       q.enqueue(() => this.updateFtEvents(sql, txs));
       for (const entry of txs) {
-        q.enqueue(() => this.updateNftEvents(sql, entry.tx, entry.nftEvents, true));
+        q.enqueue(() => this.updateNftEvents(sql, entry.tx, entry.nftEvents));
         q.enqueue(() => this.updateSmartContracts(sql, entry.tx, entry.smartContracts));
         q.enqueue(() => this.updateNamespaces(sql, entry.tx, entry.namespaces));
         q.enqueue(() => this.updateNames(sql, entry.tx, entry.names));
