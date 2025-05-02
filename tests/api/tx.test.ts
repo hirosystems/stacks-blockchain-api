@@ -78,6 +78,7 @@ describe('tx tests', () => {
       raw_tx: bufferToHex(Buffer.from('test-raw-tx')),
       type_id: DbTxTypeId.Coinbase,
       status: DbTxStatus.Pending,
+      replacing_tx_id: '',
       receipt_time: 1594307695,
       coinbase_payload: bufferToHex(Buffer.from('coinbase hi')),
       post_conditions: '0x01f5',
@@ -2760,6 +2761,7 @@ describe('tx tests', () => {
       raw_tx: bufferToHex(Buffer.from('test-raw-mempool-tx')),
       type_id: DbTxTypeId.Coinbase,
       status: 1,
+      replacing_tx_id: '',
       post_conditions: '0x01f5',
       fee_rate: 1234n,
       sponsored: false,
@@ -3936,6 +3938,7 @@ describe('tx tests', () => {
       nonce: 0,
       raw_tx: bufferToHex(Buffer.from('')),
       status: DbTxStatus.Pending,
+      replacing_tx_id: '',
       post_conditions: '0x01f5',
       fee_rate: 139200n,
       sponsored: false,
@@ -3983,6 +3986,7 @@ describe('tx tests', () => {
       sponsored: false,
       tx_id: mempoolTx1.tx_id,
       tx_status: 'pending',
+      replacing_tx_id: '',
       tx_type: 'contract_call',
     };
     const mempoolTxResult1 = await supertest(api.server).get(`/extended/v1/tx/${mempoolTx1.tx_id}`);
@@ -3996,6 +4000,7 @@ describe('tx tests', () => {
       nonce: 0,
       raw_tx: bufferToHex(Buffer.from('')),
       status: DbTxStatus.Pending,
+      replacing_tx_id: '',
       post_conditions: '0x01f5',
       fee_rate: 139200n,
       sponsored: false,
@@ -4044,6 +4049,7 @@ describe('tx tests', () => {
       sponsored: false,
       tx_id: mempoolTx2.tx_id,
       tx_status: 'pending',
+      replacing_tx_id: '',
       tx_type: 'contract_call',
     };
     const mempoolTxResult2 = await supertest(api.server).get(`/extended/v1/tx/${mempoolTx2.tx_id}`);

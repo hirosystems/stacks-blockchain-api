@@ -304,6 +304,8 @@ export interface DbMempoolFeePriority {
 export interface DbMempoolTx extends BaseTx {
   pruned: boolean;
 
+  replacing_tx_id?: string;
+
   receipt_time: number;
 
   post_conditions: string;
@@ -895,6 +897,7 @@ export interface MempoolTxQueryResult {
   type_id: number;
   anchor_mode: number;
   status: number;
+  replacing_tx_id?: string;
   receipt_time: number;
   receipt_block_height: number;
 
@@ -1237,6 +1240,7 @@ export interface MempoolTxInsertValues {
   type_id: DbTxTypeId;
   anchor_mode: DbTxAnchorMode;
   status: DbTxStatus;
+  replacing_tx_id: PgBytea | null;
   receipt_time: number;
   receipt_block_height: number;
   post_conditions: PgBytea;
