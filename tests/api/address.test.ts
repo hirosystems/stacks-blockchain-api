@@ -3168,6 +3168,7 @@ describe('address tests', () => {
         })
         .build()
     );
+    // Send in repeated blocks
     await db.update(
       new TestBlockBuilder({
         block_height: 3,
@@ -3309,6 +3310,7 @@ describe('address tests', () => {
       token_transfer_amount: 300n,
       fee_rate: 150n,
     });
+    // Try a long number of STX events
     for (let i = 0; i < 300; i++) {
       block.addTxStxEvent({
         amount: 1n,
@@ -3325,6 +3327,214 @@ describe('address tests', () => {
     expect(result.status).toBe(200);
     expect(result.type).toBe('application/json');
     let v1balance = JSON.parse(result.text).balance;
+    // expect(v1balance).toBe('14850');
+    result = await supertest(api.server).get(`/extended/v2/addresses/${addr1}/balances/stx`);
+    expect(result.status).toBe(200);
+    expect(result.type).toBe('application/json');
+    expect(JSON.parse(result.text).balance).toBe(v1balance);
+
+    result = await supertest(api.server).get(`/extended/v1/address/${addr2}/stx`);
+    expect(result.status).toBe(200);
+    expect(result.type).toBe('application/json');
+    v1balance = JSON.parse(result.text).balance;
+    // expect(v1balance).toBe('4500');
+    result = await supertest(api.server).get(`/extended/v2/addresses/${addr2}/balances/stx`);
+    expect(result.status).toBe(200);
+    expect(result.type).toBe('application/json');
+    expect(JSON.parse(result.text).balance).toBe(v1balance);
+
+    // Send in orphaned blocks, perform re-orgs on them, and finally arrive to a new canonical chain
+    await db.update(
+      new TestBlockBuilder({
+        block_height: 2,
+        index_block_hash: '0xff02',
+        parent_index_block_hash: '0x0001',
+      })
+        .addTx({
+          tx_id: '0xf002',
+          sender_address: addr1,
+          token_transfer_recipient_address: addr2,
+          type_id: DbTxTypeId.TokenTransfer,
+          token_transfer_amount: 500n,
+          fee_rate: 80n,
+        })
+        .addTxStxEvent({
+          amount: 500n,
+          block_height: 2,
+          sender: addr1,
+          recipient: addr2,
+          tx_id: '0xf002',
+        })
+        .build()
+    );
+    await db.update(
+      new TestBlockBuilder({
+        block_height: 2,
+        index_block_hash: '0xdd02',
+        parent_index_block_hash: '0x0001',
+      })
+        .addTx({
+          tx_id: '0xd002',
+          sender_address: addr1,
+          token_transfer_recipient_address: addr2,
+          type_id: DbTxTypeId.TokenTransfer,
+          token_transfer_amount: 500n,
+          fee_rate: 80n,
+        })
+        .addTxStxEvent({
+          amount: 500n,
+          block_height: 2,
+          sender: addr1,
+          recipient: addr2,
+          tx_id: '0xd002',
+        })
+        .build()
+    );
+    await db.update(
+      new TestBlockBuilder({
+        block_height: 3,
+        index_block_hash: '0xff03',
+        parent_index_block_hash: '0xff02',
+      })
+        .addTx({
+          tx_id: '0xf003',
+          sender_address: addr1,
+          sponsor_address: addr2,
+          token_transfer_recipient_address: addr2,
+          type_id: DbTxTypeId.TokenTransfer,
+          token_transfer_amount: 500n,
+          fee_rate: 80n,
+        })
+        .addTxStxEvent({
+          amount: 500n,
+          block_height: 3,
+          sender: addr1,
+          recipient: addr2,
+          tx_id: '0xf003',
+        })
+        .build()
+    );
+    await db.update(
+      new TestBlockBuilder({
+        block_height: 3,
+        index_block_hash: '0xdd03',
+        parent_index_block_hash: '0xdd02',
+      })
+        .addTx({
+          tx_id: '0xd003',
+          sender_address: addr1,
+          sponsor_address: addr2,
+          token_transfer_recipient_address: addr2,
+          type_id: DbTxTypeId.TokenTransfer,
+          token_transfer_amount: 500n,
+          fee_rate: 80n,
+        })
+        .addTxStxEvent({
+          amount: 500n,
+          block_height: 3,
+          sender: addr1,
+          recipient: addr2,
+          tx_id: '0xd003',
+        })
+        .build()
+    );
+    await db.update(
+      new TestBlockBuilder({
+        block_height: 4,
+        index_block_hash: '0xdd04',
+        parent_index_block_hash: '0xdd03',
+      })
+        .addTx({
+          tx_id: '0xd004',
+          sender_address: addr1,
+          token_transfer_recipient_address: addr2,
+          type_id: DbTxTypeId.TokenTransfer,
+          token_transfer_amount: 500n,
+          fee_rate: 80n,
+        })
+        .addTxStxEvent({
+          amount: 500n,
+          block_height: 4,
+          sender: addr1,
+          recipient: addr2,
+          tx_id: '0xd004',
+        })
+        .build()
+    );
+    await db.update(
+      new TestBlockBuilder({
+        block_height: 5,
+        index_block_hash: '0xdd05',
+        parent_index_block_hash: '0xdd04',
+      })
+        .addTx({
+          tx_id: '0xd005',
+          sender_address: addr1,
+          token_transfer_recipient_address: addr2,
+          type_id: DbTxTypeId.TokenTransfer,
+          token_transfer_amount: 500n,
+          fee_rate: 80n,
+        })
+        .addTxStxEvent({
+          amount: 500n,
+          block_height: 4,
+          sender: addr1,
+          recipient: addr2,
+          tx_id: '0xd005',
+        })
+        .build()
+    );
+    await db.update(
+      new TestBlockBuilder({
+        block_height: 6,
+        index_block_hash: '0xdd06',
+        parent_index_block_hash: '0xdd05',
+      })
+        .addTx({
+          tx_id: '0xd006',
+          sender_address: addr1,
+          token_transfer_recipient_address: addr2,
+          type_id: DbTxTypeId.TokenTransfer,
+          token_transfer_amount: 500n,
+          fee_rate: 80n,
+        })
+        .addTxStxEvent({
+          amount: 500n,
+          block_height: 4,
+          sender: addr1,
+          recipient: addr2,
+          tx_id: '0xd006',
+        })
+        .build()
+    );
+    await db.update(
+      new TestBlockBuilder({
+        block_height: 7,
+        index_block_hash: '0xdd07',
+        parent_index_block_hash: '0xdd06',
+      })
+        .addTx({
+          tx_id: '0xd007',
+          sender_address: addr1,
+          token_transfer_recipient_address: addr2,
+          type_id: DbTxTypeId.TokenTransfer,
+          token_transfer_amount: 500n,
+          fee_rate: 80n,
+        })
+        .addTxStxEvent({
+          amount: 500n,
+          block_height: 4,
+          sender: addr1,
+          recipient: addr2,
+          tx_id: '0xd007',
+        })
+        .build()
+    );
+
+    result = await supertest(api.server).get(`/extended/v1/address/${addr1}/stx`);
+    expect(result.status).toBe(200);
+    expect(result.type).toBe('application/json');
+    v1balance = JSON.parse(result.text).balance;
     // expect(v1balance).toBe('14850');
     result = await supertest(api.server).get(`/extended/v2/addresses/${addr1}/balances/stx`);
     expect(result.status).toBe(200);
