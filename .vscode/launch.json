@@ -236,7 +236,9 @@
         "--runInBand",
         "--no-cache",
         "--config",
-        "${workspaceRoot}/tests/jest.config.api.js"
+        "${workspaceRoot}/tests/jest.config.api.js",
+        "-t",
+        "mempool tests"
       ],
       "outputCapture": "std",
       "console": "integratedTerminal",
