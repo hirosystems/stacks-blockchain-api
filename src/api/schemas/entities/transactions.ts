@@ -428,9 +428,9 @@ export const AbstractMempoolTransactionProperties = {
       description: 'Status of the transaction',
     }
   ),
-  replacing_tx_id: Type.Optional(
+  replaced_by_tx_id: Type.Optional(
     Type.String({
-      description: 'ID of another mempool transaction that is being replaced by this transaction',
+      description: 'ID of another transaction which replaced this one',
     })
   ),
   receipt_time: Type.Integer({

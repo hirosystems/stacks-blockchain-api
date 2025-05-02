@@ -3,7 +3,7 @@
 
 exports.up = pgm => {
   pgm.addColumn('mempool_txs', {
-    replacing_tx_id: {
+    replaced_by_tx_id: {
       type: 'bytea', 
     }
   });

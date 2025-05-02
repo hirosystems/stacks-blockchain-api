@@ -1920,7 +1920,7 @@ export class PgWriteStore extends PgStore {
         type_id: tx.type_id,
         anchor_mode: tx.anchor_mode,
         status: tx.status,
-        replacing_tx_id: tx.replacing_tx_id ?? null,
+        replaced_by_tx_id: tx.replaced_by_tx_id ?? null,
         receipt_time: tx.receipt_time,
         receipt_block_height: chainTip.block_height,
         post_conditions: tx.post_conditions,
@@ -1960,7 +1960,7 @@ export class PgWriteStore extends PgStore {
         UPDATE mempool_txs
         SET pruned = false,
             status = ${DbTxStatus.Pending},
-            replacing_tx_id = NULL,
+            replaced_by_tx_id = NULL,
             receipt_block_height = ${values[0].receipt_block_height},
             receipt_time = ${values[0].receipt_time}
         WHERE tx_id IN ${sql(values.map(v => v.tx_id))}
@@ -2093,12 +2093,20 @@ export class PgWriteStore extends PgStore {
     }
   }
 
-  async dropMempoolTxs({ status, txIds, replacing_tx_id }: { status: DbTxStatus; txIds: string[]; replacing_tx_id: string | null }): Promise<void> {
+  async dropMempoolTxs({
+    status,
+    txIds,
+    new_tx_id,
+  }: {
+    status: DbTxStatus;
+    txIds: string[];
+    new_tx_id: string | null;
+  }): Promise<void> {
     for (const batch of batchIterate(txIds, INSERT_BATCH_SIZE)) {
       const updateResults = await this.sql<{ tx_id: string }[]>`
         WITH pruned AS (
           UPDATE mempool_txs
-          SET pruned = TRUE, status = ${status}, replacing_tx_id = ${replacing_tx_id}
+          SET pruned = TRUE, status = ${status}, replaced_by_tx_id = ${new_tx_id}
           WHERE tx_id IN ${this.sql(batch)} AND pruned = FALSE
           RETURNING tx_id
         ),
@@ -2695,7 +2703,7 @@ export class PgWriteStore extends PgStore {
       ),
       restored AS (
         UPDATE mempool_txs
-        SET pruned = false, status = ${DbTxStatus.Pending}, replacing_tx_id = NULL
+        SET pruned = false, status = ${DbTxStatus.Pending}, replaced_by_tx_id = NULL
         WHERE pruned = true AND tx_id IN (SELECT DISTINCT tx_id FROM affected_mempool_tx_ids)
         RETURNING tx_id
       ),

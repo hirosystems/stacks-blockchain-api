@@ -506,13 +506,13 @@ describe('microblock tests', () => {
         const mempoolTx1: DbMempoolTxRaw = {
           ...mbTx1,
           pruned: false,
-          replacing_tx_id: '',
+          replaced_by_tx_id: '',
           receipt_time: 123456789,
         };
         const mempoolTx2: DbMempoolTxRaw = {
           ...mbTx2,
           pruned: false,
-          replacing_tx_id: '',
+          replaced_by_tx_id: '',
           receipt_time: 123456789,
         };
         await db.updateMempoolTxs({ mempoolTxs: [mempoolTx1, mempoolTx2] });
