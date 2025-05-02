@@ -1049,16 +1049,6 @@ export function getTxDbStatus(
   }
 }
 
-export function getReplacingTx(
-  new_txid : string | null
-): string {
-  if (new_txid === null){
-    return '';
-  } else{
-    return new_txid;
-  }
-}
-
 /**
  * Extract tx-type specific data from a Transaction and into a tx db model.
  * @param txData - Transaction data to extract from.

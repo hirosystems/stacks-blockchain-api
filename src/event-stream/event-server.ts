@@ -72,7 +72,6 @@ import { PgWriteStore } from '../datastore/pg-write-store';
 import {
   createDbMempoolTxFromCoreMsg,
   createDbTxFromCoreMsg,
-  getReplacingTx,
   getTxDbStatus,
 } from '../datastore/helpers';
 import { handleBnsImport } from '../import-v1';
