@@ -460,7 +460,7 @@ describe('mempool tests', () => {
     await db.dropMempoolTxs({
       status: DbTxStatus.DroppedTooExpensive,
       txIds: [mempoolTx4.tx_id],
-      new_tx_id: '',
+      new_tx_id: null,
     });
     const searchResult4 = await supertest(api.server).get(`/extended/v1/tx/${mempoolTx4.tx_id}`);
     expect(searchResult4.status).toBe(200);
@@ -487,7 +487,7 @@ describe('mempool tests', () => {
     await db.dropMempoolTxs({
       status: DbTxStatus.DroppedStaleGarbageCollect,
       txIds: [mempoolTx5.tx_id],
-      new_tx_id: '',
+      new_tx_id: null,
     });
     const searchResult5 = await supertest(api.server).get(`/extended/v1/tx/${mempoolTx5.tx_id}`);
     expect(searchResult5.status).toBe(200);
@@ -514,7 +514,7 @@ describe('mempool tests', () => {
     await db.dropMempoolTxs({
       status: DbTxStatus.DroppedProblematic,
       txIds: [mempoolTx6.tx_id],
-      new_tx_id: '',
+      new_tx_id: null,
     });
     const searchResult6 = await supertest(api.server).get(`/extended/v1/tx/${mempoolTx6.tx_id}`);
     expect(searchResult6.status).toBe(200);
