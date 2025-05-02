@@ -305,7 +305,7 @@ interface TestMempoolTxArgs {
   smart_contract_clarity_version?: number;
   smart_contract_contract_id?: string;
   status?: DbTxStatus;
-  replaced_by_tx_id?: string,
+  replaced_by_tx_id?: string;
   token_transfer_recipient_address?: string;
   token_transfer_amount?: bigint;
   token_transfer_memo?: string;
