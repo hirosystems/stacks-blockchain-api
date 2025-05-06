@@ -330,6 +330,16 @@ export class PgWriteStore extends PgStore {
             tx_count = (SELECT tx_count FROM new_tx_count),
             tx_count_unanchored = (SELECT tx_count FROM new_tx_count)
         `;
+
+      // FIXME: Balance test
+      if (data.block.block_height >= 99680) {
+        const stxAddress = 'SP3JWSERFDACYF5S9MQVHGMQFP6BRT5JQTWS56JVP';
+        const oldBalance = await this.getStxBalanceAtBlock(stxAddress, data.block.block_height);
+        const newBalance = await this.v2.getStxHolderBalance({ sql, stxAddress });
+        if (newBalance.found && oldBalance.balance != newBalance.result.balance) {
+          throw new Error(`BALANCE DIFFERENCE FOUND AT BLOCK ${data.block.block_height}`);
+        }
+      }
     });
     // Do we have an IBD height defined in ENV? If so, check if this block update reached it.
     const ibdHeight = getIbdBlockHeight();
