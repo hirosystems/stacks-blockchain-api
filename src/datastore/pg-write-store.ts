@@ -116,6 +116,8 @@ class MicroblockGapError extends Error {
 
 type TransactionHeader = { txId: string; sender: string; nonce: number };
 
+let balanceGlobal: bigint | undefined = undefined;
+
 /**
  * Extends `PgStore` to provide data insertion functions. These added features are usually called by
  * the `EventServer` upon receiving blockchain events from a Stacks node. It also deals with chain data
@@ -334,10 +336,15 @@ export class PgWriteStore extends PgStore {
       // FIXME: Balance test
       if (data.block.block_height >= 99680) {
         const stxAddress = 'SP3JWSERFDACYF5S9MQVHGMQFP6BRT5JQTWS56JVP';
-        const oldBalance = await this.getStxBalanceAtBlock(stxAddress, data.block.block_height);
         const newBalance = await this.v2.getStxHolderBalance({ sql, stxAddress });
-        if (newBalance.found && oldBalance.balance != newBalance.result.balance) {
-          throw new Error(`BALANCE DIFFERENCE FOUND AT BLOCK ${data.block.block_height}`);
+        if (newBalance.found && newBalance.result.balance != balanceGlobal) {
+          balanceGlobal = newBalance.result.balance;
+          const oldBalance = await this.getStxBalanceAtBlock(stxAddress, data.block.block_height);
+          if (oldBalance.balance != balanceGlobal) {
+            throw new Error(
+              `BALANCE DIFFERENCE FOUND AT BLOCK ${data.block.block_height}: old (${oldBalance.balance}) new (${balanceGlobal})`
+            );
+          }
         }
       }
     });
