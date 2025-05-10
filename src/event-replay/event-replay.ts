@@ -93,27 +93,27 @@ export async function importEventsFromTsv(
       throw new Error(`Invalid event import mode: ${importMode}`);
   }
   const connectionArgs = getConnectionArgs(PgServer.primary);
-  const hasData = await databaseHasData(connectionArgs);
-  if (!wipeDb && hasData) {
-    throw new Error(`Database contains existing data. Add --wipe-db to drop the existing tables.`);
-  }
-  if (force) {
-    await dangerousDropAllTables(connectionArgs, {
-      acknowledgePotentialCatastrophicConsequences: 'yes',
-    });
-  }
+  // const hasData = await databaseHasData(connectionArgs);
+  // if (!wipeDb && hasData) {
+  //   throw new Error(`Database contains existing data. Add --wipe-db to drop the existing tables.`);
+  // }
+  // if (force) {
+  //   await dangerousDropAllTables(connectionArgs, {
+  //     acknowledgePotentialCatastrophicConsequences: 'yes',
+  //   });
+  // }
 
-  try {
-    await cycleMigrations(MIGRATIONS_DIR, connectionArgs, {
-      dangerousAllowDataLoss: true,
-      checkForEmptyData: true,
-    });
-  } catch (error) {
-    logger.error(error);
-    throw new Error(
-      `DB migration cycle failed, possibly due to an incompatible API version upgrade. Add --wipe-db --force or perform a manual DB wipe before importing.`
-    );
-  }
+  // try {
+  //   await cycleMigrations(MIGRATIONS_DIR, connectionArgs, {
+  //     dangerousAllowDataLoss: true,
+  //     checkForEmptyData: true,
+  //   });
+  // } catch (error) {
+  //   logger.error(error);
+  //   throw new Error(
+  //     `DB migration cycle failed, possibly due to an incompatible API version upgrade. Add --wipe-db --force or perform a manual DB wipe before importing.`
+  //   );
+  // }
 
   // Look for the TSV's block height and determine the prunable block window.
   const tsvBlockHeight = await findTsvBlockHeight(resolvedFilePath);
@@ -142,7 +142,7 @@ export async function importEventsFromTsv(
     serverPort: 0,
   });
 
-  await importV1TokenOfferingData(db);
+  // await importV1TokenOfferingData(db);
 
   // Import TSV chain data
   const readStream = fs.createReadStream(resolvedFilePath);
