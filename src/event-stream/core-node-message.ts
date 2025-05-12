@@ -240,7 +240,7 @@ export interface CoreNodeTxMessage {
   raw_result: string;
   txid: string;
   tx_index: number;
-  contract_abi: ClarityAbi | null;
+  contract_interface: ClarityAbi | null;
   execution_cost: CoreNodeExecutionCostMessage;
   microblock_sequence: number | null;
   microblock_hash: string | null;
