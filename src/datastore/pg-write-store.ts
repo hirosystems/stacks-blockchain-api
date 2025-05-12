@@ -285,8 +285,8 @@ export class PgWriteStore extends PgStore {
         const q = new PgWriteQueue();
         q.enqueue(() => this.updateMinerRewards(sql, data.minerRewards));
         if (isCanonical) {
-          q.enqueue(() => this.updateStxBalances(sql, batchedTxData, data.minerRewards));
-          q.enqueue(() => this.updateFtBalances(sql, batchedTxData));
+          q.enqueue(() => this.updateStxBalances(sql, data.txs, data.minerRewards));
+          q.enqueue(() => this.updateFtBalances(sql, data.txs));
         }
         if (data.poxSetSigners && data.poxSetSigners.signers) {
           const poxSet = data.poxSetSigners;
