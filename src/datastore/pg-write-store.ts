@@ -116,6 +116,7 @@ class MicroblockGapError extends Error {
 
 type TransactionHeader = { txId: string; sender: string; nonce: number };
 
+const checkAddr = 'SPETRC149CY5PSKEK1K2Q160MR8YQ924GETDJRSS';
 let balanceGlobal: bigint | undefined = undefined;
 
 /**
@@ -333,18 +334,15 @@ export class PgWriteStore extends PgStore {
             tx_count_unanchored = (SELECT tx_count FROM new_tx_count)
         `;
 
-      if (chainTip.block_height >= 99680) {
-        const stxAddress = 'SP3JWSERFDACYF5S9MQVHGMQFP6BRT5JQTWS56JVP';
-        const newBalance = await this.v2.getStxHolderBalance({ sql, stxAddress });
-        if (newBalance.found && newBalance.result.balance != balanceGlobal) {
-          balanceGlobal = newBalance.result.balance;
-          const newChainTip = await this.getChainTip(sql);
-          const oldBalance = await this.getStxBalanceAtBlock(stxAddress, newChainTip.block_height);
-          if (oldBalance.balance != balanceGlobal) {
-            throw new Error(
-              `BALANCE DIFFERENCE FOUND AT BLOCK ${data.block.block_height}: old (${oldBalance.balance}) new (${balanceGlobal})`
-            );
-          }
+      const newBalance = await this.v2.getStxHolderBalance({ sql, stxAddress: checkAddr });
+      if (newBalance.found && newBalance.result.balance != balanceGlobal) {
+        balanceGlobal = newBalance.result.balance;
+        const newChainTip = await this.getChainTip(sql);
+        const oldBalance = await this.getStxBalanceAtBlock(checkAddr, newChainTip.block_height);
+        if (oldBalance.balance != balanceGlobal) {
+          throw new Error(
+            `BALANCE DIFFERENCE FOUND AT BLOCK ${data.block.block_height}: old (${oldBalance.balance}) new (${balanceGlobal})`
+          );
         }
       }
     });
@@ -1059,14 +1057,14 @@ export class PgWriteStore extends PgStore {
       if (tx.sponsored) {
         // Decrease the tx sponsor balance by the fee
         const balance = balanceMap.get(tx.sponsor_address as string) ?? BigInt(0);
-        if (tx.sponsor_address == 'SP3JWSERFDACYF5S9MQVHGMQFP6BRT5JQTWS56JVP') {
+        if (tx.sponsor_address == checkAddr) {
           console.log('tx found');
         }
         balanceMap.set(tx.sponsor_address as string, balance - BigInt(tx.fee_rate));
       } else {
         // Decrease the tx sender balance by the fee
         const balance = balanceMap.get(tx.sender_address) ?? BigInt(0);
-        if (tx.sender_address == 'SP3JWSERFDACYF5S9MQVHGMQFP6BRT5JQTWS56JVP') {
+        if (tx.sender_address == checkAddr) {
           console.log('tx found');
         }
         balanceMap.set(tx.sender_address, balance - BigInt(tx.fee_rate));
@@ -1076,7 +1074,7 @@ export class PgWriteStore extends PgStore {
         if (event.sender) {
           // Decrease the tx sender balance by the transfer amount
           const balance = balanceMap.get(event.sender) ?? BigInt(0);
-          if (event.sender == 'SP3JWSERFDACYF5S9MQVHGMQFP6BRT5JQTWS56JVP') {
+          if (event.sender == checkAddr) {
             console.log('tx found');
           }
           balanceMap.set(event.sender, balance - BigInt(event.amount));
@@ -1084,7 +1082,7 @@ export class PgWriteStore extends PgStore {
         if (event.recipient) {
           // Increase the tx recipient balance by the transfer amount
           const balance = balanceMap.get(event.recipient) ?? BigInt(0);
-          if (event.recipient == 'SP3JWSERFDACYF5S9MQVHGMQFP6BRT5JQTWS56JVP') {
+          if (event.recipient == checkAddr) {
             console.log('tx found');
           }
           balanceMap.set(event.recipient, balance + BigInt(event.amount));
