@@ -87,7 +87,7 @@ import {
 } from './helpers';
 import { PgNotifier } from './pg-notifier';
 import { SyntheticPoxEventName } from '../pox-helpers';
-import { BasePgStore, PgSqlClient, connectPostgres } from '@hirosystems/api-toolkit';
+import { BasePgStore, PgSqlClient, PgSqlQuery, connectPostgres } from '@hirosystems/api-toolkit';
 import {
   PgServer,
   getConnectionArgs,
@@ -1782,7 +1782,81 @@ export class PgStore extends BasePgStore {
     return await this.sqlTransaction(async sql => {
       const refValue = args.addressOrTxId.address ?? args.addressOrTxId.txId;
       const isAddress = args.addressOrTxId.address !== undefined;
-      const emptyEvents = sql`SELECT NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL`;
+      const eventQueries: PgSqlQuery[] = [];
+      if (args.eventTypeFilter.includes(DbEventTypeId.StxLock)) {
+        eventQueries.push(sql`
+          SELECT
+            tx_id, event_index, tx_index, block_height, locked_address as sender, NULL as recipient,
+            locked_amount as amount, unlock_height, NULL as asset_identifier, NULL as contract_identifier,
+            '0'::bytea as value, NULL as topic, null::bytea as memo, contract_name,
+            ${DbEventTypeId.StxLock}::integer as event_type_id, 0 as asset_event_type_id
+          FROM stx_lock_events
+          WHERE ${isAddress ? sql`locked_address = ${refValue}` : sql`tx_id = ${refValue}`}
+          AND canonical = true AND microblock_canonical = true
+          `);
+      }
+      if (args.eventTypeFilter.includes(DbEventTypeId.StxAsset)) {
+        eventQueries.push(sql`
+          SELECT
+            tx_id, event_index, tx_index, block_height, sender, recipient,
+            amount, 0 as unlock_height, NULL as asset_identifier, NULL as contract_identifier,
+            '0'::bytea as value, NULL as topic, memo, NULL as contract_name,
+            ${DbEventTypeId.StxAsset}::integer as event_type_id, asset_event_type_id
+          FROM stx_events
+          WHERE ${
+            isAddress
+              ? sql`(sender = ${refValue} OR recipient = ${refValue})`
+              : sql`tx_id = ${refValue}`
+          }
+          AND canonical = true AND microblock_canonical = true
+          `);
+      }
+      if (args.eventTypeFilter.includes(DbEventTypeId.FungibleTokenAsset)) {
+        eventQueries.push(sql`
+          SELECT
+            tx_id, event_index, tx_index, block_height, sender, recipient,
+            amount, 0 as unlock_height, asset_identifier, NULL as contract_identifier,
+            '0'::bytea as value, NULL as topic, null::bytea as memo, NULL as contract_name,
+            ${DbEventTypeId.FungibleTokenAsset}::integer as event_type_id, asset_event_type_id
+          FROM ft_events
+          WHERE ${
+            isAddress
+              ? sql`(sender = ${refValue} OR recipient = ${refValue})`
+              : sql`tx_id = ${refValue}`
+          }
+          AND canonical = true AND microblock_canonical = true
+          `);
+      }
+      if (args.eventTypeFilter.includes(DbEventTypeId.NonFungibleTokenAsset)) {
+        eventQueries.push(sql`
+          SELECT
+            tx_id, event_index, tx_index, block_height, sender, recipient,
+            0 as amount, 0 as unlock_height, asset_identifier, NULL as contract_identifier,
+            value, NULL as topic, null::bytea as memo, NULL as contract_name,
+            ${DbEventTypeId.NonFungibleTokenAsset}::integer as event_type_id,
+            asset_event_type_id
+          FROM nft_events
+          WHERE ${
+            isAddress
+              ? sql`(sender = ${refValue} OR recipient = ${refValue})`
+              : sql`tx_id = ${refValue}`
+          }
+          AND canonical = true AND microblock_canonical = true
+          `);
+      }
+      if (args.eventTypeFilter.includes(DbEventTypeId.SmartContractLog)) {
+        eventQueries.push(sql`
+          SELECT
+            tx_id, event_index, tx_index, block_height, NULL as sender, NULL as recipient,
+            0 as amount, 0 as unlock_height, NULL as asset_identifier, contract_identifier,
+            value, topic, null::bytea as memo, NULL as contract_name,
+            ${DbEventTypeId.SmartContractLog}::integer as event_type_id,
+            0 as asset_event_type_id
+          FROM contract_logs
+          WHERE ${isAddress ? sql`contract_identifier = ${refValue}` : sql`tx_id = ${refValue}`}
+          AND canonical = true AND microblock_canonical = true
+          `);
+      }
       const eventsResult = await sql<
         {
           tx_id: string;
@@ -1804,96 +1878,9 @@ export class PgStore extends BasePgStore {
         }[]
       >`
         WITH events AS (
-          ${
-            args.eventTypeFilter.includes(DbEventTypeId.StxLock)
-              ? sql`
-                SELECT
-                  tx_id, event_index, tx_index, block_height, locked_address as sender, NULL as recipient,
-                  locked_amount as amount, unlock_height, NULL as asset_identifier, NULL as contract_identifier,
-                  '0'::bytea as value, NULL as topic, null::bytea as memo, contract_name,
-                  ${DbEventTypeId.StxLock}::integer as event_type_id, 0 as asset_event_type_id
-                FROM stx_lock_events
-                WHERE ${isAddress ? sql`locked_address = ${refValue}` : sql`tx_id = ${refValue}`}
-                AND canonical = true AND microblock_canonical = true
-                `
-              : emptyEvents
-          }
-          UNION
-          ${
-            args.eventTypeFilter.includes(DbEventTypeId.StxAsset)
-              ? sql`
-                SELECT
-                  tx_id, event_index, tx_index, block_height, sender, recipient,
-                  amount, 0 as unlock_height, NULL as asset_identifier, NULL as contract_identifier,
-                  '0'::bytea as value, NULL as topic, memo, NULL as contract_name,
-                  ${DbEventTypeId.StxAsset}::integer as event_type_id, asset_event_type_id
-                FROM stx_events
-                WHERE ${
-                  isAddress
-                    ? sql`(sender = ${refValue} OR recipient = ${refValue})`
-                    : sql`tx_id = ${refValue}`
-                }
-                AND canonical = true AND microblock_canonical = true
-                `
-              : emptyEvents
-          }
-          UNION
-          ${
-            args.eventTypeFilter.includes(DbEventTypeId.FungibleTokenAsset)
-              ? sql`
-                SELECT
-                  tx_id, event_index, tx_index, block_height, sender, recipient,
-                  amount, 0 as unlock_height, asset_identifier, NULL as contract_identifier,
-                  '0'::bytea as value, NULL as topic, null::bytea as memo, NULL as contract_name,
-                  ${DbEventTypeId.FungibleTokenAsset}::integer as event_type_id, asset_event_type_id
-                FROM ft_events
-                WHERE ${
-                  isAddress
-                    ? sql`(sender = ${refValue} OR recipient = ${refValue})`
-                    : sql`tx_id = ${refValue}`
-                }
-                AND canonical = true AND microblock_canonical = true
-                `
-              : emptyEvents
-          }
-          UNION
-          ${
-            args.eventTypeFilter.includes(DbEventTypeId.NonFungibleTokenAsset)
-              ? sql`
-                SELECT
-                  tx_id, event_index, tx_index, block_height, sender, recipient,
-                  0 as amount, 0 as unlock_height, asset_identifier, NULL as contract_identifier,
-                  value, NULL as topic, null::bytea as memo, NULL as contract_name,
-                  ${DbEventTypeId.NonFungibleTokenAsset}::integer as event_type_id,
-                  asset_event_type_id
-                FROM nft_events
-                WHERE ${
-                  isAddress
-                    ? sql`(sender = ${refValue} OR recipient = ${refValue})`
-                    : sql`tx_id = ${refValue}`
-                }
-                AND canonical = true AND microblock_canonical = true
-                `
-              : emptyEvents
-          }
-          UNION
-          ${
-            args.eventTypeFilter.includes(DbEventTypeId.SmartContractLog)
-              ? sql`
-                SELECT
-                  tx_id, event_index, tx_index, block_height, NULL as sender, NULL as recipient,
-                  0 as amount, 0 as unlock_height, NULL as asset_identifier, contract_identifier,
-                  value, topic, null::bytea as memo, NULL as contract_name,
-                  ${DbEventTypeId.SmartContractLog}::integer as event_type_id,
-                  0 as asset_event_type_id
-                FROM contract_logs
-                WHERE ${
-                  isAddress ? sql`contract_identifier = ${refValue}` : sql`tx_id = ${refValue}`
-                }
-                AND canonical = true AND microblock_canonical = true
-                `
-              : emptyEvents
-          }
+          ${eventQueries.reduce((accum, query, i) =>
+            i == 0 ? query : sql`${accum} UNION ${query}`
+          )}
         )
         SELECT *
         FROM events JOIN txs USING(tx_id)
