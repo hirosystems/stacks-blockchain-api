@@ -335,38 +335,37 @@ export class PgStoreV2 extends BasePgStoreModule {
     return await this.sqlTransaction(async sql => {
       const limit = args.limit ?? TransactionLimitParamSchema.default;
       const offset = args.offset ?? 0;
-      const filter =
-        args.block.type === 'latest'
-          ? sql`index_block_hash = (SELECT index_block_hash FROM blocks WHERE canonical = TRUE ORDER BY block_height DESC LIMIT 1)`
-          : args.block.type === 'hash'
-          ? sql`(
-              block_hash = ${normalizeHashString(args.block.hash)}
-              OR index_block_hash = ${normalizeHashString(args.block.hash)}
-            )`
-          : sql`block_height = ${args.block.height}`;
-      const blockCheck = await sql`SELECT index_block_hash FROM blocks WHERE ${filter} LIMIT 1`;
-      if (blockCheck.count === 0)
-        throw new InvalidRequestError(`Block not found`, InvalidRequestErrorType.invalid_param);
       const txsQuery = await sql<(TxQueryResult & { total: number })[]>`
-        WITH tx_count AS (
-          SELECT tx_count AS total FROM blocks WHERE canonical = TRUE AND ${filter}
+        WITH block_ptr AS (
+          SELECT index_block_hash FROM blocks
+          WHERE ${
+            args.block.type === 'latest'
+              ? sql`canonical = TRUE ORDER BY block_height DESC`
+              : args.block.type === 'hash'
+              ? sql`(
+                  block_hash = ${normalizeHashString(args.block.hash)}
+                  OR index_block_hash = ${normalizeHashString(args.block.hash)}
+                ) AND canonical = TRUE`
+              : sql`block_height = ${args.block.height} AND canonical = TRUE`
+          }
+          LIMIT 1
+        ),
+        tx_count AS (
+          SELECT tx_count AS total
+          FROM blocks
+          WHERE index_block_hash = (SELECT index_block_hash FROM block_ptr)
         )
         SELECT ${sql(TX_COLUMNS)}, (SELECT total FROM tx_count)::int AS total
         FROM txs
         WHERE canonical = true
           AND microblock_canonical = true
-          AND ${filter}
+          AND index_block_hash = (SELECT index_block_hash FROM block_ptr)
         ORDER BY microblock_sequence ASC, tx_index ASC
         LIMIT ${limit}
         OFFSET ${offset}
       `;
       if (txsQuery.count === 0)
-        return {
-          limit,
-          offset,
-          results: [],
-          total: 0,
-        };
+        throw new InvalidRequestError(`Block not found`, InvalidRequestErrorType.invalid_param);
       return {
         limit,
         offset,

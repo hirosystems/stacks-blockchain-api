@@ -4198,7 +4198,7 @@ describe('tx tests', () => {
     );
     expect(result.status).toBe(200);
     expect(result.type).toBe('application/json');
-    const json = JSON.parse(result.text);
+    let json = JSON.parse(result.text);
     expect(json.total).toBe(2);
     expect(json.results[0]).toStrictEqual({
       anchor_mode: 'any',
@@ -4243,6 +4243,18 @@ describe('tx tests', () => {
       tx_status: 'success',
       tx_type: 'coinbase',
     });
+
+    result = await supertest(api.server).get(`/extended/v2/blocks/latest/transactions`);
+    expect(result.status).toBe(200);
+    expect(result.type).toBe('application/json');
+    json = JSON.parse(result.text);
+    expect(json.total).toBe(2);
+
+    result = await supertest(api.server).get(`/extended/v2/blocks/1/transactions`);
+    expect(result.status).toBe(200);
+    expect(result.type).toBe('application/json');
+    json = JSON.parse(result.text);
+    expect(json.total).toBe(2);
 
     // Try a non-existent block
     result = await supertest(api.server).get(

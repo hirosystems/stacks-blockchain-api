@@ -1,5 +1,32 @@
+## [8.10.0](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.9.0...v8.10.0) (2025-04-18)
+
+
+### Features
+
+* add `Warning` http response deprecation notices ([#2253](https://github.com/hirosystems/stacks-blockchain-api/issues/2253)) ([e62ce79](https://github.com/hirosystems/stacks-blockchain-api/commit/e62ce79756338fdcc43a1641787c704ef1202143))
+
+
+### Bug Fixes
+
+* optimize contract event list db index ([#2258](https://github.com/hirosystems/stacks-blockchain-api/issues/2258)) ([e1044d1](https://github.com/hirosystems/stacks-blockchain-api/commit/e1044d1f2cdbe4a202193794d04a8bbdd0ac9592))
+* optimize query for transactions in block ([#2259](https://github.com/hirosystems/stacks-blockchain-api/issues/2259)) ([e69f9e4](https://github.com/hirosystems/stacks-blockchain-api/commit/e69f9e4149d3bcedee4d47a3e4a8f1ea2b8ff964))
+
+## [8.9.0](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.8.0...v8.9.0) (2025-04-10)
+
+> [!IMPORTANT]
+> This release marks the `/mempool/dropped` endpoint as legacy deprecated, which means we will keep its code in the API but will no longer respond to it from our production deployments.
+> If you still need to use this endpoint in your own API deployment, set the `STACKS_API_ENABLE_LEGACY_ENDPOINTS` to `true` in your environment before starting the API.
+
+### Features
+
+* mark /mempool/dropped endpoint as legacy deprecated ([#2255](https://github.com/hirosystems/stacks-blockchain-api/issues/2255)) ([576d05b](https://github.com/hirosystems/stacks-blockchain-api/commit/576d05bfb843852bd4d6fc2e1f863f983568fbe6))
+
 ## [8.8.0](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.7.0...v8.8.0) (2025-04-02)
 
+> [!IMPORTANT]
+> This release deprecates the [`/extended/v1/address/:addr/balances`](https://docs.hiro.so/stacks/api/accounts/balances) and [`/extended/v1/address/:addr/stx`](https://docs.hiro.so/stacks/api/accounts/stx-balances) endpoints in favor of new endpoints [`/extended/v2/addresses/:addr/balances/stx`](https://docs.hiro.so/stacks/api/accounts/principal-stx-balance) and [`/extended/v2/addresses/:addr/balances/ft`](https://docs.hiro.so/stacks/api/accounts/principal-ft-balances) that are optimized for higher performance.
+>
+> We strongly encourage applications and developers to use the new endpoints as soon as possible, as we plan on eventually removing access the now deprecated endpoints.
 
 ### Features
 
