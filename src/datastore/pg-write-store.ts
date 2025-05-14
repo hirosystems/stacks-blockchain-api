@@ -178,10 +178,20 @@ export class PgWriteStore extends PgStore {
           receive_timestamp: string;
           event_path: string;
         }[]
-      >`INSERT INTO event_observer_requests(
-          event_path, payload
-        ) values(${eventPath}, ${payload})
-        RETURNING id, receive_timestamp::text, event_path
+      >`WITH inserted AS (
+          INSERT INTO event_observer_requests(
+            event_path, payload
+          ) values(${eventPath}, ${payload})
+          RETURNING id, receive_timestamp, event_path
+        ),
+        latest AS (
+          INSERT INTO event_observer_timestamps (id, receive_timestamp, event_path)
+          (SELECT id, receive_timestamp, event_path FROM inserted)
+          ON CONFLICT (event_path) DO UPDATE SET
+            id = EXCLUDED.id,
+            receive_timestamp = EXCLUDED.receive_timestamp
+        )
+        SELECT id, receive_timestamp::text, event_path FROM inserted
       `;
       if (insertResult.length !== 1) {
         throw new Error(

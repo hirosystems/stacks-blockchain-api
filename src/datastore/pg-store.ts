@@ -383,7 +383,7 @@ export class PgStore extends BasePgStore {
     const result = await sql<BlockQueryResult[]>`
       SELECT ${sql(BLOCK_COLUMNS.map(c => `b.${c}`))}
       FROM blocks b
-      INNER JOIN chain_tip t USING (index_block_hash, block_hash, block_height, burn_block_height)
+      INNER JOIN chain_tip t USING (index_block_hash, block_hash, block_height)
       LIMIT 1
     `;
     if (result.length === 0) {
@@ -3825,7 +3825,6 @@ export class PgStore extends BasePgStore {
 
   async getNamesByAddressList({
     address,
-    includeUnanchored,
     chainId,
   }: {
     address: string;
@@ -3833,7 +3832,7 @@ export class PgStore extends BasePgStore {
     chainId: ChainID;
   }): Promise<FoundOrNot<string[]>> {
     const queryResult = await this.sqlTransaction(async sql => {
-      const maxBlockHeight = await this.getMaxBlockHeight(sql, { includeUnanchored });
+      const maxBlockHeight = await this.getMaxBlockHeight(sql, { includeUnanchored: false });
       // 1. Get subdomains owned by this address. These don't produce NFT events so we have to look
       //    directly at the `subdomains` table.
       const subdomainsQuery = await sql<{ name: string; fully_qualified_subdomain: string }[]>`
@@ -3886,7 +3885,7 @@ export class PgStore extends BasePgStore {
         const nameCVs = importedNamesQuery.map(i => bnsNameCV(i.name));
         const oldImportedNamesQuery = await sql<{ value: string }[]>`
           SELECT value
-          FROM ${includeUnanchored ? sql`nft_custody_unanchored` : sql`nft_custody`}
+          FROM nft_custody
           WHERE recipient <> ${address} AND value IN ${sql(nameCVs)}
         `;
         oldImportedNames = oldImportedNamesQuery.map(i => bnsHexValueToName(i.value));
@@ -3897,7 +3896,7 @@ export class PgStore extends BasePgStore {
       // 3. Get newer NFT names owned by this address.
       const nftNamesQuery = await sql<{ value: string }[]>`
         SELECT value
-        FROM ${includeUnanchored ? sql`nft_custody_unanchored` : sql`nft_custody`}
+        FROM nft_custody
         WHERE recipient = ${address} AND asset_identifier = ${getBnsSmartContractId(chainId)}
       `;
       namesToValidate.push(...nftNamesQuery.map(i => bnsHexValueToName(i.value)));
@@ -4685,9 +4684,7 @@ export class PgStore extends BasePgStore {
   /// by event type.
   async getLastStacksNodeEventTimestamps() {
     return await this.sql<{ event_path: string; receive_timestamp: Date }[]>`
-      SELECT DISTINCT ON (event_path) event_path, receive_timestamp
-      FROM event_observer_requests
-      ORDER BY event_path, receive_timestamp DESC
+      SELECT event_path, receive_timestamp FROM event_observer_timestamps
     `;
   }
 }
