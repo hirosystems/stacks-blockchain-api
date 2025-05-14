@@ -26,9 +26,19 @@ export const StxBalanceSchema = Type.Object(
         description: 'Total STX balance considering pending mempool transactions',
       })
     ),
-    total_sent: Type.String(),
-    total_received: Type.String(),
-    total_fees_sent: Type.String(),
+    pending_balance_inbound: Type.Optional(
+      Type.String({
+        description: 'Inbound STX balance from pending mempool transactions',
+      })
+    ),
+    pending_balance_outbound: Type.Optional(
+      Type.String({
+        description: 'Outbound STX balance from pending mempool transactions',
+      })
+    ),
+    total_sent: Type.Optional(Type.String()),
+    total_received: Type.Optional(Type.String()),
+    total_fees_sent: Type.Optional(Type.String()),
     total_miner_rewards_received: Type.String(),
     lock_tx_id: Type.String({
       description: 'The transaction where the lock event occurred. Empty if no tokens are locked.',
@@ -52,3 +62,4 @@ export const StxBalanceSchema = Type.Object(
   },
   { title: 'StxBalance' }
 );
+export type StxBalance = Static<typeof StxBalanceSchema>;

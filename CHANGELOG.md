@@ -1,3 +1,60 @@
+## [8.10.0](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.9.0...v8.10.0) (2025-04-18)
+
+
+### Features
+
+* add `Warning` http response deprecation notices ([#2253](https://github.com/hirosystems/stacks-blockchain-api/issues/2253)) ([e62ce79](https://github.com/hirosystems/stacks-blockchain-api/commit/e62ce79756338fdcc43a1641787c704ef1202143))
+
+
+### Bug Fixes
+
+* optimize contract event list db index ([#2258](https://github.com/hirosystems/stacks-blockchain-api/issues/2258)) ([e1044d1](https://github.com/hirosystems/stacks-blockchain-api/commit/e1044d1f2cdbe4a202193794d04a8bbdd0ac9592))
+* optimize query for transactions in block ([#2259](https://github.com/hirosystems/stacks-blockchain-api/issues/2259)) ([e69f9e4](https://github.com/hirosystems/stacks-blockchain-api/commit/e69f9e4149d3bcedee4d47a3e4a8f1ea2b8ff964))
+
+## [8.9.0](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.8.0...v8.9.0) (2025-04-10)
+
+> [!IMPORTANT]
+> This release marks the `/mempool/dropped` endpoint as legacy deprecated, which means we will keep its code in the API but will no longer respond to it from our production deployments.
+> If you still need to use this endpoint in your own API deployment, set the `STACKS_API_ENABLE_LEGACY_ENDPOINTS` to `true` in your environment before starting the API.
+
+### Features
+
+* mark /mempool/dropped endpoint as legacy deprecated ([#2255](https://github.com/hirosystems/stacks-blockchain-api/issues/2255)) ([576d05b](https://github.com/hirosystems/stacks-blockchain-api/commit/576d05bfb843852bd4d6fc2e1f863f983568fbe6))
+
+## [8.8.0](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.7.0...v8.8.0) (2025-04-02)
+
+> [!IMPORTANT]
+> This release deprecates the [`/extended/v1/address/:addr/balances`](https://docs.hiro.so/stacks/api/accounts/balances) and [`/extended/v1/address/:addr/stx`](https://docs.hiro.so/stacks/api/accounts/stx-balances) endpoints in favor of new endpoints [`/extended/v2/addresses/:addr/balances/stx`](https://docs.hiro.so/stacks/api/accounts/principal-stx-balance) and [`/extended/v2/addresses/:addr/balances/ft`](https://docs.hiro.so/stacks/api/accounts/principal-ft-balances) that are optimized for higher performance.
+>
+> We strongly encourage applications and developers to use the new endpoints as soon as possible, as we plan on eventually removing access the now deprecated endpoints.
+
+### Features
+
+* endpoint to get the balance of a specific ft for a given account ([#2240](https://github.com/hirosystems/stacks-blockchain-api/issues/2240)) ([8b27809](https://github.com/hirosystems/stacks-blockchain-api/commit/8b278098a2e914de02b16461904dd0e283c81d26))
+* new account balances endpoints, optimized for high tx volume ([#2229](https://github.com/hirosystems/stacks-blockchain-api/issues/2229)) ([0fe8fd5](https://github.com/hirosystems/stacks-blockchain-api/commit/0fe8fd5d6ae0254e98a0b26069eb05f41d86b437))
+
+## [8.8.0-beta.2](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.8.0-beta.1...v8.8.0-beta.2) (2025-03-17)
+
+
+### Features
+
+* endpoint to get the balance of a specific ft for a given account ([#2240](https://github.com/hirosystems/stacks-blockchain-api/issues/2240)) ([8b27809](https://github.com/hirosystems/stacks-blockchain-api/commit/8b278098a2e914de02b16461904dd0e283c81d26))
+
+## [8.8.0-beta.1](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.7.0...v8.8.0-beta.1) (2025-03-13)
+
+
+### Features
+
+* new account balances endpoints, optimized for high tx volume ([#2229](https://github.com/hirosystems/stacks-blockchain-api/issues/2229)) ([0fe8fd5](https://github.com/hirosystems/stacks-blockchain-api/commit/0fe8fd5d6ae0254e98a0b26069eb05f41d86b437))
+
+## [8.7.0](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.6.0...v8.7.0) (2025-02-20)
+
+
+### Features
+
+* **metrics:** add metrics for last event receipt timestamps ([#2223](https://github.com/hirosystems/stacks-blockchain-api/issues/2223)) ([9ce9a33](https://github.com/hirosystems/stacks-blockchain-api/commit/9ce9a3311a5ad80028a83eeb89aba27d65d0f8df))
+* show pending inbound and outbound stx balances ([#2208](https://github.com/hirosystems/stacks-blockchain-api/issues/2208)) ([5330c07](https://github.com/hirosystems/stacks-blockchain-api/commit/5330c07d599fdff34f64dc9c158d8e322d385cf5))
+
 ## [8.6.0](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.5.0...v8.6.0) (2025-02-06)
 
 

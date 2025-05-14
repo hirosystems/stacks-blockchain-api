@@ -19,7 +19,7 @@ Get started at https://docs.hiro.so/clarinet/getting-started
 
 The docker image `hirosystems/stacks-blockchain-api` is recommended when running the API in a mainnet or testnet environment.
 
-Note that this image cannot be ran standalone. Other services need to be configured correctly and running. For more information see https://docs.hiro.so/stacks-blockchain-api/how-to-guides/how-to-run-api-node
+Note that this image cannot be ran standalone. Other services need to be configured correctly and running. For more information check out [this guide on how to run a node](https://docs.stacks.co/guides-and-tutorials/nodes-and-miners).
 
 
 ## Development quick start

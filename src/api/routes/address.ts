@@ -91,9 +91,12 @@ export const AddressRoutes: FastifyPluginAsync<
     {
       preHandler: handlePrincipalMempoolCache,
       schema: {
+        deprecated: true,
         operationId: 'get_account_stx_balance',
         summary: 'Get account STX balance',
-        description: `Retrieves STX token balance for a given Address or Contract Identifier.`,
+        description: `**NOTE:** This endpoint is deprecated in favor of [Get address STX balance](/api/get-principal-stx-balance).
+        
+        Retrieves STX token balance for a given Address or Contract Identifier.`,
         tags: ['Accounts'],
         params: Type.Object({
           principal: PrincipalSchema,
@@ -121,13 +124,19 @@ export const AddressRoutes: FastifyPluginAsync<
           blockHeight
         );
         let mempoolBalance: bigint | undefined = undefined;
+        let mempoolInbound: bigint | undefined = undefined;
+        let mempoolOutbound: bigint | undefined = undefined;
         if (req.query.until_block === undefined) {
-          const delta = await fastify.db.getPrincipalMempoolStxBalanceDelta(sql, stxAddress);
-          mempoolBalance = stxBalanceResult.balance + delta;
+          const pending = await fastify.db.getPrincipalMempoolStxBalanceDelta(sql, stxAddress);
+          mempoolInbound = pending.inbound;
+          mempoolOutbound = pending.outbound;
+          mempoolBalance = stxBalanceResult.balance + pending.delta;
         }
         const result: AddressStxBalance = {
           balance: stxBalanceResult.balance.toString(),
           estimated_balance: mempoolBalance?.toString(),
+          pending_balance_inbound: mempoolInbound?.toString(),
+          pending_balance_outbound: mempoolOutbound?.toString(),
           total_sent: stxBalanceResult.totalSent.toString(),
           total_received: stxBalanceResult.totalReceived.toString(),
           total_fees_sent: stxBalanceResult.totalFeesSent.toString(),
@@ -153,9 +162,12 @@ export const AddressRoutes: FastifyPluginAsync<
     {
       preHandler: handlePrincipalMempoolCache,
       schema: {
+        deprecated: true,
         operationId: 'get_account_balance',
         summary: 'Get account balances',
-        description: `Retrieves total account balance information for a given Address or Contract Identifier. This includes the balances of STX Tokens, Fungible Tokens and Non-Fungible Tokens for the account.`,
+        description: `**NOTE:** This endpoint is deprecated in favor of [Get address FT balances](/api/get-principal-ft-balances).
+        
+        Retrieves total account balance information for a given Address or Contract Identifier. This includes the balances of STX Tokens, Fungible Tokens and Non-Fungible Tokens for the account.`,
         tags: ['Accounts'],
         params: Type.Object({
           principal: PrincipalSchema,
@@ -211,15 +223,21 @@ export const AddressRoutes: FastifyPluginAsync<
         });
 
         let mempoolBalance: bigint | undefined = undefined;
+        let mempoolInbound: bigint | undefined = undefined;
+        let mempoolOutbound: bigint | undefined = undefined;
         if (req.query.until_block === undefined) {
-          const delta = await fastify.db.getPrincipalMempoolStxBalanceDelta(sql, stxAddress);
-          mempoolBalance = stxBalanceResult.balance + delta;
+          const pending = await fastify.db.getPrincipalMempoolStxBalanceDelta(sql, stxAddress);
+          mempoolInbound = pending.inbound;
+          mempoolOutbound = pending.outbound;
+          mempoolBalance = stxBalanceResult.balance + pending.delta;
         }
 
         const result: AddressBalance = {
           stx: {
             balance: stxBalanceResult.balance.toString(),
             estimated_balance: mempoolBalance?.toString(),
+            pending_balance_inbound: mempoolInbound?.toString(),
+            pending_balance_outbound: mempoolOutbound?.toString(),
             total_sent: stxBalanceResult.totalSent.toString(),
             total_received: stxBalanceResult.totalReceived.toString(),
             total_fees_sent: stxBalanceResult.totalFeesSent.toString(),

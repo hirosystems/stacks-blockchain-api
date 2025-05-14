@@ -383,7 +383,7 @@ export class PgStore extends BasePgStore {
     const result = await sql<BlockQueryResult[]>`
       SELECT ${sql(BLOCK_COLUMNS.map(c => `b.${c}`))}
       FROM blocks b
-      INNER JOIN chain_tip t USING (index_block_hash, block_hash, block_height, burn_block_height)
+      INNER JOIN chain_tip t USING (index_block_hash, block_hash, block_height)
       LIMIT 1
     `;
     if (result.length === 0) {
@@ -2480,30 +2480,40 @@ export class PgStore extends BasePgStore {
    * Returns the total STX balance delta affecting a principal from transactions currently in the
    * mempool.
    */
-  async getPrincipalMempoolStxBalanceDelta(sql: PgSqlClient, principal: string): Promise<bigint> {
-    const results = await sql<{ delta: string }[]>`
-      WITH sent AS (
+  async getPrincipalMempoolStxBalanceDelta(sql: PgSqlClient, principal: string) {
+    const results = await sql<{ inbound: string; outbound: string; delta: string }[]>`
+      WITH latest AS (
+        SELECT * FROM mempool_txs
+        WHERE pruned = false
+        ORDER BY receipt_time DESC
+      ),
+      sent AS (
         SELECT SUM(COALESCE(token_transfer_amount, 0) + fee_rate) AS total
-        FROM mempool_txs
-        WHERE pruned = false AND sender_address = ${principal}
+        FROM latest
+        WHERE sender_address = ${principal}
       ),
       sponsored AS (
         SELECT SUM(fee_rate) AS total
-        FROM mempool_txs
-        WHERE pruned = false AND sponsor_address = ${principal} AND sponsored = true
+        FROM latest
+        WHERE sponsor_address = ${principal} AND sponsored = true
       ),
       received AS (
         SELECT SUM(COALESCE(token_transfer_amount, 0)) AS total
-        FROM mempool_txs
-        WHERE pruned = false AND token_transfer_recipient_address = ${principal}
+        FROM latest
+        WHERE token_transfer_recipient_address = ${principal}
+      ),
+      values AS (
+        SELECT
+          COALESCE((SELECT total FROM received), 0) AS inbound,
+          COALESCE((SELECT total FROM sent), 0) + COALESCE((SELECT total FROM sponsored), 0) AS outbound
       )
-      SELECT
-        COALESCE((SELECT total FROM received), 0)
-        - COALESCE((SELECT total FROM sent), 0)
-        - COALESCE((SELECT total FROM sponsored), 0)
-        AS delta
+      SELECT inbound, outbound, (inbound - outbound) AS delta FROM values
     `;
-    return BigInt(results[0]?.delta ?? '0');
+    return {
+      inbound: BigInt(results[0]?.inbound ?? '0'),
+      outbound: BigInt(results[0]?.outbound ?? '0'),
+      delta: BigInt(results[0]?.delta ?? '0'),
+    };
   }
 
   async getUnlockedStxSupply(
@@ -3815,7 +3825,6 @@ export class PgStore extends BasePgStore {
 
   async getNamesByAddressList({
     address,
-    includeUnanchored,
     chainId,
   }: {
     address: string;
@@ -3823,7 +3832,7 @@ export class PgStore extends BasePgStore {
     chainId: ChainID;
   }): Promise<FoundOrNot<string[]>> {
     const queryResult = await this.sqlTransaction(async sql => {
-      const maxBlockHeight = await this.getMaxBlockHeight(sql, { includeUnanchored });
+      const maxBlockHeight = await this.getMaxBlockHeight(sql, { includeUnanchored: false });
       // 1. Get subdomains owned by this address. These don't produce NFT events so we have to look
       //    directly at the `subdomains` table.
       const subdomainsQuery = await sql<{ name: string; fully_qualified_subdomain: string }[]>`
@@ -3876,7 +3885,7 @@ export class PgStore extends BasePgStore {
         const nameCVs = importedNamesQuery.map(i => bnsNameCV(i.name));
         const oldImportedNamesQuery = await sql<{ value: string }[]>`
           SELECT value
-          FROM ${includeUnanchored ? sql`nft_custody_unanchored` : sql`nft_custody`}
+          FROM nft_custody
           WHERE recipient <> ${address} AND value IN ${sql(nameCVs)}
         `;
         oldImportedNames = oldImportedNamesQuery.map(i => bnsHexValueToName(i.value));
@@ -3887,7 +3896,7 @@ export class PgStore extends BasePgStore {
       // 3. Get newer NFT names owned by this address.
       const nftNamesQuery = await sql<{ value: string }[]>`
         SELECT value
-        FROM ${includeUnanchored ? sql`nft_custody_unanchored` : sql`nft_custody`}
+        FROM nft_custody
         WHERE recipient = ${address} AND asset_identifier = ${getBnsSmartContractId(chainId)}
       `;
       namesToValidate.push(...nftNamesQuery.map(i => bnsHexValueToName(i.value)));
@@ -4669,5 +4678,13 @@ export class PgStore extends BasePgStore {
       write_length: parseInt(result[0].write_length),
       tx_total_size: parseInt(result[0].tx_total_size),
     };
+  }
+
+  /// Returns timestamps for the last Stacks node events received by the API Event Server, grouped
+  /// by event type.
+  async getLastStacksNodeEventTimestamps() {
+    return await this.sql<{ event_path: string; receive_timestamp: Date }[]>`
+      SELECT event_path, receive_timestamp FROM event_observer_timestamps
+    `;
   }
 }

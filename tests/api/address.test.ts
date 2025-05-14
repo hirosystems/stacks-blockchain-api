@@ -1547,10 +1547,15 @@ describe('address tests', () => {
     );
     expect(fetchAddrBalance1.status).toBe(200);
     expect(fetchAddrBalance1.type).toBe('application/json');
+    expect(fetchAddrBalance1.headers['warning']).toBe(
+      '299 - "Deprecated: See https://docs.hiro.so/stacks/api for more information"'
+    );
     const expectedResp1 = {
       stx: {
         balance: '88679',
         estimated_balance: '88679',
+        pending_balance_inbound: '0',
+        pending_balance_outbound: '0',
         total_sent: '6385',
         total_received: '100000',
         total_fees_sent: '4936',
@@ -1601,6 +1606,8 @@ describe('address tests', () => {
       stx: {
         balance: '91',
         estimated_balance: '91',
+        pending_balance_inbound: '0',
+        pending_balance_outbound: '0',
         total_sent: '15',
         total_received: '1350',
         total_fees_sent: '1244',
@@ -1622,6 +1629,87 @@ describe('address tests', () => {
     };
     expect(JSON.parse(fetchAddrBalance2.text)).toEqual(expectedResp2);
 
+    const fetchAddrV2BalanceStx = await supertest(api.server).get(
+      `/extended/v2/addresses/${testContractAddr}/balances/stx`
+    );
+    expect(fetchAddrV2BalanceStx.status).toBe(200);
+    expect(fetchAddrV2BalanceStx.type).toBe('application/json');
+    expect(fetchAddrV2BalanceStx.body).toEqual({
+      balance: '131',
+      total_miner_rewards_received: '0',
+      lock_tx_id: '',
+      locked: '0',
+      lock_height: 0,
+      burnchain_lock_height: 0,
+      burnchain_unlock_height: 0,
+    });
+
+    const fetchAddrV2BalanceStxWithMempool = await supertest(api.server).get(
+      `/extended/v2/addresses/${testContractAddr}/balances/stx?include_mempool=true`
+    );
+    expect(fetchAddrV2BalanceStxWithMempool.status).toBe(200);
+    expect(fetchAddrV2BalanceStxWithMempool.type).toBe('application/json');
+    expect(fetchAddrV2BalanceStxWithMempool.body).toEqual({
+      balance: '131',
+      estimated_balance: '131',
+      pending_balance_inbound: '0',
+      pending_balance_outbound: '0',
+      total_miner_rewards_received: '0',
+      lock_tx_id: '',
+      locked: '0',
+      lock_height: 0,
+      burnchain_lock_height: 0,
+      burnchain_unlock_height: 0,
+    });
+
+    const fetchAddrV2BalanceFts = await supertest(api.server).get(
+      `/extended/v2/addresses/${testContractAddr}/balances/ft`
+    );
+    expect(fetchAddrV2BalanceFts.status).toBe(200);
+    expect(fetchAddrV2BalanceFts.type).toBe('application/json');
+    expect(fetchAddrV2BalanceFts.body).toEqual({
+      limit: 100,
+      offset: 0,
+      total: 2,
+      results: [
+        { token: 'bux', balance: '375' },
+        { token: 'gox', balance: '585' },
+      ],
+    });
+
+    const fetchAddrV2BalanceFtsPaginated = await supertest(api.server).get(
+      `/extended/v2/addresses/${testContractAddr}/balances/ft?limit=1&offset=1`
+    );
+    expect(fetchAddrV2BalanceFtsPaginated.status).toBe(200);
+    expect(fetchAddrV2BalanceFtsPaginated.type).toBe('application/json');
+    expect(fetchAddrV2BalanceFtsPaginated.body).toEqual({
+      limit: 1,
+      offset: 1,
+      total: 2,
+      results: [{ token: 'gox', balance: '585' }],
+    });
+
+    const fetchAddrV2BalanceFt1 = await supertest(api.server).get(
+      `/extended/v2/addresses/${testContractAddr}/balances/ft/bux`
+    );
+    expect(fetchAddrV2BalanceFt1.status).toBe(200);
+    expect(fetchAddrV2BalanceFt1.type).toBe('application/json');
+    expect(fetchAddrV2BalanceFt1.body).toEqual({ balance: '375' });
+
+    const fetchAddrV2BalanceFt2 = await supertest(api.server).get(
+      `/extended/v2/addresses/${testContractAddr}/balances/ft/gox`
+    );
+    expect(fetchAddrV2BalanceFt2.status).toBe(200);
+    expect(fetchAddrV2BalanceFt2.type).toBe('application/json');
+    expect(fetchAddrV2BalanceFt2.body).toEqual({ balance: '585' });
+
+    const fetchAddrV2BalanceFt3 = await supertest(api.server).get(
+      `/extended/v2/addresses/${testContractAddr}/balances/ft/none`
+    );
+    expect(fetchAddrV2BalanceFt3.status).toBe(200);
+    expect(fetchAddrV2BalanceFt3.type).toBe('application/json');
+    expect(fetchAddrV2BalanceFt3.body).toEqual({ balance: '0' });
+
     const tokenLocked: DbTokenOfferingLocked = {
       address: testContractAddr,
       value: BigInt(4139391122),
@@ -1637,6 +1725,8 @@ describe('address tests', () => {
     const expectedStxResp1 = {
       balance: '91',
       estimated_balance: '91',
+      pending_balance_inbound: '0',
+      pending_balance_outbound: '0',
       total_sent: '15',
       total_received: '1350',
       total_fees_sent: '1244',
@@ -1668,6 +1758,8 @@ describe('address tests', () => {
     const expectedStxResp1Sponsored = {
       balance: '3766',
       estimated_balance: '3766',
+      pending_balance_inbound: '0',
+      pending_balance_outbound: '0',
       total_sent: '0',
       total_received: '5000',
       total_fees_sent: '1234',

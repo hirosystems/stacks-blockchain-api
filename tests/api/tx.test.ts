@@ -1031,6 +1031,8 @@ describe('tx tests', () => {
     const expectedSponsoredRespBefore = {
       balance: '0',
       estimated_balance: '0',
+      pending_balance_inbound: '0',
+      pending_balance_outbound: '0',
       total_sent: '0',
       total_received: '0',
       total_fees_sent: '0',
@@ -1139,6 +1141,8 @@ describe('tx tests', () => {
     const expectedResp = {
       balance: '0',
       estimated_balance: '0',
+      pending_balance_inbound: '0',
+      pending_balance_outbound: '0',
       total_sent: '0',
       total_received: '0',
       total_fees_sent: '0',
@@ -1158,6 +1162,8 @@ describe('tx tests', () => {
       stx: {
         balance: '0',
         estimated_balance: '0',
+        pending_balance_inbound: '0',
+        pending_balance_outbound: '0',
         total_sent: '0',
         total_received: '0',
         total_fees_sent: '0',
@@ -1181,6 +1187,8 @@ describe('tx tests', () => {
     const expectedSponsoredRespAfter = {
       balance: '-300',
       estimated_balance: '-300',
+      pending_balance_inbound: '0',
+      pending_balance_outbound: '0',
       total_sent: '0',
       total_received: '0',
       total_fees_sent: '300',
@@ -4190,7 +4198,7 @@ describe('tx tests', () => {
     );
     expect(result.status).toBe(200);
     expect(result.type).toBe('application/json');
-    const json = JSON.parse(result.text);
+    let json = JSON.parse(result.text);
     expect(json.total).toBe(2);
     expect(json.results[0]).toStrictEqual({
       anchor_mode: 'any',
@@ -4235,6 +4243,18 @@ describe('tx tests', () => {
       tx_status: 'success',
       tx_type: 'coinbase',
     });
+
+    result = await supertest(api.server).get(`/extended/v2/blocks/latest/transactions`);
+    expect(result.status).toBe(200);
+    expect(result.type).toBe('application/json');
+    json = JSON.parse(result.text);
+    expect(json.total).toBe(2);
+
+    result = await supertest(api.server).get(`/extended/v2/blocks/1/transactions`);
+    expect(result.status).toBe(200);
+    expect(result.type).toBe('application/json');
+    json = JSON.parse(result.text);
+    expect(json.total).toBe(2);
 
     // Try a non-existent block
     result = await supertest(api.server).get(
