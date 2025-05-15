@@ -69,11 +69,15 @@ export class PgStoreV2 extends BasePgStoreModule {
     limit: number;
     offset?: number;
     cursor?: string;
+    tenureHeight?: number;
   }): Promise<DbCursorPaginatedResult<DbBlock>> {
     return await this.sqlTransaction(async sql => {
       const limit = args.limit;
       const offset = args.offset ?? 0;
       const cursor = args.cursor ?? null;
+      const tenureFilter = args.tenureHeight
+        ? sql`AND tenure_height = ${args.tenureHeight}`
+        : sql``;
 
       const blocksQuery = await sql<
         (BlockQueryResult & { total: number; next_block_hash: string; prev_block_hash: string })[]
@@ -82,7 +86,7 @@ export class PgStoreV2 extends BasePgStoreModule {
         WITH ordered_blocks AS (
           SELECT *, LEAD(block_height, ${offset}) OVER (ORDER BY block_height DESC) offset_block_height
           FROM blocks
-          WHERE canonical = true
+          WHERE canonical = true ${tenureFilter}
           ORDER BY block_height DESC
         )
         SELECT offset_block_height as block_height
@@ -94,7 +98,8 @@ export class PgStoreV2 extends BasePgStoreModule {
         SELECT ${sql(BLOCK_COLUMNS)}
         FROM blocks
         WHERE canonical = true
-        AND block_height <= (SELECT block_height FROM cursor_block)
+          ${tenureFilter}
+          AND block_height <= (SELECT block_height FROM cursor_block)
         ORDER BY block_height DESC
         LIMIT ${limit}
       ),
@@ -102,12 +107,13 @@ export class PgStoreV2 extends BasePgStoreModule {
         SELECT index_block_hash as prev_block_hash
         FROM blocks
         WHERE canonical = true
-        AND block_height < (
-          SELECT block_height
-          FROM selected_blocks
-          ORDER BY block_height DESC
-          LIMIT 1
-        )
+          ${tenureFilter}
+          AND block_height < (
+            SELECT block_height
+            FROM selected_blocks
+            ORDER BY block_height DESC
+            LIMIT 1
+          )
         ORDER BY block_height DESC
         OFFSET ${limit - 1}
         LIMIT 1
@@ -116,12 +122,13 @@ export class PgStoreV2 extends BasePgStoreModule {
         SELECT index_block_hash as next_block_hash
         FROM blocks
         WHERE canonical = true
-        AND block_height > (
-          SELECT block_height
-          FROM selected_blocks
-          ORDER BY block_height DESC
-          LIMIT 1
-        )
+          ${tenureFilter}
+          AND block_height > (
+            SELECT block_height
+            FROM selected_blocks
+            ORDER BY block_height DESC
+            LIMIT 1
+          )
         ORDER BY block_height ASC
         OFFSET ${limit - 1}
         LIMIT 1
