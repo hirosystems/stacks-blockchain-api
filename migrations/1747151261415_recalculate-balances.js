@@ -3,6 +3,9 @@
 exports.shorthands = undefined;
 
 exports.up = pgm => {
+  // Remove old balances.
+  pgm.sql(`TRUNCATE TABLE ft_balances`);
+
   // Recalculate STX balances
   pgm.sql(`
     WITH all_balances AS (
