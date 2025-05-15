@@ -66,9 +66,6 @@ export class PgStoreV2 extends BasePgStoreModule {
       const tenureFilter = args.tenureHeight
         ? sql`AND tenure_height = ${args.tenureHeight}`
         : sql``;
-      const totalColumn = args.tenureHeight
-        ? sql`(COUNT(*) OVER())::int`
-        : sql`(SELECT block_count FROM chain_tip)::int`;
 
       const blocksQuery = await sql<
         (BlockQueryResult & { total: number; next_block_hash: string; prev_block_hash: string })[]
@@ -86,7 +83,7 @@ export class PgStoreV2 extends BasePgStoreModule {
         LIMIT 1
       ),
       selected_blocks AS (
-        SELECT ${sql(BLOCK_COLUMNS)}, ${totalColumn} AS total
+        SELECT ${sql(BLOCK_COLUMNS)}
         FROM blocks
         WHERE canonical = true
           ${tenureFilter}
@@ -123,8 +120,16 @@ export class PgStoreV2 extends BasePgStoreModule {
         ORDER BY block_height ASC
         OFFSET ${limit - 1}
         LIMIT 1
+      ),
+      block_count AS (
+        SELECT ${
+          args.tenureHeight
+            ? sql`(SELECT COUNT(*) FROM blocks WHERE tenure_height = ${args.tenureHeight})::int`
+            : sql`(SELECT block_count FROM chain_tip)::int`
+        } AS total
       )
       SELECT
+        (SELECT total FROM block_count) AS total,
         sb.*,
         nb.next_block_hash,
         pb.prev_block_hash

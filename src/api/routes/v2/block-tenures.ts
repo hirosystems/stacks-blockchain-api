@@ -3,7 +3,7 @@ import { FastifyPluginAsync } from 'fastify';
 import { Server } from 'node:http';
 import { handleBlockCache } from '../../../../src/api/controllers/cache-controller';
 import { getPagingQueryLimit, ResourceType } from '../../../../src/api/pagination';
-import { LimitParam, OffsetParam } from '../../../../src/api/schemas/params';
+import { CursorOffsetParam, LimitParam } from '../../../../src/api/schemas/params';
 import { BlockListV2ResponseSchema } from '../../../../src/api/schemas/responses/responses';
 import { BlockTenureParamsSchema } from './schemas';
 import { NotFoundError } from '../../../../src/errors';
@@ -27,7 +27,7 @@ export const BlockTenureRoutes: FastifyPluginAsync<
         params: BlockTenureParamsSchema,
         querystring: Type.Object({
           limit: LimitParam(ResourceType.Block),
-          offset: OffsetParam(),
+          offset: CursorOffsetParam({ resource: ResourceType.Block }),
           cursor: Type.Optional(Type.String({ description: 'Cursor for pagination' })),
         }),
         response: {
