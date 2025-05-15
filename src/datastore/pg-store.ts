@@ -1782,8 +1782,18 @@ export class PgStore extends BasePgStore {
     return await this.sqlTransaction(async sql => {
       const refValue = args.addressOrTxId.address ?? args.addressOrTxId.txId;
       const isAddress = args.addressOrTxId.address !== undefined;
+      const eventTypeFilter =
+        args.eventTypeFilter && args.eventTypeFilter.length > 0
+          ? args.eventTypeFilter
+          : [
+              DbEventTypeId.SmartContractLog,
+              DbEventTypeId.StxAsset,
+              DbEventTypeId.FungibleTokenAsset,
+              DbEventTypeId.NonFungibleTokenAsset,
+              DbEventTypeId.StxLock,
+            ];
       const eventQueries: PgSqlQuery[] = [];
-      if (args.eventTypeFilter.includes(DbEventTypeId.StxLock)) {
+      if (eventTypeFilter.includes(DbEventTypeId.StxLock)) {
         eventQueries.push(sql`
           SELECT
             tx_id, event_index, tx_index, block_height, locked_address as sender, NULL as recipient,
@@ -1795,7 +1805,7 @@ export class PgStore extends BasePgStore {
           AND canonical = true AND microblock_canonical = true
           `);
       }
-      if (args.eventTypeFilter.includes(DbEventTypeId.StxAsset)) {
+      if (eventTypeFilter.includes(DbEventTypeId.StxAsset)) {
         eventQueries.push(sql`
           SELECT
             tx_id, event_index, tx_index, block_height, sender, recipient,
@@ -1811,7 +1821,7 @@ export class PgStore extends BasePgStore {
           AND canonical = true AND microblock_canonical = true
           `);
       }
-      if (args.eventTypeFilter.includes(DbEventTypeId.FungibleTokenAsset)) {
+      if (eventTypeFilter.includes(DbEventTypeId.FungibleTokenAsset)) {
         eventQueries.push(sql`
           SELECT
             tx_id, event_index, tx_index, block_height, sender, recipient,
@@ -1827,7 +1837,7 @@ export class PgStore extends BasePgStore {
           AND canonical = true AND microblock_canonical = true
           `);
       }
-      if (args.eventTypeFilter.includes(DbEventTypeId.NonFungibleTokenAsset)) {
+      if (eventTypeFilter.includes(DbEventTypeId.NonFungibleTokenAsset)) {
         eventQueries.push(sql`
           SELECT
             tx_id, event_index, tx_index, block_height, sender, recipient,
@@ -1844,7 +1854,7 @@ export class PgStore extends BasePgStore {
           AND canonical = true AND microblock_canonical = true
           `);
       }
-      if (args.eventTypeFilter.includes(DbEventTypeId.SmartContractLog)) {
+      if (eventTypeFilter.includes(DbEventTypeId.SmartContractLog)) {
         eventQueries.push(sql`
           SELECT
             tx_id, event_index, tx_index, block_height, NULL as sender, NULL as recipient,
@@ -1878,9 +1888,7 @@ export class PgStore extends BasePgStore {
         }[]
       >`
         WITH events AS (
-          ${eventQueries.reduce((accum, query, i) =>
-            i == 0 ? query : sql`${accum} UNION ${query}`
-          )}
+          ${eventQueries.reduce((accum, query) => sql`${accum} UNION ${query}`)}
         )
         SELECT *
         FROM events JOIN txs USING(tx_id)
