@@ -75,13 +75,6 @@ export const BlockHeightSchema = Type.Integer({
   examples: [777678],
 });
 
-export const TenureHeightSchema = Type.Integer({
-  minimum: 0,
-  title: 'Block tenure height',
-  description: 'Block tenure height',
-  examples: [165453],
-});
-
 export const AddressParamSchema = Type.String({
   pattern: isTestEnv ? undefined : '^[0123456789ABCDEFGHJKMNPQRSTVWXYZ]{28,41}',
   title: 'STX Address',

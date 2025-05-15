@@ -6,15 +6,14 @@ import { parseDbTx } from '../../../api/controllers/db-controller';
 import { FastifyPluginAsync } from 'fastify';
 import { Type, TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
 import { Server } from 'node:http';
-import {
-  CursorOffsetParam,
-  LimitParam,
-  OffsetParam,
-  TenureHeightSchema,
-} from '../../schemas/params';
-import { getPagingQueryLimit, ResourceType } from '../../pagination';
+import { CursorOffsetParam, LimitParam, OffsetParam } from '../../schemas/params';
+import { getPagingQueryLimit, pagingQueryLimits, ResourceType } from '../../pagination';
 import { PaginatedResponse } from '../../schemas/util';
-import { NakamotoBlock, NakamotoBlockSchema } from '../../schemas/entities/block';
+import {
+  NakamotoBlock,
+  NakamotoBlockSchema,
+  SignerSignatureSchema,
+} from '../../schemas/entities/block';
 import { TransactionSchema } from '../../schemas/entities/transactions';
 import {
   BlockListV2ResponseSchema,
@@ -39,7 +38,6 @@ export const BlockRoutesV2: FastifyPluginAsync<
           limit: LimitParam(ResourceType.Block),
           offset: CursorOffsetParam({ resource: ResourceType.Block }),
           cursor: Type.Optional(Type.String({ description: 'Cursor for pagination' })),
-          tenure_height: Type.Optional(TenureHeightSchema),
         }),
         response: {
           200: BlockListV2ResponseSchema,
@@ -49,11 +47,7 @@ export const BlockRoutesV2: FastifyPluginAsync<
     async (req, reply) => {
       const query = req.query;
       const limit = getPagingQueryLimit(ResourceType.Block, req.query.limit);
-      const blockQuery = await fastify.db.v2.getBlocks({
-        ...query,
-        tenureHeight: query.tenure_height,
-        limit,
-      });
+      const blockQuery = await fastify.db.v2.getBlocks({ ...query, limit });
       if (query.cursor && !blockQuery.current_cursor) {
         throw new NotFoundError('Cursor not found');
       }
