@@ -388,6 +388,7 @@ describe('tx tests', () => {
         microblock_hash: null,
         microblock_parent_hash: null,
         microblock_sequence: null,
+        vm_error: null,
         execution_cost: {
           read_count: 0,
           read_length: 0,
@@ -547,6 +548,7 @@ describe('tx tests', () => {
         microblock_hash: null,
         microblock_parent_hash: null,
         microblock_sequence: null,
+        vm_error: null,
         execution_cost: {
           read_count: 0,
           read_length: 0,
@@ -696,6 +698,7 @@ describe('tx tests', () => {
         microblock_hash: null,
         microblock_parent_hash: null,
         microblock_sequence: null,
+        vm_error: null,
         execution_cost: {
           read_count: 0,
           read_length: 0,
@@ -856,6 +859,7 @@ describe('tx tests', () => {
         microblock_hash: null,
         microblock_parent_hash: null,
         microblock_sequence: null,
+        vm_error: null,
         execution_cost: {
           read_count: 0,
           read_length: 0,
@@ -1080,6 +1084,7 @@ describe('tx tests', () => {
         microblock_hash: null,
         microblock_parent_hash: null,
         microblock_sequence: null,
+        vm_error: null,
         execution_cost: {
           read_count: 0,
           read_length: 0,
@@ -1484,6 +1489,7 @@ describe('tx tests', () => {
         microblock_hash: null,
         microblock_parent_hash: null,
         microblock_sequence: null,
+        vm_error: null,
         execution_cost: {
           read_count: 0,
           read_length: 0,
@@ -1649,6 +1655,7 @@ describe('tx tests', () => {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      vm_error: null,
     };
     expect(txQuery.result).toEqual(expectedResp);
 
@@ -1717,6 +1724,7 @@ describe('tx tests', () => {
         microblock_hash: null,
         microblock_parent_hash: null,
         microblock_sequence: null,
+        vm_error: null,
         execution_cost: {
           read_count: 0,
           read_length: 0,
@@ -1873,6 +1881,7 @@ describe('tx tests', () => {
         microblock_hash: null,
         microblock_parent_hash: null,
         microblock_sequence: null,
+        vm_error: null,
         execution_cost: {
           read_count: 0,
           read_length: 0,

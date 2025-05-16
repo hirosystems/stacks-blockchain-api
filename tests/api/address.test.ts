@@ -300,6 +300,7 @@ describe('address tests', () => {
             execution_cost_runtime: 3,
             execution_cost_write_count: 4,
             execution_cost_write_length: 5,
+            vm_error: null,
           },
           stx_sent: '1339',
           stx_received: '0',
@@ -390,6 +391,7 @@ describe('address tests', () => {
             execution_cost_runtime: 3,
             execution_cost_write_count: 4,
             execution_cost_write_length: 5,
+            vm_error: null,
           },
           stx_sent: '1484',
           stx_received: '0',
@@ -454,6 +456,7 @@ describe('address tests', () => {
             execution_cost_runtime: 3,
             execution_cost_write_count: 4,
             execution_cost_write_length: 5,
+            vm_error: null,
           },
           stx_sent: '1334',
           stx_received: '0',
@@ -1950,6 +1953,7 @@ describe('address tests', () => {
           execution_cost_runtime: 0,
           execution_cost_write_count: 0,
           execution_cost_write_length: 0,
+          vm_error: null,
         },
         {
           tx_id: '0x1234',
@@ -1993,6 +1997,7 @@ describe('address tests', () => {
           execution_cost_runtime: 0,
           execution_cost_write_count: 0,
           execution_cost_write_length: 0,
+          vm_error: null,
         },
         {
           tx_id: '0x12340005',
@@ -2037,6 +2042,7 @@ describe('address tests', () => {
           execution_cost_runtime: 0,
           execution_cost_write_count: 0,
           execution_cost_write_length: 0,
+          vm_error: null,
         },
         {
           tx_id: '0x12340003',
@@ -2081,6 +2087,7 @@ describe('address tests', () => {
           execution_cost_runtime: 0,
           execution_cost_write_count: 0,
           execution_cost_write_length: 0,
+          vm_error: null,
         },
         {
           tx_id: '0x12340002',
@@ -2125,6 +2132,7 @@ describe('address tests', () => {
           execution_cost_runtime: 0,
           execution_cost_write_count: 0,
           execution_cost_write_length: 0,
+          vm_error: null,
         },
       ],
     };
@@ -2518,6 +2526,7 @@ describe('address tests', () => {
         microblock_hash: null,
         microblock_parent_hash: null,
         microblock_sequence: null,
+        vm_error: null,
         execution_cost: {
           read_count: 0,
           read_length: 0,

@@ -577,6 +577,7 @@ describe('search tests', () => {
           execution_cost_write_count: 0,
           execution_cost_write_length: 0,
           tx_type: 'coinbase',
+          vm_error: null,
           coinbase_payload: {
             data: '0x636f696e62617365206869',
             alt_recipient: null,
@@ -1580,6 +1581,7 @@ describe('search tests', () => {
           },
           tx_status: 'success',
           tx_type: 'smart_contract',
+          vm_error: null,
         },
       },
     };
