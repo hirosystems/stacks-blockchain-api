@@ -127,6 +127,7 @@ describe('tx tests', () => {
       execution_cost_write_length: 339,
       contract_call_contract_id: 'SP3YK7KWMYRCDMV5M4792T0T7DERQXHJJGGEPV1N8.pg-mdomains-v1',
       contract_call_function_name: 'bns-name-preorder',
+      vm_error: null,
     };
     const smartContract1: DbSmartContract = {
       tx_id: '0x668142abbcabb846e3f83183325325071a8b4882dcf5476a38148cb5b738fc83',
@@ -197,6 +198,7 @@ describe('tx tests', () => {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      vm_error: null,
     };
 
     const versionedSmartContract1: DbSmartContract = {
@@ -245,6 +247,7 @@ describe('tx tests', () => {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      vm_error: null,
     };
     await db.update({
       block: dbBlock,
@@ -1277,6 +1280,7 @@ describe('tx tests', () => {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      vm_error: null,
     };
 
     const dbStxEvent: DbStxEvent = {
@@ -2744,6 +2748,7 @@ describe('tx tests', () => {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      vm_error: null,
     };
 
     await db.update({
@@ -2868,6 +2873,7 @@ describe('tx tests', () => {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      vm_error: null,
     };
 
     await db.update({
@@ -3526,6 +3532,7 @@ describe('tx tests', () => {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      vm_error: null,
     };
     const nftEvent: DbNftEvent = {
       canonical: true,
@@ -3668,6 +3675,7 @@ describe('tx tests', () => {
       contract_call_function_args: bufferToHex(
         createClarityValueArray(bufferCV(Buffer.from('test')), uintCV(1234n))
       ),
+      vm_error: null,
     };
     const tx2: DbTxRaw = {
       type_id: DbTxTypeId.ContractCall,
@@ -3708,6 +3716,7 @@ describe('tx tests', () => {
       contract_call_function_args: bufferToHex(
         createClarityValueArray(bufferCV(Buffer.from('test')), uintCV(1234n))
       ),
+      vm_error: null,
     };
     const contractCall: DbSmartContract = {
       tx_id: '0x668142abbcabb846e3f83183325325071a8b4882dcf5476a38148cb5b738fc83',
@@ -4130,6 +4139,7 @@ describe('tx tests', () => {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      vm_error: null,
     };
     await db.update({
       block,
@@ -4349,6 +4359,7 @@ describe('tx tests', () => {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      vm_error: null,
     };
     await db.updateTx(client, tx);
     const result1 = await supertest(api.server).get(`/extended/v1/tx/block/${block.block_hash}`);

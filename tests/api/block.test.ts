@@ -127,6 +127,7 @@ describe('block tests', () => {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      vm_error: null,
     };
     await db.updateTx(client, tx);
 

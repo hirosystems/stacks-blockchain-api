@@ -2453,7 +2453,7 @@ describe('address tests', () => {
       abi: JSON.parse(contractCallResult1?.abi ?? ''),
     }).toEqual({
       ...contractCall,
-      ...{ abi: contractJsonAbi },
+      ...{ abi: contractJsonAbi, vm_error: null },
     });
 
     const searchResult8 = await supertest(api.server).get(
@@ -2473,7 +2473,7 @@ describe('address tests', () => {
       abi: JSON.parse(contractCallResult2?.abi ?? ''),
     }).toEqual({
       ...contractCall,
-      ...{ abi: contractJsonAbi },
+      ...{ abi: contractJsonAbi, vm_error: null },
     });
   });
 

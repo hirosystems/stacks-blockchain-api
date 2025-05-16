@@ -1208,7 +1208,7 @@ export function createDbTxFromCoreMsg(msg: CoreNodeParsedTxMessage): DbTxRaw {
     execution_cost_runtime: coreTx.execution_cost.runtime,
     execution_cost_write_count: coreTx.execution_cost.write_count,
     execution_cost_write_length: coreTx.execution_cost.write_length,
-    vm_error: coreTx.vm_error ?? undefined,
+    vm_error: coreTx.vm_error,
   };
   extractTransactionPayload(parsedTx, dbTx);
   return dbTx;

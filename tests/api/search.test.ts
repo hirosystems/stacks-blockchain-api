@@ -104,6 +104,7 @@ describe('search tests', () => {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      vm_error: null,
     };
     await db.updateTx(client, tx);
 
@@ -319,6 +320,7 @@ describe('search tests', () => {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      vm_error: null,
     };
 
     const mempoolTx: DbMempoolTxRaw = {
@@ -666,6 +668,7 @@ describe('search tests', () => {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      vm_error: null,
     };
     await db.updateTx(client, stxTx1);
 
@@ -719,6 +722,7 @@ describe('search tests', () => {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      vm_error: null,
     };
     await db.updateTx(client, stxTx2);
 
@@ -938,6 +942,7 @@ describe('search tests', () => {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      vm_error: null,
     };
     await db.updateTx(client, smartContract);
 
@@ -1113,6 +1118,7 @@ describe('search tests', () => {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      vm_error: null,
     };
 
     const stxTx2: DbTxRaw = {
@@ -1152,6 +1158,7 @@ describe('search tests', () => {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      vm_error: null,
     };
 
     const stxEvent1: DbStxEvent = {
@@ -1272,6 +1279,7 @@ describe('search tests', () => {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      vm_error: null,
     };
 
     const smartContract: DbSmartContract = {

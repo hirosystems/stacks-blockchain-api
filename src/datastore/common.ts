@@ -237,7 +237,7 @@ export interface DbTx extends BaseTx {
   execution_cost_write_count: number;
   execution_cost_write_length: number;
 
-  vm_error?: string;
+  vm_error: string | null;
 }
 
 export interface DbTxRaw extends DbTx {
@@ -1030,7 +1030,7 @@ export interface TxQueryResult {
   execution_cost_write_count: string;
   execution_cost_write_length: string;
 
-  vm_error?: string;
+  vm_error: string | null;
 }
 
 export interface ContractTxQueryResult extends TxQueryResult {
