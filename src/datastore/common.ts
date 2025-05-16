@@ -237,7 +237,7 @@ export interface DbTx extends BaseTx {
   execution_cost_write_count: number;
   execution_cost_write_length: number;
 
-  vm_error: string | null;
+  vm_error?: string | null;
 }
 
 export interface DbTxRaw extends DbTx {
