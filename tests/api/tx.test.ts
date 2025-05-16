@@ -3887,6 +3887,7 @@ describe('tx tests', () => {
       execution_cost_runtime: 116256000,
       execution_cost_write_count: 9,
       execution_cost_write_length: 339,
+      vm_error: null,
       tx_type: 'contract_call',
       contract_call: {
         contract_id: 'SP000000000000000000002Q6VF78.bns',

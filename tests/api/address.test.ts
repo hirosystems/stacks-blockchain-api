@@ -871,6 +871,7 @@ describe('address tests', () => {
             execution_cost_runtime: 3,
             execution_cost_write_count: 4,
             execution_cost_write_length: 5,
+            vm_error: null,
           },
           stx_sent: '0',
           stx_received: '105',
@@ -961,6 +962,7 @@ describe('address tests', () => {
             execution_cost_runtime: 3,
             execution_cost_write_count: 4,
             execution_cost_write_length: 5,
+            vm_error: null,
           },
           stx_sent: '0',
           stx_received: '15',
@@ -2273,6 +2275,7 @@ describe('address tests', () => {
             execution_cost_runtime: 0,
             execution_cost_write_count: 0,
             execution_cost_write_length: 0,
+            vm_error: null,
             fee_rate: '10',
             is_unanchored: false,
             microblock_canonical: true,
@@ -2353,6 +2356,7 @@ describe('address tests', () => {
         execution_cost_runtime: 0,
         execution_cost_write_count: 0,
         execution_cost_write_length: 0,
+        vm_error: null,
         fee_rate: '10',
         is_unanchored: false,
         microblock_canonical: true,
@@ -2437,6 +2441,7 @@ describe('address tests', () => {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      vm_error: null,
     };
 
     const blockTxsRows = await api.datastore.getBlockTxsRows(block.block_hash);

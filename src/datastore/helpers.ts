@@ -124,6 +124,7 @@ export const TX_COLUMNS = [
   'execution_cost_runtime',
   'execution_cost_write_count',
   'execution_cost_write_length',
+  'vm_error',
 ];
 
 export const MEMPOOL_TX_COLUMNS = [

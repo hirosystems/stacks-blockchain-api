@@ -1029,6 +1029,8 @@ export interface TxQueryResult {
   execution_cost_runtime: string;
   execution_cost_write_count: string;
   execution_cost_write_length: string;
+
+  vm_error?: string;
 }
 
 export interface ContractTxQueryResult extends TxQueryResult {
