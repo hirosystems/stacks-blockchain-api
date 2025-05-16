@@ -1,18 +1,13 @@
 import { BasePgStoreModule, PgSqlClient, has0xPrefix } from '@hirosystems/api-toolkit';
 import {
   BlockLimitParamSchema,
-  CompiledBurnBlockHashParam,
   TransactionPaginationQueryParams,
   TransactionLimitParamSchema,
-  BlockParams,
-  BurnBlockParams,
   BlockPaginationQueryParams,
   SmartContractStatusParams,
   AddressParams,
-  AddressTransactionParams,
   PoxCyclePaginationQueryParams,
   PoxCycleLimitParamSchema,
-  PoxSignerPaginationQueryParams,
   PoxSignerLimitParamSchema,
   BlockIdParam,
   BlockSignerSignatureLimitParamSchema,
@@ -51,13 +46,6 @@ import {
 } from './helpers';
 import { SyntheticPoxEventName } from '../pox-helpers';
 
-async function assertAddressExists(sql: PgSqlClient, address: string) {
-  const addressCheck =
-    await sql`SELECT principal FROM principal_stx_txs WHERE principal = ${address} LIMIT 1`;
-  if (addressCheck.count === 0)
-    throw new InvalidRequestError(`Address not found`, InvalidRequestErrorType.invalid_param);
-}
-
 async function assertTxIdExists(sql: PgSqlClient, tx_id: string) {
   const txCheck = await sql`SELECT tx_id FROM txs WHERE tx_id = ${tx_id} LIMIT 1`;
   if (txCheck.count === 0)
@@ -69,11 +57,15 @@ export class PgStoreV2 extends BasePgStoreModule {
     limit: number;
     offset?: number;
     cursor?: string;
+    tenureHeight?: number;
   }): Promise<DbCursorPaginatedResult<DbBlock>> {
     return await this.sqlTransaction(async sql => {
       const limit = args.limit;
       const offset = args.offset ?? 0;
       const cursor = args.cursor ?? null;
+      const tenureFilter = args.tenureHeight
+        ? sql`AND tenure_height = ${args.tenureHeight}`
+        : sql``;
 
       const blocksQuery = await sql<
         (BlockQueryResult & { total: number; next_block_hash: string; prev_block_hash: string })[]
@@ -82,7 +74,7 @@ export class PgStoreV2 extends BasePgStoreModule {
         WITH ordered_blocks AS (
           SELECT *, LEAD(block_height, ${offset}) OVER (ORDER BY block_height DESC) offset_block_height
           FROM blocks
-          WHERE canonical = true
+          WHERE canonical = true ${tenureFilter}
           ORDER BY block_height DESC
         )
         SELECT offset_block_height as block_height
@@ -94,7 +86,8 @@ export class PgStoreV2 extends BasePgStoreModule {
         SELECT ${sql(BLOCK_COLUMNS)}
         FROM blocks
         WHERE canonical = true
-        AND block_height <= (SELECT block_height FROM cursor_block)
+          ${tenureFilter}
+          AND block_height <= (SELECT block_height FROM cursor_block)
         ORDER BY block_height DESC
         LIMIT ${limit}
       ),
@@ -102,12 +95,13 @@ export class PgStoreV2 extends BasePgStoreModule {
         SELECT index_block_hash as prev_block_hash
         FROM blocks
         WHERE canonical = true
-        AND block_height < (
-          SELECT block_height
-          FROM selected_blocks
-          ORDER BY block_height DESC
-          LIMIT 1
-        )
+          ${tenureFilter}
+          AND block_height < (
+            SELECT block_height
+            FROM selected_blocks
+            ORDER BY block_height DESC
+            LIMIT 1
+          )
         ORDER BY block_height DESC
         OFFSET ${limit - 1}
         LIMIT 1
@@ -116,18 +110,26 @@ export class PgStoreV2 extends BasePgStoreModule {
         SELECT index_block_hash as next_block_hash
         FROM blocks
         WHERE canonical = true
-        AND block_height > (
-          SELECT block_height
-          FROM selected_blocks
-          ORDER BY block_height DESC
-          LIMIT 1
-        )
+          ${tenureFilter}
+          AND block_height > (
+            SELECT block_height
+            FROM selected_blocks
+            ORDER BY block_height DESC
+            LIMIT 1
+          )
         ORDER BY block_height ASC
         OFFSET ${limit - 1}
         LIMIT 1
+      ),
+      block_count AS (
+        SELECT ${
+          args.tenureHeight
+            ? sql`(SELECT COUNT(*) FROM blocks WHERE tenure_height = ${args.tenureHeight})::int`
+            : sql`(SELECT block_count FROM chain_tip)::int`
+        } AS total
       )
       SELECT
-        (SELECT block_count FROM chain_tip)::int AS total,
+        (SELECT total FROM block_count) AS total,
         sb.*,
         nb.next_block_hash,
         pb.prev_block_hash
