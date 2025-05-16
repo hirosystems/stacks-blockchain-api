@@ -385,6 +385,7 @@ export function parseTxQueryResult(result: ContractTxQueryResult): DbTx {
     execution_cost_write_count: Number.parseInt(result.execution_cost_write_count),
     execution_cost_write_length: Number.parseInt(result.execution_cost_write_length),
     abi: parseAbiColumn(result.abi),
+    vm_error: result.vm_error,
   };
   parseTxTypeSpecificQueryResult(result, tx);
   return tx;
