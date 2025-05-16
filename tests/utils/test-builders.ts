@@ -200,6 +200,7 @@ export interface TestTxArgs extends Partial<DbTxRaw> {
   tx_index?: number;
   type_id?: DbTxTypeId;
   nonce?: number;
+  vm_error?: string;
 }
 
 /**
@@ -266,6 +267,7 @@ function testTx(args?: TestTxArgs): DataStoreTxEventData {
       tenure_change_previous_tenure_blocks: args?.tenure_change_previous_tenure_blocks,
       tenure_change_cause: args?.tenure_change_cause,
       tenure_change_pubkey_hash: args?.tenure_change_pubkey_hash,
+      vm_error: args?.vm_error ?? null,
     },
     stxLockEvents: [],
     stxEvents: [],
