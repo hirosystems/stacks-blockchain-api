@@ -410,6 +410,7 @@ describe('websocket notifications', () => {
           },
           tx_status: 'success',
           tx_type: 'token_transfer',
+          vm_error: null,
         },
       });
     } finally {
