@@ -241,6 +241,8 @@ export interface CoreNodeTxMessage {
   txid: string;
   tx_index: number;
   contract_interface: ClarityAbi | null;
+  /** @deprecated Use `contract_interface` instead. The node renamed `contract_abi` to `contract_interface`. */
+  contract_abi: ClarityAbi | null;
   execution_cost: CoreNodeExecutionCostMessage;
   microblock_sequence: number | null;
   microblock_hash: string | null;
