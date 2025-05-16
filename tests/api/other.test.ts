@@ -101,6 +101,7 @@ describe('other tests', () => {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      vm_error: null,
     };
     const stxMintEvent1: DbStxEvent = {
       event_index: 0,

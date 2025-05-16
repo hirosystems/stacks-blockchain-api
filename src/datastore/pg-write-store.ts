@@ -1896,6 +1896,7 @@ export class PgWriteStore extends PgStore {
       execution_cost_runtime: tx.execution_cost_runtime,
       execution_cost_write_count: tx.execution_cost_write_count,
       execution_cost_write_length: tx.execution_cost_write_length,
+      vm_error: tx.vm_error ?? null,
     }));
 
     let count = 0;
@@ -3492,6 +3493,7 @@ export class PgWriteStore extends PgStore {
       execution_cost_runtime: tx.execution_cost_runtime,
       execution_cost_write_count: tx.execution_cost_write_count,
       execution_cost_write_length: tx.execution_cost_write_length,
+      vm_error: tx.vm_error ?? null,
     }));
     await sql`INSERT INTO txs ${sql(values)}`;
   }

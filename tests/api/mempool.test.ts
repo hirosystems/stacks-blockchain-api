@@ -595,6 +595,7 @@ describe('mempool tests', () => {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      vm_error: null,
     };
     const dataStoreUpdate1: DataStoreBlockUpdateData = {
       block: dbBlock1,
@@ -1728,6 +1729,7 @@ describe('mempool tests', () => {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      vm_error: null,
     };
 
     // Simulate the bug with a txs being in the mempool at confirmed at the same time by
@@ -1906,6 +1908,7 @@ describe('mempool tests', () => {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      vm_error: null,
     };
 
     await db.updateMempoolTxs({ mempoolTxs: [mempoolTx] });
