@@ -449,7 +449,7 @@ const AbstractMempoolTransactionSchema = Type.Object({
 });
 export type AbstractMempoolTransaction = Static<typeof AbstractMempoolTransactionSchema>;
 
-const TokenTransferMempoolTransactionSchema = Type.Object(
+export const TokenTransferMempoolTransactionSchema = Type.Object(
   {
     ...AbstractMempoolTransactionProperties,
     ...TokenTransferTransactionMetadataProperties,

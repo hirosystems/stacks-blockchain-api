@@ -1959,7 +1959,8 @@ export class PgWriteStore extends PgStore {
         tenure_change_pubkey_hash: tx.tenure_change_pubkey_hash ?? null,
       }));
 
-      // Revive mempool txs that were previously dropped
+      // Revive mempool txs that were previously dropped.
+      // FIXME: count
       const revivedTxs = await sql<{ tx_id: string }[]>`
         UPDATE mempool_txs
         SET pruned = false,
@@ -1980,7 +1981,8 @@ export class PgWriteStore extends PgStore {
       `;
       txIds.push(...revivedTxs.map(r => r.tx_id));
 
-      const result = await sql<{ tx_id: string }[]>`
+      // Insert new mempool txs.
+      const inserted = await sql<{ tx_id: string }[]>`
         WITH inserted AS (
           INSERT INTO mempool_txs ${sql(values)}
           ON CONFLICT ON CONSTRAINT unique_tx_id DO NOTHING
@@ -1995,9 +1997,10 @@ export class PgWriteStore extends PgStore {
         )
         SELECT tx_id FROM inserted
       `;
-      txIds.push(...result.map(r => r.tx_id));
-      // The incoming mempool transactions might have already been settled
-      // We need to mark them as pruned to avoid inconsistent tx state
+      txIds.push(...inserted.map(r => r.tx_id));
+
+      // The incoming mempool transactions might have already been mined. We need to mark them as
+      // pruned to avoid inconsistent tx state.
       const pruned_tx = await sql<{ tx_id: string }[]>`
         SELECT tx_id
         FROM txs
@@ -2006,7 +2009,7 @@ export class PgWriteStore extends PgStore {
           canonical = true AND
           microblock_canonical = true`;
       if (pruned_tx.length > 0) {
-        await sql<{ tx_id: string }[]>`
+        await sql`
           WITH pruned AS (
             UPDATE mempool_txs
             SET pruned = true
@@ -2014,16 +2017,51 @@ export class PgWriteStore extends PgStore {
               tx_id IN ${sql(pruned_tx.map(t => t.tx_id))} AND
               pruned = false
             RETURNING tx_id
-          ),
-          count_update AS (
-            UPDATE chain_tip SET
-              mempool_tx_count = mempool_tx_count - (SELECT COUNT(*) FROM pruned),
-              mempool_updated_at = NOW()
           )
-          SELECT tx_id FROM pruned`;
+          UPDATE chain_tip SET
+            mempool_tx_count = mempool_tx_count - (SELECT COUNT(*) FROM pruned),
+            mempool_updated_at = NOW()
+          `;
       }
     }
+    await this.updateReplacedByFeeMempoolTxs(sql, txIds);
     return txIds;
+  }
+
+  private async updateReplacedByFeeMempoolTxs(sql: PgSqlClient, txIds: string[]): Promise<void> {
+    // Newly updated mempool transactions may have changed the RBF situation for transactions with
+    // equal nonces. Look for these cases and prune replaced txs accordingly. When marking as
+    // replaced, do not filter by pruned only as we want to mark all same nonce txs as replaced.
+    for (const newTxId of txIds) {
+      await sql`
+        WITH new_tx AS (
+          SELECT
+            (CASE sponsored WHEN true THEN sponsor_address ELSE sender_address END) AS address,
+            nonce, fee_rate
+          FROM mempool_txs
+          WHERE pruned = false AND tx_id = ${newTxId}
+          LIMIT 1
+        ),
+        same_nonce_txs AS (
+          SELECT tx_id, fee_rate
+          FROM mempool_txs
+          WHERE nonce = (SELECT nonce FROM new_tx)
+            AND CASE sponsored
+              WHEN true THEN sponsor_address = (SELECT address FROM new_tx)
+              ELSE sender_address = (SELECT address FROM new_tx)
+            END
+        ),
+        winning_tx AS (
+          SELECT * FROM same_nonce_txs ORDER BY fee_rate DESC LIMIT 1
+        )
+        UPDATE mempool_txs
+        SET pruned = TRUE,
+          status = ${DbTxStatus.DroppedReplaceByFee},
+          replaced_by_tx_id = (SELECT tx_id FROM winning_tx)
+        WHERE tx_id IN (SELECT tx_id FROM same_nonce_txs)
+          AND tx_id <> (SELECT tx_id FROM winning_tx)
+      `;
+    }
   }
 
   private _debounceMempoolStat: {
@@ -2768,17 +2806,23 @@ export class PgWriteStore extends PgStore {
     const updateResults = await sql<{ tx_id: string }[]>`
       WITH input_data (tx_id, sender_address, nonce) AS (VALUES ${sql(inputData)}),
       affected_mempool_tx_ids AS (
-        SELECT m.tx_id
-          FROM mempool_txs AS m
-          INNER JOIN input_data AS i
-          ON m.sender_address = i.sender_address AND m.nonce = i.nonce::int
-        UNION
-        SELECT tx_id::bytea FROM input_data
+        SELECT DISTINCT ON(tx_id) tx_id, replaced_by_tx_id
+        FROM (
+          SELECT m.tx_id, i.tx_id::bytea AS replaced_by_tx_id
+            FROM mempool_txs AS m
+            INNER JOIN input_data AS i
+            ON m.sender_address = i.sender_address AND m.nonce = i.nonce::int
+          UNION
+          SELECT tx_id::bytea, NULL::bytea AS replaced_by_tx_id FROM input_data
+        ) AS subquery
+        ORDER BY tx_id, replaced_by_tx_id DESC
       ),
       pruned AS (
         UPDATE mempool_txs
-        SET pruned = true
-        WHERE pruned = false AND tx_id IN (SELECT DISTINCT tx_id FROM affected_mempool_tx_ids)
+        SET pruned = true, replaced_by_tx_id = (
+          SELECT replaced_by_tx_id FROM affected_mempool_tx_ids WHERE tx_id = mempool_txs.tx_id
+        )
+        WHERE pruned = false AND tx_id IN (SELECT tx_id FROM affected_mempool_tx_ids)
         RETURNING tx_id
       ),
       count_update AS (

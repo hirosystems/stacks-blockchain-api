@@ -1285,6 +1285,7 @@ export function convertTxQueryResultToDbMempoolTx(txs: TxQueryResult[]): DbMempo
           ? BigInt(tx.token_transfer_amount)
           : tx.token_transfer_amount,
       sponsor_address: tx.sponsor_address ?? undefined,
+      status: DbTxStatus.Pending,
     });
     dbMempoolTxs.push(dbMempoolTx);
   }

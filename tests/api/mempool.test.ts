@@ -2206,30 +2206,78 @@ describe('mempool tests', () => {
 
     // Add tx with nonce = 1 to the mempool
     const sender_address = 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6';
-    const mempoolTx = testMempoolTx({ tx_id: `0xff0001`, sender_address, nonce: 1 });
-    await db.updateMempoolTxs({ mempoolTxs: [mempoolTx] });
-    const check0 = await supertest(api.server).get(
-      `/extended/v1/address/${sender_address}/mempool`
-    );
-    expect(check0.body.results).toHaveLength(1);
+    await db.updateMempoolTxs({
+      mempoolTxs: [
+        testMempoolTx({
+          tx_id: `0xff0001`,
+          sender_address,
+          nonce: 1,
+          fee_rate: 200n,
+          type_id: DbTxTypeId.TokenTransfer,
+        }),
+      ],
+    });
+    let request = await supertest(api.server).get(`/extended/v1/address/${sender_address}/mempool`);
+    expect(request.body.results).toHaveLength(1);
 
-    // Confirm a different tx with the same nonce = 1 by the same sender without it ever touching
-    // the mempool
+    // Add another tx with nonce = 1 to the mempool with a higher fee. Previous tx is marked as
+    // pruned and replaced.
+    await db.updateMempoolTxs({
+      mempoolTxs: [
+        testMempoolTx({
+          tx_id: `0xff0002`,
+          sender_address,
+          nonce: 1,
+          fee_rate: 300n,
+          type_id: DbTxTypeId.TokenTransfer,
+        }),
+      ],
+    });
+    request = await supertest(api.server).get(`/extended/v1/address/${sender_address}/mempool`);
+    expect(request.body.results).toHaveLength(1);
+    request = await supertest(api.server).get(`/extended/v1/tx/0xff0001`);
+    expect(request.body).toEqual(
+      expect.objectContaining({
+        tx_status: 'dropped_replace_by_fee',
+        replaced_by_tx_id: '0xff0002',
+      })
+    );
+
+    // Confirm a block containing a new tx with the same nonce = 1 by the same sender without it
+    // ever touching the mempool
     await db.update(
       new TestBlockBuilder({
         block_height: 2,
         index_block_hash: `0x0002`,
         parent_index_block_hash: `0x0001`,
       })
-        .addTx({ tx_id: `0xaa0001`, sender_address, nonce: 1 })
+        .addTx({
+          tx_id: `0xaa0001`,
+          sender_address,
+          nonce: 1,
+          fee_rate: 100n,
+          type_id: DbTxTypeId.TokenTransfer,
+        })
         .build()
     );
 
-    // Mempool tx should now be pruned
-    const check1 = await supertest(api.server).get(
-      `/extended/v1/address/${sender_address}/mempool`
+    // Mempool txs are now pruned and those transactions marked as replaced
+    request = await supertest(api.server).get(`/extended/v1/address/${sender_address}/mempool`);
+    expect(request.body.results).toHaveLength(0);
+    request = await supertest(api.server).get(`/extended/v1/tx/0xff0001`);
+    expect(request.body).toEqual(
+      expect.objectContaining({
+        tx_status: 'dropped_replace_by_fee',
+        replaced_by_tx_id: '0xaa0001',
+      })
     );
-    expect(check1.body.results).toHaveLength(0);
+    request = await supertest(api.server).get(`/extended/v1/tx/0xff0002`);
+    expect(request.body).toEqual(
+      expect.objectContaining({
+        tx_status: 'dropped_replace_by_fee',
+        replaced_by_tx_id: '0xaa0001',
+      })
+    );
 
     // Re-org block 2
     await db.update(
@@ -2247,11 +2295,14 @@ describe('mempool tests', () => {
       }).build()
     );
 
-    // Now both conflicting nonce txs should coexist in the mempool (like RBF)
-    const check2 = await supertest(api.server).get(
-      `/extended/v1/address/${sender_address}/mempool`
-    );
-    expect(check2.body.results).toHaveLength(2);
+    // Now both conflicting nonce txs should coexist in the mempool, but the lower fee tx is marked
+    // as RBF-ed by the higher fee tx.
+    request = await supertest(api.server).get(`/extended/v1/address/${sender_address}/mempool`);
+    expect(request.body.results).toHaveLength(2);
+    request = await supertest(api.server).get(`/extended/v1/tx/0xff0001`);
+    expect(request.body.replaced_by_tx_id).toBe(null);
+    request = await supertest(api.server).get(`/extended/v1/tx/0xaa0001`);
+    expect(request.body.replaced_by_tx_id).toBe('0xff0001');
   });
 
   test('account estimated balance from mempool activity', async () => {
