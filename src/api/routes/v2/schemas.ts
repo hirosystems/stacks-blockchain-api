@@ -109,7 +109,6 @@ const BurnBlockHashParamSchema = Type.String({
   description: 'Burn block hash',
   examples: ['0000000000000000000452773967cdd62297137cdaf79950c5e8bb0c62075133'],
 });
-export const CompiledBurnBlockHashParam = ajv.compile(BurnBlockHashParamSchema);
 
 const BurnBlockHeightParamSchema = Type.Integer({
   title: 'Burn block height',
@@ -153,6 +152,13 @@ const TransactionIdParamSchema = Type.String({
   examples: ['0xf6bd5f4a7b26184a3466340b2e99fd003b4962c0e382a7e4b6a13df3dd7a91c6'],
 });
 
+const TenureHeightParamSchema = Type.Integer({
+  minimum: 0,
+  title: 'Block tenure height',
+  description: 'Block tenure height',
+  examples: [165453],
+});
+
 // ==========================
 // Query and path params
 // TODO: Migrate these to each endpoint after switching from Express to Fastify
@@ -180,9 +186,6 @@ export type TransactionPaginationQueryParams = Static<
 const PoxCyclePaginationQueryParamsSchema = PaginationQueryParamsSchema(PoxCycleLimitParamSchema);
 export type PoxCyclePaginationQueryParams = Static<typeof PoxCyclePaginationQueryParamsSchema>;
 
-const PoxSignerPaginationQueryParamsSchema = PaginationQueryParamsSchema(PoxSignerLimitParamSchema);
-export type PoxSignerPaginationQueryParams = Static<typeof PoxSignerPaginationQueryParamsSchema>;
-
 export const BlockParamsSchema = Type.Object(
   {
     height_or_hash: Type.Union([
@@ -205,7 +208,13 @@ export const BurnBlockParamsSchema = Type.Object(
   },
   { additionalProperties: false }
 );
-export type BurnBlockParams = Static<typeof BurnBlockParamsSchema>;
+
+export const BlockTenureParamsSchema = Type.Object(
+  {
+    tenure_height: TenureHeightParamSchema,
+  },
+  { additionalProperties: false }
+);
 
 export const SmartContractStatusParamsSchema = Type.Object(
   {
@@ -228,4 +237,3 @@ export const AddressTransactionParamsSchema = Type.Object(
   },
   { additionalProperties: false }
 );
-export type AddressTransactionParams = Static<typeof AddressTransactionParamsSchema>;

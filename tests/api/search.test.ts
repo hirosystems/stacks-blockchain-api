@@ -104,6 +104,7 @@ describe('search tests', () => {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      vm_error: null,
     };
     await db.updateTx(client, tx);
 
@@ -320,6 +321,7 @@ describe('search tests', () => {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      vm_error: null,
     };
 
     const mempoolTx: DbMempoolTxRaw = {
@@ -580,6 +582,7 @@ describe('search tests', () => {
           execution_cost_write_count: 0,
           execution_cost_write_length: 0,
           tx_type: 'coinbase',
+          vm_error: null,
           coinbase_payload: {
             data: '0x636f696e62617365206869',
             alt_recipient: null,
@@ -668,6 +671,7 @@ describe('search tests', () => {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      vm_error: null,
     };
     await db.updateTx(client, stxTx1);
 
@@ -721,6 +725,7 @@ describe('search tests', () => {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      vm_error: null,
     };
     await db.updateTx(client, stxTx2);
 
@@ -940,6 +945,7 @@ describe('search tests', () => {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      vm_error: null,
     };
     await db.updateTx(client, smartContract);
 
@@ -1116,6 +1122,7 @@ describe('search tests', () => {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      vm_error: null,
     };
 
     const stxTx2: DbTxRaw = {
@@ -1155,6 +1162,7 @@ describe('search tests', () => {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      vm_error: null,
     };
 
     const stxEvent1: DbStxEvent = {
@@ -1275,6 +1283,7 @@ describe('search tests', () => {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      vm_error: null,
     };
 
     const smartContract: DbSmartContract = {
@@ -1584,6 +1593,7 @@ describe('search tests', () => {
           },
           tx_status: 'success',
           tx_type: 'smart_contract',
+          vm_error: null,
         },
       },
     };

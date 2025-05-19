@@ -128,6 +128,7 @@ describe('tx tests', () => {
       execution_cost_write_length: 339,
       contract_call_contract_id: 'SP3YK7KWMYRCDMV5M4792T0T7DERQXHJJGGEPV1N8.pg-mdomains-v1',
       contract_call_function_name: 'bns-name-preorder',
+      vm_error: null,
     };
     const smartContract1: DbSmartContract = {
       tx_id: '0x668142abbcabb846e3f83183325325071a8b4882dcf5476a38148cb5b738fc83',
@@ -198,6 +199,7 @@ describe('tx tests', () => {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      vm_error: null,
     };
 
     const versionedSmartContract1: DbSmartContract = {
@@ -246,6 +248,7 @@ describe('tx tests', () => {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      vm_error: null,
     };
     await db.update({
       block: dbBlock,
@@ -389,6 +392,7 @@ describe('tx tests', () => {
         microblock_hash: null,
         microblock_parent_hash: null,
         microblock_sequence: null,
+        vm_error: null,
         execution_cost: {
           read_count: 0,
           read_length: 0,
@@ -495,6 +499,7 @@ describe('tx tests', () => {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      vm_error: null,
     };
     const fetchTx = await supertest(api.server).get(`/extended/v1/tx/${dbTx.tx_id}`);
     expect(fetchTx.status).toBe(200);
@@ -548,6 +553,7 @@ describe('tx tests', () => {
         microblock_hash: null,
         microblock_parent_hash: null,
         microblock_sequence: null,
+        vm_error: null,
         execution_cost: {
           read_count: 0,
           read_length: 0,
@@ -644,6 +650,7 @@ describe('tx tests', () => {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      vm_error: null,
     };
     const fetchTx = await supertest(api.server).get(`/extended/v1/tx/${dbTx.tx_id}`);
     expect(fetchTx.status).toBe(200);
@@ -697,6 +704,7 @@ describe('tx tests', () => {
         microblock_hash: null,
         microblock_parent_hash: null,
         microblock_sequence: null,
+        vm_error: null,
         execution_cost: {
           read_count: 0,
           read_length: 0,
@@ -793,6 +801,7 @@ describe('tx tests', () => {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      vm_error: null,
     };
     const fetchTx = await supertest(api.server).get(`/extended/v1/tx/${dbTx.tx_id}`);
     expect(fetchTx.status).toBe(200);
@@ -857,6 +866,7 @@ describe('tx tests', () => {
         microblock_hash: null,
         microblock_parent_hash: null,
         microblock_sequence: null,
+        vm_error: null,
         execution_cost: {
           read_count: 0,
           read_length: 0,
@@ -982,6 +992,7 @@ describe('tx tests', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
       sponsor_nonce: 2,
+      vm_error: null,
     };
     const fetchTx = await supertest(api.server).get(`/extended/v1/tx/${dbTx.tx_id}`);
     expect(fetchTx.status).toBe(200);
@@ -1081,6 +1092,7 @@ describe('tx tests', () => {
         microblock_hash: null,
         microblock_parent_hash: null,
         microblock_sequence: null,
+        vm_error: null,
         execution_cost: {
           read_count: 0,
           read_length: 0,
@@ -1269,6 +1281,7 @@ describe('tx tests', () => {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      vm_error: null,
     };
 
     const dbStxEvent: DbStxEvent = {
@@ -1485,6 +1498,7 @@ describe('tx tests', () => {
         microblock_hash: null,
         microblock_parent_hash: null,
         microblock_sequence: null,
+        vm_error: null,
         execution_cost: {
           read_count: 0,
           read_length: 0,
@@ -1650,6 +1664,7 @@ describe('tx tests', () => {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      vm_error: null,
     };
     expect(txQuery.result).toEqual(expectedResp);
 
@@ -1718,6 +1733,7 @@ describe('tx tests', () => {
         microblock_hash: null,
         microblock_parent_hash: null,
         microblock_sequence: null,
+        vm_error: 'Clarity error',
         execution_cost: {
           read_count: 0,
           read_length: 0,
@@ -1817,6 +1833,7 @@ describe('tx tests', () => {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      vm_error: 'Clarity error',
     };
     expect(txQuery.result).toEqual(expectedResp);
 
@@ -1874,6 +1891,7 @@ describe('tx tests', () => {
         microblock_hash: null,
         microblock_parent_hash: null,
         microblock_sequence: null,
+        vm_error: 'post condition error',
         execution_cost: {
           read_count: 0,
           read_length: 0,
@@ -1973,6 +1991,7 @@ describe('tx tests', () => {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      vm_error: 'post condition error',
     };
     expect(txQuery.result).toEqual(expectedResp);
 
@@ -2730,6 +2749,7 @@ describe('tx tests', () => {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      vm_error: null,
     };
 
     await db.update({
@@ -2855,6 +2875,7 @@ describe('tx tests', () => {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      vm_error: null,
     };
 
     await db.update({
@@ -3513,6 +3534,7 @@ describe('tx tests', () => {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      vm_error: null,
     };
     const nftEvent: DbNftEvent = {
       canonical: true,
@@ -3604,6 +3626,7 @@ describe('tx tests', () => {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      vm_error: null,
     };
 
     const fetchTx = await supertest(api.server).get(`/extended/v1/tx/${tx.tx_id}`);
@@ -3654,6 +3677,7 @@ describe('tx tests', () => {
       contract_call_function_args: bufferToHex(
         createClarityValueArray(bufferCV(Buffer.from('test')), uintCV(1234n))
       ),
+      vm_error: null,
     };
     const tx2: DbTxRaw = {
       type_id: DbTxTypeId.ContractCall,
@@ -3694,6 +3718,7 @@ describe('tx tests', () => {
       contract_call_function_args: bufferToHex(
         createClarityValueArray(bufferCV(Buffer.from('test')), uintCV(1234n))
       ),
+      vm_error: null,
     };
     const contractCall: DbSmartContract = {
       tx_id: '0x668142abbcabb846e3f83183325325071a8b4882dcf5476a38148cb5b738fc83',
@@ -3775,6 +3800,7 @@ describe('tx tests', () => {
       execution_cost_runtime: 116256000,
       execution_cost_write_count: 9,
       execution_cost_write_length: 339,
+      vm_error: null,
       tx_type: 'contract_call',
       contract_call: {
         contract_id: 'SP3YK7KWMYRCDMV5M4792T0T7DERQXHJJGGEPV1N8.pg-mdomains-v1',
@@ -3872,6 +3898,7 @@ describe('tx tests', () => {
       execution_cost_runtime: 116256000,
       execution_cost_write_count: 9,
       execution_cost_write_length: 339,
+      vm_error: null,
       tx_type: 'contract_call',
       contract_call: {
         contract_id: 'SP000000000000000000002Q6VF78.bns',
@@ -4118,6 +4145,7 @@ describe('tx tests', () => {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      vm_error: null,
     };
     await db.update({
       block,
@@ -4248,6 +4276,7 @@ describe('tx tests', () => {
       },
       tx_status: 'success',
       tx_type: 'coinbase',
+      vm_error: null,
     });
 
     result = await supertest(api.server).get(`/extended/v2/blocks/latest/transactions`);
@@ -4336,6 +4365,7 @@ describe('tx tests', () => {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      vm_error: null,
     };
     await db.updateTx(client, tx);
     const result1 = await supertest(api.server).get(`/extended/v1/tx/block/${block.block_hash}`);

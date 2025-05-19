@@ -99,6 +99,7 @@ describe('cache-control tests', () => {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      vm_error: null,
     };
     await db.update({
       block: block1,
@@ -272,6 +273,7 @@ describe('cache-control tests', () => {
 
       // These properties can be determined with a db query, they are set while the db is inserting them.
       block_height: -1,
+      vm_error: null,
     };
 
     await db.updateMicroblocks({
