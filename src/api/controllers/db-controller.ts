@@ -1135,6 +1135,7 @@ function parseDbAbstractTx(dbTx: DbTx, baseTx: BaseTransaction): AbstractTransac
     execution_cost_runtime: dbTx.execution_cost_runtime,
     execution_cost_write_count: dbTx.execution_cost_write_count,
     execution_cost_write_length: dbTx.execution_cost_write_length,
+    vm_error: dbTx.vm_error ?? null,
   };
   return abstractTx;
 }

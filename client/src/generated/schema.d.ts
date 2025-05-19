@@ -86,31 +86,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/extended/v1/tx/mempool/dropped": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get dropped mempool transactions
-         * @description Retrieves all recently-broadcast transactions that have been dropped from the mempool.
-         *
-         *             Transactions are dropped from the mempool if:
-         *              * they were stale and awaiting garbage collection or,
-         *              * were expensive, or
-         *              * were replaced with a new fee
-         */
-        get: operations["get_dropped_mempool_transaction_list"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/extended/v1/tx/mempool/stats": {
         parameters: {
             query?: never;
@@ -820,7 +795,10 @@ export interface paths {
         };
         /**
          * Get account STX balance
-         * @description Retrieves STX token balance for a given Address or Contract Identifier.
+         * @deprecated
+         * @description **NOTE:** This endpoint is deprecated in favor of [Get address STX balance](/api/get-principal-stx-balance).
+         *
+         *             Retrieves STX token balance for a given Address or Contract Identifier.
          */
         get: operations["get_account_stx_balance"];
         put?: never;
@@ -840,7 +818,10 @@ export interface paths {
         };
         /**
          * Get account balances
-         * @description Retrieves total account balance information for a given Address or Contract Identifier. This includes the balances of STX Tokens, Fungible Tokens and Non-Fungible Tokens for the account.
+         * @deprecated
+         * @description **NOTE:** This endpoint is deprecated in favor of [Get address FT balances](/api/get-principal-ft-balances).
+         *
+         *             Retrieves total account balance information for a given Address or Contract Identifier. This includes the balances of STX Tokens, Fungible Tokens and Non-Fungible Tokens for the account.
          */
         get: operations["get_account_balance"];
         put?: never;
@@ -1166,13 +1147,13 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Add testnet BTC tokens to address
-         * @description Add 1 BTC token to the specified testnet BTC address.
+         * Add regtest BTC tokens to address
+         * @description Add 0.01 BTC token to the specified regtest BTC address.
          *
-         *             The endpoint returns the transaction ID, which you can use to view the transaction in a testnet Bitcoin block
+         *             The endpoint returns the transaction ID, which you can use to view the transaction in a regtest Bitcoin block
          *             explorer. The tokens are delivered once the transaction has been included in a block.
          *
-         *             **Note:** This is a testnet only endpoint. This endpoint will not work on the mainnet.
+         *             **Note:** This is a Bitcoin regtest-only endpoint. This endpoint will not work on the Bitcoin mainnet.
          */
         post: operations["run_faucet_btc"];
         delete?: never;
@@ -1309,6 +1290,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/extended/v2/blocks/{height_or_hash}/signer-signatures": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get signer signatures for block
+         * @description Retrieves the signer signatures (an array of signature byte strings) in a single block
+         */
+        get: operations["get_signer_signatures_for_block"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/extended/v2/burn-blocks/": {
         parameters: {
             query?: never;
@@ -1361,6 +1362,26 @@ export interface paths {
          * @description Retrieves a list of blocks confirmed by a specific burn block
          */
         get: operations["get_blocks_by_burn_block"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/extended/v2/block-tenures/{tenure_height}/blocks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get blocks by tenure
+         * @description Retrieves blocks confirmed in a block tenure
+         */
+        get: operations["get_tenure_blocks"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1543,6 +1564,66 @@ export interface paths {
          * @description Retrieves a paginated list of all STX, FT and NFT events concerning a STX address or Smart Contract ID within a specific transaction.
          */
         get: operations["get_address_transaction_events"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/extended/v2/addresses/{principal}/balances/stx": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get principal STX balance
+         * @description Retrieves STX account balance information for a given Address or Contract Identifier.
+         */
+        get: operations["get_principal_stx_balance"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/extended/v2/addresses/{principal}/balances/ft": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get principal FT balances
+         * @description Retrieves Fungible-token account balance information for a given Address or Contract Identifier.
+         */
+        get: operations["get_principal_ft_balances"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/extended/v2/addresses/{principal}/balances/ft/{token}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get principal FT balance
+         * @description Retrieves a specific fungible-token balance for a given principal.
+         */
+        get: operations["get_principal_ft_balance"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1803,6 +1884,20 @@ export interface operations {
                     };
                 };
             };
+            /** @description Default Response */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: string;
+                        message?: string;
+                    } & {
+                        [key: string]: unknown;
+                    };
+                };
+            };
         };
     };
     get_transaction_list: {
@@ -2007,6 +2102,7 @@ export interface operations {
                             execution_cost_write_count: number;
                             /** @description Execution cost write length. */
                             execution_cost_write_length: number;
+                            vm_error: string | null;
                             events: (({
                                 event_index: number;
                             } & {
@@ -2221,6 +2317,7 @@ export interface operations {
                             execution_cost_write_count: number;
                             /** @description Execution cost write length. */
                             execution_cost_write_length: number;
+                            vm_error: string | null;
                             events: (({
                                 event_index: number;
                             } & {
@@ -2435,6 +2532,7 @@ export interface operations {
                             execution_cost_write_count: number;
                             /** @description Execution cost write length. */
                             execution_cost_write_length: number;
+                            vm_error: string | null;
                             events: (({
                                 event_index: number;
                             } & {
@@ -2656,6 +2754,7 @@ export interface operations {
                             execution_cost_write_count: number;
                             /** @description Execution cost write length. */
                             execution_cost_write_length: number;
+                            vm_error: string | null;
                             events: (({
                                 event_index: number;
                             } & {
@@ -2869,6 +2968,7 @@ export interface operations {
                             execution_cost_write_count: number;
                             /** @description Execution cost write length. */
                             execution_cost_write_length: number;
+                            vm_error: string | null;
                             events: (({
                                 event_index: number;
                             } & {
@@ -3082,6 +3182,7 @@ export interface operations {
                             execution_cost_write_count: number;
                             /** @description Execution cost write length. */
                             execution_cost_write_length: number;
+                            vm_error: string | null;
                             events: (({
                                 event_index: number;
                             } & {
@@ -3169,6 +3270,20 @@ export interface operations {
                                 pubkey_hash: string;
                             };
                         })[];
+                    };
+                };
+            };
+            /** @description Default Response */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: string;
+                        message?: string;
+                    } & {
+                        [key: string]: unknown;
                     };
                 };
             };
@@ -3341,6 +3456,7 @@ export interface operations {
                                 execution_cost_write_count: number;
                                 /** @description Execution cost write length. */
                                 execution_cost_write_length: number;
+                                vm_error: string | null;
                                 events: (({
                                     event_index: number;
                                 } & {
@@ -3555,6 +3671,7 @@ export interface operations {
                                 execution_cost_write_count: number;
                                 /** @description Execution cost write length. */
                                 execution_cost_write_length: number;
+                                vm_error: string | null;
                                 events: (({
                                     event_index: number;
                                 } & {
@@ -3769,6 +3886,7 @@ export interface operations {
                                 execution_cost_write_count: number;
                                 /** @description Execution cost write length. */
                                 execution_cost_write_length: number;
+                                vm_error: string | null;
                                 events: (({
                                     event_index: number;
                                 } & {
@@ -3990,6 +4108,7 @@ export interface operations {
                                 execution_cost_write_count: number;
                                 /** @description Execution cost write length. */
                                 execution_cost_write_length: number;
+                                vm_error: string | null;
                                 events: (({
                                     event_index: number;
                                 } & {
@@ -4203,6 +4322,7 @@ export interface operations {
                                 execution_cost_write_count: number;
                                 /** @description Execution cost write length. */
                                 execution_cost_write_length: number;
+                                vm_error: string | null;
                                 events: (({
                                     event_index: number;
                                 } & {
@@ -4416,6 +4536,7 @@ export interface operations {
                                 execution_cost_write_count: number;
                                 /** @description Execution cost write length. */
                                 execution_cost_write_length: number;
+                                vm_error: string | null;
                                 events: (({
                                     event_index: number;
                                 } & {
@@ -5121,6 +5242,20 @@ export interface operations {
                     };
                 };
             };
+            /** @description Default Response */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: string;
+                        message?: string;
+                    } & {
+                        [key: string]: unknown;
+                    };
+                };
+            };
         };
     };
     get_mempool_transaction_list: {
@@ -5786,644 +5921,17 @@ export interface operations {
                     };
                 };
             };
-        };
-    };
-    get_dropped_mempool_transaction_list: {
-        parameters: {
-            query?: {
-                /** @description Result offset */
-                offset?: number;
-                /** @description Results per page */
-                limit?: number;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description List of dropped mempool transactions */
-            200: {
+            /** @description Default Response */
+            "4XX": {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
                     "application/json": {
-                        /** @example 20 */
-                        limit: number;
-                        /** @example 0 */
-                        offset: number;
-                        /** @example 1 */
-                        total: number;
-                        results: ({
-                            /** @description Transaction ID */
-                            tx_id: string;
-                            /** @description Used for ordering the transactions originating from and paying from an account. The nonce ensures that a transaction is processed at most once. The nonce counts the number of times an account's owner(s) have authorized a transaction. The first transaction from an account will have a nonce value equal to 0, the second will have a nonce value equal to 1, and so on. */
-                            nonce: number;
-                            /** @description Transaction fee as Integer string (64-bit unsigned integer). */
-                            fee_rate: string;
-                            /** @description Address of the transaction initiator */
-                            sender_address: string;
-                            sponsor_nonce?: number;
-                            /** @description Denotes whether the originating account is the same as the paying account */
-                            sponsored: boolean;
-                            sponsor_address?: string;
-                            post_condition_mode: "allow" | "deny";
-                            post_conditions: ({
-                                principal: {
-                                    /** @enum {string} */
-                                    type_id: "principal_origin";
-                                } | {
-                                    /** @enum {string} */
-                                    type_id: "principal_standard";
-                                    address: string;
-                                } | {
-                                    /** @enum {string} */
-                                    type_id: "principal_contract";
-                                    address: string;
-                                    contract_name: string;
-                                };
-                                condition_code: "sent_equal_to" | "sent_greater_than" | "sent_greater_than_or_equal_to" | "sent_less_than" | "sent_less_than_or_equal_to";
-                                amount: string;
-                                /** @enum {string} */
-                                type: "stx";
-                            } | {
-                                principal: {
-                                    /** @enum {string} */
-                                    type_id: "principal_origin";
-                                } | {
-                                    /** @enum {string} */
-                                    type_id: "principal_standard";
-                                    address: string;
-                                } | {
-                                    /** @enum {string} */
-                                    type_id: "principal_contract";
-                                    address: string;
-                                    contract_name: string;
-                                };
-                                condition_code: "sent_equal_to" | "sent_greater_than" | "sent_greater_than_or_equal_to" | "sent_less_than" | "sent_less_than_or_equal_to";
-                                amount: string;
-                                /** @enum {string} */
-                                type: "fungible";
-                                asset: {
-                                    asset_name: string;
-                                    contract_address: string;
-                                    contract_name: string;
-                                };
-                            } | {
-                                principal: {
-                                    /** @enum {string} */
-                                    type_id: "principal_origin";
-                                } | {
-                                    /** @enum {string} */
-                                    type_id: "principal_standard";
-                                    address: string;
-                                } | {
-                                    /** @enum {string} */
-                                    type_id: "principal_contract";
-                                    address: string;
-                                    contract_name: string;
-                                };
-                                condition_code: "sent" | "not_sent";
-                                /** @enum {string} */
-                                type: "non_fungible";
-                                asset_value: {
-                                    hex: string;
-                                    repr: string;
-                                };
-                                asset: {
-                                    asset_name: string;
-                                    contract_address: string;
-                                    contract_name: string;
-                                };
-                            })[];
-                            /** @description `on_chain_only`: the transaction MUST be included in an anchored block, `off_chain_only`: the transaction MUST be included in a microblock, `any`: the leader can choose where to include the transaction. */
-                            anchor_mode: "on_chain_only" | "off_chain_only" | "any";
-                            /** @description Status of the transaction */
-                            tx_status: "pending" | "dropped_replace_by_fee" | "dropped_replace_across_fork" | "dropped_too_expensive" | "dropped_stale_garbage_collect" | "dropped_problematic";
-                            /** @description A unix timestamp (in seconds) indicating when the transaction broadcast was received by the node. */
-                            receipt_time: number;
-                            /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when the transaction broadcast was received by the node. */
-                            receipt_time_iso: string;
-                            /** @enum {string} */
-                            tx_type: "token_transfer";
-                            token_transfer: {
-                                recipient_address: string;
-                                /** @description Transfer amount as Integer string (64-bit unsigned integer) */
-                                amount: string;
-                                /** @description Hex encoded arbitrary message, up to 34 bytes length (should try decoding to an ASCII string) */
-                                memo: string;
-                            };
-                        } | {
-                            /** @description Transaction ID */
-                            tx_id: string;
-                            /** @description Used for ordering the transactions originating from and paying from an account. The nonce ensures that a transaction is processed at most once. The nonce counts the number of times an account's owner(s) have authorized a transaction. The first transaction from an account will have a nonce value equal to 0, the second will have a nonce value equal to 1, and so on. */
-                            nonce: number;
-                            /** @description Transaction fee as Integer string (64-bit unsigned integer). */
-                            fee_rate: string;
-                            /** @description Address of the transaction initiator */
-                            sender_address: string;
-                            sponsor_nonce?: number;
-                            /** @description Denotes whether the originating account is the same as the paying account */
-                            sponsored: boolean;
-                            sponsor_address?: string;
-                            post_condition_mode: "allow" | "deny";
-                            post_conditions: ({
-                                principal: {
-                                    /** @enum {string} */
-                                    type_id: "principal_origin";
-                                } | {
-                                    /** @enum {string} */
-                                    type_id: "principal_standard";
-                                    address: string;
-                                } | {
-                                    /** @enum {string} */
-                                    type_id: "principal_contract";
-                                    address: string;
-                                    contract_name: string;
-                                };
-                                condition_code: "sent_equal_to" | "sent_greater_than" | "sent_greater_than_or_equal_to" | "sent_less_than" | "sent_less_than_or_equal_to";
-                                amount: string;
-                                /** @enum {string} */
-                                type: "stx";
-                            } | {
-                                principal: {
-                                    /** @enum {string} */
-                                    type_id: "principal_origin";
-                                } | {
-                                    /** @enum {string} */
-                                    type_id: "principal_standard";
-                                    address: string;
-                                } | {
-                                    /** @enum {string} */
-                                    type_id: "principal_contract";
-                                    address: string;
-                                    contract_name: string;
-                                };
-                                condition_code: "sent_equal_to" | "sent_greater_than" | "sent_greater_than_or_equal_to" | "sent_less_than" | "sent_less_than_or_equal_to";
-                                amount: string;
-                                /** @enum {string} */
-                                type: "fungible";
-                                asset: {
-                                    asset_name: string;
-                                    contract_address: string;
-                                    contract_name: string;
-                                };
-                            } | {
-                                principal: {
-                                    /** @enum {string} */
-                                    type_id: "principal_origin";
-                                } | {
-                                    /** @enum {string} */
-                                    type_id: "principal_standard";
-                                    address: string;
-                                } | {
-                                    /** @enum {string} */
-                                    type_id: "principal_contract";
-                                    address: string;
-                                    contract_name: string;
-                                };
-                                condition_code: "sent" | "not_sent";
-                                /** @enum {string} */
-                                type: "non_fungible";
-                                asset_value: {
-                                    hex: string;
-                                    repr: string;
-                                };
-                                asset: {
-                                    asset_name: string;
-                                    contract_address: string;
-                                    contract_name: string;
-                                };
-                            })[];
-                            /** @description `on_chain_only`: the transaction MUST be included in an anchored block, `off_chain_only`: the transaction MUST be included in a microblock, `any`: the leader can choose where to include the transaction. */
-                            anchor_mode: "on_chain_only" | "off_chain_only" | "any";
-                            /** @description Status of the transaction */
-                            tx_status: "pending" | "dropped_replace_by_fee" | "dropped_replace_across_fork" | "dropped_too_expensive" | "dropped_stale_garbage_collect" | "dropped_problematic";
-                            /** @description A unix timestamp (in seconds) indicating when the transaction broadcast was received by the node. */
-                            receipt_time: number;
-                            /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when the transaction broadcast was received by the node. */
-                            receipt_time_iso: string;
-                            /** @enum {string} */
-                            tx_type: "smart_contract";
-                            smart_contract: {
-                                clarity_version: number | null;
-                                /** @description Contract identifier formatted as `<principaladdress>.<contract_name>` */
-                                contract_id: string;
-                                /** @description Clarity code of the smart contract being deployed */
-                                source_code: string;
-                            };
-                        } | {
-                            /** @description Transaction ID */
-                            tx_id: string;
-                            /** @description Used for ordering the transactions originating from and paying from an account. The nonce ensures that a transaction is processed at most once. The nonce counts the number of times an account's owner(s) have authorized a transaction. The first transaction from an account will have a nonce value equal to 0, the second will have a nonce value equal to 1, and so on. */
-                            nonce: number;
-                            /** @description Transaction fee as Integer string (64-bit unsigned integer). */
-                            fee_rate: string;
-                            /** @description Address of the transaction initiator */
-                            sender_address: string;
-                            sponsor_nonce?: number;
-                            /** @description Denotes whether the originating account is the same as the paying account */
-                            sponsored: boolean;
-                            sponsor_address?: string;
-                            post_condition_mode: "allow" | "deny";
-                            post_conditions: ({
-                                principal: {
-                                    /** @enum {string} */
-                                    type_id: "principal_origin";
-                                } | {
-                                    /** @enum {string} */
-                                    type_id: "principal_standard";
-                                    address: string;
-                                } | {
-                                    /** @enum {string} */
-                                    type_id: "principal_contract";
-                                    address: string;
-                                    contract_name: string;
-                                };
-                                condition_code: "sent_equal_to" | "sent_greater_than" | "sent_greater_than_or_equal_to" | "sent_less_than" | "sent_less_than_or_equal_to";
-                                amount: string;
-                                /** @enum {string} */
-                                type: "stx";
-                            } | {
-                                principal: {
-                                    /** @enum {string} */
-                                    type_id: "principal_origin";
-                                } | {
-                                    /** @enum {string} */
-                                    type_id: "principal_standard";
-                                    address: string;
-                                } | {
-                                    /** @enum {string} */
-                                    type_id: "principal_contract";
-                                    address: string;
-                                    contract_name: string;
-                                };
-                                condition_code: "sent_equal_to" | "sent_greater_than" | "sent_greater_than_or_equal_to" | "sent_less_than" | "sent_less_than_or_equal_to";
-                                amount: string;
-                                /** @enum {string} */
-                                type: "fungible";
-                                asset: {
-                                    asset_name: string;
-                                    contract_address: string;
-                                    contract_name: string;
-                                };
-                            } | {
-                                principal: {
-                                    /** @enum {string} */
-                                    type_id: "principal_origin";
-                                } | {
-                                    /** @enum {string} */
-                                    type_id: "principal_standard";
-                                    address: string;
-                                } | {
-                                    /** @enum {string} */
-                                    type_id: "principal_contract";
-                                    address: string;
-                                    contract_name: string;
-                                };
-                                condition_code: "sent" | "not_sent";
-                                /** @enum {string} */
-                                type: "non_fungible";
-                                asset_value: {
-                                    hex: string;
-                                    repr: string;
-                                };
-                                asset: {
-                                    asset_name: string;
-                                    contract_address: string;
-                                    contract_name: string;
-                                };
-                            })[];
-                            /** @description `on_chain_only`: the transaction MUST be included in an anchored block, `off_chain_only`: the transaction MUST be included in a microblock, `any`: the leader can choose where to include the transaction. */
-                            anchor_mode: "on_chain_only" | "off_chain_only" | "any";
-                            /** @description Status of the transaction */
-                            tx_status: "pending" | "dropped_replace_by_fee" | "dropped_replace_across_fork" | "dropped_too_expensive" | "dropped_stale_garbage_collect" | "dropped_problematic";
-                            /** @description A unix timestamp (in seconds) indicating when the transaction broadcast was received by the node. */
-                            receipt_time: number;
-                            /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when the transaction broadcast was received by the node. */
-                            receipt_time_iso: string;
-                            /** @enum {string} */
-                            tx_type: "contract_call";
-                            contract_call: {
-                                /** @description Contract identifier formatted as `<principaladdress>.<contract_name>` */
-                                contract_id: string;
-                                /** @description Name of the Clarity function to be invoked */
-                                function_name: string;
-                                /** @description Function definition, including function name and type as well as parameter names and types */
-                                function_signature: string;
-                                function_args?: {
-                                    hex: string;
-                                    repr: string;
-                                    name: string;
-                                    type: string;
-                                }[];
-                            };
-                        } | {
-                            /** @description Transaction ID */
-                            tx_id: string;
-                            /** @description Used for ordering the transactions originating from and paying from an account. The nonce ensures that a transaction is processed at most once. The nonce counts the number of times an account's owner(s) have authorized a transaction. The first transaction from an account will have a nonce value equal to 0, the second will have a nonce value equal to 1, and so on. */
-                            nonce: number;
-                            /** @description Transaction fee as Integer string (64-bit unsigned integer). */
-                            fee_rate: string;
-                            /** @description Address of the transaction initiator */
-                            sender_address: string;
-                            sponsor_nonce?: number;
-                            /** @description Denotes whether the originating account is the same as the paying account */
-                            sponsored: boolean;
-                            sponsor_address?: string;
-                            post_condition_mode: "allow" | "deny";
-                            post_conditions: ({
-                                principal: {
-                                    /** @enum {string} */
-                                    type_id: "principal_origin";
-                                } | {
-                                    /** @enum {string} */
-                                    type_id: "principal_standard";
-                                    address: string;
-                                } | {
-                                    /** @enum {string} */
-                                    type_id: "principal_contract";
-                                    address: string;
-                                    contract_name: string;
-                                };
-                                condition_code: "sent_equal_to" | "sent_greater_than" | "sent_greater_than_or_equal_to" | "sent_less_than" | "sent_less_than_or_equal_to";
-                                amount: string;
-                                /** @enum {string} */
-                                type: "stx";
-                            } | {
-                                principal: {
-                                    /** @enum {string} */
-                                    type_id: "principal_origin";
-                                } | {
-                                    /** @enum {string} */
-                                    type_id: "principal_standard";
-                                    address: string;
-                                } | {
-                                    /** @enum {string} */
-                                    type_id: "principal_contract";
-                                    address: string;
-                                    contract_name: string;
-                                };
-                                condition_code: "sent_equal_to" | "sent_greater_than" | "sent_greater_than_or_equal_to" | "sent_less_than" | "sent_less_than_or_equal_to";
-                                amount: string;
-                                /** @enum {string} */
-                                type: "fungible";
-                                asset: {
-                                    asset_name: string;
-                                    contract_address: string;
-                                    contract_name: string;
-                                };
-                            } | {
-                                principal: {
-                                    /** @enum {string} */
-                                    type_id: "principal_origin";
-                                } | {
-                                    /** @enum {string} */
-                                    type_id: "principal_standard";
-                                    address: string;
-                                } | {
-                                    /** @enum {string} */
-                                    type_id: "principal_contract";
-                                    address: string;
-                                    contract_name: string;
-                                };
-                                condition_code: "sent" | "not_sent";
-                                /** @enum {string} */
-                                type: "non_fungible";
-                                asset_value: {
-                                    hex: string;
-                                    repr: string;
-                                };
-                                asset: {
-                                    asset_name: string;
-                                    contract_address: string;
-                                    contract_name: string;
-                                };
-                            })[];
-                            /** @description `on_chain_only`: the transaction MUST be included in an anchored block, `off_chain_only`: the transaction MUST be included in a microblock, `any`: the leader can choose where to include the transaction. */
-                            anchor_mode: "on_chain_only" | "off_chain_only" | "any";
-                            /** @description Status of the transaction */
-                            tx_status: "pending" | "dropped_replace_by_fee" | "dropped_replace_across_fork" | "dropped_too_expensive" | "dropped_stale_garbage_collect" | "dropped_problematic";
-                            /** @description A unix timestamp (in seconds) indicating when the transaction broadcast was received by the node. */
-                            receipt_time: number;
-                            /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when the transaction broadcast was received by the node. */
-                            receipt_time_iso: string;
-                            /** @enum {string} */
-                            tx_type: "poison_microblock";
-                            poison_microblock: {
-                                /** @description Hex encoded microblock header */
-                                microblock_header_1: string;
-                                /** @description Hex encoded microblock header */
-                                microblock_header_2: string;
-                            };
-                        } | {
-                            /** @description Transaction ID */
-                            tx_id: string;
-                            /** @description Used for ordering the transactions originating from and paying from an account. The nonce ensures that a transaction is processed at most once. The nonce counts the number of times an account's owner(s) have authorized a transaction. The first transaction from an account will have a nonce value equal to 0, the second will have a nonce value equal to 1, and so on. */
-                            nonce: number;
-                            /** @description Transaction fee as Integer string (64-bit unsigned integer). */
-                            fee_rate: string;
-                            /** @description Address of the transaction initiator */
-                            sender_address: string;
-                            sponsor_nonce?: number;
-                            /** @description Denotes whether the originating account is the same as the paying account */
-                            sponsored: boolean;
-                            sponsor_address?: string;
-                            post_condition_mode: "allow" | "deny";
-                            post_conditions: ({
-                                principal: {
-                                    /** @enum {string} */
-                                    type_id: "principal_origin";
-                                } | {
-                                    /** @enum {string} */
-                                    type_id: "principal_standard";
-                                    address: string;
-                                } | {
-                                    /** @enum {string} */
-                                    type_id: "principal_contract";
-                                    address: string;
-                                    contract_name: string;
-                                };
-                                condition_code: "sent_equal_to" | "sent_greater_than" | "sent_greater_than_or_equal_to" | "sent_less_than" | "sent_less_than_or_equal_to";
-                                amount: string;
-                                /** @enum {string} */
-                                type: "stx";
-                            } | {
-                                principal: {
-                                    /** @enum {string} */
-                                    type_id: "principal_origin";
-                                } | {
-                                    /** @enum {string} */
-                                    type_id: "principal_standard";
-                                    address: string;
-                                } | {
-                                    /** @enum {string} */
-                                    type_id: "principal_contract";
-                                    address: string;
-                                    contract_name: string;
-                                };
-                                condition_code: "sent_equal_to" | "sent_greater_than" | "sent_greater_than_or_equal_to" | "sent_less_than" | "sent_less_than_or_equal_to";
-                                amount: string;
-                                /** @enum {string} */
-                                type: "fungible";
-                                asset: {
-                                    asset_name: string;
-                                    contract_address: string;
-                                    contract_name: string;
-                                };
-                            } | {
-                                principal: {
-                                    /** @enum {string} */
-                                    type_id: "principal_origin";
-                                } | {
-                                    /** @enum {string} */
-                                    type_id: "principal_standard";
-                                    address: string;
-                                } | {
-                                    /** @enum {string} */
-                                    type_id: "principal_contract";
-                                    address: string;
-                                    contract_name: string;
-                                };
-                                condition_code: "sent" | "not_sent";
-                                /** @enum {string} */
-                                type: "non_fungible";
-                                asset_value: {
-                                    hex: string;
-                                    repr: string;
-                                };
-                                asset: {
-                                    asset_name: string;
-                                    contract_address: string;
-                                    contract_name: string;
-                                };
-                            })[];
-                            /** @description `on_chain_only`: the transaction MUST be included in an anchored block, `off_chain_only`: the transaction MUST be included in a microblock, `any`: the leader can choose where to include the transaction. */
-                            anchor_mode: "on_chain_only" | "off_chain_only" | "any";
-                            /** @description Status of the transaction */
-                            tx_status: "pending" | "dropped_replace_by_fee" | "dropped_replace_across_fork" | "dropped_too_expensive" | "dropped_stale_garbage_collect" | "dropped_problematic";
-                            /** @description A unix timestamp (in seconds) indicating when the transaction broadcast was received by the node. */
-                            receipt_time: number;
-                            /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when the transaction broadcast was received by the node. */
-                            receipt_time_iso: string;
-                            /** @enum {string} */
-                            tx_type: "coinbase";
-                            coinbase_payload: {
-                                /** @description Hex encoded 32-byte scratch space for block leader's use */
-                                data: string;
-                                alt_recipient?: string | null;
-                                vrf_proof?: string | null;
-                            };
-                        } | {
-                            /** @description Transaction ID */
-                            tx_id: string;
-                            /** @description Used for ordering the transactions originating from and paying from an account. The nonce ensures that a transaction is processed at most once. The nonce counts the number of times an account's owner(s) have authorized a transaction. The first transaction from an account will have a nonce value equal to 0, the second will have a nonce value equal to 1, and so on. */
-                            nonce: number;
-                            /** @description Transaction fee as Integer string (64-bit unsigned integer). */
-                            fee_rate: string;
-                            /** @description Address of the transaction initiator */
-                            sender_address: string;
-                            sponsor_nonce?: number;
-                            /** @description Denotes whether the originating account is the same as the paying account */
-                            sponsored: boolean;
-                            sponsor_address?: string;
-                            post_condition_mode: "allow" | "deny";
-                            post_conditions: ({
-                                principal: {
-                                    /** @enum {string} */
-                                    type_id: "principal_origin";
-                                } | {
-                                    /** @enum {string} */
-                                    type_id: "principal_standard";
-                                    address: string;
-                                } | {
-                                    /** @enum {string} */
-                                    type_id: "principal_contract";
-                                    address: string;
-                                    contract_name: string;
-                                };
-                                condition_code: "sent_equal_to" | "sent_greater_than" | "sent_greater_than_or_equal_to" | "sent_less_than" | "sent_less_than_or_equal_to";
-                                amount: string;
-                                /** @enum {string} */
-                                type: "stx";
-                            } | {
-                                principal: {
-                                    /** @enum {string} */
-                                    type_id: "principal_origin";
-                                } | {
-                                    /** @enum {string} */
-                                    type_id: "principal_standard";
-                                    address: string;
-                                } | {
-                                    /** @enum {string} */
-                                    type_id: "principal_contract";
-                                    address: string;
-                                    contract_name: string;
-                                };
-                                condition_code: "sent_equal_to" | "sent_greater_than" | "sent_greater_than_or_equal_to" | "sent_less_than" | "sent_less_than_or_equal_to";
-                                amount: string;
-                                /** @enum {string} */
-                                type: "fungible";
-                                asset: {
-                                    asset_name: string;
-                                    contract_address: string;
-                                    contract_name: string;
-                                };
-                            } | {
-                                principal: {
-                                    /** @enum {string} */
-                                    type_id: "principal_origin";
-                                } | {
-                                    /** @enum {string} */
-                                    type_id: "principal_standard";
-                                    address: string;
-                                } | {
-                                    /** @enum {string} */
-                                    type_id: "principal_contract";
-                                    address: string;
-                                    contract_name: string;
-                                };
-                                condition_code: "sent" | "not_sent";
-                                /** @enum {string} */
-                                type: "non_fungible";
-                                asset_value: {
-                                    hex: string;
-                                    repr: string;
-                                };
-                                asset: {
-                                    asset_name: string;
-                                    contract_address: string;
-                                    contract_name: string;
-                                };
-                            })[];
-                            /** @description `on_chain_only`: the transaction MUST be included in an anchored block, `off_chain_only`: the transaction MUST be included in a microblock, `any`: the leader can choose where to include the transaction. */
-                            anchor_mode: "on_chain_only" | "off_chain_only" | "any";
-                            /** @description Status of the transaction */
-                            tx_status: "pending" | "dropped_replace_by_fee" | "dropped_replace_across_fork" | "dropped_too_expensive" | "dropped_stale_garbage_collect" | "dropped_problematic";
-                            /** @description A unix timestamp (in seconds) indicating when the transaction broadcast was received by the node. */
-                            receipt_time: number;
-                            /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when the transaction broadcast was received by the node. */
-                            receipt_time_iso: string;
-                            /** @enum {string} */
-                            tx_type: "tenure_change";
-                            tenure_change_payload: {
-                                /** @description Consensus hash of this tenure. Corresponds to the sortition in which the miner of this block was chosen. */
-                                tenure_consensus_hash: string;
-                                /** @description Consensus hash of the previous tenure. Corresponds to the sortition of the previous winning block-commit. */
-                                prev_tenure_consensus_hash: string;
-                                /** @description Current consensus hash on the underlying burnchain. Corresponds to the last-seen sortition. */
-                                burn_view_consensus_hash: string;
-                                /** @description (Hex string) Stacks Block hash */
-                                previous_tenure_end: string;
-                                /** @description The number of blocks produced in the previous tenure. */
-                                previous_tenure_blocks: number;
-                                /** @description Cause of change in mining tenure. Depending on cause, tenure can be ended or extended. */
-                                cause: "block_found" | "extended";
-                                /** @description (Hex string) The ECDSA public key hash of the current tenure. */
-                                pubkey_hash: string;
-                            };
-                        })[];
+                        error: string;
+                        message?: string;
+                    } & {
+                        [key: string]: unknown;
                     };
                 };
             };
@@ -6482,6 +5990,20 @@ export interface operations {
                                 [key: string]: unknown;
                             };
                         };
+                    };
+                };
+            };
+            /** @description Default Response */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: string;
+                        message?: string;
+                    } & {
+                        [key: string]: unknown;
                     };
                 };
             };
@@ -6587,6 +6109,20 @@ export interface operations {
                                 };
                             };
                         }))[];
+                    };
+                };
+            };
+            /** @description Default Response */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: string;
+                        message?: string;
+                    } & {
+                        [key: string]: unknown;
                     };
                 };
             };
@@ -6760,6 +6296,7 @@ export interface operations {
                         execution_cost_write_count: number;
                         /** @description Execution cost write length. */
                         execution_cost_write_length: number;
+                        vm_error: string | null;
                         events: (({
                             event_index: number;
                         } & {
@@ -6974,6 +6511,7 @@ export interface operations {
                         execution_cost_write_count: number;
                         /** @description Execution cost write length. */
                         execution_cost_write_length: number;
+                        vm_error: string | null;
                         events: (({
                             event_index: number;
                         } & {
@@ -7188,6 +6726,7 @@ export interface operations {
                         execution_cost_write_count: number;
                         /** @description Execution cost write length. */
                         execution_cost_write_length: number;
+                        vm_error: string | null;
                         events: (({
                             event_index: number;
                         } & {
@@ -7409,6 +6948,7 @@ export interface operations {
                         execution_cost_write_count: number;
                         /** @description Execution cost write length. */
                         execution_cost_write_length: number;
+                        vm_error: string | null;
                         events: (({
                             event_index: number;
                         } & {
@@ -7622,6 +7162,7 @@ export interface operations {
                         execution_cost_write_count: number;
                         /** @description Execution cost write length. */
                         execution_cost_write_length: number;
+                        vm_error: string | null;
                         events: (({
                             event_index: number;
                         } & {
@@ -7835,6 +7376,7 @@ export interface operations {
                         execution_cost_write_count: number;
                         /** @description Execution cost write length. */
                         execution_cost_write_length: number;
+                        vm_error: string | null;
                         events: (({
                             event_index: number;
                         } & {
@@ -8532,6 +8074,20 @@ export interface operations {
                     });
                 };
             };
+            /** @description Default Response */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: string;
+                        message?: string;
+                    } & {
+                        [key: string]: unknown;
+                    };
+                };
+            };
         };
     };
     get_raw_transaction_by_id: {
@@ -8562,6 +8118,20 @@ export interface operations {
                 content: {
                     "application/json": {
                         raw_tx: string;
+                    };
+                };
+            };
+            /** @description Default Response */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: string;
+                        message?: string;
+                    } & {
+                        [key: string]: unknown;
                     };
                 };
             };
@@ -8733,6 +8303,7 @@ export interface operations {
                             execution_cost_write_count: number;
                             /** @description Execution cost write length. */
                             execution_cost_write_length: number;
+                            vm_error: string | null;
                             events: (({
                                 event_index: number;
                             } & {
@@ -8947,6 +8518,7 @@ export interface operations {
                             execution_cost_write_count: number;
                             /** @description Execution cost write length. */
                             execution_cost_write_length: number;
+                            vm_error: string | null;
                             events: (({
                                 event_index: number;
                             } & {
@@ -9161,6 +8733,7 @@ export interface operations {
                             execution_cost_write_count: number;
                             /** @description Execution cost write length. */
                             execution_cost_write_length: number;
+                            vm_error: string | null;
                             events: (({
                                 event_index: number;
                             } & {
@@ -9382,6 +8955,7 @@ export interface operations {
                             execution_cost_write_count: number;
                             /** @description Execution cost write length. */
                             execution_cost_write_length: number;
+                            vm_error: string | null;
                             events: (({
                                 event_index: number;
                             } & {
@@ -9595,6 +9169,7 @@ export interface operations {
                             execution_cost_write_count: number;
                             /** @description Execution cost write length. */
                             execution_cost_write_length: number;
+                            vm_error: string | null;
                             events: (({
                                 event_index: number;
                             } & {
@@ -9808,6 +9383,7 @@ export interface operations {
                             execution_cost_write_count: number;
                             /** @description Execution cost write length. */
                             execution_cost_write_length: number;
+                            vm_error: string | null;
                             events: (({
                                 event_index: number;
                             } & {
@@ -9895,6 +9471,20 @@ export interface operations {
                                 pubkey_hash: string;
                             };
                         })[];
+                    };
+                };
+            };
+            /** @description Default Response */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: string;
+                        message?: string;
+                    } & {
+                        [key: string]: unknown;
                     };
                 };
             };
@@ -10070,6 +9660,7 @@ export interface operations {
                             execution_cost_write_count: number;
                             /** @description Execution cost write length. */
                             execution_cost_write_length: number;
+                            vm_error: string | null;
                             events: (({
                                 event_index: number;
                             } & {
@@ -10284,6 +9875,7 @@ export interface operations {
                             execution_cost_write_count: number;
                             /** @description Execution cost write length. */
                             execution_cost_write_length: number;
+                            vm_error: string | null;
                             events: (({
                                 event_index: number;
                             } & {
@@ -10498,6 +10090,7 @@ export interface operations {
                             execution_cost_write_count: number;
                             /** @description Execution cost write length. */
                             execution_cost_write_length: number;
+                            vm_error: string | null;
                             events: (({
                                 event_index: number;
                             } & {
@@ -10719,6 +10312,7 @@ export interface operations {
                             execution_cost_write_count: number;
                             /** @description Execution cost write length. */
                             execution_cost_write_length: number;
+                            vm_error: string | null;
                             events: (({
                                 event_index: number;
                             } & {
@@ -10932,6 +10526,7 @@ export interface operations {
                             execution_cost_write_count: number;
                             /** @description Execution cost write length. */
                             execution_cost_write_length: number;
+                            vm_error: string | null;
                             events: (({
                                 event_index: number;
                             } & {
@@ -11145,6 +10740,7 @@ export interface operations {
                             execution_cost_write_count: number;
                             /** @description Execution cost write length. */
                             execution_cost_write_length: number;
+                            vm_error: string | null;
                             events: (({
                                 event_index: number;
                             } & {
@@ -11235,6 +10831,20 @@ export interface operations {
                     };
                 };
             };
+            /** @description Default Response */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: string;
+                        message?: string;
+                    } & {
+                        [key: string]: unknown;
+                    };
+                };
+            };
         };
     };
     get_stx_supply: {
@@ -11277,6 +10887,20 @@ export interface operations {
                     };
                 };
             };
+            /** @description Default Response */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: string;
+                        message?: string;
+                    } & {
+                        [key: string]: unknown;
+                    };
+                };
+            };
         };
     };
     get_stx_supply_total_supply_plain: {
@@ -11299,6 +10923,20 @@ export interface operations {
                     };
                 };
             };
+            /** @description Default Response */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: string;
+                        message?: string;
+                    } & {
+                        [key: string]: unknown;
+                    };
+                };
+            };
         };
     };
     get_stx_supply_circulating_plain: {
@@ -11318,6 +10956,20 @@ export interface operations {
                 content: {
                     "application/json": {
                         content?: unknown;
+                    };
+                };
+            };
+            /** @description Default Response */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: string;
+                        message?: string;
+                    } & {
+                        [key: string]: unknown;
                     };
                 };
             };
@@ -11369,6 +11021,20 @@ export interface operations {
                     };
                 };
             };
+            /** @description Default Response */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: string;
+                        message?: string;
+                    } & {
+                        [key: string]: unknown;
+                    };
+                };
+            };
         };
     };
     get_network_block_times: {
@@ -11396,6 +11062,20 @@ export interface operations {
                     };
                 };
             };
+            /** @description Default Response */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: string;
+                        message?: string;
+                    } & {
+                        [key: string]: unknown;
+                    };
+                };
+            };
         };
     };
     get_network_block_time_by_network: {
@@ -11420,6 +11100,20 @@ export interface operations {
                     };
                 };
             };
+            /** @description Default Response */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: string;
+                        message?: string;
+                    } & {
+                        [key: string]: unknown;
+                    };
+                };
+            };
         };
     };
     get_nft_holdings: {
@@ -11431,11 +11125,6 @@ export interface operations {
                 limit?: number;
                 /** @description index of first tokens to fetch */
                 offset?: number;
-                /**
-                 * @description Include data from unanchored (i.e. unconfirmed) microblocks
-                 * @example true
-                 */
-                unanchored?: boolean;
                 /** @description whether or not to include the complete transaction metadata instead of just `tx_id`. Enabling this option can affect performance and response times. */
                 tx_metadata: boolean;
             };
@@ -11616,6 +11305,7 @@ export interface operations {
                                 execution_cost_write_count: number;
                                 /** @description Execution cost write length. */
                                 execution_cost_write_length: number;
+                                vm_error: string | null;
                                 events: (({
                                     event_index: number;
                                 } & {
@@ -11830,6 +11520,7 @@ export interface operations {
                                 execution_cost_write_count: number;
                                 /** @description Execution cost write length. */
                                 execution_cost_write_length: number;
+                                vm_error: string | null;
                                 events: (({
                                     event_index: number;
                                 } & {
@@ -12044,6 +11735,7 @@ export interface operations {
                                 execution_cost_write_count: number;
                                 /** @description Execution cost write length. */
                                 execution_cost_write_length: number;
+                                vm_error: string | null;
                                 events: (({
                                     event_index: number;
                                 } & {
@@ -12265,6 +11957,7 @@ export interface operations {
                                 execution_cost_write_count: number;
                                 /** @description Execution cost write length. */
                                 execution_cost_write_length: number;
+                                vm_error: string | null;
                                 events: (({
                                     event_index: number;
                                 } & {
@@ -12478,6 +12171,7 @@ export interface operations {
                                 execution_cost_write_count: number;
                                 /** @description Execution cost write length. */
                                 execution_cost_write_length: number;
+                                vm_error: string | null;
                                 events: (({
                                     event_index: number;
                                 } & {
@@ -12691,6 +12385,7 @@ export interface operations {
                                 execution_cost_write_count: number;
                                 /** @description Execution cost write length. */
                                 execution_cost_write_length: number;
+                                vm_error: string | null;
                                 events: (({
                                     event_index: number;
                                 } & {
@@ -12779,6 +12474,20 @@ export interface operations {
                                 };
                             };
                         })[];
+                    };
+                };
+            };
+            /** @description Default Response */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: string;
+                        message?: string;
+                    } & {
+                        [key: string]: unknown;
                     };
                 };
             };
@@ -12976,6 +12685,7 @@ export interface operations {
                                 execution_cost_write_count: number;
                                 /** @description Execution cost write length. */
                                 execution_cost_write_length: number;
+                                vm_error: string | null;
                                 events: (({
                                     event_index: number;
                                 } & {
@@ -13190,6 +12900,7 @@ export interface operations {
                                 execution_cost_write_count: number;
                                 /** @description Execution cost write length. */
                                 execution_cost_write_length: number;
+                                vm_error: string | null;
                                 events: (({
                                     event_index: number;
                                 } & {
@@ -13404,6 +13115,7 @@ export interface operations {
                                 execution_cost_write_count: number;
                                 /** @description Execution cost write length. */
                                 execution_cost_write_length: number;
+                                vm_error: string | null;
                                 events: (({
                                     event_index: number;
                                 } & {
@@ -13625,6 +13337,7 @@ export interface operations {
                                 execution_cost_write_count: number;
                                 /** @description Execution cost write length. */
                                 execution_cost_write_length: number;
+                                vm_error: string | null;
                                 events: (({
                                     event_index: number;
                                 } & {
@@ -13838,6 +13551,7 @@ export interface operations {
                                 execution_cost_write_count: number;
                                 /** @description Execution cost write length. */
                                 execution_cost_write_length: number;
+                                vm_error: string | null;
                                 events: (({
                                     event_index: number;
                                 } & {
@@ -14051,6 +13765,7 @@ export interface operations {
                                 execution_cost_write_count: number;
                                 /** @description Execution cost write length. */
                                 execution_cost_write_length: number;
+                                vm_error: string | null;
                                 events: (({
                                     event_index: number;
                                 } & {
@@ -14139,6 +13854,20 @@ export interface operations {
                                 };
                             };
                         })[];
+                    };
+                };
+            };
+            /** @description Default Response */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: string;
+                        message?: string;
+                    } & {
+                        [key: string]: unknown;
                     };
                 };
             };
@@ -14341,6 +14070,7 @@ export interface operations {
                                 execution_cost_write_count: number;
                                 /** @description Execution cost write length. */
                                 execution_cost_write_length: number;
+                                vm_error: string | null;
                                 events: (({
                                     event_index: number;
                                 } & {
@@ -14555,6 +14285,7 @@ export interface operations {
                                 execution_cost_write_count: number;
                                 /** @description Execution cost write length. */
                                 execution_cost_write_length: number;
+                                vm_error: string | null;
                                 events: (({
                                     event_index: number;
                                 } & {
@@ -14769,6 +14500,7 @@ export interface operations {
                                 execution_cost_write_count: number;
                                 /** @description Execution cost write length. */
                                 execution_cost_write_length: number;
+                                vm_error: string | null;
                                 events: (({
                                     event_index: number;
                                 } & {
@@ -14990,6 +14722,7 @@ export interface operations {
                                 execution_cost_write_count: number;
                                 /** @description Execution cost write length. */
                                 execution_cost_write_length: number;
+                                vm_error: string | null;
                                 events: (({
                                     event_index: number;
                                 } & {
@@ -15203,6 +14936,7 @@ export interface operations {
                                 execution_cost_write_count: number;
                                 /** @description Execution cost write length. */
                                 execution_cost_write_length: number;
+                                vm_error: string | null;
                                 events: (({
                                     event_index: number;
                                 } & {
@@ -15416,6 +15150,7 @@ export interface operations {
                                 execution_cost_write_count: number;
                                 /** @description Execution cost write length. */
                                 execution_cost_write_length: number;
+                                vm_error: string | null;
                                 events: (({
                                     event_index: number;
                                 } & {
@@ -15507,6 +15242,20 @@ export interface operations {
                     };
                 };
             };
+            /** @description Default Response */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: string;
+                        message?: string;
+                    } & {
+                        [key: string]: unknown;
+                    };
+                };
+            };
         };
     };
     get_ft_holders: {
@@ -15559,6 +15308,20 @@ export interface operations {
                     };
                 };
             };
+            /** @description Default Response */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: string;
+                        message?: string;
+                    } & {
+                        [key: string]: unknown;
+                    };
+                };
+            };
         };
     };
     get_contracts_by_trait: {
@@ -15600,6 +15363,20 @@ export interface operations {
                     };
                 };
             };
+            /** @description Default Response */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: string;
+                        message?: string;
+                    } & {
+                        [key: string]: unknown;
+                    };
+                };
+            };
         };
     };
     get_contract_by_id: {
@@ -15631,6 +15408,20 @@ export interface operations {
                         clarity_version: number | null;
                         source_code: string;
                         abi: string | null;
+                    };
+                };
+            };
+            /** @description Default Response */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: string;
+                        message?: string;
+                    } & {
+                        [key: string]: unknown;
                     };
                 };
             };
@@ -15736,6 +15527,20 @@ export interface operations {
                     };
                 };
             };
+            /** @description Default Response */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: string;
+                        message?: string;
+                    } & {
+                        [key: string]: unknown;
+                    };
+                };
+            };
         };
     };
     fetch_fee_rate: {
@@ -15763,6 +15568,20 @@ export interface operations {
                 content: {
                     "application/json": {
                         fee_rate: number;
+                    };
+                };
+            };
+            /** @description Default Response */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: string;
+                        message?: string;
+                    } & {
+                        [key: string]: unknown;
                     };
                 };
             };
@@ -15827,6 +15646,20 @@ export interface operations {
                     };
                 };
             };
+            /** @description Default Response */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: string;
+                        message?: string;
+                    } & {
+                        [key: string]: unknown;
+                    };
+                };
+            };
         };
     };
     get_microblock_by_hash: {
@@ -15878,6 +15711,20 @@ export interface operations {
                         block_hash: string | null;
                         /** @description List of transactions included in the microblock */
                         txs: string[];
+                    };
+                };
+            };
+            /** @description Default Response */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: string;
+                        message?: string;
+                    } & {
+                        [key: string]: unknown;
                     };
                 };
             };
@@ -16037,6 +15884,7 @@ export interface operations {
                             execution_cost_write_count: number;
                             /** @description Execution cost write length. */
                             execution_cost_write_length: number;
+                            vm_error: string | null;
                             events: (({
                                 event_index: number;
                             } & {
@@ -16251,6 +16099,7 @@ export interface operations {
                             execution_cost_write_count: number;
                             /** @description Execution cost write length. */
                             execution_cost_write_length: number;
+                            vm_error: string | null;
                             events: (({
                                 event_index: number;
                             } & {
@@ -16465,6 +16314,7 @@ export interface operations {
                             execution_cost_write_count: number;
                             /** @description Execution cost write length. */
                             execution_cost_write_length: number;
+                            vm_error: string | null;
                             events: (({
                                 event_index: number;
                             } & {
@@ -16686,6 +16536,7 @@ export interface operations {
                             execution_cost_write_count: number;
                             /** @description Execution cost write length. */
                             execution_cost_write_length: number;
+                            vm_error: string | null;
                             events: (({
                                 event_index: number;
                             } & {
@@ -16899,6 +16750,7 @@ export interface operations {
                             execution_cost_write_count: number;
                             /** @description Execution cost write length. */
                             execution_cost_write_length: number;
+                            vm_error: string | null;
                             events: (({
                                 event_index: number;
                             } & {
@@ -17112,6 +16964,7 @@ export interface operations {
                             execution_cost_write_count: number;
                             /** @description Execution cost write length. */
                             execution_cost_write_length: number;
+                            vm_error: string | null;
                             events: (({
                                 event_index: number;
                             } & {
@@ -17202,6 +17055,20 @@ export interface operations {
                     };
                 };
             };
+            /** @description Default Response */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: string;
+                        message?: string;
+                    } & {
+                        [key: string]: unknown;
+                    };
+                };
+            };
         };
     };
     get_block_list: {
@@ -17242,6 +17109,8 @@ export interface operations {
                             block_time: number;
                             /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) indicating when this block was mined. */
                             block_time_iso: string;
+                            /** @description The tenure height (AKA coinbase height) of this block */
+                            tenure_height: number;
                             /** @description The only hash that can uniquely identify an anchored block or an unconfirmed state trie */
                             index_block_hash: string;
                             /** @description Hash of the parent block */
@@ -17284,6 +17153,20 @@ export interface operations {
                     };
                 };
             };
+            /** @description Default Response */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: string;
+                        message?: string;
+                    } & {
+                        [key: string]: unknown;
+                    };
+                };
+            };
         };
     };
     get_block_by_height: {
@@ -17318,6 +17201,8 @@ export interface operations {
                         block_time: number;
                         /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) indicating when this block was mined. */
                         block_time_iso: string;
+                        /** @description The tenure height (AKA coinbase height) of this block */
+                        tenure_height: number;
                         /** @description The only hash that can uniquely identify an anchored block or an unconfirmed state trie */
                         index_block_hash: string;
                         /** @description Hash of the parent block */
@@ -17356,6 +17241,20 @@ export interface operations {
                         microblock_tx_count: {
                             [key: string]: number;
                         };
+                    };
+                };
+            };
+            /** @description Default Response */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: string;
+                        message?: string;
+                    } & {
+                        [key: string]: unknown;
                     };
                 };
             };
@@ -17393,6 +17292,8 @@ export interface operations {
                         block_time: number;
                         /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) indicating when this block was mined. */
                         block_time_iso: string;
+                        /** @description The tenure height (AKA coinbase height) of this block */
+                        tenure_height: number;
                         /** @description The only hash that can uniquely identify an anchored block or an unconfirmed state trie */
                         index_block_hash: string;
                         /** @description Hash of the parent block */
@@ -17431,6 +17332,20 @@ export interface operations {
                         microblock_tx_count: {
                             [key: string]: number;
                         };
+                    };
+                };
+            };
+            /** @description Default Response */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: string;
+                        message?: string;
+                    } & {
+                        [key: string]: unknown;
                     };
                 };
             };
@@ -17468,6 +17383,8 @@ export interface operations {
                         block_time: number;
                         /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) indicating when this block was mined. */
                         block_time_iso: string;
+                        /** @description The tenure height (AKA coinbase height) of this block */
+                        tenure_height: number;
                         /** @description The only hash that can uniquely identify an anchored block or an unconfirmed state trie */
                         index_block_hash: string;
                         /** @description Hash of the parent block */
@@ -17509,6 +17426,20 @@ export interface operations {
                     };
                 };
             };
+            /** @description Default Response */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: string;
+                        message?: string;
+                    } & {
+                        [key: string]: unknown;
+                    };
+                };
+            };
         };
     };
     get_block_by_burn_block_hash: {
@@ -17543,6 +17474,8 @@ export interface operations {
                         block_time: number;
                         /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) indicating when this block was mined. */
                         block_time_iso: string;
+                        /** @description The tenure height (AKA coinbase height) of this block */
+                        tenure_height: number;
                         /** @description The only hash that can uniquely identify an anchored block or an unconfirmed state trie */
                         index_block_hash: string;
                         /** @description Hash of the parent block */
@@ -17581,6 +17514,20 @@ export interface operations {
                         microblock_tx_count: {
                             [key: string]: number;
                         };
+                    };
+                };
+            };
+            /** @description Default Response */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: string;
+                        message?: string;
+                    } & {
+                        [key: string]: unknown;
                     };
                 };
             };
@@ -17625,6 +17572,20 @@ export interface operations {
                             /** @description The index position of the reward entry, useful for ordering when there's more than one slot per burnchain block */
                             slot_index: number;
                         }[];
+                    };
+                };
+            };
+            /** @description Default Response */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: string;
+                        message?: string;
+                    } & {
+                        [key: string]: unknown;
                     };
                 };
             };
@@ -17678,6 +17639,20 @@ export interface operations {
                     };
                 };
             };
+            /** @description Default Response */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: string;
+                        message?: string;
+                    } & {
+                        [key: string]: unknown;
+                    };
+                };
+            };
         };
     };
     get_burnchain_reward_list: {
@@ -17719,6 +17694,20 @@ export interface operations {
                             /** @description The index position of the reward entry, useful for ordering when there's more than one recipient per burnchain block */
                             reward_index: number;
                         }[];
+                    };
+                };
+            };
+            /** @description Default Response */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: string;
+                        message?: string;
+                    } & {
+                        [key: string]: unknown;
                     };
                 };
             };
@@ -17772,6 +17761,20 @@ export interface operations {
                     };
                 };
             };
+            /** @description Default Response */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: string;
+                        message?: string;
+                    } & {
+                        [key: string]: unknown;
+                    };
+                };
+            };
         };
     };
     get_burnchain_rewards_total_by_address: {
@@ -17800,6 +17803,20 @@ export interface operations {
                         reward_recipient: string;
                         /** @description The total amount of burnchain tokens rewarded to the recipient, in the smallest unit (e.g. satoshis for Bitcoin) */
                         reward_amount: string;
+                    };
+                };
+            };
+            /** @description Default Response */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: string;
+                        message?: string;
+                    } & {
+                        [key: string]: unknown;
                     };
                 };
             };
@@ -17834,9 +17851,13 @@ export interface operations {
                         balance: string;
                         /** @description Total STX balance considering pending mempool transactions */
                         estimated_balance?: string;
-                        total_sent: string;
-                        total_received: string;
-                        total_fees_sent: string;
+                        /** @description Inbound STX balance from pending mempool transactions */
+                        pending_balance_inbound?: string;
+                        /** @description Outbound STX balance from pending mempool transactions */
+                        pending_balance_outbound?: string;
+                        total_sent?: string;
+                        total_received?: string;
+                        total_fees_sent?: string;
                         total_miner_rewards_received: string;
                         /** @description The transaction where the lock event occurred. Empty if no tokens are locked. */
                         lock_tx_id: string;
@@ -17864,6 +17885,20 @@ export interface operations {
                                 block_height: number;
                             }[];
                         };
+                    };
+                };
+            };
+            /** @description Default Response */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: string;
+                        message?: string;
+                    } & {
+                        [key: string]: unknown;
                     };
                 };
             };
@@ -17900,9 +17935,13 @@ export interface operations {
                             balance: string;
                             /** @description Total STX balance considering pending mempool transactions */
                             estimated_balance?: string;
-                            total_sent: string;
-                            total_received: string;
-                            total_fees_sent: string;
+                            /** @description Inbound STX balance from pending mempool transactions */
+                            pending_balance_inbound?: string;
+                            /** @description Outbound STX balance from pending mempool transactions */
+                            pending_balance_outbound?: string;
+                            total_sent?: string;
+                            total_received?: string;
+                            total_fees_sent?: string;
                             total_miner_rewards_received: string;
                             /** @description The transaction where the lock event occurred. Empty if no tokens are locked. */
                             lock_tx_id: string;
@@ -17944,6 +17983,20 @@ export interface operations {
                                 block_height: number;
                             }[];
                         };
+                    };
+                };
+            };
+            /** @description Default Response */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: string;
+                        message?: string;
+                    } & {
+                        [key: string]: unknown;
                     };
                 };
             };
@@ -18124,6 +18177,7 @@ export interface operations {
                             execution_cost_write_count: number;
                             /** @description Execution cost write length. */
                             execution_cost_write_length: number;
+                            vm_error: string | null;
                             events: (({
                                 event_index: number;
                             } & {
@@ -18338,6 +18392,7 @@ export interface operations {
                             execution_cost_write_count: number;
                             /** @description Execution cost write length. */
                             execution_cost_write_length: number;
+                            vm_error: string | null;
                             events: (({
                                 event_index: number;
                             } & {
@@ -18552,6 +18607,7 @@ export interface operations {
                             execution_cost_write_count: number;
                             /** @description Execution cost write length. */
                             execution_cost_write_length: number;
+                            vm_error: string | null;
                             events: (({
                                 event_index: number;
                             } & {
@@ -18773,6 +18829,7 @@ export interface operations {
                             execution_cost_write_count: number;
                             /** @description Execution cost write length. */
                             execution_cost_write_length: number;
+                            vm_error: string | null;
                             events: (({
                                 event_index: number;
                             } & {
@@ -18986,6 +19043,7 @@ export interface operations {
                             execution_cost_write_count: number;
                             /** @description Execution cost write length. */
                             execution_cost_write_length: number;
+                            vm_error: string | null;
                             events: (({
                                 event_index: number;
                             } & {
@@ -19199,6 +19257,7 @@ export interface operations {
                             execution_cost_write_count: number;
                             /** @description Execution cost write length. */
                             execution_cost_write_length: number;
+                            vm_error: string | null;
                             events: (({
                                 event_index: number;
                             } & {
@@ -19286,6 +19345,20 @@ export interface operations {
                                 pubkey_hash: string;
                             };
                         })[];
+                    };
+                };
+            };
+            /** @description Default Response */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: string;
+                        message?: string;
+                    } & {
+                        [key: string]: unknown;
                     };
                 };
             };
@@ -19451,6 +19524,7 @@ export interface operations {
                             execution_cost_write_count: number;
                             /** @description Execution cost write length. */
                             execution_cost_write_length: number;
+                            vm_error: string | null;
                             events: (({
                                 event_index: number;
                             } & {
@@ -19665,6 +19739,7 @@ export interface operations {
                             execution_cost_write_count: number;
                             /** @description Execution cost write length. */
                             execution_cost_write_length: number;
+                            vm_error: string | null;
                             events: (({
                                 event_index: number;
                             } & {
@@ -19879,6 +19954,7 @@ export interface operations {
                             execution_cost_write_count: number;
                             /** @description Execution cost write length. */
                             execution_cost_write_length: number;
+                            vm_error: string | null;
                             events: (({
                                 event_index: number;
                             } & {
@@ -20100,6 +20176,7 @@ export interface operations {
                             execution_cost_write_count: number;
                             /** @description Execution cost write length. */
                             execution_cost_write_length: number;
+                            vm_error: string | null;
                             events: (({
                                 event_index: number;
                             } & {
@@ -20313,6 +20390,7 @@ export interface operations {
                             execution_cost_write_count: number;
                             /** @description Execution cost write length. */
                             execution_cost_write_length: number;
+                            vm_error: string | null;
                             events: (({
                                 event_index: number;
                             } & {
@@ -20526,6 +20604,7 @@ export interface operations {
                             execution_cost_write_count: number;
                             /** @description Execution cost write length. */
                             execution_cost_write_length: number;
+                            vm_error: string | null;
                             events: (({
                                 event_index: number;
                             } & {
@@ -20648,6 +20727,20 @@ export interface operations {
                             /** @description Principal that received the asset. */
                             recipient?: string;
                         }[];
+                    };
+                };
+            };
+            /** @description Default Response */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: string;
+                        message?: string;
+                    } & {
+                        [key: string]: unknown;
                     };
                 };
             };
@@ -20829,6 +20922,7 @@ export interface operations {
                                 execution_cost_write_count: number;
                                 /** @description Execution cost write length. */
                                 execution_cost_write_length: number;
+                                vm_error: string | null;
                                 events: (({
                                     event_index: number;
                                 } & {
@@ -21043,6 +21137,7 @@ export interface operations {
                                 execution_cost_write_count: number;
                                 /** @description Execution cost write length. */
                                 execution_cost_write_length: number;
+                                vm_error: string | null;
                                 events: (({
                                     event_index: number;
                                 } & {
@@ -21257,6 +21352,7 @@ export interface operations {
                                 execution_cost_write_count: number;
                                 /** @description Execution cost write length. */
                                 execution_cost_write_length: number;
+                                vm_error: string | null;
                                 events: (({
                                     event_index: number;
                                 } & {
@@ -21478,6 +21574,7 @@ export interface operations {
                                 execution_cost_write_count: number;
                                 /** @description Execution cost write length. */
                                 execution_cost_write_length: number;
+                                vm_error: string | null;
                                 events: (({
                                     event_index: number;
                                 } & {
@@ -21691,6 +21788,7 @@ export interface operations {
                                 execution_cost_write_count: number;
                                 /** @description Execution cost write length. */
                                 execution_cost_write_length: number;
+                                vm_error: string | null;
                                 events: (({
                                     event_index: number;
                                 } & {
@@ -21904,6 +22002,7 @@ export interface operations {
                                 execution_cost_write_count: number;
                                 /** @description Execution cost write length. */
                                 execution_cost_write_length: number;
+                                vm_error: string | null;
                                 events: (({
                                     event_index: number;
                                 } & {
@@ -22030,6 +22129,20 @@ export interface operations {
                     };
                 };
             };
+            /** @description Default Response */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: string;
+                        message?: string;
+                    } & {
+                        [key: string]: unknown;
+                    };
+                };
+            };
         };
     };
     get_account_assets: {
@@ -22139,6 +22252,20 @@ export interface operations {
                     };
                 };
             };
+            /** @description Default Response */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: string;
+                        message?: string;
+                    } & {
+                        [key: string]: unknown;
+                    };
+                };
+            };
         };
     };
     get_account_inbound: {
@@ -22195,6 +22322,20 @@ export interface operations {
                             /** @description Index of the transaction within a block */
                             tx_index: number;
                         }[];
+                    };
+                };
+            };
+            /** @description Default Response */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: string;
+                        message?: string;
+                    } & {
+                        [key: string]: unknown;
                     };
                 };
             };
@@ -22846,6 +22987,20 @@ export interface operations {
                     };
                 };
             };
+            /** @description Default Response */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: string;
+                        message?: string;
+                    } & {
+                        [key: string]: unknown;
+                    };
+                };
+            };
         };
     };
     get_account_nonces: {
@@ -22885,6 +23040,20 @@ export interface operations {
                         detected_missing_nonces: number[];
                         /** @description Nonces currently in mempool for this address. */
                         detected_mempool_nonces: number[];
+                    };
+                };
+            };
+            /** @description Default Response */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: string;
+                        message?: string;
+                    } & {
+                        [key: string]: unknown;
                     };
                 };
             };
@@ -22930,9 +23099,13 @@ export interface operations {
                                 balance: string;
                                 /** @description Total STX balance considering pending mempool transactions */
                                 estimated_balance?: string;
-                                total_sent: string;
-                                total_received: string;
-                                total_fees_sent: string;
+                                /** @description Inbound STX balance from pending mempool transactions */
+                                pending_balance_inbound?: string;
+                                /** @description Outbound STX balance from pending mempool transactions */
+                                pending_balance_outbound?: string;
+                                total_sent?: string;
+                                total_received?: string;
+                                total_fees_sent?: string;
                                 total_miner_rewards_received: string;
                                 /** @description The transaction where the lock event occurred. Empty if no tokens are locked. */
                                 lock_tx_id: string;
@@ -22988,6 +23161,8 @@ export interface operations {
                                 block_time: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) indicating when this block was mined. */
                                 block_time_iso: string;
+                                /** @description The tenure height (AKA coinbase height) of this block */
+                                tenure_height: number;
                                 /** @description The only hash that can uniquely identify an anchored block or an unconfirmed state trie */
                                 index_block_hash: string;
                                 /** @description Hash of the parent block */
@@ -23177,6 +23352,7 @@ export interface operations {
                                 execution_cost_write_count: number;
                                 /** @description Execution cost write length. */
                                 execution_cost_write_length: number;
+                                vm_error: string | null;
                                 events: (({
                                     event_index: number;
                                 } & {
@@ -23391,6 +23567,7 @@ export interface operations {
                                 execution_cost_write_count: number;
                                 /** @description Execution cost write length. */
                                 execution_cost_write_length: number;
+                                vm_error: string | null;
                                 events: (({
                                     event_index: number;
                                 } & {
@@ -23605,6 +23782,7 @@ export interface operations {
                                 execution_cost_write_count: number;
                                 /** @description Execution cost write length. */
                                 execution_cost_write_length: number;
+                                vm_error: string | null;
                                 events: (({
                                     event_index: number;
                                 } & {
@@ -23826,6 +24004,7 @@ export interface operations {
                                 execution_cost_write_count: number;
                                 /** @description Execution cost write length. */
                                 execution_cost_write_length: number;
+                                vm_error: string | null;
                                 events: (({
                                     event_index: number;
                                 } & {
@@ -24039,6 +24218,7 @@ export interface operations {
                                 execution_cost_write_count: number;
                                 /** @description Execution cost write length. */
                                 execution_cost_write_length: number;
+                                vm_error: string | null;
                                 events: (({
                                     event_index: number;
                                 } & {
@@ -24252,6 +24432,7 @@ export interface operations {
                                 execution_cost_write_count: number;
                                 /** @description Execution cost write length. */
                                 execution_cost_write_length: number;
+                                vm_error: string | null;
                                 events: (({
                                     event_index: number;
                                 } & {
@@ -25713,6 +25894,7 @@ export interface operations {
                                 execution_cost_write_count: number;
                                 /** @description Execution cost write length. */
                                 execution_cost_write_length: number;
+                                vm_error: string | null;
                                 events: (({
                                     event_index: number;
                                 } & {
@@ -25927,6 +26109,7 @@ export interface operations {
                                 execution_cost_write_count: number;
                                 /** @description Execution cost write length. */
                                 execution_cost_write_length: number;
+                                vm_error: string | null;
                                 events: (({
                                     event_index: number;
                                 } & {
@@ -26141,6 +26324,7 @@ export interface operations {
                                 execution_cost_write_count: number;
                                 /** @description Execution cost write length. */
                                 execution_cost_write_length: number;
+                                vm_error: string | null;
                                 events: (({
                                     event_index: number;
                                 } & {
@@ -26362,6 +26546,7 @@ export interface operations {
                                 execution_cost_write_count: number;
                                 /** @description Execution cost write length. */
                                 execution_cost_write_length: number;
+                                vm_error: string | null;
                                 events: (({
                                     event_index: number;
                                 } & {
@@ -26575,6 +26760,7 @@ export interface operations {
                                 execution_cost_write_count: number;
                                 /** @description Execution cost write length. */
                                 execution_cost_write_length: number;
+                                vm_error: string | null;
                                 events: (({
                                     event_index: number;
                                 } & {
@@ -26788,6 +26974,7 @@ export interface operations {
                                 execution_cost_write_count: number;
                                 /** @description Execution cost write length. */
                                 execution_cost_write_length: number;
+                                vm_error: string | null;
                                 events: (({
                                     event_index: number;
                                 } & {
@@ -26895,6 +27082,20 @@ export interface operations {
                     };
                 };
             };
+            /** @description Default Response */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: string;
+                        message?: string;
+                    } & {
+                        [key: string]: unknown;
+                    };
+                };
+            };
         };
     };
     get_pool_delegations: {
@@ -26956,16 +27157,34 @@ export interface operations {
                     };
                 };
             };
+            /** @description Default Response */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: string;
+                        message?: string;
+                    } & {
+                        [key: string]: unknown;
+                    };
+                };
+            };
         };
     };
     run_faucet_btc: {
         parameters: {
             query?: {
                 /**
-                 * @description A valid testnet BTC address
+                 * @description A valid regtest BTC address
                  * @example 2N4M94S1ZPt8HfxydXzL2P7qyzgVq7MHWts
                  */
                 address?: string;
+                /** @description Request a large amount of regtest BTC than the default */
+                large?: boolean;
+                /** @description Request an extra large amount of regtest BTC than the default */
+                xlarge?: boolean;
             };
             header?: never;
             path?: never;
@@ -26974,13 +27193,13 @@ export interface operations {
         requestBody?: {
             content: {
                 "application/json": {
-                    /** @description A valid testnet BTC address */
+                    /** @description A valid regtest BTC address */
                     address?: string;
                 } | null;
             };
         };
         responses: {
-            /** @description POST request that initiates a transfer of tokens to a specified testnet address */
+            /** @description POST request that initiates a transfer of tokens to a specified Bitcoin regtest address */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -27021,7 +27240,7 @@ export interface operations {
             header?: never;
             path: {
                 /**
-                 * @description A valid testnet BTC address
+                 * @description A valid regtest BTC address
                  * @example 2N4M94S1ZPt8HfxydXzL2P7qyzgVq7MHWts
                  */
                 address: string;
@@ -27164,6 +27383,8 @@ export interface operations {
                             block_time: number;
                             /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) indicating when this block was mined. */
                             block_time_iso: string;
+                            /** @description The tenure height (AKA coinbase height) of this block */
+                            tenure_height: number;
                             /** @description The only hash that can uniquely identify an anchored block or an unconfirmed state trie */
                             index_block_hash: string;
                             /** @description Hash of the parent block */
@@ -27196,6 +27417,20 @@ export interface operations {
                     };
                 };
             };
+            /** @description Default Response */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: string;
+                        message?: string;
+                    } & {
+                        [key: string]: unknown;
+                    };
+                };
+            };
         };
     };
     get_average_block_times: {
@@ -27222,6 +27457,20 @@ export interface operations {
                         last_7d: number;
                         /** @description Average block times over the last 30 days (in seconds) */
                         last_30d: number;
+                    };
+                };
+            };
+            /** @description Default Response */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: string;
+                        message?: string;
+                    } & {
+                        [key: string]: unknown;
                     };
                 };
             };
@@ -27255,6 +27504,8 @@ export interface operations {
                         block_time: number;
                         /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) indicating when this block was mined. */
                         block_time_iso: string;
+                        /** @description The tenure height (AKA coinbase height) of this block */
+                        tenure_height: number;
                         /** @description The only hash that can uniquely identify an anchored block or an unconfirmed state trie */
                         index_block_hash: string;
                         /** @description Hash of the parent block */
@@ -27283,6 +27534,20 @@ export interface operations {
                         execution_cost_write_count: number;
                         /** @description Execution cost write length. */
                         execution_cost_write_length: number;
+                    };
+                };
+            };
+            /** @description Default Response */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: string;
+                        message?: string;
+                    } & {
+                        [key: string]: unknown;
                     };
                 };
             };
@@ -27454,6 +27719,7 @@ export interface operations {
                             execution_cost_write_count: number;
                             /** @description Execution cost write length. */
                             execution_cost_write_length: number;
+                            vm_error: string | null;
                             events: (({
                                 event_index: number;
                             } & {
@@ -27668,6 +27934,7 @@ export interface operations {
                             execution_cost_write_count: number;
                             /** @description Execution cost write length. */
                             execution_cost_write_length: number;
+                            vm_error: string | null;
                             events: (({
                                 event_index: number;
                             } & {
@@ -27882,6 +28149,7 @@ export interface operations {
                             execution_cost_write_count: number;
                             /** @description Execution cost write length. */
                             execution_cost_write_length: number;
+                            vm_error: string | null;
                             events: (({
                                 event_index: number;
                             } & {
@@ -28103,6 +28371,7 @@ export interface operations {
                             execution_cost_write_count: number;
                             /** @description Execution cost write length. */
                             execution_cost_write_length: number;
+                            vm_error: string | null;
                             events: (({
                                 event_index: number;
                             } & {
@@ -28316,6 +28585,7 @@ export interface operations {
                             execution_cost_write_count: number;
                             /** @description Execution cost write length. */
                             execution_cost_write_length: number;
+                            vm_error: string | null;
                             events: (({
                                 event_index: number;
                             } & {
@@ -28529,6 +28799,7 @@ export interface operations {
                             execution_cost_write_count: number;
                             /** @description Execution cost write length. */
                             execution_cost_write_length: number;
+                            vm_error: string | null;
                             events: (({
                                 event_index: number;
                             } & {
@@ -28619,6 +28890,69 @@ export interface operations {
                     };
                 };
             };
+            /** @description Default Response */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: string;
+                        message?: string;
+                    } & {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
+    get_signer_signatures_for_block: {
+        parameters: {
+            query?: {
+                /** @description Results per page */
+                limit?: number;
+                /** @description Result offset */
+                offset?: number;
+            };
+            header?: never;
+            path: {
+                height_or_hash: "latest" | string | number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @example 20 */
+                        limit: number;
+                        /** @example 0 */
+                        offset: number;
+                        /** @example 1 */
+                        total: number;
+                        results: string[];
+                    };
+                };
+            };
+            /** @description Default Response */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: string;
+                        message?: string;
+                    } & {
+                        [key: string]: unknown;
+                    };
+                };
+            };
         };
     };
     get_burn_blocks: {
@@ -28667,6 +29001,20 @@ export interface operations {
                     };
                 };
             };
+            /** @description Default Response */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: string;
+                        message?: string;
+                    } & {
+                        [key: string]: unknown;
+                    };
+                };
+            };
         };
     };
     get_burn_block: {
@@ -28701,6 +29049,20 @@ export interface operations {
                         avg_block_time: number;
                         /** @description Total number of transactions in the Stacks blocks associated with this burn block */
                         total_tx_count: number;
+                    };
+                };
+            };
+            /** @description Default Response */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: string;
+                        message?: string;
+                    } & {
+                        [key: string]: unknown;
                     };
                 };
             };
@@ -28746,6 +29108,8 @@ export interface operations {
                             block_time: number;
                             /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) indicating when this block was mined. */
                             block_time_iso: string;
+                            /** @description The tenure height (AKA coinbase height) of this block */
+                            tenure_height: number;
                             /** @description The only hash that can uniquely identify an anchored block or an unconfirmed state trie */
                             index_block_hash: string;
                             /** @description Hash of the parent block */
@@ -28775,6 +29139,119 @@ export interface operations {
                             /** @description Execution cost write length. */
                             execution_cost_write_length: number;
                         }[];
+                    };
+                };
+            };
+            /** @description Default Response */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: string;
+                        message?: string;
+                    } & {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
+    get_tenure_blocks: {
+        parameters: {
+            query?: {
+                /** @description Results per page */
+                limit?: number;
+                /** @description Result offset */
+                offset?: number;
+                /** @description Cursor for pagination */
+                cursor?: string;
+            };
+            header?: never;
+            path: {
+                /**
+                 * @description Block tenure height
+                 * @example 165453
+                 */
+                tenure_height: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @example 20 */
+                        limit: number;
+                        /** @example 0 */
+                        offset: number;
+                        /** @example 1 */
+                        total: number;
+                        next_cursor: string | null;
+                        prev_cursor: string | null;
+                        cursor: string | null;
+                        results: {
+                            /** @description Set to `true` if block corresponds to the canonical chain tip */
+                            canonical: boolean;
+                            /** @description Height of the block */
+                            height: number;
+                            /** @description Hash representing the block */
+                            hash: string;
+                            /** @description Unix timestamp (in seconds) indicating when this block was mined. */
+                            block_time: number;
+                            /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) indicating when this block was mined. */
+                            block_time_iso: string;
+                            /** @description The tenure height (AKA coinbase height) of this block */
+                            tenure_height: number;
+                            /** @description The only hash that can uniquely identify an anchored block or an unconfirmed state trie */
+                            index_block_hash: string;
+                            /** @description Hash of the parent block */
+                            parent_block_hash: string;
+                            /** @description Index block hash of the parent block */
+                            parent_index_block_hash: string;
+                            /** @description Unix timestamp (in seconds) indicating when this block was mined. */
+                            burn_block_time: number;
+                            /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) indicating when this block was mined. */
+                            burn_block_time_iso: string;
+                            /** @description Hash of the anchor chain block */
+                            burn_block_hash: string;
+                            /** @description Height of the anchor chain block */
+                            burn_block_height: number;
+                            /** @description Anchor chain transaction ID */
+                            miner_txid: string;
+                            /** @description Number of transactions included in the block */
+                            tx_count: number;
+                            /** @description Execution cost read count. */
+                            execution_cost_read_count: number;
+                            /** @description Execution cost read length. */
+                            execution_cost_read_length: number;
+                            /** @description Execution cost runtime. */
+                            execution_cost_runtime: number;
+                            /** @description Execution cost write count. */
+                            execution_cost_write_count: number;
+                            /** @description Execution cost write length. */
+                            execution_cost_write_length: number;
+                        }[];
+                    };
+                };
+            };
+            /** @description Default Response */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: string;
+                        message?: string;
+                    } & {
+                        [key: string]: unknown;
                     };
                 };
             };
@@ -28815,6 +29292,20 @@ export interface operations {
                             /** @constant */
                             found: false;
                         };
+                    };
+                };
+            };
+            /** @description Default Response */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: string;
+                        message?: string;
+                    } & {
+                        [key: string]: unknown;
                     };
                 };
             };
@@ -28863,6 +29354,20 @@ export interface operations {
                     };
                 };
             };
+            /** @description Default Response */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: string;
+                        message?: string;
+                    } & {
+                        [key: string]: unknown;
+                    };
+                };
+            };
         };
     };
     get_pox_cycles: {
@@ -28903,6 +29408,20 @@ export interface operations {
                     };
                 };
             };
+            /** @description Default Response */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: string;
+                        message?: string;
+                    } & {
+                        [key: string]: unknown;
+                    };
+                };
+            };
         };
     };
     get_pox_cycle: {
@@ -28930,6 +29449,20 @@ export interface operations {
                         total_weight: number;
                         total_stacked_amount: string;
                         total_signers: number;
+                    };
+                };
+            };
+            /** @description Default Response */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: string;
+                        message?: string;
+                    } & {
+                        [key: string]: unknown;
                     };
                 };
             };
@@ -28981,6 +29514,20 @@ export interface operations {
                     };
                 };
             };
+            /** @description Default Response */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: string;
+                        message?: string;
+                    } & {
+                        [key: string]: unknown;
+                    };
+                };
+            };
         };
     };
     get_pox_cycle_signer: {
@@ -29018,6 +29565,20 @@ export interface operations {
                         solo_stacker_count: number;
                         /** @description The number of pooled stackers associated with this signer. */
                         pooled_stacker_count: number;
+                    };
+                };
+            };
+            /** @description Default Response */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: string;
+                        message?: string;
+                    } & {
+                        [key: string]: unknown;
                     };
                 };
             };
@@ -29064,6 +29625,20 @@ export interface operations {
                             pox_address: string;
                             stacker_type: "solo" | "pooled";
                         }[];
+                    };
+                };
+            };
+            /** @description Default Response */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: string;
+                        message?: string;
+                    } & {
+                        [key: string]: unknown;
                     };
                 };
             };
@@ -29236,6 +29811,7 @@ export interface operations {
                                 execution_cost_write_count: number;
                                 /** @description Execution cost write length. */
                                 execution_cost_write_length: number;
+                                vm_error: string | null;
                                 events: (({
                                     event_index: number;
                                 } & {
@@ -29450,6 +30026,7 @@ export interface operations {
                                 execution_cost_write_count: number;
                                 /** @description Execution cost write length. */
                                 execution_cost_write_length: number;
+                                vm_error: string | null;
                                 events: (({
                                     event_index: number;
                                 } & {
@@ -29664,6 +30241,7 @@ export interface operations {
                                 execution_cost_write_count: number;
                                 /** @description Execution cost write length. */
                                 execution_cost_write_length: number;
+                                vm_error: string | null;
                                 events: (({
                                     event_index: number;
                                 } & {
@@ -29885,6 +30463,7 @@ export interface operations {
                                 execution_cost_write_count: number;
                                 /** @description Execution cost write length. */
                                 execution_cost_write_length: number;
+                                vm_error: string | null;
                                 events: (({
                                     event_index: number;
                                 } & {
@@ -30098,6 +30677,7 @@ export interface operations {
                                 execution_cost_write_count: number;
                                 /** @description Execution cost write length. */
                                 execution_cost_write_length: number;
+                                vm_error: string | null;
                                 events: (({
                                     event_index: number;
                                 } & {
@@ -30311,6 +30891,7 @@ export interface operations {
                                 execution_cost_write_count: number;
                                 /** @description Execution cost write length. */
                                 execution_cost_write_length: number;
+                                vm_error: string | null;
                                 events: (({
                                     event_index: number;
                                 } & {
@@ -30423,6 +31004,20 @@ export interface operations {
                     };
                 };
             };
+            /** @description Default Response */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: string;
+                        message?: string;
+                    } & {
+                        [key: string]: unknown;
+                    };
+                };
+            };
         };
     };
     get_address_transaction_events: {
@@ -30508,6 +31103,173 @@ export interface operations {
                     };
                 };
             };
+            /** @description Default Response */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: string;
+                        message?: string;
+                    } & {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
+    get_principal_stx_balance: {
+        parameters: {
+            query?: {
+                /** @description Include pending mempool transactions in the balance calculation */
+                include_mempool?: boolean;
+            };
+            header?: never;
+            path: {
+                principal: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        balance: string;
+                        /** @description Total STX balance considering pending mempool transactions */
+                        estimated_balance?: string;
+                        /** @description Inbound STX balance from pending mempool transactions */
+                        pending_balance_inbound?: string;
+                        /** @description Outbound STX balance from pending mempool transactions */
+                        pending_balance_outbound?: string;
+                        total_sent?: string;
+                        total_received?: string;
+                        total_fees_sent?: string;
+                        total_miner_rewards_received: string;
+                        /** @description The transaction where the lock event occurred. Empty if no tokens are locked. */
+                        lock_tx_id: string;
+                        /** @description The amount of locked STX, as string quoted micro-STX. Zero if no tokens are locked. */
+                        locked: string;
+                        /** @description The STX chain block height of when the lock event occurred. Zero if no tokens are locked. */
+                        lock_height: number;
+                        /** @description The burnchain block height of when the lock event occurred. Zero if no tokens are locked. */
+                        burnchain_lock_height: number;
+                        /** @description The burnchain block height of when the tokens unlock. Zero if no tokens are locked. */
+                        burnchain_unlock_height: number;
+                    };
+                };
+            };
+            /** @description Default Response */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: string;
+                        message?: string;
+                    } & {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
+    get_principal_ft_balances: {
+        parameters: {
+            query?: {
+                /** @description Results per page */
+                limit?: number;
+                /** @description Result offset */
+                offset?: number;
+            };
+            header?: never;
+            path: {
+                principal: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @example 20 */
+                        limit: number;
+                        /** @example 0 */
+                        offset: number;
+                        /** @example 1 */
+                        total: number;
+                        results: {
+                            token: string;
+                            balance: string;
+                        }[];
+                    };
+                };
+            };
+            /** @description Default Response */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: string;
+                        message?: string;
+                    } & {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
+    get_principal_ft_balance: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                principal: string;
+                /** @description fungible token identifier */
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        balance: string;
+                    };
+                };
+            };
+            /** @description Default Response */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: string;
+                        message?: string;
+                    } & {
+                        [key: string]: unknown;
+                    };
+                };
+            };
         };
     };
     get_historical_zone_file: {
@@ -30588,6 +31350,20 @@ export interface operations {
                 };
                 content: {
                     "application/json": string[];
+                };
+            };
+            /** @description Default Response */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: string;
+                        message?: string;
+                    } & {
+                        [key: string]: unknown;
+                    };
                 };
             };
         };
@@ -30722,6 +31498,20 @@ export interface operations {
                     };
                 };
             };
+            /** @description Default Response */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: string;
+                        message?: string;
+                    } & {
+                        [key: string]: unknown;
+                    };
+                };
+            };
         };
     };
     get_all_namespaces: {
@@ -30751,6 +31541,20 @@ export interface operations {
                          * @description Fetch a list of all namespaces known to the node.
                          */
                         namespaces: string[];
+                    };
+                };
+            };
+            /** @description Default Response */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: string;
+                        message?: string;
+                    } & {
+                        [key: string]: unknown;
                     };
                 };
             };
@@ -30791,6 +31595,20 @@ export interface operations {
                     "application/json": string[];
                 };
             };
+            /** @description Default Response */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: string;
+                        message?: string;
+                    } & {
+                        [key: string]: unknown;
+                    };
+                };
+            };
         };
     };
     get_names_owned_by_address: {
@@ -30827,6 +31645,20 @@ export interface operations {
                 content: {
                     "application/json": {
                         names: string[];
+                    };
+                };
+            };
+            /** @description Default Response */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: string;
+                        message?: string;
+                    } & {
+                        [key: string]: unknown;
                     };
                 };
             };
@@ -30870,6 +31702,20 @@ export interface operations {
                     };
                 };
             };
+            /** @description Default Response */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: string;
+                        message?: string;
+                    } & {
+                        [key: string]: unknown;
+                    };
+                };
+            };
         };
     };
     get_name_price: {
@@ -30907,6 +31753,20 @@ export interface operations {
                 content: {
                     "application/json": {
                         error: string;
+                    };
+                };
+            };
+            /** @description Default Response */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: string;
+                        message?: string;
+                    } & {
+                        [key: string]: unknown;
                     };
                 };
             };

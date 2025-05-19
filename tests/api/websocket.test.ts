@@ -333,6 +333,7 @@ describe('websocket notifications', () => {
           },
           tx_status: 'success',
           tx_type: 'token_transfer',
+          vm_error: null,
         },
       });
 
@@ -409,6 +410,7 @@ describe('websocket notifications', () => {
           },
           tx_status: 'success',
           tx_type: 'token_transfer',
+          vm_error: null,
         },
       });
     } finally {
@@ -736,6 +738,7 @@ describe('websocket notifications', () => {
           },
           tx_status: 'success',
           tx_type: 'token_transfer',
+          vm_error: null,
         },
       });
       await subscription.unsubscribe();
