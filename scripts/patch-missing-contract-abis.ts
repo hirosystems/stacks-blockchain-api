@@ -3,6 +3,7 @@ import { StacksCoreRpcClient } from '../src/core-rpc/client';
 import { getConnectionArgs, getConnectionConfig } from '../src/datastore/connection';
 import { ClarityAbi } from '../src/event-stream/contract-abi';
 import { loadDotEnv } from '../src/helpers';
+import { logger } from '../src/logger';
 
 const BATCH_SIZE = 64;
 const LAST_BLOCK_HEIGHT = parseInt(process.env.LAST_BLOCK_HEIGHT ?? '-1');
@@ -16,7 +17,7 @@ const sql: PgSqlClient = await connectPostgres({
 });
 
 try {
-  console.log('Starting script to patch missing contract ABIs...');
+  logger.info('Starting script to patch missing contract ABIs...');
 
   // 2) Initialize script variables and RPC client
   let lastBlockHeight = LAST_BLOCK_HEIGHT; // Initial value for the first query
@@ -41,14 +42,14 @@ try {
 
     if (missing.length === 0) {
       if (totalConsideredCount === 0) {
-        console.log('  - No contracts with missing ABI found.');
+        logger.info('  - No contracts with missing ABI found.');
       } else {
-        console.log(`  - Patched ${totalPatchedCount}/${totalConsideredCount} contracts.`);
+        logger.info(`  - Patched ${totalPatchedCount}/${totalConsideredCount} contracts.`);
       }
       break; // Exit the while loop
     }
 
-    console.log(`- Found batch of ${missing.length} contracts with missing ABIs.`);
+    logger.info(`- Found batch of ${missing.length} contracts with missing ABIs.`);
 
     // 3.2) Process each contract in the current batch
     for (const contract of missing) {
@@ -56,7 +57,7 @@ try {
       const { contract_id, block_height } = contract;
       const [address, name] = contract_id.split('.');
       if (!address || !name) {
-        console.warn(`  - Skipping invalid contract id: ${contract_id}`);
+        logger.warn(`  - Skipping invalid contract id: ${contract_id}`);
         continue;
       }
 
@@ -65,7 +66,7 @@ try {
         const abi = await rpc.fetchJson<ClarityAbi>(`v2/contracts/interface/${address}/${name}`);
 
         if (!abi || typeof abi !== 'object' || Object.keys(abi).length === 0) {
-          console.warn(`  - Skipping ${contract_id}. Fetched empty or invalid ABI.`);
+          logger.warn(`  - Skipping ${contract_id}. Fetched empty or invalid ABI.`);
           continue;
         }
 
@@ -78,44 +79,34 @@ try {
              AND canonical = TRUE
         `;
         if (rows.count === 0) {
-          console.warn(`  - Failed to patch ${contract_id}. No rows updated.`);
+          logger.warn(`  - Failed to patch ${contract_id}. No rows updated.`);
           continue;
         }
-        console.log(`  - Patched ABI for ${contract_id}`);
+        logger.info(`  - Patched ABI for ${contract_id}`);
         totalPatchedCount++;
       } catch (err: any) {
-        let errorMessage = 'Unknown error';
-        if (err instanceof Error) {
-          errorMessage = err.message;
-        } else if (typeof err === 'string') {
-          errorMessage = err;
-        } else if (err && typeof err.message === 'string') {
-          errorMessage = err.message;
-        }
-        console.error(`  - Failed to patch ${contract_id}:`, errorMessage);
+        logger.error(err, `  - Failed to patch ${contract_id}`);
       }
 
       // Keep track of the latest block_height we've processed
       if (block_height > lastBlockHeight) {
         lastBlockHeight = block_height;
-        console.log(`  - Processed up to block ${lastBlockHeight}`);
+        logger.info(`  - Processed up to block ${lastBlockHeight}`);
       }
     }
 
     // 3.5) Check if it was the last batch
     if (missing.length < BATCH_SIZE) {
-      console.log(`  - Patched ${totalPatchedCount}/${totalConsideredCount} contracts.`);
+      logger.info(`  - Patched ${totalPatchedCount}/${totalConsideredCount} contracts.`);
       break; // Last batch was smaller than batchSize, so no more items.
     }
   }
 } catch (err: any) {
-  console.error('An unexpected error occurred:', err);
-  if (err instanceof Error && err.stack) console.error('Stack trace:', err.stack);
-  if (err instanceof Error && err.message) console.error('Error message:', err.message);
-  process.exit(1); // Exit with error if an unhandled exception occurs in the main block
+  logger.error(err, 'An unexpected error occurred');
+  throw err;
 } finally {
   // 4) Close DB connection
-  console.log('Closing database connection...');
+  logger.info('Closing database connection...');
   await sql.end({ timeout: 5 });
-  console.log('Done.');
+  logger.info('Done.');
 }
