@@ -2195,7 +2195,7 @@ describe('mempool tests', () => {
   });
 
   test('prunes and restores replaced-by-fee transactions', async () => {
-    // Initial block
+    const sender_address = 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6';
     await db.update(
       new TestBlockBuilder({
         block_height: 1,
@@ -2205,7 +2205,6 @@ describe('mempool tests', () => {
     );
 
     // Add tx with nonce = 1 to the mempool
-    const sender_address = 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6';
     await db.updateMempoolTxs({
       mempoolTxs: [
         testMempoolTx({
@@ -2238,6 +2237,33 @@ describe('mempool tests', () => {
     expect(request.body.total).toBe(1);
     expect(request.body.results).toHaveLength(1);
     request = await supertest(api.server).get(`/extended/v1/tx/0xff0001`);
+    expect(request.body).toEqual(
+      expect.objectContaining({
+        tx_status: 'dropped_replace_by_fee',
+        replaced_by_tx_id: '0xff0002',
+      })
+    );
+
+    // Add yet another conflicting tx but our address is the sponsor. Since it has a lower fee, it
+    // will be immediately marked as RBFd by 0xff0002.
+    await db.updateMempoolTxs({
+      mempoolTxs: [
+        testMempoolTx({
+          tx_id: `0xff0003`,
+          sender_address: 'SP3FXEKSA6D4BW3TFP2BWTSREV6FY863Y90YY7D8G',
+          sponsor_address: sender_address,
+          sponsored: true,
+          nonce: 1,
+          fee_rate: 150n,
+          type_id: DbTxTypeId.TokenTransfer,
+        }),
+      ],
+    });
+    request = await supertest(api.server).get(`/extended/v1/address/${sender_address}/mempool`);
+    expect(request.body.total).toBe(1);
+    expect(request.body.results).toHaveLength(1);
+    expect(request.body.results[0].tx_id).toBe('0xff0002');
+    request = await supertest(api.server).get(`/extended/v1/tx/0xff0003`);
     expect(request.body).toEqual(
       expect.objectContaining({
         tx_status: 'dropped_replace_by_fee',
@@ -2298,17 +2324,11 @@ describe('mempool tests', () => {
       }).build()
     );
 
-    // Only the highest fee tx is restored to the mempool, and all others marked as RBFd by that
-    // one.
+    // Only the highest fee tx is restored to the mempool, and all others are pruned and marked as
+    // RBFd by it.
     request = await supertest(api.server).get(`/extended/v1/address/${sender_address}/mempool`);
+    expect(request.body.total).toBe(1);
     expect(request.body.results).toHaveLength(1);
-    request = await supertest(api.server).get(`/extended/v1/tx/0xff0001`);
-    expect(request.body).toEqual(
-      expect.objectContaining({
-        tx_status: 'dropped_replace_by_fee',
-        replaced_by_tx_id: '0xff0002',
-      })
-    );
     request = await supertest(api.server).get(`/extended/v1/tx/0xff0002`); // Winner
     expect(request.body).toEqual(
       expect.objectContaining({
@@ -2316,7 +2336,21 @@ describe('mempool tests', () => {
         replaced_by_tx_id: null,
       })
     );
+    request = await supertest(api.server).get(`/extended/v1/tx/0xff0001`);
+    expect(request.body).toEqual(
+      expect.objectContaining({
+        tx_status: 'dropped_replace_by_fee',
+        replaced_by_tx_id: '0xff0002',
+      })
+    );
     request = await supertest(api.server).get(`/extended/v1/tx/0xaa0001`);
+    expect(request.body).toEqual(
+      expect.objectContaining({
+        tx_status: 'dropped_replace_by_fee',
+        replaced_by_tx_id: '0xff0002',
+      })
+    );
+    request = await supertest(api.server).get(`/extended/v1/tx/0xff0003`);
     expect(request.body).toEqual(
       expect.objectContaining({
         tx_status: 'dropped_replace_by_fee',
