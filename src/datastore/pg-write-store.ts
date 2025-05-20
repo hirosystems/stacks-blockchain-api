@@ -2072,9 +2072,10 @@ export class PgWriteStore extends PgStore {
             nonce, fee_rate
           FROM ${mempool ? sql`mempool_txs` : sql`txs`}
           WHERE tx_id = ${txId}
+          LIMIT 1
         ),
         same_nonce_mempool_txs AS (
-          SELECT tx_id, fee_rate
+          SELECT tx_id, fee_rate, receipt_time
           FROM mempool_txs
           WHERE (sponsor_address = (SELECT address FROM source_tx) OR sender_address = (SELECT address FROM source_tx))
             AND nonce = (SELECT nonce FROM source_tx)
@@ -2086,9 +2087,14 @@ export class PgWriteStore extends PgStore {
             AND nonce = (SELECT nonce FROM source_tx)
             AND canonical = true
             AND microblock_canonical = true
+          ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC
+          LIMIT 1
         ),
         highest_fee_mempool_tx AS (
-          SELECT tx_id FROM same_nonce_mempool_txs ORDER BY fee_rate DESC LIMIT 1
+          SELECT tx_id
+          FROM same_nonce_mempool_txs
+          ORDER BY fee_rate DESC, receipt_time DESC
+          LIMIT 1
         ),
         winning_tx AS (
           SELECT COALESCE((SELECT tx_id FROM mined_tx), (SELECT tx_id FROM highest_fee_mempool_tx)) AS tx_id
