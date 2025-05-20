@@ -1979,7 +1979,6 @@ export class PgWriteStore extends PgStore {
       }));
 
       // Revive mempool txs that were previously dropped.
-      // FIXME: count
       const revivedTxs = await sql<{ tx_id: string }[]>`
         UPDATE mempool_txs
         SET pruned = false,
