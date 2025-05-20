@@ -114,7 +114,13 @@ class MicroblockGapError extends Error {
   }
 }
 
-type TransactionHeader = { txId: string; sender: string; nonce: number };
+type TransactionHeader = {
+  txId: string;
+  sender_address: string;
+  sponsor_address?: string;
+  sponsored: boolean;
+  nonce: number;
+};
 
 /**
  * Extends `PgStore` to provide data insertion functions. These added features are usually called by
@@ -214,7 +220,9 @@ export class PgWriteStore extends PgStore {
       } else {
         const prunableTxs: TransactionHeader[] = data.txs.map(d => ({
           txId: d.tx.tx_id,
-          sender: d.tx.sender_address,
+          sender_address: d.tx.sender_address,
+          sponsor_address: d.tx.sponsor_address,
+          sponsored: d.tx.sponsored,
           nonce: d.tx.nonce,
         }));
         await this.pruneMempoolTxs(sql, prunableTxs);
@@ -254,7 +262,9 @@ export class PgWriteStore extends PgStore {
           sql,
           orphanedAndMissingTxs.map(tx => ({
             txId: tx.tx_id,
-            sender: tx.sender_address,
+            sender_address: tx.sender_address,
+            sponsor_address: tx.sponsor_address,
+            sponsored: tx.sponsored,
             nonce: tx.nonce,
           }))
         );
@@ -324,6 +334,11 @@ export class PgWriteStore extends PgStore {
         await q.done();
       }
 
+      await this.updateReplacedByFeeStatusForTxIds(
+        sql,
+        data.txs.map(t => t.tx.tx_id),
+        false
+      );
       if (!this.isEventReplay) {
         this.debounceMempoolStat();
       }
@@ -707,7 +722,9 @@ export class PgWriteStore extends PgStore {
           sql,
           microOrphanedTxs.map(tx => ({
             txId: tx.tx_id,
-            sender: tx.sender_address,
+            sender_address: tx.sender_address,
+            sponsor_address: tx.sponsor_address,
+            sponsored: tx.sponsored,
             nonce: tx.nonce,
           }))
         );
@@ -718,7 +735,9 @@ export class PgWriteStore extends PgStore {
 
       const prunableTxs: TransactionHeader[] = data.txs.map(d => ({
         txId: d.tx.tx_id,
-        sender: d.tx.sender_address,
+        sender_address: d.tx.sender_address,
+        sponsor_address: d.tx.sponsor_address,
+        sponsored: d.tx.sponsored,
         nonce: d.tx.nonce,
       }));
       const removedTxsResult = await this.pruneMempoolTxs(sql, prunableTxs);
@@ -2024,41 +2043,63 @@ export class PgWriteStore extends PgStore {
           `;
       }
     }
-    await this.updateReplacedByFeeMempoolTxs(sql, txIds);
+    await this.updateReplacedByFeeStatusForTxIds(sql, txIds);
     return txIds;
   }
 
-  private async updateReplacedByFeeMempoolTxs(sql: PgSqlClient, txIds: string[]): Promise<void> {
-    // Newly updated mempool transactions may have changed the RBF situation for transactions with
-    // equal nonces. Look for these cases and prune replaced txs accordingly. When marking as
-    // replaced, do not filter by pruned only as we want to mark all same nonce txs as replaced.
-    for (const newTxId of txIds) {
+  /**
+   * Newly confirmed/pruned/restored transactions may have changed the RBF situation for
+   * transactions with equal nonces. Look for these cases and update txs accordingly.
+   * @param sql - SQL client
+   * @param txIds - Updated mempool tx ids
+   * @param mempool - If we should look in the mempool for these txs
+   */
+  private async updateReplacedByFeeStatusForTxIds(
+    sql: PgSqlClient,
+    txIds: string[],
+    mempool: boolean = true
+  ): Promise<void> {
+    // FIXME: counts
+    for (const txId of txIds) {
+      // If a transaction with equal nonce was confirmed in a block, mark all conflicting mempool
+      // txs as RBF. Otherwise, look for the one with the highest fee in the mempool and RBF all the
+      // others.
+      //
+      // Note that we're not filtering by `pruned` when we look at the mempool, because we want the
+      // RBF data to be retroactively applied to all conflicting txs we've ever seen.
       await sql`
-        WITH new_tx AS (
+        WITH source_tx AS (
           SELECT
             (CASE sponsored WHEN true THEN sponsor_address ELSE sender_address END) AS address,
             nonce, fee_rate
-          FROM mempool_txs
-          WHERE pruned = false AND tx_id = ${newTxId}
-          LIMIT 1
+          FROM ${mempool ? sql`mempool_txs` : sql`txs`}
+          WHERE tx_id = ${txId}
         ),
-        same_nonce_txs AS (
+        same_nonce_mempool_txs AS (
           SELECT tx_id, fee_rate
           FROM mempool_txs
-          WHERE nonce = (SELECT nonce FROM new_tx)
-            AND CASE sponsored
-              WHEN true THEN sponsor_address = (SELECT address FROM new_tx)
-              ELSE sender_address = (SELECT address FROM new_tx)
-            END
+          WHERE (sponsor_address = (SELECT address FROM source_tx) OR sender_address = (SELECT address FROM source_tx))
+            AND nonce = (SELECT nonce FROM source_tx)
+        ),
+        mined_tx AS (
+          SELECT tx_id
+          FROM txs
+          WHERE (sponsor_address = (SELECT address FROM source_tx) OR sender_address = (SELECT address FROM source_tx))
+            AND nonce = (SELECT nonce FROM source_tx)
+            AND canonical = true
+            AND microblock_canonical = true
+        ),
+        highest_fee_mempool_tx AS (
+          SELECT tx_id FROM same_nonce_mempool_txs ORDER BY fee_rate DESC LIMIT 1
         ),
         winning_tx AS (
-          SELECT * FROM same_nonce_txs ORDER BY fee_rate DESC LIMIT 1
+          SELECT COALESCE((SELECT tx_id FROM mined_tx), (SELECT tx_id FROM highest_fee_mempool_tx)) AS tx_id
         )
         UPDATE mempool_txs
         SET pruned = TRUE,
           status = ${DbTxStatus.DroppedReplaceByFee},
           replaced_by_tx_id = (SELECT tx_id FROM winning_tx)
-        WHERE tx_id IN (SELECT tx_id FROM same_nonce_txs)
+        WHERE tx_id IN (SELECT tx_id FROM same_nonce_mempool_txs)
           AND tx_id <> (SELECT tx_id FROM winning_tx)
       `;
     }
@@ -2559,7 +2600,13 @@ export class PgWriteStore extends PgStore {
     const updatedMbTxs = updatedMbTxsQuery.map(r => parseTxQueryResult(r));
     const txsToPrune: TransactionHeader[] = updatedMbTxs
       .filter(tx => tx.canonical && tx.microblock_canonical)
-      .map(tx => ({ txId: tx.tx_id, sender: tx.sender_address, nonce: tx.nonce }));
+      .map(tx => ({
+        txId: tx.tx_id,
+        sender_address: tx.sender_address,
+        sponsor_address: tx.sponsor_address,
+        sponsored: tx.sponsored,
+        nonce: tx.nonce,
+      }));
     const removedTxsResult = await this.pruneMempoolTxs(sql, txsToPrune);
     if (removedTxsResult.removedTxs.length > 0) {
       logger.debug(
@@ -2729,17 +2776,32 @@ export class PgWriteStore extends PgStore {
     if (transactions.length === 0) return { restoredTxs: [] };
     if (logger.isLevelEnabled('debug'))
       for (const tx of transactions)
-        logger.debug(`Restoring mempool tx: ${tx.txId} sender: ${tx.sender} nonce: ${tx.nonce}`);
+        logger.debug(
+          `Restoring mempool tx: ${tx.txId} sender: ${tx.sender_address} nonce: ${tx.nonce}`
+        );
 
-    // Also restore transactions for the same `sender_address` with the same `nonce`.
-    const inputData = transactions.map(t => [t.txId.replace('0x', '\\x'), t.sender, t.nonce]);
+    // Restore new non-canonical txs into the mempool. Also restore transactions for the same
+    // senders/sponsors with the same `nonce`s. We will recalculate replace-by-fee ordering shortly
+    // afterwards.
+    const inputData = transactions.map(t => [
+      t.txId.replace('0x', '\\x'),
+      t.sender_address,
+      t.sponsor_address ?? 'null',
+      t.sponsored.toString(),
+      t.nonce,
+    ]);
     const updatedRows = await sql<{ tx_id: string }[]>`
-      WITH input_data (tx_id, sender_address, nonce) AS (VALUES ${sql(inputData)}),
+      WITH input_data (tx_id, sender_address, sponsor_address, sponsored, nonce)
+        AS (VALUES ${sql(inputData)}),
       affected_mempool_tx_ids AS (
         SELECT m.tx_id
           FROM mempool_txs AS m
           INNER JOIN input_data AS i
-          ON m.sender_address = i.sender_address AND m.nonce = i.nonce::int
+          ON m.nonce = i.nonce::int
+            AND (CASE i.sponsored::boolean
+              WHEN true THEN (m.sponsor_address = i.sponsor_address OR m.sender_address = i.sponsor_address)
+              ELSE (m.sponsor_address = i.sender_address OR m.sender_address = i.sender_address)
+            END)
         UNION
         SELECT tx_id::bytea FROM input_data
       ),
@@ -2799,29 +2861,38 @@ export class PgWriteStore extends PgStore {
     if (transactions.length === 0) return { removedTxs: [] };
     if (logger.isLevelEnabled('debug'))
       for (const tx of transactions)
-        logger.debug(`Pruning mempool tx: ${tx.txId} sender: ${tx.sender} nonce: ${tx.nonce}`);
+        logger.debug(
+          `Pruning mempool tx: ${tx.txId} sender: ${tx.sender_address} nonce: ${tx.nonce}`
+        );
 
-    // Also prune transactions for the same `sender_address` with the same `nonce`.
-    const inputData = transactions.map(t => [t.txId.replace('0x', '\\x'), t.sender, t.nonce]);
+    // Prune confirmed txs from the mempool. Also prune transactions for the same senders/sponsors
+    // with the same `nonce`s. We'll recalculate replaced-by-fee data later when new block data is
+    // written to the DB.
+    const inputData = transactions.map(t => [
+      t.txId.replace('0x', '\\x'),
+      t.sender_address,
+      t.sponsor_address ?? 'null',
+      t.sponsored.toString(),
+      t.nonce,
+    ]);
     const updateResults = await sql<{ tx_id: string }[]>`
-      WITH input_data (tx_id, sender_address, nonce) AS (VALUES ${sql(inputData)}),
+      WITH input_data (tx_id, sender_address, sponsor_address, sponsored, nonce)
+        AS (VALUES ${sql(inputData)}),
       affected_mempool_tx_ids AS (
-        SELECT DISTINCT ON(tx_id) tx_id, replaced_by_tx_id
-        FROM (
-          SELECT m.tx_id, i.tx_id::bytea AS replaced_by_tx_id
-            FROM mempool_txs AS m
-            INNER JOIN input_data AS i
-            ON m.sender_address = i.sender_address AND m.nonce = i.nonce::int
-          UNION
-          SELECT tx_id::bytea, NULL::bytea AS replaced_by_tx_id FROM input_data
-        ) AS subquery
-        ORDER BY tx_id, replaced_by_tx_id DESC
+        SELECT m.tx_id
+          FROM mempool_txs AS m
+          INNER JOIN input_data AS i
+          ON m.nonce = i.nonce::int
+            AND (CASE i.sponsored::boolean
+              WHEN true THEN (m.sponsor_address = i.sponsor_address OR m.sender_address = i.sponsor_address)
+              ELSE (m.sponsor_address = i.sender_address OR m.sender_address = i.sender_address)
+            END)
+        UNION
+        SELECT tx_id::bytea FROM input_data
       ),
       pruned AS (
         UPDATE mempool_txs
-        SET pruned = true, replaced_by_tx_id = (
-          SELECT replaced_by_tx_id FROM affected_mempool_tx_ids WHERE tx_id = mempool_txs.tx_id
-        )
+        SET pruned = true, replaced_by_tx_id = NULL
         WHERE pruned = false AND tx_id IN (SELECT tx_id FROM affected_mempool_tx_ids)
         RETURNING tx_id
       ),
@@ -2899,7 +2970,14 @@ export class PgWriteStore extends PgStore {
     const q = new PgWriteQueue();
     q.enqueue(async () => {
       const txResult = await sql<
-        { tx_id: string; sender_address: string; nonce: number; update_balances_count: number }[]
+        {
+          tx_id: string;
+          sender_address: string;
+          sponsor_address: string | null;
+          sponsored: boolean;
+          nonce: number;
+          update_balances_count: number;
+        }[]
       >`
         WITH updated_txs AS (
           UPDATE txs
@@ -2940,12 +3018,15 @@ export class PgWriteStore extends PgStore {
           SET balance = ft_balances.balance + EXCLUDED.balance
           RETURNING ft_balances.address
         )
-        SELECT tx_id, sender_address, nonce, (SELECT COUNT(*)::int FROM update_ft_balances) AS update_balances_count
+        SELECT tx_id, sender_address, sponsor_address, sponsored, nonce,
+          (SELECT COUNT(*)::int FROM update_ft_balances) AS update_balances_count
         FROM updated_txs
       `;
       const txs = txResult.map(row => ({
         txId: row.tx_id,
-        sender: row.sender_address,
+        sender_address: row.sender_address,
+        sponsor_address: row.sponsor_address ?? undefined,
+        sponsored: row.sponsored,
         nonce: row.nonce,
       }));
       if (canonical) {

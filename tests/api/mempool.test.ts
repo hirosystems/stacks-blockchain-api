@@ -2194,7 +2194,7 @@ describe('mempool tests', () => {
     });
   });
 
-  test('prunes transactions with nonces that were already confirmed', async () => {
+  test('prunes and restores replaced-by-fee transactions', async () => {
     // Initial block
     await db.update(
       new TestBlockBuilder({
@@ -2218,6 +2218,7 @@ describe('mempool tests', () => {
       ],
     });
     let request = await supertest(api.server).get(`/extended/v1/address/${sender_address}/mempool`);
+    expect(request.body.total).toBe(1);
     expect(request.body.results).toHaveLength(1);
 
     // Add another tx with nonce = 1 to the mempool with a higher fee. Previous tx is marked as
@@ -2234,6 +2235,7 @@ describe('mempool tests', () => {
       ],
     });
     request = await supertest(api.server).get(`/extended/v1/address/${sender_address}/mempool`);
+    expect(request.body.total).toBe(1);
     expect(request.body.results).toHaveLength(1);
     request = await supertest(api.server).get(`/extended/v1/tx/0xff0001`);
     expect(request.body).toEqual(
@@ -2261,8 +2263,9 @@ describe('mempool tests', () => {
         .build()
     );
 
-    // Mempool txs are now pruned and those transactions marked as replaced
+    // Old mempool txs are now pruned and both marked as replaced by the confirmed tx.
     request = await supertest(api.server).get(`/extended/v1/address/${sender_address}/mempool`);
+    expect(request.body.total).toBe(0);
     expect(request.body.results).toHaveLength(0);
     request = await supertest(api.server).get(`/extended/v1/tx/0xff0001`);
     expect(request.body).toEqual(
@@ -2295,14 +2298,31 @@ describe('mempool tests', () => {
       }).build()
     );
 
-    // Now both conflicting nonce txs should coexist in the mempool, but the lower fee tx is marked
-    // as RBF-ed by the higher fee tx.
+    // Only the highest fee tx is restored to the mempool, and all others marked as RBFd by that
+    // one.
     request = await supertest(api.server).get(`/extended/v1/address/${sender_address}/mempool`);
-    expect(request.body.results).toHaveLength(2);
+    expect(request.body.results).toHaveLength(1);
     request = await supertest(api.server).get(`/extended/v1/tx/0xff0001`);
-    expect(request.body.replaced_by_tx_id).toBe(null);
+    expect(request.body).toEqual(
+      expect.objectContaining({
+        tx_status: 'dropped_replace_by_fee',
+        replaced_by_tx_id: '0xff0002',
+      })
+    );
+    request = await supertest(api.server).get(`/extended/v1/tx/0xff0002`); // Winner
+    expect(request.body).toEqual(
+      expect.objectContaining({
+        tx_status: 'pending',
+        replaced_by_tx_id: null,
+      })
+    );
     request = await supertest(api.server).get(`/extended/v1/tx/0xaa0001`);
-    expect(request.body.replaced_by_tx_id).toBe('0xff0001');
+    expect(request.body).toEqual(
+      expect.objectContaining({
+        tx_status: 'dropped_replace_by_fee',
+        replaced_by_tx_id: '0xff0002',
+      })
+    );
   });
 
   test('account estimated balance from mempool activity', async () => {
