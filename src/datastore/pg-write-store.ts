@@ -2059,7 +2059,6 @@ export class PgWriteStore extends PgStore {
     txIds: string[],
     mempool: boolean = true
   ): Promise<void> {
-    // FIXME: counts
     for (const txId of txIds) {
       // If a transaction with equal nonce was confirmed in a block, mark all conflicting mempool
       // txs as RBF. Otherwise, look for the one with the highest fee in the mempool and RBF all the
@@ -2094,13 +2093,23 @@ export class PgWriteStore extends PgStore {
         ),
         winning_tx AS (
           SELECT COALESCE((SELECT tx_id FROM mined_tx), (SELECT tx_id FROM highest_fee_mempool_tx)) AS tx_id
+        ),
+        txs_to_prune AS (
+          SELECT tx_id, pruned
+          FROM mempool_txs
+          WHERE tx_id IN (SELECT tx_id FROM same_nonce_mempool_txs)
+            AND tx_id <> (SELECT tx_id FROM winning_tx)
+        ),
+        mempool_count_updates AS (
+          UPDATE chain_tip SET
+            mempool_tx_count = mempool_tx_count - (SELECT COUNT(*) FROM txs_to_prune WHERE pruned = false),
+            mempool_updated_at = NOW()
         )
         UPDATE mempool_txs
         SET pruned = TRUE,
           status = ${DbTxStatus.DroppedReplaceByFee},
           replaced_by_tx_id = (SELECT tx_id FROM winning_tx)
-        WHERE tx_id IN (SELECT tx_id FROM same_nonce_mempool_txs)
-          AND tx_id <> (SELECT tx_id FROM winning_tx)
+        WHERE tx_id IN (SELECT tx_id FROM txs_to_prune)
       `;
     }
   }

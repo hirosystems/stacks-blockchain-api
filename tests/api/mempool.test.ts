@@ -2216,7 +2216,7 @@ describe('mempool tests', () => {
         }),
       ],
     });
-    let request = await supertest(api.server).get(`/extended/v1/address/${sender_address}/mempool`);
+    let request = await supertest(api.server).get(`/extended/v1/tx/mempool`);
     expect(request.body.total).toBe(1);
     expect(request.body.results).toHaveLength(1);
 
@@ -2233,7 +2233,7 @@ describe('mempool tests', () => {
         }),
       ],
     });
-    request = await supertest(api.server).get(`/extended/v1/address/${sender_address}/mempool`);
+    request = await supertest(api.server).get(`/extended/v1/tx/mempool`);
     expect(request.body.total).toBe(1);
     expect(request.body.results).toHaveLength(1);
     request = await supertest(api.server).get(`/extended/v1/tx/0xff0001`);
@@ -2259,7 +2259,7 @@ describe('mempool tests', () => {
         }),
       ],
     });
-    request = await supertest(api.server).get(`/extended/v1/address/${sender_address}/mempool`);
+    request = await supertest(api.server).get(`/extended/v1/tx/mempool`);
     expect(request.body.total).toBe(1);
     expect(request.body.results).toHaveLength(1);
     expect(request.body.results[0].tx_id).toBe('0xff0002');
@@ -2290,7 +2290,7 @@ describe('mempool tests', () => {
     );
 
     // Old mempool txs are now pruned and both marked as replaced by the confirmed tx.
-    request = await supertest(api.server).get(`/extended/v1/address/${sender_address}/mempool`);
+    request = await supertest(api.server).get(`/extended/v1/tx/mempool`);
     expect(request.body.total).toBe(0);
     expect(request.body.results).toHaveLength(0);
     request = await supertest(api.server).get(`/extended/v1/tx/0xff0001`);
@@ -2326,7 +2326,7 @@ describe('mempool tests', () => {
 
     // Only the highest fee tx is restored to the mempool, and all others are pruned and marked as
     // RBFd by it.
-    request = await supertest(api.server).get(`/extended/v1/address/${sender_address}/mempool`);
+    request = await supertest(api.server).get(`/extended/v1/tx/mempool`);
     expect(request.body.total).toBe(1);
     expect(request.body.results).toHaveLength(1);
     request = await supertest(api.server).get(`/extended/v1/tx/0xff0002`); // Winner
