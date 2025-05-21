@@ -37,6 +37,7 @@ try {
       WHERE (sc.abi::text = '"null"')
         AND sc.canonical = TRUE
         AND txs.canonical = TRUE
+        AND txs.microblock_canonical = TRUE
         AND txs.status = 1
         AND sc.block_height > ${lastBlockHeight}
       ORDER BY sc.block_height ASC
