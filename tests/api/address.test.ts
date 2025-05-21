@@ -2696,7 +2696,7 @@ describe('address tests', () => {
     const mempoolTx1: DbMempoolTxRaw = {
       tx_id: '0x52123456',
       anchor_mode: 3,
-      nonce: 1,
+      nonce: 6,
       raw_tx: bufferToHex(Buffer.from('test-raw-mempool-tx')),
       type_id: DbTxTypeId.Coinbase,
       status: 1,
