@@ -30,13 +30,16 @@ try {
   // 3) Main processing loop: Fetch and patch contracts in batches
   while (true) {
     // 3.1) Find contracts whose ABI is still missing (paginated)
-    const missing = await sql<{ contract_id: string; block_height: number }[]>`
-      SELECT contract_id, block_height
-      FROM smart_contracts
-      WHERE (abi::text = '"null"')
-        AND canonical = TRUE
-        AND block_height > ${lastBlockHeight}
-      ORDER BY block_height ASC
+    const missing = await sql<{ contract_id: string; block_height: number; tx_status: number }[]>`
+      SELECT sc.contract_id, sc.block_height
+      FROM smart_contracts sc
+      JOIN txs ON sc.tx_id = txs.tx_id
+      WHERE (sc.abi::text = '"null"')
+        AND sc.canonical = TRUE
+        AND txs.canonical = TRUE
+        AND txs.status = 1
+        AND sc.block_height > ${lastBlockHeight}
+      ORDER BY sc.block_height ASC
       LIMIT ${BATCH_SIZE}
     `;
 
