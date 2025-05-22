@@ -208,7 +208,10 @@ export class PgWriteStore extends PgStore {
     await this.sqlWriteTransaction(async sql => {
       const chainTip = await this.getChainTip(sql);
       await this.handleReorg(sql, data.block, chainTip.block_height);
-      const isCanonical = data.block.block_height > chainTip.block_height;
+      // Our `chain_tip` table starts at zero, so we need to add a special check to make sure the
+      // block 0 boot data received from the Stacks node is considered canonical.
+      const isCanonical =
+        data.block.block_height == 0 || data.block.block_height > chainTip.block_height;
       if (!isCanonical) {
         markBlockUpdateDataAsNonCanonical(data);
       } else {
