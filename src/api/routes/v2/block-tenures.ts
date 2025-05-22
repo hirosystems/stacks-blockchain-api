@@ -1,13 +1,13 @@
 import { Type, TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
 import { FastifyPluginAsync } from 'fastify';
 import { Server } from 'node:http';
-import { handleBlockCache } from '../../../../src/api/controllers/cache-controller';
-import { getPagingQueryLimit, ResourceType } from '../../../../src/api/pagination';
-import { CursorOffsetParam, LimitParam } from '../../../../src/api/schemas/params';
-import { BlockListV2ResponseSchema } from '../../../../src/api/schemas/responses/responses';
+import { handleBlockCache } from '../../../api/controllers/cache-controller';
+import { getPagingQueryLimit, ResourceType } from '../../../api/pagination';
+import { CursorOffsetParam, LimitParam } from '../../../api/schemas/params';
+import { BlockListV2ResponseSchema } from '../../../api/schemas/responses/responses';
 import { BlockTenureParamsSchema } from './schemas';
-import { NotFoundError } from '../../../../src/errors';
-import { NakamotoBlock } from '../../../../src/api/schemas/entities/block';
+import { NotFoundError } from '../../../errors';
+import { NakamotoBlock } from '../../../api/schemas/entities/block';
 import { parseDbNakamotoBlock } from './helpers';
 
 export const BlockTenureRoutes: FastifyPluginAsync<
