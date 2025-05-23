@@ -284,7 +284,9 @@ export class PgWriteStore extends PgStore {
       if ((await this.updateBlock(sql, data.block)) !== 0) {
         const q = new PgWriteQueue();
         q.enqueue(() => this.updateMinerRewards(sql, data.minerRewards));
-        if (isCanonical) {
+        // Block 0 is non-canonical, but we need to make sure its STX mint events get considered in
+        // balance calculations.
+        if (data.block.block_height == 0 || isCanonical) {
           // Use `data.txs` directly instead of `newTxData` for these STX/FT balance updates because
           // we don't want to skip balance changes in transactions that were previously confirmed
           // via microblocks.
