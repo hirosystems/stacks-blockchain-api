@@ -287,7 +287,7 @@ function parseDataStoreTxEventData(
           block_height: blockData.block_height,
           clarity_version: clarityVersion,
           source_code: tx.parsed_tx.payload.code_body,
-          abi: JSON.stringify(tx.core_tx.contract_abi),
+          abi: JSON.stringify(tx.core_tx.contract_interface ?? tx.core_tx.contract_abi),
           canonical: true,
         });
         break;
