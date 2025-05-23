@@ -417,7 +417,7 @@ describe('microblock tests', () => {
           tx_id: '0x02',
           tx_index: 0,
           anchor_mode: 3,
-          nonce: 0,
+          nonce: 1,
           raw_tx: '0x141414',
           type_id: DbTxTypeId.TokenTransfer,
           status: 1,
@@ -460,7 +460,7 @@ describe('microblock tests', () => {
           tx_id: '0x03',
           tx_index: 1,
           anchor_mode: 3,
-          nonce: 0,
+          nonce: 2,
           raw_tx: '0x141415',
           type_id: DbTxTypeId.ContractCall,
           status: 1,
@@ -509,11 +509,13 @@ describe('microblock tests', () => {
         const mempoolTx1: DbMempoolTxRaw = {
           ...mbTx1,
           pruned: false,
+          replaced_by_tx_id: undefined,
           receipt_time: 123456789,
         };
         const mempoolTx2: DbMempoolTxRaw = {
           ...mbTx2,
           pruned: false,
+          replaced_by_tx_id: undefined,
           receipt_time: 123456789,
         };
         await db.updateMempoolTxs({ mempoolTxs: [mempoolTx1, mempoolTx2] });

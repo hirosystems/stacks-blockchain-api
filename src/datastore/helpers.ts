@@ -133,6 +133,7 @@ export const MEMPOOL_TX_COLUMNS = [
   'type_id',
   'anchor_mode',
   'status',
+  'replaced_by_tx_id',
   'receipt_time',
   'receipt_block_height',
   'post_conditions',
@@ -302,6 +303,7 @@ export function parseMempoolTxQueryResult(result: MempoolTxQueryResult): DbMempo
     type_id: result.type_id as DbTxTypeId,
     anchor_mode: result.anchor_mode as DbTxAnchorMode,
     status: result.status,
+    replaced_by_tx_id: result.replaced_by_tx_id,
     receipt_time: result.receipt_time,
     post_conditions: result.post_conditions,
     fee_rate: BigInt(result.fee_rate),
@@ -1283,6 +1285,7 @@ export function convertTxQueryResultToDbMempoolTx(txs: TxQueryResult[]): DbMempo
           ? BigInt(tx.token_transfer_amount)
           : tx.token_transfer_amount,
       sponsor_address: tx.sponsor_address ?? undefined,
+      status: DbTxStatus.Pending,
     });
     dbMempoolTxs.push(dbMempoolTx);
   }

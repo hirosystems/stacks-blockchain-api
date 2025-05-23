@@ -380,7 +380,11 @@ describe('cache-control tests', () => {
     expect(request3.text).toBe('');
 
     // Drop one tx.
-    await db.dropMempoolTxs({ status: DbTxStatus.DroppedReplaceByFee, txIds: ['0x1101'] });
+    await db.dropMempoolTxs({
+      status: DbTxStatus.DroppedReplaceByFee,
+      txIds: ['0x1101'],
+      new_tx_id: '0x1109',
+    });
 
     // Cache is now a miss.
     const request4 = await supertest(api.server)
@@ -753,7 +757,9 @@ describe('cache-control tests', () => {
 
     // Add STX tx.
     await db.updateMempoolTxs({
-      mempoolTxs: [testMempoolTx({ tx_id: '0x0001', receipt_time: 1000, sender_address })],
+      mempoolTxs: [
+        testMempoolTx({ tx_id: '0x0001', receipt_time: 1000, sender_address, nonce: 0 }),
+      ],
     });
 
     // Valid ETag.
@@ -772,7 +778,12 @@ describe('cache-control tests', () => {
     // Add sponsor tx.
     await db.updateMempoolTxs({
       mempoolTxs: [
-        testMempoolTx({ tx_id: '0x0002', receipt_time: 2000, sponsor_address: sender_address }),
+        testMempoolTx({
+          tx_id: '0x0002',
+          receipt_time: 2000,
+          sponsor_address: sender_address,
+          nonce: 1,
+        }),
       ],
     });
 
@@ -795,6 +806,7 @@ describe('cache-control tests', () => {
           tx_id: '0x0003',
           receipt_time: 3000,
           token_transfer_recipient_address: sender_address,
+          nonce: 2,
         }),
       ],
     });
@@ -813,7 +825,7 @@ describe('cache-control tests', () => {
 
     // Change mempool with no changes to this address.
     await db.updateMempoolTxs({
-      mempoolTxs: [testMempoolTx({ tx_id: '0x0004', receipt_time: 4000 })],
+      mempoolTxs: [testMempoolTx({ tx_id: '0x0004', receipt_time: 4000, nonce: 3 })],
     });
 
     // Cache still works.

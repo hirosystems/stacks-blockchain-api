@@ -969,7 +969,7 @@ describe('Rosetta API', () => {
         pruned: false,
         tx_id: `0x891200000000000000000000000000000000000000000000000000000000000${i}`,
         anchor_mode: 3,
-        nonce: 0,
+        nonce: i,
         raw_tx: '0x6655443322',
         type_id: DbTxTypeId.Coinbase,
         receipt_time: (new Date(`2020-07-09T15:14:0${i}Z`).getTime() / 1000) | 0,
