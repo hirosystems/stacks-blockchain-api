@@ -178,10 +178,20 @@ export class PgWriteStore extends PgStore {
           receive_timestamp: string;
           event_path: string;
         }[]
-      >`INSERT INTO event_observer_requests(
-          event_path, payload
-        ) values(${eventPath}, ${payload})
-        RETURNING id, receive_timestamp::text, event_path
+      >`WITH inserted AS (
+          INSERT INTO event_observer_requests(
+            event_path, payload
+          ) values(${eventPath}, ${payload})
+          RETURNING id, receive_timestamp, event_path
+        ),
+        latest AS (
+          INSERT INTO event_observer_timestamps (id, receive_timestamp, event_path)
+          (SELECT id, receive_timestamp, event_path FROM inserted)
+          ON CONFLICT (event_path) DO UPDATE SET
+            id = EXCLUDED.id,
+            receive_timestamp = EXCLUDED.receive_timestamp
+        )
+        SELECT id, receive_timestamp::text, event_path FROM inserted
       `;
       if (insertResult.length !== 1) {
         throw new Error(
@@ -193,7 +203,7 @@ export class PgWriteStore extends PgStore {
 
   async update(data: DataStoreBlockUpdateData): Promise<void> {
     let garbageCollectedMempoolTxs: string[] = [];
-    let batchedTxData: DataStoreTxEventData[] = [];
+    let newTxData: DataStoreTxEventData[] = [];
 
     await this.sqlWriteTransaction(async sql => {
       const chainTip = await this.getChainTip(sql);
@@ -213,7 +223,7 @@ export class PgWriteStore extends PgStore {
       // Insert microblocks, if any. Clear already inserted microblock txs from the anchor-block
       // update data to avoid duplicate inserts.
       const insertedMicroblockHashes = await this.insertMicroblocksFromBlockUpdate(sql, data);
-      batchedTxData = data.txs.filter(entry => {
+      newTxData = data.txs.filter(entry => {
         return !insertedMicroblockHashes.has(entry.tx.microblock_hash);
       });
 
@@ -254,7 +264,7 @@ export class PgWriteStore extends PgStore {
 
         // Clear accepted microblock txs from the anchor-block update data to avoid duplicate
         // inserts.
-        batchedTxData = batchedTxData.filter(entry => {
+        newTxData = newTxData.filter(entry => {
           const matchingTx = acceptedMicroblockTxs.find(tx => tx.tx_id === entry.tx.tx_id);
           return !matchingTx;
         });
@@ -274,30 +284,35 @@ export class PgWriteStore extends PgStore {
       if ((await this.updateBlock(sql, data.block)) !== 0) {
         const q = new PgWriteQueue();
         q.enqueue(() => this.updateMinerRewards(sql, data.minerRewards));
-        if (isCanonical) {
-          q.enqueue(() => this.updateStxBalances(sql, batchedTxData, data.minerRewards));
-          q.enqueue(() => this.updateFtBalances(sql, batchedTxData));
+        // Block 0 is non-canonical, but we need to make sure its STX mint events get considered in
+        // balance calculations.
+        if (data.block.block_height == 0 || isCanonical) {
+          // Use `data.txs` directly instead of `newTxData` for these STX/FT balance updates because
+          // we don't want to skip balance changes in transactions that were previously confirmed
+          // via microblocks.
+          q.enqueue(() => this.updateStxBalances(sql, data.txs, data.minerRewards));
+          q.enqueue(() => this.updateFtBalances(sql, data.txs));
         }
         if (data.poxSetSigners && data.poxSetSigners.signers) {
           const poxSet = data.poxSetSigners;
           q.enqueue(() => this.updatePoxSetsBatch(sql, data.block, poxSet));
         }
-        if (batchedTxData.length > 0) {
+        if (newTxData.length > 0) {
           q.enqueue(() =>
             this.updateTx(
               sql,
-              batchedTxData.map(b => b.tx)
+              newTxData.map(b => b.tx)
             )
           );
-          q.enqueue(() => this.updateStxEvents(sql, batchedTxData));
-          q.enqueue(() => this.updatePrincipalStxTxs(sql, batchedTxData));
-          q.enqueue(() => this.updateSmartContractEvents(sql, batchedTxData));
-          q.enqueue(() => this.updatePoxSyntheticEvents(sql, 'pox2_events', batchedTxData));
-          q.enqueue(() => this.updatePoxSyntheticEvents(sql, 'pox3_events', batchedTxData));
-          q.enqueue(() => this.updatePoxSyntheticEvents(sql, 'pox4_events', batchedTxData));
-          q.enqueue(() => this.updateStxLockEvents(sql, batchedTxData));
-          q.enqueue(() => this.updateFtEvents(sql, batchedTxData));
-          for (const entry of batchedTxData) {
+          q.enqueue(() => this.updateStxEvents(sql, newTxData));
+          q.enqueue(() => this.updatePrincipalStxTxs(sql, newTxData));
+          q.enqueue(() => this.updateSmartContractEvents(sql, newTxData));
+          q.enqueue(() => this.updatePoxSyntheticEvents(sql, 'pox2_events', newTxData));
+          q.enqueue(() => this.updatePoxSyntheticEvents(sql, 'pox3_events', newTxData));
+          q.enqueue(() => this.updatePoxSyntheticEvents(sql, 'pox4_events', newTxData));
+          q.enqueue(() => this.updateStxLockEvents(sql, newTxData));
+          q.enqueue(() => this.updateFtEvents(sql, newTxData));
+          for (const entry of newTxData) {
             q.enqueue(() => this.updateNftEvents(sql, entry.tx, entry.nftEvents));
             q.enqueue(() => this.updateSmartContracts(sql, entry.tx, entry.smartContracts));
             q.enqueue(() => this.updateNamespaces(sql, entry.tx, entry.namespaces));
@@ -1883,6 +1898,7 @@ export class PgWriteStore extends PgStore {
       execution_cost_runtime: tx.execution_cost_runtime,
       execution_cost_write_count: tx.execution_cost_write_count,
       execution_cost_write_length: tx.execution_cost_write_length,
+      vm_error: tx.vm_error ?? null,
     }));
 
     let count = 0;
@@ -3479,6 +3495,7 @@ export class PgWriteStore extends PgStore {
       execution_cost_runtime: tx.execution_cost_runtime,
       execution_cost_write_count: tx.execution_cost_write_count,
       execution_cost_write_length: tx.execution_cost_write_length,
+      vm_error: tx.vm_error ?? null,
     }));
     await sql`INSERT INTO txs ${sql(values)}`;
   }

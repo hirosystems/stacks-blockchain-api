@@ -494,6 +494,7 @@ export async function getRosettaAccountBalance(stacksAddress: string, atBlockHei
     req
   );
   // Also query for locked balance, requires specifying a special constant sub_account
+  req.block_identifier = { hash: account.block_identifier.hash };
   req.account_identifier.sub_account = { address: RosettaConstants.StackedBalance };
   const locked = await fetchRosetta<RosettaAccountBalanceRequest, RosettaAccountBalanceResponse>(
     '/rosetta/v1/account/balance',

@@ -175,5 +175,18 @@ describe('Block-zero event handling', () => {
     const firstMintEvent = mintTxEvents.filter(r => r.event_index === 0)[0];
     expect(firstMintEvent).toBeDefined();
     expect(firstMintEvent).toEqual(stxMintEvent);
+
+    // Compare balance endpoints for receiver address
+    const address = firstMintEvent.asset.recipient;
+    let result = await supertest(testEnv.api.server).get(`/extended/v1/address/${address}/stx`);
+    expect(result.status).toBe(200);
+    expect(result.type).toBe('application/json');
+    const v1balance = JSON.parse(result.text).balance;
+    result = await supertest(testEnv.api.server).get(
+      `/extended/v2/addresses/${address}/balances/stx`
+    );
+    expect(result.status).toBe(200);
+    expect(result.type).toBe('application/json');
+    expect(JSON.parse(result.text).balance).toBe(v1balance);
   });
 });

@@ -124,6 +124,7 @@ export const TX_COLUMNS = [
   'execution_cost_runtime',
   'execution_cost_write_count',
   'execution_cost_write_length',
+  'vm_error',
 ];
 
 export const MEMPOOL_TX_COLUMNS = [
@@ -384,6 +385,7 @@ export function parseTxQueryResult(result: ContractTxQueryResult): DbTx {
     execution_cost_write_count: Number.parseInt(result.execution_cost_write_count),
     execution_cost_write_length: Number.parseInt(result.execution_cost_write_length),
     abi: parseAbiColumn(result.abi),
+    vm_error: result.vm_error,
   };
   parseTxTypeSpecificQueryResult(result, tx);
   return tx;
@@ -1206,6 +1208,7 @@ export function createDbTxFromCoreMsg(msg: CoreNodeParsedTxMessage): DbTxRaw {
     execution_cost_runtime: coreTx.execution_cost.runtime,
     execution_cost_write_count: coreTx.execution_cost.write_count,
     execution_cost_write_length: coreTx.execution_cost.write_length,
+    vm_error: coreTx.vm_error,
   };
   extractTransactionPayload(parsedTx, dbTx);
   return dbTx;

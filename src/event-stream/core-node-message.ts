@@ -245,6 +245,7 @@ export interface CoreNodeTxMessage {
   microblock_sequence: number | null;
   microblock_hash: string | null;
   microblock_parent_hash: string | null;
+  vm_error?: string | null;
   burnchain_op?: BurnchainOp | null;
 }
 

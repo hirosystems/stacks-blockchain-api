@@ -134,6 +134,7 @@ describe('postgres datastore', () => {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      vm_error: null,
     };
     const tx2 = {
       ...tx,
@@ -318,6 +319,7 @@ describe('postgres datastore', () => {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      vm_error: null,
     };
     const createFtEvent = (
       sender: string,
@@ -489,6 +491,7 @@ describe('postgres datastore', () => {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      vm_error: null,
     };
     const createNFtEvents = (
       sender: string,
@@ -671,6 +674,7 @@ describe('postgres datastore', () => {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      vm_error: null,
     };
     await db.updateTx(client, tx);
     const blockTxs = await db.getBlockTxs(block.index_block_hash);
@@ -750,6 +754,7 @@ describe('postgres datastore', () => {
         execution_cost_runtime: 0,
         execution_cost_write_count: 0,
         execution_cost_write_length: 0,
+        vm_error: null,
       };
       const stxEvent: DbStxEvent = {
         event_type: DbEventTypeId.StxAsset,
@@ -1084,6 +1089,7 @@ describe('postgres datastore', () => {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      vm_error: null,
     };
     const createStxEvent = (
       sender: string,
@@ -1149,6 +1155,7 @@ describe('postgres datastore', () => {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      vm_error: null,
     };
     const createFtEvent = (
       sender: string,
@@ -1225,6 +1232,7 @@ describe('postgres datastore', () => {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      vm_error: null,
     };
     const createNFtEvents = (
       sender: string,
@@ -2060,6 +2068,7 @@ describe('postgres datastore', () => {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      vm_error: null,
     };
     await db.update({
       block: dbBlock,
@@ -2146,6 +2155,7 @@ describe('postgres datastore', () => {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      vm_error: null,
     };
     await expect(db.updateTx(client, { ...tx, raw_tx: '0x' })).rejects.toEqual(
       new Error('new row for relation "txs" violates check constraint "valid_token_transfer"')
@@ -2238,6 +2248,7 @@ describe('postgres datastore', () => {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      vm_error: null,
     };
     await expect(db.updateTx(client, { ...tx, raw_tx: '0x' })).rejects.toEqual(
       new Error('new row for relation "txs" violates check constraint "valid_smart_contract"')
@@ -2339,6 +2350,7 @@ describe('postgres datastore', () => {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      vm_error: null,
     };
     await expect(db.updateTx(client, tx)).rejects.toEqual(
       new Error(
@@ -2419,6 +2431,7 @@ describe('postgres datastore', () => {
       smart_contract_contract_id: 'my-contract',
       smart_contract_source_code: '(src)',
       sponsor_nonce: undefined,
+      vm_error: null,
     };
     expect(txQuery.result).toEqual(txRes);
   });
@@ -2482,6 +2495,7 @@ describe('postgres datastore', () => {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      vm_error: null,
     };
     await expect(db.updateTx(client, { ...tx, raw_tx: '0x' })).rejects.toEqual(
       new Error('new row for relation "txs" violates check constraint "valid_contract_call"')
@@ -2574,6 +2588,7 @@ describe('postgres datastore', () => {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      vm_error: null,
     };
     await expect(db.updateTx(client, { ...tx, raw_tx: '0x' })).rejects.toEqual(
       new Error('new row for relation "txs" violates check constraint "valid_poison_microblock"')
@@ -2665,6 +2680,7 @@ describe('postgres datastore', () => {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      vm_error: null,
     };
     await expect(db.updateTx(client, { ...tx, raw_tx: '0x' })).rejects.toEqual(
       new Error('new row for relation "txs" violates check constraint "valid_coinbase"')
@@ -2759,6 +2775,7 @@ describe('postgres datastore', () => {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      vm_error: null,
     };
     const updatedRows = await db.updateTx(client, tx);
     expect(updatedRows).toBe(1);
@@ -2835,6 +2852,7 @@ describe('postgres datastore', () => {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      vm_error: null,
     };
     const tx2: DbTx = {
       ...tx1,
@@ -3377,6 +3395,7 @@ describe('postgres datastore', () => {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      vm_error: null,
     };
     const tx1b: DbTxRaw = {
       ...tx1,
@@ -3656,6 +3675,7 @@ describe('postgres datastore', () => {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      vm_error: null,
     };
 
     const tx2: DbTxRaw = {
@@ -3693,6 +3713,7 @@ describe('postgres datastore', () => {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      vm_error: null,
     };
 
     const stxLockEvent1: DbStxLockEvent = {
@@ -3915,6 +3936,7 @@ describe('postgres datastore', () => {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      vm_error: null,
     };
 
     const tx2: DbTxRaw = {
@@ -3952,6 +3974,7 @@ describe('postgres datastore', () => {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      vm_error: null,
     };
 
     const stxLockEvent1: DbStxLockEvent = {
@@ -4200,6 +4223,7 @@ describe('postgres datastore', () => {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      vm_error: null,
     };
     const contract1: DbSmartContract = {
       tx_id: tx3.tx_id,
@@ -4727,6 +4751,7 @@ describe('postgres datastore', () => {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      vm_error: null,
     };
 
     const tx2: DbTxRaw = {
@@ -4764,6 +4789,7 @@ describe('postgres datastore', () => {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      vm_error: null,
     };
 
     // test sponsored tx
@@ -4802,6 +4828,7 @@ describe('postgres datastore', () => {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      vm_error: null,
     };
 
     const tx4: DbTxRaw = {
@@ -4839,6 +4866,7 @@ describe('postgres datastore', () => {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      vm_error: null,
     };
 
     // test stx mint
@@ -5202,6 +5230,7 @@ describe('postgres datastore', () => {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      vm_error: null,
     };
 
     await db.update({
@@ -5292,6 +5321,7 @@ describe('postgres datastore', () => {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      vm_error: null,
     };
 
     await db.update({
@@ -5381,6 +5411,7 @@ describe('postgres datastore', () => {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      vm_error: null,
     };
     const tx2: DbTxRaw = {
       ...tx1,
@@ -5744,6 +5775,7 @@ describe('postgres datastore', () => {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      vm_error: null,
     };
     await db.updateTx(client, tx);
 
@@ -5782,6 +5814,7 @@ describe('postgres datastore', () => {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      vm_error: null,
     };
     await db.updateTx(client, tx2);
     const blockTxs = await db.getTxsFromBlock({ hash: block.block_hash }, 20, 0);
@@ -5856,6 +5889,7 @@ describe('postgres datastore', () => {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      vm_error: null,
     };
     await db.updateTx(client, tx);
     const blockTxs = await db.getTxsFromBlock({ hash: block.block_hash }, 20, 6);

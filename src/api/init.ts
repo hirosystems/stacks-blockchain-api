@@ -58,6 +58,7 @@ import FastifyCors from '@fastify/cors';
 import { TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
 import * as promClient from 'prom-client';
 import DeprecationPlugin from './deprecation-plugin';
+import { BlockTenureRoutes } from './routes/v2/block-tenures';
 
 export interface ApiServer {
   fastifyApp: FastifyInstance;
@@ -100,6 +101,7 @@ export const StacksApiRoutes: FastifyPluginAsync<
     async fastify => {
       await fastify.register(BlockRoutesV2, { prefix: '/blocks' });
       await fastify.register(BurnBlockRoutesV2, { prefix: '/burn-blocks' });
+      await fastify.register(BlockTenureRoutes, { prefix: '/block-tenures' });
       await fastify.register(SmartContractRoutesV2, { prefix: '/smart-contracts' });
       await fastify.register(MempoolRoutesV2, { prefix: '/mempool' });
       await fastify.register(PoxRoutesV2, { prefix: '/pox' });

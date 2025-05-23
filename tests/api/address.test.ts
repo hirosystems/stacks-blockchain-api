@@ -300,6 +300,7 @@ describe('address tests', () => {
             execution_cost_runtime: 3,
             execution_cost_write_count: 4,
             execution_cost_write_length: 5,
+            vm_error: null,
           },
           stx_sent: '1339',
           stx_received: '0',
@@ -390,6 +391,7 @@ describe('address tests', () => {
             execution_cost_runtime: 3,
             execution_cost_write_count: 4,
             execution_cost_write_length: 5,
+            vm_error: null,
           },
           stx_sent: '1484',
           stx_received: '0',
@@ -454,6 +456,7 @@ describe('address tests', () => {
             execution_cost_runtime: 3,
             execution_cost_write_count: 4,
             execution_cost_write_length: 5,
+            vm_error: null,
           },
           stx_sent: '1334',
           stx_received: '0',
@@ -792,6 +795,7 @@ describe('address tests', () => {
         execution_cost_runtime: 3,
         execution_cost_write_count: 4,
         execution_cost_write_length: 5,
+        vm_error: null,
       },
       stx_sent: '0',
       stx_received: '105',
@@ -867,6 +871,7 @@ describe('address tests', () => {
             execution_cost_runtime: 3,
             execution_cost_write_count: 4,
             execution_cost_write_length: 5,
+            vm_error: null,
           },
           stx_sent: '0',
           stx_received: '105',
@@ -957,6 +962,7 @@ describe('address tests', () => {
             execution_cost_runtime: 3,
             execution_cost_write_count: 4,
             execution_cost_write_length: 5,
+            vm_error: null,
           },
           stx_sent: '0',
           stx_received: '15',
@@ -1950,6 +1956,7 @@ describe('address tests', () => {
           execution_cost_runtime: 0,
           execution_cost_write_count: 0,
           execution_cost_write_length: 0,
+          vm_error: null,
         },
         {
           tx_id: '0x1234',
@@ -1993,6 +2000,7 @@ describe('address tests', () => {
           execution_cost_runtime: 0,
           execution_cost_write_count: 0,
           execution_cost_write_length: 0,
+          vm_error: null,
         },
         {
           tx_id: '0x12340005',
@@ -2037,6 +2045,7 @@ describe('address tests', () => {
           execution_cost_runtime: 0,
           execution_cost_write_count: 0,
           execution_cost_write_length: 0,
+          vm_error: null,
         },
         {
           tx_id: '0x12340003',
@@ -2081,6 +2090,7 @@ describe('address tests', () => {
           execution_cost_runtime: 0,
           execution_cost_write_count: 0,
           execution_cost_write_length: 0,
+          vm_error: null,
         },
         {
           tx_id: '0x12340002',
@@ -2125,6 +2135,7 @@ describe('address tests', () => {
           execution_cost_runtime: 0,
           execution_cost_write_count: 0,
           execution_cost_write_length: 0,
+          vm_error: null,
         },
       ],
     };
@@ -2199,6 +2210,7 @@ describe('address tests', () => {
           execution_cost_runtime: 0,
           execution_cost_write_count: 0,
           execution_cost_write_length: 0,
+          vm_error: null,
         },
       ],
     };
@@ -2263,6 +2275,7 @@ describe('address tests', () => {
             execution_cost_runtime: 0,
             execution_cost_write_count: 0,
             execution_cost_write_length: 0,
+            vm_error: null,
             fee_rate: '10',
             is_unanchored: false,
             microblock_canonical: true,
@@ -2343,6 +2356,7 @@ describe('address tests', () => {
         execution_cost_runtime: 0,
         execution_cost_write_count: 0,
         execution_cost_write_length: 0,
+        vm_error: null,
         fee_rate: '10',
         is_unanchored: false,
         microblock_canonical: true,
@@ -2427,6 +2441,7 @@ describe('address tests', () => {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      vm_error: null,
     };
 
     const blockTxsRows = await api.datastore.getBlockTxsRows(block.block_hash);
@@ -2438,7 +2453,7 @@ describe('address tests', () => {
       abi: JSON.parse(contractCallResult1?.abi ?? ''),
     }).toEqual({
       ...contractCall,
-      ...{ abi: contractJsonAbi },
+      ...{ abi: contractJsonAbi, vm_error: null },
     });
 
     const searchResult8 = await supertest(api.server).get(
@@ -2458,7 +2473,7 @@ describe('address tests', () => {
       abi: JSON.parse(contractCallResult2?.abi ?? ''),
     }).toEqual({
       ...contractCall,
-      ...{ abi: contractJsonAbi },
+      ...{ abi: contractJsonAbi, vm_error: null },
     });
   });
 
@@ -2518,6 +2533,7 @@ describe('address tests', () => {
         microblock_hash: null,
         microblock_parent_hash: null,
         microblock_sequence: null,
+        vm_error: null,
         execution_cost: {
           read_count: 0,
           read_length: 0,
@@ -3056,5 +3072,109 @@ describe('address tests', () => {
     expect(json6.total).toEqual(4);
     expect(json6.results.length).toEqual(4);
     expect(json6.results[0].tx_id).toEqual('0xffa1');
+  });
+
+  test('balance calculation after microblock confirmations', async () => {
+    const addr1 = 'SP3D6PV2ACBPEKYJTCMH7HEN02KP87QSP8KTEH335';
+    const addr2 = 'SP2TBW1RSC44JZA4XQ1C2G5SZRGSMM14C5NWAKSDD';
+
+    // Send some initial balance for addr1
+    await db.update(
+      new TestBlockBuilder({
+        block_height: 1,
+        index_block_hash: '0x0001',
+        parent_index_block_hash: '',
+      })
+        .addTx({
+          tx_id: '0x1101',
+          token_transfer_recipient_address: addr1,
+          type_id: DbTxTypeId.TokenTransfer,
+          token_transfer_amount: 20_000n,
+          fee_rate: 50n,
+        })
+        .addTxStxEvent({
+          amount: 20_000n,
+          block_height: 1,
+          recipient: addr1,
+          tx_id: '0x1101',
+        })
+        .build()
+    );
+    // Send STX to addr2 in a microblock in transaction 0x1102
+    await db.updateMicroblocks(
+      new TestMicroblockStreamBuilder()
+        .addMicroblock({
+          parent_index_block_hash: '0x0001',
+          microblock_hash: '0xff01',
+          microblock_sequence: 0,
+        })
+        .addTx({
+          tx_id: '0x1102',
+          sender_address: addr1,
+          token_transfer_recipient_address: addr2,
+          type_id: DbTxTypeId.TokenTransfer,
+          token_transfer_amount: 2000n,
+          fee_rate: 100n,
+          microblock_hash: '0xff01',
+          microblock_sequence: 0,
+        })
+        .addTxStxEvent({
+          amount: 2000n,
+          block_height: 2,
+          sender: addr1,
+          recipient: addr2,
+          tx_id: '0x1102',
+        })
+        .build()
+    );
+    await db.update(
+      new TestBlockBuilder({
+        block_height: 2,
+        index_block_hash: '0x0002',
+        parent_index_block_hash: '0x0001',
+        parent_microblock_hash: '0xff01',
+        parent_microblock_sequence: 0,
+      })
+        // Same transaction 0x1102 now appears confirmed in an anchor block
+        .addTx({
+          tx_id: '0x1102',
+          sender_address: addr1,
+          token_transfer_recipient_address: addr2,
+          type_id: DbTxTypeId.TokenTransfer,
+          token_transfer_amount: 2000n,
+          fee_rate: 100n,
+          microblock_hash: '0xff01',
+          microblock_sequence: 0,
+        })
+        .addTxStxEvent({
+          amount: 2000n,
+          block_height: 2,
+          sender: addr1,
+          recipient: addr2,
+          tx_id: '0x1102',
+        })
+        .build()
+    );
+
+    // Check that v1 balance matches v2 balance for both accounts.
+    let result = await supertest(api.server).get(`/extended/v1/address/${addr1}/stx`);
+    expect(result.status).toBe(200);
+    expect(result.type).toBe('application/json');
+    let v1balance = JSON.parse(result.text).balance;
+    expect(v1balance).toBe('17900');
+    result = await supertest(api.server).get(`/extended/v2/addresses/${addr1}/balances/stx`);
+    expect(result.status).toBe(200);
+    expect(result.type).toBe('application/json');
+    expect(JSON.parse(result.text).balance).toBe(v1balance);
+
+    result = await supertest(api.server).get(`/extended/v1/address/${addr2}/stx`);
+    expect(result.status).toBe(200);
+    expect(result.type).toBe('application/json');
+    v1balance = JSON.parse(result.text).balance;
+    expect(v1balance).toBe('2000');
+    result = await supertest(api.server).get(`/extended/v2/addresses/${addr2}/balances/stx`);
+    expect(result.status).toBe(200);
+    expect(result.type).toBe('application/json');
+    expect(JSON.parse(result.text).balance).toBe(v1balance);
   });
 });

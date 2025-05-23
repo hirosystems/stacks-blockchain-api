@@ -254,10 +254,12 @@ export const CoreNodeRpcProxyRouter: FastifyPluginAsync<
     });
   }
 
-  const maxBodySize = 10_000_000; // 10 MB max POST body size
   fastify.addContentTypeParser(
     'application/octet-stream',
-    { parseAs: 'buffer', bodyLimit: maxBodySize },
+    {
+      parseAs: 'buffer',
+      bodyLimit: parseInt(process.env['STACKS_CORE_PROXY_BODY_LIMIT'] ?? '10000000'),
+    },
     (_req, body, done) => {
       done(null, body);
     }

@@ -150,6 +150,7 @@ const AbstractTransactionProperties = {
   execution_cost_write_length: Type.Integer({
     description: 'Execution cost write length.',
   }),
+  vm_error: Nullable(Type.String({ description: 'Clarity VM error produced by this transaction' })),
   events: Type.Array(TransactionEventSchema),
 };
 const AbstractTransactionSchema = Type.Object({
