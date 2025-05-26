@@ -28,6 +28,7 @@ import {
   timeout,
 } from '@hirosystems/api-toolkit';
 import Fastify from 'fastify';
+import { SnpEventStreamHandler } from './event-stream/snp-event-stream';
 
 enum StacksApiMode {
   /**
@@ -161,6 +162,21 @@ async function init(): Promise<void> {
     monitorCoreRpcConnection().catch(error => {
       logger.error(error, 'Error monitoring RPC connection');
     });
+
+    const snpEnabled = parseBoolean(process.env['SNP_EVENT_STREAMING']);
+    if (snpEnabled) {
+      const lastRedisMsgId = await dbWriteStore.getLastIngestedSnpRedisMsgId();
+      const snpStream = new SnpEventStreamHandler({
+        lastMessageId: lastRedisMsgId,
+        db: dbWriteStore,
+        eventServer,
+      });
+      registerShutdownConfig({
+        name: 'SNP client stream',
+        handler: () => snpStream.stop(),
+        forceKillable: false,
+      });
+    }
   }
 
   if (

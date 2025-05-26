@@ -449,6 +449,23 @@
     {
       "type": "node",
       "request": "launch",
+      "name": "Jest: SNP",
+      "program": "${workspaceFolder}/node_modules/.bin/jest",
+      "args": [
+        "--testTimeout=3600000",
+        "--runInBand",
+        "--no-cache",
+        "--config",
+        "${workspaceRoot}/tests/jest.config.snp.js"
+      ],
+      "outputCapture": "std",
+      "console": "integratedTerminal",
+      "nodeVersionHint": 22,
+      "runtimeVersion": "22"
+    },
+    {
+      "type": "node",
+      "request": "launch",
       "name": "client-lib test",
       "runtimeArgs": ["-r", "ts-node/register/transpile-only", "-r", "tsconfig-paths/register"],
       "cwd": "${workspaceFolder}/docs/client",
