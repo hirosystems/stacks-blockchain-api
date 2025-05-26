@@ -1,5 +1,7 @@
 ## [8.11.0](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.10.0...v8.11.0) (2025-05-26)
 
+> [!IMPORTANT]
+> This release includes an important fix to STX balances reported by the `/extended/v2/addresses/:address/balances/stx` endpoint. A new migration is included that will automatically fix balances for all accounts on launch, but since it's a large migration it could take between 20 minutes to 2 hours to complete depending on deployment resources. No manual intervention or special action is required.
 
 ### Features
 
