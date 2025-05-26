@@ -54,7 +54,7 @@
       "skipFiles": [
         "<node_internals>/**"
       ],
-      "runtimeVersion": "20",
+      "runtimeVersion": "22",
       "runtimeArgs": ["-r", "ts-node/register/transpile-only", "-r", "tsconfig-paths/register"],
       "args": ["${workspaceFolder}/src/index.ts"],
       "outputCapture": "std",

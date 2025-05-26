@@ -73,7 +73,7 @@
   "homepage": "https://github.com/hirosystems/stacks-blockchain-api#readme",
   "prettier": "@stacks/prettier-config",
   "engines": {
-    "node": ">=20"
+    "node": ">=22"
   },
   "engineStrict": true,
   "commitlint": {
