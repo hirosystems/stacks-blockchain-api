@@ -158,6 +158,7 @@ async function waitForSNP(): Promise<void> {
 }
 
 // Jest global setup
+// ts-unused-exports:disable-next-line
 export default async function setup(): Promise<void> {
   loadDotEnv();
 
