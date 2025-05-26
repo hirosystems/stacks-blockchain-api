@@ -1,3 +1,23 @@
+## [8.11.0](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.10.0...v8.11.0) (2025-05-26)
+
+
+### Features
+
+* add /extended/v2/block-tenures/:height/blocks endpoint ([#2285](https://github.com/hirosystems/stacks-blockchain-api/issues/2285)) ([f5c2e01](https://github.com/hirosystems/stacks-blockchain-api/commit/f5c2e01dd2cc9a2a0cdd608ae68ab2a847cf4ff4))
+* stacks core event and rpc proxy body limits configurable via env ([#2278](https://github.com/hirosystems/stacks-blockchain-api/issues/2278)) ([8a54e9d](https://github.com/hirosystems/stacks-blockchain-api/commit/8a54e9d90869ba9af01a0a9507593fff1845e816))
+* store and expose vm_error for failed transactions ([#2286](https://github.com/hirosystems/stacks-blockchain-api/issues/2286)) ([7ac7513](https://github.com/hirosystems/stacks-blockchain-api/commit/7ac7513aee4eaf2757f9d3b831172a4a406fd7f5))
+
+
+### Bug Fixes
+
+* consider microblock transactions in balance calculations ([#2277](https://github.com/hirosystems/stacks-blockchain-api/issues/2277)) ([3418863](https://github.com/hirosystems/stacks-blockchain-api/commit/34188634fab63ed07ce637c17ccf725fd39d6c2d))
+* count stx mint data at block 0 towards account balances ([#2289](https://github.com/hirosystems/stacks-blockchain-api/issues/2289)) ([a0cd9f2](https://github.com/hirosystems/stacks-blockchain-api/commit/a0cd9f2330b925dfee89e95c2cd66d7d66e189a6))
+* ignore unanchored param for BNS names endpoint ([#2263](https://github.com/hirosystems/stacks-blockchain-api/issues/2263)) ([3d33725](https://github.com/hirosystems/stacks-blockchain-api/commit/3d337256fc186a359d49b88cf321324bc1bd6326))
+* keep a table of latest stacks node event timestamps ([#2266](https://github.com/hirosystems/stacks-blockchain-api/issues/2266)) ([6f111ad](https://github.com/hirosystems/stacks-blockchain-api/commit/6f111ad9e4be390ba6f5411e0480713578aa22a9))
+* module imports in block tenure routes ([#2287](https://github.com/hirosystems/stacks-blockchain-api/issues/2287)) ([2cb442e](https://github.com/hirosystems/stacks-blockchain-api/commit/2cb442ed2602fe92706ee901c62ff4fac297e4a2))
+* **rosetta:** get current block should only join by stacks chain tip information ([#2265](https://github.com/hirosystems/stacks-blockchain-api/issues/2265)) ([78ebad0](https://github.com/hirosystems/stacks-blockchain-api/commit/78ebad09b710d9045c0b9885a0dffbf344771e6a))
+* simplify transaction events query ([#2279](https://github.com/hirosystems/stacks-blockchain-api/issues/2279)) ([517ca68](https://github.com/hirosystems/stacks-blockchain-api/commit/517ca6822f465e36d761a97dc8b2eed7fc1dd16c))
+
 ## [8.10.0](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.9.0...v8.10.0) (2025-04-18)
 
 
