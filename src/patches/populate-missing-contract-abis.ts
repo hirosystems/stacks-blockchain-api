@@ -33,7 +33,7 @@ async function main() {
     // 3) Main processing loop: Fetch and patch contracts in batches
     while (true) {
       // 3.1) Find contracts whose ABI is still missing (paginated)
-      const missing = await sql<{ contract_id: string; block_height: number; tx_status: number }[]>`
+      const missing = await sql<{ contract_id: string; block_height: number }[]>`
         SELECT sc.contract_id, sc.block_height
         FROM smart_contracts sc
         JOIN txs ON sc.tx_id = txs.tx_id
