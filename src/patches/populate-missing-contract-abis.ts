@@ -1,3 +1,5 @@
+#!/usr/bin/env node
+
 import { connectPostgres, PgSqlClient } from '@hirosystems/api-toolkit';
 import { StacksCoreRpcClient } from '../core-rpc/client';
 import { getConnectionArgs, getConnectionConfig } from '../datastore/connection';
@@ -6,9 +8,6 @@ import { loadDotEnv } from '../helpers';
 import { logger } from '../logger';
 
 async function main() {
-  const BATCH_SIZE = 64;
-  const LAST_BLOCK_HEIGHT = parseInt(process.env.LAST_BLOCK_HEIGHT ?? '-1');
-
   // 1) Environment + DB Setup
   loadDotEnv();
   const sql: PgSqlClient = await connectPostgres({
@@ -16,6 +15,9 @@ async function main() {
     connectionArgs: getConnectionArgs(),
     connectionConfig: getConnectionConfig(),
   });
+
+  const BATCH_SIZE = 64;
+  const LAST_BLOCK_HEIGHT = parseInt(process.env.LAST_BLOCK_HEIGHT ?? '-1');
 
   try {
     logger.info('Starting script to patch missing contract ABIs...');
@@ -75,6 +77,11 @@ async function main() {
             continue;
           }
 
+          if (typeof abi === 'string' && abi === 'null') {
+            logger.warn(`  - Skipping ${contract_id}. Fetched "null" string ABI.`);
+            continue;
+          }
+
           // 3.4) Update row for this contract still missing an ABI
           const rows = await sql`
             UPDATE smart_contracts
@@ -87,6 +94,7 @@ async function main() {
             logger.warn(`  - Failed to patch ${contract_id}. No rows updated.`);
             continue;
           }
+
           logger.info(`  - Patched ABI for ${contract_id}`);
           totalPatchedCount++;
         } catch (err: any) {
@@ -103,7 +111,7 @@ async function main() {
       // 3.5) Check if it was the last batch
       if (missing.length < BATCH_SIZE) {
         logger.info(`  - Patched ${totalPatchedCount}/${totalConsideredCount} contracts.`);
-        break; // Last batch was smaller than batchSize, so no more items.
+        break; // Last batch was smaller than batch size, so no more items.
       }
     }
   } catch (err: any) {
