@@ -1,3 +1,10 @@
+## [8.11.1-beta.1](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.11.0...v8.11.1-beta.1) (2025-05-30)
+
+
+### Bug Fixes
+
+* adjust contract ABI writes to read from contract_interface key instead of contract_abi ([#2276](https://github.com/hirosystems/stacks-blockchain-api/issues/2276)) ([82f3fea](https://github.com/hirosystems/stacks-blockchain-api/commit/82f3feaf294206e977f55e7f97fb0e80137d85d7))
+
 ## [8.11.0](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.10.0...v8.11.0) (2025-05-26)
 
 > [!IMPORTANT]
