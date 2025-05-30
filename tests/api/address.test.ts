@@ -2529,7 +2529,7 @@ describe('address tests', () => {
         raw_result: '0x0100000000000000000000000000000001', // u1
         txid: '0x' + txBuilder.txid(),
         tx_index: 2,
-        contract_abi: null,
+        contract_interface: null,
         microblock_hash: null,
         microblock_parent_hash: null,
         microblock_sequence: null,
