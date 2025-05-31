@@ -1,5 +1,5 @@
 import { ApiServer, startApiServer } from '../../src/api/init';
-import { startEventServer } from '../../src/event-stream/event-server';
+import { EventStreamServer, startEventServer } from '../../src/event-stream/event-server';
 import { Server } from 'net';
 import {
   AnchorMode,
@@ -30,7 +30,7 @@ const stacksNetwork = GetStacksTestnetNetwork();
 
 describe('Rosetta API', () => {
   let db: PgWriteStore;
-  let eventServer: Server;
+  let eventServer: EventStreamServer;
   let api: ApiServer;
   let rosettaOutput: any;
   let nonceJar: NonceJar;
@@ -128,7 +128,7 @@ describe('Rosetta API', () => {
       });
     console.log('compose down result:', composeDownResult);
 
-    await new Promise(resolve => eventServer.close(() => resolve(true)));
+    await new Promise(resolve => eventServer.server.close(() => resolve(true)));
     await api.terminate();
     await db?.close();
     await migrate('down');

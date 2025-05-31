@@ -54,7 +54,7 @@
       "skipFiles": [
         "<node_internals>/**"
       ],
-      "runtimeVersion": "20",
+      "runtimeVersion": "22",
       "runtimeArgs": ["-r", "ts-node/register/transpile-only", "-r", "tsconfig-paths/register"],
       "args": ["${workspaceFolder}/src/index.ts"],
       "outputCapture": "std",
@@ -445,6 +445,23 @@
         "NODE_ENV": "development",
         "STACKS_CHAIN_ID": "0x80000000"
       }
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Jest: SNP",
+      "program": "${workspaceFolder}/node_modules/.bin/jest",
+      "args": [
+        "--testTimeout=3600000",
+        "--runInBand",
+        "--no-cache",
+        "--config",
+        "${workspaceRoot}/tests/jest.config.snp.js"
+      ],
+      "outputCapture": "std",
+      "console": "integratedTerminal",
+      "nodeVersionHint": 22,
+      "runtimeVersion": "22"
     },
     {
       "type": "node",

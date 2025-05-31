@@ -3644,6 +3644,17 @@ export class PgWriteStore extends PgStore {
     }
   }
 
+  async getLastIngestedSnpRedisMsgId(): Promise<string> {
+    const [{ last_redis_msg_id }] = await this.sql<
+      { last_redis_msg_id: string }[]
+    >`SELECT last_redis_msg_id FROM snp_state`;
+    return last_redis_msg_id;
+  }
+
+  async updateLastIngestedSnpRedisMsgId(sql: PgSqlClient, msgId: string): Promise<void> {
+    await sql`UPDATE snp_state SET last_redis_msg_id = ${msgId}`;
+  }
+
   async close(args?: { timeout?: number }): Promise<void> {
     if (this._debounceMempoolStat.debounce) {
       clearTimeout(this._debounceMempoolStat.debounce);

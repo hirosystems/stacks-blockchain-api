@@ -12,7 +12,7 @@ ARG ARCHIVE_VERSION=latest
 
 #######################################################################
 ## Build the stacks-blockchain-api
-FROM node:20-bookworm-slim as stacks-blockchain-api-build
+FROM node:22-bookworm-slim as stacks-blockchain-api-build
 ARG STACKS_API_VERSION
 ENV STACKS_API_REPO=hirosystems/stacks-blockchain-api
 ENV STACKS_API_VERSION=${STACKS_API_VERSION}

@@ -238,7 +238,7 @@ describe('Rosetta API', () => {
       });
     console.log('compose down result:', composeDownResult);
 
-    await new Promise<void>(resolve => eventServer.close(() => resolve()));
+    await new Promise<void>(resolve => eventServer.server.close(() => resolve()));
     await api.terminate();
     await db?.close();
     await migrate('down');
