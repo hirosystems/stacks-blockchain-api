@@ -3,6 +3,7 @@ import * as Docker from 'dockerode';
 import { connectPostgres, timeout } from '@hirosystems/api-toolkit';
 import { createClient } from 'redis';
 import { loadDotEnv } from '../../src/helpers';
+import { fetch } from 'undici';
 
 const testContainerLabel = 'stacks-blockchain-api-tests';
 
