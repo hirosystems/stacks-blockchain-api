@@ -5,10 +5,9 @@ import * as assert from 'node:assert/strict';
 
 import { ChainID } from '@stacks/transactions';
 import { ApiServer, startApiServer } from '../../src/api/init';
-import { onceFilter } from '../../src/helpers';
 import { EventStreamServer, startEventServer } from '../../src/event-stream/event-server';
 import { PgWriteStore } from '../../src/datastore/pg-write-store';
-import { PgSqlClient } from '@hirosystems/api-toolkit';
+import { onceWhen, PgSqlClient } from '@hirosystems/api-toolkit';
 import { migrate } from '../utils/test-helpers';
 import { SnpEventStreamHandler } from '../../src/event-stream/snp-event-stream';
 import { fetch } from 'undici';
@@ -96,7 +95,7 @@ describe('SNP integration tests', () => {
     await snpClient.start();
 
     // wait for last msgID to be processed
-    const [{ msgId: lastMsgProcessed }] = await onceFilter(
+    const [{ msgId: lastMsgProcessed }] = await onceWhen(
       snpClient.events,
       'processedMessage',
       ({ msgId }) => {
