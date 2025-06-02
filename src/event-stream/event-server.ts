@@ -170,7 +170,11 @@ async function handleDroppedMempoolTxsMessage(
 ): Promise<void> {
   logger.debug(`Received ${msg.dropped_txids.length} dropped mempool txs`);
   const dbTxStatus = getTxDbStatus(msg.reason);
-  await db.dropMempoolTxs({ status: dbTxStatus, txIds: msg.dropped_txids });
+  await db.dropMempoolTxs({
+    status: dbTxStatus,
+    txIds: msg.dropped_txids,
+    new_tx_id: msg.new_txid,
+  });
 }
 
 async function handleMicroblockMessage(

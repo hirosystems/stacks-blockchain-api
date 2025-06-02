@@ -1147,6 +1147,7 @@ function parseDbAbstractMempoolTx(
   const abstractMempoolTx: AbstractMempoolTransaction = {
     ...baseTx,
     tx_status: getTxStatusString(dbMempoolTx.status) as MempoolTransactionStatus,
+    replaced_by_tx_id: dbMempoolTx.replaced_by_tx_id ?? null,
     receipt_time: dbMempoolTx.receipt_time,
     receipt_time_iso: unixEpochToIso(dbMempoolTx.receipt_time),
   };

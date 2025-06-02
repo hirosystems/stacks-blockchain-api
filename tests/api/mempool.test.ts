@@ -57,7 +57,11 @@ describe('mempool tests', () => {
         .addTx({ tx_id: `0x11${hexFromHeight(block_height)}`, nonce: block_height })
         .build();
       await db.update(block);
-      const mempoolTx = testMempoolTx({ tx_id: `0x${hexFromHeight(block_height)}` });
+      const mempoolTx = testMempoolTx({
+        tx_id: `0x${hexFromHeight(block_height)}`,
+        nonce: block_height,
+        sender_address: 'SP3SBQ9PZEMBNBAWTR7FRPE3XK0EFW9JWVX4G80S2',
+      });
       await db.updateMempoolTxs({ mempoolTxs: [mempoolTx] });
     }
     await db.update(
@@ -120,7 +124,7 @@ describe('mempool tests', () => {
         index_block_hash: `0x0${block_height}`,
         parent_index_block_hash: `0x0${block_height - 1}`,
       })
-        .addTx({ tx_id: `0x111${block_height}` })
+        .addTx({ tx_id: `0x111${block_height}`, nonce: block_height })
         .build();
       await db.update(block);
       const mempoolTx1 = testMempoolTx({
@@ -129,20 +133,23 @@ describe('mempool tests', () => {
         fee_rate: BigInt(100 * block_height),
         raw_tx: '0x' + 'ff'.repeat(block_height),
         nonce: block_height,
+        sender_address: 'SP3SBQ9PZEMBNBAWTR7FRPE3XK0EFW9JWVX4G80S2',
       });
       const mempoolTx2 = testMempoolTx({
         tx_id: `0x1${block_height}`,
         type_id: DbTxTypeId.ContractCall,
         fee_rate: BigInt(200 * block_height),
         raw_tx: '0x' + 'ff'.repeat(block_height + 10),
-        nonce: block_height + 1,
+        nonce: block_height,
+        sender_address: 'SP3XXK8BG5X7CRH7W07RRJK3JZJXJ799WX3Y0SMCR',
       });
       const mempoolTx3 = testMempoolTx({
         tx_id: `0x2${block_height}`,
         type_id: DbTxTypeId.SmartContract,
         fee_rate: BigInt(300 * block_height),
         raw_tx: '0x' + 'ff'.repeat(block_height + 20),
-        nonce: block_height + 2,
+        nonce: block_height,
+        sender_address: 'SPM0SBD3R79CDZ3AWBD3BRQS13JZA47PK0207K94',
       });
       await db.updateMempoolTxs({ mempoolTxs: [mempoolTx1, mempoolTx2, mempoolTx3] });
     }
@@ -190,6 +197,7 @@ describe('mempool tests', () => {
       raw_tx: bufferToHex(Buffer.from('test-raw-tx')),
       type_id: DbTxTypeId.Coinbase,
       status: DbTxStatus.Pending,
+      replaced_by_tx_id: undefined,
       receipt_time: 1594307695,
       coinbase_payload: bufferToHex(Buffer.from('coinbase hi')),
       post_conditions: '0x01f5',
@@ -207,6 +215,7 @@ describe('mempool tests', () => {
     const expectedResp1 = {
       tx_id: '0x8912000000000000000000000000000000000000000000000000000000000000',
       tx_status: 'pending',
+      replaced_by_tx_id: null,
       tx_type: 'coinbase',
       fee_rate: '1234',
       nonce: 0,
@@ -234,6 +243,7 @@ describe('mempool tests', () => {
       raw_tx: bufferToHex(Buffer.from('test-raw-tx')),
       type_id: DbTxTypeId.VersionedSmartContract,
       status: DbTxStatus.Pending,
+      replaced_by_tx_id: undefined,
       receipt_time: 1594307695,
       smart_contract_clarity_version: 2,
       smart_contract_contract_id: 'some-versioned-smart-contract',
@@ -254,6 +264,7 @@ describe('mempool tests', () => {
     const expectedResp1 = {
       tx_id: '0x8912000000000000000000000000000000000000000000000000000000000000',
       tx_status: 'pending',
+      replaced_by_tx_id: null,
       tx_type: 'smart_contract',
       fee_rate: '1234',
       nonce: 0,
@@ -285,6 +296,7 @@ describe('mempool tests', () => {
       raw_tx: bufferToHex(Buffer.from('test-raw-tx')),
       type_id: DbTxTypeId.Coinbase,
       status: DbTxStatus.Pending,
+      replaced_by_tx_id: undefined,
       receipt_time: 1594307695,
       coinbase_payload: bufferToHex(Buffer.from('coinbase hi')),
       post_conditions: '0x01f5',
@@ -302,6 +314,7 @@ describe('mempool tests', () => {
     const expectedResp1 = {
       tx_id: '0x8912000000000000000000000000000000000000000000000000000000000000',
       tx_status: 'pending',
+      replaced_by_tx_id: null,
       tx_type: 'coinbase',
       fee_rate: '1234',
       nonce: 0,
@@ -330,6 +343,7 @@ describe('mempool tests', () => {
       raw_tx: bufferToHex(Buffer.from('test-raw-tx')),
       type_id: DbTxTypeId.Coinbase,
       status: DbTxStatus.Pending,
+      replaced_by_tx_id: undefined,
       receipt_time: 1594307695,
       coinbase_payload: bufferToHex(Buffer.from('coinbase hi')),
       post_conditions: '0x01f5',
@@ -343,27 +357,36 @@ describe('mempool tests', () => {
       ...mempoolTx1,
       tx_id: '0x8912000000000000000000000000000000000000000000000000000000000001',
       receipt_time: 1594307702,
+      nonce: 1,
     };
     const mempoolTx3: DbMempoolTxRaw = {
       ...mempoolTx1,
       tx_id: '0x8912000000000000000000000000000000000000000000000000000000000003',
       receipt_time: 1594307703,
+      nonce: 2,
     };
     const mempoolTx4: DbMempoolTxRaw = {
       ...mempoolTx1,
       tx_id: '0x8912000000000000000000000000000000000000000000000000000000000004',
       receipt_time: 1594307704,
+      nonce: 3,
     };
     const mempoolTx5: DbMempoolTxRaw = {
       ...mempoolTx1,
       tx_id: '0x8912000000000000000000000000000000000000000000000000000000000005',
       receipt_time: 1594307705,
+      nonce: 4,
     };
     const mempoolTx6: DbMempoolTxRaw = {
       ...mempoolTx1,
       tx_id: '0x8912000000000000000000000000000000000000000000000000000000000006',
       receipt_time: 1594307706,
+      nonce: 5,
     };
+
+    const new_txid1: string = '0x8912000000000000000000000000000000000000000000000000000000000099';
+
+    const new_txid2: string = '0x8912000000000000000000000000000000000000000000000000000000000100';
 
     await db.updateMempoolTxs({
       mempoolTxs: [mempoolTx1, mempoolTx2, mempoolTx3, mempoolTx4, mempoolTx5, mempoolTx6],
@@ -371,6 +394,7 @@ describe('mempool tests', () => {
     await db.dropMempoolTxs({
       status: DbTxStatus.DroppedReplaceAcrossFork,
       txIds: [mempoolTx1.tx_id, mempoolTx2.tx_id],
+      new_tx_id: new_txid1,
     });
 
     const searchResult1 = await supertest(api.server).get(`/extended/v1/tx/${mempoolTx1.tx_id}`);
@@ -379,6 +403,7 @@ describe('mempool tests', () => {
     const expectedResp1 = {
       tx_id: '0x8912000000000000000000000000000000000000000000000000000000000000',
       tx_status: 'dropped_replace_across_fork',
+      replaced_by_tx_id: '0x8912000000000000000000000000000000000000000000000000000000000099',
       tx_type: 'coinbase',
       fee_rate: '1234',
       nonce: 0,
@@ -400,9 +425,10 @@ describe('mempool tests', () => {
     const expectedResp2 = {
       tx_id: '0x8912000000000000000000000000000000000000000000000000000000000001',
       tx_status: 'dropped_replace_across_fork',
+      replaced_by_tx_id: '0x8912000000000000000000000000000000000000000000000000000000000099',
       tx_type: 'coinbase',
       fee_rate: '1234',
-      nonce: 0,
+      nonce: 1,
       anchor_mode: 'any',
       sender_address: 'sender-addr',
       sponsor_address: 'sponsor-addr',
@@ -419,6 +445,7 @@ describe('mempool tests', () => {
     await db.dropMempoolTxs({
       status: DbTxStatus.DroppedReplaceByFee,
       txIds: [mempoolTx3.tx_id],
+      new_tx_id: new_txid2,
     });
     const searchResult3 = await supertest(api.server).get(`/extended/v1/tx/${mempoolTx3.tx_id}`);
     expect(searchResult3.status).toBe(200);
@@ -426,9 +453,10 @@ describe('mempool tests', () => {
     const expectedResp3 = {
       tx_id: '0x8912000000000000000000000000000000000000000000000000000000000003',
       tx_status: 'dropped_replace_by_fee',
+      replaced_by_tx_id: '0x8912000000000000000000000000000000000000000000000000000000000100',
       tx_type: 'coinbase',
       fee_rate: '1234',
-      nonce: 0,
+      nonce: 2,
       anchor_mode: 'any',
       sender_address: 'sender-addr',
       sponsor_address: 'sponsor-addr',
@@ -444,6 +472,7 @@ describe('mempool tests', () => {
     await db.dropMempoolTxs({
       status: DbTxStatus.DroppedTooExpensive,
       txIds: [mempoolTx4.tx_id],
+      new_tx_id: null,
     });
     const searchResult4 = await supertest(api.server).get(`/extended/v1/tx/${mempoolTx4.tx_id}`);
     expect(searchResult4.status).toBe(200);
@@ -451,9 +480,10 @@ describe('mempool tests', () => {
     const expectedResp4 = {
       tx_id: '0x8912000000000000000000000000000000000000000000000000000000000004',
       tx_status: 'dropped_too_expensive',
+      replaced_by_tx_id: null,
       tx_type: 'coinbase',
       fee_rate: '1234',
-      nonce: 0,
+      nonce: 3,
       anchor_mode: 'any',
       sender_address: 'sender-addr',
       sponsor_address: 'sponsor-addr',
@@ -469,6 +499,7 @@ describe('mempool tests', () => {
     await db.dropMempoolTxs({
       status: DbTxStatus.DroppedStaleGarbageCollect,
       txIds: [mempoolTx5.tx_id],
+      new_tx_id: null,
     });
     const searchResult5 = await supertest(api.server).get(`/extended/v1/tx/${mempoolTx5.tx_id}`);
     expect(searchResult5.status).toBe(200);
@@ -476,9 +507,10 @@ describe('mempool tests', () => {
     const expectedResp5 = {
       tx_id: '0x8912000000000000000000000000000000000000000000000000000000000005',
       tx_status: 'dropped_stale_garbage_collect',
+      replaced_by_tx_id: null,
       tx_type: 'coinbase',
       fee_rate: '1234',
-      nonce: 0,
+      nonce: 4,
       anchor_mode: 'any',
       sender_address: 'sender-addr',
       sponsor_address: 'sponsor-addr',
@@ -494,6 +526,7 @@ describe('mempool tests', () => {
     await db.dropMempoolTxs({
       status: DbTxStatus.DroppedProblematic,
       txIds: [mempoolTx6.tx_id],
+      new_tx_id: null,
     });
     const searchResult6 = await supertest(api.server).get(`/extended/v1/tx/${mempoolTx6.tx_id}`);
     expect(searchResult6.status).toBe(200);
@@ -501,9 +534,10 @@ describe('mempool tests', () => {
     const expectedResp6 = {
       tx_id: '0x8912000000000000000000000000000000000000000000000000000000000006',
       tx_status: 'dropped_problematic',
+      replaced_by_tx_id: null,
       tx_type: 'coinbase',
       fee_rate: '1234',
-      nonce: 0,
+      nonce: 5,
       anchor_mode: 'any',
       sender_address: 'sender-addr',
       sponsor_address: 'sponsor-addr',
@@ -527,26 +561,32 @@ describe('mempool tests', () => {
           expect.objectContaining({
             tx_id: '0x8912000000000000000000000000000000000000000000000000000000000006',
             tx_status: 'dropped_problematic',
+            replaced_by_tx_id: null,
           }),
           expect.objectContaining({
             tx_id: '0x8912000000000000000000000000000000000000000000000000000000000005',
             tx_status: 'dropped_stale_garbage_collect',
+            replaced_by_tx_id: null,
           }),
           expect.objectContaining({
             tx_id: '0x8912000000000000000000000000000000000000000000000000000000000004',
             tx_status: 'dropped_too_expensive',
+            replaced_by_tx_id: null,
           }),
           expect.objectContaining({
             tx_id: '0x8912000000000000000000000000000000000000000000000000000000000003',
             tx_status: 'dropped_replace_by_fee',
+            replaced_by_tx_id: '0x8912000000000000000000000000000000000000000000000000000000000100',
           }),
           expect.objectContaining({
             tx_id: '0x8912000000000000000000000000000000000000000000000000000000000001',
             tx_status: 'dropped_replace_across_fork',
+            replaced_by_tx_id: '0x8912000000000000000000000000000000000000000000000000000000000099',
           }),
           expect.objectContaining({
             tx_id: '0x8912000000000000000000000000000000000000000000000000000000000000',
             tx_status: 'dropped_replace_across_fork',
+            replaced_by_tx_id: '0x8912000000000000000000000000000000000000000000000000000000000099',
           }),
         ]),
       })
@@ -632,22 +672,27 @@ describe('mempool tests', () => {
           expect.objectContaining({
             tx_id: '0x8912000000000000000000000000000000000000000000000000000000000006',
             tx_status: 'dropped_problematic',
+            replaced_by_tx_id: null,
           }),
           expect.objectContaining({
             tx_id: '0x8912000000000000000000000000000000000000000000000000000000000005',
             tx_status: 'dropped_stale_garbage_collect',
+            replaced_by_tx_id: null,
           }),
           expect.objectContaining({
             tx_id: '0x8912000000000000000000000000000000000000000000000000000000000004',
             tx_status: 'dropped_too_expensive',
+            replaced_by_tx_id: null,
           }),
           expect.objectContaining({
             tx_id: '0x8912000000000000000000000000000000000000000000000000000000000003',
             tx_status: 'dropped_replace_by_fee',
+            replaced_by_tx_id: '0x8912000000000000000000000000000000000000000000000000000000000100',
           }),
           expect.objectContaining({
             tx_id: '0x8912000000000000000000000000000000000000000000000000000000000001',
             tx_status: 'dropped_replace_across_fork',
+            replaced_by_tx_id: '0x8912000000000000000000000000000000000000000000000000000000000099',
           }),
         ]),
       })
@@ -662,12 +707,13 @@ describe('mempool tests', () => {
         pruned: false,
         tx_id: `0x891200000000000000000000000000000000000000000000000000000000000${i}`,
         anchor_mode: 3,
-        nonce: 0,
+        nonce: i,
         raw_tx: bufferToHex(Buffer.from('test-raw-tx')),
         type_id: DbTxTypeId.Coinbase,
         receipt_time: (new Date(`2020-07-09T15:14:0${i}Z`).getTime() / 1000) | 0,
         coinbase_payload: bufferToHex(Buffer.from('coinbase hi')),
         status: 1,
+        replaced_by_tx_id: undefined,
         post_conditions: '0x01f5',
         fee_rate: 1234n,
         sponsored: false,
@@ -690,11 +736,12 @@ describe('mempool tests', () => {
         {
           tx_id: '0x8912000000000000000000000000000000000000000000000000000000000007',
           tx_status: 'pending',
+          replaced_by_tx_id: null,
           tx_type: 'coinbase',
           receipt_time: 1594307647,
           receipt_time_iso: '2020-07-09T15:14:07.000Z',
           fee_rate: '1234',
-          nonce: 0,
+          nonce: 7,
           anchor_mode: 'any',
           sender_address: 'sender-addr',
           sponsored: false,
@@ -705,11 +752,12 @@ describe('mempool tests', () => {
         {
           tx_id: '0x8912000000000000000000000000000000000000000000000000000000000006',
           tx_status: 'pending',
+          replaced_by_tx_id: null,
           tx_type: 'coinbase',
           receipt_time: 1594307646,
           receipt_time_iso: '2020-07-09T15:14:06.000Z',
           fee_rate: '1234',
-          nonce: 0,
+          nonce: 6,
           anchor_mode: 'any',
           sender_address: 'sender-addr',
           sponsored: false,
@@ -720,11 +768,12 @@ describe('mempool tests', () => {
         {
           tx_id: '0x8912000000000000000000000000000000000000000000000000000000000005',
           tx_status: 'pending',
+          replaced_by_tx_id: null,
           tx_type: 'coinbase',
           receipt_time: 1594307645,
           receipt_time_iso: '2020-07-09T15:14:05.000Z',
           fee_rate: '1234',
-          nonce: 0,
+          nonce: 5,
           anchor_mode: 'any',
           sender_address: 'sender-addr',
           sponsored: false,
@@ -801,11 +850,12 @@ describe('mempool tests', () => {
         pruned: false,
         tx_id: `0x89120000000000000000000000000000000000000000000000000000000000${paddedIndex}`,
         anchor_mode: 3,
-        nonce: 0,
+        nonce: index,
         raw_tx: bufferToHex(Buffer.from('test-raw-tx')),
         type_id: xfer.type_id,
         receipt_time: (new Date(`2020-07-09T15:14:${paddedIndex}Z`).getTime() / 1000) | 0,
         status: 1,
+        replaced_by_tx_id: undefined,
         post_conditions: '0x01f5',
         fee_rate: 1234n,
         sponsored: false,
@@ -835,7 +885,7 @@ describe('mempool tests', () => {
       results: [
         {
           fee_rate: '1234',
-          nonce: 0,
+          nonce: 6,
           anchor_mode: 'any',
           post_condition_mode: 'allow',
           post_conditions: [],
@@ -850,11 +900,12 @@ describe('mempool tests', () => {
           },
           tx_id: '0x8912000000000000000000000000000000000000000000000000000000000006',
           tx_status: 'pending',
+          replaced_by_tx_id: null,
           tx_type: 'token_transfer',
         },
         {
           fee_rate: '1234',
-          nonce: 0,
+          nonce: 5,
           anchor_mode: 'any',
           post_condition_mode: 'allow',
           post_conditions: [],
@@ -869,6 +920,7 @@ describe('mempool tests', () => {
           },
           tx_id: '0x8912000000000000000000000000000000000000000000000000000000000005',
           tx_status: 'pending',
+          replaced_by_tx_id: null,
           tx_type: 'token_transfer',
         },
       ],
@@ -887,7 +939,7 @@ describe('mempool tests', () => {
       results: [
         {
           fee_rate: '1234',
-          nonce: 0,
+          nonce: 7,
           anchor_mode: 'any',
           post_condition_mode: 'allow',
           post_conditions: [],
@@ -902,11 +954,12 @@ describe('mempool tests', () => {
           },
           tx_id: '0x8912000000000000000000000000000000000000000000000000000000000007',
           tx_status: 'pending',
+          replaced_by_tx_id: null,
           tx_type: 'token_transfer',
         },
         {
           fee_rate: '1234',
-          nonce: 0,
+          nonce: 5,
           anchor_mode: 'any',
           post_condition_mode: 'allow',
           post_conditions: [],
@@ -921,6 +974,7 @@ describe('mempool tests', () => {
           },
           tx_id: '0x8912000000000000000000000000000000000000000000000000000000000005',
           tx_status: 'pending',
+          replaced_by_tx_id: null,
           tx_type: 'token_transfer',
         },
       ],
@@ -939,7 +993,7 @@ describe('mempool tests', () => {
       results: [
         {
           fee_rate: '1234',
-          nonce: 0,
+          nonce: 5,
           anchor_mode: 'any',
           post_condition_mode: 'allow',
           post_conditions: [],
@@ -954,6 +1008,7 @@ describe('mempool tests', () => {
           },
           tx_id: '0x8912000000000000000000000000000000000000000000000000000000000005',
           tx_status: 'pending',
+          replaced_by_tx_id: null,
           tx_type: 'token_transfer',
         },
       ],
@@ -972,7 +1027,7 @@ describe('mempool tests', () => {
       results: [
         {
           fee_rate: '1234',
-          nonce: 0,
+          nonce: 6,
           anchor_mode: 'any',
           post_condition_mode: 'allow',
           post_conditions: [],
@@ -987,11 +1042,12 @@ describe('mempool tests', () => {
           },
           tx_id: '0x8912000000000000000000000000000000000000000000000000000000000006',
           tx_status: 'pending',
+          replaced_by_tx_id: null,
           tx_type: 'token_transfer',
         },
         {
           fee_rate: '1234',
-          nonce: 0,
+          nonce: 5,
           anchor_mode: 'any',
           post_condition_mode: 'allow',
           post_conditions: [],
@@ -1006,6 +1062,7 @@ describe('mempool tests', () => {
           },
           tx_id: '0x8912000000000000000000000000000000000000000000000000000000000005',
           tx_status: 'pending',
+          replaced_by_tx_id: null,
           tx_type: 'token_transfer',
         },
       ],
@@ -1024,7 +1081,7 @@ describe('mempool tests', () => {
       results: [
         {
           fee_rate: '1234',
-          nonce: 0,
+          nonce: 10,
           anchor_mode: 'any',
           post_condition_mode: 'allow',
           post_conditions: [],
@@ -1039,11 +1096,12 @@ describe('mempool tests', () => {
           },
           tx_id: '0x8912000000000000000000000000000000000000000000000000000000000010',
           tx_status: 'pending',
+          replaced_by_tx_id: null,
           tx_type: 'token_transfer',
         },
         {
           fee_rate: '1234',
-          nonce: 0,
+          nonce: 8,
           anchor_mode: 'any',
           post_condition_mode: 'allow',
           post_conditions: [],
@@ -1053,6 +1111,7 @@ describe('mempool tests', () => {
           sponsored: false,
           tx_id: '0x8912000000000000000000000000000000000000000000000000000000000008',
           tx_status: 'pending',
+          replaced_by_tx_id: null,
           tx_type: 'contract_call',
           contract_call: {
             contract_id: 'SP32AEEF6WW5Y0NMJ1S8SBSZDAY8R5J32NBZFPKKZ.free-punks-v0',
@@ -1076,7 +1135,7 @@ describe('mempool tests', () => {
       results: [
         {
           fee_rate: '1234',
-          nonce: 0,
+          nonce: 10,
           anchor_mode: 'any',
           post_condition_mode: 'allow',
           post_conditions: [],
@@ -1091,11 +1150,12 @@ describe('mempool tests', () => {
           },
           tx_id: '0x8912000000000000000000000000000000000000000000000000000000000010',
           tx_status: 'pending',
+          replaced_by_tx_id: null,
           tx_type: 'token_transfer',
         },
         {
           fee_rate: '1234',
-          nonce: 0,
+          nonce: 8,
           anchor_mode: 'any',
           post_condition_mode: 'allow',
           post_conditions: [],
@@ -1105,6 +1165,7 @@ describe('mempool tests', () => {
           sponsored: false,
           tx_id: '0x8912000000000000000000000000000000000000000000000000000000000008',
           tx_status: 'pending',
+          replaced_by_tx_id: null,
           tx_type: 'contract_call',
           contract_call: {
             contract_id: 'SP32AEEF6WW5Y0NMJ1S8SBSZDAY8R5J32NBZFPKKZ.free-punks-v0',
@@ -1128,7 +1189,7 @@ describe('mempool tests', () => {
       results: [
         {
           fee_rate: '1234',
-          nonce: 0,
+          nonce: 9,
           anchor_mode: 'any',
           post_condition_mode: 'allow',
           post_conditions: [],
@@ -1138,6 +1199,7 @@ describe('mempool tests', () => {
           sponsored: false,
           tx_id: '0x8912000000000000000000000000000000000000000000000000000000000009',
           tx_status: 'pending',
+          replaced_by_tx_id: null,
           tx_type: 'smart_contract',
           smart_contract: {
             clarity_version: null,
@@ -1161,7 +1223,7 @@ describe('mempool tests', () => {
       results: [
         {
           fee_rate: '1234',
-          nonce: 0,
+          nonce: 10,
           anchor_mode: 'any',
           post_condition_mode: 'allow',
           post_conditions: [],
@@ -1176,6 +1238,7 @@ describe('mempool tests', () => {
           },
           tx_id: '0x8912000000000000000000000000000000000000000000000000000000000010',
           tx_status: 'pending',
+          replaced_by_tx_id: null,
           tx_type: 'token_transfer',
         },
       ],
@@ -1196,11 +1259,12 @@ describe('mempool tests', () => {
         pruned: false,
         tx_id: `0x89120000000000000000000000000000000000000000000000000000000000${paddedIndex}`,
         anchor_mode: 3,
-        nonce: 0,
+        nonce: index,
         raw_tx: bufferToHex(Buffer.from('x'.repeat(index + 1))),
         type_id: DbTxTypeId.TokenTransfer,
         receipt_time: (new Date(`2020-07-09T15:14:${paddedIndex}Z`).getTime() / 1000) | 0,
         status: 1,
+        replaced_by_tx_id: undefined,
         post_conditions: '0x01f5',
         fee_rate: 100n * BigInt(index + 1),
         sponsored: false,
@@ -1268,7 +1332,7 @@ describe('mempool tests', () => {
 
   test('mempool - contract_call tx abi details are retrieved', async () => {
     const block1 = new TestBlockBuilder()
-      .addTx()
+      .addTx({ nonce: 0 })
       .addTxSmartContract()
       .addTxContractLogEvent()
       .build();
@@ -1277,6 +1341,7 @@ describe('mempool tests', () => {
     const mempoolTx1 = testMempoolTx({
       type_id: DbTxTypeId.ContractCall,
       tx_id: '0x1232000000000000000000000000000000000000000000000000000000000000',
+      nonce: 1,
     });
     await db.updateMempoolTxs({ mempoolTxs: [mempoolTx1] });
 
@@ -1322,10 +1387,13 @@ describe('mempool tests', () => {
       expectedContractDetails
     );
 
+    const new_txid: string = '0x1232000000000000000000000000000000000000000000000000000000000001';
+
     // Dropped mempool tx
     await db.dropMempoolTxs({
       status: DbTxStatus.DroppedReplaceAcrossFork,
       txIds: [mempoolTx1.tx_id],
+      new_tx_id: new_txid,
     });
     const mempoolDropResults = await supertest(api.server).get(`/extended/v1/tx/mempool/dropped`);
     expect(mempoolDropResults.status).toBe(200);
@@ -1370,6 +1438,7 @@ describe('mempool tests', () => {
       raw_tx: bufferToHex(Buffer.from('test-raw-mempool-tx')),
       type_id: DbTxTypeId.Coinbase,
       status: 1,
+      replaced_by_tx_id: undefined,
       post_conditions: '0x01f5',
       fee_rate: 1234n,
       sponsored: false,
@@ -1397,6 +1466,7 @@ describe('mempool tests', () => {
       raw_tx: bufferToHex(Buffer.from('test-raw-mempool-tx')),
       type_id: DbTxTypeId.Coinbase,
       status: 1,
+      replaced_by_tx_id: undefined,
       post_conditions: '0x01f5',
       fee_rate: 1234n,
       sponsored: false,
@@ -1448,6 +1518,7 @@ describe('mempool tests', () => {
       raw_tx: bufferToHex(Buffer.from('test-raw-mempool-tx')),
       type_id: DbTxTypeId.Coinbase,
       status: 1,
+      replaced_by_tx_id: undefined,
       post_conditions: '0x01f5',
       fee_rate: 1234n,
       sponsored: false,
@@ -1470,6 +1541,7 @@ describe('mempool tests', () => {
         {
           tx_id: '0x521234',
           tx_status: 'pending',
+          replaced_by_tx_id: null,
           tx_type: 'coinbase',
           receipt_time: 1616063078,
           receipt_time_iso: '2021-03-18T10:24:38.000Z',
@@ -1701,6 +1773,7 @@ describe('mempool tests', () => {
       raw_tx: bufferToHex(Buffer.from('test-raw-mempool-tx')),
       type_id: DbTxTypeId.Coinbase,
       status: DbTxStatus.Pending,
+      replaced_by_tx_id: undefined,
       post_conditions: '0x01f5',
       fee_rate: 1234n,
       sponsored: false,
@@ -1880,6 +1953,7 @@ describe('mempool tests', () => {
       raw_tx: bufferToHex(Buffer.from('test-raw-mempool-tx')),
       type_id: DbTxTypeId.Coinbase,
       status: 1,
+      replaced_by_tx_id: undefined,
       post_conditions: '0x01f5',
       fee_rate: 1234n,
       sponsored: false,
@@ -1928,6 +2002,7 @@ describe('mempool tests', () => {
     await db.dropMempoolTxs({
       status: DbTxStatus.DroppedStaleGarbageCollect,
       txIds: [mempoolTx.tx_id],
+      new_tx_id: '',
     });
 
     // Verify tx is pruned from mempool
@@ -2047,6 +2122,7 @@ describe('mempool tests', () => {
           anchor_mode: 3,
           raw_tx: bufferToHex(Buffer.from('test-raw-mempool-tx')),
           status: 1,
+          replaced_by_tx_id: undefined,
           post_conditions: '0x01f5',
           sponsored: false,
           sponsor_address: undefined,
@@ -2067,6 +2143,7 @@ describe('mempool tests', () => {
           anchor_mode: 3,
           raw_tx: bufferToHex(Buffer.from('test-raw-mempool-tx')),
           status: 1,
+          replaced_by_tx_id: undefined,
           post_conditions: '0x01f5',
           sponsored: false,
           sponsor_address: undefined,
@@ -2086,6 +2163,7 @@ describe('mempool tests', () => {
           anchor_mode: 3,
           raw_tx: bufferToHex(Buffer.from('test-raw-mempool-tx')),
           status: 1,
+          replaced_by_tx_id: undefined,
           post_conditions: '0x01f5',
           sponsored: false,
           sponsor_address: undefined,
@@ -2129,8 +2207,8 @@ describe('mempool tests', () => {
     });
   });
 
-  test('prunes transactions with nonces that were already confirmed', async () => {
-    // Initial block
+  test('prunes and restores replaced-by-fee transactions', async () => {
+    const sender_address = 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6';
     await db.update(
       new TestBlockBuilder({
         block_height: 1,
@@ -2140,31 +2218,108 @@ describe('mempool tests', () => {
     );
 
     // Add tx with nonce = 1 to the mempool
-    const sender_address = 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6';
-    const mempoolTx = testMempoolTx({ tx_id: `0xff0001`, sender_address, nonce: 1 });
-    await db.updateMempoolTxs({ mempoolTxs: [mempoolTx] });
-    const check0 = await supertest(api.server).get(
-      `/extended/v1/address/${sender_address}/mempool`
-    );
-    expect(check0.body.results).toHaveLength(1);
+    await db.updateMempoolTxs({
+      mempoolTxs: [
+        testMempoolTx({
+          tx_id: `0xff0001`,
+          sender_address,
+          nonce: 1,
+          fee_rate: 200n,
+          type_id: DbTxTypeId.TokenTransfer,
+        }),
+      ],
+    });
+    let request = await supertest(api.server).get(`/extended/v1/tx/mempool`);
+    expect(request.body.total).toBe(1);
+    expect(request.body.results).toHaveLength(1);
 
-    // Confirm a different tx with the same nonce = 1 by the same sender without it ever touching
-    // the mempool
+    // Add another tx with nonce = 1 to the mempool with a higher fee. Previous tx is marked as
+    // pruned and replaced.
+    await db.updateMempoolTxs({
+      mempoolTxs: [
+        testMempoolTx({
+          tx_id: `0xff0002`,
+          sender_address,
+          nonce: 1,
+          fee_rate: 300n,
+          type_id: DbTxTypeId.TokenTransfer,
+        }),
+      ],
+    });
+    request = await supertest(api.server).get(`/extended/v1/tx/mempool`);
+    expect(request.body.total).toBe(1);
+    expect(request.body.results).toHaveLength(1);
+    request = await supertest(api.server).get(`/extended/v1/tx/0xff0001`);
+    expect(request.body).toEqual(
+      expect.objectContaining({
+        tx_status: 'dropped_replace_by_fee',
+        replaced_by_tx_id: '0xff0002',
+      })
+    );
+
+    // Add yet another conflicting tx but our address is the sponsor. Since it has a lower fee, it
+    // will be immediately marked as RBFd by 0xff0002.
+    await db.updateMempoolTxs({
+      mempoolTxs: [
+        testMempoolTx({
+          tx_id: `0xff0003`,
+          sender_address: 'SP3FXEKSA6D4BW3TFP2BWTSREV6FY863Y90YY7D8G',
+          sponsor_address: sender_address,
+          sponsored: true,
+          nonce: 1,
+          fee_rate: 150n,
+          type_id: DbTxTypeId.TokenTransfer,
+        }),
+      ],
+    });
+    request = await supertest(api.server).get(`/extended/v1/tx/mempool`);
+    expect(request.body.total).toBe(1);
+    expect(request.body.results).toHaveLength(1);
+    expect(request.body.results[0].tx_id).toBe('0xff0002');
+    request = await supertest(api.server).get(`/extended/v1/tx/0xff0003`);
+    expect(request.body).toEqual(
+      expect.objectContaining({
+        tx_status: 'dropped_replace_by_fee',
+        replaced_by_tx_id: '0xff0002',
+      })
+    );
+
+    // Confirm a block containing a new tx with the same nonce = 1 by the same sender without it
+    // ever touching the mempool
     await db.update(
       new TestBlockBuilder({
         block_height: 2,
         index_block_hash: `0x0002`,
         parent_index_block_hash: `0x0001`,
       })
-        .addTx({ tx_id: `0xaa0001`, sender_address, nonce: 1 })
+        .addTx({
+          tx_id: `0xaa0001`,
+          sender_address,
+          nonce: 1,
+          fee_rate: 100n,
+          type_id: DbTxTypeId.TokenTransfer,
+        })
         .build()
     );
 
-    // Mempool tx should now be pruned
-    const check1 = await supertest(api.server).get(
-      `/extended/v1/address/${sender_address}/mempool`
+    // Old mempool txs are now pruned and both marked as replaced by the confirmed tx.
+    request = await supertest(api.server).get(`/extended/v1/tx/mempool`);
+    expect(request.body.total).toBe(0);
+    expect(request.body.results).toHaveLength(0);
+    request = await supertest(api.server).get(`/extended/v1/tx/0xff0001`);
+    expect(request.body).toEqual(
+      expect.objectContaining({
+        tx_status: 'dropped_replace_by_fee',
+        replaced_by_tx_id: '0xaa0001',
+      })
     );
-    expect(check1.body.results).toHaveLength(0);
+    request = await supertest(api.server).get(`/extended/v1/tx/0xff0002`);
+    expect(request.body).toEqual(
+      expect.objectContaining({
+        tx_status: 'dropped_replace_by_fee',
+        replaced_by_tx_id: '0xaa0001',
+      })
+    );
 
     // Re-org block 2
     await db.update(
@@ -2182,11 +2337,39 @@ describe('mempool tests', () => {
       }).build()
     );
 
-    // Now both conflicting nonce txs should coexist in the mempool (like RBF)
-    const check2 = await supertest(api.server).get(
-      `/extended/v1/address/${sender_address}/mempool`
+    // Only the highest fee tx is restored to the mempool, and all others are pruned and marked as
+    // RBFd by it.
+    request = await supertest(api.server).get(`/extended/v1/tx/mempool`);
+    expect(request.body.total).toBe(1);
+    expect(request.body.results).toHaveLength(1);
+    request = await supertest(api.server).get(`/extended/v1/tx/0xff0002`); // Winner
+    expect(request.body).toEqual(
+      expect.objectContaining({
+        tx_status: 'pending',
+        replaced_by_tx_id: null,
+      })
     );
-    expect(check2.body.results).toHaveLength(2);
+    request = await supertest(api.server).get(`/extended/v1/tx/0xff0001`);
+    expect(request.body).toEqual(
+      expect.objectContaining({
+        tx_status: 'dropped_replace_by_fee',
+        replaced_by_tx_id: '0xff0002',
+      })
+    );
+    request = await supertest(api.server).get(`/extended/v1/tx/0xaa0001`);
+    expect(request.body).toEqual(
+      expect.objectContaining({
+        tx_status: 'dropped_replace_by_fee',
+        replaced_by_tx_id: '0xff0002',
+      })
+    );
+    request = await supertest(api.server).get(`/extended/v1/tx/0xff0003`);
+    expect(request.body).toEqual(
+      expect.objectContaining({
+        tx_status: 'dropped_replace_by_fee',
+        replaced_by_tx_id: '0xff0002',
+      })
+    );
   });
 
   test('account estimated balance from mempool activity', async () => {
@@ -2222,6 +2405,7 @@ describe('mempool tests', () => {
           sender_address: address,
           token_transfer_amount: 100n,
           fee_rate: 50n,
+          nonce: 0,
         }),
       ],
     });
@@ -2243,6 +2427,7 @@ describe('mempool tests', () => {
           contract_call_function_args: '',
           contract_call_function_name: 'test',
           fee_rate: 50n,
+          nonce: 1,
         }),
       ],
     });
@@ -2261,6 +2446,7 @@ describe('mempool tests', () => {
           sponsored: true,
           token_transfer_amount: 100n,
           fee_rate: 50n,
+          nonce: 2,
         }),
       ],
     });
@@ -2278,6 +2464,7 @@ describe('mempool tests', () => {
           token_transfer_recipient_address: address,
           token_transfer_amount: 100n,
           fee_rate: 50n,
+          nonce: 1,
         }),
       ],
     });
@@ -2307,6 +2494,7 @@ describe('mempool tests', () => {
           sender_address: address,
           token_transfer_amount: 100n,
           fee_rate: 50n,
+          nonce: 0,
         })
         .addTxStxEvent({ sender: address, amount: 100n })
         .addTx({
@@ -2318,6 +2506,7 @@ describe('mempool tests', () => {
           contract_call_function_args: '',
           contract_call_function_name: 'test',
           fee_rate: 50n,
+          nonce: 1,
         })
         .addTx({
           tx_id: '0x0003',
@@ -2325,12 +2514,14 @@ describe('mempool tests', () => {
           sponsored: true,
           token_transfer_amount: 100n,
           fee_rate: 50n,
+          nonce: 2,
         })
         .addTx({
           tx_id: '0x0004',
           token_transfer_recipient_address: address,
           token_transfer_amount: 100n,
           fee_rate: 50n,
+          nonce: 1,
         })
         .addTxStxEvent({ recipient: address, amount: 100n })
         .build()

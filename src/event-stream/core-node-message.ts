@@ -383,6 +383,7 @@ export type CoreNodeDropMempoolTxReasonType =
 export interface CoreNodeDropMempoolTxMessage {
   dropped_txids: string[];
   reason: CoreNodeDropMempoolTxReasonType;
+  new_txid: string | null;
 }
 
 export interface CoreNodeAttachmentMessage {
