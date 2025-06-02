@@ -59,7 +59,8 @@
     "devenv:stop:pg": "docker compose -f docker/docker-compose.dev.postgres.yml down -v -t 0",
     "devenv:logs": "docker compose -f docker/docker-compose.dev.postgres.yml -f docker/docker-compose.dev.stacks-blockchain.yml -f docker/docker-compose.dev.bitcoind.yml logs -t -f",
     "devenv:logs:subnets": "docker compose -f docker/docker-compose.dev.postgres.yml -f docker/docker-compose.dev.subnets.yml logs -t -f",
-    "devenv:logs-krypton": "docker compose -f docker/docker-compose.dev.postgres.yml -f docker/docker-compose.dev.stacks-krypton.yml logs -t -f"
+    "devenv:logs-krypton": "docker compose -f docker/docker-compose.dev.postgres.yml -f docker/docker-compose.dev.stacks-krypton.yml logs -t -f",
+    "patch:populate-missing-contract-abis": "node ./lib/patches/populate-missing-contract-abis.js"
   },
   "repository": {
     "type": "git",

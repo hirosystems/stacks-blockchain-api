@@ -387,7 +387,7 @@ describe('tx tests', () => {
         raw_result: '0x0100000000000000000000000000000001', // u1
         txid: tx.tx_id,
         tx_index: 2,
-        contract_abi: abiSample,
+        contract_interface: abiSample,
         microblock_hash: null,
         microblock_parent_hash: null,
         microblock_sequence: null,
@@ -548,7 +548,7 @@ describe('tx tests', () => {
         raw_result: '0x0100000000000000000000000000000001', // u1
         txid: tx.tx_id,
         tx_index: 2,
-        contract_abi: null,
+        contract_interface: null,
         microblock_hash: null,
         microblock_parent_hash: null,
         microblock_sequence: null,
@@ -699,7 +699,7 @@ describe('tx tests', () => {
         raw_result: '0x0100000000000000000000000000000001', // u1
         txid: tx.tx_id,
         tx_index: 2,
-        contract_abi: null,
+        contract_interface: null,
         microblock_hash: null,
         microblock_parent_hash: null,
         microblock_sequence: null,
@@ -861,7 +861,7 @@ describe('tx tests', () => {
         raw_result: '0x0100000000000000000000000000000001', // u1
         txid: '0x' + txBuilder.txid(),
         tx_index: 2,
-        contract_abi: null,
+        contract_interface: null,
         microblock_hash: null,
         microblock_parent_hash: null,
         microblock_sequence: null,
@@ -1087,7 +1087,7 @@ describe('tx tests', () => {
         raw_result: '0x0100000000000000000000000000000001', // u1
         txid: '0x' + txBuilder.txid(),
         tx_index: 2,
-        contract_abi: null,
+        contract_interface: null,
         microblock_hash: null,
         microblock_parent_hash: null,
         microblock_sequence: null,
@@ -1493,7 +1493,7 @@ describe('tx tests', () => {
         raw_result: '0x0100000000000000000000000000000001', // u1
         txid: '0x' + txBuilder.txid(),
         tx_index: 2,
-        contract_abi: null,
+        contract_interface: null,
         microblock_hash: null,
         microblock_parent_hash: null,
         microblock_sequence: null,
@@ -1728,7 +1728,7 @@ describe('tx tests', () => {
         status: 'abort_by_response',
         txid: '0x' + txBuilder.txid(),
         tx_index: 2,
-        contract_abi: null,
+        contract_interface: null,
         microblock_hash: null,
         microblock_parent_hash: null,
         microblock_sequence: null,
@@ -1886,7 +1886,7 @@ describe('tx tests', () => {
         status: 'abort_by_post_condition',
         txid: '0x' + txBuilder.txid(),
         tx_index: 2,
-        contract_abi: null,
+        contract_interface: null,
         microblock_hash: null,
         microblock_parent_hash: null,
         microblock_sequence: null,
