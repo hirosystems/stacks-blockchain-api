@@ -62,7 +62,10 @@ async function startContainer(args: {
       Labels: { [testContainerLabel]: 'true' },
       Image: image,
       ExposedPorts: exposedPorts,
-      HostConfig: { PortBindings: portBindings },
+      HostConfig: {
+        PortBindings: portBindings,
+        ExtraHosts: ['host.docker.internal:host-gateway'],
+      },
       Env: env,
     });
 
@@ -149,10 +152,10 @@ async function waitForSNP(): Promise<void> {
         console.log('SNP is ready');
         break;
       } else {
-        console.error(`SNP not ready: ${response.statusText}`);
+        console.error(`SNP not ready at ${snpUrl}: ${response.statusText}`);
       }
     } catch (error) {
-      console.error(`SNP not ready: ${error}`);
+      console.error(`SNP not ready at ${snpUrl}: ${error}`);
     }
     await timeout(100);
   }
