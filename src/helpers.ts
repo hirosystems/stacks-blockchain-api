@@ -14,6 +14,7 @@ import { logger } from './logger';
 import { has0xPrefix, isDevEnv, numberToHex } from '@hirosystems/api-toolkit';
 import { StacksNetwork, StacksTestnet } from '@stacks/network';
 import { getStacksTestnetNetwork } from './api/routes/debug';
+import { EventEmitter, addAbortListener } from 'node:events';
 
 export const apiDocumentationUrl = process.env.API_DOCS_URL;
 

@@ -131,6 +131,45 @@ jobs:
           token: ${{ secrets.CODECOV_TOKEN }}
         if: always()
 
+  test-snp:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: ".nvmrc"
+
+      # https://github.com/actions/cache/blob/main/examples.md#node---npm
+      - name: Get npm cache directory
+        id: npm-cache-dir
+        shell: bash
+        run: echo "dir=$(npm config get cache)" >> ${GITHUB_OUTPUT}
+
+      - name: Cache node modules
+        uses: actions/cache@v4
+        id: npm-cache # use this to check for `cache-hit` ==> if: steps.npm-cache.outputs.cache-hit != 'true'
+        with:
+          path: ${{ steps.npm-cache-dir.outputs.dir }}
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+
+      - name: Install deps
+        run: npm ci --audit=false
+
+      - name: Install client deps
+        working-directory: client
+        run: npm ci --audit=false
+      - name: Run tests
+        run: npm run test:snp -- --coverage
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+        if: always()
+
   test-2_5:
     strategy:
       fail-fast: false
