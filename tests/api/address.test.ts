@@ -29,7 +29,6 @@ import {
   DbTxRaw,
   DbMempoolTxRaw,
   DbTx,
-  DbMinerReward,
 } from '../../src/datastore/common';
 import { startApiServer, ApiServer } from '../../src/api/init';
 import { I32_MAX } from '../../src/helpers';
@@ -1549,21 +1548,6 @@ describe('address tests', () => {
     };
     await db.updateBatchTokenOfferingLocked(client, [tokenOfferingLocked]);
 
-    const minerReward: DbMinerReward = {
-      block_hash: block.block_hash,
-      index_block_hash: block.index_block_hash,
-      from_index_block_hash: block.index_block_hash,
-      mature_block_height: 1,
-      canonical: true,
-      recipient: testAddr2,
-      miner_address: testAddr2,
-      coinbase_amount: 2000n,
-      tx_fees_anchored: 0n,
-      tx_fees_streamed_confirmed: 0n,
-      tx_fees_streamed_produced: 0n,
-    };
-    await db.updateMinerRewards(client, [minerReward]);
-
     const fetchAddrBalance1 = await supertest(api.server).get(
       `/extended/v1/address/${testAddr2}/balances`
     );
@@ -1574,14 +1558,14 @@ describe('address tests', () => {
     );
     const expectedResp1 = {
       stx: {
-        balance: '90679',
-        estimated_balance: '90679',
+        balance: '88679',
+        estimated_balance: '88679',
         pending_balance_inbound: '0',
         pending_balance_outbound: '0',
         total_sent: '6385',
         total_received: '100000',
         total_fees_sent: '4936',
-        total_miner_rewards_received: '2000',
+        total_miner_rewards_received: '0',
         burnchain_lock_height: 0,
         burnchain_unlock_height: 0,
         lock_height: 0,
@@ -3192,5 +3176,64 @@ describe('address tests', () => {
     expect(result.status).toBe(200);
     expect(result.type).toBe('application/json');
     expect(JSON.parse(result.text).balance).toBe(v1balance);
+  });
+
+  test('balance calculation after miner rewards', async () => {
+    const addr1 = 'SP3D6PV2ACBPEKYJTCMH7HEN02KP87QSP8KTEH335';
+
+    // Send some initial balance for addr1
+    await db.update(
+      new TestBlockBuilder({
+        block_height: 1,
+        index_block_hash: '0x0001',
+        parent_index_block_hash: '',
+      })
+        .addTx({
+          tx_id: '0x1101',
+          token_transfer_recipient_address: addr1,
+          type_id: DbTxTypeId.TokenTransfer,
+          token_transfer_amount: 20_000n,
+          fee_rate: 50n,
+        })
+        .addTxStxEvent({
+          amount: 20_000n,
+          block_height: 1,
+          recipient: addr1,
+          tx_id: '0x1101',
+        })
+        .build()
+    );
+    // Add some miner rewards
+    await db.update(
+      new TestBlockBuilder({
+        block_height: 2,
+        index_block_hash: '0x0002',
+        parent_index_block_hash: '0x0001',
+      })
+        .addMinerReward({
+          index_block_hash: '0x0002',
+          recipient: addr1,
+          coinbase_amount: 2000n,
+          tx_fees_anchored: 0n,
+          tx_fees_streamed_confirmed: 0n,
+          tx_fees_streamed_produced: 0n,
+        })
+        .build()
+    );
+
+    // Check that v1 balance matches v2 balance.
+    let result = await supertest(api.server).get(`/extended/v1/address/${addr1}/stx`);
+    expect(result.status).toBe(200);
+    expect(result.type).toBe('application/json');
+    let json = JSON.parse(result.text);
+    const v1balance = json.balance;
+    const v1Rewards = json.total_miner_rewards_received;
+    expect(v1balance).toBe('22000');
+    result = await supertest(api.server).get(`/extended/v2/addresses/${addr1}/balances/stx`);
+    expect(result.status).toBe(200);
+    expect(result.type).toBe('application/json');
+    json = JSON.parse(result.text);
+    expect(json.balance).toBe(v1balance);
+    expect(json.total_miner_rewards_received).toBe(v1Rewards);
   });
 });
