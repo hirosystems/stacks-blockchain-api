@@ -1,3 +1,10 @@
+## [8.11.2](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.11.1...v8.11.2) (2025-06-20)
+
+
+### Bug Fixes
+
+* do not duplicate miner rewards in v2 balance endpoint ([#2302](https://github.com/hirosystems/stacks-blockchain-api/issues/2302)) ([4c8d514](https://github.com/hirosystems/stacks-blockchain-api/commit/4c8d5143bc08b1e3ad745d1ad18279ed3566819c))
+
 ## [8.11.1](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.11.0...v8.11.1) (2025-06-02)
 
 
