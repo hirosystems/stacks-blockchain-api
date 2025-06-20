@@ -29,6 +29,7 @@ import {
   DbTxRaw,
   DbMempoolTxRaw,
   DbTx,
+  DbMinerReward,
 } from '../../src/datastore/common';
 import { startApiServer, ApiServer } from '../../src/api/init';
 import { I32_MAX } from '../../src/helpers';
@@ -1548,6 +1549,21 @@ describe('address tests', () => {
     };
     await db.updateBatchTokenOfferingLocked(client, [tokenOfferingLocked]);
 
+    const minerReward: DbMinerReward = {
+      block_hash: block.block_hash,
+      index_block_hash: block.index_block_hash,
+      from_index_block_hash: block.index_block_hash,
+      mature_block_height: 1,
+      canonical: true,
+      recipient: testAddr2,
+      miner_address: testAddr2,
+      coinbase_amount: 2000n,
+      tx_fees_anchored: 0n,
+      tx_fees_streamed_confirmed: 0n,
+      tx_fees_streamed_produced: 0n,
+    };
+    await db.updateMinerRewards(client, [minerReward]);
+
     const fetchAddrBalance1 = await supertest(api.server).get(
       `/extended/v1/address/${testAddr2}/balances`
     );
@@ -1558,14 +1574,14 @@ describe('address tests', () => {
     );
     const expectedResp1 = {
       stx: {
-        balance: '88679',
-        estimated_balance: '88679',
+        balance: '90679',
+        estimated_balance: '90679',
         pending_balance_inbound: '0',
         pending_balance_outbound: '0',
         total_sent: '6385',
         total_received: '100000',
         total_fees_sent: '4936',
-        total_miner_rewards_received: '0',
+        total_miner_rewards_received: '2000',
         burnchain_lock_height: 0,
         burnchain_unlock_height: 0,
         lock_height: 0,
