@@ -167,7 +167,7 @@ export const AddressRoutesV2: FastifyPluginAsync<
           sql,
           stxAddress,
         });
-        let stxBalance = stxBalancesResult.found ? stxBalancesResult.result.balance : 0n;
+        const stxBalance = stxBalancesResult.found ? stxBalancesResult.result.balance : 0n;
 
         // Get pox-locked info for STX token
         const stxPoxLockedResult = await fastify.db.v2.getStxPoxLockedAtBlock({
@@ -183,7 +183,6 @@ export const AddressRoutesV2: FastifyPluginAsync<
           stxAddress,
           blockHeight: chainTip.block_height,
         });
-        stxBalance += totalMinerRewardsReceived;
 
         const result: StxBalance = {
           balance: stxBalance.toString(),
