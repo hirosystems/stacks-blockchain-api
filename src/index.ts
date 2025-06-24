@@ -173,7 +173,7 @@ async function init(): Promise<void> {
         db: dbWriteStore,
         eventServer,
       });
-      await snpStream.start()
+      await snpStream.start();
       registerShutdownConfig({
         name: 'SNP client stream',
         handler: () => snpStream.stop(),
