@@ -147,7 +147,8 @@ async function init(): Promise<void> {
     });
 
     const skipChainIdCheck = parseBoolean(process.env['SKIP_STACKS_CHAIN_ID_CHECK']);
-    if (!skipChainIdCheck) {
+    const snpEnabled = parseBoolean(process.env['SNP_EVENT_STREAMING']);
+    if (!skipChainIdCheck && !snpEnabled) {
       const networkChainId = await getStacksNodeChainID();
       if (networkChainId !== configuredChainID) {
         const chainIdConfig = numberToHex(configuredChainID);
@@ -159,11 +160,12 @@ async function init(): Promise<void> {
         throw error;
       }
     }
-    monitorCoreRpcConnection().catch(error => {
-      logger.error(error, 'Error monitoring RPC connection');
-    });
+    if (!snpEnabled) {
+      monitorCoreRpcConnection().catch(error => {
+        logger.error(error, 'Error monitoring RPC connection');
+      });
+    }
 
-    const snpEnabled = parseBoolean(process.env['SNP_EVENT_STREAMING']);
     if (snpEnabled) {
       const lastRedisMsgId = await dbWriteStore.getLastIngestedSnpRedisMsgId();
       const snpStream = new SnpEventStreamHandler({
@@ -171,6 +173,7 @@ async function init(): Promise<void> {
         db: dbWriteStore,
         eventServer,
       });
+      await snpStream.start()
       registerShutdownConfig({
         name: 'SNP client stream',
         handler: () => snpStream.stop(),
