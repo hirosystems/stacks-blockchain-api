@@ -1315,6 +1315,7 @@ export function markBlockUpdateDataAsNonCanonical(data: DataStoreBlockUpdateData
 export function newReOrgUpdatedEntities(): ReOrgUpdatedEntities {
   return {
     markedCanonical: {
+      blockHeaders: [],
       blocks: 0,
       microblocks: 0,
       minerRewards: 0,
@@ -1335,6 +1336,7 @@ export function newReOrgUpdatedEntities(): ReOrgUpdatedEntities {
       poxCycles: 0,
     },
     markedNonCanonical: {
+      blockHeaders: [],
       blocks: 0,
       microblocks: 0,
       minerRewards: 0,

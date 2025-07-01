@@ -1111,6 +1111,7 @@ export interface DbPoxCycleSignerStacker {
 }
 
 interface ReOrgEntities {
+  blockHeaders: { index_block_hash: string; block_height: number }[];
   blocks: number;
   microblocks: number;
   minerRewards: number;
