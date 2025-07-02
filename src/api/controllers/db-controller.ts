@@ -1071,11 +1071,12 @@ export function parseContractCallMetadata(
   );
   let functionAbi: ClarityAbiFunction | undefined;
   const abi = tx.abi;
+
   if (abi) {
     const contractAbi: ClarityAbi = JSON.parse(abi);
     functionAbi = contractAbi.functions.find(fn => fn.name === functionName);
     if (!functionAbi) {
-      throw new Error(`Could not find function name "${functionName}" in ABI for ${contractId}`);
+      throw new Error(`Could not find function name \"${functionName}\" in ABI for ${contractId}`);
     }
   }
 
