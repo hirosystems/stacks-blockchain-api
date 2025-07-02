@@ -115,3 +115,12 @@ export const OrderParamSchema = Type.Enum(
     description: 'Results order',
   }
 );
+
+export const ExcludeFunctionArgsParamSchema = Type.Optional(
+  Type.Boolean({
+    default: false,
+    description:
+      'Exclude function_args from contract call responses for smaller, predictable sizes. Only explicit true/false values are accepted (same pattern as `unanchored`).',
+    examples: [true, false],
+  })
+);

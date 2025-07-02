@@ -1,0 +1,201 @@
+# Interface Design Rules for Stacks Blockchain API
+
+## CORE INTERFACE PRINCIPLES
+
+### 1. RESTful Resource Design
+Every endpoint represents a specific blockchain resource:
+
+```typescript
+// Resource Collection Patterns
+GET /v2/blocks                    // List blocks
+GET /v2/blocks/:block_id          // Get specific block
+GET /v2/transactions/:tx_id       // Get specific transaction
+GET /v2/addresses/:address        // Get address info
+```
+
+### 2. Parameter Patterns
+Consistent parameter naming and validation:
+
+```typescript
+// Parameter Types
+:block_id     → BlockParam (height | hash | 'latest')
+:tx_id        → TxParam (transaction hash)  
+:address      → AddressParam (STX address or contract)
+
+// Query Parameters
+?limit        → LimitParam (resource-specific maximums)
+?offset       → OffsetParam (pagination)
+?until_block  → BlockParam (filter by block height)
+```
+
+## DECISION TREES FOR AI
+
+### **When to use which endpoint pattern:**
+```typescript
+// IF: Single resource access
+GET /v2/resource/:id
+
+// IF: Resource collection  
+GET /v2/resources?limit=X&offset=Y
+
+// IF: Nested resource access
+GET /v2/parent/:id/children
+
+// IF: Resource filtering
+GET /v2/resources?filter=value&until_block=height
+```
+
+### **Parameter validation strategy:**
+```typescript
+// IF: Blockchain identifier → Use TypeBox + business validation
+// IF: User input → Schema + sanitization + business rules  
+// IF: Optional parameter → Type.Optional() with defaults
+// IF: Pagination → Resource-specific limits + offset validation
+```
+
+## RESPONSE PATTERNS
+
+### 1. Single Resource Response
+```typescript
+// Direct resource data, no wrapper
+interface BlockResponse {
+  canonical: boolean;
+  height: number;
+  hash: string;
+  // ... resource fields
+}
+```
+
+### 2. Collection Response
+```typescript
+interface CollectionResponse<T> {
+  limit: number;
+  offset: number;
+  total: number;
+  results: T[];
+}
+```
+
+### 3. Error Response  
+```typescript
+interface ErrorResponse {
+  error: string;
+  error_type?: string;
+  details?: Record<string, any>;
+}
+```
+
+## SCHEMA VALIDATION PATTERNS
+
+### TypeBox Schema Examples
+```typescript
+// Block Parameter Schema
+export const BlockParamSchema = Type.Union([
+  Type.Integer({ minimum: 0 }),     // Block height
+  Type.RegExp(/^0x[0-9a-fA-F]+$/), // Block hash
+  Type.Literal('latest')           // Latest block  
+]);
+
+// Address Parameter Schema
+export const AddressParamSchema = Type.String({
+  pattern: '^[0123456789ABCDEFGHJKMNPQRSTVWXYZ]+$|^[^.]+\\.[^.]+$'
+});
+```
+
+## CACHING PATTERNS
+
+### ETag Implementation
+```typescript
+// Cache Middleware Pattern
+export const handleCache = async (req: FastifyRequest, reply: FastifyReply) => {
+  const etag = await req.server.db.getETag();
+  const ifNoneMatch = req.headers['if-none-match'];
+  
+  if (etag && ifNoneMatch && ifNoneMatch.includes(etag)) {
+    await reply.code(304).send();
+  } else if (etag) {
+    void reply.headers({ 'ETag': `"${etag}"` });
+  }
+};
+```
+
+## ERROR HANDLING PATTERNS
+
+### HTTP Status Codes
+```typescript
+// Success
+200 OK           - Resource found
+304 Not Modified - Cached resource valid
+
+// Client Errors  
+400 Bad Request  - Invalid parameters
+404 Not Found    - Resource doesn't exist
+422 Unprocessable - Valid format, invalid data
+
+// Server Errors
+500 Internal     - Unexpected error
+502 Bad Gateway  - External service error
+```
+
+### Error Response Examples
+```typescript
+// Parameter Validation Error
+{
+  "error": "invalid STX address \"invalid_address\"",
+  "error_type": "invalid_address", 
+  "details": {
+    "parameter": "address",
+    "value": "invalid_address"
+  }
+}
+
+// Resource Not Found
+{
+  "error": "Block not found",
+  "error_type": "block_not_found"
+}
+```
+
+## INTEGRATION FAILURE SCENARIOS
+
+### Common Failure Points:
+1. **Parameter validation fails** → 400 with specific error_type
+2. **Resource not found** → 404 with typed error
+3. **Database connection fails** → 500 with generic message
+4. **Cache miss on high load** → Serve stale data with warning header
+5. **Schema validation fails** → 422 with validation details
+
+### Recovery Patterns:
+```typescript
+// Graceful degradation
+if (!block.found) {
+  throw new NotFoundError('Block not found');
+}
+
+// Cache fallback
+if (!etag) {
+  // Serve without caching headers
+  await reply.send(data);
+}
+```
+
+## API VERSIONING STRATEGY
+
+### URL Prefix Versioning
+```typescript
+/v1/*        - Legacy API (deprecated)
+/v2/*        - Current stable API
+/extended/*  - Extended functionality
+/rosetta/*   - Rosetta-compliant API
+```
+
+### Compatibility Rules
+- **NEVER** remove required response fields
+- **NEVER** change field types  
+- **MAY** add optional response fields
+- **MAY** add optional parameters
+
+Remember: **Interfaces are contracts** - prioritize consistency and backward compatibility while serving blockchain data efficiently.
+```
+
+Remember: **Interfaces are contracts** with API consumers. Every interface design decision should prioritize consistency, safety, and backward compatibility while providing the data needed for blockchain applications to function effectively.

@@ -1,0 +1,357 @@
+---
+description: Core project guidance and patterns for Stacks blockchain API development
+globs: 
+alwaysApply: true
+---
+
+# Always-Applied Rules for Stacks Blockchain API Development
+
+## CORE PHILOSOPHY: PRODUCTION-READY RELIABILITY
+
+This is a **PRODUCTION BLOCKCHAIN API** serving critical infrastructure. Every change must be:
+- **MINIMAL & TARGETED**: Make the smallest possible change to achieve the goal
+- **METICULOUSLY VERIFIED**: Test extensively and verify behavior in detail  
+- **PATTERN-FOLLOWING**: Follow existing patterns religiously, never introduce breaking changes
+- **SAFETY-FIRST**: Prefer failing safely over risky optimizations
+
+## DEVELOPMENT MINDSET
+
+You are an **EMPOWERED SENIOR ENGINEER** with full ownership of this codebase. Operate with high confidence and take initiative on technical decisions within established patterns. Escalate only for business logic, major architecture changes, or domain-specific rules.
+
+### Quality First Principles
+- **HONESTY**: Admit uncertainties instead of guessing
+- **COMPLETENESS**: Clearly state what's completed vs remaining  
+- **HELP-SEEKING**: Ask for guidance when stuck, not implement partial solutions
+- **VERIFICATION**: NEVER claim "done" when work remains
+
+## MANDATORY QUALITY GATES
+
+**BEFORE finishing anything**: RUN lint → test → build (all must pass)
+- Verify workplan requirements met
+- Document limitations
+- Don't proceed with failing tests
+- Don't delete tests or simplify them just to get them to pass
+
+## CORE PATTERNS TO FOLLOW
+
+### 1. Database Query Patterns
+Always use these established patterns:
+
+```typescript
+// Column Constants (from src/datastore/common.ts:145-155)
+const BLOCK_COLUMNS = [
+  'canonical',
+  'block_hash', 
+  'index_block_hash',
+  'parent_block_hash',
+  'parent_microblock_hash',
+  // ... rest of columns
+] as const;
+
+// Query Pattern
+const results = await this.sql<BlockQueryResult[]>`
+  SELECT ${this.sql(BLOCK_COLUMNS)}
+  FROM blocks 
+  WHERE canonical = true AND microblock_canonical = true
+  ORDER BY block_height DESC
+  LIMIT ${limit} OFFSET ${offset}
+`;
+```
+
+### 2. Error Handling Patterns  
+Use consistent error handling:
+
+```typescript
+// Input Validation (from src/api/routes/address.ts:45-55)
+if (!isValidPrincipal(stxAddress)) {
+  throw new InvalidRequestError(
+    `invalid STX address "${stxAddress}"`,
+    InvalidRequestErrorType.invalid_address
+  );
+}
+
+// Resource Not Found (from src/api/routes/block.ts:75-85)
+if (!block.found) {
+  throw new NotFoundError('Block not found');
+}
+```
+
+### 3. Caching Patterns
+All cacheable endpoints must implement ETag caching:
+
+```typescript
+// Cache Headers (from src/api/controllers/cache-controller.ts:45-65)
+if (etag && ifNoneMatch && ifNoneMatch.includes(etag)) {
+  await reply
+    .header('Cache-Control', 'public, max-age=0, must-revalidate')
+    .code(304)
+    .send();
+}
+```
+
+### 4. API Response Patterns
+Consistent response structures:
+
+```typescript
+// Collection Response (from src/datastore/common.ts:570-580)
+interface DbPaginatedResult<T> {
+  results: T[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+// Error Response (from src/api/errors.ts:25-35)
+interface ErrorResponse {
+  error: string;
+  error_type?: string;
+  details?: any;
+}
+```
+
+### 5. Parameter Validation Patterns
+Use TypeBox schemas consistently:
+
+```typescript
+// Parameter Schema (from src/api/schemas/params.ts:45-55)
+export const BlockParamSchema = Type.Union([
+  Type.Integer({ minimum: 0 }),                    // Block height
+  Type.RegExp(/^0x[0-9a-fA-F]+$/),                // Block hash  
+  Type.Literal('latest')                          // Latest block
+]);
+```
+
+## DEPENDENCY MANAGEMENT
+
+### Layer Responsibilities
+Respect the dependency hierarchy:
+
+```
+API Routes → Controllers → DataStore → Database
+     ↓            ↓            ↓
+  HTTP Logic → Business → SQL Queries → PostgreSQL
+```
+
+### Import Patterns
+```typescript
+// GOOD: Clear dependency direction
+import { PgStore } from '../datastore/pg-store';
+import { parseDbBlock } from '../datastore/helpers';
+
+// BAD: Circular dependencies or unclear imports
+import { FastifyRequest } from 'fastify'; // in datastore layer
+```
+
+## BLOCKCHAIN-SPECIFIC PATTERNS
+
+### 1. Canonical Data Filtering
+Always filter for canonical data:
+
+```sql
+-- Required filters (from src/datastore/blocks.ts:125-135)
+WHERE canonical = true 
+  AND microblock_canonical = true
+```
+
+### 2. Block Height Validation
+Validate block parameters properly:
+
+```typescript
+// Block height validation (from src/api/routes/util.ts:35-45)
+function parseBlockParam(blockParam: string): DbBlockQuery {
+  if (blockParam === 'latest') {
+    return { type: 'latest' };
+  }
+  const height = parseInt(blockParam);
+  if (!isNaN(height) && height >= 0) {
+    return { type: 'height', height };
+  }
+  // Assume it's a hash
+  return { type: 'hash', hash: blockParam };
+}
+```
+
+### 3. Transaction Status Handling
+Handle transaction states correctly:
+
+```typescript
+// Transaction status (from src/event-stream/core-node-message.ts:145-155)
+enum DbTxStatus {
+  Pending = 0,
+  Success = 1,
+  AbortByResponse = -1,
+  AbortByPostCondition = -2,
+}
+```
+
+## TESTING REQUIREMENTS
+
+### Test Coverage Rules
+Every code change MUST include:
+- **Unit tests** for business logic
+- **Integration tests** for API endpoints  
+- **Schema validation** tests for TypeBox schemas
+- **Database query** tests with real data
+
+### Test Patterns
+```typescript
+// API Test Pattern (from tests/api/block.test.ts:145-155)
+test('GET /v2/blocks/:block_id - returns block data', async () => {
+  const response = await supertest(api.server)
+    .get('/v2/blocks/1')
+    .expect(200);
+  
+  expect(response.body).toMatchSchema(NakamotoBlockSchema);
+  expect(response.body.canonical).toBe(true);
+});
+```
+
+## PERFORMANCE REQUIREMENTS
+
+### Database Performance
+- Use appropriate indexes for all queries
+- Include EXPLAIN ANALYZE output for new queries
+- Respect pagination limits per resource type
+
+### Caching Strategy  
+- ETag caching for all GET endpoints
+- Resource-specific cache invalidation
+- Immutable resources get long cache times
+
+### Memory Management
+- Use streaming for large result sets
+- Implement proper connection pooling
+- Monitor query performance
+
+## SECURITY REQUIREMENTS
+
+### Input Validation
+Multiple layers of validation required:
+1. **Schema validation** (TypeBox)
+2. **Business logic validation** (custom functions)  
+3. **Database parameter binding** (SQL injection prevention)
+
+### Error Information
+- Never expose internal system details
+- Provide clear, actionable error messages
+- Include error types for programmatic handling
+
+## DOCUMENTATION-FIRST APPROACH
+
+For external systems/libraries/frameworks:
+1. **ALWAYS use Context7** to look up framework documentation and library information first
+2. Search official documentation via web search for additional context
+3. Check GitHub/APIs for best practices  
+4. Verify implementation patterns
+5. Apply official patterns over assumptions
+
+### Context7 Usage Pattern
+```typescript
+// ALWAYS start with Context7 for any framework/library questions
+1. Use resolve-library-id to find the correct library identifier
+2. Use get-library-docs to retrieve up-to-date documentation
+3. Apply the official patterns and examples from Context7 docs
+4. Supplement with web search only if Context7 doesn't have coverage
+```
+
+## BACKWARD COMPATIBILITY
+
+### API Compatibility Rules
+- **NEVER** remove required fields from responses
+- **NEVER** change field types in responses
+- **NEVER** change required parameters  
+- **MAY** add optional fields to responses
+- **MAY** add optional parameters to requests
+
+### Breaking Changes
+Breaking changes are **PROHIBITED** within API versions. Create new API version if absolutely necessary.
+
+## EDGE CASE HANDLING
+
+### Authentication & Rate Limiting
+```typescript
+// API Key Validation (if present)
+if (req.headers['x-api-key'] && !isValidApiKey(req.headers['x-api-key'])) {
+  throw new UnauthorizedError('Invalid API key');
+}
+
+// Rate Limiting Headers
+void reply.headers({
+  'X-RateLimit-Limit': '100',
+  'X-RateLimit-Remaining': '95'
+});
+```
+
+### Blockchain Reorg Scenarios
+```typescript
+// Handle reorg edge cases
+if (block.canonical === false) {
+  throw new NotFoundError('Block reorganized out of chain');
+}
+
+// Check for stale microblock data
+if (microblock.canonical === false) {
+  // Return parent block data instead
+  return await this.getBlock(microblock.parent_block_hash);
+}
+```
+
+### High Load Degradation
+```typescript
+// Circuit breaker pattern for DB overload
+if (dbConnectionPool.activeConnections > dbConnectionPool.maxConnections * 0.9) {
+  // Serve cached data with warning
+  void reply.header('X-Data-Freshness', 'stale');
+}
+```
+
+## DECISION TREES FOR AI
+
+### **Choosing Error Response Strategy:**
+```typescript
+// IF: Parameter format invalid → 400 with validation details
+// IF: Resource not found → 404 with error_type  
+// IF: Business rule violation → 422 with business context
+// IF: System unavailable → 503 with retry-after header
+// IF: Unknown error → 500 with generic message (never expose internals)
+```
+
+### **Choosing Caching Strategy:**
+```typescript
+// IF: Immutable resource (confirmed block) → Cache for 1 year
+// IF: Mutable resource (mempool tx) → Cache for 30 seconds  
+// IF: Real-time resource (latest block) → Cache for 10 seconds
+// IF: Historical resource (old block) → Cache for 1 hour
+```
+
+### **Choosing Query Strategy:**
+```typescript
+// IF: Single resource by ID → Direct lookup with indexed column
+// IF: Collection with filters → Use WHERE clauses with proper indexes
+// IF: Pagination required → Use OFFSET/LIMIT with ORDER BY
+// IF: Count needed → Use separate COUNT(*) query for accuracy
+```
+
+## COMMON PITFALLS TO AVOID
+
+1. **Database Query Anti-Patterns**:
+   - Missing canonical filters
+   - Not using column constants
+   - Inefficient joins without proper indexes
+
+2. **API Design Anti-Patterns**:
+   - Inconsistent parameter naming
+   - Missing schema validation
+   - Improper error handling
+
+3. **Caching Anti-Patterns**:
+   - Missing ETag implementation
+   - Incorrect cache invalidation
+   - Not respecting resource mutability
+
+4. **Testing Anti-Patterns**:
+   - Tests that depend on each other
+   - Missing error condition testing
+   - Inadequate schema validation coverage
+
+Remember: This codebase serves **production blockchain infrastructure**. Every decision should prioritize reliability, consistency, and safety over clever optimizations or shortcuts.

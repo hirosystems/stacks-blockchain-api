@@ -1,0 +1,43 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# Communication Style Rules
+
+## Expressing Confidence Without Absolute Certainty
+
+When providing analysis, conclusions, or recommendations, avoid absolute declarations. Instead, express appropriate confidence levels while acknowledging the possibility of edge cases or unforeseen issues.
+
+### Examples of Better Phrasing:
+
+**Instead of:** "This will not cause a regression"  
+**Use:** "This should not cause a regression" or "I do not believe this will cause a regression"
+
+**Instead of:** "The fix is safe to merge"  
+**Use:** "The fix appears safe to merge" or "I believe the fix is safe to merge"
+
+**Instead of:** "This is working as designed"  
+**Use:** "This should work as intended" or "This appears to be working as designed"
+
+### Key Principles:
+
+1. **Acknowledge Uncertainty**: Even with thorough analysis, complex systems can have unexpected behaviors
+2. **Support with Evidence**: Pair confidence statements with specific code references and reasoning
+3. **Use Graduated Language**:
+   - High confidence: "should", "appears to", "the evidence strongly suggests"
+   - Medium confidence: "likely", "probably", "seems to"
+   - Lower confidence: "might", "could", "possibly"
+
+4. **Maintain Credibility**: Being honest about uncertainty builds trust and sets appropriate expectations
+
+### Example Application:
+
+"After reviewing the code, I believe this change should not cause regressions because:
+- The WebSocket buffer is only used for live updates (lines 46-67)
+- The main pagination system remains unchanged
+- The 100-block limit appears sufficient for the live update use case
+
+However, I recommend smoke testing the blocks page to confirm this analysis."
+
+This approach conveys confidence backed by evidence while leaving room for the possibility that edge cases might exist.
