@@ -4711,4 +4711,51 @@ describe('tx tests', () => {
     expect(Array.isArray(resIncluded.body[txId].result.contract_call.function_args)).toBe(true);
     expect(resIncluded.body[txId].result.contract_call.function_args.length).toBe(2);
   });
+
+  // New indirect regression test: ensure contract-call transactions inside a block still
+  // respect the exclude_function_args flag when fetched individually
+  test('block contract-call txs respect exclude_function_args flag (indirect check)', async () => {
+    const block = new TestBlockBuilder({
+      block_height: 1,
+      index_block_hash: '0x06',
+      block_hash: '0x06',
+    })
+      .addTx({
+        tx_id: '0xabcdef0000000000000000000000000000000000000000000000000000000000',
+        type_id: DbTxTypeId.ContractCall,
+        contract_call_contract_id: 'SP000000000000000000002Q6VF78.pox-4',
+        contract_call_function_name: 'delegate-stx',
+        contract_call_function_args: bufferToHex(
+          createClarityValueArray(
+            uintCV(1000000),
+            stringAsciiCV('STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6')
+          )
+        ),
+      })
+      .addTx({
+        tx_id: '0xbcdefa0000000000000000000000000000000000000000000000000000000000',
+        type_id: DbTxTypeId.TokenTransfer,
+        token_transfer_recipient_address: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
+        token_transfer_amount: 100n,
+      })
+      .build();
+
+    await db.update(block);
+
+    // 1. Fetch block to get the contract-call tx id
+    const blockRes = await supertest(api.server)
+      .get(`/extended/v1/block/${block.block.block_hash}`)
+      .expect(200);
+
+    const contractCallTxId = blockRes.body.txs.find((id: string) => id === block.txs[0].tx.tx_id);
+    expect(contractCallTxId).toBe(block.txs[0].tx.tx_id);
+
+    // 2. Fetch that tx with exclude_function_args=true and assert omission
+    const txRes = await supertest(api.server)
+      .get(`/extended/v1/tx/${contractCallTxId}?exclude_function_args=true`)
+      .expect(200);
+
+    expect(txRes.body.tx_type).toBe('contract_call');
+    expect(txRes.body.contract_call.function_args).toBeUndefined();
+  });
 });
