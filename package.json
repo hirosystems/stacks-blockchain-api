@@ -97,7 +97,7 @@
     "@fastify/swagger": "8.15.0",
     "@fastify/type-provider-typebox": "4.0.0",
     "@hirosystems/api-toolkit": "1.9.0",
-    "@hirosystems/salt-n-pepper-client": "1.1.1",
+    "@hirosystems/salt-n-pepper-client": "1.1.2",
     "@scure/base": "1.1.1",
     "@sinclair/typebox": "0.32.35",
     "@stacks/common": "6.10.0",
