@@ -1098,15 +1098,13 @@ export function parseContractCallMetadata(
   // Only process function_args if not excluded
   if (!excludeFunctionArgs && tx.contract_call_function_args) {
     contractCall.function_args = decodeClarityValueList(tx.contract_call_function_args).map(
-      (c, fnArgIndex) => {
-        const functionArgAbi = functionAbi
-          ? functionAbi.args[fnArgIndex++]
-          : { name: '', type: undefined };
+      (c, idx) => {
+        const functionArgAbi = functionAbi ? functionAbi.args[idx] : { name: '', type: undefined };
         return {
           hex: c.hex,
           repr: c.repr,
-          name: functionArgAbi.name,
-          type: functionArgAbi.type
+          name: functionArgAbi?.name || '',
+          type: functionArgAbi?.type
             ? getTypeString(functionArgAbi.type)
             : decodeClarityValueToTypeName(c.hex),
         };
