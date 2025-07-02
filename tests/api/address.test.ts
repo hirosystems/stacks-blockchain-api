@@ -3179,4 +3179,212 @@ describe('address tests', () => {
     expect(result.type).toBe('application/json');
     expect(JSON.parse(result.text).balance).toBe(v1balance);
   });
+
+  test('address transactions endpoint respects exclude_function_args flag', async () => {
+    const contractJsonAbi = {
+      maps: [],
+      functions: [
+        {
+          name: 'test-function',
+          access: 'public',
+          args: [{ name: 'amount', type: 'uint128' }],
+          outputs: { type: 'bool' },
+        },
+      ],
+      variables: [],
+      fungible_tokens: [],
+      non_fungible_tokens: [],
+    };
+
+    const addr1 = 'SP466FNC0P7JWTNM2R9T199QRZN1MYEDTAR0KP27';
+    const contractAddr = 'ST11NJTTKGVT6D1HY4NJRVQWMQM7TVAR091EJ8P2Y.test-contract';
+
+    const block1 = new TestBlockBuilder({
+      block_height: 1,
+      index_block_hash: '0x01',
+      block_hash: '0x01',
+      parent_index_block_hash: '0x00',
+      burn_block_time: 39486,
+    })
+      .addTx({
+        tx_id: '0xcontract01',
+        type_id: DbTxTypeId.SmartContract,
+        smart_contract_contract_id: contractAddr,
+        abi: JSON.stringify(contractJsonAbi),
+      })
+      .addTx({
+        tx_id: '0xcontractcall01',
+        type_id: DbTxTypeId.ContractCall,
+        sender_address: addr1,
+        contract_call_contract_id: contractAddr,
+        contract_call_function_name: 'test-function',
+        contract_call_function_args: '0x0100000000000000000000000000002710', // uint 10000
+      })
+      .build();
+
+    await db.update(block1);
+
+    // Test with exclude_function_args=true
+    const response1 = await supertest(api.server)
+      .get(`/extended/v1/address/${addr1}/transactions?exclude_function_args=true`)
+      .expect(200);
+
+    const contractCallTx1 = response1.body.results.find(
+      (tx: any) => tx.tx_type === 'contract_call'
+    );
+    expect(contractCallTx1).toBeDefined();
+    expect(contractCallTx1.contract_call.function_args).toBeUndefined();
+
+    // Test with exclude_function_args=false
+    const response2 = await supertest(api.server)
+      .get(`/extended/v1/address/${addr1}/transactions?exclude_function_args=false`)
+      .expect(200);
+
+    const contractCallTx2 = response2.body.results.find(
+      (tx: any) => tx.tx_type === 'contract_call'
+    );
+    expect(contractCallTx2).toBeDefined();
+    expect(contractCallTx2.contract_call.function_args).toBeDefined();
+    expect(contractCallTx2.contract_call.function_args).toHaveLength(1);
+  });
+
+  test('address mempool transactions endpoint respects exclude_function_args flag', async () => {
+    const contractJsonAbi = {
+      maps: [],
+      functions: [
+        {
+          name: 'test-function',
+          access: 'public',
+          args: [{ name: 'amount', type: 'uint128' }],
+          outputs: { type: 'bool' },
+        },
+      ],
+      variables: [],
+      fungible_tokens: [],
+      non_fungible_tokens: [],
+    };
+
+    const addr1 = 'SP466FNC0P7JWTNM2R9T199QRZN1MYEDTAR0KP27';
+    const contractAddr = 'ST11NJTTKGVT6D1HY4NJRVQWMQM7TVAR091EJ8P2Y.test-contract';
+
+    // First create the contract to associate ABI
+    const contractBlock = new TestBlockBuilder({
+      block_height: 1,
+      index_block_hash: '0x01',
+      block_hash: '0x01',
+      parent_index_block_hash: '0x00',
+      burn_block_time: 39486,
+    })
+      .addTx({
+        tx_id: '0xcontract01',
+        type_id: DbTxTypeId.SmartContract,
+        smart_contract_contract_id: contractAddr,
+        abi: JSON.stringify(contractJsonAbi),
+      })
+      .build();
+
+    await db.update(contractBlock);
+
+    const mempoolTx = testMempoolTx({
+      tx_id: '0xmempool01',
+      type_id: DbTxTypeId.ContractCall,
+      sender_address: addr1,
+      contract_call_contract_id: contractAddr,
+      contract_call_function_name: 'test-function',
+      contract_call_function_args: '0x0100000000000000000000000000002710',
+    });
+
+    await db.updateMempoolTxs({ mempoolTxs: [mempoolTx] });
+
+    // Test with exclude_function_args=true
+    const response1 = await supertest(api.server)
+      .get(`/extended/v1/address/${addr1}/mempool?exclude_function_args=true`)
+      .expect(200);
+
+    const contractCallTx1 = response1.body.results.find(
+      (tx: any) => tx.tx_type === 'contract_call'
+    );
+    expect(contractCallTx1).toBeDefined();
+    expect(contractCallTx1.contract_call.function_args).toBeUndefined();
+
+    // Test with exclude_function_args=false
+    const response2 = await supertest(api.server)
+      .get(`/extended/v1/address/${addr1}/mempool?exclude_function_args=false`)
+      .expect(200);
+
+    const contractCallTx2 = response2.body.results.find(
+      (tx: any) => tx.tx_type === 'contract_call'
+    );
+    expect(contractCallTx2).toBeDefined();
+    expect(contractCallTx2.contract_call.function_args).toBeDefined();
+    expect(contractCallTx2.contract_call.function_args).toHaveLength(1);
+  });
+
+  test('v2 address transactions endpoint respects exclude_function_args flag', async () => {
+    const contractJsonAbi = {
+      maps: [],
+      functions: [
+        {
+          name: 'test-function',
+          access: 'public',
+          args: [{ name: 'amount', type: 'uint128' }],
+          outputs: { type: 'bool' },
+        },
+      ],
+      variables: [],
+      fungible_tokens: [],
+      non_fungible_tokens: [],
+    };
+
+    const addr1 = 'SP466FNC0P7JWTNM2R9T199QRZN1MYEDTAR0KP27';
+    const contractAddr = 'ST11NJTTKGVT6D1HY4NJRVQWMQM7TVAR091EJ8P2Y.test-contract';
+
+    const block1 = new TestBlockBuilder({
+      block_height: 1,
+      index_block_hash: '0x01',
+      block_hash: '0x01',
+      parent_index_block_hash: '0x00',
+      burn_block_time: 39486,
+    })
+      .addTx({
+        tx_id: '0xcontract01',
+        type_id: DbTxTypeId.SmartContract,
+        smart_contract_contract_id: contractAddr,
+        abi: JSON.stringify(contractJsonAbi),
+      })
+      .addTx({
+        tx_id: '0xcontractcall01',
+        type_id: DbTxTypeId.ContractCall,
+        sender_address: addr1,
+        contract_call_contract_id: contractAddr,
+        contract_call_function_name: 'test-function',
+        contract_call_function_args: '0x0100000000000000000000000000002710', // uint 10000
+      })
+      .build();
+
+    await db.update(block1);
+
+    // Test with exclude_function_args=true
+    const response1 = await supertest(api.server)
+      .get(`/extended/v2/addresses/${addr1}/transactions?exclude_function_args=true`)
+      .expect(200);
+
+    const contractCallTx1 = response1.body.results.find(
+      (tx: any) => tx.tx.tx_type === 'contract_call'
+    );
+    expect(contractCallTx1).toBeDefined();
+    expect(contractCallTx1.tx.contract_call.function_args).toBeUndefined();
+
+    // Test with exclude_function_args=false
+    const response2 = await supertest(api.server)
+      .get(`/extended/v2/addresses/${addr1}/transactions?exclude_function_args=false`)
+      .expect(200);
+
+    const contractCallTx2 = response2.body.results.find(
+      (tx: any) => tx.tx.tx_type === 'contract_call'
+    );
+    expect(contractCallTx2).toBeDefined();
+    expect(contractCallTx2.tx.contract_call.function_args).toBeDefined();
+    expect(contractCallTx2.tx.contract_call.function_args).toHaveLength(1);
+  });
 });
