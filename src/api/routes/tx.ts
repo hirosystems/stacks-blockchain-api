@@ -24,6 +24,7 @@ import { Type, TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
 import {
   AddressParamSchema,
   BlockHeightSchema,
+  ExcludeFunctionArgsParamSchema,
   LimitParam,
   MempoolOrderByParamSchema,
   OffsetParam,
@@ -133,6 +134,7 @@ export const TxRoutes: FastifyPluginAsync<
               examples: [123],
             })
           ),
+          exclude_function_args: ExcludeFunctionArgsParamSchema,
         }),
         response: {
           200: TransactionResultsSchema,
@@ -142,6 +144,7 @@ export const TxRoutes: FastifyPluginAsync<
     async (req, reply) => {
       const limit = getPagingQueryLimit(ResourceType.Tx, req.query.limit);
       const offset = parsePagingQueryInput(req.query.offset ?? 0);
+      const excludeFunctionArgs = req.query.exclude_function_args ?? false;
 
       const txTypeFilter = parseTxTypeStrings(req.query.type ?? []);
 
@@ -193,7 +196,7 @@ export const TxRoutes: FastifyPluginAsync<
         order: req.query.order,
         sortBy: req.query.sort_by,
       });
-      const results = txResults.map(tx => parseDbTx(tx));
+      const results = txResults.map(tx => parseDbTx(tx, excludeFunctionArgs));
       await reply.send({ limit, offset, total, results });
     }
   );
@@ -218,6 +221,7 @@ export const TxRoutes: FastifyPluginAsync<
           event_limit: LimitParam(ResourceType.Event),
           event_offset: OffsetParam(),
           unanchored: UnanchoredParamSchema,
+          exclude_function_args: ExcludeFunctionArgsParamSchema,
         }),
         response: {
           200: TransactionSearchResponseSchema,
@@ -228,12 +232,14 @@ export const TxRoutes: FastifyPluginAsync<
       const eventLimit = getPagingQueryLimit(ResourceType.Event, req.query.event_limit);
       const eventOffset = parsePagingQueryInput(req.query.event_offset ?? 0);
       const includeUnanchored = req.query.unanchored ?? false;
+      const excludeFunctionArgs = req.query.exclude_function_args ?? false;
       req.query.tx_id.forEach(tx => validateRequestHexInput(tx));
       const txQuery = await searchTxs(fastify.db, {
         txIds: req.query.tx_id,
         eventLimit,
         eventOffset,
         includeUnanchored,
+        excludeFunctionArgs,
       });
       await reply.send(txQuery);
     }
@@ -259,6 +265,7 @@ export const TxRoutes: FastifyPluginAsync<
           unanchored: UnanchoredParamSchema,
           offset: OffsetParam(),
           limit: LimitParam(ResourceType.Tx),
+          exclude_function_args: ExcludeFunctionArgsParamSchema,
         }),
         response: {
           200: MempoolTransactionListResponse,
@@ -268,6 +275,7 @@ export const TxRoutes: FastifyPluginAsync<
     async (req, reply) => {
       const limit = getPagingQueryLimit(ResourceType.Tx, req.query.limit);
       const offset = parsePagingQueryInput(req.query.offset ?? 0);
+      const excludeFunctionArgs = req.query.exclude_function_args ?? false;
 
       const addrParams: (string | undefined)[] = [
         req.query.sender_address,
@@ -312,7 +320,7 @@ export const TxRoutes: FastifyPluginAsync<
         address,
       });
 
-      const results = txResults.map(tx => parseDbMempoolTx(tx));
+      const results = txResults.map(tx => parseDbMempoolTx(tx, excludeFunctionArgs));
       const response = { limit, offset, total, results };
       await reply.send(response);
     }
@@ -337,6 +345,7 @@ export const TxRoutes: FastifyPluginAsync<
           querystring: Type.Object({
             offset: OffsetParam(),
             limit: LimitParam(ResourceType.Tx),
+            exclude_function_args: ExcludeFunctionArgsParamSchema,
           }),
           response: {
             200: PaginatedResponse(MempoolTransactionSchema, {
@@ -348,11 +357,12 @@ export const TxRoutes: FastifyPluginAsync<
       async (req, reply) => {
         const limit = getPagingQueryLimit(ResourceType.Tx, req.query.limit);
         const offset = parsePagingQueryInput(req.query.offset ?? 0);
+        const excludeFunctionArgs = req.query.exclude_function_args ?? false;
         const { results: txResults, total } = await fastify.db.getDroppedTxs({
           offset,
           limit,
         });
-        const results = txResults.map(tx => parseDbMempoolTx(tx));
+        const results = txResults.map(tx => parseDbMempoolTx(tx, excludeFunctionArgs));
         const response = { limit, offset, total, results };
         await reply.send(response);
       }
@@ -484,6 +494,7 @@ export const TxRoutes: FastifyPluginAsync<
           event_limit: LimitParam(ResourceType.Event, undefined, undefined, 100),
           event_offset: OffsetParam(),
           unanchored: UnanchoredParamSchema,
+          exclude_function_args: ExcludeFunctionArgsParamSchema,
         }),
         response: {
           200: Type.Union([TransactionSchema, MempoolTransactionSchema]),
@@ -501,6 +512,7 @@ export const TxRoutes: FastifyPluginAsync<
       const eventLimit = getPagingQueryLimit(ResourceType.Event, req.query['event_limit'], 100);
       const eventOffset = parsePagingQueryInput(req.query['event_offset'] ?? 0);
       const includeUnanchored = req.query.unanchored ?? false;
+      const excludeFunctionArgs = req.query.exclude_function_args ?? false;
       validateRequestHexInput(tx_id);
 
       const txQuery = await searchTx(fastify.db, {
@@ -508,6 +520,7 @@ export const TxRoutes: FastifyPluginAsync<
         eventLimit,
         eventOffset,
         includeUnanchored,
+        excludeFunctionArgs,
       });
       if (!txQuery.found) {
         throw new NotFoundError(`could not find transaction by ID`);
@@ -576,6 +589,7 @@ export const TxRoutes: FastifyPluginAsync<
         querystring: Type.Object({
           offset: OffsetParam(),
           limit: LimitParam(ResourceType.Tx, undefined, undefined, 200),
+          exclude_function_args: ExcludeFunctionArgsParamSchema,
         }),
         response: {
           200: PaginatedResponse(TransactionSchema, { description: 'List of transactions' }),
@@ -587,13 +601,14 @@ export const TxRoutes: FastifyPluginAsync<
 
       const limit = getPagingQueryLimit(ResourceType.Tx, req.query['limit'], 200);
       const offset = parsePagingQueryInput(req.query['offset'] ?? 0);
+      const excludeFunctionArgs = req.query.exclude_function_args ?? false;
       validateRequestHexInput(block_hash);
       const result = await fastify.db.getTxsFromBlock({ hash: block_hash }, limit, offset);
       if (!result.found) {
         throw new NotFoundError(`no block found by hash`);
       }
       const dbTxs = result.result;
-      const results = dbTxs.results.map(dbTx => parseDbTx(dbTx));
+      const results = dbTxs.results.map(dbTx => parseDbTx(dbTx, excludeFunctionArgs));
 
       await reply.send({
         limit: limit,
@@ -622,6 +637,7 @@ export const TxRoutes: FastifyPluginAsync<
         querystring: Type.Object({
           offset: OffsetParam(),
           limit: LimitParam(ResourceType.Tx),
+          exclude_function_args: ExcludeFunctionArgsParamSchema,
         }),
         response: {
           200: PaginatedResponse(TransactionSchema, { description: 'List of transactions' }),
@@ -633,12 +649,13 @@ export const TxRoutes: FastifyPluginAsync<
 
       const limit = getPagingQueryLimit(ResourceType.Tx, req.query['limit']);
       const offset = parsePagingQueryInput(req.query['offset'] ?? 0);
+      const excludeFunctionArgs = req.query.exclude_function_args ?? false;
       const result = await fastify.db.getTxsFromBlock({ height: height }, limit, offset);
       if (!result.found) {
         throw new NotFoundError(`no block found at height ${height}`);
       }
       const dbTxs = result.result;
-      const results = dbTxs.results.map(dbTx => parseDbTx(dbTx));
+      const results = dbTxs.results.map(dbTx => parseDbTx(dbTx, excludeFunctionArgs));
 
       await reply.send({
         limit: limit,
