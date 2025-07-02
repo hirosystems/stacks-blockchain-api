@@ -89,10 +89,11 @@ export function parseDbSmartContractStatusArray(
 }
 
 export function parseDbTxWithAccountTransferSummary(
-  tx: DbTxWithAddressTransfers
+  tx: DbTxWithAddressTransfers,
+  excludeFunctionArgs: boolean = false
 ): AddressTransaction {
   return {
-    tx: parseDbTx(tx),
+    tx: parseDbTx(tx, excludeFunctionArgs),
     stx_sent: tx.stx_sent.toString(),
     stx_received: tx.stx_received.toString(),
     events: {
