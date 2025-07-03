@@ -119,7 +119,8 @@ export const OrderParamSchema = Type.Enum(
 export const ExcludeFunctionArgsParamSchema = Type.Optional(
   Type.Boolean({
     default: false,
-    description: 'Omit function_args from contract-call responses.',
+    description:
+      'Exclude function_args from contract call responses for smaller transaction sizes.',
     examples: [true, false],
   })
 );

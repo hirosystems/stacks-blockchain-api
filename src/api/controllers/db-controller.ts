@@ -864,7 +864,7 @@ export async function getRosettaTransactionFromDataStore(
 interface GetTxArgs {
   txId: string;
   includeUnanchored: boolean;
-  excludeFunctionArgs?: boolean;
+  excludeFunctionArgs: boolean;
 }
 
 interface GetTxFromDbTxArgs extends GetTxArgs {
@@ -879,7 +879,7 @@ interface GetTxsWithEventsArgs extends GetTxsArgs {
 interface GetTxsArgs {
   txIds: string[];
   includeUnanchored: boolean;
-  excludeFunctionArgs?: boolean;
+  excludeFunctionArgs: boolean;
 }
 
 interface GetTxWithEventsArgs extends GetTxArgs {
@@ -1214,7 +1214,7 @@ export async function getMempoolTxsFromDataStore(
   }
 
   const parsedMempoolTxs = mempoolTxsQuery.map(tx =>
-    parseDbMempoolTx(tx, args.excludeFunctionArgs ?? false)
+    parseDbMempoolTx(tx, args.excludeFunctionArgs)
   );
 
   return parsedMempoolTxs;
@@ -1237,7 +1237,7 @@ async function getTxsFromDataStore(
     }
 
     // parsing txQuery
-    const parsedTxs = txQuery.map(tx => parseDbTx(tx, args.excludeFunctionArgs ?? false));
+    const parsedTxs = txQuery.map(tx => parseDbTx(tx, args.excludeFunctionArgs));
 
     // incase transaction events are requested
     if ('eventLimit' in args) {
@@ -1287,7 +1287,7 @@ export async function getTxFromDataStore(
       dbTx = txQuery.result;
     }
 
-    const parsedTx = parseDbTx(dbTx, args.excludeFunctionArgs ?? false);
+    const parsedTx = parseDbTx(dbTx, args.excludeFunctionArgs);
 
     // If tx events are requested
     if ('eventLimit' in args) {

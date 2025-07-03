@@ -379,6 +379,7 @@ export const AddressRoutes: FastifyPluginAsync<
             txId: results.tx.tx_id,
             dbTx: results.tx,
             includeUnanchored: false,
+            excludeFunctionArgs: false,
           });
           if (!txQuery.found) {
             throw new Error('unexpected tx not found -- fix tx enumeration query');
@@ -471,6 +472,7 @@ export const AddressRoutes: FastifyPluginAsync<
             txId: entry.tx.tx_id,
             dbTx: entry.tx,
             includeUnanchored: blockParams.includeUnanchored ?? false,
+            excludeFunctionArgs: false,
           });
           if (!txQuery.found) {
             throw new Error('unexpected tx not found -- fix tx enumeration query');
