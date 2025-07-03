@@ -563,7 +563,7 @@ export async function getRosettaBlockFromDataStore(
 
 export async function getUnanchoredTxsFromDataStore(db: PgStore): Promise<Transaction[]> {
   const dbTxs = await db.getUnanchoredTxs();
-  const parsedTxs = dbTxs.txs.map(dbTx => parseDbTx(dbTx));
+  const parsedTxs = dbTxs.txs.map(dbTx => parseDbTx(dbTx, false));
   return parsedTxs;
 }
 
@@ -909,7 +909,7 @@ function parseDbBaseTx(dbTx: DbTx | DbMempoolTx): BaseTransaction {
 
 function parseDbTxTypeMetadata(
   dbTx: DbTx | DbMempoolTx,
-  excludeFunctionArgs: boolean = false
+  excludeFunctionArgs: boolean
 ): TransactionMetadata {
   switch (dbTx.type_id) {
     case DbTxTypeId.TokenTransfer: {
@@ -1059,7 +1059,7 @@ function parseDbTxTypeMetadata(
 
 export function parseContractCallMetadata(
   tx: BaseTx,
-  excludeFunctionArgs: boolean = false
+  excludeFunctionArgs: boolean
 ): ContractCallTransactionMetadata {
   const contractId = unwrapOptional(
     tx.contract_call_contract_id,
@@ -1076,7 +1076,7 @@ export function parseContractCallMetadata(
     const contractAbi: ClarityAbi = JSON.parse(abi);
     functionAbi = contractAbi.functions.find(fn => fn.name === functionName);
     if (!functionAbi) {
-      throw new Error(`Could not find function name \"${functionName}\" in ABI for ${contractId}`);
+      throw new Error(`Could not find function name "${functionName}" in ABI for ${contractId}`);
     }
   }
 
@@ -1175,7 +1175,7 @@ function parseDbAbstractMempoolTx(
   return abstractMempoolTx;
 }
 
-export function parseDbTx(dbTx: DbTx, excludeFunctionArgs: boolean = false): Transaction {
+export function parseDbTx(dbTx: DbTx, excludeFunctionArgs: boolean): Transaction {
   const baseTx = parseDbBaseTx(dbTx);
   const abstractTx = parseDbAbstractTx(dbTx, baseTx);
   const txMetadata = parseDbTxTypeMetadata(dbTx, excludeFunctionArgs);
@@ -1188,7 +1188,7 @@ export function parseDbTx(dbTx: DbTx, excludeFunctionArgs: boolean = false): Tra
 
 export function parseDbMempoolTx(
   dbMempoolTx: DbMempoolTx,
-  excludeFunctionArgs: boolean = false
+  excludeFunctionArgs: boolean
 ): MempoolTransaction {
   const baseTx = parseDbBaseTx(dbMempoolTx);
   const abstractTx = parseDbAbstractMempoolTx(dbMempoolTx, baseTx);

@@ -1,8 +1,3 @@
-## [8.11.0](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.10.0...v8.11.0) (2025-07-03)
-
-### Features
-* add `exclude_function_args` query parameter to transaction and address endpoints to optionally omit contract-call `function_args`, reducing payload size and improving pagination performance ([#2312](https://github.com/hirosystems/stacks-blockchain-api/pull/2312)) ([f7a6b19](https://github.com/hirosystems/stacks-blockchain-api/commit/f7a6b194d))
-
 ## [8.10.0](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.9.0...v8.10.0) (2025-04-18)
 
 

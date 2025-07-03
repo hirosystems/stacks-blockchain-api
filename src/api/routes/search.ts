@@ -114,7 +114,7 @@ export const SearchRoutes: FastifyPluginAsync<
             },
           };
           if (includeMetadata) {
-            txResult.metadata = parseDbTx(txData);
+            txResult.metadata = parseDbTx(txData, false);
           }
           return { found: true, result: txResult };
         } else if (queryResult.result.entity_type === 'mempool_tx_id') {
@@ -127,7 +127,7 @@ export const SearchRoutes: FastifyPluginAsync<
             },
           };
           if (includeMetadata) {
-            txResult.metadata = parseDbMempoolTx(txData);
+            txResult.metadata = parseDbMempoolTx(txData, false);
           }
           return { found: true, result: txResult };
         } else {
@@ -176,7 +176,7 @@ export const SearchRoutes: FastifyPluginAsync<
               },
             };
             if (includeMetadata) {
-              contractResult.metadata = parseDbTx(txData);
+              contractResult.metadata = parseDbTx(txData, false);
             }
             return { found: true, result: contractResult };
           } else {
@@ -191,7 +191,7 @@ export const SearchRoutes: FastifyPluginAsync<
               },
             };
             if (includeMetadata) {
-              contractResult.metadata = parseDbMempoolTx(txData);
+              contractResult.metadata = parseDbMempoolTx(txData, false);
             }
             return { found: true, result: contractResult };
           }
