@@ -1,5 +1,4 @@
 import { parseContractCallMetadata } from '../../src/api/controllers/db-controller';
-import { DbTxTypeId } from '../../src/datastore/common';
 
 // A minimal mock transaction that only contains the fields required by `parseContractCallMetadata`.
 const makeMockContractCallTx = (contractId: string, functionName: string, abiJson: string): any => {
