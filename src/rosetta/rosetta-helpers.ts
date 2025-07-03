@@ -681,7 +681,11 @@ async function makeCallContractOperation(
     },
   };
 
-  const parsed_tx = await getTxFromDataStore(db, { txId: tx.tx_id, includeUnanchored: false });
+  const parsed_tx = await getTxFromDataStore(db, {
+    txId: tx.tx_id,
+    includeUnanchored: false,
+    excludeFunctionArgs: false, // Rosetta requires function_args
+  });
   if (!parsed_tx.found) {
     throw new Error('unexpected tx not found -- could not get contract from data store');
   }
@@ -868,7 +872,7 @@ function parseStackingContractCall(
 }
 
 function parseGenericContractCall(operation: RosettaOperation, tx: BaseTx) {
-  const metadata = parseContractCallMetadata(tx);
+  const metadata = parseContractCallMetadata(tx, false); // Rosetta requires function_args
   operation.metadata = metadata.contract_call;
 }
 

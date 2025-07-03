@@ -159,6 +159,7 @@ export const BlockRoutes: FastifyPluginAsync<
       if (!block.found) {
         throw new NotFoundError(`cannot find block by hash`);
       }
+
       await reply.send(block.result);
     }
   );

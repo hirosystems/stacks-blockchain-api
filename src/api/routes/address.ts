@@ -33,6 +33,7 @@ import {
   PrincipalSchema,
   UnanchoredParamSchema,
   UntilBlockSchema,
+  ExcludeFunctionArgsParamSchema,
 } from '../schemas/params';
 import {
   AddressBalance,
@@ -290,6 +291,7 @@ export const AddressRoutes: FastifyPluginAsync<
           ),
           unanchored: UnanchoredParamSchema,
           until_block: UntilBlockSchema,
+          exclude_function_args: ExcludeFunctionArgsParamSchema,
         }),
         response: {
           200: AddressTransactionsListResponseSchema,
@@ -302,6 +304,7 @@ export const AddressRoutes: FastifyPluginAsync<
       const untilBlock = parseUntilBlockQuery(req.query.until_block, req.query.unanchored);
       const limit = getPagingQueryLimit(ResourceType.Tx, req.query.limit);
       const offset = req.query.offset ?? 0;
+      const excludeFunctionArgs = req.query.exclude_function_args ?? false;
 
       const response = await fastify.db.sqlTransaction(async sql => {
         const blockParams = getBlockParams(req.query.height, req.query.unanchored);
@@ -327,7 +330,7 @@ export const AddressRoutes: FastifyPluginAsync<
           blockHeight,
           atSingleBlock,
         });
-        const results = txResults.map(dbTx => parseDbTx(dbTx));
+        const results = txResults.map(dbTx => parseDbTx(dbTx, excludeFunctionArgs));
         const response = { limit, offset, total, results };
         return response;
       });
@@ -376,6 +379,7 @@ export const AddressRoutes: FastifyPluginAsync<
             txId: results.tx.tx_id,
             dbTx: results.tx,
             includeUnanchored: false,
+            excludeFunctionArgs: false,
           });
           if (!txQuery.found) {
             throw new Error('unexpected tx not found -- fix tx enumeration query');
@@ -468,6 +472,7 @@ export const AddressRoutes: FastifyPluginAsync<
             txId: entry.tx.tx_id,
             dbTx: entry.tx,
             includeUnanchored: blockParams.includeUnanchored ?? false,
+            excludeFunctionArgs: false,
           });
           if (!txQuery.found) {
             throw new Error('unexpected tx not found -- fix tx enumeration query');
@@ -671,6 +676,7 @@ export const AddressRoutes: FastifyPluginAsync<
           limit: LimitParam(ResourceType.Tx),
           offset: OffsetParam(),
           unanchored: UnanchoredParamSchema,
+          exclude_function_args: ExcludeFunctionArgsParamSchema,
         }),
         response: {
           200: PaginatedResponse(MempoolTransactionSchema, {
@@ -690,13 +696,16 @@ export const AddressRoutes: FastifyPluginAsync<
         );
       }
       const includeUnanchored = req.query.unanchored ?? false;
+      const excludeFunctionArgs = req.query.exclude_function_args ?? false;
       const { results: txResults, total } = await fastify.db.getMempoolTxList({
         offset,
         limit,
         address,
         includeUnanchored,
       });
-      const results: MempoolTransaction[] = txResults.map(tx => parseDbMempoolTx(tx));
+      const results: MempoolTransaction[] = txResults.map(tx =>
+        parseDbMempoolTx(tx, excludeFunctionArgs)
+      );
       const response = { limit, offset, total, results };
       await reply.send(response);
     }
