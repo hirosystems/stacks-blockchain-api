@@ -1000,14 +1000,9 @@ export function parseNewBlockMessage(
   const parsedTxs: CoreNodeParsedTxMessage[] = [];
   const blockData: CoreNodeMsgBlockData = {
     ...msg,
-    // If received block_time is empty, and the block is not a Nakamoto block or we're running in
-    // IBD mode, we use the parent burn block timestamp as the receipt date. Otherwise, use the
-    // current timestamp. This is to ensure that the block time is always set, and that it is
-    // consistent with the block time in the block header.
-    block_time:
-      msg.block_time ?? (!msg.signer_bitvec || isEventReplay)
-        ? msg.burn_block_time
-        : Math.round(Date.now() / 1000),
+    // Nakamoto blocks now include their own `block_time`, but this will be empty for pre-Nakamoto
+    // blocks. We'll use the parent burn block timestamp as the receipt date for those.
+    block_time: msg.block_time ?? msg.burn_block_time ?? Math.round(Date.now() / 1000),
   };
 
   msg.transactions.forEach(item => {
