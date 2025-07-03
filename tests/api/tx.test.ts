@@ -450,7 +450,11 @@ describe('tx tests', () => {
       ],
     });
 
-    const txQuery = await getTxFromDataStore(db, { txId: dbTx.tx_id, includeUnanchored: false, excludeFunctionArgs: false });
+    const txQuery = await getTxFromDataStore(db, {
+      txId: dbTx.tx_id,
+      includeUnanchored: false,
+      excludeFunctionArgs: false,
+    });
     expect(txQuery.found).toBe(true);
     if (!txQuery.found) {
       throw Error('not found');
@@ -602,7 +606,11 @@ describe('tx tests', () => {
       ],
     });
 
-    const txQuery = await getTxFromDataStore(db, { txId: dbTx.tx_id, includeUnanchored: false, excludeFunctionArgs: false });
+    const txQuery = await getTxFromDataStore(db, {
+      txId: dbTx.tx_id,
+      includeUnanchored: false,
+      excludeFunctionArgs: false,
+    });
     expect(txQuery.found).toBe(true);
     if (!txQuery.found) {
       throw Error('not found');
@@ -753,7 +761,11 @@ describe('tx tests', () => {
       ],
     });
 
-    const txQuery = await getTxFromDataStore(db, { txId: dbTx.tx_id, includeUnanchored: false, excludeFunctionArgs: false });
+    const txQuery = await getTxFromDataStore(db, {
+      txId: dbTx.tx_id,
+      includeUnanchored: false,
+      excludeFunctionArgs: false,
+    });
     expect(txQuery.found).toBe(true);
     if (!txQuery.found) {
       throw Error('not found');
@@ -938,7 +950,11 @@ describe('tx tests', () => {
       ],
     });
 
-    const txQuery = await getTxFromDataStore(db, { txId: dbTx.tx_id, includeUnanchored: false, excludeFunctionArgs: false });
+    const txQuery = await getTxFromDataStore(db, {
+      txId: dbTx.tx_id,
+      includeUnanchored: false,
+      excludeFunctionArgs: false,
+    });
     expect(txQuery.found).toBe(true);
     if (!txQuery.found) {
       throw Error('not found');
@@ -1145,7 +1161,11 @@ describe('tx tests', () => {
         abi: JSON.stringify(contractAbi),
       },
     ]);
-    const txQuery = await getTxFromDataStore(db, { txId: dbTx.tx_id, includeUnanchored: false, excludeFunctionArgs: false });
+    const txQuery = await getTxFromDataStore(db, {
+      txId: dbTx.tx_id,
+      includeUnanchored: false,
+      excludeFunctionArgs: false,
+    });
     expect(txQuery.found).toBe(true);
     if (!txQuery.found) {
       throw Error('not found');
@@ -1569,7 +1589,11 @@ describe('tx tests', () => {
         },
       ],
     });
-    const txQuery = await getTxFromDataStore(db, { txId: dbTx.tx_id, includeUnanchored: false, excludeFunctionArgs: false });
+    const txQuery = await getTxFromDataStore(db, {
+      txId: dbTx.tx_id,
+      includeUnanchored: false,
+      excludeFunctionArgs: false,
+    });
     expect(txQuery.found).toBe(true);
     if (!txQuery.found) {
       throw Error('not found');
@@ -1782,7 +1806,11 @@ describe('tx tests', () => {
       ],
     });
 
-    const txQuery = await getTxFromDataStore(db, { txId: dbTx.tx_id, includeUnanchored: false, excludeFunctionArgs: false });
+    const txQuery = await getTxFromDataStore(db, {
+      txId: dbTx.tx_id,
+      includeUnanchored: false,
+      excludeFunctionArgs: false,
+    });
     expect(txQuery.found).toBe(true);
     if (!txQuery.found) {
       throw Error('not found');
@@ -1940,7 +1968,11 @@ describe('tx tests', () => {
       ],
     });
 
-    const txQuery = await getTxFromDataStore(db, { txId: dbTx.tx_id, includeUnanchored: false, excludeFunctionArgs: false });
+    const txQuery = await getTxFromDataStore(db, {
+      txId: dbTx.tx_id,
+      includeUnanchored: false,
+      excludeFunctionArgs: false,
+    });
     expect(txQuery.found).toBe(true);
     if (!txQuery.found) {
       throw Error('not found');
