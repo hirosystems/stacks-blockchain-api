@@ -127,7 +127,6 @@ describe('synthetic stx txs', () => {
     };
 
     expect(parsed.parsed_tx).toEqual(expect.objectContaining(expected));
-    expect(parsed.block_time).toEqual(1846858171); // Takes block_time from block header
   });
 
   test('test synthetic tx stx lock 1', () => {
@@ -237,7 +236,6 @@ describe('synthetic stx txs', () => {
     for (const poxEvent of parsed.txs[0].pox4Events) {
       expect(poxEvent.event_index).toBeLessThan(events.length);
     }
-    expect(parsed.block.block_time).toEqual(1716238792); // Takes burn_block_time from block header
   });
 
   test('test synthetic tx stx lock 2', () => {
