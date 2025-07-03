@@ -2227,7 +2227,7 @@ export class PgWriteStore extends PgStore {
       const values: SmartContractInsertValues[] = batch.map(smartContract => ({
         tx_id: smartContract.tx_id,
         canonical: smartContract.canonical,
-        clarity_version: smartContract.clarity_version,
+        clarity_version: smartContract.clarity_version ?? null,
         contract_id: smartContract.contract_id,
         block_height: smartContract.block_height,
         index_block_hash: tx.index_block_hash,
