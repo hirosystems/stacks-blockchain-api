@@ -62,6 +62,7 @@ describe('synthetic stx txs', () => {
     };
 
     expect(parsed.parsed_tx).toEqual(expect.objectContaining(expected));
+    expect(parsed.block_time).toEqual(1610742541); // Takes burn_block_time from block header
   });
 
   test('test synthetic tx token transfer 2', () => {
@@ -117,6 +118,7 @@ describe('synthetic stx txs', () => {
     };
 
     expect(parsed.parsed_tx).toEqual(expect.objectContaining(expected));
+    expect(parsed.block_time).toEqual(1846858171); // Takes block_time from block header
   });
 
   test('test synthetic tx stx lock 1', () => {
