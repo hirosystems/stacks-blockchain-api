@@ -3,7 +3,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { DecodedTxResult, TxPayloadTypeID } from 'stacks-encoding-native-js';
 import { CoreNodeBlockMessage } from '../../src/event-stream/core-node-message';
-import { parseMessageTransaction } from '../../src/event-stream/reader';
+import { CoreNodeMsgBlockData, parseMessageTransaction } from '../../src/event-stream/reader';
 import { parseNewBlockMessage } from '../../src/event-stream/event-server';
 
 // Test processing of the psuedo-Stacks transactions, i.e. the ones that
@@ -20,7 +20,12 @@ describe('synthetic stx txs', () => {
     if (!txMsg) {
       throw new Error(`Cound not find tx ${txid}`);
     }
-    const parsed = parseMessageTransaction(ChainID.Mainnet, txMsg, blockMsg, blockMsg.events);
+    const parsed = parseMessageTransaction(
+      ChainID.Mainnet,
+      txMsg,
+      blockMsg as unknown as CoreNodeMsgBlockData,
+      blockMsg.events
+    );
     if (!parsed) {
       throw new Error(`Failed to parse ${txid}`);
     }
@@ -62,7 +67,6 @@ describe('synthetic stx txs', () => {
     };
 
     expect(parsed.parsed_tx).toEqual(expect.objectContaining(expected));
-    expect(parsed.block_time).toEqual(1610742541); // Takes burn_block_time from block header
   });
 
   test('test synthetic tx token transfer 2', () => {
@@ -76,7 +80,12 @@ describe('synthetic stx txs', () => {
     if (!txMsg) {
       throw new Error(`Cound not find tx ${txid}`);
     }
-    const parsed = parseMessageTransaction(ChainID.Mainnet, txMsg, blockMsg, blockMsg.events);
+    const parsed = parseMessageTransaction(
+      ChainID.Mainnet,
+      txMsg,
+      blockMsg as unknown as CoreNodeMsgBlockData,
+      blockMsg.events
+    );
     if (!parsed) {
       throw new Error(`Failed to parse ${txid}`);
     }
@@ -132,7 +141,12 @@ describe('synthetic stx txs', () => {
     if (!txMsg) {
       throw new Error(`Cound not find tx ${txid}`);
     }
-    const parsed = parseMessageTransaction(ChainID.Mainnet, txMsg, blockMsg, blockMsg.events);
+    const parsed = parseMessageTransaction(
+      ChainID.Mainnet,
+      txMsg,
+      blockMsg as unknown as CoreNodeMsgBlockData,
+      blockMsg.events
+    );
     if (!parsed) {
       throw new Error(`Failed to parse ${txid}`);
     }
@@ -223,6 +237,7 @@ describe('synthetic stx txs', () => {
     for (const poxEvent of parsed.txs[0].pox4Events) {
       expect(poxEvent.event_index).toBeLessThan(events.length);
     }
+    expect(parsed.block.block_time).toEqual(1716238792); // Takes burn_block_time from block header
   });
 
   test('test synthetic tx stx lock 2', () => {
@@ -236,7 +251,12 @@ describe('synthetic stx txs', () => {
     if (!txMsg) {
       throw new Error(`Cound not find tx ${txid}`);
     }
-    const parsed = parseMessageTransaction(ChainID.Mainnet, txMsg, blockMsg, blockMsg.events);
+    const parsed = parseMessageTransaction(
+      ChainID.Mainnet,
+      txMsg,
+      blockMsg as unknown as CoreNodeMsgBlockData,
+      blockMsg.events
+    );
     if (!parsed) {
       throw new Error(`Failed to parse ${txid}`);
     }
@@ -335,7 +355,7 @@ describe('synthetic stx txs', () => {
       const parsed = parseMessageTransaction(
         ChainID.Mainnet,
         payload.txMsg,
-        payload.blockMsg,
+        payload.blockMsg as unknown as CoreNodeMsgBlockData,
         payload.blockMsg.events
       );
       let txType: 'contract_call' | 'token_transfer' | null;
