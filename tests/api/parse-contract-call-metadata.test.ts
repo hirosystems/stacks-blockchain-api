@@ -19,14 +19,10 @@ describe('parseContractCallMetadata()', () => {
         {
           name: 'valid_function',
           access: 'public',
-          args: [{ name: 'amount', type: 'uint128' }],
+          args: [],
           outputs: { type: 'bool' },
         },
       ],
-      maps: [],
-      variables: [],
-      fungible_tokens: [],
-      non_fungible_tokens: [],
     };
 
     const tx = makeMockContractCallTx(contractId, 'missing_function', JSON.stringify(abi));
