@@ -1,3 +1,10 @@
+## [8.11.3](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.11.2...v8.11.3) (2025-07-07)
+
+
+### Bug Fixes
+
+* use burn_block_time in 2.x blocks and block_time after 3.x ([#2314](https://github.com/hirosystems/stacks-blockchain-api/issues/2314)) ([e1d4c61](https://github.com/hirosystems/stacks-blockchain-api/commit/e1d4c618ee8ca60ba457f4ecf37dc33507514d39))
+
 ## [8.11.2](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.11.1...v8.11.2) (2025-06-20)
 
 
