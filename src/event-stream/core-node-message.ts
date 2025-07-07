@@ -326,7 +326,7 @@ export interface CoreNodeBlockMessage {
       missed_reward_slots: [];
     };
   };
-  block_time: number;
+  block_time: number | null;
   signer_bitvec?: string | null;
   signer_signature?: string[];
 }
