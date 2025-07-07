@@ -1001,7 +1001,7 @@ export function parseNewBlockMessage(
   // blocks. We'll use the parent burn block timestamp as the receipt date for those. If both are
   // blank, there's something wrong with Stacks core.
   const block_time = msg.block_time ?? msg.burn_block_time;
-  if (!block_time) {
+  if (block_time === undefined || block_time === null) {
     throw new Error('Block message has no block_time or burn_block_time');
   }
 
