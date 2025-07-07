@@ -997,12 +997,18 @@ export function parseNewBlockMessage(
 ) {
   const counts = newCoreNoreBlockEventCounts();
 
+  // Nakamoto blocks now include their own `block_time`, but this will be empty for pre-Nakamoto
+  // blocks. We'll use the parent burn block timestamp as the receipt date for those. If both are
+  // blank, there's something wrong with Stacks core.
+  const block_time = msg.block_time ?? msg.burn_block_time;
+  if (!block_time) {
+    throw new Error('Block message has no block_time or burn_block_time');
+  }
+
   const parsedTxs: CoreNodeParsedTxMessage[] = [];
   const blockData: CoreNodeMsgBlockData = {
     ...msg,
-    // Nakamoto blocks now include their own `block_time`, but this will be empty for pre-Nakamoto
-    // blocks. We'll use the parent burn block timestamp as the receipt date for those.
-    block_time: msg.block_time ?? msg.burn_block_time ?? Math.round(Date.now() / 1000),
+    block_time,
   };
 
   msg.transactions.forEach(item => {
