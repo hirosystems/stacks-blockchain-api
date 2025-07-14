@@ -1,3 +1,10 @@
+## [8.11.4](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.11.3...v8.11.4) (2025-07-14)
+
+
+### Bug Fixes
+
+* validate block cursor pagination parameter format ([#2317](https://github.com/hirosystems/stacks-blockchain-api/issues/2317)) ([20e334d](https://github.com/hirosystems/stacks-blockchain-api/commit/20e334dc9a214ad0ee7ff73c3355447efccc9f1a))
+
 ## [8.11.3](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.11.2...v8.11.3) (2025-07-07)
 
 
