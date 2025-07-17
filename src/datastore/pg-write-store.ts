@@ -287,11 +287,8 @@ export class PgWriteStore extends PgStore {
         // Block 0 is non-canonical, but we need to make sure its STX mint events get considered in
         // balance calculations.
         if (data.block.block_height == 0 || isCanonical) {
-          // Use `data.txs` directly instead of `newTxData` for these STX/FT balance updates because
-          // we don't want to skip balance changes in transactions that were previously confirmed
-          // via microblocks.
-          q.enqueue(() => this.updateStxBalances(sql, data.txs, data.minerRewards));
-          q.enqueue(() => this.updateFtBalances(sql, data.txs));
+          q.enqueue(() => this.updateStxBalances(sql, newTxData, data.minerRewards));
+          q.enqueue(() => this.updateFtBalances(sql, newTxData));
         }
         if (data.poxSetSigners && data.poxSetSigners.signers) {
           const poxSet = data.poxSetSigners;
@@ -1054,6 +1051,7 @@ export class PgWriteStore extends PgStore {
     const balanceMap = new Map<string, bigint>();
 
     for (const { tx, stxEvents } of entries) {
+      if (!tx.canonical && !tx.microblock_canonical) continue;
       if (tx.sponsored) {
         // Decrease the tx sponsor balance by the fee
         const balance = balanceMap.get(tx.sponsor_address as string) ?? BigInt(0);
@@ -1105,10 +1103,11 @@ export class PgWriteStore extends PgStore {
     }
   }
 
-  async updateFtBalances(sql: PgSqlClient, entries: { ftEvents: DbFtEvent[] }[]) {
+  async updateFtBalances(sql: PgSqlClient, entries: { tx: DbTx; ftEvents: DbFtEvent[] }[]) {
     const balanceMap = new Map<string, { address: string; token: string; balance: bigint }>();
 
-    for (const { ftEvents } of entries) {
+    for (const { tx, ftEvents } of entries) {
+      if (!tx.canonical && !tx.microblock_canonical) continue;
       for (const event of ftEvents) {
         if (event.sender) {
           // Decrease the sender balance by the transfer amount
@@ -1724,6 +1723,121 @@ export class PgWriteStore extends PgStore {
         microblocks: orphanedMicroblocks,
       });
       orphanedMicroblockTxs = microOrphanResult.updatedTxs;
+      // Update FT balances for the orphaned microblock txs
+      for (const tx of orphanedMicroblockTxs) {
+        await sql`
+          WITH updated_txs AS (
+            SELECT tx_id, sender_address, nonce, sponsor_address, fee_rate, sponsored, canonical, microblock_canonical
+            FROM txs
+            WHERE tx_id = ${tx.tx_id}
+              AND index_block_hash = ${blockData.indexBlockHash}
+              AND microblock_hash = ${tx.microblock_hash}
+          ),
+          affected_addresses AS (
+              SELECT 
+                sender_address AS address,
+                fee_rate AS fee_change,
+                canonical,
+                microblock_canonical,
+                sponsored
+              FROM updated_txs
+              WHERE sponsored = false
+            UNION ALL
+              SELECT 
+                sponsor_address AS address,
+                fee_rate AS fee_change,
+                canonical,
+                microblock_canonical,
+                sponsored
+              FROM updated_txs
+              WHERE sponsored = true
+          ),
+          balances_update AS (
+            SELECT
+              a.address,
+              SUM(CASE WHEN a.canonical AND a.microblock_canonical THEN -a.fee_change ELSE a.fee_change END) AS balance_change
+            FROM affected_addresses a
+            GROUP BY a.address
+          )
+          INSERT INTO ft_balances (address, token, balance)
+          SELECT b.address, 'stx', b.balance_change
+          FROM balances_update b
+          ON CONFLICT (address, token)
+          DO UPDATE
+          SET balance = ft_balances.balance + EXCLUDED.balance
+          RETURNING ft_balances.address
+        `;
+        await sql`
+          WITH updated_events AS (
+            SELECT sender, recipient, amount, asset_event_type_id, asset_identifier, canonical, microblock_canonical
+            FROM ft_events
+            WHERE tx_id = ${tx.tx_id}
+              AND index_block_hash = ${blockData.indexBlockHash}
+              AND microblock_hash = ${tx.microblock_hash}
+          ),
+          event_changes AS (
+            SELECT address, asset_identifier, SUM(balance_change) AS balance_change
+            FROM (
+                SELECT sender AS address, asset_identifier,
+                  SUM(CASE WHEN canonical AND microblock_canonical THEN -amount ELSE amount END) AS balance_change
+                FROM updated_events
+                WHERE asset_event_type_id IN (1, 3) -- Transfers and Burns affect the sender's balance
+                GROUP BY sender, asset_identifier
+              UNION ALL
+                SELECT recipient AS address, asset_identifier,
+                  SUM(CASE WHEN canonical AND microblock_canonical THEN amount ELSE -amount END) AS balance_change
+                FROM updated_events
+                WHERE asset_event_type_id IN (1, 2) -- Transfers and Mints affect the recipient's balance
+                GROUP BY recipient, asset_identifier
+            ) AS subquery
+            GROUP BY address, asset_identifier
+          )
+          INSERT INTO ft_balances (address, token, balance)
+          SELECT ec.address, ec.asset_identifier, ec.balance_change
+          FROM event_changes ec
+          ON CONFLICT (address, token)
+          DO UPDATE
+          SET balance = ft_balances.balance + EXCLUDED.balance
+          RETURNING ft_balances.address
+        `;
+        await sql`
+          WITH updated_events AS (
+            SELECT sender, recipient, amount, asset_event_type_id, canonical, microblock_canonical
+            FROM stx_events
+            WHERE tx_id = ${tx.tx_id}
+              AND index_block_hash = ${blockData.indexBlockHash}
+              AND microblock_hash = ${tx.microblock_hash}
+          ),
+          event_changes AS (
+            SELECT 
+              address,
+              SUM(balance_change) AS balance_change
+            FROM (
+                SELECT 
+                  sender AS address,
+                  SUM(CASE WHEN canonical AND microblock_canonical THEN -amount ELSE amount END) AS balance_change
+                FROM updated_events
+                WHERE asset_event_type_id IN (1, 3) -- Transfers and Burns affect the sender's balance
+                GROUP BY sender
+              UNION ALL
+                SELECT 
+                  recipient AS address,
+                  SUM(CASE WHEN canonical AND microblock_canonical THEN amount ELSE -amount END) AS balance_change
+                FROM updated_events
+                WHERE asset_event_type_id IN (1, 2) -- Transfers and Mints affect the recipient's balance
+                GROUP BY recipient
+            ) AS subquery
+            GROUP BY address
+          )
+          INSERT INTO ft_balances (address, token, balance)
+          SELECT ec.address, 'stx', ec.balance_change
+          FROM event_changes ec
+          ON CONFLICT (address, token)
+          DO UPDATE
+          SET balance = ft_balances.balance + EXCLUDED.balance
+          RETURNING ft_balances.address
+        `;
+      }
     }
     let acceptedMicroblockTxs: DbTx[] = [];
     if (acceptedMicroblocks.length > 0) {
@@ -2463,6 +2577,8 @@ export class PgWriteStore extends PgStore {
       q.enqueue(() => this.updatePoxSyntheticEvents(sql, 'pox4_events', txs));
       q.enqueue(() => this.updateStxLockEvents(sql, txs));
       q.enqueue(() => this.updateFtEvents(sql, txs));
+      q.enqueue(() => this.updateStxBalances(sql, txs, []));
+      q.enqueue(() => this.updateFtBalances(sql, txs));
       for (const entry of txs) {
         q.enqueue(() => this.updateNftEvents(sql, entry.tx, entry.nftEvents, true));
         q.enqueue(() => this.updateSmartContracts(sql, entry.tx, entry.smartContracts));
@@ -2500,50 +2616,14 @@ export class PgWriteStore extends PgStore {
     // and update `microblock_canonical`, `canonical`, as well as anchor block data that may be missing
     // for unanchored entires.
     const updatedMbTxsQuery = await sql<TxQueryResult[]>`
-      WITH updated_txs AS (
-        UPDATE txs
-        SET microblock_canonical = ${args.isMicroCanonical},
-          canonical = ${args.isCanonical}, index_block_hash = ${args.indexBlockHash},
-          block_hash = ${args.blockHash}, burn_block_time = ${args.burnBlockTime},
-          burn_block_height = ${args.burnBlockHeight}
-        WHERE microblock_hash IN ${sql(args.microblocks)}
-          AND (index_block_hash = ${args.indexBlockHash} OR index_block_hash = '\\x'::bytea)
-        RETURNING ${sql(TX_COLUMNS)}
-      ),
-      affected_addresses AS (
-          SELECT
-            sender_address AS address,
-            fee_rate AS fee_change,
-            canonical,
-            sponsored
-          FROM updated_txs
-          WHERE sponsored = false
-        UNION ALL
-          SELECT 
-            sponsor_address AS address,
-            fee_rate AS fee_change,
-            canonical,
-            sponsored
-          FROM updated_txs
-          WHERE sponsored = true
-      ),
-      balances_update AS (
-        SELECT
-          a.address,
-          SUM(CASE WHEN a.canonical THEN -a.fee_change ELSE a.fee_change END) AS balance_change
-        FROM affected_addresses a
-        GROUP BY a.address
-      ),
-      update_ft_balances AS (
-        INSERT INTO ft_balances (address, token, balance)
-        SELECT b.address, 'stx', b.balance_change
-        FROM balances_update b
-        ON CONFLICT (address, token)
-        DO UPDATE
-        SET balance = ft_balances.balance + EXCLUDED.balance
-        RETURNING ft_balances.address
-      )
-      SELECT * FROM updated_txs
+      UPDATE txs
+      SET microblock_canonical = ${args.isMicroCanonical},
+        canonical = ${args.isCanonical}, index_block_hash = ${args.indexBlockHash},
+        block_hash = ${args.blockHash}, burn_block_time = ${args.burnBlockTime},
+        burn_block_height = ${args.burnBlockHeight}
+      WHERE microblock_hash IN ${sql(args.microblocks)}
+        AND (index_block_hash = ${args.indexBlockHash} OR index_block_hash = '\\x'::bytea)
+      RETURNING ${sql(TX_COLUMNS)}
     `;
     // Any txs restored need to be pruned from the mempool
     const updatedMbTxs = updatedMbTxsQuery.map(r => parseTxQueryResult(r));
@@ -2561,92 +2641,7 @@ export class PgWriteStore extends PgStore {
     // microblock-tx metadata that have been accepted or orphaned in this anchor block.
     if (updatedMbTxs.length > 0) {
       const txIds = updatedMbTxs.map(tx => tx.tx_id);
-      await sql`
-        WITH updated_events AS (
-          UPDATE stx_events
-          SET microblock_canonical = ${args.isMicroCanonical},
-            canonical = ${args.isCanonical}, index_block_hash = ${args.indexBlockHash}
-          WHERE microblock_hash IN ${sql(args.microblocks)}
-            AND (index_block_hash = ${args.indexBlockHash} OR index_block_hash = '\\x'::bytea)
-            AND tx_id IN ${sql(txIds)}
-          RETURNING sender, recipient, amount, asset_event_type_id, canonical
-        ),
-        event_changes AS (
-          SELECT
-            address,
-            SUM(balance_change) AS balance_change
-          FROM (
-              SELECT
-                sender AS address,
-                SUM(CASE WHEN canonical THEN -amount ELSE amount END) AS balance_change
-              FROM updated_events
-              WHERE asset_event_type_id IN (1, 3) -- Transfers and Burns affect the sender's balance
-              GROUP BY sender
-            UNION ALL
-              SELECT
-                recipient AS address,
-                SUM(CASE WHEN canonical THEN amount ELSE -amount END) AS balance_change
-              FROM updated_events
-              WHERE asset_event_type_id IN (1, 2) -- Transfers and Mints affect the recipient's balance
-              GROUP BY recipient
-          ) AS subquery
-          GROUP BY address
-        )
-        INSERT INTO ft_balances (address, token, balance)
-        SELECT ec.address, 'stx', ec.balance_change
-        FROM event_changes ec
-        ON CONFLICT (address, token)
-        DO UPDATE
-        SET balance = ft_balances.balance + EXCLUDED.balance
-        RETURNING ft_balances.address
-      `;
-      await sql`
-        WITH updated_events AS (
-          UPDATE ft_events
-          SET microblock_canonical = ${args.isMicroCanonical},
-            canonical = ${args.isCanonical}, index_block_hash = ${args.indexBlockHash}
-          WHERE microblock_hash IN ${sql(args.microblocks)}
-            AND (index_block_hash = ${args.indexBlockHash} OR index_block_hash = '\\x'::bytea)
-            AND tx_id IN ${sql(txIds)}
-          RETURNING sender, recipient, amount, asset_event_type_id, asset_identifier, canonical
-        ),
-        event_changes AS (
-          SELECT address, asset_identifier, SUM(balance_change) AS balance_change
-          FROM (
-              SELECT sender AS address, asset_identifier,
-                SUM(CASE WHEN canonical THEN -amount ELSE amount END) AS balance_change
-              FROM updated_events
-              WHERE asset_event_type_id IN (1, 3) -- Transfers and Burns affect the sender's balance
-              GROUP BY sender, asset_identifier
-            UNION ALL
-              SELECT recipient AS address, asset_identifier,
-                SUM(CASE WHEN canonical THEN amount ELSE -amount END) AS balance_change
-              FROM updated_events
-              WHERE asset_event_type_id IN (1, 2) -- Transfers and Mints affect the recipient's balance
-              GROUP BY recipient, asset_identifier
-          ) AS subquery
-          GROUP BY address, asset_identifier
-        )
-        INSERT INTO ft_balances (address, token, balance)
-        SELECT ec.address, ec.asset_identifier, ec.balance_change
-        FROM event_changes ec
-        ON CONFLICT (address, token)
-        DO UPDATE
-        SET balance = ft_balances.balance + EXCLUDED.balance
-        RETURNING ft_balances.address
-      `;
-      for (const associatedTableName of [
-        'nft_events',
-        'pox2_events',
-        'pox3_events',
-        'pox4_events',
-        'contract_logs',
-        'stx_lock_events',
-        'smart_contracts',
-        'names',
-        'namespaces',
-        'subdomains',
-      ]) {
+      for (const associatedTableName of TX_METADATA_TABLES) {
         await sql`
           UPDATE ${sql(associatedTableName)}
           SET microblock_canonical = ${args.isMicroCanonical},
