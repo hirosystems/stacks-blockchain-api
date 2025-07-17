@@ -1711,20 +1711,9 @@ export class PgWriteStore extends PgStore {
 
     const { acceptedMicroblocks, orphanedMicroblocks } = unanchoredMicroblocksAtTip;
 
-    let orphanedMicroblockTxs: DbTx[] = [];
-    if (orphanedMicroblocks.length > 0) {
-      const microOrphanResult = await this.handleMicroReorg(sql, {
-        isCanonical: blockData.isCanonical,
-        isMicroCanonical: false,
-        indexBlockHash: blockData.indexBlockHash,
-        blockHash: blockData.blockHash,
-        burnBlockTime: blockData.burnBlockTime,
-        burnBlockHeight: blockData.burnBlockHeight,
-        microblocks: orphanedMicroblocks,
-      });
-      orphanedMicroblockTxs = microOrphanResult.updatedTxs;
+    const recalculate = async (txs: DbTx[]) => {
       // Update FT balances for the orphaned microblock txs
-      for (const tx of orphanedMicroblockTxs) {
+      for (const tx of txs) {
         await sql`
           WITH updated_txs AS (
             SELECT tx_id, sender_address, nonce, sponsor_address, fee_rate, sponsored, canonical, microblock_canonical
@@ -1838,6 +1827,21 @@ export class PgWriteStore extends PgStore {
           RETURNING ft_balances.address
         `;
       }
+    };
+
+    let orphanedMicroblockTxs: DbTx[] = [];
+    if (orphanedMicroblocks.length > 0) {
+      const microOrphanResult = await this.handleMicroReorg(sql, {
+        isCanonical: blockData.isCanonical,
+        isMicroCanonical: false,
+        indexBlockHash: blockData.indexBlockHash,
+        blockHash: blockData.blockHash,
+        burnBlockTime: blockData.burnBlockTime,
+        burnBlockHeight: blockData.burnBlockHeight,
+        microblocks: orphanedMicroblocks,
+      });
+      orphanedMicroblockTxs = microOrphanResult.updatedTxs;
+      await recalculate(orphanedMicroblockTxs);
     }
     let acceptedMicroblockTxs: DbTx[] = [];
     if (acceptedMicroblocks.length > 0) {
@@ -1851,6 +1855,7 @@ export class PgWriteStore extends PgStore {
         microblocks: acceptedMicroblocks,
       });
       acceptedMicroblockTxs = microAcceptResult.updatedTxs;
+      await recalculate(acceptedMicroblockTxs);
     }
 
     return {

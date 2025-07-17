@@ -107,6 +107,8 @@ describe('balance tests', () => {
           sender: addr1,
           recipient: addr2,
           tx_id: '0x1102',
+          microblock_hash: '0xff01',
+          microblock_sequence: 0,
         })
         .build()
     );
