@@ -296,18 +296,10 @@ export class PgWriteStore extends PgStore {
           // by their txs which are now also reorged. We must do this here because the block re-org
           // logic is decoupled from the microblock re-org logic so previous balance updates will
           // not apply.
-          if (reorg.markedNonCanonical.microblocks > 0) {
-            await this.updateFtBalancesFromMicroblockReOrg(
-              sql,
-              reorg.markedNonCanonical.microblockHashes
-            );
-          }
-          if (reorg.markedCanonical.microblocks > 0) {
-            await this.updateFtBalancesFromMicroblockReOrg(
-              sql,
-              reorg.markedCanonical.microblockHashes
-            );
-          }
+          await this.updateFtBalancesFromMicroblockReOrg(sql, [
+            ...reorg.markedNonCanonical.microblockHashes,
+            ...reorg.markedCanonical.microblockHashes,
+          ]);
         }
         if (data.poxSetSigners && data.poxSetSigners.signers) {
           const poxSet = data.poxSetSigners;
@@ -1167,6 +1159,7 @@ export class PgWriteStore extends PgStore {
   }
 
   async updateFtBalancesFromMicroblockReOrg(sql: PgSqlClient, microblockHashes: string[]) {
+    if (microblockHashes.length === 0) return;
     await sql`
       WITH updated_txs AS (
         SELECT tx_id, sender_address, nonce, sponsor_address, fee_rate, sponsored, canonical, microblock_canonical
