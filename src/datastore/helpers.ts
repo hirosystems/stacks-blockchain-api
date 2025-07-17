@@ -1313,6 +1313,7 @@ export function newReOrgUpdatedEntities(): ReOrgUpdatedEntities {
   return {
     markedCanonical: {
       blocks: 0,
+      microblockHashes: [],
       microblocks: 0,
       minerRewards: 0,
       txs: 0,
@@ -1333,6 +1334,7 @@ export function newReOrgUpdatedEntities(): ReOrgUpdatedEntities {
     },
     markedNonCanonical: {
       blocks: 0,
+      microblockHashes: [],
       microblocks: 0,
       minerRewards: 0,
       txs: 0,
