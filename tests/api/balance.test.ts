@@ -246,7 +246,7 @@ describe('balance tests', () => {
     expect(json.balance).toBe(v1balance);
   });
 
-  test('balance calculation after block re-orgs with microblocks', async () => {
+  test('balance calculation after block re-org orphans microblock txs', async () => {
     const addr1 = 'SP3D6PV2ACBPEKYJTCMH7HEN02KP87QSP8KTEH335';
     const addr2 = 'SP2TBW1RSC44JZA4XQ1C2G5SZRGSMM14C5NWAKSDD';
     const reOrgTxId = '0x897e3d694daf0f8be81238158d66a3486857cd8356bc48be3c5181449d87937c';
