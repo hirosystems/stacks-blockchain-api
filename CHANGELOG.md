@@ -1,3 +1,10 @@
+## [8.11.5](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.11.4...v8.11.5) (2025-07-18)
+
+
+### Bug Fixes
+
+* discount re-orged microblock transactions from ft_balances table ([#2322](https://github.com/hirosystems/stacks-blockchain-api/issues/2322)) ([911c620](https://github.com/hirosystems/stacks-blockchain-api/commit/911c62026e3cc642fcd39e83e0bdd159291b17a9))
+
 ## [8.11.4](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.11.3...v8.11.4) (2025-07-14)
 
 
