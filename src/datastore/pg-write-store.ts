@@ -2186,91 +2186,93 @@ export class PgWriteStore extends PgStore {
     //
     // Note that we're not filtering by `pruned` when we look at the mempool, because we want the
     // RBF data to be retroactively applied to all conflicting txs we've ever seen.
-    await sql`
-      WITH input_txids (tx_id) AS (
-        VALUES ${sql(txIds.map(id => [id.replace('0x', '\\x')]))}
-      ),
-      source_txs AS (
-        SELECT DISTINCT
-          tx_id,
-          (CASE sponsored WHEN true THEN sponsor_address ELSE sender_address END) AS address,
-          nonce
-        FROM ${mempool ? sql`mempool_txs` : sql`txs`}
-        WHERE tx_id IN (SELECT tx_id::bytea FROM input_txids)
-      ),
-      affected_groups AS (
-        SELECT DISTINCT address, nonce
-        FROM source_txs
-      ),
-      same_nonce_mempool_txs AS (
-        SELECT
-          m.tx_id,
-          m.fee_rate,
-          m.receipt_time,
-          m.pruned,
-          g.address,
-          g.nonce
-        FROM mempool_txs m
-        INNER JOIN affected_groups g
-          ON m.nonce = g.nonce
-          AND (m.sponsor_address = g.address OR m.sender_address = g.address)
-      ),
-      mined_txs AS (
-        SELECT
-          t.tx_id,
-          g.address,
-          g.nonce
-        FROM txs t
-        INNER JOIN affected_groups g
-          ON t.nonce = g.nonce
-          AND (t.sponsor_address = g.address OR t.sender_address = g.address)
-        WHERE t.canonical = true AND t.microblock_canonical = true
-        ORDER BY t.block_height DESC, t.microblock_sequence DESC, t.tx_index DESC
-      ),
-      latest_mined_txs AS (
-        SELECT DISTINCT ON (address, nonce) tx_id, address, nonce
-        FROM mined_txs
-      ),
-      highest_fee_mempool_txs AS (
-        SELECT DISTINCT ON (address, nonce) tx_id, address, nonce
-        FROM same_nonce_mempool_txs
-        ORDER BY address, nonce, fee_rate DESC, receipt_time DESC
-      ),
-      winning_txs AS (
-        SELECT
-          g.address,
-          g.nonce,
-          COALESCE(l.tx_id, h.tx_id) AS tx_id
-        FROM affected_groups g
-        LEFT JOIN latest_mined_txs l USING (address, nonce)
-        LEFT JOIN highest_fee_mempool_txs h USING (address, nonce)
-      ),
-      txs_to_prune AS (
-        SELECT
-          s.tx_id,
-          s.pruned
-        FROM same_nonce_mempool_txs s
-        INNER JOIN winning_txs w USING (address, nonce)
-        WHERE s.tx_id <> w.tx_id
-      ),
-      pruned AS (
-        UPDATE mempool_txs m
-        SET pruned = TRUE,
-          status = ${DbTxStatus.DroppedReplaceByFee},
-          replaced_by_tx_id = (
-            SELECT w.tx_id
-            FROM winning_txs w
-            INNER JOIN same_nonce_mempool_txs s ON w.address = s.address AND w.nonce = s.nonce
-            WHERE s.tx_id = m.tx_id
-          )
-        FROM txs_to_prune p
-        WHERE m.tx_id = p.tx_id
-        RETURNING m.tx_id
-      )
-      UPDATE chain_tip SET
-        mempool_tx_count = mempool_tx_count - (SELECT COUNT(*) FROM txs_to_prune WHERE pruned = FALSE),
-        mempool_updated_at = NOW()
-    `;
+    for (const batch of batchIterate(txIds, INSERT_BATCH_SIZE)) {
+      await sql`
+        WITH input_txids (tx_id) AS (
+          VALUES ${sql(batch.map(id => [id.replace('0x', '\\x')]))}
+        ),
+        source_txs AS (
+          SELECT DISTINCT
+            tx_id,
+            (CASE sponsored WHEN true THEN sponsor_address ELSE sender_address END) AS address,
+            nonce
+          FROM ${mempool ? sql`mempool_txs` : sql`txs`}
+          WHERE tx_id IN (SELECT tx_id::bytea FROM input_txids)
+        ),
+        affected_groups AS (
+          SELECT DISTINCT address, nonce
+          FROM source_txs
+        ),
+        same_nonce_mempool_txs AS (
+          SELECT
+            m.tx_id,
+            m.fee_rate,
+            m.receipt_time,
+            m.pruned,
+            g.address,
+            g.nonce
+          FROM mempool_txs m
+          INNER JOIN affected_groups g
+            ON m.nonce = g.nonce
+            AND (m.sponsor_address = g.address OR m.sender_address = g.address)
+        ),
+        mined_txs AS (
+          SELECT
+            t.tx_id,
+            g.address,
+            g.nonce
+          FROM txs t
+          INNER JOIN affected_groups g
+            ON t.nonce = g.nonce
+            AND (t.sponsor_address = g.address OR t.sender_address = g.address)
+          WHERE t.canonical = true AND t.microblock_canonical = true
+          ORDER BY t.block_height DESC, t.microblock_sequence DESC, t.tx_index DESC
+        ),
+        latest_mined_txs AS (
+          SELECT DISTINCT ON (address, nonce) tx_id, address, nonce
+          FROM mined_txs
+        ),
+        highest_fee_mempool_txs AS (
+          SELECT DISTINCT ON (address, nonce) tx_id, address, nonce
+          FROM same_nonce_mempool_txs
+          ORDER BY address, nonce, fee_rate DESC, receipt_time DESC
+        ),
+        winning_txs AS (
+          SELECT
+            g.address,
+            g.nonce,
+            COALESCE(l.tx_id, h.tx_id) AS tx_id
+          FROM affected_groups g
+          LEFT JOIN latest_mined_txs l USING (address, nonce)
+          LEFT JOIN highest_fee_mempool_txs h USING (address, nonce)
+        ),
+        txs_to_prune AS (
+          SELECT
+            s.tx_id,
+            s.pruned
+          FROM same_nonce_mempool_txs s
+          INNER JOIN winning_txs w USING (address, nonce)
+          WHERE s.tx_id <> w.tx_id
+        ),
+        pruned AS (
+          UPDATE mempool_txs m
+          SET pruned = TRUE,
+            status = ${DbTxStatus.DroppedReplaceByFee},
+            replaced_by_tx_id = (
+              SELECT w.tx_id
+              FROM winning_txs w
+              INNER JOIN same_nonce_mempool_txs s ON w.address = s.address AND w.nonce = s.nonce
+              WHERE s.tx_id = m.tx_id
+            )
+          FROM txs_to_prune p
+          WHERE m.tx_id = p.tx_id
+          RETURNING m.tx_id
+        )
+        UPDATE chain_tip SET
+          mempool_tx_count = mempool_tx_count - (SELECT COUNT(*) FROM txs_to_prune WHERE pruned = FALSE),
+          mempool_updated_at = NOW()
+      `;
+    }
   }
 
   private _debounceMempoolStat: {
