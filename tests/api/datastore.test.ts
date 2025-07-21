@@ -3774,6 +3774,7 @@ describe('postgres datastore', () => {
       markedCanonical: {
         blocks: 4,
         microblocks: 0,
+        microblockHashes: [],
         minerRewards: 1,
         txs: 2,
         stxLockEvents: 1,
@@ -3794,6 +3795,7 @@ describe('postgres datastore', () => {
       markedNonCanonical: {
         blocks: 1,
         microblocks: 0,
+        microblockHashes: [],
         minerRewards: 0,
         txs: 0,
         stxLockEvents: 0,

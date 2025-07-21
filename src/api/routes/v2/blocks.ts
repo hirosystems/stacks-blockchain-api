@@ -1,5 +1,10 @@
 import { handleBlockCache, handleChainTipCache } from '../../../api/controllers/cache-controller';
-import { BlockParamsSchema, cleanBlockHeightOrHashParam, parseBlockParam } from './schemas';
+import {
+  BlockParamsSchema,
+  cleanBlockHeightOrHashParam,
+  BlockCursorParamSchema,
+  parseBlockParam,
+} from './schemas';
 import { parseDbNakamotoBlock } from './helpers';
 import { InvalidRequestError, NotFoundError } from '../../../errors';
 import { parseDbTx } from '../../../api/controllers/db-controller';
@@ -7,13 +12,9 @@ import { FastifyPluginAsync } from 'fastify';
 import { Type, TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
 import { Server } from 'node:http';
 import { CursorOffsetParam, LimitParam, OffsetParam } from '../../schemas/params';
-import { getPagingQueryLimit, pagingQueryLimits, ResourceType } from '../../pagination';
+import { getPagingQueryLimit, ResourceType } from '../../pagination';
 import { PaginatedResponse } from '../../schemas/util';
-import {
-  NakamotoBlock,
-  NakamotoBlockSchema,
-  SignerSignatureSchema,
-} from '../../schemas/entities/block';
+import { NakamotoBlock, NakamotoBlockSchema } from '../../schemas/entities/block';
 import { TransactionSchema } from '../../schemas/entities/transactions';
 import {
   BlockListV2ResponseSchema,
@@ -37,7 +38,7 @@ export const BlockRoutesV2: FastifyPluginAsync<
         querystring: Type.Object({
           limit: LimitParam(ResourceType.Block),
           offset: CursorOffsetParam({ resource: ResourceType.Block }),
-          cursor: Type.Optional(Type.String({ description: 'Cursor for pagination' })),
+          cursor: Type.Optional(BlockCursorParamSchema),
         }),
         response: {
           200: BlockListV2ResponseSchema,

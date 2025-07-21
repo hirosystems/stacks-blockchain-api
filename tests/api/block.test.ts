@@ -834,6 +834,10 @@ describe('block tests', () => {
     const latestPageCursor = body.cursor;
     const latestBlock = body.results[0];
 
+    // Cursor fetch is rejected if it's not a valid block hash
+    const req2 = await supertest(api.server).get(`/extended/v2/blocks?limit=3&cursor=testvalue`);
+    expect(req2.statusCode).toBe(400);
+
     // Can fetch same page using cursor
     ({ body } = await supertest(api.server).get(
       `/extended/v2/blocks?limit=3&cursor=${body.cursor}`
