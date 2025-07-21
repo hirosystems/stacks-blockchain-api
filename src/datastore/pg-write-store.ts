@@ -2178,63 +2178,99 @@ export class PgWriteStore extends PgStore {
     txIds: string[],
     mempool: boolean = true
   ): Promise<void> {
-    for (const txId of txIds) {
-      // If a transaction with equal nonce was confirmed in a block, mark all conflicting mempool
-      // txs as RBF. Otherwise, look for the one with the highest fee in the mempool and RBF all the
-      // others.
-      //
-      // Note that we're not filtering by `pruned` when we look at the mempool, because we want the
-      // RBF data to be retroactively applied to all conflicting txs we've ever seen.
+    if (txIds.length === 0) return;
+
+    // If a transaction with equal nonce was confirmed in a block, mark all conflicting mempool txs
+    // as RBF. Otherwise, look for the one with the highest fee in the mempool and RBF all the
+    // others.
+    //
+    // Note that we're not filtering by `pruned` when we look at the mempool, because we want the
+    // RBF data to be retroactively applied to all conflicting txs we've ever seen.
+    for (const batch of batchIterate(txIds, INSERT_BATCH_SIZE)) {
       await sql`
-        WITH source_tx AS (
-          SELECT
+        WITH input_txids (tx_id) AS (
+          VALUES ${sql(batch.map(id => [id.replace('0x', '\\x')]))}
+        ),
+        source_txs AS (
+          SELECT DISTINCT
+            tx_id,
             (CASE sponsored WHEN true THEN sponsor_address ELSE sender_address END) AS address,
-            nonce, fee_rate
+            nonce
           FROM ${mempool ? sql`mempool_txs` : sql`txs`}
-          WHERE tx_id = ${txId}
-          LIMIT 1
+          WHERE tx_id IN (SELECT tx_id::bytea FROM input_txids)
+        ),
+        affected_groups AS (
+          SELECT DISTINCT address, nonce
+          FROM source_txs
         ),
         same_nonce_mempool_txs AS (
-          SELECT tx_id, fee_rate, receipt_time
-          FROM mempool_txs
-          WHERE (sponsor_address = (SELECT address FROM source_tx) OR sender_address = (SELECT address FROM source_tx))
-            AND nonce = (SELECT nonce FROM source_tx)
+          SELECT
+            m.tx_id,
+            m.fee_rate,
+            m.receipt_time,
+            m.pruned,
+            g.address,
+            g.nonce
+          FROM mempool_txs m
+          INNER JOIN affected_groups g
+            ON m.nonce = g.nonce
+            AND (m.sponsor_address = g.address OR m.sender_address = g.address)
         ),
-        mined_tx AS (
-          SELECT tx_id
-          FROM txs
-          WHERE (sponsor_address = (SELECT address FROM source_tx) OR sender_address = (SELECT address FROM source_tx))
-            AND nonce = (SELECT nonce FROM source_tx)
-            AND canonical = true
-            AND microblock_canonical = true
-          ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC
-          LIMIT 1
+        mined_txs AS (
+          SELECT
+            t.tx_id,
+            g.address,
+            g.nonce
+          FROM txs t
+          INNER JOIN affected_groups g
+            ON t.nonce = g.nonce
+            AND (t.sponsor_address = g.address OR t.sender_address = g.address)
+          WHERE t.canonical = true AND t.microblock_canonical = true
+          ORDER BY t.block_height DESC, t.microblock_sequence DESC, t.tx_index DESC
         ),
-        highest_fee_mempool_tx AS (
-          SELECT tx_id
+        latest_mined_txs AS (
+          SELECT DISTINCT ON (address, nonce) tx_id, address, nonce
+          FROM mined_txs
+        ),
+        highest_fee_mempool_txs AS (
+          SELECT DISTINCT ON (address, nonce) tx_id, address, nonce
           FROM same_nonce_mempool_txs
-          ORDER BY fee_rate DESC, receipt_time DESC
-          LIMIT 1
+          ORDER BY address, nonce, fee_rate DESC, receipt_time DESC
         ),
-        winning_tx AS (
-          SELECT COALESCE((SELECT tx_id FROM mined_tx), (SELECT tx_id FROM highest_fee_mempool_tx)) AS tx_id
+        winning_txs AS (
+          SELECT
+            g.address,
+            g.nonce,
+            COALESCE(l.tx_id, h.tx_id) AS tx_id
+          FROM affected_groups g
+          LEFT JOIN latest_mined_txs l USING (address, nonce)
+          LEFT JOIN highest_fee_mempool_txs h USING (address, nonce)
         ),
         txs_to_prune AS (
-          SELECT tx_id, pruned
-          FROM mempool_txs
-          WHERE tx_id IN (SELECT tx_id FROM same_nonce_mempool_txs)
-            AND tx_id <> (SELECT tx_id FROM winning_tx)
+          SELECT
+            s.tx_id,
+            s.pruned
+          FROM same_nonce_mempool_txs s
+          INNER JOIN winning_txs w USING (address, nonce)
+          WHERE s.tx_id <> w.tx_id
         ),
-        mempool_count_updates AS (
-          UPDATE chain_tip SET
-            mempool_tx_count = mempool_tx_count - (SELECT COUNT(*) FROM txs_to_prune WHERE pruned = false),
-            mempool_updated_at = NOW()
+        pruned AS (
+          UPDATE mempool_txs m
+          SET pruned = TRUE,
+            status = ${DbTxStatus.DroppedReplaceByFee},
+            replaced_by_tx_id = (
+              SELECT w.tx_id
+              FROM winning_txs w
+              INNER JOIN same_nonce_mempool_txs s ON w.address = s.address AND w.nonce = s.nonce
+              WHERE s.tx_id = m.tx_id
+            )
+          FROM txs_to_prune p
+          WHERE m.tx_id = p.tx_id
+          RETURNING m.tx_id
         )
-        UPDATE mempool_txs
-        SET pruned = TRUE,
-          status = ${DbTxStatus.DroppedReplaceByFee},
-          replaced_by_tx_id = (SELECT tx_id FROM winning_tx)
-        WHERE tx_id IN (SELECT tx_id FROM txs_to_prune)
+        UPDATE chain_tip SET
+          mempool_tx_count = mempool_tx_count - (SELECT COUNT(*) FROM txs_to_prune WHERE pruned = FALSE),
+          mempool_updated_at = NOW()
       `;
     }
   }
