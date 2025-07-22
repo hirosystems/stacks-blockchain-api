@@ -306,10 +306,12 @@ export class PgWriteStore extends PgStore {
           // by their txs which are now also reorged. We must do this here because the block re-org
           // logic is decoupled from the microblock re-org logic so previous balance updates will
           // not apply.
-          await this.updateFtBalancesFromMicroblockReOrg(sql, [
-            ...reorg.markedNonCanonical.microblockHashes,
-            ...reorg.markedCanonical.microblockHashes,
-          ]);
+          q.enqueue(async () => {
+            await this.updateFtBalancesFromMicroblockReOrg(sql, [
+              ...reorg.markedNonCanonical.microblockHashes,
+              ...reorg.markedCanonical.microblockHashes,
+            ]);
+          });
         }
         if (data.poxSetSigners && data.poxSetSigners.signers) {
           const poxSet = data.poxSetSigners;
@@ -341,14 +343,16 @@ export class PgWriteStore extends PgStore {
           const mempoolGarbageResults = await this.deleteGarbageCollectedMempoolTxs(sql);
           garbageCollectedMempoolTxs = mempoolGarbageResults.deletedTxs;
         });
+        q.enqueue(async () => {
+          await this.updateReplacedByFeeStatusForTxIds(
+            sql,
+            data.txs.map(t => t.tx.tx_id),
+            false
+          );
+        });
         await q.done();
       }
 
-      await this.updateReplacedByFeeStatusForTxIds(
-        sql,
-        data.txs.map(t => t.tx.tx_id),
-        false
-      );
       if (!this.isEventReplay) {
         this.debounceMempoolStat();
       }
