@@ -2961,17 +2961,27 @@ export class PgWriteStore extends PgStore {
       t.nonce,
     ]);
     const updatedRows = await sql<{ tx_id: string }[]>`
-      WITH input_data (tx_id, sender_address, sponsor_address, sponsored, nonce)
-        AS (VALUES ${sql(inputData)}),
-      affected_mempool_tx_ids AS (
+      WITH input_data (tx_id, sender_address, sponsor_address, sponsored, nonce) AS (
+        VALUES ${sql(inputData)}
+      ),
+      sponsored_inputs AS (SELECT * FROM input_data WHERE sponsored::boolean),
+      non_sponsored_inputs AS (SELECT * FROM input_data WHERE NOT sponsored::boolean),
+      affected_sponsored AS (
         SELECT m.tx_id
-          FROM mempool_txs AS m
-          INNER JOIN input_data AS i
-          ON m.nonce = i.nonce::int
-            AND (CASE i.sponsored::boolean
-              WHEN true THEN (m.sponsor_address = i.sponsor_address OR m.sender_address = i.sponsor_address)
-              ELSE (m.sponsor_address = i.sender_address OR m.sender_address = i.sender_address)
-            END)
+        FROM mempool_txs m
+        INNER JOIN sponsored_inputs i ON m.nonce = i.nonce::int
+        AND (m.sponsor_address = i.sponsor_address OR m.sender_address = i.sponsor_address)
+      ),
+      affected_non_sponsored AS (
+        SELECT m.tx_id
+        FROM mempool_txs m
+        INNER JOIN non_sponsored_inputs i ON m.nonce = i.nonce::int
+        AND (m.sponsor_address = i.sender_address OR m.sender_address = i.sender_address)
+      ),
+      affected_mempool_tx_ids AS (
+        SELECT tx_id FROM affected_sponsored
+        UNION
+        SELECT tx_id FROM affected_non_sponsored
         UNION
         SELECT tx_id::bytea FROM input_data
       ),
@@ -3046,17 +3056,27 @@ export class PgWriteStore extends PgStore {
       t.nonce,
     ]);
     const updateResults = await sql<{ tx_id: string }[]>`
-      WITH input_data (tx_id, sender_address, sponsor_address, sponsored, nonce)
-        AS (VALUES ${sql(inputData)}),
-      affected_mempool_tx_ids AS (
+      WITH input_data (tx_id, sender_address, sponsor_address, sponsored, nonce) AS (
+        VALUES ${sql(inputData)}
+      ),
+      sponsored_inputs AS (SELECT * FROM input_data WHERE sponsored::boolean),
+      non_sponsored_inputs AS (SELECT * FROM input_data WHERE NOT sponsored::boolean),
+      affected_sponsored AS (
         SELECT m.tx_id
-          FROM mempool_txs AS m
-          INNER JOIN input_data AS i
-          ON m.nonce = i.nonce::int
-            AND (CASE i.sponsored::boolean
-              WHEN true THEN (m.sponsor_address = i.sponsor_address OR m.sender_address = i.sponsor_address)
-              ELSE (m.sponsor_address = i.sender_address OR m.sender_address = i.sender_address)
-            END)
+        FROM mempool_txs m
+        INNER JOIN sponsored_inputs i ON m.nonce = i.nonce::int
+        AND (m.sponsor_address = i.sponsor_address OR m.sender_address = i.sponsor_address)
+      ),
+      affected_non_sponsored AS (
+        SELECT m.tx_id
+        FROM mempool_txs m
+        INNER JOIN non_sponsored_inputs i ON m.nonce = i.nonce::int
+        AND (m.sponsor_address = i.sender_address OR m.sender_address = i.sender_address)
+      ),
+      affected_mempool_tx_ids AS (
+        SELECT tx_id FROM affected_sponsored
+        UNION
+        SELECT tx_id FROM affected_non_sponsored
         UNION
         SELECT tx_id::bytea FROM input_data
       ),
