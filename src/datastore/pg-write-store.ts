@@ -133,7 +133,8 @@ export class PgWriteStore extends PgStore {
   protected isIbdBlockHeightReached = false;
   private metrics:
     | {
-        chainTipBlockHeight: prom.Gauge;
+        blockHeight: prom.Gauge;
+        burnBlockHeight: prom.Gauge;
       }
     | undefined;
 
@@ -146,9 +147,13 @@ export class PgWriteStore extends PgStore {
     this.isEventReplay = isEventReplay;
     if (isProdEnv) {
       this.metrics = {
-        chainTipBlockHeight: new prom.Gauge({
-          name: 'chain_tip_block_height',
+        blockHeight: new prom.Gauge({
+          name: 'stacks_block_height',
           help: 'Current chain tip block height',
+        }),
+        burnBlockHeight: new prom.Gauge({
+          name: 'burn_block_height',
+          help: 'Current burn block height',
         }),
       };
     }
@@ -387,7 +392,7 @@ export class PgWriteStore extends PgStore {
             tx_count_unanchored = (SELECT tx_count FROM new_tx_count)
         `;
         if (this.metrics) {
-          this.metrics.chainTipBlockHeight.set(data.block.block_height);
+          this.metrics.blockHeight.set(data.block.block_height);
         }
       }
     });
@@ -1959,6 +1964,9 @@ export class PgWriteStore extends PgStore {
     await this.sql`
       UPDATE chain_tip SET burn_block_height = GREATEST(${args.blockHeight}, burn_block_height)
     `;
+    if (this.metrics) {
+      this.metrics.burnBlockHeight.set(args.blockHeight);
+    }
   }
 
   async insertSlotHoldersBatch(sql: PgSqlClient, slotHolders: DbRewardSlotHolder[]): Promise<void> {
