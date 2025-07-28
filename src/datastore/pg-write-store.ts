@@ -1961,11 +1961,12 @@ export class PgWriteStore extends PgStore {
   }
 
   async updateBurnChainBlockHeight(args: { blockHeight: number }): Promise<void> {
-    await this.sql`
+    const result = await this.sql<{ burn_block_height: number }[]>`
       UPDATE chain_tip SET burn_block_height = GREATEST(${args.blockHeight}, burn_block_height)
+      RETURNING burn_block_height
     `;
-    if (this.metrics) {
-      this.metrics.burnBlockHeight.set(args.blockHeight);
+    if (this.metrics && result.length > 0) {
+      this.metrics.burnBlockHeight.set(result[0].burn_block_height);
     }
   }
 
