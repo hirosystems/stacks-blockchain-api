@@ -1,4 +1,5 @@
 import * as assert from 'assert';
+import * as prom from 'prom-client';
 import { getOrAdd, I32_MAX, getIbdBlockHeight, getUintEnvOrDefault } from '../helpers';
 import {
   DbBlock,
@@ -130,6 +131,11 @@ type TransactionHeader = {
 export class PgWriteStore extends PgStore {
   readonly isEventReplay: boolean;
   protected isIbdBlockHeightReached = false;
+  private metrics:
+    | {
+        chainTipBlockHeight: prom.Gauge;
+      }
+    | undefined;
 
   constructor(
     sql: PgSqlClient,
@@ -138,6 +144,14 @@ export class PgWriteStore extends PgStore {
   ) {
     super(sql, notifier);
     this.isEventReplay = isEventReplay;
+    if (isProdEnv) {
+      this.metrics = {
+        chainTipBlockHeight: new prom.Gauge({
+          name: 'chain_tip_block_height',
+          help: 'Current chain tip block height',
+        }),
+      };
+    }
   }
 
   static async connect({
@@ -356,7 +370,7 @@ export class PgWriteStore extends PgStore {
       if (!this.isEventReplay) {
         this.debounceMempoolStat();
       }
-      if (isCanonical)
+      if (isCanonical) {
         await sql`
           WITH new_tx_count AS (
             SELECT tx_count + ${data.txs.length} AS tx_count FROM chain_tip
@@ -372,6 +386,10 @@ export class PgWriteStore extends PgStore {
             tx_count = (SELECT tx_count FROM new_tx_count),
             tx_count_unanchored = (SELECT tx_count FROM new_tx_count)
         `;
+        if (this.metrics) {
+          this.metrics.chainTipBlockHeight.set(data.block.block_height);
+        }
+      }
     });
     // Do we have an IBD height defined in ENV? If so, check if this block update reached it.
     const ibdHeight = getIbdBlockHeight();
