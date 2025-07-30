@@ -1,3 +1,10 @@
+## [8.11.6](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.11.5...v8.11.6) (2025-07-30)
+
+
+### Bug Fixes
+
+* update stx year 2050 supply to reflect sip-031 increase ([#2334](https://github.com/hirosystems/stacks-blockchain-api/issues/2334)) ([6916796](https://github.com/hirosystems/stacks-blockchain-api/commit/6916796f3f11dcc182460367ade104cbda480d46))
+
 ## [8.11.5](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.11.4...v8.11.5) (2025-07-18)
 
 
