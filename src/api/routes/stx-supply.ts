@@ -77,10 +77,6 @@ export const StxSupplyRoutes: FastifyPluginAsync<
                 description:
                   'String quoted decimal number of the total circulating number of STX (at the input block height if provided, otherwise the current block height)',
               }),
-              total_stx_year_2050: Type.String({
-                description:
-                  'String quoted decimal number of total circulating STX supply in year 2050. STX supply grows approx 0.3% annually thereafter in perpetuity.',
-              }),
               unlocked_stx: Type.String({
                 description:
                   'String quoted decimal number of the STX that have been mined or unlocked',
@@ -107,7 +103,6 @@ export const StxSupplyRoutes: FastifyPluginAsync<
       await reply.send({
         unlocked_percent: supply.unlockedPercent,
         total_stx: supply.totalStx,
-        total_stx_year_2050: supply.totalStxYear2050,
         unlocked_stx: supply.unlockedStx,
         block_height: supply.blockHeight,
       });
