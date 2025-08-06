@@ -28,6 +28,7 @@ import {
   timeout,
 } from '@hirosystems/api-toolkit';
 import Fastify from 'fastify';
+import { SnpEventStreamHandler } from './event-stream/snp-event-stream';
 
 enum StacksApiMode {
   /**
@@ -146,7 +147,8 @@ async function init(): Promise<void> {
     });
 
     const skipChainIdCheck = parseBoolean(process.env['SKIP_STACKS_CHAIN_ID_CHECK']);
-    if (!skipChainIdCheck) {
+    const snpEnabled = parseBoolean(process.env['SNP_EVENT_STREAMING']);
+    if (!skipChainIdCheck && !snpEnabled) {
       const networkChainId = await getStacksNodeChainID();
       if (networkChainId !== configuredChainID) {
         const chainIdConfig = numberToHex(configuredChainID);
@@ -158,9 +160,26 @@ async function init(): Promise<void> {
         throw error;
       }
     }
-    monitorCoreRpcConnection().catch(error => {
-      logger.error(error, 'Error monitoring RPC connection');
-    });
+    if (!snpEnabled) {
+      monitorCoreRpcConnection().catch(error => {
+        logger.error(error, 'Error monitoring RPC connection');
+      });
+    }
+
+    if (snpEnabled) {
+      const lastRedisMsgId = await dbWriteStore.getLastIngestedSnpRedisMsgId();
+      const snpStream = new SnpEventStreamHandler({
+        lastMessageId: lastRedisMsgId,
+        db: dbWriteStore,
+        eventServer,
+      });
+      await snpStream.start();
+      registerShutdownConfig({
+        name: 'SNP client stream',
+        handler: () => snpStream.stop(),
+        forceKillable: false,
+      });
+    }
   }
 
   if (

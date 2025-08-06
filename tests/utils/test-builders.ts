@@ -244,7 +244,7 @@ function testTx(args?: TestTxArgs): DataStoreTxEventData {
       microblock_hash: args?.microblock_hash ?? MICROBLOCK_HASH,
       token_transfer_amount: args?.token_transfer_amount ?? TOKEN_TRANSFER_AMOUNT,
       token_transfer_recipient_address: args?.token_transfer_recipient_address ?? RECIPIENT_ADDRESS,
-      token_transfer_memo: args?.token_transfer_memo ?? '',
+      token_transfer_memo: args?.token_transfer_memo ?? '0x',
       smart_contract_clarity_version: args?.smart_contract_clarity_version,
       smart_contract_contract_id: args?.smart_contract_contract_id,
       smart_contract_source_code: args?.smart_contract_source_code,
@@ -307,6 +307,7 @@ interface TestMempoolTxArgs {
   smart_contract_clarity_version?: number;
   smart_contract_contract_id?: string;
   status?: DbTxStatus;
+  replaced_by_tx_id?: string;
   token_transfer_recipient_address?: string;
   token_transfer_amount?: bigint;
   token_transfer_memo?: string;
@@ -335,6 +336,7 @@ export function testMempoolTx(args?: TestMempoolTxArgs): DbMempoolTxRaw {
     type_id: args?.type_id ?? DbTxTypeId.TokenTransfer,
     receipt_time: args?.receipt_time ?? (new Date().getTime() / 1000) | 0,
     status: args?.status ?? DbTxStatus.Pending,
+    replaced_by_tx_id: args?.replaced_by_tx_id,
     post_conditions: '0x01f5',
     fee_rate: args?.fee_rate ?? 1234n,
     sponsored: args?.sponsored ?? false,
@@ -342,7 +344,7 @@ export function testMempoolTx(args?: TestMempoolTxArgs): DbMempoolTxRaw {
     origin_hash_mode: 1,
     sender_address: args?.sender_address ?? SENDER_ADDRESS,
     token_transfer_amount: args?.token_transfer_amount ?? 1234n,
-    token_transfer_memo: args?.token_transfer_memo ?? '',
+    token_transfer_memo: args?.token_transfer_memo ?? '0x',
     token_transfer_recipient_address: args?.token_transfer_recipient_address ?? RECIPIENT_ADDRESS,
     smart_contract_clarity_version: args?.smart_contract_clarity_version,
     smart_contract_contract_id: args?.smart_contract_contract_id ?? CONTRACT_ID,

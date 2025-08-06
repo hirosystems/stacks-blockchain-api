@@ -170,7 +170,7 @@ export const BlockRoutesV2: FastifyPluginAsync<
           limit,
           offset,
           total,
-          results: results.map(r => parseDbTx(r)),
+          results: results.map(r => parseDbTx(r, false)),
         };
         await reply.send(response);
       } catch (error) {

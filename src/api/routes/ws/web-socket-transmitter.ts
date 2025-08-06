@@ -152,6 +152,7 @@ export class WebSocketTransmitter {
         const mempoolTxs = await getMempoolTxsFromDataStore(this.db, {
           txIds: [txId],
           includeUnanchored: true,
+          excludeFunctionArgs: false,
         });
         if (mempoolTxs.length > 0) {
           await this.send('mempoolTransaction', mempoolTxs[0]);
@@ -168,6 +169,7 @@ export class WebSocketTransmitter {
           const txQuery = await getTxFromDataStore(this.db, {
             txId: txId,
             includeUnanchored: true,
+            excludeFunctionArgs: false,
           });
           if (txQuery.found) {
             return txQuery.result;
@@ -176,6 +178,7 @@ export class WebSocketTransmitter {
             const mempoolTxs = await getMempoolTxsFromDataStore(this.db, {
               txIds: [txId],
               includeUnanchored: true,
+              excludeFunctionArgs: false,
             });
             if (mempoolTxs.length > 0) {
               return mempoolTxs[0];
@@ -228,7 +231,7 @@ export class WebSocketTransmitter {
         }
         const addressTxs = dbTxsQuery.results;
         for (const addressTx of addressTxs) {
-          const parsedTx = parseDbTx(addressTx.tx);
+          const parsedTx = parseDbTx(addressTx.tx, false);
           const result: AddressTransactionWithTransfers = {
             tx: parsedTx,
             stx_sent: addressTx.stx_sent.toString(),

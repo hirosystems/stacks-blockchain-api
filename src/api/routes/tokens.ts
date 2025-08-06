@@ -116,7 +116,7 @@ export const TokenRoutes: FastifyPluginAsync<
         if (includeTxMetadata && result.tx) {
           return {
             ...parsedNftData,
-            tx: parseDbTx(result.tx),
+            tx: parseDbTx(result.tx, false),
           };
         }
         return { ...parsedNftData, tx_id: result.nft_holding_info.tx_id };
@@ -225,7 +225,7 @@ export const TokenRoutes: FastifyPluginAsync<
             if (includeTxMetadata && result.tx) {
               return {
                 ...parsedNftData,
-                tx: parseDbTx(result.tx),
+                tx: parseDbTx(result.tx, false),
               };
             }
             return { ...parsedNftData, tx_id: result.nft_event.tx_id };
@@ -331,7 +331,7 @@ export const TokenRoutes: FastifyPluginAsync<
             if (includeTxMetadata && result.tx) {
               return {
                 ...parsedNftData,
-                tx: parseDbTx(result.tx),
+                tx: parseDbTx(result.tx, false),
               };
             }
             return { ...parsedNftData, tx_id: result.nft_event.tx_id };

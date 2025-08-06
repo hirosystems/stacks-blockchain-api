@@ -563,7 +563,7 @@ export async function getRosettaBlockFromDataStore(
 
 export async function getUnanchoredTxsFromDataStore(db: PgStore): Promise<Transaction[]> {
   const dbTxs = await db.getUnanchoredTxs();
-  const parsedTxs = dbTxs.txs.map(dbTx => parseDbTx(dbTx));
+  const parsedTxs = dbTxs.txs.map(dbTx => parseDbTx(dbTx, false));
   return parsedTxs;
 }
 
@@ -864,6 +864,7 @@ export async function getRosettaTransactionFromDataStore(
 interface GetTxArgs {
   txId: string;
   includeUnanchored: boolean;
+  excludeFunctionArgs: boolean;
 }
 
 interface GetTxFromDbTxArgs extends GetTxArgs {
@@ -878,6 +879,7 @@ interface GetTxsWithEventsArgs extends GetTxsArgs {
 interface GetTxsArgs {
   txIds: string[];
   includeUnanchored: boolean;
+  excludeFunctionArgs: boolean;
 }
 
 interface GetTxWithEventsArgs extends GetTxArgs {
@@ -905,7 +907,10 @@ function parseDbBaseTx(dbTx: DbTx | DbMempoolTx): BaseTransaction {
   return tx;
 }
 
-function parseDbTxTypeMetadata(dbTx: DbTx | DbMempoolTx): TransactionMetadata {
+function parseDbTxTypeMetadata(
+  dbTx: DbTx | DbMempoolTx,
+  excludeFunctionArgs: boolean
+): TransactionMetadata {
   switch (dbTx.type_id) {
     case DbTxTypeId.TokenTransfer: {
       const metadata: TokenTransferTransactionMetadata = {
@@ -965,7 +970,7 @@ function parseDbTxTypeMetadata(dbTx: DbTx | DbMempoolTx): TransactionMetadata {
       return metadata;
     }
     case DbTxTypeId.ContractCall: {
-      return parseContractCallMetadata(dbTx);
+      return parseContractCallMetadata(dbTx, excludeFunctionArgs);
     }
     case DbTxTypeId.PoisonMicroblock: {
       const metadata: PoisonMicroblockTransactionMetadata = {
@@ -1052,7 +1057,10 @@ function parseDbTxTypeMetadata(dbTx: DbTx | DbMempoolTx): TransactionMetadata {
   }
 }
 
-export function parseContractCallMetadata(tx: BaseTx): ContractCallTransactionMetadata {
+export function parseContractCallMetadata(
+  tx: BaseTx,
+  excludeFunctionArgs: boolean
+): ContractCallTransactionMetadata {
   const contractId = unwrapOptional(
     tx.contract_call_contract_id,
     () => 'Unexpected nullish contract_call_contract_id'
@@ -1063,6 +1071,7 @@ export function parseContractCallMetadata(tx: BaseTx): ContractCallTransactionMe
   );
   let functionAbi: ClarityAbiFunction | undefined;
   const abi = tx.abi;
+
   if (abi) {
     const contractAbi: ClarityAbi = JSON.parse(abi);
     functionAbi = contractAbi.functions.find(fn => fn.name === functionName);
@@ -1071,30 +1080,42 @@ export function parseContractCallMetadata(tx: BaseTx): ContractCallTransactionMe
     }
   }
 
-  const functionArgs = tx.contract_call_function_args
-    ? decodeClarityValueList(tx.contract_call_function_args).map((c, fnArgIndex) => {
-        const functionArgAbi = functionAbi
-          ? functionAbi.args[fnArgIndex++]
-          : { name: '', type: undefined };
+  const contractCall: {
+    contract_id: string;
+    function_name: string;
+    function_signature: string;
+    function_args?: {
+      hex: string;
+      repr: string;
+      name: string;
+      type: string;
+    }[];
+  } = {
+    contract_id: contractId,
+    function_name: functionName,
+    function_signature: functionAbi ? abiFunctionToString(functionAbi) : '',
+  };
+
+  // Only process function_args if not excluded
+  if (!excludeFunctionArgs && tx.contract_call_function_args) {
+    contractCall.function_args = decodeClarityValueList(tx.contract_call_function_args).map(
+      (c, idx) => {
+        const functionArgAbi = functionAbi ? functionAbi.args[idx] : { name: '', type: undefined };
         return {
           hex: c.hex,
           repr: c.repr,
-          name: functionArgAbi.name,
-          type: functionArgAbi.type
+          name: functionArgAbi?.name || '',
+          type: functionArgAbi?.type
             ? getTypeString(functionArgAbi.type)
             : decodeClarityValueToTypeName(c.hex),
         };
-      })
-    : undefined;
+      }
+    );
+  }
 
   const metadata: ContractCallTransactionMetadata = {
     tx_type: 'contract_call',
-    contract_call: {
-      contract_id: contractId,
-      function_name: functionName,
-      function_signature: functionAbi ? abiFunctionToString(functionAbi) : '',
-      function_args: functionArgs,
-    },
+    contract_call: contractCall,
   };
   return metadata;
 }
@@ -1147,16 +1168,17 @@ function parseDbAbstractMempoolTx(
   const abstractMempoolTx: AbstractMempoolTransaction = {
     ...baseTx,
     tx_status: getTxStatusString(dbMempoolTx.status) as MempoolTransactionStatus,
+    replaced_by_tx_id: dbMempoolTx.replaced_by_tx_id ?? null,
     receipt_time: dbMempoolTx.receipt_time,
     receipt_time_iso: unixEpochToIso(dbMempoolTx.receipt_time),
   };
   return abstractMempoolTx;
 }
 
-export function parseDbTx(dbTx: DbTx): Transaction {
+export function parseDbTx(dbTx: DbTx, excludeFunctionArgs: boolean): Transaction {
   const baseTx = parseDbBaseTx(dbTx);
   const abstractTx = parseDbAbstractTx(dbTx, baseTx);
-  const txMetadata = parseDbTxTypeMetadata(dbTx);
+  const txMetadata = parseDbTxTypeMetadata(dbTx, excludeFunctionArgs);
   const result: Transaction = {
     ...abstractTx,
     ...txMetadata,
@@ -1164,10 +1186,13 @@ export function parseDbTx(dbTx: DbTx): Transaction {
   return result;
 }
 
-export function parseDbMempoolTx(dbMempoolTx: DbMempoolTx): MempoolTransaction {
+export function parseDbMempoolTx(
+  dbMempoolTx: DbMempoolTx,
+  excludeFunctionArgs: boolean
+): MempoolTransaction {
   const baseTx = parseDbBaseTx(dbMempoolTx);
   const abstractTx = parseDbAbstractMempoolTx(dbMempoolTx, baseTx);
-  const txMetadata = parseDbTxTypeMetadata(dbMempoolTx);
+  const txMetadata = parseDbTxTypeMetadata(dbMempoolTx, excludeFunctionArgs);
   const result: MempoolTransaction = {
     ...abstractTx,
     ...txMetadata,
@@ -1188,7 +1213,9 @@ export async function getMempoolTxsFromDataStore(
     return [];
   }
 
-  const parsedMempoolTxs = mempoolTxsQuery.map(tx => parseDbMempoolTx(tx));
+  const parsedMempoolTxs = mempoolTxsQuery.map(tx =>
+    parseDbMempoolTx(tx, args.excludeFunctionArgs)
+  );
 
   return parsedMempoolTxs;
 }
@@ -1210,7 +1237,7 @@ async function getTxsFromDataStore(
     }
 
     // parsing txQuery
-    const parsedTxs = txQuery.map(tx => parseDbTx(tx));
+    const parsedTxs = txQuery.map(tx => parseDbTx(tx, args.excludeFunctionArgs));
 
     // incase transaction events are requested
     if ('eventLimit' in args) {
@@ -1260,7 +1287,7 @@ export async function getTxFromDataStore(
       dbTx = txQuery.result;
     }
 
-    const parsedTx = parseDbTx(dbTx);
+    const parsedTx = parseDbTx(dbTx, args.excludeFunctionArgs);
 
     // If tx events are requested
     if ('eventLimit' in args) {
@@ -1314,6 +1341,7 @@ export async function searchTxs(
     const mempoolTxsQuery = await getMempoolTxsFromDataStore(db, {
       txIds: mempoolTxs,
       includeUnanchored: args.includeUnanchored,
+      excludeFunctionArgs: args.excludeFunctionArgs,
     });
 
     // merging found mempool transaction in found transactions object

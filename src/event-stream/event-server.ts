@@ -1,6 +1,6 @@
 import { inspect } from 'util';
 import * as net from 'net';
-import Fastify, { FastifyRequest, FastifyServerOptions } from 'fastify';
+import Fastify, { FastifyInstance, FastifyRequest, FastifyServerOptions } from 'fastify';
 import PQueue from 'p-queue';
 import * as prom from 'prom-client';
 import {
@@ -170,7 +170,11 @@ async function handleDroppedMempoolTxsMessage(
 ): Promise<void> {
   logger.debug(`Received ${msg.dropped_txids.length} dropped mempool txs`);
   const dbTxStatus = getTxDbStatus(msg.reason);
-  await db.dropMempoolTxs({ status: dbTxStatus, txIds: msg.dropped_txids });
+  await db.dropMempoolTxs({
+    status: dbTxStatus,
+    txIds: msg.dropped_txids,
+    new_tx_id: msg.new_txid,
+  });
 }
 
 async function handleMicroblockMessage(
@@ -751,8 +755,10 @@ function createMessageProcessorQueue(db: PgWriteStore): EventMessageHandler {
   return handler;
 }
 
-export type EventStreamServer = net.Server & {
+export type EventStreamServer = {
+  server: net.Server;
   serverAddress: net.AddressInfo;
+  fastifyInstance: FastifyInstance;
   closeAsync: () => Promise<void>;
 };
 
@@ -983,10 +989,12 @@ export async function startEventServer(opts: {
     logger.info('Closing event observer server...');
     await app.close();
   };
-  const eventStreamServer: EventStreamServer = Object.assign(app.server, {
+  const eventStreamServer: EventStreamServer = {
+    server: app.server,
     serverAddress: app.addresses()[0],
+    fastifyInstance: app,
     closeAsync: closeFn,
-  });
+  };
   return eventStreamServer;
 }
 

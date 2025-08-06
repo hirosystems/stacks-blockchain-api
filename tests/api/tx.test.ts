@@ -78,6 +78,7 @@ describe('tx tests', () => {
       raw_tx: bufferToHex(Buffer.from('test-raw-tx')),
       type_id: DbTxTypeId.Coinbase,
       status: DbTxStatus.Pending,
+      replaced_by_tx_id: undefined,
       receipt_time: 1594307695,
       coinbase_payload: bufferToHex(Buffer.from('coinbase hi')),
       post_conditions: '0x01f5',
@@ -449,7 +450,11 @@ describe('tx tests', () => {
       ],
     });
 
-    const txQuery = await getTxFromDataStore(db, { txId: dbTx.tx_id, includeUnanchored: false });
+    const txQuery = await getTxFromDataStore(db, {
+      txId: dbTx.tx_id,
+      includeUnanchored: false,
+      excludeFunctionArgs: false,
+    });
     expect(txQuery.found).toBe(true);
     if (!txQuery.found) {
       throw Error('not found');
@@ -601,7 +606,11 @@ describe('tx tests', () => {
       ],
     });
 
-    const txQuery = await getTxFromDataStore(db, { txId: dbTx.tx_id, includeUnanchored: false });
+    const txQuery = await getTxFromDataStore(db, {
+      txId: dbTx.tx_id,
+      includeUnanchored: false,
+      excludeFunctionArgs: false,
+    });
     expect(txQuery.found).toBe(true);
     if (!txQuery.found) {
       throw Error('not found');
@@ -752,7 +761,11 @@ describe('tx tests', () => {
       ],
     });
 
-    const txQuery = await getTxFromDataStore(db, { txId: dbTx.tx_id, includeUnanchored: false });
+    const txQuery = await getTxFromDataStore(db, {
+      txId: dbTx.tx_id,
+      includeUnanchored: false,
+      excludeFunctionArgs: false,
+    });
     expect(txQuery.found).toBe(true);
     if (!txQuery.found) {
       throw Error('not found');
@@ -937,7 +950,11 @@ describe('tx tests', () => {
       ],
     });
 
-    const txQuery = await getTxFromDataStore(db, { txId: dbTx.tx_id, includeUnanchored: false });
+    const txQuery = await getTxFromDataStore(db, {
+      txId: dbTx.tx_id,
+      includeUnanchored: false,
+      excludeFunctionArgs: false,
+    });
     expect(txQuery.found).toBe(true);
     if (!txQuery.found) {
       throw Error('not found');
@@ -1144,7 +1161,11 @@ describe('tx tests', () => {
         abi: JSON.stringify(contractAbi),
       },
     ]);
-    const txQuery = await getTxFromDataStore(db, { txId: dbTx.tx_id, includeUnanchored: false });
+    const txQuery = await getTxFromDataStore(db, {
+      txId: dbTx.tx_id,
+      includeUnanchored: false,
+      excludeFunctionArgs: false,
+    });
     expect(txQuery.found).toBe(true);
     if (!txQuery.found) {
       throw Error('not found');
@@ -1568,7 +1589,11 @@ describe('tx tests', () => {
         },
       ],
     });
-    const txQuery = await getTxFromDataStore(db, { txId: dbTx.tx_id, includeUnanchored: false });
+    const txQuery = await getTxFromDataStore(db, {
+      txId: dbTx.tx_id,
+      includeUnanchored: false,
+      excludeFunctionArgs: false,
+    });
     expect(txQuery.found).toBe(true);
     if (!txQuery.found) {
       throw Error('not found');
@@ -1781,7 +1806,11 @@ describe('tx tests', () => {
       ],
     });
 
-    const txQuery = await getTxFromDataStore(db, { txId: dbTx.tx_id, includeUnanchored: false });
+    const txQuery = await getTxFromDataStore(db, {
+      txId: dbTx.tx_id,
+      includeUnanchored: false,
+      excludeFunctionArgs: false,
+    });
     expect(txQuery.found).toBe(true);
     if (!txQuery.found) {
       throw Error('not found');
@@ -1939,7 +1968,11 @@ describe('tx tests', () => {
       ],
     });
 
-    const txQuery = await getTxFromDataStore(db, { txId: dbTx.tx_id, includeUnanchored: false });
+    const txQuery = await getTxFromDataStore(db, {
+      txId: dbTx.tx_id,
+      includeUnanchored: false,
+      excludeFunctionArgs: false,
+    });
     expect(txQuery.found).toBe(true);
     if (!txQuery.found) {
       throw Error('not found');
@@ -2780,6 +2813,7 @@ describe('tx tests', () => {
       raw_tx: bufferToHex(Buffer.from('test-raw-mempool-tx')),
       type_id: DbTxTypeId.Coinbase,
       status: 1,
+      replaced_by_tx_id: undefined,
       post_conditions: '0x01f5',
       fee_rate: 1234n,
       sponsored: false,
@@ -3681,7 +3715,7 @@ describe('tx tests', () => {
       type_id: DbTxTypeId.ContractCall,
       tx_id: '0x1513739d6a3f86d4597f5296cc536f6890e2affff9aece285e37399be697b43f',
       anchor_mode: DbTxAnchorMode.Any,
-      nonce: 0,
+      nonce: 1,
       raw_tx: bufferToHex(Buffer.from('')),
       canonical: true,
       microblock_canonical: true,
@@ -3865,7 +3899,7 @@ describe('tx tests', () => {
 
     const expected2 = {
       tx_id: '0x1513739d6a3f86d4597f5296cc536f6890e2affff9aece285e37399be697b43f',
-      nonce: 0,
+      nonce: 1,
       fee_rate: '139200',
       sender_address: 'SPX3DV9X9CGA8P14B3CMP2X8DBW6ZDXEAXDNPTER',
       sponsored: false,
@@ -3960,9 +3994,10 @@ describe('tx tests', () => {
       type_id: DbTxTypeId.ContractCall,
       tx_id: '0x4413739d6a3f86d4597f5296cc536f6890e2affff9aece285e37399be697b43f',
       anchor_mode: DbTxAnchorMode.Any,
-      nonce: 0,
+      nonce: 2,
       raw_tx: bufferToHex(Buffer.from('')),
       status: DbTxStatus.Pending,
+      replaced_by_tx_id: undefined,
       post_conditions: '0x01f5',
       fee_rate: 139200n,
       sponsored: false,
@@ -4001,7 +4036,7 @@ describe('tx tests', () => {
         ],
       },
       fee_rate: '139200',
-      nonce: 0,
+      nonce: 2,
       post_condition_mode: 'allow',
       post_conditions: [],
       receipt_time: 0,
@@ -4010,6 +4045,7 @@ describe('tx tests', () => {
       sponsored: false,
       tx_id: mempoolTx1.tx_id,
       tx_status: 'pending',
+      replaced_by_tx_id: null,
       tx_type: 'contract_call',
     };
     const mempoolTxResult1 = await supertest(api.server).get(`/extended/v1/tx/${mempoolTx1.tx_id}`);
@@ -4020,9 +4056,10 @@ describe('tx tests', () => {
       type_id: DbTxTypeId.ContractCall,
       tx_id: '0x5513739d6a3f86d4597f5296cc536f6890e2affff9aece285e37399be697b43f',
       anchor_mode: DbTxAnchorMode.Any,
-      nonce: 0,
+      nonce: 3,
       raw_tx: bufferToHex(Buffer.from('')),
       status: DbTxStatus.Pending,
+      replaced_by_tx_id: undefined,
       post_conditions: '0x01f5',
       fee_rate: 139200n,
       sponsored: false,
@@ -4062,7 +4099,7 @@ describe('tx tests', () => {
           '(define-public (bns-name-preorder (hashedSaltedFqn (buff 20)) (stxToBurn uint) (paymentSIP010Trait trait_reference) (reciprocityTokenTrait trait_reference) (referencerWallet principal)))',
       },
       fee_rate: '139200',
-      nonce: 0,
+      nonce: 3,
       post_condition_mode: 'allow',
       post_conditions: [],
       receipt_time: 0,
@@ -4071,6 +4108,7 @@ describe('tx tests', () => {
       sponsored: false,
       tx_id: mempoolTx2.tx_id,
       tx_status: 'pending',
+      replaced_by_tx_id: null,
       tx_type: 'contract_call',
     };
     const mempoolTxResult2 = await supertest(api.server).get(`/extended/v1/tx/${mempoolTx2.tx_id}`);
@@ -4524,5 +4562,232 @@ describe('tx tests', () => {
         ]),
       })
     );
+  });
+
+  test('exclude_function_args works for single contract-call tx', async () => {
+    const block = new TestBlockBuilder({
+      block_height: 1,
+      index_block_hash: '0x01',
+      block_hash: '0x01',
+    })
+      .addTx({
+        tx_id: '0x1234000000000000000000000000000000000000000000000000000000000000',
+        type_id: DbTxTypeId.ContractCall,
+        contract_call_contract_id: 'SP000000000000000000002Q6VF78.pox-4',
+        contract_call_function_name: 'delegate-stx',
+        contract_call_function_args: bufferToHex(
+          createClarityValueArray(
+            uintCV(1000000),
+            stringAsciiCV('STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6')
+          )
+        ),
+      })
+      .build();
+
+    await db.update(block);
+
+    // Test with exclude_function_args=true
+    const resExcluded = await supertest(api.server)
+      .get(
+        '/extended/v1/tx/0x1234000000000000000000000000000000000000000000000000000000000000?exclude_function_args=true'
+      )
+      .expect(200);
+
+    expect(resExcluded.body.tx_type).toBe('contract_call');
+    expect(resExcluded.body.contract_call.function_args).toBeUndefined();
+    expect(resExcluded.body.contract_call.function_name).toBe('delegate-stx');
+    expect(resExcluded.body.contract_call.contract_id).toBe('SP000000000000000000002Q6VF78.pox-4');
+  });
+
+  test('default behavior still returns function_args', async () => {
+    const block = new TestBlockBuilder({
+      block_height: 1,
+      index_block_hash: '0x02',
+      block_hash: '0x02',
+    })
+      .addTx({
+        tx_id: '0x2345000000000000000000000000000000000000000000000000000000000000',
+        type_id: DbTxTypeId.ContractCall,
+        contract_call_contract_id: 'SP000000000000000000002Q6VF78.pox-4',
+        contract_call_function_name: 'delegate-stx',
+        contract_call_function_args: bufferToHex(
+          createClarityValueArray(
+            uintCV(1000000),
+            stringAsciiCV('STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6')
+          )
+        ),
+      })
+      .build();
+
+    await db.update(block);
+
+    // Test default behavior (no parameter)
+    const resDefault = await supertest(api.server)
+      .get('/extended/v1/tx/0x2345000000000000000000000000000000000000000000000000000000000000')
+      .expect(200);
+
+    expect(resDefault.body.tx_type).toBe('contract_call');
+    expect(Array.isArray(resDefault.body.contract_call.function_args)).toBe(true);
+    expect(resDefault.body.contract_call.function_args.length).toBe(2);
+    // Note: argument names may be empty if ABI is not available, but that's ok for this test
+    expect(resDefault.body.contract_call.function_args[0]).toHaveProperty('hex');
+    expect(resDefault.body.contract_call.function_args[0]).toHaveProperty('repr');
+
+    // Test with exclude_function_args=false (explicit false)
+    const resFalse = await supertest(api.server)
+      .get(
+        '/extended/v1/tx/0x2345000000000000000000000000000000000000000000000000000000000000?exclude_function_args=false'
+      )
+      .expect(200);
+
+    expect(resFalse.body.tx_type).toBe('contract_call');
+    expect(Array.isArray(resFalse.body.contract_call.function_args)).toBe(true);
+    expect(resFalse.body.contract_call.function_args.length).toBe(2);
+    expect(resFalse.body.contract_call.function_args[0]).toHaveProperty('hex');
+    expect(resFalse.body.contract_call.function_args[0]).toHaveProperty('repr');
+  });
+
+  test('transaction list endpoint respects exclude_function_args flag', async () => {
+    const block = new TestBlockBuilder({
+      block_height: 1,
+      index_block_hash: '0x03',
+      block_hash: '0x03',
+    })
+      .addTx({
+        tx_id: '0x3456000000000000000000000000000000000000000000000000000000000000',
+        type_id: DbTxTypeId.ContractCall,
+        contract_call_contract_id: 'SP000000000000000000002Q6VF78.pox-4',
+        contract_call_function_name: 'delegate-stx',
+        contract_call_function_args: bufferToHex(
+          createClarityValueArray(
+            uintCV(1000000),
+            stringAsciiCV('STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6')
+          )
+        ),
+      })
+      .build();
+
+    await db.update(block);
+
+    // Test transaction list with exclude_function_args=true
+    const resExcluded = await supertest(api.server)
+      .get('/extended/v1/tx?exclude_function_args=true&limit=1')
+      .expect(200);
+
+    expect(resExcluded.body.results).toHaveLength(1);
+    const contractCallTx = resExcluded.body.results.find(
+      (tx: any) => tx.tx_type === 'contract_call'
+    );
+    expect(contractCallTx).toBeDefined();
+    expect(contractCallTx.contract_call.function_args).toBeUndefined();
+
+    // Test transaction list with exclude_function_args=false
+    const resIncluded = await supertest(api.server)
+      .get('/extended/v1/tx?exclude_function_args=false&limit=1')
+      .expect(200);
+
+    expect(resIncluded.body.results).toHaveLength(1);
+    const contractCallTxIncluded = resIncluded.body.results.find(
+      (tx: any) => tx.tx_type === 'contract_call'
+    );
+    expect(contractCallTxIncluded).toBeDefined();
+    expect(Array.isArray(contractCallTxIncluded.contract_call.function_args)).toBe(true);
+    expect(contractCallTxIncluded.contract_call.function_args.length).toBe(2);
+  });
+
+  test('multiple transactions endpoint respects exclude_function_args flag', async () => {
+    const block = new TestBlockBuilder({
+      block_height: 1,
+      index_block_hash: '0x04',
+      block_hash: '0x04',
+    })
+      .addTx({
+        tx_id: '0x4567000000000000000000000000000000000000000000000000000000000000',
+        type_id: DbTxTypeId.ContractCall,
+        contract_call_contract_id: 'SP000000000000000000002Q6VF78.pox-4',
+        contract_call_function_name: 'delegate-stx',
+        contract_call_function_args: bufferToHex(
+          createClarityValueArray(
+            uintCV(1000000),
+            stringAsciiCV('STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6')
+          )
+        ),
+      })
+      .build();
+
+    await db.update(block);
+
+    // Test multiple transactions with exclude_function_args=true
+    const resExcluded = await supertest(api.server)
+      .get(
+        '/extended/v1/tx/multiple?tx_id=0x4567000000000000000000000000000000000000000000000000000000000000&exclude_function_args=true'
+      )
+      .expect(200);
+
+    const txId = '0x4567000000000000000000000000000000000000000000000000000000000000';
+    expect(resExcluded.body[txId]).toBeDefined();
+    expect(resExcluded.body[txId].found).toBe(true);
+    expect(resExcluded.body[txId].result.tx_type).toBe('contract_call');
+    expect(resExcluded.body[txId].result.contract_call.function_args).toBeUndefined();
+
+    // Test multiple transactions with exclude_function_args=false
+    const resIncluded = await supertest(api.server)
+      .get(
+        '/extended/v1/tx/multiple?tx_id=0x4567000000000000000000000000000000000000000000000000000000000000&exclude_function_args=false'
+      )
+      .expect(200);
+
+    expect(resIncluded.body[txId]).toBeDefined();
+    expect(resIncluded.body[txId].found).toBe(true);
+    expect(resIncluded.body[txId].result.tx_type).toBe('contract_call');
+    expect(Array.isArray(resIncluded.body[txId].result.contract_call.function_args)).toBe(true);
+    expect(resIncluded.body[txId].result.contract_call.function_args.length).toBe(2);
+  });
+
+  // New indirect regression test: ensure contract-call transactions inside a block still
+  // respect the exclude_function_args flag when fetched individually
+  test('block contract-call txs respect exclude_function_args flag (indirect check)', async () => {
+    const block = new TestBlockBuilder({
+      block_height: 1,
+      index_block_hash: '0x06',
+      block_hash: '0x06',
+    })
+      .addTx({
+        tx_id: '0xabcdef0000000000000000000000000000000000000000000000000000000000',
+        type_id: DbTxTypeId.ContractCall,
+        contract_call_contract_id: 'SP000000000000000000002Q6VF78.pox-4',
+        contract_call_function_name: 'delegate-stx',
+        contract_call_function_args: bufferToHex(
+          createClarityValueArray(
+            uintCV(1000000),
+            stringAsciiCV('STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6')
+          )
+        ),
+      })
+      .addTx({
+        tx_id: '0xbcdefa0000000000000000000000000000000000000000000000000000000000',
+        type_id: DbTxTypeId.TokenTransfer,
+        token_transfer_recipient_address: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
+        token_transfer_amount: 100n,
+      })
+      .build();
+
+    await db.update(block);
+
+    // 1. Fetch block to get the contract-call tx id
+    const blockRes = await supertest(api.server)
+      .get(`/extended/v1/block/${block.block.block_hash}`)
+      .expect(200);
+
+    const contractCallTxId = blockRes.body.txs.find((id: string) => id === block.txs[0].tx.tx_id);
+    expect(contractCallTxId).toBe(block.txs[0].tx.tx_id);
+
+    // 2. Fetch that tx with exclude_function_args=true and assert omission
+    const txRes = await supertest(api.server)
+      .get(`/extended/v1/tx/${contractCallTxId}?exclude_function_args=true`)
+      .expect(200);
+
+    expect(txRes.body.tx_type).toBe('contract_call');
+    expect(txRes.body.contract_call.function_args).toBeUndefined();
   });
 });
