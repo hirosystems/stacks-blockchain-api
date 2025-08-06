@@ -1,3 +1,24 @@
+## [8.12.0](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.11.6...v8.12.0) (2025-08-06)
+
+
+### Features
+
+* Add exclude_function_args parameter to reduce transaction response sizes ([#2312](https://github.com/hirosystems/stacks-blockchain-api/issues/2312)) ([852a60e](https://github.com/hirosystems/stacks-blockchain-api/commit/852a60e96080c82c95b8942d6828a72c778f7d87))
+* add replaced_by_tx_id to replaced mempool transactions ([#2271](https://github.com/hirosystems/stacks-blockchain-api/issues/2271)) ([a70c3d1](https://github.com/hirosystems/stacks-blockchain-api/commit/a70c3d176091a66ede2e21f6941d5e4c416ae2a3))
+* **prometheus:** add chain tip metrics ([#2333](https://github.com/hirosystems/stacks-blockchain-api/issues/2333)) ([bde1037](https://github.com/hirosystems/stacks-blockchain-api/commit/bde1037edf88452e20ed707cfd138876c68ea8a3))
+* SNP integration ([#2291](https://github.com/hirosystems/stacks-blockchain-api/issues/2291)) ([9a159e1](https://github.com/hirosystems/stacks-blockchain-api/commit/9a159e14dacfac40544ad9ded76c2136e419ed0b))
+
+
+### Bug Fixes
+
+* drop redundant db indexes ([#2329](https://github.com/hirosystems/stacks-blockchain-api/issues/2329)) ([0ddd6a6](https://github.com/hirosystems/stacks-blockchain-api/commit/0ddd6a613219671533a5f3d9c33ead501d7fc3f8))
+* ensure some ops only run when SNP is not enabled ([fd4717b](https://github.com/hirosystems/stacks-blockchain-api/commit/fd4717be91ecd89328d15b2fea29b5297ca76a33))
+* only ingest snp chain events to avoid db bloat ([287f572](https://github.com/hirosystems/stacks-blockchain-api/commit/287f572c49fa8405a907a5023aa815157f6162ca))
+* optimize queries to prune and restore mempool rbf txs ([#2327](https://github.com/hirosystems/stacks-blockchain-api/issues/2327)) ([0b196f0](https://github.com/hirosystems/stacks-blockchain-api/commit/0b196f0b81b3e4661e092e372df476ab13f284b8))
+* optimize replace-by-fee mempool calculations ([#2326](https://github.com/hirosystems/stacks-blockchain-api/issues/2326)) ([01998bc](https://github.com/hirosystems/stacks-blockchain-api/commit/01998bcecf337200ee9582cb45682f9966977432))
+* parallelize mempool rbf updates ([#2328](https://github.com/hirosystems/stacks-blockchain-api/issues/2328)) ([e7347e5](https://github.com/hirosystems/stacks-blockchain-api/commit/e7347e525f938d67cd77253b8efcc8ec33c923d4))
+* update snp image in tests ([c7c0dbb](https://github.com/hirosystems/stacks-blockchain-api/commit/c7c0dbbac6d2f5736fbca338798da23fb16e3ada))
+
 ## [8.11.6](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.11.5...v8.11.6) (2025-07-30)
 
 
