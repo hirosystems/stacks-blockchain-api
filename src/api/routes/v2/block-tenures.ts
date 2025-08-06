@@ -5,7 +5,7 @@ import { handleBlockCache } from '../../../api/controllers/cache-controller';
 import { getPagingQueryLimit, ResourceType } from '../../../api/pagination';
 import { CursorOffsetParam, LimitParam } from '../../../api/schemas/params';
 import { BlockListV2ResponseSchema } from '../../../api/schemas/responses/responses';
-import { BlockTenureParamsSchema } from './schemas';
+import { BlockTenureParamsSchema, BlockCursorParamSchema } from './schemas';
 import { NotFoundError } from '../../../errors';
 import { NakamotoBlock } from '../../../api/schemas/entities/block';
 import { parseDbNakamotoBlock } from './helpers';
@@ -28,7 +28,7 @@ export const BlockTenureRoutes: FastifyPluginAsync<
         querystring: Type.Object({
           limit: LimitParam(ResourceType.Block),
           offset: CursorOffsetParam({ resource: ResourceType.Block }),
-          cursor: Type.Optional(Type.String({ description: 'Cursor for pagination' })),
+          cursor: Type.Optional(BlockCursorParamSchema),
         }),
         response: {
           200: BlockListV2ResponseSchema,

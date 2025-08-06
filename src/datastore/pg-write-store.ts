@@ -1,4 +1,5 @@
 import * as assert from 'assert';
+import * as prom from 'prom-client';
 import { getOrAdd, I32_MAX, getIbdBlockHeight, getUintEnvOrDefault } from '../helpers';
 import {
   DbBlock,
@@ -132,6 +133,12 @@ export class PgWriteStore extends PgStore {
   readonly isEventReplay: boolean;
   protected readonly chainhooksNotifier: ChainhooksNotifier | undefined = undefined;
   protected isIbdBlockHeightReached = false;
+  private metrics:
+    | {
+        blockHeight: prom.Gauge;
+        burnBlockHeight: prom.Gauge;
+      }
+    | undefined;
 
   constructor(
     sql: PgSqlClient,
@@ -142,6 +149,18 @@ export class PgWriteStore extends PgStore {
     super(sql, notifier);
     this.isEventReplay = isEventReplay;
     this.chainhooksNotifier = chainhooksNotifier;
+    if (isProdEnv) {
+      this.metrics = {
+        blockHeight: new prom.Gauge({
+          name: 'stacks_block_height',
+          help: 'Current chain tip block height',
+        }),
+        burnBlockHeight: new prom.Gauge({
+          name: 'burn_block_height',
+          help: 'Current burn block height',
+        }),
+      };
+    }
   }
 
   static async connect({
@@ -217,11 +236,11 @@ export class PgWriteStore extends PgStore {
   async update(data: DataStoreBlockUpdateData): Promise<void> {
     let garbageCollectedMempoolTxs: string[] = [];
     let newTxData: DataStoreTxEventData[] = [];
-    let updatedEntities: ReOrgUpdatedEntities = newReOrgUpdatedEntities();
+    let reorg: ReOrgUpdatedEntities = newReOrgUpdatedEntities();
 
     await this.sqlWriteTransaction(async sql => {
       const chainTip = await this.getChainTip(sql);
-      updatedEntities = await this.handleReorg(sql, data.block, chainTip.block_height);
+      reorg = await this.handleReorg(sql, data.block, chainTip.block_height);
       const isCanonical = data.block.block_height > chainTip.block_height;
       if (!isCanonical) {
         markBlockUpdateDataAsNonCanonical(data);
@@ -310,6 +329,16 @@ export class PgWriteStore extends PgStore {
           // via microblocks.
           q.enqueue(() => this.updateStxBalances(sql, data.txs, data.minerRewards));
           q.enqueue(() => this.updateFtBalances(sql, data.txs));
+          // If this block re-orgs past microblocks, though, we must discount the balances generated
+          // by their txs which are now also reorged. We must do this here because the block re-org
+          // logic is decoupled from the microblock re-org logic so previous balance updates will
+          // not apply.
+          q.enqueue(async () => {
+            await this.updateFtBalancesFromMicroblockReOrg(sql, [
+              ...reorg.markedNonCanonical.microblockHashes,
+              ...reorg.markedCanonical.microblockHashes,
+            ]);
+          });
         }
         if (data.poxSetSigners && data.poxSetSigners.signers) {
           const poxSet = data.poxSetSigners;
@@ -341,18 +370,20 @@ export class PgWriteStore extends PgStore {
           const mempoolGarbageResults = await this.deleteGarbageCollectedMempoolTxs(sql);
           garbageCollectedMempoolTxs = mempoolGarbageResults.deletedTxs;
         });
+        q.enqueue(async () => {
+          await this.updateReplacedByFeeStatusForTxIds(
+            sql,
+            data.txs.map(t => t.tx.tx_id),
+            false
+          );
+        });
         await q.done();
       }
 
-      await this.updateReplacedByFeeStatusForTxIds(
-        sql,
-        data.txs.map(t => t.tx.tx_id),
-        false
-      );
       if (!this.isEventReplay) {
         this.debounceMempoolStat();
       }
-      if (isCanonical)
+      if (isCanonical) {
         await sql`
           WITH new_tx_count AS (
             SELECT tx_count + ${data.txs.length} AS tx_count FROM chain_tip
@@ -368,6 +399,10 @@ export class PgWriteStore extends PgStore {
             tx_count = (SELECT tx_count FROM new_tx_count),
             tx_count_unanchored = (SELECT tx_count FROM new_tx_count)
         `;
+        if (this.metrics) {
+          this.metrics.blockHeight.set(data.block.block_height);
+        }
+      }
     });
     // Do we have an IBD height defined in ENV? If so, check if this block update reached it.
     const ibdHeight = getIbdBlockHeight();
@@ -376,7 +411,7 @@ export class PgWriteStore extends PgStore {
     if (isTestEnv) await this.sendBlockNotifications({ data, garbageCollectedMempoolTxs });
     else void this.sendBlockNotifications({ data, garbageCollectedMempoolTxs });
     await this.chainhooksNotifier?.notify(
-      updatedEntities,
+      reorg,
       data.block.index_block_hash,
       data.block.block_height
     );
@@ -1182,6 +1217,116 @@ export class PgWriteStore extends PgStore {
     }
   }
 
+  async updateFtBalancesFromMicroblockReOrg(sql: PgSqlClient, microblockHashes: string[]) {
+    if (microblockHashes.length === 0) return;
+    await sql`
+      WITH updated_txs AS (
+        SELECT tx_id, sender_address, nonce, sponsor_address, fee_rate, sponsored, canonical, microblock_canonical
+        FROM txs
+        WHERE microblock_hash IN ${sql(microblockHashes)}
+      ),
+      affected_addresses AS (
+          SELECT
+            sender_address AS address,
+            fee_rate AS fee_change,
+            canonical,
+            microblock_canonical,
+            sponsored
+          FROM updated_txs
+          WHERE sponsored = false
+        UNION ALL
+          SELECT
+            sponsor_address AS address,
+            fee_rate AS fee_change,
+            canonical,
+            microblock_canonical,
+            sponsored
+          FROM updated_txs
+          WHERE sponsored = true
+      ),
+      balances_update AS (
+        SELECT
+          a.address,
+          SUM(CASE WHEN a.canonical AND a.microblock_canonical THEN -a.fee_change ELSE a.fee_change END) AS balance_change
+        FROM affected_addresses a
+        GROUP BY a.address
+      )
+      INSERT INTO ft_balances (address, token, balance)
+      SELECT b.address, 'stx', b.balance_change
+      FROM balances_update b
+      ON CONFLICT (address, token)
+      DO UPDATE
+      SET balance = ft_balances.balance + EXCLUDED.balance
+      RETURNING ft_balances.address
+    `;
+    await sql`
+      WITH updated_events AS (
+        SELECT sender, recipient, amount, asset_event_type_id, asset_identifier, canonical, microblock_canonical
+        FROM ft_events
+        WHERE microblock_hash IN ${sql(microblockHashes)}
+      ),
+      event_changes AS (
+        SELECT address, asset_identifier, SUM(balance_change) AS balance_change
+        FROM (
+            SELECT sender AS address, asset_identifier,
+              SUM(CASE WHEN canonical AND microblock_canonical THEN -amount ELSE amount END) AS balance_change
+            FROM updated_events
+            WHERE asset_event_type_id IN (1, 3) -- Transfers and Burns affect the sender's balance
+            GROUP BY sender, asset_identifier
+          UNION ALL
+            SELECT recipient AS address, asset_identifier,
+              SUM(CASE WHEN canonical AND microblock_canonical THEN amount ELSE -amount END) AS balance_change
+            FROM updated_events
+            WHERE asset_event_type_id IN (1, 2) -- Transfers and Mints affect the recipient's balance
+            GROUP BY recipient, asset_identifier
+        ) AS subquery
+        GROUP BY address, asset_identifier
+      )
+      INSERT INTO ft_balances (address, token, balance)
+      SELECT ec.address, ec.asset_identifier, ec.balance_change
+      FROM event_changes ec
+      ON CONFLICT (address, token)
+      DO UPDATE
+      SET balance = ft_balances.balance + EXCLUDED.balance
+      RETURNING ft_balances.address
+    `;
+    await sql`
+      WITH updated_events AS (
+        SELECT sender, recipient, amount, asset_event_type_id, canonical, microblock_canonical
+        FROM stx_events
+        WHERE microblock_hash IN ${sql(microblockHashes)}
+      ),
+      event_changes AS (
+        SELECT
+          address,
+          SUM(balance_change) AS balance_change
+        FROM (
+            SELECT
+              sender AS address,
+              SUM(CASE WHEN canonical AND microblock_canonical THEN -amount ELSE amount END) AS balance_change
+            FROM updated_events
+            WHERE asset_event_type_id IN (1, 3) -- Transfers and Burns affect the sender's balance
+            GROUP BY sender
+          UNION ALL
+            SELECT
+              recipient AS address,
+              SUM(CASE WHEN canonical AND microblock_canonical THEN amount ELSE -amount END) AS balance_change
+            FROM updated_events
+            WHERE asset_event_type_id IN (1, 2) -- Transfers and Mints affect the recipient's balance
+            GROUP BY recipient
+        ) AS subquery
+        GROUP BY address
+      )
+      INSERT INTO ft_balances (address, token, balance)
+      SELECT ec.address, 'stx', ec.balance_change
+      FROM event_changes ec
+      ON CONFLICT (address, token)
+      DO UPDATE
+      SET balance = ft_balances.balance + EXCLUDED.balance
+      RETURNING ft_balances.address
+    `;
+  }
+
   async updateStxEvents(sql: PgSqlClient, entries: { tx: DbTx; stxEvents: DbStxEvent[] }[]) {
     const values: StxEventInsertValues[] = [];
     for (const { tx, stxEvents } of entries) {
@@ -1829,9 +1974,13 @@ export class PgWriteStore extends PgStore {
   }
 
   async updateBurnChainBlockHeight(args: { blockHeight: number }): Promise<void> {
-    await this.sql`
+    const result = await this.sql<{ burn_block_height: number }[]>`
       UPDATE chain_tip SET burn_block_height = GREATEST(${args.blockHeight}, burn_block_height)
+      RETURNING burn_block_height
     `;
+    if (this.metrics && result.length > 0) {
+      this.metrics.burnBlockHeight.set(result[0].burn_block_height);
+    }
   }
 
   async insertSlotHoldersBatch(sql: PgSqlClient, slotHolders: DbRewardSlotHolder[]): Promise<void> {
@@ -2073,63 +2222,99 @@ export class PgWriteStore extends PgStore {
     txIds: string[],
     mempool: boolean = true
   ): Promise<void> {
-    for (const txId of txIds) {
-      // If a transaction with equal nonce was confirmed in a block, mark all conflicting mempool
-      // txs as RBF. Otherwise, look for the one with the highest fee in the mempool and RBF all the
-      // others.
-      //
-      // Note that we're not filtering by `pruned` when we look at the mempool, because we want the
-      // RBF data to be retroactively applied to all conflicting txs we've ever seen.
+    if (txIds.length === 0) return;
+
+    // If a transaction with equal nonce was confirmed in a block, mark all conflicting mempool txs
+    // as RBF. Otherwise, look for the one with the highest fee in the mempool and RBF all the
+    // others.
+    //
+    // Note that we're not filtering by `pruned` when we look at the mempool, because we want the
+    // RBF data to be retroactively applied to all conflicting txs we've ever seen.
+    for (const batch of batchIterate(txIds, INSERT_BATCH_SIZE)) {
       await sql`
-        WITH source_tx AS (
-          SELECT
+        WITH input_txids (tx_id) AS (
+          VALUES ${sql(batch.map(id => [id.replace('0x', '\\x')]))}
+        ),
+        source_txs AS (
+          SELECT DISTINCT
+            tx_id,
             (CASE sponsored WHEN true THEN sponsor_address ELSE sender_address END) AS address,
-            nonce, fee_rate
+            nonce
           FROM ${mempool ? sql`mempool_txs` : sql`txs`}
-          WHERE tx_id = ${txId}
-          LIMIT 1
+          WHERE tx_id IN (SELECT tx_id::bytea FROM input_txids)
+        ),
+        affected_groups AS (
+          SELECT DISTINCT address, nonce
+          FROM source_txs
         ),
         same_nonce_mempool_txs AS (
-          SELECT tx_id, fee_rate, receipt_time
-          FROM mempool_txs
-          WHERE (sponsor_address = (SELECT address FROM source_tx) OR sender_address = (SELECT address FROM source_tx))
-            AND nonce = (SELECT nonce FROM source_tx)
+          SELECT
+            m.tx_id,
+            m.fee_rate,
+            m.receipt_time,
+            m.pruned,
+            g.address,
+            g.nonce
+          FROM mempool_txs m
+          INNER JOIN affected_groups g
+            ON m.nonce = g.nonce
+            AND (m.sponsor_address = g.address OR m.sender_address = g.address)
         ),
-        mined_tx AS (
-          SELECT tx_id
-          FROM txs
-          WHERE (sponsor_address = (SELECT address FROM source_tx) OR sender_address = (SELECT address FROM source_tx))
-            AND nonce = (SELECT nonce FROM source_tx)
-            AND canonical = true
-            AND microblock_canonical = true
-          ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC
-          LIMIT 1
+        mined_txs AS (
+          SELECT
+            t.tx_id,
+            g.address,
+            g.nonce
+          FROM txs t
+          INNER JOIN affected_groups g
+            ON t.nonce = g.nonce
+            AND (t.sponsor_address = g.address OR t.sender_address = g.address)
+          WHERE t.canonical = true AND t.microblock_canonical = true
+          ORDER BY t.block_height DESC, t.microblock_sequence DESC, t.tx_index DESC
         ),
-        highest_fee_mempool_tx AS (
-          SELECT tx_id
+        latest_mined_txs AS (
+          SELECT DISTINCT ON (address, nonce) tx_id, address, nonce
+          FROM mined_txs
+        ),
+        highest_fee_mempool_txs AS (
+          SELECT DISTINCT ON (address, nonce) tx_id, address, nonce
           FROM same_nonce_mempool_txs
-          ORDER BY fee_rate DESC, receipt_time DESC
-          LIMIT 1
+          ORDER BY address, nonce, fee_rate DESC, receipt_time DESC
         ),
-        winning_tx AS (
-          SELECT COALESCE((SELECT tx_id FROM mined_tx), (SELECT tx_id FROM highest_fee_mempool_tx)) AS tx_id
+        winning_txs AS (
+          SELECT
+            g.address,
+            g.nonce,
+            COALESCE(l.tx_id, h.tx_id) AS tx_id
+          FROM affected_groups g
+          LEFT JOIN latest_mined_txs l USING (address, nonce)
+          LEFT JOIN highest_fee_mempool_txs h USING (address, nonce)
         ),
         txs_to_prune AS (
-          SELECT tx_id, pruned
-          FROM mempool_txs
-          WHERE tx_id IN (SELECT tx_id FROM same_nonce_mempool_txs)
-            AND tx_id <> (SELECT tx_id FROM winning_tx)
+          SELECT
+            s.tx_id,
+            s.pruned
+          FROM same_nonce_mempool_txs s
+          INNER JOIN winning_txs w USING (address, nonce)
+          WHERE s.tx_id <> w.tx_id
         ),
-        mempool_count_updates AS (
-          UPDATE chain_tip SET
-            mempool_tx_count = mempool_tx_count - (SELECT COUNT(*) FROM txs_to_prune WHERE pruned = false),
-            mempool_updated_at = NOW()
+        pruned AS (
+          UPDATE mempool_txs m
+          SET pruned = TRUE,
+            status = ${DbTxStatus.DroppedReplaceByFee},
+            replaced_by_tx_id = (
+              SELECT w.tx_id
+              FROM winning_txs w
+              INNER JOIN same_nonce_mempool_txs s ON w.address = s.address AND w.nonce = s.nonce
+              WHERE s.tx_id = m.tx_id
+            )
+          FROM txs_to_prune p
+          WHERE m.tx_id = p.tx_id
+          RETURNING m.tx_id
         )
-        UPDATE mempool_txs
-        SET pruned = TRUE,
-          status = ${DbTxStatus.DroppedReplaceByFee},
-          replaced_by_tx_id = (SELECT tx_id FROM winning_tx)
-        WHERE tx_id IN (SELECT tx_id FROM txs_to_prune)
+        UPDATE chain_tip SET
+          mempool_tx_count = mempool_tx_count - (SELECT COUNT(*) FROM txs_to_prune WHERE pruned = FALSE),
+          mempool_updated_at = NOW()
       `;
     }
   }
@@ -2240,7 +2425,7 @@ export class PgWriteStore extends PgStore {
       const values: SmartContractInsertValues[] = batch.map(smartContract => ({
         tx_id: smartContract.tx_id,
         canonical: smartContract.canonical,
-        clarity_version: smartContract.clarity_version,
+        clarity_version: smartContract.clarity_version ?? null,
         contract_id: smartContract.contract_id,
         block_height: smartContract.block_height,
         index_block_hash: tx.index_block_hash,
@@ -2820,17 +3005,27 @@ export class PgWriteStore extends PgStore {
       t.nonce,
     ]);
     const updatedRows = await sql<{ tx_id: string }[]>`
-      WITH input_data (tx_id, sender_address, sponsor_address, sponsored, nonce)
-        AS (VALUES ${sql(inputData)}),
-      affected_mempool_tx_ids AS (
+      WITH input_data (tx_id, sender_address, sponsor_address, sponsored, nonce) AS (
+        VALUES ${sql(inputData)}
+      ),
+      sponsored_inputs AS (SELECT * FROM input_data WHERE sponsored::boolean),
+      non_sponsored_inputs AS (SELECT * FROM input_data WHERE NOT sponsored::boolean),
+      affected_sponsored AS (
         SELECT m.tx_id
-          FROM mempool_txs AS m
-          INNER JOIN input_data AS i
-          ON m.nonce = i.nonce::int
-            AND (CASE i.sponsored::boolean
-              WHEN true THEN (m.sponsor_address = i.sponsor_address OR m.sender_address = i.sponsor_address)
-              ELSE (m.sponsor_address = i.sender_address OR m.sender_address = i.sender_address)
-            END)
+        FROM mempool_txs m
+        INNER JOIN sponsored_inputs i ON m.nonce = i.nonce::int
+        AND (m.sponsor_address = i.sponsor_address OR m.sender_address = i.sponsor_address)
+      ),
+      affected_non_sponsored AS (
+        SELECT m.tx_id
+        FROM mempool_txs m
+        INNER JOIN non_sponsored_inputs i ON m.nonce = i.nonce::int
+        AND (m.sponsor_address = i.sender_address OR m.sender_address = i.sender_address)
+      ),
+      affected_mempool_tx_ids AS (
+        SELECT tx_id FROM affected_sponsored
+        UNION
+        SELECT tx_id FROM affected_non_sponsored
         UNION
         SELECT tx_id::bytea FROM input_data
       ),
@@ -2905,17 +3100,27 @@ export class PgWriteStore extends PgStore {
       t.nonce,
     ]);
     const updateResults = await sql<{ tx_id: string }[]>`
-      WITH input_data (tx_id, sender_address, sponsor_address, sponsored, nonce)
-        AS (VALUES ${sql(inputData)}),
-      affected_mempool_tx_ids AS (
+      WITH input_data (tx_id, sender_address, sponsor_address, sponsored, nonce) AS (
+        VALUES ${sql(inputData)}
+      ),
+      sponsored_inputs AS (SELECT * FROM input_data WHERE sponsored::boolean),
+      non_sponsored_inputs AS (SELECT * FROM input_data WHERE NOT sponsored::boolean),
+      affected_sponsored AS (
         SELECT m.tx_id
-          FROM mempool_txs AS m
-          INNER JOIN input_data AS i
-          ON m.nonce = i.nonce::int
-            AND (CASE i.sponsored::boolean
-              WHEN true THEN (m.sponsor_address = i.sponsor_address OR m.sender_address = i.sponsor_address)
-              ELSE (m.sponsor_address = i.sender_address OR m.sender_address = i.sender_address)
-            END)
+        FROM mempool_txs m
+        INNER JOIN sponsored_inputs i ON m.nonce = i.nonce::int
+        AND (m.sponsor_address = i.sponsor_address OR m.sender_address = i.sponsor_address)
+      ),
+      affected_non_sponsored AS (
+        SELECT m.tx_id
+        FROM mempool_txs m
+        INNER JOIN non_sponsored_inputs i ON m.nonce = i.nonce::int
+        AND (m.sponsor_address = i.sender_address OR m.sender_address = i.sender_address)
+      ),
+      affected_mempool_tx_ids AS (
+        SELECT tx_id FROM affected_sponsored
+        UNION
+        SELECT tx_id FROM affected_non_sponsored
         UNION
         SELECT tx_id::bytea FROM input_data
       ),
@@ -3466,7 +3671,13 @@ export class PgWriteStore extends PgStore {
       microblocksAccepted.add(mb);
     });
     updatedEntities.markedCanonical.microblocks += microblocksAccepted.size;
+    updatedEntities.markedCanonical.microblockHashes.push(
+      ...microCanonicalUpdateResult.acceptedMicroblocks
+    );
     updatedEntities.markedNonCanonical.microblocks += microblocksOrphaned.size;
+    updatedEntities.markedNonCanonical.microblockHashes.push(
+      ...microCanonicalUpdateResult.orphanedMicroblocks
+    );
 
     const markCanonicalResult = await this.markEntitiesCanonical(
       sql,

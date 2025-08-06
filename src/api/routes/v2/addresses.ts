@@ -12,7 +12,12 @@ import { InvalidRequestError, NotFoundError } from '../../../errors';
 import { FastifyPluginAsync } from 'fastify';
 import { Type, TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
 import { Server } from 'node:http';
-import { LimitParam, OffsetParam, PrincipalSchema } from '../../schemas/params';
+import {
+  LimitParam,
+  OffsetParam,
+  PrincipalSchema,
+  ExcludeFunctionArgsParamSchema,
+} from '../../schemas/params';
 import { getPagingQueryLimit, ResourceType } from '../../pagination';
 import { PaginatedResponse } from '../../schemas/util';
 import {
@@ -46,6 +51,7 @@ export const AddressRoutesV2: FastifyPluginAsync<
         querystring: Type.Object({
           limit: LimitParam(ResourceType.Tx),
           offset: OffsetParam(),
+          exclude_function_args: ExcludeFunctionArgsParamSchema,
         }),
         response: {
           200: PaginatedResponse(AddressTransactionSchema),
@@ -55,6 +61,7 @@ export const AddressRoutesV2: FastifyPluginAsync<
     async (req, reply) => {
       const params = req.params;
       const query = req.query;
+      const excludeFunctionArgs = req.query.exclude_function_args ?? false;
 
       try {
         const { limit, offset, results, total } = await fastify.db.v2.getAddressTransactions({
@@ -62,7 +69,7 @@ export const AddressRoutesV2: FastifyPluginAsync<
           ...query,
         });
         const transfers: AddressTransaction[] = results.map(r =>
-          parseDbTxWithAccountTransferSummary(r)
+          parseDbTxWithAccountTransferSummary(r, excludeFunctionArgs)
         );
         await reply.send({
           limit,
@@ -167,7 +174,7 @@ export const AddressRoutesV2: FastifyPluginAsync<
           sql,
           stxAddress,
         });
-        let stxBalance = stxBalancesResult.found ? stxBalancesResult.result.balance : 0n;
+        const stxBalance = stxBalancesResult.found ? stxBalancesResult.result.balance : 0n;
 
         // Get pox-locked info for STX token
         const stxPoxLockedResult = await fastify.db.v2.getStxPoxLockedAtBlock({
@@ -183,7 +190,6 @@ export const AddressRoutesV2: FastifyPluginAsync<
           stxAddress,
           blockHeight: chainTip.block_height,
         });
-        stxBalance += totalMinerRewardsReceived;
 
         const result: StxBalance = {
           balance: stxBalance.toString(),

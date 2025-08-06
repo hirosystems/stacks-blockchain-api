@@ -71,6 +71,11 @@ export const PoxSignerLimitParamSchema = Type.Integer({
   description: 'PoX signers per page',
 });
 
+export const BlockCursorParamSchema = Type.String({
+  pattern: '^0x[a-fA-F0-9]{64}$',
+  description: 'Cursor for block pagination',
+});
+
 export type BlockIdParam =
   | { type: 'height'; height: number }
   | { type: 'hash'; hash: string }

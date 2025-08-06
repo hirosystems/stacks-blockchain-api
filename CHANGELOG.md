@@ -1,3 +1,67 @@
+## [8.11.5](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.11.4...v8.11.5) (2025-07-18)
+
+
+### Bug Fixes
+
+* discount re-orged microblock transactions from ft_balances table ([#2322](https://github.com/hirosystems/stacks-blockchain-api/issues/2322)) ([911c620](https://github.com/hirosystems/stacks-blockchain-api/commit/911c62026e3cc642fcd39e83e0bdd159291b17a9))
+
+## [8.11.4](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.11.3...v8.11.4) (2025-07-14)
+
+
+### Bug Fixes
+
+* validate block cursor pagination parameter format ([#2317](https://github.com/hirosystems/stacks-blockchain-api/issues/2317)) ([20e334d](https://github.com/hirosystems/stacks-blockchain-api/commit/20e334dc9a214ad0ee7ff73c3355447efccc9f1a))
+
+## [8.11.3](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.11.2...v8.11.3) (2025-07-07)
+
+
+### Bug Fixes
+
+* use burn_block_time in 2.x blocks and block_time after 3.x ([#2314](https://github.com/hirosystems/stacks-blockchain-api/issues/2314)) ([e1d4c61](https://github.com/hirosystems/stacks-blockchain-api/commit/e1d4c618ee8ca60ba457f4ecf37dc33507514d39))
+
+## [8.11.2](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.11.1...v8.11.2) (2025-06-20)
+
+
+### Bug Fixes
+
+* do not duplicate miner rewards in v2 balance endpoint ([#2302](https://github.com/hirosystems/stacks-blockchain-api/issues/2302)) ([4c8d514](https://github.com/hirosystems/stacks-blockchain-api/commit/4c8d5143bc08b1e3ad745d1ad18279ed3566819c))
+
+## [8.11.1](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.11.0...v8.11.1) (2025-06-02)
+
+
+### Bug Fixes
+
+* adjust contract ABI writes to read from contract_interface key instead of contract_abi ([#2276](https://github.com/hirosystems/stacks-blockchain-api/issues/2276)) ([82f3fea](https://github.com/hirosystems/stacks-blockchain-api/commit/82f3feaf294206e977f55e7f97fb0e80137d85d7))
+
+## [8.11.1-beta.1](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.11.0...v8.11.1-beta.1) (2025-05-30)
+
+
+### Bug Fixes
+
+* adjust contract ABI writes to read from contract_interface key instead of contract_abi ([#2276](https://github.com/hirosystems/stacks-blockchain-api/issues/2276)) ([82f3fea](https://github.com/hirosystems/stacks-blockchain-api/commit/82f3feaf294206e977f55e7f97fb0e80137d85d7))
+
+## [8.11.0](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.10.0...v8.11.0) (2025-05-26)
+
+> [!IMPORTANT]
+> This release includes an important fix to STX balances reported by the `/extended/v2/addresses/:address/balances/stx` endpoint. A new migration is included that will automatically fix balances for all accounts on launch, but since it's a large migration it could take between 20 minutes to 2 hours to complete depending on deployment resources. No manual intervention or special action is required.
+
+### Features
+
+* add /extended/v2/block-tenures/:height/blocks endpoint ([#2285](https://github.com/hirosystems/stacks-blockchain-api/issues/2285)) ([f5c2e01](https://github.com/hirosystems/stacks-blockchain-api/commit/f5c2e01dd2cc9a2a0cdd608ae68ab2a847cf4ff4))
+* stacks core event and rpc proxy body limits configurable via env ([#2278](https://github.com/hirosystems/stacks-blockchain-api/issues/2278)) ([8a54e9d](https://github.com/hirosystems/stacks-blockchain-api/commit/8a54e9d90869ba9af01a0a9507593fff1845e816))
+* store and expose vm_error for failed transactions ([#2286](https://github.com/hirosystems/stacks-blockchain-api/issues/2286)) ([7ac7513](https://github.com/hirosystems/stacks-blockchain-api/commit/7ac7513aee4eaf2757f9d3b831172a4a406fd7f5))
+
+
+### Bug Fixes
+
+* consider microblock transactions in balance calculations ([#2277](https://github.com/hirosystems/stacks-blockchain-api/issues/2277)) ([3418863](https://github.com/hirosystems/stacks-blockchain-api/commit/34188634fab63ed07ce637c17ccf725fd39d6c2d))
+* count stx mint data at block 0 towards account balances ([#2289](https://github.com/hirosystems/stacks-blockchain-api/issues/2289)) ([a0cd9f2](https://github.com/hirosystems/stacks-blockchain-api/commit/a0cd9f2330b925dfee89e95c2cd66d7d66e189a6))
+* ignore unanchored param for BNS names endpoint ([#2263](https://github.com/hirosystems/stacks-blockchain-api/issues/2263)) ([3d33725](https://github.com/hirosystems/stacks-blockchain-api/commit/3d337256fc186a359d49b88cf321324bc1bd6326))
+* keep a table of latest stacks node event timestamps ([#2266](https://github.com/hirosystems/stacks-blockchain-api/issues/2266)) ([6f111ad](https://github.com/hirosystems/stacks-blockchain-api/commit/6f111ad9e4be390ba6f5411e0480713578aa22a9))
+* module imports in block tenure routes ([#2287](https://github.com/hirosystems/stacks-blockchain-api/issues/2287)) ([2cb442e](https://github.com/hirosystems/stacks-blockchain-api/commit/2cb442ed2602fe92706ee901c62ff4fac297e4a2))
+* **rosetta:** get current block should only join by stacks chain tip information ([#2265](https://github.com/hirosystems/stacks-blockchain-api/issues/2265)) ([78ebad0](https://github.com/hirosystems/stacks-blockchain-api/commit/78ebad09b710d9045c0b9885a0dffbf344771e6a))
+* simplify transaction events query ([#2279](https://github.com/hirosystems/stacks-blockchain-api/issues/2279)) ([517ca68](https://github.com/hirosystems/stacks-blockchain-api/commit/517ca6822f465e36d761a97dc8b2eed7fc1dd16c))
+
 ## [8.10.0](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.9.0...v8.10.0) (2025-04-18)
 
 

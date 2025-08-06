@@ -35,7 +35,7 @@ export class SnpEventStreamHandler {
     this.snpClientStream = new StacksEventStream({
       redisUrl: this.redisUrl,
       redisStreamPrefix: this.redisStreamPrefix,
-      eventStreamType: StacksEventStreamType.all,
+      eventStreamType: StacksEventStreamType.chainEvents,
       lastMessageId: opts.lastMessageId,
       appName,
     });
