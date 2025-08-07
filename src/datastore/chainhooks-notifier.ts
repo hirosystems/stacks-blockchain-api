@@ -29,7 +29,7 @@ export class ChainhooksNotifier {
    */
   async notify(reOrg: ReOrgUpdatedEntities, indexBlockHash: string, blockHeight: number) {
     const message = {
-      id: `stacks-${Date.now()}`,
+      id: `stacks-${blockHeight}-${indexBlockHash}-${Date.now()}`,
       payload: {
         chain: 'stacks',
         network: this.chainId === ChainID.Mainnet ? 'mainnet' : 'testnet',
@@ -50,7 +50,7 @@ export class ChainhooksNotifier {
       },
     };
     logger.info(message, 'ChainhooksNotifier broadcasting index progress message');
-    await this.redis.lpush(this.queue, JSON.stringify(message));
+    await this.redis.rpush(this.queue, JSON.stringify(message));
   }
 
   async close() {

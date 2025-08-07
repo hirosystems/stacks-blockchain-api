@@ -130,7 +130,7 @@ async function init(): Promise<void> {
     dbWriteStore = await PgWriteStore.connect({
       usageName: `write-datastore-${apiMode}`,
       skipMigrations: apiMode === StacksApiMode.readOnly,
-      withChainhooksNotifier: parseBoolean(process.env['CHAINHOOKS_NOTIFIER_ENABLED']) || false,
+      withChainhooksNotifier: parseBoolean(process.env['CHAINHOOKS_NOTIFIER_ENABLED']) ?? false,
     });
     registerMempoolPromStats(dbWriteStore.eventEmitter);
   }

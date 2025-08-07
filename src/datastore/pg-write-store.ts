@@ -410,11 +410,13 @@ export class PgWriteStore extends PgStore {
     // Send block updates but don't block current execution unless we're testing.
     if (isTestEnv) await this.sendBlockNotifications({ data, garbageCollectedMempoolTxs });
     else void this.sendBlockNotifications({ data, garbageCollectedMempoolTxs });
-    await this.chainhooksNotifier?.notify(
-      reorg,
-      data.block.index_block_hash,
-      data.block.block_height
-    );
+    if (data.block.block_height >= 1) {
+      await this.chainhooksNotifier?.notify(
+        reorg,
+        data.block.index_block_hash,
+        data.block.block_height
+      );
+    }
   }
 
   /**
