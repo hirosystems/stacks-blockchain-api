@@ -95,6 +95,7 @@ import {
 } from '@hirosystems/api-toolkit';
 import { PgServer, getConnectionArgs, getConnectionConfig } from './connection';
 import { BigNumber } from 'bignumber.js';
+import { ChainhooksNotifier } from './chainhooks-notifier';
 
 const MIGRATIONS_TABLE = 'pgmigrations';
 const INSERT_BATCH_SIZE = 500;
@@ -130,6 +131,7 @@ type TransactionHeader = {
  */
 export class PgWriteStore extends PgStore {
   readonly isEventReplay: boolean;
+  protected readonly chainhooksNotifier: ChainhooksNotifier | undefined = undefined;
   protected isIbdBlockHeightReached = false;
   private metrics:
     | {
@@ -141,10 +143,12 @@ export class PgWriteStore extends PgStore {
   constructor(
     sql: PgSqlClient,
     notifier: PgNotifier | undefined = undefined,
-    isEventReplay: boolean = false
+    isEventReplay: boolean = false,
+    chainhooksNotifier: ChainhooksNotifier | undefined = undefined
   ) {
     super(sql, notifier);
     this.isEventReplay = isEventReplay;
+    this.chainhooksNotifier = chainhooksNotifier;
     if (isProdEnv) {
       this.metrics = {
         blockHeight: new prom.Gauge({
@@ -163,11 +167,13 @@ export class PgWriteStore extends PgStore {
     usageName,
     skipMigrations = false,
     withNotifier = true,
+    withChainhooksNotifier = false,
     isEventReplay = false,
   }: {
     usageName: string;
     skipMigrations?: boolean;
     withNotifier?: boolean;
+    withChainhooksNotifier?: boolean;
     isEventReplay?: boolean;
   }): Promise<PgWriteStore> {
     const sql = await connectPostgres({
@@ -190,7 +196,8 @@ export class PgWriteStore extends PgStore {
       });
     }
     const notifier = withNotifier ? await PgNotifier.create(usageName) : undefined;
-    const store = new PgWriteStore(sql, notifier, isEventReplay);
+    const chainhooksNotifier = withChainhooksNotifier ? new ChainhooksNotifier() : undefined;
+    const store = new PgWriteStore(sql, notifier, isEventReplay, chainhooksNotifier);
     await store.connectPgNotifier();
     return store;
   }
@@ -229,11 +236,13 @@ export class PgWriteStore extends PgStore {
   async update(data: DataStoreBlockUpdateData): Promise<void> {
     let garbageCollectedMempoolTxs: string[] = [];
     let newTxData: DataStoreTxEventData[] = [];
+    let reorg: ReOrgUpdatedEntities = newReOrgUpdatedEntities();
+    let isCanonical = true;
 
     await this.sqlWriteTransaction(async sql => {
       const chainTip = await this.getChainTip(sql);
-      const reorg = await this.handleReorg(sql, data.block, chainTip.block_height);
-      const isCanonical = data.block.block_height > chainTip.block_height;
+      reorg = await this.handleReorg(sql, data.block, chainTip.block_height);
+      isCanonical = data.block.block_height > chainTip.block_height;
       if (!isCanonical) {
         markBlockUpdateDataAsNonCanonical(data);
       } else {
@@ -402,6 +411,13 @@ export class PgWriteStore extends PgStore {
     // Send block updates but don't block current execution unless we're testing.
     if (isTestEnv) await this.sendBlockNotifications({ data, garbageCollectedMempoolTxs });
     else void this.sendBlockNotifications({ data, garbageCollectedMempoolTxs });
+    if (isCanonical) {
+      await this.chainhooksNotifier?.notify(
+        reorg,
+        data.block.index_block_hash,
+        data.block.block_height
+      );
+    }
   }
 
   /**
@@ -3548,6 +3564,13 @@ export class PgWriteStore extends PgStore {
     return result;
   }
 
+  /**
+   * Recursively restore previously orphaned blocks to canonical.
+   * @param sql - The SQL client
+   * @param indexBlockHash - The index block hash that we will restore first
+   * @param updatedEntities - The updated entities
+   * @returns The updated entities
+   */
   async restoreOrphanedChain(
     sql: PgSqlClient,
     indexBlockHash: string,
@@ -3568,6 +3591,10 @@ export class PgWriteStore extends PgStore {
       throw new Error(`Found multiple non-canonical parents for index_hash ${indexBlockHash}`);
     }
     updatedEntities.markedCanonical.blocks++;
+    updatedEntities.markedCanonical.blockHeaders.unshift({
+      index_block_hash: restoredBlockResult[0].index_block_hash,
+      block_height: restoredBlockResult[0].block_height,
+    });
 
     // Orphan the now conflicting block at the same height
     const orphanedBlockResult = await sql<BlockQueryResult[]>`
@@ -3606,6 +3633,10 @@ export class PgWriteStore extends PgStore {
       }
 
       updatedEntities.markedNonCanonical.blocks++;
+      updatedEntities.markedNonCanonical.blockHeaders.unshift({
+        index_block_hash: orphanedBlockResult[0].index_block_hash,
+        block_height: orphanedBlockResult[0].block_height,
+      });
       const markNonCanonicalResult = await this.markEntitiesCanonical(
         sql,
         orphanedBlockResult[0].index_block_hash,
@@ -3662,6 +3693,8 @@ export class PgWriteStore extends PgStore {
       markCanonicalResult.txsMarkedCanonical
     );
     updatedEntities.prunedMempoolTxs += prunedMempoolTxs.removedTxs.length;
+
+    // Do we have a parent that is non-canonical? If so, restore it recursively.
     const parentResult = await sql<{ index_block_hash: string }[]>`
       SELECT index_block_hash
       FROM blocks
@@ -4019,6 +4052,7 @@ export class PgWriteStore extends PgStore {
     if (this._debounceMempoolStat.debounce) {
       clearTimeout(this._debounceMempoolStat.debounce);
     }
+    await this.chainhooksNotifier?.close();
     await super.close(args);
   }
 }
