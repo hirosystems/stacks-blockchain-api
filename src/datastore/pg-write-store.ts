@@ -237,11 +237,12 @@ export class PgWriteStore extends PgStore {
     let garbageCollectedMempoolTxs: string[] = [];
     let newTxData: DataStoreTxEventData[] = [];
     let reorg: ReOrgUpdatedEntities = newReOrgUpdatedEntities();
+    let isCanonical = true;
 
     await this.sqlWriteTransaction(async sql => {
       const chainTip = await this.getChainTip(sql);
       reorg = await this.handleReorg(sql, data.block, chainTip.block_height);
-      const isCanonical = data.block.block_height > chainTip.block_height;
+      isCanonical = data.block.block_height > chainTip.block_height;
       if (!isCanonical) {
         markBlockUpdateDataAsNonCanonical(data);
       } else {
@@ -410,7 +411,7 @@ export class PgWriteStore extends PgStore {
     // Send block updates but don't block current execution unless we're testing.
     if (isTestEnv) await this.sendBlockNotifications({ data, garbageCollectedMempoolTxs });
     else void this.sendBlockNotifications({ data, garbageCollectedMempoolTxs });
-    if (data.block.block_height >= 1) {
+    if (isCanonical) {
       await this.chainhooksNotifier?.notify(
         reorg,
         data.block.index_block_hash,
