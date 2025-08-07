@@ -10,12 +10,15 @@ import { logger } from '@hirosystems/api-toolkit';
 export class ChainhooksNotifier {
   private readonly redis: Redis;
   private readonly chainId: ChainID;
+  private readonly queue: string;
 
   constructor() {
     const url = process.env.CHAINHOOKS_REDIS_URL;
     if (!url) throw new Error(`ChainhooksNotifier CHAINHOOKS_REDIS_URL is not set`);
+    this.queue = process.env.CHAINHOOKS_REDIS_QUEUE || 'chainhooks:index-progress';
     this.redis = new Redis(url);
     this.chainId = getApiConfiguredChainID();
+    logger.info(`ChainhooksNotifier initialized for queue ${this.queue} on ${url}`);
   }
 
   /**
@@ -46,11 +49,8 @@ export class ChainhooksNotifier {
         })),
       },
     };
-    logger.debug(message, 'ChainhooksNotifier broadcasting index progress message');
-    await this.redis.lpush(
-      process.env.CHAINHOOKS_REDIS_QUEUE || 'chainhooks:index-progress',
-      JSON.stringify(message)
-    );
+    logger.info(message, 'ChainhooksNotifier broadcasting index progress message');
+    await this.redis.lpush(this.queue, JSON.stringify(message));
   }
 
   async close() {
