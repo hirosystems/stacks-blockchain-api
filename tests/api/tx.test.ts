@@ -2704,14 +2704,16 @@ describe('tx tests', () => {
       parent_block_hash: block3.block.block_hash,
       parent_index_block_hash: block3.block.index_block_hash,
       burn_block_time: 1740000000,
-    }).addTx({
+    })
+      .addTx({
         tx_id: '0x4234',
         fee_rate: 4n,
         sender_address: testSendertAddr,
         nonce: 4,
         type_id: DbTxTypeId.NakamotoCoinbase,
         coinbase_vrf_proof: '0x01',
-      }).build();
+      })
+      .build();
     await db.update(block4);
 
     // Ensure chain_tip reflects latest height for maxHeight filtering
