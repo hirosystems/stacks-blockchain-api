@@ -168,7 +168,7 @@ export function getTxTypeId(typeString: Transaction['tx_type']): DbTxTypeId[] {
     case 'poison_microblock':
       return [DbTxTypeId.PoisonMicroblock];
     case 'coinbase':
-      return [DbTxTypeId.Coinbase, DbTxTypeId.CoinbaseToAltRecipient];
+      return [DbTxTypeId.Coinbase, DbTxTypeId.CoinbaseToAltRecipient, DbTxTypeId.NakamotoCoinbase];
     case 'tenure_change':
       return [DbTxTypeId.TenureChange];
     default:
