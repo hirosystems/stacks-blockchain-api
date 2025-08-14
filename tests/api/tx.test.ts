@@ -2698,6 +2698,59 @@ describe('tx tests', () => {
       .build();
     await db.update(block3);
 
+    const block4 = new TestBlockBuilder({
+      block_height: 4,
+      index_block_hash: '0x04',
+      parent_block_hash: block3.block.block_hash,
+      parent_index_block_hash: block3.block.index_block_hash,
+      burn_block_time: 1740000000,
+    }).addTx({
+        tx_id: '0x4234',
+        fee_rate: 4n,
+        sender_address: testSendertAddr,
+        nonce: 4,
+        type_id: DbTxTypeId.NakamotoCoinbase,
+        coinbase_vrf_proof: '0x01',
+      }).build();
+    await db.update(block4);
+
+    // Ensure chain_tip reflects latest height for maxHeight filtering
+    const txCountRes = await client<{ count: number }[]>`
+      SELECT COUNT(*)::integer AS count FROM txs
+    `;
+    const txCount = txCountRes[0]?.count ?? 0;
+    await client`
+      INSERT INTO chain_tip (
+        id,
+        block_height,
+        block_hash,
+        index_block_hash,
+        burn_block_height,
+        block_count,
+        microblock_count,
+        tx_count,
+        tx_count_unanchored
+      ) VALUES (
+        true,
+        ${block4.block.block_height},
+        ${block4.block.block_hash},
+        ${block4.block.index_block_hash},
+        ${block4.block.burn_block_height},
+        ${block4.block.block_height},
+        0,
+        ${txCount},
+        ${txCount}
+      )
+      ON CONFLICT (id) DO UPDATE SET
+        block_height = EXCLUDED.block_height,
+        block_hash = EXCLUDED.block_hash,
+        index_block_hash = EXCLUDED.index_block_hash,
+        burn_block_height = EXCLUDED.burn_block_height,
+        block_count = EXCLUDED.block_count,
+        tx_count = EXCLUDED.tx_count,
+        tx_count_unanchored = EXCLUDED.tx_count_unanchored
+    `;
+
     const filterTypes: TransactionType[] = ['coinbase', 'poison_microblock', 'token_transfer'];
     const txsReq1 = await supertest(api.server).get(
       `/extended/v1/tx?type=${filterTypes.join(',')}`
@@ -2706,6 +2759,9 @@ describe('tx tests', () => {
     expect(txsReq1.body).toEqual(
       expect.objectContaining({
         results: [
+          expect.objectContaining({
+            tx_id: block4.txs[0].tx.tx_id,
+          }),
           expect.objectContaining({
             tx_id: block3.txs[0].tx.tx_id,
           }),
