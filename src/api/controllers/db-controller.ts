@@ -111,6 +111,32 @@ export function parseTxTypeStrings(values: string[]): TransactionType[] {
   });
 }
 
+export function parseStatusStrings(values: string[]): string[] {
+  return values.map(v => {
+    switch (v) {
+      case 'success':
+      case 'abort_by_response':
+      case 'abort_by_post_condition':
+        return v;
+      default:
+        throw new Error(`Unexpected tx status: ${JSON.stringify(v)}`);
+    }
+  });
+}
+
+export function getStatusId(statusString: string): DbTxStatus[] {
+  switch (statusString) {
+    case 'success':
+      return [DbTxStatus.Success];
+    case 'abort_by_response':
+      return [DbTxStatus.AbortByResponse];
+    case 'abort_by_post_condition':
+      return [DbTxStatus.AbortByPostCondition];
+    default:
+      throw new Error(`Unexpected tx status string: ${statusString}`);
+  }
+}
+
 export function getTxTypeString(typeId: DbTxTypeId): Transaction['tx_type'] {
   switch (typeId) {
     case DbTxTypeId.TokenTransfer:
