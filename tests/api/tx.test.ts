@@ -2716,43 +2716,6 @@ describe('tx tests', () => {
       .build();
     await db.update(block4);
 
-    // Ensure chain_tip reflects latest height for maxHeight filtering
-    const txCountRes = await client<{ count: number }[]>`
-      SELECT COUNT(*)::integer AS count FROM txs
-    `;
-    const txCount = txCountRes[0]?.count ?? 0;
-    await client`
-      INSERT INTO chain_tip (
-        id,
-        block_height,
-        block_hash,
-        index_block_hash,
-        burn_block_height,
-        block_count,
-        microblock_count,
-        tx_count,
-        tx_count_unanchored
-      ) VALUES (
-        true,
-        ${block4.block.block_height},
-        ${block4.block.block_hash},
-        ${block4.block.index_block_hash},
-        ${block4.block.burn_block_height},
-        ${block4.block.block_height},
-        0,
-        ${txCount},
-        ${txCount}
-      )
-      ON CONFLICT (id) DO UPDATE SET
-        block_height = EXCLUDED.block_height,
-        block_hash = EXCLUDED.block_hash,
-        index_block_hash = EXCLUDED.index_block_hash,
-        burn_block_height = EXCLUDED.burn_block_height,
-        block_count = EXCLUDED.block_count,
-        tx_count = EXCLUDED.tx_count,
-        tx_count_unanchored = EXCLUDED.tx_count_unanchored
-    `;
-
     const filterTypes: TransactionType[] = ['coinbase', 'poison_microblock', 'token_transfer'];
     const txsReq1 = await supertest(api.server).get(
       `/extended/v1/tx?type=${filterTypes.join(',')}`
