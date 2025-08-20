@@ -130,6 +130,7 @@ async function init(): Promise<void> {
     dbWriteStore = await PgWriteStore.connect({
       usageName: `write-datastore-${apiMode}`,
       skipMigrations: apiMode === StacksApiMode.readOnly,
+      withRedisNotifier: parseBoolean(process.env['REDIS_NOTIFIER_ENABLED']) ?? false,
     });
     registerMempoolPromStats(dbWriteStore.eventEmitter);
   }
