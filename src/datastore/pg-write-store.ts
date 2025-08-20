@@ -95,7 +95,7 @@ import {
 } from '@hirosystems/api-toolkit';
 import { PgServer, getConnectionArgs, getConnectionConfig } from './connection';
 import { BigNumber } from 'bignumber.js';
-import { ChainhooksNotifier } from './chainhooks-notifier';
+import { RedisNotifier } from './redis-notifier';
 
 const MIGRATIONS_TABLE = 'pgmigrations';
 const INSERT_BATCH_SIZE = 500;
@@ -131,7 +131,7 @@ type TransactionHeader = {
  */
 export class PgWriteStore extends PgStore {
   readonly isEventReplay: boolean;
-  protected readonly chainhooksNotifier: ChainhooksNotifier | undefined = undefined;
+  protected readonly redisNotifier: RedisNotifier | undefined = undefined;
   protected isIbdBlockHeightReached = false;
   private metrics:
     | {
@@ -144,11 +144,11 @@ export class PgWriteStore extends PgStore {
     sql: PgSqlClient,
     notifier: PgNotifier | undefined = undefined,
     isEventReplay: boolean = false,
-    chainhooksNotifier: ChainhooksNotifier | undefined = undefined
+    redisNotifier: RedisNotifier | undefined = undefined
   ) {
     super(sql, notifier);
     this.isEventReplay = isEventReplay;
-    this.chainhooksNotifier = chainhooksNotifier;
+    this.redisNotifier = redisNotifier;
     if (isProdEnv) {
       this.metrics = {
         blockHeight: new prom.Gauge({
@@ -167,13 +167,13 @@ export class PgWriteStore extends PgStore {
     usageName,
     skipMigrations = false,
     withNotifier = true,
-    withChainhooksNotifier = false,
+    withRedisNotifier = false,
     isEventReplay = false,
   }: {
     usageName: string;
     skipMigrations?: boolean;
     withNotifier?: boolean;
-    withChainhooksNotifier?: boolean;
+    withRedisNotifier?: boolean;
     isEventReplay?: boolean;
   }): Promise<PgWriteStore> {
     const sql = await connectPostgres({
@@ -196,8 +196,8 @@ export class PgWriteStore extends PgStore {
       });
     }
     const notifier = withNotifier ? await PgNotifier.create(usageName) : undefined;
-    const chainhooksNotifier = withChainhooksNotifier ? new ChainhooksNotifier() : undefined;
-    const store = new PgWriteStore(sql, notifier, isEventReplay, chainhooksNotifier);
+    const redisNotifier = withRedisNotifier ? new RedisNotifier() : undefined;
+    const store = new PgWriteStore(sql, notifier, isEventReplay, redisNotifier);
     await store.connectPgNotifier();
     return store;
   }
@@ -405,19 +405,15 @@ export class PgWriteStore extends PgStore {
         }
       }
     });
+    if (isCanonical) {
+      await this.redisNotifier?.notify(reorg, data.block.index_block_hash, data.block.block_height);
+    }
     // Do we have an IBD height defined in ENV? If so, check if this block update reached it.
     const ibdHeight = getIbdBlockHeight();
     this.isIbdBlockHeightReached = ibdHeight ? data.block.block_height > ibdHeight : true;
     // Send block updates but don't block current execution unless we're testing.
     if (isTestEnv) await this.sendBlockNotifications({ data, garbageCollectedMempoolTxs });
     else void this.sendBlockNotifications({ data, garbageCollectedMempoolTxs });
-    if (isCanonical) {
-      await this.chainhooksNotifier?.notify(
-        reorg,
-        data.block.index_block_hash,
-        data.block.block_height
-      );
-    }
   }
 
   /**
@@ -4052,7 +4048,7 @@ export class PgWriteStore extends PgStore {
     if (this._debounceMempoolStat.debounce) {
       clearTimeout(this._debounceMempoolStat.debounce);
     }
-    await this.chainhooksNotifier?.close();
+    await this.redisNotifier?.close();
     await super.close(args);
   }
 }
