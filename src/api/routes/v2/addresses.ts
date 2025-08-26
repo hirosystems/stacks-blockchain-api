@@ -3,7 +3,6 @@ import {
   handleCache,
   handleChainTipCache,
   handlePrincipalCache,
-  handlePrincipalMempoolCache,
   handleTransactionCache,
 } from '../../../api/controllers/cache-controller';
 import { AddressParamsSchema, AddressTransactionParamsSchema } from './schemas';
@@ -65,6 +64,59 @@ export const AddressRoutesV2: FastifyPluginAsync<
 
       try {
         const { limit, offset, results, total } = await fastify.db.v2.getAddressTransactions({
+          ...params,
+          ...query,
+        });
+        const transfers: AddressTransaction[] = results.map(r =>
+          parseDbTxWithAccountTransferSummary(r, excludeFunctionArgs)
+        );
+        await reply.send({
+          limit,
+          offset,
+          total,
+          results: transfers,
+        });
+      } catch (error) {
+        if (error instanceof InvalidRequestError) {
+          throw new NotFoundError(error.message);
+        }
+        throw error;
+      }
+    }
+  );
+
+  // Adding temporary dual endpoint for maintainer review and testing
+  // eslint-disable-next-line no-warning-comments
+  // TODO(iamramtin): Replace V1 after maintainer review and testing
+  fastify.get(
+    '/:address/transactions-v2',
+    {
+      preHandler: handlePrincipalCache,
+      schema: {
+        operationId: 'get_address_transactions_v2',
+        summary: 'Get address transactions V2',
+        description: `Retrieves a paginated list of confirmed transactions sent or received by a STX address or Smart Contract ID, alongside the total amount of STX sent or received and the number of STX, FT and NFT transfers contained within each transaction.
+        
+        More information on Transaction types can be found [here](https://docs.stacks.co/understand-stacks/transactions#types).`,
+        tags: ['Transactions'],
+        params: AddressParamsSchema,
+        querystring: Type.Object({
+          limit: LimitParam(ResourceType.Tx),
+          offset: OffsetParam(),
+          exclude_function_args: ExcludeFunctionArgsParamSchema,
+        }),
+        response: {
+          200: PaginatedResponse(AddressTransactionSchema),
+        },
+      },
+    },
+    async (req, reply) => {
+      const params = req.params;
+      const query = req.query;
+      const excludeFunctionArgs = req.query.exclude_function_args ?? false;
+
+      try {
+        const { limit, offset, results, total } = await fastify.db.v2.getAddressTransactionsV2({
           ...params,
           ...query,
         });

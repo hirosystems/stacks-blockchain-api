@@ -526,6 +526,7 @@ export class PgStoreV2 extends BasePgStoreModule {
     });
   }
 
+  // Original implementation - kept for comparison during optimization review
   async getAddressTransactions(
     args: AddressParams & TransactionPaginationQueryParams
   ): Promise<DbPaginatedResult<DbTxWithAddressTransfers>> {
@@ -636,6 +637,179 @@ export class PgStoreV2 extends BasePgStoreModule {
       `;
       const total = resultQuery.length > 0 ? resultQuery[0].count : 0;
       const parsed = resultQuery.map(r => parseAccountTransferSummaryTxQueryResult(r));
+      return {
+        total,
+        limit,
+        offset,
+        results: parsed,
+      };
+    });
+  }
+
+  // Optimized implementation
+  // Key optimizations: early canonical filtering, efficient HashAggregate counting, parallel execution
+  // eslint-disable-next-line no-warning-comments
+  // TODO(iamramtin): Replace V1 after maintainer review and testing
+  async getAddressTransactionsV2(
+    args: AddressParams & TransactionPaginationQueryParams
+  ): Promise<DbPaginatedResult<DbTxWithAddressTransfers>> {
+    return await this.sqlTransaction(async sql => {
+      const limit = args.limit ?? TransactionLimitParamSchema.default;
+      const offset = args.offset ?? 0;
+
+      const eventCond = sql`
+        tx_id = limited_txs.tx_id
+        AND index_block_hash = limited_txs.index_block_hash
+        AND microblock_hash = limited_txs.microblock_hash
+      `;
+
+      const eventAcctCond = sql`
+        ${eventCond} AND (sender = ${args.address} OR recipient = ${args.address})
+      `;
+
+      const resultQuery = await sql<(AddressTransfersTxQueryResult & { count: number })[]>`
+        WITH address_txs AS (
+          (
+            SELECT 
+              t.tx_id, 
+              t.index_block_hash, 
+              t.microblock_hash, 
+              t.block_height AS sort_block_height, 
+              t.microblock_sequence AS sort_microblock_sequence, 
+              t.tx_index AS sort_tx_index
+            FROM principal_stx_txs p
+            INNER JOIN txs t USING (tx_id, index_block_hash, microblock_hash)
+            WHERE p.principal = ${args.address}
+              AND t.canonical = TRUE 
+              AND t.microblock_canonical = TRUE
+          )
+          UNION ALL
+          (
+            SELECT 
+              t.tx_id, 
+              t.index_block_hash, 
+              t.microblock_hash, 
+              t.block_height AS sort_block_height, 
+              t.microblock_sequence AS sort_microblock_sequence, 
+              t.tx_index AS sort_tx_index
+            FROM stx_events se
+            INNER JOIN txs t USING (tx_id, index_block_hash, microblock_hash)
+            WHERE (se.sender = ${args.address} OR se.recipient = ${args.address})
+              AND t.canonical = TRUE 
+              AND t.microblock_canonical = TRUE
+          )
+          UNION ALL
+          (
+            SELECT 
+              t.tx_id, 
+              t.index_block_hash, 
+              t.microblock_hash, 
+              t.block_height AS sort_block_height, 
+              t.microblock_sequence AS sort_microblock_sequence, 
+              t.tx_index AS sort_tx_index
+            FROM ft_events fe
+            INNER JOIN txs t USING (tx_id, index_block_hash, microblock_hash)
+            WHERE (fe.sender = ${args.address} OR fe.recipient = ${args.address})
+              AND t.canonical = TRUE 
+              AND t.microblock_canonical = TRUE
+          )
+          UNION ALL
+          (
+            SELECT 
+              t.tx_id, 
+              t.index_block_hash, 
+              t.microblock_hash, 
+              t.block_height AS sort_block_height, 
+              t.microblock_sequence AS sort_microblock_sequence, 
+              t.tx_index AS sort_tx_index
+            FROM nft_events ne
+            INNER JOIN txs t USING (tx_id, index_block_hash, microblock_hash)
+            WHERE (ne.sender = ${args.address} OR ne.recipient = ${args.address})
+              AND t.canonical = TRUE 
+              AND t.microblock_canonical = TRUE
+          )
+        ),
+        deduped_txs AS (
+          SELECT DISTINCT
+            tx_id,
+            index_block_hash,
+            microblock_hash,
+            sort_block_height,
+            sort_microblock_sequence,
+            sort_tx_index
+          FROM address_txs
+        ),
+        limited_txs AS (
+          SELECT *
+          FROM deduped_txs
+          ORDER BY sort_block_height DESC, sort_microblock_sequence DESC, sort_tx_index DESC
+          LIMIT ${limit}
+          OFFSET ${offset}
+        )
+        SELECT
+          ${sql(TX_COLUMNS)},
+          (
+            SELECT COALESCE(SUM(amount), 0)
+            FROM stx_events
+            WHERE ${eventCond} AND sender = ${args.address}
+          ) +
+          CASE
+            WHEN (txs.sponsored = false AND txs.sender_address = ${args.address})
+              OR (txs.sponsored = true AND txs.sponsor_address = ${args.address})
+            THEN txs.fee_rate ELSE 0
+          END AS stx_sent,
+          (
+            SELECT COALESCE(SUM(amount), 0)
+            FROM stx_events
+            WHERE ${eventCond} AND recipient = ${args.address}
+          ) AS stx_received,
+          (
+            SELECT COUNT(*)::int FROM stx_events
+            WHERE ${eventAcctCond} AND asset_event_type_id = ${DbAssetEventTypeId.Transfer}
+          ) AS stx_transfer,
+          (
+            SELECT COUNT(*)::int FROM stx_events
+            WHERE ${eventAcctCond} AND asset_event_type_id = ${DbAssetEventTypeId.Mint}
+          ) AS stx_mint,
+          (
+            SELECT COUNT(*)::int FROM stx_events
+            WHERE ${eventAcctCond} AND asset_event_type_id = ${DbAssetEventTypeId.Burn}
+          ) AS stx_burn,
+          (
+            SELECT COUNT(*)::int FROM ft_events
+            WHERE ${eventAcctCond} AND asset_event_type_id = ${DbAssetEventTypeId.Transfer}
+          ) AS ft_transfer,
+          (
+            SELECT COUNT(*)::int FROM ft_events
+            WHERE ${eventAcctCond} AND asset_event_type_id = ${DbAssetEventTypeId.Mint}
+          ) AS ft_mint,
+          (
+            SELECT COUNT(*)::int FROM ft_events
+            WHERE ${eventAcctCond} AND asset_event_type_id = ${DbAssetEventTypeId.Burn}
+          ) AS ft_burn,
+          (
+            SELECT COUNT(*)::int FROM nft_events
+            WHERE ${eventAcctCond} AND asset_event_type_id = ${DbAssetEventTypeId.Transfer}
+          ) AS nft_transfer,
+          (
+            SELECT COUNT(*)::int FROM nft_events
+            WHERE ${eventAcctCond} AND asset_event_type_id = ${DbAssetEventTypeId.Mint}
+          ) AS nft_mint,
+          (
+            SELECT COUNT(*)::int FROM nft_events
+            WHERE ${eventAcctCond} AND asset_event_type_id = ${DbAssetEventTypeId.Burn}
+          ) AS nft_burn,
+          (
+            SELECT COUNT(*)::int FROM deduped_txs
+          ) AS count
+        FROM limited_txs
+        INNER JOIN txs USING (tx_id, index_block_hash, microblock_hash)
+        ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC
+      `;
+
+      const total = resultQuery.length > 0 ? resultQuery[0].count : 0;
+      const parsed = resultQuery.map(r => parseAccountTransferSummaryTxQueryResult(r));
+
       return {
         total,
         limit,
