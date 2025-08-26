@@ -8,7 +8,7 @@ import {
   DbTx,
   SmartContractEventInsertValues,
   StxEventInsertValues,
-  PrincipalStxTxsInsertValues,
+  PrincipalTxsInsertValues,
   FtEventInsertValues,
   NftEventInsertValues,
   BnsNameInsertValues,
@@ -101,11 +101,11 @@ const populateBatchInserters = (db: PgWriteStore) => {
   });
   batchInserters.push(dbStxEventBatchInserter);
 
-  const dbPrincipalStxTxBatchInserter = createBatchInserter<PrincipalStxTxsInsertValues>({
+  const dbPrincipalStxTxBatchInserter = createBatchInserter<PrincipalTxsInsertValues>({
     batchSize: 500,
     insertFn: entries => {
-      logger.debug({ component: 'event-replay' }, 'Inserting into principal_stx_txs table...');
-      return db.insertPrincipalStxTxsBatch(db.sql, entries);
+      logger.debug({ component: 'event-replay' }, 'Inserting into principal_txs table...');
+      return db.insertPrincipalTxsBatch(db.sql, entries);
     },
   });
   batchInserters.push(dbPrincipalStxTxBatchInserter);
@@ -217,11 +217,11 @@ const populateBatchInserters = (db: PgWriteStore) => {
         }
       };
 
-      const insertPrincipalStxTxs = async (dbData: DataStoreBlockUpdateData) => {
+      const insertPrincipalTxs = async (dbData: DataStoreBlockUpdateData) => {
         for (const entry of dbData.txs) {
           // string key: `principal, tx_id, index_block_hash, microblock_hash`
           const alreadyInsertedRowKeys = new Set<string>();
-          const values: PrincipalStxTxsInsertValues[] = [];
+          const values: PrincipalTxsInsertValues[] = [];
           const push = (principal: string) => {
             // Check if this row has already been inserted by comparing the same columns used in the
             // sql unique constraint defined on the table. This prevents later errors during re-indexing
@@ -239,6 +239,9 @@ const populateBatchInserters = (db: PgWriteStore) => {
                 tx_index: entry.tx.tx_index,
                 canonical: entry.tx.canonical,
                 microblock_canonical: entry.tx.microblock_canonical,
+                stx_balance_affected: false,
+                ft_balance_affected: false,
+                nft_balance_affected: false,
               });
             }
           };
@@ -412,8 +415,8 @@ const populateBatchInserters = (db: PgWriteStore) => {
         insertTxs(dbData),
         // Insert stx_events
         insertStxEvents(dbData),
-        // Insert principal_stx_txs
-        insertPrincipalStxTxs(dbData),
+        // Insert principal_txs
+        insertPrincipalTxs(dbData),
         // Insert contract_logs
         insertContractLogs(dbData),
         // Insert ft_events

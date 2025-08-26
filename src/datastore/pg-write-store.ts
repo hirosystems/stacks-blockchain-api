@@ -30,7 +30,7 @@ import {
   RewardSlotHolderInsertValues,
   StxLockEventInsertValues,
   StxEventInsertValues,
-  PrincipalStxTxsInsertValues,
+  PrincipalTxsInsertValues,
   BnsSubdomainInsertValues,
   BnsZonefileInsertValues,
   FtEventInsertValues,
@@ -344,7 +344,7 @@ export class PgWriteStore extends PgStore {
             )
           );
           q.enqueue(() => this.updateStxEvents(sql, newTxData));
-          q.enqueue(() => this.updatePrincipalStxTxs(sql, newTxData));
+          q.enqueue(() => this.updatePrincipalTxs(sql, newTxData));
           q.enqueue(() => this.updateSmartContractEvents(sql, newTxData));
           q.enqueue(() => this.updatePoxSyntheticEvents(sql, 'pox2_events', newTxData));
           q.enqueue(() => this.updatePoxSyntheticEvents(sql, 'pox3_events', newTxData));
@@ -1346,30 +1346,50 @@ export class PgWriteStore extends PgStore {
   }
 
   /**
-   * Update the `principal_stx_tx` table with the latest `tx_id`s that resulted in a STX
-   * transfer relevant to a principal (stx address or contract id).
+   * Update the `principal_txs` table with the latest `tx_id`s that resulted in activity for a
+   * principal (contract or address), and mark the type of token balance that was affected.
    * @param sql - DB client
-   * @param entries - list of tx and stxEvents
+   * @param txs - list of transactions
    */
-  async updatePrincipalStxTxs(sql: PgSqlClient, entries: { tx: DbTx; stxEvents: DbStxEvent[] }[]) {
-    const values: PrincipalStxTxsInsertValues[] = [];
-    for (const { tx, stxEvents } of entries) {
-      const principals = new Set<string>(
-        [
-          tx.sender_address,
-          tx.token_transfer_recipient_address,
-          tx.contract_call_contract_id,
-          tx.smart_contract_contract_id,
-          tx.sponsor_address,
-        ].filter((p): p is string => !!p)
-      );
+  async updatePrincipalTxs(sql: PgSqlClient, txs: DataStoreTxEventData[]) {
+    const values: PrincipalTxsInsertValues[] = [];
+    for (const { tx, stxEvents, ftEvents, nftEvents } of txs) {
+      // Mark principals who participated in this transaction, along with the type of token balance
+      // they affected.
+      const principals = new Map<string, { stx: boolean; ft: boolean; nft: boolean }>();
+      const addPrincipal = (principal: string, affected?: 'stx' | 'ft' | 'nft') => {
+        const flags = principals.get(principal) || { stx: false, ft: false, nft: false };
+        if (affected) {
+          principals.set(principal, { ...flags, [affected]: true });
+        } else {
+          principals.set(principal, flags);
+        }
+      };
+
+      // Add sender but only mark as stx if not sponsored, otherwise they didn't pay a fee
+      addPrincipal(tx.sender_address, tx.sponsor_address ? undefined : 'stx');
+      if (tx.sponsor_address) addPrincipal(tx.sponsor_address, 'stx');
+      if (tx.token_transfer_recipient_address)
+        addPrincipal(tx.token_transfer_recipient_address, 'stx');
+      // Add contract call and smart contract ids, no stx spent
+      if (tx.contract_call_contract_id) addPrincipal(tx.contract_call_contract_id);
+      if (tx.smart_contract_contract_id) addPrincipal(tx.smart_contract_contract_id);
+
       for (const event of stxEvents) {
-        if (event.sender) principals.add(event.sender);
-        if (event.recipient) principals.add(event.recipient);
+        if (event.sender) addPrincipal(event.sender, 'stx');
+        if (event.recipient) addPrincipal(event.recipient, 'stx');
       }
-      for (const principal of principals) {
+      for (const event of ftEvents) {
+        if (event.sender) addPrincipal(event.sender, 'ft');
+        if (event.recipient) addPrincipal(event.recipient, 'ft');
+      }
+      for (const event of nftEvents) {
+        if (event.sender) addPrincipal(event.sender, 'nft');
+        if (event.recipient) addPrincipal(event.recipient, 'nft');
+      }
+      for (const [principal, { stx, ft, nft }] of principals.entries()) {
         values.push({
-          principal: principal,
+          principal,
           tx_id: tx.tx_id,
           block_height: tx.block_height,
           index_block_hash: tx.index_block_hash,
@@ -1378,13 +1398,15 @@ export class PgWriteStore extends PgStore {
           tx_index: tx.tx_index,
           canonical: tx.canonical,
           microblock_canonical: tx.microblock_canonical,
+          stx_balance_affected: stx,
+          ft_balance_affected: ft,
+          nft_balance_affected: nft,
         });
       }
     }
-
-    for (const eventBatch of batchIterate(values, INSERT_BATCH_SIZE)) {
+    for (const batch of batchIterate(values, INSERT_BATCH_SIZE)) {
       await sql`
-        INSERT INTO principal_stx_txs ${sql(eventBatch)}
+        INSERT INTO principal_txs ${sql(batch)}
         ON CONFLICT ON CONSTRAINT unique_principal_tx_id_index_block_hash_microblock_hash DO NOTHING
       `;
     }
@@ -2744,7 +2766,7 @@ export class PgWriteStore extends PgStore {
           );
       });
       q.enqueue(() => this.updateStxEvents(sql, txs));
-      q.enqueue(() => this.updatePrincipalStxTxs(sql, txs));
+      q.enqueue(() => this.updatePrincipalTxs(sql, txs));
       q.enqueue(() => this.updateSmartContractEvents(sql, txs));
       q.enqueue(() => this.updatePoxSyntheticEvents(sql, 'pox2_events', txs));
       q.enqueue(() => this.updatePoxSyntheticEvents(sql, 'pox3_events', txs));
@@ -2830,7 +2852,7 @@ export class PgWriteStore extends PgStore {
         `;
       }
       await sql`
-        UPDATE principal_stx_txs
+        UPDATE principal_txs
         SET microblock_canonical = ${args.isMicroCanonical},
           canonical = ${args.isCanonical}, index_block_hash = ${args.indexBlockHash}
         WHERE microblock_hash IN ${sql(args.microblocks)}
@@ -3259,7 +3281,7 @@ export class PgWriteStore extends PgStore {
       }
       if (txResult.count) {
         await sql`
-          UPDATE principal_stx_txs
+          UPDATE principal_txs
           SET canonical = ${canonical}
           WHERE tx_id IN ${sql(txs.map(t => t.txId))}
             AND index_block_hash = ${indexBlockHash} AND canonical != ${canonical}
@@ -3860,9 +3882,9 @@ export class PgWriteStore extends PgStore {
     await sql`INSERT INTO txs ${sql(values)}`;
   }
 
-  async insertPrincipalStxTxsBatch(sql: PgSqlClient, values: PrincipalStxTxsInsertValues[]) {
+  async insertPrincipalTxsBatch(sql: PgSqlClient, values: PrincipalTxsInsertValues[]) {
     await sql`
-      INSERT INTO principal_stx_txs ${sql(values)}
+      INSERT INTO principal_txs ${sql(values)}
     `;
   }
 

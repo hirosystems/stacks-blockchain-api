@@ -1662,7 +1662,7 @@ export interface FaucetRequestInsertValues {
   occurred_at: number;
 }
 
-export interface PrincipalStxTxsInsertValues {
+export interface PrincipalTxsInsertValues {
   principal: string;
   tx_id: PgBytea;
   block_height: number;
@@ -1672,6 +1672,9 @@ export interface PrincipalStxTxsInsertValues {
   tx_index: number;
   canonical: boolean;
   microblock_canonical: boolean;
+  stx_balance_affected: boolean;
+  ft_balance_affected: boolean;
+  nft_balance_affected: boolean;
 }
 
 export interface RewardSlotHolderInsertValues {

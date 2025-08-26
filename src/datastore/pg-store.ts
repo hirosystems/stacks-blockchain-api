@@ -2823,12 +2823,12 @@ export class PgStore extends BasePgStore {
     limit: number;
     offset: number;
   }): Promise<{ results: DbTx[]; total: number }> {
-    // Query the `principal_stx_txs` table first to get the results page we want and then
+    // Query the `principal_txs` table first to get the results page we want and then
     // join against `txs` to get the full transaction objects only for that page.
     const resultQuery = await this.sql<(ContractTxQueryResult & { count: number })[]>`
       WITH stx_txs AS (
         SELECT tx_id, index_block_hash, microblock_hash, (COUNT(*) OVER())::INTEGER AS count
-        FROM principal_stx_txs
+        FROM principal_txs
         WHERE principal = ${args.stxAddress}
           AND ${
             args.atSingleBlock
@@ -4436,7 +4436,12 @@ export class PgStore extends BasePgStore {
     return result;
   }
 
-  /** Retrieves the last transaction IDs with STX, FT and NFT activity for a principal */
+  /**
+   * Retrieves the last transaction IDs with STX, FT or NFT activity for a principal, with or
+   * without mempool transactions.
+   * @param includeMempool - include mempool transactions
+   * @returns a list of transaction IDs
+   */
   async getPrincipalLastActivityTxIds(
     principal: string,
     includeMempool: boolean = false
@@ -4445,53 +4450,16 @@ export class PgStore extends BasePgStore {
       WITH activity AS (
         (
           SELECT '0x' || encode(tx_id, 'hex') AS tx_id
-          FROM principal_stx_txs
+          FROM principal_txs
           WHERE principal = ${principal} AND canonical = true AND microblock_canonical = true
           ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC
-          LIMIT 1
-        )
-        UNION
-        (
-          SELECT '0x' || encode(tx_id, 'hex') AS tx_id
-          FROM (
-            (
-              SELECT tx_id, block_height, microblock_sequence, tx_index, event_index
-              FROM ft_events
-              WHERE sender = ${principal}
-                AND canonical = true
-                AND microblock_canonical = true
-              ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
-              LIMIT 1
-            )
-            UNION ALL
-            (
-              SELECT tx_id, block_height, microblock_sequence, tx_index, event_index
-              FROM ft_events
-              WHERE recipient = ${principal}
-                AND canonical = true
-                AND microblock_canonical = true
-              ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
-              LIMIT 1
-            )
-          ) AS combined
-          ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
-          LIMIT 1
-        )
-        UNION
-        (
-          SELECT '0x' || encode(tx_id, 'hex') AS tx_id
-          FROM nft_events
-          WHERE (sender = ${principal} OR recipient = ${principal})
-            AND canonical = true
-            AND microblock_canonical = true
-          ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
           LIMIT 1
         )
         ${
           includeMempool
             ? this.sql`UNION
             (
-              SELECT 'mempool-' || '0x' || encode(tx_id, 'hex') AS tx_id
+              SELECT '0x' || encode(tx_id, 'hex') AS tx_id
               FROM mempool_txs
               WHERE pruned = false AND
                 (sender_address = ${principal}

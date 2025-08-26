@@ -545,7 +545,7 @@ export class PgStoreV2 extends BasePgStoreModule {
         WITH address_txs AS (
           (
             SELECT tx_id, index_block_hash, microblock_hash
-            FROM principal_stx_txs
+            FROM principal_txs
             WHERE principal = ${args.address}
           )
           UNION
