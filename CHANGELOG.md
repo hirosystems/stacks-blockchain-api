@@ -1,3 +1,11 @@
+## [8.12.1](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.12.0...v8.12.1) (2025-08-26)
+
+
+### Bug Fixes
+
+* include nakamoto coinbase txs on coinbase txs filter ([#2339](https://github.com/hirosystems/stacks-blockchain-api/issues/2339)) ([c9ef5e8](https://github.com/hirosystems/stacks-blockchain-api/commit/c9ef5e810776f11ca30e71846ebe297e0adbb1e6))
+* pox cycle signer stackers query pagination ([#2345](https://github.com/hirosystems/stacks-blockchain-api/issues/2345)) ([1353554](https://github.com/hirosystems/stacks-blockchain-api/commit/1353554c11e6f51bf8a8676bb8f9e35ae670ffbc))
+
 ## [8.12.0](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.11.6...v8.12.0) (2025-08-06)
 
 
