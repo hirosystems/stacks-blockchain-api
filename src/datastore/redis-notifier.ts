@@ -77,17 +77,22 @@ export class RedisNotifier {
     }
 
     // Redis Cluster configuration
-    if (process.env.REDIS_CLUSTER_NODES) {
-      const clusterNodes = process.env.REDIS_CLUSTER_NODES.split(',');
+    if (process.env.REDIS_CLUSTER_NODES && process.env.REDIS_CLUSTER_NODES.length > 0) {
+      let isSRVRecord = false;
+      const clusterNodesArray = process.env.REDIS_CLUSTER_NODES.split(',');
+      if (clusterNodesArray.length === 1) {
+        isSRVRecord = true;
+      }
       logger.info(
         `RedisNotifier connecting to redis cluster at ${process.env.REDIS_CLUSTER_NODES}`
       );
-      return new Redis.Cluster(clusterNodes, {
+      return new Redis.Cluster(clusterNodesArray, {
         ...baseOptions,
         redisOptions: {
           ...baseOptions,
           password: process.env.REDIS_CLUSTER_PASSWORD,
         },
+        useSRVRecords: isSRVRecord,
         clusterRetryStrategy: times => Math.min(times * 50, 2000),
       });
     }
