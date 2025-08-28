@@ -17,7 +17,7 @@ export class RedisNotifier {
   constructor() {
     this.redis = this.newRedisConnection();
     this.chainId = getApiConfiguredChainID();
-    this.queue = process.env.REDIS_QUEUE ?? 'index-progress';
+    this.queue = process.env.REDIS_QUEUE ?? 'chainhooks:stacks:index-progress';
     logger.info(`RedisNotifier initialized for queue ${this.queue}`);
   }
 
