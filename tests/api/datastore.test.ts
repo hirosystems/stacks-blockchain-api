@@ -3772,6 +3772,12 @@ describe('postgres datastore', () => {
     const reorgResult = await db.handleReorg(client, block5, 0);
     const expectedReorgResult: ReOrgUpdatedEntities = {
       markedCanonical: {
+        blockHeaders: [
+          { block_height: 1, index_block_hash: '0xaa' },
+          { block_height: 2, index_block_hash: '0xbb' },
+          { block_height: 3, index_block_hash: '0xcc' },
+          { block_height: 4, index_block_hash: '0xdd' },
+        ],
         blocks: 4,
         microblocks: 0,
         microblockHashes: [],
@@ -3793,6 +3799,7 @@ describe('postgres datastore', () => {
         poxSigners: 0,
       },
       markedNonCanonical: {
+        blockHeaders: [{ block_height: 3, index_block_hash: '0xccbb' }],
         blocks: 1,
         microblocks: 0,
         microblockHashes: [],
