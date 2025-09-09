@@ -1,3 +1,10 @@
+## [8.13.0](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.12.1...v8.13.0) (2025-09-09)
+
+
+### Features
+
+* add redis index notifier ([#2321](https://github.com/hirosystems/stacks-blockchain-api/issues/2321)) ([5c49f49](https://github.com/hirosystems/stacks-blockchain-api/commit/5c49f49fb6f3c56c92ccd4be63e301d2b495a550))
+
 ## [8.12.1](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.12.0...v8.12.1) (2025-08-26)
 
 
