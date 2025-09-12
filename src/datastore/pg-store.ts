@@ -42,6 +42,7 @@ import {
   DbSearchResult,
   DbSmartContract,
   DbSmartContractEvent,
+  DbCursorPaginatedFoundOrNot,
   DbStxBalance,
   DbStxEvent,
   DbStxLockEvent,
@@ -100,6 +101,28 @@ import { Fragment } from 'postgres';
 import { parseBlockParam } from '../api/routes/v2/schemas';
 
 export const MIGRATIONS_DIR = path.join(REPO_DIR, 'migrations');
+
+// Cursor utilities for smart contract events
+function createEventCursor(blockHeight: number, txIndex: number, eventIndex: number): string {
+  return `${blockHeight}-${txIndex}-${eventIndex}`;
+}
+
+function parseEventCursor(
+  cursor: string
+): { blockHeight: number; txIndex: number; eventIndex: number } | null {
+  const parts = cursor.split('-');
+  if (parts.length !== 3) return null;
+  const blockHeight = parseInt(parts[0]);
+  const txIndex = parseInt(parts[1]);
+  const eventIndex = parseInt(parts[2]);
+
+  // Validate that parsing was successful
+  if (isNaN(blockHeight) || isNaN(txIndex) || isNaN(eventIndex)) {
+    return null;
+  }
+
+  return { blockHeight, txIndex, eventIndex };
+}
 
 /**
  * This is the main interface between the API and the Postgres database. It contains all methods that
@@ -2096,15 +2119,30 @@ export class PgStore extends BasePgStore {
     });
   }
 
-  async getSmartContractEvents({
-    contractId,
-    limit,
-    offset,
-  }: {
+  async getSmartContractEvents(args: {
     contractId: string;
     limit: number;
-    offset: number;
-  }): Promise<FoundOrNot<DbSmartContractEvent[]>> {
+    offset?: number;
+    cursor?: string;
+  }): Promise<DbCursorPaginatedFoundOrNot<DbSmartContractEvent[]>> {
+    const contractId = args.contractId;
+    const limit = args.limit;
+    const offset = args.offset ?? 0;
+    const cursor = args.cursor ?? null;
+
+    // Parse cursor if provided
+    const parsedCursor = cursor ? parseEventCursor(cursor) : null;
+
+    // Get total count first
+    const totalCountResult = await this.sql<{ count: string }[]>`
+      SELECT COUNT(*) as count
+      FROM contract_logs
+      WHERE contract_identifier = ${contractId}
+        AND canonical = true
+        AND microblock_canonical = true
+    `;
+    const totalCount = parseInt(totalCountResult[0]?.count || '0');
+
     const logResults = await this.sql<
       {
         event_index: number;
@@ -2119,12 +2157,36 @@ export class PgStore extends BasePgStore {
       SELECT
         event_index, tx_id, tx_index, block_height, contract_identifier, topic, value
       FROM contract_logs
-      WHERE canonical = true AND microblock_canonical = true AND contract_identifier = ${contractId}
+      WHERE canonical = true 
+        AND microblock_canonical = true 
+        AND contract_identifier = ${contractId}
+        ${
+          parsedCursor
+            ? this
+                .sql`AND (block_height, tx_index, event_index) < (${parsedCursor.blockHeight}, ${parsedCursor.txIndex}, ${parsedCursor.eventIndex})`
+            : this.sql``
+        }
       ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
-      LIMIT ${limit}
-      OFFSET ${offset}
+      LIMIT ${limit + 1}
+      ${cursor ? this.sql`` : this.sql`OFFSET ${offset}`}
     `;
-    const result = logResults.map(result => {
+
+    // Check if there are more results (for next cursor)
+    const hasMore = logResults.length > limit;
+    const results = hasMore ? logResults.slice(0, limit) : logResults;
+
+    // Generate next cursor from the last result
+    const nextCursor =
+      hasMore && results.length > 0
+        ? createEventCursor(
+            results[results.length - 1].block_height,
+            results[results.length - 1].tx_index,
+            results[results.length - 1].event_index
+          )
+        : null;
+
+    // Map to DbSmartContractEvent format
+    const mappedResults = results.map(result => {
       const event: DbSmartContractEvent = {
         event_index: result.event_index,
         tx_id: result.tx_id,
@@ -2138,7 +2200,13 @@ export class PgStore extends BasePgStore {
       };
       return event;
     });
-    return { found: true, result };
+
+    return {
+      found: true,
+      result: mappedResults,
+      nextCursor,
+      total: totalCount,
+    };
   }
 
   async getSmartContractByTrait(args: {
