@@ -230,6 +230,17 @@ export interface DbTx extends BaseTx {
   coinbase_vrf_proof?: string;
 
   event_count: number;
+  stx_transfer_event_count: number;
+  stx_mint_event_count: number;
+  stx_burn_event_count: number;
+  stx_lock_event_count: number;
+  ft_transfer_event_count: number;
+  ft_mint_event_count: number;
+  ft_burn_event_count: number;
+  nft_transfer_event_count: number;
+  nft_mint_event_count: number;
+  nft_burn_event_count: number;
+  contract_log_event_count: number;
 
   execution_cost_read_count: number;
   execution_cost_read_length: number;
@@ -1026,6 +1037,17 @@ export interface TxQueryResult {
 
   // events count
   event_count: number;
+  stx_transfer_event_count: number;
+  stx_mint_event_count: number;
+  stx_burn_event_count: number;
+  stx_lock_event_count: number;
+  ft_transfer_event_count: number;
+  ft_mint_event_count: number;
+  ft_burn_event_count: number;
+  nft_transfer_event_count: number;
+  nft_mint_event_count: number;
+  nft_burn_event_count: number;
+  contract_log_event_count: number;
 
   execution_cost_read_count: string;
   execution_cost_read_length: string;

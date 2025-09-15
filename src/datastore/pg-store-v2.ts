@@ -538,40 +538,11 @@ export class PgStoreV2 extends BasePgStoreModule {
         AND index_block_hash = address_txs.index_block_hash
         AND microblock_hash = address_txs.microblock_hash
       `;
-      const eventAcctCond = sql`
-        ${eventCond} AND (sender = ${args.address} OR recipient = ${args.address})
-      `;
       const resultQuery = await sql<(AddressTransfersTxQueryResult & { count: number })[]>`
         WITH address_txs AS (
-          (
-            SELECT tx_id, index_block_hash, microblock_hash
-            FROM principal_txs
-            WHERE principal = ${args.address}
-          )
-          UNION
-          (
-            SELECT tx_id, index_block_hash, microblock_hash
-            FROM stx_events
-            WHERE sender = ${args.address} OR recipient = ${args.address}
-          )
-          UNION
-          (
-            SELECT tx_id, index_block_hash, microblock_hash
-            FROM ft_events
-            WHERE sender = ${args.address} OR recipient = ${args.address}
-          )
-          UNION
-          (
-            SELECT tx_id, index_block_hash, microblock_hash
-            FROM nft_events
-            WHERE sender = ${args.address} OR recipient = ${args.address}
-          )
-        ),
-        count AS (
-          SELECT COUNT(*)::int AS total_count
-          FROM address_txs
-          INNER JOIN txs USING (tx_id, index_block_hash, microblock_hash)
-          WHERE canonical = TRUE AND microblock_canonical = TRUE
+          SELECT tx_id, index_block_hash, microblock_hash, COUNT(*)::int AS count
+          FROM principal_txs
+          WHERE principal = ${args.address} AND canonical = TRUE AND microblock_canonical = TRUE
         )
         SELECT
           ${sql(TX_COLUMNS)},
@@ -590,43 +561,16 @@ export class PgStoreV2 extends BasePgStoreModule {
             FROM stx_events
             WHERE ${eventCond} AND recipient = ${args.address}
           ) AS stx_received,
-          (
-            SELECT COUNT(*)::int FROM stx_events
-            WHERE ${eventAcctCond} AND asset_event_type_id = ${DbAssetEventTypeId.Transfer}
-          ) AS stx_transfer,
-          (
-            SELECT COUNT(*)::int FROM stx_events
-            WHERE ${eventAcctCond} AND asset_event_type_id = ${DbAssetEventTypeId.Mint}
-          ) AS stx_mint,
-          (
-            SELECT COUNT(*)::int FROM stx_events
-            WHERE ${eventAcctCond} AND asset_event_type_id = ${DbAssetEventTypeId.Burn}
-          ) AS stx_burn,
-          (
-            SELECT COUNT(*)::int FROM ft_events
-            WHERE ${eventAcctCond} AND asset_event_type_id = ${DbAssetEventTypeId.Transfer}
-          ) AS ft_transfer,
-          (
-            SELECT COUNT(*)::int FROM ft_events
-            WHERE ${eventAcctCond} AND asset_event_type_id = ${DbAssetEventTypeId.Mint}
-          ) AS ft_mint,
-          (
-            SELECT COUNT(*)::int FROM ft_events
-            WHERE ${eventAcctCond} AND asset_event_type_id = ${DbAssetEventTypeId.Burn}
-          ) AS ft_burn,
-          (
-            SELECT COUNT(*)::int FROM nft_events
-            WHERE ${eventAcctCond} AND asset_event_type_id = ${DbAssetEventTypeId.Transfer}
-          ) AS nft_transfer,
-          (
-            SELECT COUNT(*)::int FROM nft_events
-            WHERE ${eventAcctCond} AND asset_event_type_id = ${DbAssetEventTypeId.Mint}
-          ) AS nft_mint,
-          (
-            SELECT COUNT(*)::int FROM nft_events
-            WHERE ${eventAcctCond} AND asset_event_type_id = ${DbAssetEventTypeId.Burn}
-          ) AS nft_burn,
-          (SELECT total_count FROM count) AS count
+          stx_transfer_event_count AS stx_transfer,
+          stx_mint_event_count AS stx_mint,
+          stx_burn_event_count AS stx_burn,
+          ft_transfer_event_count AS ft_transfer,
+          ft_mint_event_count AS ft_mint,
+          ft_burn_event_count AS ft_burn,
+          nft_transfer_event_count AS nft_transfer,
+          nft_mint_event_count AS nft_mint,
+          nft_burn_event_count AS nft_burn,
+          count
         FROM address_txs
         INNER JOIN txs USING (tx_id, index_block_hash, microblock_hash)
         WHERE canonical = TRUE AND microblock_canonical = TRUE
