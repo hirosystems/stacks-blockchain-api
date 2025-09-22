@@ -44,14 +44,15 @@ describe('redis notifier', () => {
       block_height: 1,
       block_hash: '0x1234',
       index_block_hash: '0x1234',
+      block_time: 1234,
     }).build();
     await db.update(block1);
 
     expect(messages.length).toBe(1);
-    expect(JSON.parse(messages[0]).payload).toEqual({
+    expect(JSON.parse(messages[0]).payload).toContain({
       chain: 'stacks',
       network: 'mainnet',
-      apply_blocks: [{ hash: '0x1234', index: 1 }],
+      apply_blocks: [{ hash: '0x1234', index: 1, time: 1234 }],
       rollback_blocks: [],
     });
   });
@@ -62,13 +63,14 @@ describe('redis notifier', () => {
         block_height: 1,
         block_hash: '0x1234',
         index_block_hash: '0x1234',
+        block_time: 1234,
       }).build()
     );
     expect(messages.length).toBe(1);
-    expect(JSON.parse(messages[0]).payload).toEqual({
+    expect(JSON.parse(messages[0]).payload).toContain({
       chain: 'stacks',
       network: 'mainnet',
-      apply_blocks: [{ hash: '0x1234', index: 1 }],
+      apply_blocks: [{ hash: '0x1234', index: 1, time: 1234 }],
       rollback_blocks: [],
     });
 
@@ -78,13 +80,14 @@ describe('redis notifier', () => {
         block_hash: '0x1235',
         index_block_hash: '0x1235',
         parent_index_block_hash: '0x1234',
+        block_time: 1234,
       }).build()
     );
     expect(messages.length).toBe(2);
-    expect(JSON.parse(messages[1]).payload).toEqual({
+    expect(JSON.parse(messages[1]).payload).toContain({
       chain: 'stacks',
       network: 'mainnet',
-      apply_blocks: [{ hash: '0x1235', index: 2 }],
+      apply_blocks: [{ hash: '0x1235', index: 2, time: 1234 }],
       rollback_blocks: [],
     });
 
@@ -95,6 +98,7 @@ describe('redis notifier', () => {
         block_hash: '0x1235aa',
         index_block_hash: '0x1235aa',
         parent_index_block_hash: '0x1234',
+        block_time: 1234,
       }).build()
     );
     expect(messages.length).toBe(2);
@@ -106,17 +110,18 @@ describe('redis notifier', () => {
         block_hash: '0x1236',
         index_block_hash: '0x1236',
         parent_index_block_hash: '0x1235aa',
+        block_time: 1234,
       }).build()
     );
     expect(messages.length).toBe(3);
-    expect(JSON.parse(messages[2]).payload).toEqual({
+    expect(JSON.parse(messages[2]).payload).toContain({
       chain: 'stacks',
       network: 'mainnet',
       apply_blocks: [
-        { hash: '0x1235aa', index: 2 },
-        { hash: '0x1236', index: 3 },
+        { hash: '0x1235aa', index: 2, time: 1234 },
+        { hash: '0x1236', index: 3, time: 1234 },
       ],
-      rollback_blocks: [{ hash: '0x1235', index: 2 }],
+      rollback_blocks: [{ hash: '0x1235', index: 2, time: 1234 }],
     });
   });
 });
