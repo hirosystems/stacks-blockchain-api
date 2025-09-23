@@ -406,7 +406,14 @@ export class PgWriteStore extends PgStore {
       }
     });
     if (isCanonical) {
-      await this.redisNotifier?.notify(reorg, data.block.index_block_hash, data.block.block_height);
+      await this.redisNotifier?.notify(
+        {
+          index_block_hash: data.block.index_block_hash,
+          block_height: data.block.block_height,
+          block_time: data.block.block_time,
+        },
+        reorg
+      );
     }
     // Do we have an IBD height defined in ENV? If so, check if this block update reached it.
     const ibdHeight = getIbdBlockHeight();
@@ -3590,6 +3597,7 @@ export class PgWriteStore extends PgStore {
     updatedEntities.markedCanonical.blockHeaders.unshift({
       index_block_hash: restoredBlockResult[0].index_block_hash,
       block_height: restoredBlockResult[0].block_height,
+      block_time: restoredBlockResult[0].block_time,
     });
 
     // Orphan the now conflicting block at the same height
@@ -3632,6 +3640,7 @@ export class PgWriteStore extends PgStore {
       updatedEntities.markedNonCanonical.blockHeaders.unshift({
         index_block_hash: orphanedBlockResult[0].index_block_hash,
         block_height: orphanedBlockResult[0].block_height,
+        block_time: orphanedBlockResult[0].block_time,
       });
       const markNonCanonicalResult = await this.markEntitiesCanonical(
         sql,

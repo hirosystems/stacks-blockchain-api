@@ -1,5 +1,5 @@
 import Redis, { Cluster, RedisOptions } from 'ioredis';
-import { ReOrgUpdatedEntities } from './common';
+import { BlockHeader, ReOrgUpdatedEntities } from './common';
 import { ChainID } from '@stacks/transactions';
 import { getApiConfiguredChainID } from '../helpers';
 import { logger } from '@hirosystems/api-toolkit';
@@ -24,32 +24,36 @@ export class RedisNotifier {
   /**
    * Broadcast index progress message to the Redis queue.
    * @param reOrg - The re-org updated entities, if any
-   * @param indexBlockHash - Block hash of the newest canonical block
-   * @param blockHeight - Block height of the newest canonical block
+   * @param block - The newest canonical block
    */
-  async notify(reOrg: ReOrgUpdatedEntities, indexBlockHash: string, blockHeight: number) {
+  async notify(block: BlockHeader, reOrg: ReOrgUpdatedEntities) {
+    const time = Date.now();
     const message = {
-      id: `stacks-${blockHeight}-${indexBlockHash}-${Date.now()}`,
+      id: `stacks-${block.block_height}-${block.index_block_hash}-${time}`,
       payload: {
         chain: 'stacks',
         network: this.chainId === ChainID.Mainnet ? 'mainnet' : 'testnet',
+        time,
         apply_blocks: [
           ...reOrg.markedCanonical.blockHeaders.map(block => ({
             hash: block.index_block_hash,
             index: block.block_height,
+            time: block.block_time,
           })),
           {
-            hash: indexBlockHash,
-            index: blockHeight,
+            hash: block.index_block_hash,
+            index: block.block_height,
+            time: block.block_time,
           },
         ],
         rollback_blocks: reOrg.markedNonCanonical.blockHeaders.map(block => ({
           hash: block.index_block_hash,
           index: block.block_height,
+          time: block.block_time,
         })),
       },
     };
-    logger.debug(message, 'RedisNotifier broadcasting index progress message');
+    logger.info(message, 'RedisNotifier broadcasting index progress message');
     await this.redis.rpush(this.queue, JSON.stringify(message));
   }
 

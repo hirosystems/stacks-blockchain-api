@@ -3773,10 +3773,10 @@ describe('postgres datastore', () => {
     const expectedReorgResult: ReOrgUpdatedEntities = {
       markedCanonical: {
         blockHeaders: [
-          { block_height: 1, index_block_hash: '0xaa' },
-          { block_height: 2, index_block_hash: '0xbb' },
-          { block_height: 3, index_block_hash: '0xcc' },
-          { block_height: 4, index_block_hash: '0xdd' },
+          { block_height: 1, index_block_hash: '0xaa', block_time: 1234 },
+          { block_height: 2, index_block_hash: '0xbb', block_time: 1234 },
+          { block_height: 3, index_block_hash: '0xcc', block_time: 1234 },
+          { block_height: 4, index_block_hash: '0xdd', block_time: 1234 },
         ],
         blocks: 4,
         microblocks: 0,
@@ -3799,7 +3799,7 @@ describe('postgres datastore', () => {
         poxSigners: 0,
       },
       markedNonCanonical: {
-        blockHeaders: [{ block_height: 3, index_block_hash: '0xccbb' }],
+        blockHeaders: [{ block_height: 3, index_block_hash: '0xccbb', block_time: 1234 }],
         blocks: 1,
         microblocks: 0,
         microblockHashes: [],
