@@ -1,3 +1,10 @@
+## [8.13.1](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.13.0...v8.13.1) (2025-09-23)
+
+
+### Bug Fixes
+
+* **notifier:** include block times in redis updates ([#2352](https://github.com/hirosystems/stacks-blockchain-api/issues/2352)) ([d4324b8](https://github.com/hirosystems/stacks-blockchain-api/commit/d4324b8df0e8d6a2b3704540e2c88c132666b272))
+
 ## [8.13.0](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.12.1...v8.13.0) (2025-09-09)
 
 
