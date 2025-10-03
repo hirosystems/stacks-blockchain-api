@@ -1923,35 +1923,8 @@ export class PgWriteStore extends PgStore {
     };
   }
 
-  async updateBurnchainRewards({
-    burnchainBlockHash,
-    burnchainBlockHeight,
-    rewards,
-  }: {
-    burnchainBlockHash: string;
-    burnchainBlockHeight: number;
-    rewards: DbBurnchainReward[];
-  }): Promise<void> {
+  async updateBurnchainRewards({ rewards }: { rewards: DbBurnchainReward[] }): Promise<void> {
     return await this.sqlWriteTransaction(async sql => {
-      const existingRewards = await sql<
-        {
-          reward_recipient: string;
-          reward_amount: string;
-        }[]
-      >`
-        UPDATE burnchain_rewards
-        SET canonical = false
-        WHERE canonical = true AND
-          (burn_block_hash = ${burnchainBlockHash}
-            OR burn_block_height >= ${burnchainBlockHeight})
-      `;
-
-      if (existingRewards.count > 0) {
-        logger.warn(
-          `Invalidated ${existingRewards.count} burnchain rewards after fork detected at burnchain block ${burnchainBlockHash}`
-        );
-      }
-
       for (const reward of rewards) {
         const values: BurnchainRewardInsertValues = {
           canonical: true,
@@ -3607,6 +3580,11 @@ export class PgWriteStore extends PgStore {
     if (orphanedBlockResult.length > 0) {
       const orphanedBlocks = orphanedBlockResult.map(b => parseBlockQueryResult(b));
       for (const orphanedBlock of orphanedBlocks) {
+        await sql`
+          UPDATE burnchain_rewards
+          SET canonical = false
+          WHERE canonical = true AND burn_block_hash = ${orphanedBlock.burn_block_hash}
+        `;
         const microCanonicalUpdateResult = await this.updateMicroCanonical(sql, {
           isCanonical: false,
           blockHeight: orphanedBlock.block_height,
