@@ -10,10 +10,13 @@ exports.up = pgm => {
       ORDER BY burn_block_height DESC, block_height DESC
     )
     UPDATE burnchain_rewards
-    SET canonical = (
-      SELECT canonical
-      FROM burn_blocks
-      WHERE burnchain_rewards.burn_block_hash = burn_blocks.burn_block_hash
+    SET canonical = COALESCE(
+      (
+        SELECT canonical
+        FROM burn_blocks
+        WHERE burnchain_rewards.burn_block_hash = burn_blocks.burn_block_hash
+      ),
+      false
     )
   `);
 };
