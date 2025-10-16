@@ -236,7 +236,9 @@
         "--runInBand",
         "--no-cache",
         "--config",
-        "${workspaceRoot}/tests/jest.config.api.js"
+        "${workspaceRoot}/tests/jest.config.api.js",
+        "-t",
+        "transaction parsing"
       ],
       "outputCapture": "std",
       "console": "integratedTerminal",
