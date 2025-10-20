@@ -1,5 +1,5 @@
 import { pipeline } from 'node:stream/promises';
-import { Readable } from 'stream';
+import { Readable, Transform } from 'stream';
 import { DbRawEventRequest } from '../datastore/common';
 import { getConnectionArgs, getConnectionConfig, PgServer } from '../datastore/connection';
 import { connectPgPool } from './connection-legacy';
@@ -68,8 +68,21 @@ export async function* getRawEventRequests(
         ON COMMIT DROP
       `);
       onStatusUpdate?.('Importing raw event requests into temporary table...');
+
+      // Transform stream to remove literal "\u0000" strings and actual null bytes from the data
+      const nullByteRemover = new Transform({
+        transform(chunk, encoding, callback) {
+          // Convert chunk to string, remove problematic sequences, then back to buffer
+          const str = chunk.toString('utf8');
+          const cleaned = str
+            .replace(/\\u0000/g, '') // Remove literal "\u0000" string sequences
+            .replace(/\0/g, ''); // Remove actual null bytes
+          callback(null, Buffer.from(cleaned, 'utf8'));
+        },
+      });
+
       const importStream = client.query(pgCopyStreams.from(`COPY temp_raw_tsv FROM STDIN`));
-      await pipeline(readStream, importStream);
+      await pipeline(readStream, nullByteRemover, importStream);
       onStatusUpdate?.('Removing any duplicate raw event requests...');
       await client.query(`
         INSERT INTO temp_event_observer_requests

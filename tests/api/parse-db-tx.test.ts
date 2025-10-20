@@ -26,7 +26,6 @@ describe('transaction parsing', () => {
     let db: PgWriteStore;
     let client: PgSqlClient;
     let api: ApiServer;
-    let eventServer: EventStreamServer;
 
     beforeEach(async () => {
       await migrate('up');
@@ -40,23 +39,22 @@ describe('transaction parsing', () => {
 
       // set chainId env, because TSV import reads it manually
       process.env['STACKS_CHAIN_ID'] = ChainID.Testnet.toString();
-
-      eventServer = await startEventServer({
-        datastore: db,
-        chainId: ChainID.Testnet,
-        serverHost: '127.0.0.1',
-        serverPort: 0,
-      });
     });
 
     afterEach(async () => {
       await api.terminate();
-      await eventServer.closeAsync();
       await db?.close();
       await migrate('down');
     });
 
     test('parse fuzzed transactions', async () => {
+      const eventServer = await startEventServer({
+        datastore: db,
+        chainId: ChainID.Testnet,
+        serverHost: '127.0.0.1',
+        serverPort: 0,
+      });
+
       const readStream = readline.createInterface({
         input: fs.createReadStream('tests/api/tsv/fuzzed-transactions-1.tsv', { encoding: 'utf8' }),
         crlfDelay: Infinity,
@@ -72,13 +70,15 @@ describe('transaction parsing', () => {
           throwOnNotOK: true,
         });
       }
+
+      await eventServer.closeAsync();
     });
 
     test('parse fuzzed transactions via event replay', async () => {
-      await importEventsFromTsv('tests/api/tsv/fuzzed-transactions-1.tsv', 'archival', true, true);
-      // await expect(
-      //   importEventsFromTsv('tests/api/tsv/fuzzed-transactions-1.tsv', 'archival', true, true)
-      // ).resolves.not.toThrow();
+      // await importEventsFromTsv('tests/api/tsv/fuzzed-transactions-1.tsv', 'archival', true, true);
+      await expect(
+        importEventsFromTsv('tests/api/tsv/fuzzed-transactions-1.tsv', 'archival', true, true)
+      ).resolves.not.toThrow();
     });
   });
 });
