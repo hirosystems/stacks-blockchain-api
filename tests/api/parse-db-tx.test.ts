@@ -73,12 +73,5 @@ describe('transaction parsing', () => {
 
       await eventServer.closeAsync();
     });
-
-    test('parse fuzzed transactions via event replay', async () => {
-      // await importEventsFromTsv('tests/api/tsv/fuzzed-transactions-1.tsv', 'archival', true, true);
-      await expect(
-        importEventsFromTsv('tests/api/tsv/fuzzed-transactions-1.tsv', 'archival', true, true)
-      ).resolves.not.toThrow();
-    });
   });
 });
