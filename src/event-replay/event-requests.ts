@@ -1,5 +1,5 @@
 import { pipeline } from 'node:stream/promises';
-import { Readable, Transform } from 'stream';
+import { Readable } from 'stream';
 import { DbRawEventRequest } from '../datastore/common';
 import { getConnectionArgs, getConnectionConfig, PgServer } from '../datastore/connection';
 import { connectPgPool } from './connection-legacy';
