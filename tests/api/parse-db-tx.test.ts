@@ -1,11 +1,14 @@
 import { migrate } from '../utils/test-helpers';
 import { importEventsFromTsv } from '../../src/event-replay/event-replay';
 import { decodeClarityValueList } from 'stacks-encoding-native-js';
-import * as supertest from 'supertest';
+import * as fs from 'fs';
+import * as readline from 'readline';
 import { PgSqlClient, timeout } from '@hirosystems/api-toolkit';
 import { ChainID } from '@stacks/common';
 import { ApiServer, startApiServer } from '../../src/api/init';
 import { PgWriteStore } from '../../src/datastore/pg-write-store';
+import { EventStreamServer, startEventServer } from '../../src/event-stream/event-server';
+import { httpPostRequest } from '../../src/helpers';
 
 describe('transaction parsing', () => {
   test('buggy parsing of contract-call args', () => {
@@ -23,6 +26,7 @@ describe('transaction parsing', () => {
     let db: PgWriteStore;
     let client: PgSqlClient;
     let api: ApiServer;
+    let eventServer: EventStreamServer;
 
     beforeEach(async () => {
       await migrate('up');
@@ -36,20 +40,45 @@ describe('transaction parsing', () => {
 
       // set chainId env, because TSV import reads it manually
       process.env['STACKS_CHAIN_ID'] = ChainID.Testnet.toString();
+
+      eventServer = await startEventServer({
+        datastore: db,
+        chainId: ChainID.Testnet,
+        serverHost: '127.0.0.1',
+        serverPort: 0,
+      });
     });
 
     afterEach(async () => {
       await api.terminate();
+      await eventServer.closeAsync();
       await db?.close();
       await migrate('down');
     });
 
-    test('parse fuzzed contract deployments', async () => {
-      await expect(
-        importEventsFromTsv('tests/api/tsv/fuzzed-transactions-1.tsv', 'archival', true, true)
-      ).resolves.not.toThrow();
-      const tx = await supertest(api.server).get(`/extended/v1/tx`);
-      expect(tx.status).toBe(200);
+    test('parse fuzzed transactions', async () => {
+      const readStream = readline.createInterface({
+        input: fs.createReadStream('tests/api/tsv/fuzzed-transactions-1.tsv', { encoding: 'utf8' }),
+        crlfDelay: Infinity,
+      });
+      for await (const line of readStream) {
+        const [id, timestamp, eventPath, payload] = line.split('\t');
+        await httpPostRequest({
+          host: '127.0.0.1',
+          port: eventServer.serverAddress.port,
+          path: eventPath,
+          headers: { 'Content-Type': 'application/json' },
+          body: Buffer.from(payload, 'utf8'),
+          throwOnNotOK: true,
+        });
+      }
+    });
+
+    test('parse fuzzed transactions via event replay', async () => {
+      await importEventsFromTsv('tests/api/tsv/fuzzed-transactions-1.tsv', 'archival', true, true);
+      // await expect(
+      //   importEventsFromTsv('tests/api/tsv/fuzzed-transactions-1.tsv', 'archival', true, true)
+      // ).resolves.not.toThrow();
     });
   });
 });

@@ -78,6 +78,7 @@ import {
   validateZonefileHash,
   newReOrgUpdatedEntities,
   PgWriteQueue,
+  removeNullBytes,
 } from './helpers';
 import { PgNotifier } from './pg-notifier';
 import { MIGRATIONS_DIR, PgStore } from './pg-store';
@@ -203,6 +204,13 @@ export class PgWriteStore extends PgStore {
   }
 
   async storeRawEventRequest(eventPath: string, payload: any): Promise<void> {
+    if (eventPath === '/new_block' && typeof payload === 'object') {
+      for (const tx of payload.transactions) {
+        if ('vm_error' in tx && tx.vm_error) {
+          tx.vm_error = removeNullBytes(tx.vm_error);
+        }
+      }
+    }
     await this.sqlWriteTransaction(async sql => {
       const insertResult = await sql<
         {
@@ -2055,7 +2063,9 @@ export class PgWriteStore extends PgStore {
       token_transfer_memo: tx.token_transfer_memo ?? null,
       smart_contract_clarity_version: tx.smart_contract_clarity_version ?? null,
       smart_contract_contract_id: tx.smart_contract_contract_id ?? null,
-      smart_contract_source_code: tx.smart_contract_source_code ?? null,
+      smart_contract_source_code: tx.smart_contract_source_code
+        ? removeNullBytes(tx.smart_contract_source_code)
+        : null,
       contract_call_contract_id: tx.contract_call_contract_id ?? null,
       contract_call_function_name: tx.contract_call_function_name ?? null,
       contract_call_function_args: tx.contract_call_function_args ?? null,
@@ -2078,7 +2088,7 @@ export class PgWriteStore extends PgStore {
       execution_cost_runtime: tx.execution_cost_runtime,
       execution_cost_write_count: tx.execution_cost_write_count,
       execution_cost_write_length: tx.execution_cost_write_length,
-      vm_error: tx.vm_error ?? null,
+      vm_error: tx.vm_error ? removeNullBytes(tx.vm_error) : null,
     }));
 
     let count = 0;

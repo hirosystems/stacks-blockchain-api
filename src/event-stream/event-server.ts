@@ -822,6 +822,12 @@ export async function startEventServer(opts: {
     ignoreTrailingSlash: true,
   });
 
+  // app.addHook('preHandler', (req, _reply) => {
+  //   if (typeof req.body === 'string') {
+  //     req.body = req.body.replace(/\x00/g, '');
+  //   }
+  // });
+
   app.addHook('onRequest', (req, reply, done) => {
     req.raw.on('close', () => {
       if (req.raw.aborted) {
