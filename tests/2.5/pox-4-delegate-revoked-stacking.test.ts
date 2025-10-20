@@ -24,7 +24,6 @@ import {
   fetchGet,
   readOnlyFnCall,
   standByForPoxCycle,
-  standByForPoxCycleEnd,
   standByForTx,
   standByForTxSuccess,
   testEnv,
@@ -207,6 +206,19 @@ describe('PoX-4 - Delegate Revoked Stacking', () => {
     );
     const delegatedAmount = BigInt(getDelegationInfo.data['amount-ustx'].value);
     expect(delegatedAmount).toBe(DELEGATE_HALF_AMOUNT);
+
+    // validate pool delegations
+    const stackersRes: any = await fetchGet(`/extended/v1/pox4/${POOL.stxAddr}/delegations`);
+    expect(stackersRes).toBeDefined();
+    expect(stackersRes.total).toBe(1);
+    expect(stackersRes.results).toHaveLength(1);
+    expect(stackersRes.results[0]).toEqual({
+      amount_ustx: DELEGATE_HALF_AMOUNT.toString(),
+      pox_addr: STACKER.btcTestnetAddr,
+      stacker: STACKER.stxAddr,
+      tx_id: delegateStxDbTx.tx_id,
+      block_height: delegateStxDbTx.block_height,
+    });
   });
 
   test('Perform delegate-stack-stx', async () => {
@@ -311,6 +323,12 @@ describe('PoX-4 - Delegate Revoked Stacking', () => {
     const coreBalanceInfo = await testEnv.client.getAccount(STACKER.stxAddr);
     expect(BigInt(coreBalanceInfo.locked)).toBe(DELEGATE_HALF_AMOUNT);
     expect(coreBalanceInfo.unlock_height).toBeGreaterThan(0);
+
+    // validate pool delegation no longer exists
+    const stackersRes: any = await fetchGet(`/extended/v1/pox4/${POOL.stxAddr}/delegations`);
+    expect(stackersRes).toBeDefined();
+    expect(stackersRes.total).toBe(0);
+    expect(stackersRes.results).toHaveLength(0);
   });
 
   test('Try to perform delegate-stack-stx - while revoked', async () => {
