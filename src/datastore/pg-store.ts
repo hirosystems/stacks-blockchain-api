@@ -2051,19 +2051,25 @@ export class PgStore extends BasePgStore {
       >`
         WITH ordered_pox_events AS (
           SELECT
-            stacker, pox_addr, amount_ustx, unlock_burn_height::integer, tx_id,
+            stacker, pox_addr, amount_ustx, unlock_burn_height::integer, tx_id, name,
             block_height, microblock_sequence, tx_index, event_index
           FROM ${sql(args.poxTable)}
           WHERE
-            canonical = true AND microblock_canonical = true AND
-            name = ${SyntheticPoxEventName.DelegateStx} AND delegate_to = ${args.delegator} AND
-            block_height <= ${args.blockHeight} AND block_height > ${args.afterBlockHeight} AND
-            (unlock_burn_height > ${args.burnBlockHeight} OR unlock_burn_height IS NULL)
+            canonical = true
+            AND microblock_canonical = true
+            AND delegate_to = ${args.delegator}
+            AND name IN (
+              ${SyntheticPoxEventName.DelegateStx},
+              ${SyntheticPoxEventName.RevokeDelegateStx}
+            )
+            AND block_height <= ${args.blockHeight}
+            AND block_height > ${args.afterBlockHeight}
+            AND (unlock_burn_height > ${args.burnBlockHeight} OR unlock_burn_height IS NULL)
           ORDER BY stacker, block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
         ),
         distinct_rows AS (
           SELECT DISTINCT ON (stacker)
-            stacker, pox_addr, amount_ustx, unlock_burn_height, tx_id,
+            stacker, pox_addr, amount_ustx, unlock_burn_height, tx_id, name,
             block_height, microblock_sequence, tx_index, event_index
           FROM ordered_pox_events
           ORDER BY stacker, block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
@@ -2072,6 +2078,7 @@ export class PgStore extends BasePgStore {
           stacker, pox_addr, amount_ustx, unlock_burn_height, block_height::integer, tx_id,
           COUNT(*) OVER()::integer AS total_rows
         FROM distinct_rows
+        WHERE name = ${SyntheticPoxEventName.DelegateStx}
         ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
         LIMIT ${args.limit}
         OFFSET ${args.offset}

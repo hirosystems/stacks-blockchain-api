@@ -1363,6 +1363,10 @@ export function newReOrgUpdatedEntities(): ReOrgUpdatedEntities {
   };
 }
 
+export function removeNullBytes(str: string): string {
+  return str.replace(/\x00/g, '');
+}
+
 /**
  * Priority queue for parallel Postgres write query execution. This helps performance because it
  * parallelizes the work postgres.js has to do when serializing JS types to PG types.

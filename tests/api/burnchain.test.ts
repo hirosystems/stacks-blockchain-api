@@ -201,13 +201,9 @@ describe('burnchain tests', () => {
       reward_index: 2,
     };
     await db.updateBurnchainRewards({
-      burnchainBlockHash: reward1.burn_block_hash,
-      burnchainBlockHeight: reward1.burn_block_height,
       rewards: [reward1, reward2],
     });
     await db.updateBurnchainRewards({
-      burnchainBlockHash: reward3.burn_block_hash,
-      burnchainBlockHeight: reward3.burn_block_height,
       rewards: [reward3, reward4, reward5],
     });
 
@@ -282,18 +278,12 @@ describe('burnchain tests', () => {
       reward_index: 0,
     };
     await db.updateBurnchainRewards({
-      burnchainBlockHash: reward1.burn_block_hash,
-      burnchainBlockHeight: reward1.burn_block_height,
       rewards: [reward1],
     });
     await db.updateBurnchainRewards({
-      burnchainBlockHash: reward2.burn_block_hash,
-      burnchainBlockHeight: reward2.burn_block_height,
       rewards: [reward2],
     });
     await db.updateBurnchainRewards({
-      burnchainBlockHash: reward3.burn_block_hash,
-      burnchainBlockHeight: reward3.burn_block_height,
       rewards: [reward3],
     });
     const rewardResult = await supertest(api.server).get(
@@ -320,8 +310,6 @@ describe('burnchain tests', () => {
       reward_index: 0,
     };
     await db.updateBurnchainRewards({
-      burnchainBlockHash: reward1.burn_block_hash,
-      burnchainBlockHeight: reward1.burn_block_height,
       rewards: [reward1],
     });
     const rewardResult = await supertest(api.server).get(`/extended/v1/burnchain/rewards/${addr1}`);
@@ -360,8 +348,6 @@ describe('burnchain tests', () => {
       reward_index: 0,
     };
     await db.updateBurnchainRewards({
-      burnchainBlockHash: reward1.burn_block_hash,
-      burnchainBlockHeight: reward1.burn_block_height,
       rewards: [reward1],
     });
     const rewardResult = await supertest(api.server).get(
@@ -402,8 +388,6 @@ describe('burnchain tests', () => {
       reward_index: 0,
     };
     await db.updateBurnchainRewards({
-      burnchainBlockHash: reward1.burn_block_hash,
-      burnchainBlockHeight: reward1.burn_block_height,
       rewards: [reward1],
     });
     const rewardResult = await supertest(api.server).get(
@@ -444,8 +428,6 @@ describe('burnchain tests', () => {
       reward_index: 0,
     };
     await db.updateBurnchainRewards({
-      burnchainBlockHash: reward1.burn_block_hash,
-      burnchainBlockHeight: reward1.burn_block_height,
       rewards: [reward1],
     });
     const rewardResult = await supertest(api.server).get(
