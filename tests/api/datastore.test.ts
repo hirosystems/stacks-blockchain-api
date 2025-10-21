@@ -3043,13 +3043,9 @@ describe('postgres datastore', () => {
       reward_index: 0,
     };
     await db.updateBurnchainRewards({
-      burnchainBlockHash: reward1.burn_block_hash,
-      burnchainBlockHeight: reward1.burn_block_height,
       rewards: [reward1, reward2],
     });
     await db.updateBurnchainRewards({
-      burnchainBlockHash: reward3.burn_block_hash,
-      burnchainBlockHeight: reward3.burn_block_height,
       rewards: [reward3],
     });
     const rewardQuery = await db.getBurnchainRewards({
@@ -3091,80 +3087,145 @@ describe('postgres datastore', () => {
   test('pg burnchain reward reorg handling', async () => {
     const addr1 = '1G4ayBXJvxZMoZpaNdZG6VyWwWq2mHpMjQ';
     const addr2 = '1DDUAqoyXvhF4cxznN9uL6j9ok1oncsT2z';
-    const reward1: DbBurnchainReward = {
-      canonical: true,
-      burn_block_hash: '0x1234',
-      burn_block_height: 200,
-      burn_amount: 2000n,
-      reward_recipient: addr1,
-      reward_amount: 900n,
-      reward_index: 0,
+
+    const mineTenure = async (args: {
+      block_height: number;
+      block_hash: string;
+      index_block_hash: string;
+      parent_index_block_hash: string;
+      parent_block_hash: string;
+      burn_block_hash: string;
+      burn_block_height: number;
+      tenure_height: number;
+    }) => {
+      // Add some rewards
+      await db.updateBurnchainRewards({
+        rewards: [
+          {
+            canonical: true,
+            burn_block_hash: args.burn_block_hash,
+            burn_block_height: args.burn_block_height,
+            burn_amount: 2000n,
+            reward_recipient: addr1,
+            reward_amount: 900n,
+            reward_index: 0,
+          },
+          {
+            canonical: true,
+            burn_block_hash: args.burn_block_hash,
+            burn_block_height: args.burn_block_height,
+            burn_amount: 2001n,
+            reward_recipient: addr2,
+            reward_amount: 901n,
+            reward_index: 1,
+          },
+        ],
+      });
+      // Mine a tenure based on that burn block
+      await db.update(
+        new TestBlockBuilder({
+          block_height: args.block_height,
+          block_hash: args.block_hash,
+          index_block_hash: args.index_block_hash,
+          parent_index_block_hash: args.parent_index_block_hash,
+          parent_block_hash: args.parent_block_hash,
+          burn_block_hash: args.burn_block_hash,
+          burn_block_height: args.burn_block_height,
+          tenure_height: args.tenure_height,
+        }).build()
+      );
     };
-    const reward2: DbBurnchainReward = {
-      canonical: true,
-      burn_block_hash: '0x1234',
+
+    // Mine 3 tenures, check rewards
+    await mineTenure({
+      block_height: 1,
+      block_hash: '0x11',
+      index_block_hash: '0x11',
+      parent_index_block_hash: '0x0000',
+      parent_block_hash: '0x0000',
+      burn_block_hash: '0x1111',
       burn_block_height: 200,
-      burn_amount: 2001n,
-      reward_recipient: addr1,
-      reward_amount: 901n,
-      reward_index: 1,
-    };
-    const reward3: DbBurnchainReward = {
-      canonical: true,
-      burn_block_hash: '0x2345',
+      tenure_height: 1,
+    });
+    await mineTenure({
+      block_height: 2,
+      block_hash: '0x22',
+      index_block_hash: '0x22',
+      parent_index_block_hash: '0x11',
+      parent_block_hash: '0x11',
+      burn_block_hash: '0x1112',
       burn_block_height: 201,
-      burn_amount: 3001n,
-      reward_recipient: addr1,
-      reward_amount: 902n,
-      reward_index: 0,
-    };
-    // block that triggers a reorg of all previous
-    const reward4: DbBurnchainReward = {
-      canonical: true,
-      burn_block_hash: reward1.burn_block_hash,
-      burn_block_height: reward1.burn_block_height,
-      burn_amount: 4001n,
-      reward_recipient: addr2,
-      reward_amount: 903n,
-      reward_index: 0,
-    };
-    await db.updateBurnchainRewards({
-      burnchainBlockHash: reward1.burn_block_hash,
-      burnchainBlockHeight: reward1.burn_block_height,
-      rewards: [reward1, reward2],
+      tenure_height: 2,
     });
-    await db.updateBurnchainRewards({
-      burnchainBlockHash: reward3.burn_block_hash,
-      burnchainBlockHeight: reward3.burn_block_height,
-      rewards: [reward3],
+    await mineTenure({
+      block_height: 3,
+      block_hash: '0x33',
+      index_block_hash: '0x33',
+      parent_index_block_hash: '0x22',
+      parent_block_hash: '0x22',
+      burn_block_hash: '0x1113',
+      burn_block_height: 202,
+      tenure_height: 3,
     });
-    await db.updateBurnchainRewards({
-      burnchainBlockHash: reward4.burn_block_hash,
-      burnchainBlockHeight: reward4.burn_block_height,
-      rewards: [reward4],
-    });
-    // Should return zero rewards since given address was only in blocks that have been reorged into non-canonical.
-    const rewardQuery1 = await db.getBurnchainRewards({
-      burnchainRecipient: addr1,
+    const rewards = await db.getBurnchainRewards({
       limit: 100,
       offset: 0,
     });
-    expect(rewardQuery1).toEqual([]);
-    const rewardQuery2 = await db.getBurnchainRewards({
-      burnchainRecipient: addr2,
+    expect(rewards).toHaveLength(6);
+    expect(rewards.map(r => r.burn_block_hash)).toEqual([
+      '0x1113',
+      '0x1113',
+      '0x1112',
+      '0x1112',
+      '0x1111',
+      '0x1111',
+    ]);
+
+    // Create re-org after burn block 201, check rewards again
+    await mineTenure({
+      block_height: 2,
+      block_hash: '0x22bb',
+      index_block_hash: '0x22bb',
+      parent_index_block_hash: '0x11',
+      parent_block_hash: '0x11',
+      burn_block_hash: '0x1112bb',
+      burn_block_height: 201,
+      tenure_height: 2,
+    });
+    await mineTenure({
+      block_height: 3,
+      block_hash: '0x33bb',
+      index_block_hash: '0x33bb',
+      parent_index_block_hash: '0x22bb',
+      parent_block_hash: '0x22bb',
+      burn_block_hash: '0x1113bb',
+      burn_block_height: 202,
+      tenure_height: 3,
+    });
+    await mineTenure({
+      block_height: 4,
+      block_hash: '0x44bb',
+      index_block_hash: '0x44bb',
+      parent_index_block_hash: '0x33bb',
+      parent_block_hash: '0x33bb',
+      burn_block_hash: '0x1114',
+      burn_block_height: 203,
+      tenure_height: 4,
+    });
+    const rewards2 = await db.getBurnchainRewards({
       limit: 100,
       offset: 0,
     });
-    expect(rewardQuery2).toEqual([
-      {
-        canonical: true,
-        burn_block_hash: '0x1234',
-        burn_block_height: 200,
-        burn_amount: 4001n,
-        reward_recipient: addr2,
-        reward_amount: 903n,
-        reward_index: 0,
-      },
+    expect(rewards2).toHaveLength(8);
+    expect(rewards2.map(r => r.burn_block_hash)).toEqual([
+      '0x1114',
+      '0x1114',
+      '0x1113bb',
+      '0x1113bb',
+      '0x1112bb',
+      '0x1112bb',
+      '0x1111',
+      '0x1111',
     ]);
   });
 

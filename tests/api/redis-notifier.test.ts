@@ -3,7 +3,7 @@ const messages: string[] = [];
 // Mock Redis to capture messages
 jest.mock('ioredis', () => {
   const redisMock = jest.fn().mockImplementation(() => ({
-    rpush: jest.fn((_, message) => {
+    xadd: jest.fn((queue, id, field, message) => {
       messages.push(message);
     }),
     quit: jest.fn().mockResolvedValue(undefined),
