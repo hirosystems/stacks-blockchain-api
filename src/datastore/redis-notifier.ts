@@ -50,7 +50,7 @@ export class RedisNotifier {
       },
     };
     logger.debug(message, 'RedisNotifier broadcasting index progress message');
-    await this.redis.rpush(this.queue, JSON.stringify(message));
+    await this.redis.xadd(this.queue, '*', 'data', JSON.stringify(message));
   }
 
   async close() {
