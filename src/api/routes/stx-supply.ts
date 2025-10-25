@@ -52,7 +52,7 @@ export const StxSupplyRoutes: FastifyPluginAsync<
       schema: {
         operationId: 'get_stx_supply',
         summary: 'Get total and unlocked STX supply',
-        description: `Retrieves the total and unlocked STX supply. More information on Stacking can be found [here] (https://docs.stacks.co/understand-stacks/stacking).`,
+        description: `Retrieves the total and unlocked STX supply. More information on Stacking can be found [here] (https://docs.stacks.co/block-production/stacking).`,
         tags: ['Info'],
         querystring: Type.Object({
           height: Type.Optional(
