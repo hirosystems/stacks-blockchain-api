@@ -87,7 +87,7 @@ function getPgClientConfig<TGetPoolConfig extends boolean = false>({
   // See the `.env` file for more information on these options.
   const pgEnvValue = (name: string): string | undefined =>
     pgServer === PgServer.primary
-      ? process.env[`PG_PRIMARY_${name}`] ?? process.env[`PG_${name}`]
+      ? (process.env[`PG_PRIMARY_${name}`] ?? process.env[`PG_${name}`])
       : process.env[`PG_${name}`];
   const pgEnvVars = {
     database: pgEnvValue('DATABASE'),

@@ -1131,8 +1131,8 @@ function parseDbAbstractTx(dbTx: DbTx, baseTx: BaseTransaction): AbstractTransac
     block_time_iso: dbTx.block_time
       ? unixEpochToIso(dbTx.block_time)
       : dbTx.burn_block_time > 0
-      ? unixEpochToIso(dbTx.burn_block_time)
-      : '',
+        ? unixEpochToIso(dbTx.burn_block_time)
+        : '',
     burn_block_height: dbTx.burn_block_height,
     burn_block_time: dbTx.burn_block_time,
     burn_block_time_iso: dbTx.burn_block_time > 0 ? unixEpochToIso(dbTx.burn_block_time) : '',

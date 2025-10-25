@@ -819,7 +819,7 @@ export interface DbTokenOfferingLocked {
 
 export interface DbGetBlockWithMetadataOpts<
   TWithTxs extends boolean,
-  TWithMicroblocks extends boolean
+  TWithMicroblocks extends boolean,
 > {
   txs?: TWithTxs;
   microblocks?: TWithMicroblocks;
@@ -827,7 +827,7 @@ export interface DbGetBlockWithMetadataOpts<
 
 export interface DbGetBlockWithMetadataResponse<
   TWithTxs extends boolean,
-  TWithMicroblocks extends boolean
+  TWithMicroblocks extends boolean,
 > {
   block: DbBlock;
   txs: TWithTxs extends true ? DbTx[] : null;

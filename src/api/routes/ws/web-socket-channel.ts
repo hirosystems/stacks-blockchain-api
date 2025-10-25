@@ -49,8 +49,8 @@ export type WebSocketPayload = {
 export type ListenerType<T> = [T] extends [(...args: infer U) => any]
   ? U
   : [T] extends [void]
-  ? []
-  : [T];
+    ? []
+    : [T];
 
 /**
  * A channel that accepts user subscriptions to real time updates and responds with relevant
