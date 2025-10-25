@@ -223,7 +223,7 @@ export interface paths {
         };
         /**
          * Get total and unlocked STX supply
-         * @description Retrieves the total and unlocked STX supply. More information on Stacking can be found [here] (https://docs.stacks.co/understand-stacks/stacking).
+         * @description Retrieves the total and unlocked STX supply. More information on Stacking can be found [here] (https://docs.stacks.co/block-production/stacking).
          */
         get: operations["get_stx_supply"];
         put?: never;
@@ -349,7 +349,7 @@ export interface paths {
          * @description Retrieves the list of Non-Fungible Tokens owned by the given principal (STX address or Smart Contract ID).
          *             Results can be filtered by one or more asset identifiers and can include metadata about the transaction that made the principal own each token.
          *
-         *             More information on Non-Fungible Tokens on the Stacks blockchain can be found [here](https://docs.stacks.co/write-smart-contracts/tokens#non-fungible-tokens-nfts).
+         *             More information on Non-Fungible Tokens on the Stacks blockchain can be found [here](https://docs.stacks.co/build/create-tokens/creating-a-nft).
          */
         get: operations["get_nft_holdings"];
         put?: never;
@@ -371,7 +371,7 @@ export interface paths {
          * Non-Fungible Token history
          * @description Retrieves all events relevant to a Non-Fungible Token. Useful to determine the ownership history of a particular asset.
          *
-         *             More information on Non-Fungible Tokens on the Stacks blockchain can be found [here](https://docs.stacks.co/write-smart-contracts/tokens#non-fungible-tokens-nfts).
+         *             More information on Non-Fungible Tokens on the Stacks blockchain can be found [here](https://docs.stacks.co/build/create-tokens/creating-a-nft).
          */
         get: operations["get_nft_history"];
         put?: never;
@@ -393,7 +393,7 @@ export interface paths {
          * Non-Fungible Token mints
          * @description Retrieves all mint events for a Non-Fungible Token asset class. Useful to determine which NFTs of a particular collection have been claimed.
          *
-         *             More information on Non-Fungible Tokens on the Stacks blockchain can be found [here](https://docs.stacks.co/write-smart-contracts/tokens#non-fungible-tokens-nfts).
+         *             More information on Non-Fungible Tokens on the Stacks blockchain can be found [here](https://docs.stacks.co/build/create-tokens/creating-a-nft).
          */
         get: operations["get_nft_mints"];
         put?: never;
@@ -844,7 +844,7 @@ export interface paths {
          * @deprecated
          * @description **NOTE:** This endpoint is deprecated in favor of [Get address transactions](/api/get-address-transactions).
          *
-         *             Retrieves a list of all Transactions for a given Address or Contract Identifier. More information on Transaction types can be found [here](https://docs.stacks.co/understand-stacks/transactions#types).
+         *             Retrieves a list of all Transactions for a given Address or Contract Identifier. More information on Transaction types can be found [here](https://docs.stacks.co/transactions/how-transactions-work#types).
          *
          *             If you need to actively monitor new transactions for an address or contract id, we highly recommend subscribing to [WebSockets or Socket.io](https://github.com/hirosystems/stacks-blockchain-api/tree/master/client) for real-time updates.
          */
@@ -1541,7 +1541,7 @@ export interface paths {
          * Get address transactions
          * @description Retrieves a paginated list of confirmed transactions sent or received by a STX address or Smart Contract ID, alongside the total amount of STX sent or received and the number of STX, FT and NFT transfers contained within each transaction.
          *
-         *             More information on Transaction types can be found [here](https://docs.stacks.co/understand-stacks/transactions#types).
+         *             More information on Transaction types can be found [here](https://docs.stacks.co/transactions/how-transactions-work#types).
          */
         get: operations["get_address_transactions"];
         put?: never;
@@ -1945,6 +1945,8 @@ export interface operations {
                  * @example 123
                  */
                 nonce?: number;
+                /** @description Exclude function_args from contract call responses for smaller transaction sizes. */
+                exclude_function_args?: boolean;
             };
             header?: never;
             path?: never;
@@ -3302,6 +3304,8 @@ export interface operations {
                  * @example true
                  */
                 unanchored?: boolean;
+                /** @description Exclude function_args from contract call responses for smaller transaction sizes. */
+                exclude_function_args?: boolean;
             };
             header?: never;
             path?: never;
@@ -4709,6 +4713,7 @@ export interface operations {
                                 anchor_mode: "on_chain_only" | "off_chain_only" | "any";
                                 /** @description Status of the transaction */
                                 tx_status: "pending" | "dropped_replace_by_fee" | "dropped_replace_across_fork" | "dropped_too_expensive" | "dropped_stale_garbage_collect" | "dropped_problematic";
+                                replaced_by_tx_id: string | null;
                                 /** @description A unix timestamp (in seconds) indicating when the transaction broadcast was received by the node. */
                                 receipt_time: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when the transaction broadcast was received by the node. */
@@ -4808,6 +4813,7 @@ export interface operations {
                                 anchor_mode: "on_chain_only" | "off_chain_only" | "any";
                                 /** @description Status of the transaction */
                                 tx_status: "pending" | "dropped_replace_by_fee" | "dropped_replace_across_fork" | "dropped_too_expensive" | "dropped_stale_garbage_collect" | "dropped_problematic";
+                                replaced_by_tx_id: string | null;
                                 /** @description A unix timestamp (in seconds) indicating when the transaction broadcast was received by the node. */
                                 receipt_time: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when the transaction broadcast was received by the node. */
@@ -4907,6 +4913,7 @@ export interface operations {
                                 anchor_mode: "on_chain_only" | "off_chain_only" | "any";
                                 /** @description Status of the transaction */
                                 tx_status: "pending" | "dropped_replace_by_fee" | "dropped_replace_across_fork" | "dropped_too_expensive" | "dropped_stale_garbage_collect" | "dropped_problematic";
+                                replaced_by_tx_id: string | null;
                                 /** @description A unix timestamp (in seconds) indicating when the transaction broadcast was received by the node. */
                                 receipt_time: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when the transaction broadcast was received by the node. */
@@ -5013,6 +5020,7 @@ export interface operations {
                                 anchor_mode: "on_chain_only" | "off_chain_only" | "any";
                                 /** @description Status of the transaction */
                                 tx_status: "pending" | "dropped_replace_by_fee" | "dropped_replace_across_fork" | "dropped_too_expensive" | "dropped_stale_garbage_collect" | "dropped_problematic";
+                                replaced_by_tx_id: string | null;
                                 /** @description A unix timestamp (in seconds) indicating when the transaction broadcast was received by the node. */
                                 receipt_time: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when the transaction broadcast was received by the node. */
@@ -5111,6 +5119,7 @@ export interface operations {
                                 anchor_mode: "on_chain_only" | "off_chain_only" | "any";
                                 /** @description Status of the transaction */
                                 tx_status: "pending" | "dropped_replace_by_fee" | "dropped_replace_across_fork" | "dropped_too_expensive" | "dropped_stale_garbage_collect" | "dropped_problematic";
+                                replaced_by_tx_id: string | null;
                                 /** @description A unix timestamp (in seconds) indicating when the transaction broadcast was received by the node. */
                                 receipt_time: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when the transaction broadcast was received by the node. */
@@ -5209,6 +5218,7 @@ export interface operations {
                                 anchor_mode: "on_chain_only" | "off_chain_only" | "any";
                                 /** @description Status of the transaction */
                                 tx_status: "pending" | "dropped_replace_by_fee" | "dropped_replace_across_fork" | "dropped_too_expensive" | "dropped_stale_garbage_collect" | "dropped_problematic";
+                                replaced_by_tx_id: string | null;
                                 /** @description A unix timestamp (in seconds) indicating when the transaction broadcast was received by the node. */
                                 receipt_time: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when the transaction broadcast was received by the node. */
@@ -5289,6 +5299,8 @@ export interface operations {
                 offset?: number;
                 /** @description Results per page */
                 limit?: number;
+                /** @description Exclude function_args from contract call responses for smaller transaction sizes. */
+                exclude_function_args?: boolean;
             };
             header?: never;
             path?: never;
@@ -5395,6 +5407,7 @@ export interface operations {
                             anchor_mode: "on_chain_only" | "off_chain_only" | "any";
                             /** @description Status of the transaction */
                             tx_status: "pending" | "dropped_replace_by_fee" | "dropped_replace_across_fork" | "dropped_too_expensive" | "dropped_stale_garbage_collect" | "dropped_problematic";
+                            replaced_by_tx_id: string | null;
                             /** @description A unix timestamp (in seconds) indicating when the transaction broadcast was received by the node. */
                             receipt_time: number;
                             /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when the transaction broadcast was received by the node. */
@@ -5494,6 +5507,7 @@ export interface operations {
                             anchor_mode: "on_chain_only" | "off_chain_only" | "any";
                             /** @description Status of the transaction */
                             tx_status: "pending" | "dropped_replace_by_fee" | "dropped_replace_across_fork" | "dropped_too_expensive" | "dropped_stale_garbage_collect" | "dropped_problematic";
+                            replaced_by_tx_id: string | null;
                             /** @description A unix timestamp (in seconds) indicating when the transaction broadcast was received by the node. */
                             receipt_time: number;
                             /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when the transaction broadcast was received by the node. */
@@ -5593,6 +5607,7 @@ export interface operations {
                             anchor_mode: "on_chain_only" | "off_chain_only" | "any";
                             /** @description Status of the transaction */
                             tx_status: "pending" | "dropped_replace_by_fee" | "dropped_replace_across_fork" | "dropped_too_expensive" | "dropped_stale_garbage_collect" | "dropped_problematic";
+                            replaced_by_tx_id: string | null;
                             /** @description A unix timestamp (in seconds) indicating when the transaction broadcast was received by the node. */
                             receipt_time: number;
                             /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when the transaction broadcast was received by the node. */
@@ -5699,6 +5714,7 @@ export interface operations {
                             anchor_mode: "on_chain_only" | "off_chain_only" | "any";
                             /** @description Status of the transaction */
                             tx_status: "pending" | "dropped_replace_by_fee" | "dropped_replace_across_fork" | "dropped_too_expensive" | "dropped_stale_garbage_collect" | "dropped_problematic";
+                            replaced_by_tx_id: string | null;
                             /** @description A unix timestamp (in seconds) indicating when the transaction broadcast was received by the node. */
                             receipt_time: number;
                             /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when the transaction broadcast was received by the node. */
@@ -5797,6 +5813,7 @@ export interface operations {
                             anchor_mode: "on_chain_only" | "off_chain_only" | "any";
                             /** @description Status of the transaction */
                             tx_status: "pending" | "dropped_replace_by_fee" | "dropped_replace_across_fork" | "dropped_too_expensive" | "dropped_stale_garbage_collect" | "dropped_problematic";
+                            replaced_by_tx_id: string | null;
                             /** @description A unix timestamp (in seconds) indicating when the transaction broadcast was received by the node. */
                             receipt_time: number;
                             /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when the transaction broadcast was received by the node. */
@@ -5895,6 +5912,7 @@ export interface operations {
                             anchor_mode: "on_chain_only" | "off_chain_only" | "any";
                             /** @description Status of the transaction */
                             tx_status: "pending" | "dropped_replace_by_fee" | "dropped_replace_across_fork" | "dropped_too_expensive" | "dropped_stale_garbage_collect" | "dropped_problematic";
+                            replaced_by_tx_id: string | null;
                             /** @description A unix timestamp (in seconds) indicating when the transaction broadcast was received by the node. */
                             receipt_time: number;
                             /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when the transaction broadcast was received by the node. */
@@ -6140,6 +6158,8 @@ export interface operations {
                  * @example true
                  */
                 unanchored?: boolean;
+                /** @description Exclude function_args from contract call responses for smaller transaction sizes. */
+                exclude_function_args?: boolean;
             };
             header?: never;
             path: {
@@ -7549,6 +7569,7 @@ export interface operations {
                         anchor_mode: "on_chain_only" | "off_chain_only" | "any";
                         /** @description Status of the transaction */
                         tx_status: "pending" | "dropped_replace_by_fee" | "dropped_replace_across_fork" | "dropped_too_expensive" | "dropped_stale_garbage_collect" | "dropped_problematic";
+                        replaced_by_tx_id: string | null;
                         /** @description A unix timestamp (in seconds) indicating when the transaction broadcast was received by the node. */
                         receipt_time: number;
                         /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when the transaction broadcast was received by the node. */
@@ -7648,6 +7669,7 @@ export interface operations {
                         anchor_mode: "on_chain_only" | "off_chain_only" | "any";
                         /** @description Status of the transaction */
                         tx_status: "pending" | "dropped_replace_by_fee" | "dropped_replace_across_fork" | "dropped_too_expensive" | "dropped_stale_garbage_collect" | "dropped_problematic";
+                        replaced_by_tx_id: string | null;
                         /** @description A unix timestamp (in seconds) indicating when the transaction broadcast was received by the node. */
                         receipt_time: number;
                         /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when the transaction broadcast was received by the node. */
@@ -7747,6 +7769,7 @@ export interface operations {
                         anchor_mode: "on_chain_only" | "off_chain_only" | "any";
                         /** @description Status of the transaction */
                         tx_status: "pending" | "dropped_replace_by_fee" | "dropped_replace_across_fork" | "dropped_too_expensive" | "dropped_stale_garbage_collect" | "dropped_problematic";
+                        replaced_by_tx_id: string | null;
                         /** @description A unix timestamp (in seconds) indicating when the transaction broadcast was received by the node. */
                         receipt_time: number;
                         /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when the transaction broadcast was received by the node. */
@@ -7853,6 +7876,7 @@ export interface operations {
                         anchor_mode: "on_chain_only" | "off_chain_only" | "any";
                         /** @description Status of the transaction */
                         tx_status: "pending" | "dropped_replace_by_fee" | "dropped_replace_across_fork" | "dropped_too_expensive" | "dropped_stale_garbage_collect" | "dropped_problematic";
+                        replaced_by_tx_id: string | null;
                         /** @description A unix timestamp (in seconds) indicating when the transaction broadcast was received by the node. */
                         receipt_time: number;
                         /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when the transaction broadcast was received by the node. */
@@ -7951,6 +7975,7 @@ export interface operations {
                         anchor_mode: "on_chain_only" | "off_chain_only" | "any";
                         /** @description Status of the transaction */
                         tx_status: "pending" | "dropped_replace_by_fee" | "dropped_replace_across_fork" | "dropped_too_expensive" | "dropped_stale_garbage_collect" | "dropped_problematic";
+                        replaced_by_tx_id: string | null;
                         /** @description A unix timestamp (in seconds) indicating when the transaction broadcast was received by the node. */
                         receipt_time: number;
                         /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when the transaction broadcast was received by the node. */
@@ -8049,6 +8074,7 @@ export interface operations {
                         anchor_mode: "on_chain_only" | "off_chain_only" | "any";
                         /** @description Status of the transaction */
                         tx_status: "pending" | "dropped_replace_by_fee" | "dropped_replace_across_fork" | "dropped_too_expensive" | "dropped_stale_garbage_collect" | "dropped_problematic";
+                        replaced_by_tx_id: string | null;
                         /** @description A unix timestamp (in seconds) indicating when the transaction broadcast was received by the node. */
                         receipt_time: number;
                         /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when the transaction broadcast was received by the node. */
@@ -8144,6 +8170,8 @@ export interface operations {
                 offset?: number;
                 /** @description Results per page */
                 limit?: number;
+                /** @description Exclude function_args from contract call responses for smaller transaction sizes. */
+                exclude_function_args?: boolean;
             };
             header?: never;
             path: {
@@ -9497,6 +9525,8 @@ export interface operations {
                 offset?: number;
                 /** @description Results per page */
                 limit?: number;
+                /** @description Exclude function_args from contract call responses for smaller transaction sizes. */
+                exclude_function_args?: boolean;
             };
             header?: never;
             path: {
@@ -18018,6 +18048,8 @@ export interface operations {
                 unanchored?: boolean;
                 /** @description Block hash or block height. Return data representing the state up until that point in time, rather than the current block. Note - Use either of the query parameters but not both at a time. */
                 until_block?: string;
+                /** @description Exclude function_args from contract call responses for smaller transaction sizes. */
+                exclude_function_args?: boolean;
             };
             header?: never;
             path: {
@@ -22353,6 +22385,8 @@ export interface operations {
                  * @example true
                  */
                 unanchored?: boolean;
+                /** @description Exclude function_args from contract call responses for smaller transaction sizes. */
+                exclude_function_args?: boolean;
             };
             header?: never;
             path: {
@@ -22461,6 +22495,7 @@ export interface operations {
                             anchor_mode: "on_chain_only" | "off_chain_only" | "any";
                             /** @description Status of the transaction */
                             tx_status: "pending" | "dropped_replace_by_fee" | "dropped_replace_across_fork" | "dropped_too_expensive" | "dropped_stale_garbage_collect" | "dropped_problematic";
+                            replaced_by_tx_id: string | null;
                             /** @description A unix timestamp (in seconds) indicating when the transaction broadcast was received by the node. */
                             receipt_time: number;
                             /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when the transaction broadcast was received by the node. */
@@ -22560,6 +22595,7 @@ export interface operations {
                             anchor_mode: "on_chain_only" | "off_chain_only" | "any";
                             /** @description Status of the transaction */
                             tx_status: "pending" | "dropped_replace_by_fee" | "dropped_replace_across_fork" | "dropped_too_expensive" | "dropped_stale_garbage_collect" | "dropped_problematic";
+                            replaced_by_tx_id: string | null;
                             /** @description A unix timestamp (in seconds) indicating when the transaction broadcast was received by the node. */
                             receipt_time: number;
                             /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when the transaction broadcast was received by the node. */
@@ -22659,6 +22695,7 @@ export interface operations {
                             anchor_mode: "on_chain_only" | "off_chain_only" | "any";
                             /** @description Status of the transaction */
                             tx_status: "pending" | "dropped_replace_by_fee" | "dropped_replace_across_fork" | "dropped_too_expensive" | "dropped_stale_garbage_collect" | "dropped_problematic";
+                            replaced_by_tx_id: string | null;
                             /** @description A unix timestamp (in seconds) indicating when the transaction broadcast was received by the node. */
                             receipt_time: number;
                             /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when the transaction broadcast was received by the node. */
@@ -22765,6 +22802,7 @@ export interface operations {
                             anchor_mode: "on_chain_only" | "off_chain_only" | "any";
                             /** @description Status of the transaction */
                             tx_status: "pending" | "dropped_replace_by_fee" | "dropped_replace_across_fork" | "dropped_too_expensive" | "dropped_stale_garbage_collect" | "dropped_problematic";
+                            replaced_by_tx_id: string | null;
                             /** @description A unix timestamp (in seconds) indicating when the transaction broadcast was received by the node. */
                             receipt_time: number;
                             /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when the transaction broadcast was received by the node. */
@@ -22863,6 +22901,7 @@ export interface operations {
                             anchor_mode: "on_chain_only" | "off_chain_only" | "any";
                             /** @description Status of the transaction */
                             tx_status: "pending" | "dropped_replace_by_fee" | "dropped_replace_across_fork" | "dropped_too_expensive" | "dropped_stale_garbage_collect" | "dropped_problematic";
+                            replaced_by_tx_id: string | null;
                             /** @description A unix timestamp (in seconds) indicating when the transaction broadcast was received by the node. */
                             receipt_time: number;
                             /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when the transaction broadcast was received by the node. */
@@ -22961,6 +23000,7 @@ export interface operations {
                             anchor_mode: "on_chain_only" | "off_chain_only" | "any";
                             /** @description Status of the transaction */
                             tx_status: "pending" | "dropped_replace_by_fee" | "dropped_replace_across_fork" | "dropped_too_expensive" | "dropped_stale_garbage_collect" | "dropped_problematic";
+                            replaced_by_tx_id: string | null;
                             /** @description A unix timestamp (in seconds) indicating when the transaction broadcast was received by the node. */
                             receipt_time: number;
                             /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when the transaction broadcast was received by the node. */
@@ -24605,6 +24645,7 @@ export interface operations {
                                 anchor_mode: "on_chain_only" | "off_chain_only" | "any";
                                 /** @description Status of the transaction */
                                 tx_status: "pending" | "dropped_replace_by_fee" | "dropped_replace_across_fork" | "dropped_too_expensive" | "dropped_stale_garbage_collect" | "dropped_problematic";
+                                replaced_by_tx_id: string | null;
                                 /** @description A unix timestamp (in seconds) indicating when the transaction broadcast was received by the node. */
                                 receipt_time: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when the transaction broadcast was received by the node. */
@@ -24704,6 +24745,7 @@ export interface operations {
                                 anchor_mode: "on_chain_only" | "off_chain_only" | "any";
                                 /** @description Status of the transaction */
                                 tx_status: "pending" | "dropped_replace_by_fee" | "dropped_replace_across_fork" | "dropped_too_expensive" | "dropped_stale_garbage_collect" | "dropped_problematic";
+                                replaced_by_tx_id: string | null;
                                 /** @description A unix timestamp (in seconds) indicating when the transaction broadcast was received by the node. */
                                 receipt_time: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when the transaction broadcast was received by the node. */
@@ -24803,6 +24845,7 @@ export interface operations {
                                 anchor_mode: "on_chain_only" | "off_chain_only" | "any";
                                 /** @description Status of the transaction */
                                 tx_status: "pending" | "dropped_replace_by_fee" | "dropped_replace_across_fork" | "dropped_too_expensive" | "dropped_stale_garbage_collect" | "dropped_problematic";
+                                replaced_by_tx_id: string | null;
                                 /** @description A unix timestamp (in seconds) indicating when the transaction broadcast was received by the node. */
                                 receipt_time: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when the transaction broadcast was received by the node. */
@@ -24909,6 +24952,7 @@ export interface operations {
                                 anchor_mode: "on_chain_only" | "off_chain_only" | "any";
                                 /** @description Status of the transaction */
                                 tx_status: "pending" | "dropped_replace_by_fee" | "dropped_replace_across_fork" | "dropped_too_expensive" | "dropped_stale_garbage_collect" | "dropped_problematic";
+                                replaced_by_tx_id: string | null;
                                 /** @description A unix timestamp (in seconds) indicating when the transaction broadcast was received by the node. */
                                 receipt_time: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when the transaction broadcast was received by the node. */
@@ -25007,6 +25051,7 @@ export interface operations {
                                 anchor_mode: "on_chain_only" | "off_chain_only" | "any";
                                 /** @description Status of the transaction */
                                 tx_status: "pending" | "dropped_replace_by_fee" | "dropped_replace_across_fork" | "dropped_too_expensive" | "dropped_stale_garbage_collect" | "dropped_problematic";
+                                replaced_by_tx_id: string | null;
                                 /** @description A unix timestamp (in seconds) indicating when the transaction broadcast was received by the node. */
                                 receipt_time: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when the transaction broadcast was received by the node. */
@@ -25105,6 +25150,7 @@ export interface operations {
                                 anchor_mode: "on_chain_only" | "off_chain_only" | "any";
                                 /** @description Status of the transaction */
                                 tx_status: "pending" | "dropped_replace_by_fee" | "dropped_replace_across_fork" | "dropped_too_expensive" | "dropped_stale_garbage_collect" | "dropped_problematic";
+                                replaced_by_tx_id: string | null;
                                 /** @description A unix timestamp (in seconds) indicating when the transaction broadcast was received by the node. */
                                 receipt_time: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when the transaction broadcast was received by the node. */
@@ -25222,6 +25268,7 @@ export interface operations {
                                 anchor_mode: "on_chain_only" | "off_chain_only" | "any";
                                 /** @description Status of the transaction */
                                 tx_status: "pending" | "dropped_replace_by_fee" | "dropped_replace_across_fork" | "dropped_too_expensive" | "dropped_stale_garbage_collect" | "dropped_problematic";
+                                replaced_by_tx_id: string | null;
                                 /** @description A unix timestamp (in seconds) indicating when the transaction broadcast was received by the node. */
                                 receipt_time: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when the transaction broadcast was received by the node. */
@@ -25321,6 +25368,7 @@ export interface operations {
                                 anchor_mode: "on_chain_only" | "off_chain_only" | "any";
                                 /** @description Status of the transaction */
                                 tx_status: "pending" | "dropped_replace_by_fee" | "dropped_replace_across_fork" | "dropped_too_expensive" | "dropped_stale_garbage_collect" | "dropped_problematic";
+                                replaced_by_tx_id: string | null;
                                 /** @description A unix timestamp (in seconds) indicating when the transaction broadcast was received by the node. */
                                 receipt_time: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when the transaction broadcast was received by the node. */
@@ -25420,6 +25468,7 @@ export interface operations {
                                 anchor_mode: "on_chain_only" | "off_chain_only" | "any";
                                 /** @description Status of the transaction */
                                 tx_status: "pending" | "dropped_replace_by_fee" | "dropped_replace_across_fork" | "dropped_too_expensive" | "dropped_stale_garbage_collect" | "dropped_problematic";
+                                replaced_by_tx_id: string | null;
                                 /** @description A unix timestamp (in seconds) indicating when the transaction broadcast was received by the node. */
                                 receipt_time: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when the transaction broadcast was received by the node. */
@@ -25526,6 +25575,7 @@ export interface operations {
                                 anchor_mode: "on_chain_only" | "off_chain_only" | "any";
                                 /** @description Status of the transaction */
                                 tx_status: "pending" | "dropped_replace_by_fee" | "dropped_replace_across_fork" | "dropped_too_expensive" | "dropped_stale_garbage_collect" | "dropped_problematic";
+                                replaced_by_tx_id: string | null;
                                 /** @description A unix timestamp (in seconds) indicating when the transaction broadcast was received by the node. */
                                 receipt_time: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when the transaction broadcast was received by the node. */
@@ -25624,6 +25674,7 @@ export interface operations {
                                 anchor_mode: "on_chain_only" | "off_chain_only" | "any";
                                 /** @description Status of the transaction */
                                 tx_status: "pending" | "dropped_replace_by_fee" | "dropped_replace_across_fork" | "dropped_too_expensive" | "dropped_stale_garbage_collect" | "dropped_problematic";
+                                replaced_by_tx_id: string | null;
                                 /** @description A unix timestamp (in seconds) indicating when the transaction broadcast was received by the node. */
                                 receipt_time: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when the transaction broadcast was received by the node. */
@@ -25722,6 +25773,7 @@ export interface operations {
                                 anchor_mode: "on_chain_only" | "off_chain_only" | "any";
                                 /** @description Status of the transaction */
                                 tx_status: "pending" | "dropped_replace_by_fee" | "dropped_replace_across_fork" | "dropped_too_expensive" | "dropped_stale_garbage_collect" | "dropped_problematic";
+                                replaced_by_tx_id: string | null;
                                 /** @description A unix timestamp (in seconds) indicating when the transaction broadcast was received by the node. */
                                 receipt_time: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when the transaction broadcast was received by the node. */
@@ -27347,7 +27399,7 @@ export interface operations {
                 limit?: number;
                 /** @description Result offset */
                 offset?: number;
-                /** @description Cursor for pagination */
+                /** @description Cursor for block pagination */
                 cursor?: string;
             };
             header?: never;
@@ -29165,7 +29217,7 @@ export interface operations {
                 limit?: number;
                 /** @description Result offset */
                 offset?: number;
-                /** @description Cursor for pagination */
+                /** @description Cursor for block pagination */
                 cursor?: string;
             };
             header?: never;
@@ -29651,6 +29703,8 @@ export interface operations {
                 limit?: number;
                 /** @description Result offset */
                 offset?: number;
+                /** @description Exclude function_args from contract call responses for smaller transaction sizes. */
+                exclude_function_args?: boolean;
             };
             header?: never;
             path: {

@@ -35,7 +35,7 @@ export const TokenRoutes: FastifyPluginAsync<
         description: `Retrieves the list of Non-Fungible Tokens owned by the given principal (STX address or Smart Contract ID).
         Results can be filtered by one or more asset identifiers and can include metadata about the transaction that made the principal own each token.
 
-        More information on Non-Fungible Tokens on the Stacks blockchain can be found [here](https://docs.stacks.co/write-smart-contracts/tokens#non-fungible-tokens-nfts).`,
+        More information on Non-Fungible Tokens on the Stacks blockchain can be found [here](https://docs.stacks.co/build/create-tokens/creating-a-nft).`,
         tags: ['Non-Fungible Tokens'],
         querystring: Type.Object({
           principal: PrincipalSchema,
@@ -141,7 +141,7 @@ export const TokenRoutes: FastifyPluginAsync<
         summary: 'Non-Fungible Token history',
         description: `Retrieves all events relevant to a Non-Fungible Token. Useful to determine the ownership history of a particular asset.
 
-        More information on Non-Fungible Tokens on the Stacks blockchain can be found [here](https://docs.stacks.co/write-smart-contracts/tokens#non-fungible-tokens-nfts).`,
+        More information on Non-Fungible Tokens on the Stacks blockchain can be found [here](https://docs.stacks.co/build/create-tokens/creating-a-nft).`,
         tags: ['Non-Fungible Tokens'],
         querystring: Type.Object({
           asset_identifier: Type.String({
@@ -256,7 +256,7 @@ export const TokenRoutes: FastifyPluginAsync<
         summary: 'Non-Fungible Token mints',
         description: `Retrieves all mint events for a Non-Fungible Token asset class. Useful to determine which NFTs of a particular collection have been claimed.
 
-        More information on Non-Fungible Tokens on the Stacks blockchain can be found [here](https://docs.stacks.co/write-smart-contracts/tokens#non-fungible-tokens-nfts).`,
+        More information on Non-Fungible Tokens on the Stacks blockchain can be found [here](https://docs.stacks.co/build/create-tokens/creating-a-nft).`,
         tags: ['Non-Fungible Tokens'],
         querystring: Type.Object({
           asset_identifier: Type.String({

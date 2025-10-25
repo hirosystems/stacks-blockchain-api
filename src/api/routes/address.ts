@@ -96,7 +96,7 @@ export const AddressRoutes: FastifyPluginAsync<
         operationId: 'get_account_stx_balance',
         summary: 'Get account STX balance',
         description: `**NOTE:** This endpoint is deprecated in favor of [Get address STX balance](/api/get-principal-stx-balance).
-        
+
         Retrieves STX token balance for a given Address or Contract Identifier.`,
         tags: ['Accounts'],
         params: Type.Object({
@@ -167,7 +167,7 @@ export const AddressRoutes: FastifyPluginAsync<
         operationId: 'get_account_balance',
         summary: 'Get account balances',
         description: `**NOTE:** This endpoint is deprecated in favor of [Get address FT balances](/api/get-principal-ft-balances).
-        
+
         Retrieves total account balance information for a given Address or Contract Identifier. This includes the balances of STX Tokens, Fungible Tokens and Non-Fungible Tokens for the account.`,
         tags: ['Accounts'],
         params: Type.Object({
@@ -276,7 +276,7 @@ export const AddressRoutes: FastifyPluginAsync<
         summary: 'Get account transactions',
         description: `**NOTE:** This endpoint is deprecated in favor of [Get address transactions](/api/get-address-transactions).
 
-        Retrieves a list of all Transactions for a given Address or Contract Identifier. More information on Transaction types can be found [here](https://docs.stacks.co/understand-stacks/transactions#types).
+        Retrieves a list of all Transactions for a given Address or Contract Identifier. More information on Transaction types can be found [here](https://docs.stacks.co/transactions/how-transactions-work#types).
 
         If you need to actively monitor new transactions for an address or contract id, we highly recommend subscribing to [WebSockets or Socket.io](https://github.com/hirosystems/stacks-blockchain-api/tree/master/client) for real-time updates.`,
         tags: ['Accounts'],
