@@ -201,7 +201,7 @@ export interface BurnchainOpDelegateStx {
     delegated_ustx: number; // 4500432000000000;
     reward_addr: [
       number, // 1,
-      string // 'tb1pf4x64urhdsdmadxxhv2wwjv6e3evy59auu2xaauu3vz3adxtskfschm453'
+      string, // 'tb1pf4x64urhdsdmadxxhv2wwjv6e3evy59auu2xaauu3vz3adxtskfschm453'
     ];
     sender: {
       address: string; // 'ST1Z7V02CJRY3G5R2RDG7SFAZA8VGH0Y44NC2NAJN';
@@ -363,7 +363,7 @@ export interface CoreNodeBurnBlockMessage {
       recipient: string;
       /** Amount in BTC satoshis. */
       amt: number;
-    }
+    },
   ];
   /**
    * Array of the Bitcoin addresses that would validly receive PoX commitments during this block.
