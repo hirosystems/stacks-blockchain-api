@@ -81,3 +81,7 @@ exports.up = pgm => {
     `UNIQUE(principal, tx_id, index_block_hash, microblock_hash)`
   );
 };
+
+exports.down = pgm => {
+  pgm.dropTable('principal_txs');
+};

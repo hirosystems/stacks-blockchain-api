@@ -105,6 +105,17 @@ describe('search tests', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
       vm_error: null,
+      stx_transfer_event_count: 0,
+      stx_mint_event_count: 0,
+      stx_burn_event_count: 0,
+      stx_lock_event_count: 0,
+      ft_transfer_event_count: 0,
+      ft_mint_event_count: 0,
+      ft_burn_event_count: 0,
+      nft_transfer_event_count: 0,
+      nft_mint_event_count: 0,
+      nft_burn_event_count: 0,
+      contract_log_event_count: 0,
     };
     await db.updateTx(client, tx);
 
@@ -322,6 +333,17 @@ describe('search tests', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
       vm_error: null,
+      stx_transfer_event_count: 0,
+      stx_mint_event_count: 0,
+      stx_burn_event_count: 0,
+      stx_lock_event_count: 0,
+      ft_transfer_event_count: 0,
+      ft_mint_event_count: 0,
+      ft_burn_event_count: 0,
+      nft_transfer_event_count: 0,
+      nft_mint_event_count: 0,
+      nft_burn_event_count: 0,
+      contract_log_event_count: 0,
     };
 
     const mempoolTx: DbMempoolTxRaw = {
@@ -672,6 +694,17 @@ describe('search tests', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
       vm_error: null,
+      stx_transfer_event_count: 0,
+      stx_mint_event_count: 0,
+      stx_burn_event_count: 0,
+      stx_lock_event_count: 0,
+      ft_transfer_event_count: 0,
+      ft_mint_event_count: 0,
+      ft_burn_event_count: 0,
+      nft_transfer_event_count: 0,
+      nft_mint_event_count: 0,
+      nft_burn_event_count: 0,
+      contract_log_event_count: 0,
     };
     await db.updateTx(client, stxTx1);
 
@@ -726,6 +759,17 @@ describe('search tests', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
       vm_error: null,
+      stx_transfer_event_count: 0,
+      stx_mint_event_count: 0,
+      stx_burn_event_count: 0,
+      stx_lock_event_count: 0,
+      ft_transfer_event_count: 0,
+      ft_mint_event_count: 0,
+      ft_burn_event_count: 0,
+      nft_transfer_event_count: 0,
+      nft_mint_event_count: 0,
+      nft_burn_event_count: 0,
+      contract_log_event_count: 0,
     };
     await db.updateTx(client, stxTx2);
 
@@ -946,6 +990,17 @@ describe('search tests', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
       vm_error: null,
+      stx_transfer_event_count: 0,
+      stx_mint_event_count: 0,
+      stx_burn_event_count: 0,
+      stx_lock_event_count: 0,
+      ft_transfer_event_count: 0,
+      ft_mint_event_count: 0,
+      ft_burn_event_count: 0,
+      nft_transfer_event_count: 0,
+      nft_mint_event_count: 0,
+      nft_burn_event_count: 0,
+      contract_log_event_count: 0,
     };
     await db.updateTx(client, smartContract);
 
@@ -1123,6 +1178,17 @@ describe('search tests', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
       vm_error: null,
+      stx_transfer_event_count: 0,
+      stx_mint_event_count: 0,
+      stx_burn_event_count: 0,
+      stx_lock_event_count: 0,
+      ft_transfer_event_count: 0,
+      ft_mint_event_count: 0,
+      ft_burn_event_count: 0,
+      nft_transfer_event_count: 0,
+      nft_mint_event_count: 0,
+      nft_burn_event_count: 0,
+      contract_log_event_count: 0,
     };
 
     const stxTx2: DbTxRaw = {
@@ -1163,6 +1229,17 @@ describe('search tests', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
       vm_error: null,
+      stx_transfer_event_count: 0,
+      stx_mint_event_count: 0,
+      stx_burn_event_count: 0,
+      stx_lock_event_count: 0,
+      ft_transfer_event_count: 0,
+      ft_mint_event_count: 0,
+      ft_burn_event_count: 0,
+      nft_transfer_event_count: 0,
+      nft_mint_event_count: 0,
+      nft_burn_event_count: 0,
+      contract_log_event_count: 0,
     };
 
     const stxEvent1: DbStxEvent = {
@@ -1284,6 +1361,17 @@ describe('search tests', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
       vm_error: null,
+      stx_transfer_event_count: 0,
+      stx_mint_event_count: 0,
+      stx_burn_event_count: 0,
+      stx_lock_event_count: 0,
+      ft_transfer_event_count: 0,
+      ft_mint_event_count: 0,
+      ft_burn_event_count: 0,
+      nft_transfer_event_count: 0,
+      nft_mint_event_count: 0,
+      nft_burn_event_count: 0,
+      contract_log_event_count: 0,
     };
 
     const smartContract: DbSmartContract = {

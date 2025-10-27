@@ -128,6 +128,17 @@ describe('block tests', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
       vm_error: null,
+      stx_transfer_event_count: 0,
+      stx_mint_event_count: 0,
+      stx_burn_event_count: 0,
+      stx_lock_event_count: 0,
+      ft_transfer_event_count: 0,
+      ft_mint_event_count: 0,
+      ft_burn_event_count: 0,
+      nft_transfer_event_count: 0,
+      nft_mint_event_count: 0,
+      nft_burn_event_count: 0,
+      contract_log_event_count: 0,
     };
     await db.updateTx(client, tx);
 

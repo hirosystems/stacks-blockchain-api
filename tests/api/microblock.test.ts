@@ -328,6 +328,17 @@ describe('microblock tests', () => {
           execution_cost_write_count: 0,
           execution_cost_write_length: 0,
           vm_error: null,
+          stx_transfer_event_count: 0,
+          stx_mint_event_count: 0,
+          stx_burn_event_count: 0,
+          stx_lock_event_count: 0,
+          ft_transfer_event_count: 0,
+          ft_mint_event_count: 0,
+          ft_burn_event_count: 0,
+          nft_transfer_event_count: 0,
+          nft_mint_event_count: 0,
+          nft_burn_event_count: 0,
+          contract_log_event_count: 0,
         };
         const contractJsonAbi = {
           maps: [],
@@ -455,6 +466,17 @@ describe('microblock tests', () => {
           // These properties can be determined with a db query, they are set while the db is inserting them.
           block_height: -1,
           vm_error: null,
+          stx_transfer_event_count: 0,
+          stx_mint_event_count: 0,
+          stx_burn_event_count: 0,
+          stx_lock_event_count: 0,
+          ft_transfer_event_count: 0,
+          ft_mint_event_count: 0,
+          ft_burn_event_count: 0,
+          nft_transfer_event_count: 0,
+          nft_mint_event_count: 0,
+          nft_burn_event_count: 0,
+          contract_log_event_count: 0,
         };
         const mbTx2: DbTxRaw = {
           tx_id: '0x03',
@@ -504,6 +526,17 @@ describe('microblock tests', () => {
           // These properties can be determined with a db query, they are set while the db is inserting them.
           block_height: -1,
           vm_error: null,
+          stx_transfer_event_count: 0,
+          stx_mint_event_count: 0,
+          stx_burn_event_count: 0,
+          stx_lock_event_count: 0,
+          ft_transfer_event_count: 0,
+          ft_mint_event_count: 0,
+          ft_burn_event_count: 0,
+          nft_transfer_event_count: 0,
+          nft_mint_event_count: 0,
+          nft_burn_event_count: 0,
+          contract_log_event_count: 0,
         };
 
         const mempoolTx1: DbMempoolTxRaw = {
