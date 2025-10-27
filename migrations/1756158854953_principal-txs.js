@@ -1,5 +1,7 @@
 /** @param { import("node-pg-migrate").MigrationBuilder } pgm */
 exports.up = pgm => {
+  pgm.dropTable('principal_stx_txs');
+
   /**
    * Stores all `tx_id`s of transactions that affect a principal's STX balance since that cannot be
    * directly determined from the `txs` table (an expensive JOIN with `stx_events` is required).
