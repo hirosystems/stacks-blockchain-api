@@ -1348,6 +1348,7 @@ export function markBlockUpdateDataAsNonCanonical(data: DataStoreBlockUpdateData
 export function newReOrgUpdatedEntities(): ReOrgUpdatedEntities {
   return {
     markedCanonical: {
+      blockHeaders: [],
       blocks: 0,
       microblockHashes: [],
       microblocks: 0,
@@ -1369,6 +1370,7 @@ export function newReOrgUpdatedEntities(): ReOrgUpdatedEntities {
       poxCycles: 0,
     },
     markedNonCanonical: {
+      blockHeaders: [],
       blocks: 0,
       microblockHashes: [],
       microblocks: 0,
@@ -1392,6 +1394,10 @@ export function newReOrgUpdatedEntities(): ReOrgUpdatedEntities {
     prunedMempoolTxs: 0,
     restoredMempoolTxs: 0,
   };
+}
+
+export function removeNullBytes(str: string): string {
+  return str.replace(/\x00/g, '');
 }
 
 /**

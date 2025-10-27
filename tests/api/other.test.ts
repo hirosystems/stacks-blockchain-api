@@ -147,7 +147,7 @@ describe('other tests', () => {
     const expectedResp1 = {
       unlocked_percent: '100.00',
       total_stx: '235000000.000000',
-      total_stx_year_2050: '1818000000.000000',
+      total_stx_year_2050: '2318000000.000000',
       unlocked_stx: '235000000.000000',
       block_height: 1,
     };
@@ -175,7 +175,7 @@ describe('other tests', () => {
       unlocked_percent: '100.00',
       total_stx: microStxToStx(expectedTotalStx2),
       unlocked_stx: microStxToStx(expectedTotalStx2),
-      total_stx_year_2050: '1818000000.000000',
+      total_stx_year_2050: '2318000000.000000',
       block_height: dbBlock1.block_height,
     };
     expect(JSON.parse(result2.text)).toEqual(expectedResp2);
@@ -206,7 +206,7 @@ describe('other tests', () => {
     const expectedResp3 = {
       unlocked_percent: '100.00',
       total_stx: microStxToStx(expectedTotalStx3),
-      total_stx_year_2050: '1818000000.000000',
+      total_stx_year_2050: '2318000000.000000',
       unlocked_stx: microStxToStx(expectedTotalStx3),
       block_height: dbBlock1.block_height,
     };
@@ -236,8 +236,8 @@ describe('other tests', () => {
       unlockedSupplyFormatted: new Intl.NumberFormat('en', {
         minimumFractionDigits: STACKS_DECIMAL_PLACES,
       }).format(parseInt(microStxToStx(expectedTotalStx3))),
-      totalStacksYear2050: '1818000000.000000',
-      totalStacksYear2050Formatted: '1,818,000,000.000000',
+      totalStacksYear2050: '2318000000.000000',
+      totalStacksYear2050Formatted: '2,318,000,000.000000',
       blockHeight: dbBlock1.block_height.toString(),
     };
     expect(JSON.parse(result6.text)).toEqual(expectedResp6);
