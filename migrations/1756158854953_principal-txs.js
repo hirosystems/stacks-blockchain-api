@@ -25,6 +25,14 @@ exports.up = pgm => {
       type: 'boolean',
       notNull: true,
     },
+    stx_sent: {
+      type: 'bigint',
+      notNull: true,
+    },
+    stx_received: {
+      type: 'bigint',
+      notNull: true,
+    },
     block_height: {
       type: 'integer',
       notNull: true,
@@ -54,17 +62,19 @@ exports.up = pgm => {
       notNull: true,
     },
   });
-
   pgm.createIndex('principal_txs', 'tx_id');
-  pgm.createIndex('principal_txs', 'principal', {
-    where: 'canonical = TRUE AND microblock_canonical = TRUE',
-  });
-  pgm.createIndex('principal_txs', [
-    { name: 'block_height', sort: 'DESC' },
-    { name: 'microblock_sequence', sort: 'DESC' },
-    { name: 'tx_index', sort: 'DESC' },
-  ]);
-
+  pgm.createIndex(
+    'principal_txs',
+    [
+      { name: 'principal' },
+      { name: 'block_height', sort: 'DESC' },
+      { name: 'microblock_sequence', sort: 'DESC' },
+      { name: 'tx_index', sort: 'DESC' },
+    ],
+    {
+      where: 'canonical = TRUE AND microblock_canonical = TRUE',
+    }
+  );
   pgm.addConstraint(
     'principal_txs',
     'unique_principal_tx_id_index_block_hash_microblock_hash',

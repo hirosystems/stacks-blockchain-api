@@ -1700,6 +1700,8 @@ export interface PrincipalTxsInsertValues {
   microblock_sequence: number;
   tx_index: number;
   canonical: boolean;
+  stx_sent: bigint;
+  stx_received: bigint;
   microblock_canonical: boolean;
   stx_balance_affected: boolean;
   ft_balance_affected: boolean;

@@ -1383,28 +1383,51 @@ export class PgWriteStore extends PgStore {
     for (const { tx, stxEvents, ftEvents, nftEvents } of txs) {
       // Mark principals who participated in this transaction, along with the type of token balance
       // they affected.
-      const principals = new Map<string, { stx: boolean; ft: boolean; nft: boolean }>();
-      const addPrincipal = (principal: string, affected?: 'stx' | 'ft' | 'nft') => {
-        const flags = principals.get(principal) || { stx: false, ft: false, nft: false };
-        if (affected) {
-          principals.set(principal, { ...flags, [affected]: true });
+      const principals = new Map<
+        string,
+        { stx: boolean; ft: boolean; nft: boolean; stx_sent: bigint; stx_received: bigint }
+      >();
+      const addPrincipal = (
+        principal: string,
+        assetType?: 'stx' | 'ft' | 'nft',
+        stx_sent?: bigint,
+        stx_received?: bigint
+      ) => {
+        const sent = stx_sent ?? BigInt(0);
+        const received = stx_received ?? BigInt(0);
+        const entry = principals.get(principal) || {
+          stx: false,
+          ft: false,
+          nft: false,
+          stx_sent: sent,
+          stx_received: received,
+        };
+        if (assetType) {
+          principals.set(principal, {
+            ...entry,
+            [assetType]: true,
+            stx_sent: entry.stx_sent + sent,
+            stx_received: entry.stx_received + received,
+          });
         } else {
-          principals.set(principal, flags);
+          principals.set(principal, entry);
         }
       };
 
-      // Add sender but only mark as stx if not sponsored, otherwise they didn't pay a fee
+      // Add sender but only mark as stx if not sponsored, otherwise they didn't pay a fee. Do not
+      // record amounts yet because that will be included in stx_events below.
       addPrincipal(tx.sender_address, tx.sponsor_address ? undefined : 'stx');
-      if (tx.sponsor_address) addPrincipal(tx.sponsor_address, 'stx');
+      if (tx.sponsor_address) addPrincipal(tx.sponsor_address, 'stx', BigInt(tx.fee_rate));
       if (tx.token_transfer_recipient_address)
         addPrincipal(tx.token_transfer_recipient_address, 'stx');
-      // Add contract call and smart contract ids, no stx spent
+
+      // Add contract call and smart contract ids, no stx spent yet.
       if (tx.contract_call_contract_id) addPrincipal(tx.contract_call_contract_id);
       if (tx.smart_contract_contract_id) addPrincipal(tx.smart_contract_contract_id);
 
       for (const event of stxEvents) {
-        if (event.sender) addPrincipal(event.sender, 'stx');
-        if (event.recipient) addPrincipal(event.recipient, 'stx');
+        if (event.sender) addPrincipal(event.sender, 'stx', event.amount);
+        if (event.recipient) addPrincipal(event.recipient, 'stx', BigInt(0), event.amount);
       }
       for (const event of ftEvents) {
         if (event.sender) addPrincipal(event.sender, 'ft');
@@ -1414,7 +1437,7 @@ export class PgWriteStore extends PgStore {
         if (event.sender) addPrincipal(event.sender, 'nft');
         if (event.recipient) addPrincipal(event.recipient, 'nft');
       }
-      for (const [principal, { stx, ft, nft }] of principals.entries()) {
+      for (const [principal, { stx, ft, nft, stx_sent, stx_received }] of principals.entries()) {
         values.push({
           principal,
           tx_id: tx.tx_id,
@@ -1428,6 +1451,8 @@ export class PgWriteStore extends PgStore {
           stx_balance_affected: stx,
           ft_balance_affected: ft,
           nft_balance_affected: nft,
+          stx_sent,
+          stx_received,
         });
       }
     }
