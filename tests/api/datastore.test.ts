@@ -135,17 +135,6 @@ describe('postgres datastore', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
       vm_error: null,
-      stx_transfer_event_count: 0,
-      stx_mint_event_count: 0,
-      stx_burn_event_count: 0,
-      stx_lock_event_count: 0,
-      ft_transfer_event_count: 0,
-      ft_mint_event_count: 0,
-      ft_burn_event_count: 0,
-      nft_transfer_event_count: 0,
-      nft_mint_event_count: 0,
-      nft_burn_event_count: 0,
-      contract_log_event_count: 0,
     };
     const tx2 = {
       ...tx,
@@ -331,17 +320,6 @@ describe('postgres datastore', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
       vm_error: null,
-      stx_transfer_event_count: 0,
-      stx_mint_event_count: 0,
-      stx_burn_event_count: 0,
-      stx_lock_event_count: 0,
-      ft_transfer_event_count: 0,
-      ft_mint_event_count: 0,
-      ft_burn_event_count: 0,
-      nft_transfer_event_count: 0,
-      nft_mint_event_count: 0,
-      nft_burn_event_count: 0,
-      contract_log_event_count: 0,
     };
     const createFtEvent = (
       sender: string,
@@ -514,17 +492,6 @@ describe('postgres datastore', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
       vm_error: null,
-      stx_transfer_event_count: 0,
-      stx_mint_event_count: 0,
-      stx_burn_event_count: 0,
-      stx_lock_event_count: 0,
-      ft_transfer_event_count: 0,
-      ft_mint_event_count: 0,
-      ft_burn_event_count: 0,
-      nft_transfer_event_count: 0,
-      nft_mint_event_count: 0,
-      nft_burn_event_count: 0,
-      contract_log_event_count: 0,
     };
     const createNFtEvents = (
       sender: string,
@@ -708,17 +675,6 @@ describe('postgres datastore', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
       vm_error: null,
-      stx_transfer_event_count: 0,
-      stx_mint_event_count: 0,
-      stx_burn_event_count: 0,
-      stx_lock_event_count: 0,
-      ft_transfer_event_count: 0,
-      ft_mint_event_count: 0,
-      ft_burn_event_count: 0,
-      nft_transfer_event_count: 0,
-      nft_mint_event_count: 0,
-      nft_burn_event_count: 0,
-      contract_log_event_count: 0,
     };
     await db.updateTx(client, tx);
     const blockTxs = await db.getBlockTxs(block.index_block_hash);
@@ -799,17 +755,6 @@ describe('postgres datastore', () => {
         execution_cost_write_count: 0,
         execution_cost_write_length: 0,
         vm_error: null,
-        stx_transfer_event_count: 0,
-        stx_mint_event_count: 0,
-        stx_burn_event_count: 0,
-        stx_lock_event_count: 0,
-        ft_transfer_event_count: 0,
-        ft_mint_event_count: 0,
-        ft_burn_event_count: 0,
-        nft_transfer_event_count: 0,
-        nft_mint_event_count: 0,
-        nft_burn_event_count: 0,
-        contract_log_event_count: 0,
       };
       const stxEvent: DbStxEvent = {
         event_type: DbEventTypeId.StxAsset,
@@ -1145,17 +1090,6 @@ describe('postgres datastore', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
       vm_error: null,
-      stx_transfer_event_count: 0,
-      stx_mint_event_count: 0,
-      stx_burn_event_count: 0,
-      stx_lock_event_count: 0,
-      ft_transfer_event_count: 0,
-      ft_mint_event_count: 0,
-      ft_burn_event_count: 0,
-      nft_transfer_event_count: 0,
-      nft_mint_event_count: 0,
-      nft_burn_event_count: 0,
-      contract_log_event_count: 0,
     };
     const createStxEvent = (
       sender: string,
@@ -1222,17 +1156,6 @@ describe('postgres datastore', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
       vm_error: null,
-      stx_transfer_event_count: 0,
-      stx_mint_event_count: 0,
-      stx_burn_event_count: 0,
-      stx_lock_event_count: 0,
-      ft_transfer_event_count: 0,
-      ft_mint_event_count: 0,
-      ft_burn_event_count: 0,
-      nft_transfer_event_count: 0,
-      nft_mint_event_count: 0,
-      nft_burn_event_count: 0,
-      contract_log_event_count: 0,
     };
     const createFtEvent = (
       sender: string,
@@ -1310,17 +1233,6 @@ describe('postgres datastore', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
       vm_error: null,
-      stx_transfer_event_count: 0,
-      stx_mint_event_count: 0,
-      stx_burn_event_count: 0,
-      stx_lock_event_count: 0,
-      ft_transfer_event_count: 0,
-      ft_mint_event_count: 0,
-      ft_burn_event_count: 0,
-      nft_transfer_event_count: 0,
-      nft_mint_event_count: 0,
-      nft_burn_event_count: 0,
-      contract_log_event_count: 0,
     };
     const createNFtEvents = (
       sender: string,
@@ -2157,17 +2069,6 @@ describe('postgres datastore', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
       vm_error: null,
-      stx_transfer_event_count: 0,
-      stx_mint_event_count: 0,
-      stx_burn_event_count: 0,
-      stx_lock_event_count: 0,
-      ft_transfer_event_count: 0,
-      ft_mint_event_count: 0,
-      ft_burn_event_count: 0,
-      nft_transfer_event_count: 0,
-      nft_mint_event_count: 0,
-      nft_burn_event_count: 0,
-      contract_log_event_count: 0,
     };
     await db.update({
       block: dbBlock,
@@ -2255,17 +2156,6 @@ describe('postgres datastore', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
       vm_error: null,
-      stx_transfer_event_count: 0,
-      stx_mint_event_count: 0,
-      stx_burn_event_count: 0,
-      stx_lock_event_count: 0,
-      ft_transfer_event_count: 0,
-      ft_mint_event_count: 0,
-      ft_burn_event_count: 0,
-      nft_transfer_event_count: 0,
-      nft_mint_event_count: 0,
-      nft_burn_event_count: 0,
-      contract_log_event_count: 0,
     };
     await expect(db.updateTx(client, { ...tx, raw_tx: '0x' })).rejects.toEqual(
       new Error('new row for relation "txs" violates check constraint "valid_token_transfer"')
@@ -2359,17 +2249,6 @@ describe('postgres datastore', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
       vm_error: null,
-      stx_transfer_event_count: 0,
-      stx_mint_event_count: 0,
-      stx_burn_event_count: 0,
-      stx_lock_event_count: 0,
-      ft_transfer_event_count: 0,
-      ft_mint_event_count: 0,
-      ft_burn_event_count: 0,
-      nft_transfer_event_count: 0,
-      nft_mint_event_count: 0,
-      nft_burn_event_count: 0,
-      contract_log_event_count: 0,
     };
     await expect(db.updateTx(client, { ...tx, raw_tx: '0x' })).rejects.toEqual(
       new Error('new row for relation "txs" violates check constraint "valid_smart_contract"')
@@ -2472,17 +2351,6 @@ describe('postgres datastore', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
       vm_error: null,
-      stx_transfer_event_count: 0,
-      stx_mint_event_count: 0,
-      stx_burn_event_count: 0,
-      stx_lock_event_count: 0,
-      ft_transfer_event_count: 0,
-      ft_mint_event_count: 0,
-      ft_burn_event_count: 0,
-      nft_transfer_event_count: 0,
-      nft_mint_event_count: 0,
-      nft_burn_event_count: 0,
-      contract_log_event_count: 0,
     };
     await expect(db.updateTx(client, tx)).rejects.toEqual(
       new Error(
@@ -2564,17 +2432,6 @@ describe('postgres datastore', () => {
       smart_contract_source_code: '(src)',
       sponsor_nonce: undefined,
       vm_error: null,
-      stx_transfer_event_count: 0,
-      stx_mint_event_count: 0,
-      stx_burn_event_count: 0,
-      stx_lock_event_count: 0,
-      ft_transfer_event_count: 0,
-      ft_mint_event_count: 0,
-      ft_burn_event_count: 0,
-      nft_transfer_event_count: 0,
-      nft_mint_event_count: 0,
-      nft_burn_event_count: 0,
-      contract_log_event_count: 0,
     };
     expect(txQuery.result).toEqual(txRes);
   });
@@ -2639,17 +2496,6 @@ describe('postgres datastore', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
       vm_error: null,
-      stx_transfer_event_count: 0,
-      stx_mint_event_count: 0,
-      stx_burn_event_count: 0,
-      stx_lock_event_count: 0,
-      ft_transfer_event_count: 0,
-      ft_mint_event_count: 0,
-      ft_burn_event_count: 0,
-      nft_transfer_event_count: 0,
-      nft_mint_event_count: 0,
-      nft_burn_event_count: 0,
-      contract_log_event_count: 0,
     };
     await expect(db.updateTx(client, { ...tx, raw_tx: '0x' })).rejects.toEqual(
       new Error('new row for relation "txs" violates check constraint "valid_contract_call"')
@@ -2743,17 +2589,6 @@ describe('postgres datastore', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
       vm_error: null,
-      stx_transfer_event_count: 0,
-      stx_mint_event_count: 0,
-      stx_burn_event_count: 0,
-      stx_lock_event_count: 0,
-      ft_transfer_event_count: 0,
-      ft_mint_event_count: 0,
-      ft_burn_event_count: 0,
-      nft_transfer_event_count: 0,
-      nft_mint_event_count: 0,
-      nft_burn_event_count: 0,
-      contract_log_event_count: 0,
     };
     await expect(db.updateTx(client, { ...tx, raw_tx: '0x' })).rejects.toEqual(
       new Error('new row for relation "txs" violates check constraint "valid_poison_microblock"')
@@ -2846,17 +2681,6 @@ describe('postgres datastore', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
       vm_error: null,
-      stx_transfer_event_count: 0,
-      stx_mint_event_count: 0,
-      stx_burn_event_count: 0,
-      stx_lock_event_count: 0,
-      ft_transfer_event_count: 0,
-      ft_mint_event_count: 0,
-      ft_burn_event_count: 0,
-      nft_transfer_event_count: 0,
-      nft_mint_event_count: 0,
-      nft_burn_event_count: 0,
-      contract_log_event_count: 0,
     };
     await expect(db.updateTx(client, { ...tx, raw_tx: '0x' })).rejects.toEqual(
       new Error('new row for relation "txs" violates check constraint "valid_coinbase"')
@@ -2952,17 +2776,6 @@ describe('postgres datastore', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
       vm_error: null,
-      stx_transfer_event_count: 0,
-      stx_mint_event_count: 0,
-      stx_burn_event_count: 0,
-      stx_lock_event_count: 0,
-      ft_transfer_event_count: 0,
-      ft_mint_event_count: 0,
-      ft_burn_event_count: 0,
-      nft_transfer_event_count: 0,
-      nft_mint_event_count: 0,
-      nft_burn_event_count: 0,
-      contract_log_event_count: 0,
     };
     const updatedRows = await db.updateTx(client, tx);
     expect(updatedRows).toBe(1);
@@ -3040,17 +2853,6 @@ describe('postgres datastore', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
       vm_error: null,
-      stx_transfer_event_count: 0,
-      stx_mint_event_count: 0,
-      stx_burn_event_count: 0,
-      stx_lock_event_count: 0,
-      ft_transfer_event_count: 0,
-      ft_mint_event_count: 0,
-      ft_burn_event_count: 0,
-      nft_transfer_event_count: 0,
-      nft_mint_event_count: 0,
-      nft_burn_event_count: 0,
-      contract_log_event_count: 0,
     };
     const tx2: DbTx = {
       ...tx1,
@@ -3656,17 +3458,6 @@ describe('postgres datastore', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
       vm_error: null,
-      stx_transfer_event_count: 0,
-      stx_mint_event_count: 0,
-      stx_burn_event_count: 0,
-      stx_lock_event_count: 0,
-      ft_transfer_event_count: 0,
-      ft_mint_event_count: 0,
-      ft_burn_event_count: 0,
-      nft_transfer_event_count: 0,
-      nft_mint_event_count: 0,
-      nft_burn_event_count: 0,
-      contract_log_event_count: 0,
     };
     const tx1b: DbTxRaw = {
       ...tx1,
@@ -3678,17 +3469,6 @@ describe('postgres datastore', () => {
       raw_result: '0x0100000000000000000000000000000001', // u1
       canonical: true,
       event_count: 0,
-      stx_transfer_event_count: 0,
-      stx_mint_event_count: 0,
-      stx_burn_event_count: 0,
-      stx_lock_event_count: 0,
-      ft_transfer_event_count: 0,
-      ft_mint_event_count: 0,
-      ft_burn_event_count: 0,
-      nft_transfer_event_count: 0,
-      nft_mint_event_count: 0,
-      nft_burn_event_count: 0,
-      contract_log_event_count: 0,
     };
 
     await db.updateMempoolTxs({ mempoolTxs: [tx1Mempool] });
@@ -3958,17 +3738,6 @@ describe('postgres datastore', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
       vm_error: null,
-      stx_transfer_event_count: 0,
-      stx_mint_event_count: 0,
-      stx_burn_event_count: 0,
-      stx_lock_event_count: 0,
-      ft_transfer_event_count: 0,
-      ft_mint_event_count: 0,
-      ft_burn_event_count: 0,
-      nft_transfer_event_count: 0,
-      nft_mint_event_count: 0,
-      nft_burn_event_count: 0,
-      contract_log_event_count: 0,
     };
 
     const tx2: DbTxRaw = {
@@ -4007,17 +3776,6 @@ describe('postgres datastore', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
       vm_error: null,
-      stx_transfer_event_count: 0,
-      stx_mint_event_count: 0,
-      stx_burn_event_count: 0,
-      stx_lock_event_count: 0,
-      ft_transfer_event_count: 0,
-      ft_mint_event_count: 0,
-      ft_burn_event_count: 0,
-      nft_transfer_event_count: 0,
-      nft_mint_event_count: 0,
-      nft_burn_event_count: 0,
-      contract_log_event_count: 0,
     };
 
     const stxLockEvent1: DbStxLockEvent = {
@@ -4250,17 +4008,6 @@ describe('postgres datastore', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
       vm_error: null,
-      stx_transfer_event_count: 0,
-      stx_mint_event_count: 0,
-      stx_burn_event_count: 0,
-      stx_lock_event_count: 0,
-      ft_transfer_event_count: 0,
-      ft_mint_event_count: 0,
-      ft_burn_event_count: 0,
-      nft_transfer_event_count: 0,
-      nft_mint_event_count: 0,
-      nft_burn_event_count: 0,
-      contract_log_event_count: 0,
     };
 
     const tx2: DbTxRaw = {
@@ -4299,17 +4046,6 @@ describe('postgres datastore', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
       vm_error: null,
-      stx_transfer_event_count: 0,
-      stx_mint_event_count: 0,
-      stx_burn_event_count: 0,
-      stx_lock_event_count: 0,
-      ft_transfer_event_count: 0,
-      ft_mint_event_count: 0,
-      ft_burn_event_count: 0,
-      nft_transfer_event_count: 0,
-      nft_mint_event_count: 0,
-      nft_burn_event_count: 0,
-      contract_log_event_count: 0,
     };
 
     const stxLockEvent1: DbStxLockEvent = {
@@ -4559,17 +4295,6 @@ describe('postgres datastore', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
       vm_error: null,
-      stx_transfer_event_count: 0,
-      stx_mint_event_count: 0,
-      stx_burn_event_count: 0,
-      stx_lock_event_count: 0,
-      ft_transfer_event_count: 0,
-      ft_mint_event_count: 0,
-      ft_burn_event_count: 0,
-      nft_transfer_event_count: 0,
-      nft_mint_event_count: 0,
-      nft_burn_event_count: 0,
-      contract_log_event_count: 0,
     };
     const contract1: DbSmartContract = {
       tx_id: tx3.tx_id,
@@ -5098,17 +4823,6 @@ describe('postgres datastore', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
       vm_error: null,
-      stx_transfer_event_count: 0,
-      stx_mint_event_count: 0,
-      stx_burn_event_count: 0,
-      stx_lock_event_count: 0,
-      ft_transfer_event_count: 0,
-      ft_mint_event_count: 0,
-      ft_burn_event_count: 0,
-      nft_transfer_event_count: 0,
-      nft_mint_event_count: 0,
-      nft_burn_event_count: 0,
-      contract_log_event_count: 0,
     };
 
     const tx2: DbTxRaw = {
@@ -5147,17 +4861,6 @@ describe('postgres datastore', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
       vm_error: null,
-      stx_transfer_event_count: 0,
-      stx_mint_event_count: 0,
-      stx_burn_event_count: 0,
-      stx_lock_event_count: 0,
-      ft_transfer_event_count: 0,
-      ft_mint_event_count: 0,
-      ft_burn_event_count: 0,
-      nft_transfer_event_count: 0,
-      nft_mint_event_count: 0,
-      nft_burn_event_count: 0,
-      contract_log_event_count: 0,
     };
 
     // test sponsored tx
@@ -5197,17 +4900,6 @@ describe('postgres datastore', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
       vm_error: null,
-      stx_transfer_event_count: 0,
-      stx_mint_event_count: 0,
-      stx_burn_event_count: 0,
-      stx_lock_event_count: 0,
-      ft_transfer_event_count: 0,
-      ft_mint_event_count: 0,
-      ft_burn_event_count: 0,
-      nft_transfer_event_count: 0,
-      nft_mint_event_count: 0,
-      nft_burn_event_count: 0,
-      contract_log_event_count: 0,
     };
 
     const tx4: DbTxRaw = {
@@ -5246,17 +4938,6 @@ describe('postgres datastore', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
       vm_error: null,
-      stx_transfer_event_count: 0,
-      stx_mint_event_count: 0,
-      stx_burn_event_count: 0,
-      stx_lock_event_count: 0,
-      ft_transfer_event_count: 0,
-      ft_mint_event_count: 0,
-      ft_burn_event_count: 0,
-      nft_transfer_event_count: 0,
-      nft_mint_event_count: 0,
-      nft_burn_event_count: 0,
-      contract_log_event_count: 0,
     };
 
     // test stx mint
@@ -5621,17 +5302,6 @@ describe('postgres datastore', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
       vm_error: null,
-      stx_transfer_event_count: 0,
-      stx_mint_event_count: 0,
-      stx_burn_event_count: 0,
-      stx_lock_event_count: 0,
-      ft_transfer_event_count: 0,
-      ft_mint_event_count: 0,
-      ft_burn_event_count: 0,
-      nft_transfer_event_count: 0,
-      nft_mint_event_count: 0,
-      nft_burn_event_count: 0,
-      contract_log_event_count: 0,
     };
 
     await db.update({
@@ -5723,17 +5393,6 @@ describe('postgres datastore', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
       vm_error: null,
-      stx_transfer_event_count: 0,
-      stx_mint_event_count: 0,
-      stx_burn_event_count: 0,
-      stx_lock_event_count: 0,
-      ft_transfer_event_count: 0,
-      ft_mint_event_count: 0,
-      ft_burn_event_count: 0,
-      nft_transfer_event_count: 0,
-      nft_mint_event_count: 0,
-      nft_burn_event_count: 0,
-      contract_log_event_count: 0,
     };
 
     await db.update({
@@ -5824,34 +5483,12 @@ describe('postgres datastore', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
       vm_error: null,
-      stx_transfer_event_count: 0,
-      stx_mint_event_count: 0,
-      stx_burn_event_count: 0,
-      stx_lock_event_count: 0,
-      ft_transfer_event_count: 0,
-      ft_mint_event_count: 0,
-      ft_burn_event_count: 0,
-      nft_transfer_event_count: 0,
-      nft_mint_event_count: 0,
-      nft_burn_event_count: 0,
-      contract_log_event_count: 0,
     };
     const tx2: DbTxRaw = {
       ...tx1,
       event_count: 0,
       tx_id: '0x012345',
       tx_index: 1,
-      stx_transfer_event_count: 0,
-      stx_mint_event_count: 0,
-      stx_burn_event_count: 0,
-      stx_lock_event_count: 0,
-      ft_transfer_event_count: 0,
-      ft_mint_event_count: 0,
-      ft_burn_event_count: 0,
-      nft_transfer_event_count: 0,
-      nft_mint_event_count: 0,
-      nft_burn_event_count: 0,
-      contract_log_event_count: 0,
     };
     const stxEvent1: DbStxEvent = {
       event_index: 1,
@@ -6210,17 +5847,6 @@ describe('postgres datastore', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
       vm_error: null,
-      stx_transfer_event_count: 0,
-      stx_mint_event_count: 0,
-      stx_burn_event_count: 0,
-      stx_lock_event_count: 0,
-      ft_transfer_event_count: 0,
-      ft_mint_event_count: 0,
-      ft_burn_event_count: 0,
-      nft_transfer_event_count: 0,
-      nft_mint_event_count: 0,
-      nft_burn_event_count: 0,
-      contract_log_event_count: 0,
     };
     await db.updateTx(client, tx);
 
@@ -6260,17 +5886,6 @@ describe('postgres datastore', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
       vm_error: null,
-      stx_transfer_event_count: 0,
-      stx_mint_event_count: 0,
-      stx_burn_event_count: 0,
-      stx_lock_event_count: 0,
-      ft_transfer_event_count: 0,
-      ft_mint_event_count: 0,
-      ft_burn_event_count: 0,
-      nft_transfer_event_count: 0,
-      nft_mint_event_count: 0,
-      nft_burn_event_count: 0,
-      contract_log_event_count: 0,
     };
     await db.updateTx(client, tx2);
     const blockTxs = await db.getTxsFromBlock({ hash: block.block_hash }, 20, 0);
@@ -6346,17 +5961,6 @@ describe('postgres datastore', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
       vm_error: null,
-      stx_transfer_event_count: 0,
-      stx_mint_event_count: 0,
-      stx_burn_event_count: 0,
-      stx_lock_event_count: 0,
-      ft_transfer_event_count: 0,
-      ft_mint_event_count: 0,
-      ft_burn_event_count: 0,
-      nft_transfer_event_count: 0,
-      nft_mint_event_count: 0,
-      nft_burn_event_count: 0,
-      contract_log_event_count: 0,
     };
     await db.updateTx(client, tx);
     const blockTxs = await db.getTxsFromBlock({ hash: block.block_hash }, 20, 6);

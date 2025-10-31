@@ -129,17 +129,6 @@ describe('tx tests', () => {
       contract_call_contract_id: 'SP3YK7KWMYRCDMV5M4792T0T7DERQXHJJGGEPV1N8.pg-mdomains-v1',
       contract_call_function_name: 'bns-name-preorder',
       vm_error: null,
-      stx_transfer_event_count: 0,
-      stx_mint_event_count: 0,
-      stx_burn_event_count: 0,
-      stx_lock_event_count: 0,
-      ft_transfer_event_count: 0,
-      ft_mint_event_count: 0,
-      ft_burn_event_count: 0,
-      nft_transfer_event_count: 0,
-      nft_mint_event_count: 0,
-      nft_burn_event_count: 0,
-      contract_log_event_count: 0,
     };
     const smartContract1: DbSmartContract = {
       tx_id: '0x668142abbcabb846e3f83183325325071a8b4882dcf5476a38148cb5b738fc83',
@@ -211,17 +200,6 @@ describe('tx tests', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
       vm_error: null,
-      stx_transfer_event_count: 0,
-      stx_mint_event_count: 0,
-      stx_burn_event_count: 0,
-      stx_lock_event_count: 0,
-      ft_transfer_event_count: 0,
-      ft_mint_event_count: 0,
-      ft_burn_event_count: 0,
-      nft_transfer_event_count: 0,
-      nft_mint_event_count: 0,
-      nft_burn_event_count: 0,
-      contract_log_event_count: 0,
     };
 
     const versionedSmartContract1: DbSmartContract = {
@@ -271,17 +249,6 @@ describe('tx tests', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
       vm_error: null,
-      stx_transfer_event_count: 0,
-      stx_mint_event_count: 0,
-      stx_burn_event_count: 0,
-      stx_lock_event_count: 0,
-      ft_transfer_event_count: 0,
-      ft_mint_event_count: 0,
-      ft_burn_event_count: 0,
-      nft_transfer_event_count: 0,
-      nft_mint_event_count: 0,
-      nft_burn_event_count: 0,
-      contract_log_event_count: 0,
     };
     await db.update({
       block: dbBlock,
@@ -1335,17 +1302,6 @@ describe('tx tests', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
       vm_error: null,
-      stx_transfer_event_count: 0,
-      stx_mint_event_count: 0,
-      stx_burn_event_count: 0,
-      stx_lock_event_count: 0,
-      ft_transfer_event_count: 0,
-      ft_mint_event_count: 0,
-      ft_burn_event_count: 0,
-      nft_transfer_event_count: 0,
-      nft_mint_event_count: 0,
-      nft_burn_event_count: 0,
-      contract_log_event_count: 0,
     };
 
     const dbStxEvent: DbStxEvent = {
@@ -2847,17 +2803,6 @@ describe('tx tests', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
       vm_error: null,
-      stx_transfer_event_count: 0,
-      stx_mint_event_count: 0,
-      stx_burn_event_count: 0,
-      stx_lock_event_count: 0,
-      ft_transfer_event_count: 0,
-      ft_mint_event_count: 0,
-      ft_burn_event_count: 0,
-      nft_transfer_event_count: 0,
-      nft_mint_event_count: 0,
-      nft_burn_event_count: 0,
-      contract_log_event_count: 0,
     };
 
     await db.update({
@@ -2984,17 +2929,6 @@ describe('tx tests', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
       vm_error: null,
-      stx_transfer_event_count: 0,
-      stx_mint_event_count: 0,
-      stx_burn_event_count: 0,
-      stx_lock_event_count: 0,
-      ft_transfer_event_count: 0,
-      ft_mint_event_count: 0,
-      ft_burn_event_count: 0,
-      nft_transfer_event_count: 0,
-      nft_mint_event_count: 0,
-      nft_burn_event_count: 0,
-      contract_log_event_count: 0,
     };
 
     await db.update({
@@ -3654,17 +3588,6 @@ describe('tx tests', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
       vm_error: null,
-      stx_transfer_event_count: 0,
-      stx_mint_event_count: 0,
-      stx_burn_event_count: 0,
-      stx_lock_event_count: 0,
-      ft_transfer_event_count: 0,
-      ft_mint_event_count: 0,
-      ft_burn_event_count: 0,
-      nft_transfer_event_count: 0,
-      nft_mint_event_count: 0,
-      nft_burn_event_count: 0,
-      contract_log_event_count: 0,
     };
     const nftEvent: DbNftEvent = {
       canonical: true,
@@ -3808,17 +3731,6 @@ describe('tx tests', () => {
         createClarityValueArray(bufferCV(Buffer.from('test')), uintCV(1234n))
       ),
       vm_error: null,
-      stx_transfer_event_count: 0,
-      stx_mint_event_count: 0,
-      stx_burn_event_count: 0,
-      stx_lock_event_count: 0,
-      ft_transfer_event_count: 0,
-      ft_mint_event_count: 0,
-      ft_burn_event_count: 0,
-      nft_transfer_event_count: 0,
-      nft_mint_event_count: 0,
-      nft_burn_event_count: 0,
-      contract_log_event_count: 0,
     };
     const tx2: DbTxRaw = {
       type_id: DbTxTypeId.ContractCall,
@@ -3860,17 +3772,6 @@ describe('tx tests', () => {
         createClarityValueArray(bufferCV(Buffer.from('test')), uintCV(1234n))
       ),
       vm_error: null,
-      stx_transfer_event_count: 0,
-      stx_mint_event_count: 0,
-      stx_burn_event_count: 0,
-      stx_lock_event_count: 0,
-      ft_transfer_event_count: 0,
-      ft_mint_event_count: 0,
-      ft_burn_event_count: 0,
-      nft_transfer_event_count: 0,
-      nft_mint_event_count: 0,
-      nft_burn_event_count: 0,
-      contract_log_event_count: 0,
     };
     const contractCall: DbSmartContract = {
       tx_id: '0x668142abbcabb846e3f83183325325071a8b4882dcf5476a38148cb5b738fc83',
@@ -4298,17 +4199,6 @@ describe('tx tests', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
       vm_error: null,
-      stx_transfer_event_count: 0,
-      stx_mint_event_count: 0,
-      stx_burn_event_count: 0,
-      stx_lock_event_count: 0,
-      ft_transfer_event_count: 0,
-      ft_mint_event_count: 0,
-      ft_burn_event_count: 0,
-      nft_transfer_event_count: 0,
-      nft_mint_event_count: 0,
-      nft_burn_event_count: 0,
-      contract_log_event_count: 0,
     };
     await db.update({
       block,
@@ -4529,17 +4419,6 @@ describe('tx tests', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
       vm_error: null,
-      stx_transfer_event_count: 0,
-      stx_mint_event_count: 0,
-      stx_burn_event_count: 0,
-      stx_lock_event_count: 0,
-      ft_transfer_event_count: 0,
-      ft_mint_event_count: 0,
-      ft_burn_event_count: 0,
-      nft_transfer_event_count: 0,
-      nft_mint_event_count: 0,
-      nft_burn_event_count: 0,
-      contract_log_event_count: 0,
     };
     await db.updateTx(client, tx);
     const result1 = await supertest(api.server).get(`/extended/v1/tx/block/${block.block_hash}`);

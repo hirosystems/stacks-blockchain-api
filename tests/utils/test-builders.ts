@@ -201,17 +201,6 @@ export interface TestTxArgs extends Partial<DbTxRaw> {
   type_id?: DbTxTypeId;
   nonce?: number;
   vm_error?: string;
-  stx_transfer_event_count?: number;
-  stx_mint_event_count?: number;
-  stx_burn_event_count?: number;
-  stx_lock_event_count?: number;
-  ft_transfer_event_count?: number;
-  ft_mint_event_count?: number;
-  ft_burn_event_count?: number;
-  nft_transfer_event_count?: number;
-  nft_mint_event_count?: number;
-  nft_burn_event_count?: number;
-  contract_log_event_count?: number;
 }
 
 /**
@@ -279,17 +268,6 @@ function testTx(args?: TestTxArgs): DataStoreTxEventData {
       tenure_change_cause: args?.tenure_change_cause,
       tenure_change_pubkey_hash: args?.tenure_change_pubkey_hash,
       vm_error: args?.vm_error ?? null,
-      stx_transfer_event_count: args?.stx_transfer_event_count ?? 0,
-      stx_mint_event_count: args?.stx_mint_event_count ?? 0,
-      stx_burn_event_count: args?.stx_burn_event_count ?? 0,
-      stx_lock_event_count: args?.stx_lock_event_count ?? 0,
-      ft_transfer_event_count: args?.ft_transfer_event_count ?? 0,
-      ft_mint_event_count: args?.ft_mint_event_count ?? 0,
-      ft_burn_event_count: args?.ft_burn_event_count ?? 0,
-      nft_transfer_event_count: args?.nft_transfer_event_count ?? 0,
-      nft_mint_event_count: args?.nft_mint_event_count ?? 0,
-      nft_burn_event_count: args?.nft_burn_event_count ?? 0,
-      contract_log_event_count: args?.contract_log_event_count ?? 0,
     },
     stxLockEvents: [],
     stxEvents: [],

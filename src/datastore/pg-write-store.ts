@@ -64,6 +64,7 @@ import {
   DbPoxSetSigners,
   PoxSetSignerValues,
   PoxCycleInsertValues,
+  DbAssetEventTypeId,
 } from './common';
 import {
   BLOCK_COLUMNS,
@@ -1379,65 +1380,122 @@ export class PgWriteStore extends PgStore {
    * @param txs - list of transactions
    */
   async updatePrincipalTxs(sql: PgSqlClient, txs: DataStoreTxEventData[]) {
+    type PrincipalRow = {
+      stx: boolean;
+      ft: boolean;
+      nft: boolean;
+      stx_sent: bigint;
+      stx_received: bigint;
+      stx_mints: number;
+      stx_burns: number;
+      stx_transfers: number;
+      ft_mints: number;
+      ft_burns: number;
+      ft_transfers: number;
+      nft_mints: number;
+      nft_burns: number;
+      nft_transfers: number;
+    };
     const values: PrincipalTxsInsertValues[] = [];
     for (const { tx, stxEvents, ftEvents, nftEvents } of txs) {
       // Mark principals who participated in this transaction, along with the type of token balance
       // they affected.
-      const principals = new Map<
-        string,
-        { stx: boolean; ft: boolean; nft: boolean; stx_sent: bigint; stx_received: bigint }
-      >();
-      const addPrincipal = (
-        principal: string,
-        assetType?: 'stx' | 'ft' | 'nft',
-        stx_sent?: bigint,
-        stx_received?: bigint
-      ) => {
-        const sent = stx_sent ?? BigInt(0);
-        const received = stx_received ?? BigInt(0);
-        const entry = principals.get(principal) || {
-          stx: false,
-          ft: false,
-          nft: false,
-          stx_sent: sent,
-          stx_received: received,
-        };
-        if (assetType) {
-          principals.set(principal, {
-            ...entry,
-            [assetType]: true,
-            stx_sent: entry.stx_sent + sent,
-            stx_received: entry.stx_received + received,
-          });
-        } else {
-          principals.set(principal, entry);
-        }
+      const principals = new Map<string, PrincipalRow>();
+      const addPrincipal = (principal: string, data?: Partial<PrincipalRow>) => {
+        const entry = principals.get(principal);
+        principals.set(principal, {
+          stx: entry?.stx ?? data?.stx ?? false,
+          ft: entry?.ft ?? data?.ft ?? false,
+          nft: entry?.nft ?? data?.nft ?? false,
+          stx_sent: (entry?.stx_sent ?? 0n) + (data?.stx_sent ?? 0n),
+          stx_received: (entry?.stx_received ?? 0n) + (data?.stx_received ?? 0n),
+          stx_mints: (entry?.stx_mints ?? 0) + (data?.stx_mints ?? 0),
+          stx_burns: (entry?.stx_burns ?? 0) + (data?.stx_burns ?? 0),
+          stx_transfers: (entry?.stx_transfers ?? 0) + (data?.stx_transfers ?? 0),
+          ft_mints: (entry?.ft_mints ?? 0) + (data?.ft_mints ?? 0),
+          ft_burns: (entry?.ft_burns ?? 0) + (data?.ft_burns ?? 0),
+          ft_transfers: (entry?.ft_transfers ?? 0) + (data?.ft_transfers ?? 0),
+          nft_mints: (entry?.nft_mints ?? 0) + (data?.nft_mints ?? 0),
+          nft_burns: (entry?.nft_burns ?? 0) + (data?.nft_burns ?? 0),
+          nft_transfers: (entry?.nft_transfers ?? 0) + (data?.nft_transfers ?? 0),
+        });
       };
 
-      // Add sender but only mark as stx if not sponsored, otherwise they didn't pay a fee. Do not
-      // record amounts yet because that will be included in stx_events below.
-      addPrincipal(tx.sender_address, tx.sponsor_address ? undefined : 'stx');
-      if (tx.sponsor_address) addPrincipal(tx.sponsor_address, 'stx', BigInt(tx.fee_rate));
+      // Record participating principals. No amounts yet, that will be included in stx_events below.
+      addPrincipal(tx.sender_address);
       if (tx.token_transfer_recipient_address)
-        addPrincipal(tx.token_transfer_recipient_address, 'stx');
-
-      // Add contract call and smart contract ids, no stx spent yet.
+        addPrincipal(tx.token_transfer_recipient_address, { stx: true });
       if (tx.contract_call_contract_id) addPrincipal(tx.contract_call_contract_id);
       if (tx.smart_contract_contract_id) addPrincipal(tx.smart_contract_contract_id);
 
+      // Record fee paid.
+      if (tx.sponsor_address) {
+        addPrincipal(tx.sponsor_address, { stx: true, stx_sent: BigInt(tx.fee_rate) });
+      } else {
+        addPrincipal(tx.sender_address, { stx: true, stx_sent: BigInt(tx.fee_rate) });
+      }
+
+      // Record token amounts and event counts.
       for (const event of stxEvents) {
-        if (event.sender) addPrincipal(event.sender, 'stx', event.amount);
-        if (event.recipient) addPrincipal(event.recipient, 'stx', BigInt(0), event.amount);
+        switch (event.asset_event_type_id) {
+          case DbAssetEventTypeId.Mint:
+            if (event.recipient)
+              addPrincipal(event.recipient, {
+                stx: true,
+                stx_received: event.amount,
+                stx_mints: 1,
+              });
+            break;
+          case DbAssetEventTypeId.Burn:
+            if (event.sender)
+              addPrincipal(event.sender, { stx: true, stx_sent: event.amount, stx_burns: 1 });
+            break;
+          case DbAssetEventTypeId.Transfer:
+            if (event.sender)
+              addPrincipal(event.sender, { stx: true, stx_sent: event.amount, stx_transfers: 1 });
+            if (event.recipient)
+              addPrincipal(event.recipient, {
+                stx: true,
+                stx_received: event.amount,
+                stx_transfers: 1,
+              });
+            break;
+        }
       }
       for (const event of ftEvents) {
-        if (event.sender) addPrincipal(event.sender, 'ft');
-        if (event.recipient) addPrincipal(event.recipient, 'ft');
+        switch (event.asset_event_type_id) {
+          case DbAssetEventTypeId.Mint:
+            if (event.recipient) addPrincipal(event.recipient, { ft: true, ft_mints: 1 });
+            break;
+          case DbAssetEventTypeId.Burn:
+            if (event.sender) addPrincipal(event.sender, { ft: true, ft_burns: 1 });
+            break;
+          case DbAssetEventTypeId.Transfer:
+            if (event.sender) addPrincipal(event.sender, { ft: true, ft_transfers: 1 });
+            if (event.recipient)
+              addPrincipal(event.recipient, {
+                ft: true,
+                ft_transfers: 1,
+              });
+            break;
+        }
       }
       for (const event of nftEvents) {
-        if (event.sender) addPrincipal(event.sender, 'nft');
-        if (event.recipient) addPrincipal(event.recipient, 'nft');
+        switch (event.asset_event_type_id) {
+          case DbAssetEventTypeId.Mint:
+            if (event.recipient) addPrincipal(event.recipient, { nft: true, nft_mints: 1 });
+            break;
+          case DbAssetEventTypeId.Burn:
+            if (event.sender) addPrincipal(event.sender, { nft: true, nft_burns: 1 });
+            break;
+          case DbAssetEventTypeId.Transfer:
+            if (event.sender) addPrincipal(event.sender, { nft: true, nft_transfers: 1 });
+            if (event.recipient) addPrincipal(event.recipient, { nft: true, nft_transfers: 1 });
+            break;
+        }
       }
-      for (const [principal, { stx, ft, nft, stx_sent, stx_received }] of principals.entries()) {
+
+      for (const [principal, data] of principals.entries()) {
         values.push({
           principal,
           tx_id: tx.tx_id,
@@ -1448,11 +1506,20 @@ export class PgWriteStore extends PgStore {
           tx_index: tx.tx_index,
           canonical: tx.canonical,
           microblock_canonical: tx.microblock_canonical,
-          stx_balance_affected: stx,
-          ft_balance_affected: ft,
-          nft_balance_affected: nft,
-          stx_sent,
-          stx_received,
+          stx_balance_affected: data.stx,
+          ft_balance_affected: data.ft,
+          nft_balance_affected: data.nft,
+          stx_sent: data.stx_sent,
+          stx_received: data.stx_received,
+          stx_mint_event_count: data.stx_mints,
+          stx_burn_event_count: data.stx_burns,
+          stx_transfer_event_count: data.stx_transfers,
+          ft_mint_event_count: data.ft_mints,
+          ft_burn_event_count: data.ft_burns,
+          ft_transfer_event_count: data.ft_transfers,
+          nft_mint_event_count: data.nft_mints,
+          nft_burn_event_count: data.nft_burns,
+          nft_transfer_event_count: data.nft_transfers,
         });
       }
     }

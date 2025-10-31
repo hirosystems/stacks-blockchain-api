@@ -536,8 +536,6 @@ export class PgStoreV2 extends BasePgStoreModule {
       const resultQuery = await sql<(AddressTransfersTxQueryResult & { count: number })[]>`
         SELECT
           ${sql(prefixedCols(TX_COLUMNS, 't'))},
-          p.stx_sent,
-          p.stx_received,
           p.stx_transfer_event_count AS stx_transfer,
           p.stx_mint_event_count AS stx_mint,
           p.stx_burn_event_count AS stx_burn,
@@ -547,6 +545,8 @@ export class PgStoreV2 extends BasePgStoreModule {
           p.nft_transfer_event_count AS nft_transfer,
           p.nft_mint_event_count AS nft_mint,
           p.nft_burn_event_count AS nft_burn,
+          p.stx_sent,
+          p.stx_received,
           COUNT(*) OVER()::int AS count
         FROM principal_txs AS p
         INNER JOIN txs AS t USING (tx_id, index_block_hash, microblock_hash)

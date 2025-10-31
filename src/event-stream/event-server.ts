@@ -357,7 +357,6 @@ function parseDataStoreTxEventData(
           value: event.contract_event.raw_value,
         };
         dbTx.contractLogEvents.push(entry);
-        dbTx.tx.contract_log_event_count++;
 
         if (isPoxPrintEvent(event)) {
           const network = getChainIDNetwork(chainId) === 'mainnet' ? 'mainnet' : 'testnet';
@@ -429,7 +428,6 @@ function parseDataStoreTxEventData(
           // if no contract name available, then we can correctly assume pox-v1
           contract_name: event.stx_lock_event.contract_identifier?.split('.')[1] ?? 'pox',
         };
-        dbTx.tx.stx_lock_event_count++;
         dbTx.stxLockEvents.push(entry);
         break;
       }
@@ -443,7 +441,6 @@ function parseDataStoreTxEventData(
           amount: BigInt(event.stx_transfer_event.amount),
           memo: event.stx_transfer_event.memo ? '0x' + event.stx_transfer_event.memo : undefined,
         };
-        dbTx.tx.stx_transfer_event_count++;
         dbTx.stxEvents.push(entry);
         break;
       }
@@ -456,7 +453,6 @@ function parseDataStoreTxEventData(
           amount: BigInt(event.stx_mint_event.amount),
         };
         dbTx.stxEvents.push(entry);
-        dbTx.tx.stx_mint_event_count++;
         break;
       }
       case CoreNodeEventType.StxBurnEvent: {
@@ -467,7 +463,6 @@ function parseDataStoreTxEventData(
           sender: event.stx_burn_event.sender,
           amount: BigInt(event.stx_burn_event.amount),
         };
-        dbTx.tx.stx_burn_event_count++;
         dbTx.stxEvents.push(entry);
         break;
       }
@@ -482,7 +477,6 @@ function parseDataStoreTxEventData(
           amount: BigInt(event.ft_transfer_event.amount),
         };
         dbTx.ftEvents.push(entry);
-        dbTx.tx.ft_transfer_event_count++;
         break;
       }
       case CoreNodeEventType.FtMintEvent: {
@@ -495,7 +489,6 @@ function parseDataStoreTxEventData(
           amount: BigInt(event.ft_mint_event.amount),
         };
         dbTx.ftEvents.push(entry);
-        dbTx.tx.ft_mint_event_count++;
         break;
       }
       case CoreNodeEventType.FtBurnEvent: {
@@ -508,7 +501,6 @@ function parseDataStoreTxEventData(
           amount: BigInt(event.ft_burn_event.amount),
         };
         dbTx.ftEvents.push(entry);
-        dbTx.tx.ft_burn_event_count++;
         break;
       }
       case CoreNodeEventType.NftTransferEvent: {
@@ -522,7 +514,6 @@ function parseDataStoreTxEventData(
           value: event.nft_transfer_event.raw_value,
         };
         dbTx.nftEvents.push(entry);
-        dbTx.tx.nft_transfer_event_count++;
         break;
       }
       case CoreNodeEventType.NftMintEvent: {
@@ -535,7 +526,6 @@ function parseDataStoreTxEventData(
           value: event.nft_mint_event.raw_value,
         };
         dbTx.nftEvents.push(entry);
-        dbTx.tx.nft_mint_event_count++;
         break;
       }
       case CoreNodeEventType.NftBurnEvent: {
@@ -548,7 +538,6 @@ function parseDataStoreTxEventData(
           value: event.nft_burn_event.raw_value,
         };
         dbTx.nftEvents.push(entry);
-        dbTx.tx.nft_burn_event_count++;
         break;
       }
       default: {
