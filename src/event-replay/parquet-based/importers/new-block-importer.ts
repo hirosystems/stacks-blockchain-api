@@ -242,6 +242,17 @@ const populateBatchInserters = (db: PgWriteStore) => {
                 stx_balance_affected: false,
                 ft_balance_affected: false,
                 nft_balance_affected: false,
+                stx_sent: 0n,
+                stx_received: 0n,
+                stx_mint_event_count: 0,
+                stx_burn_event_count: 0,
+                stx_transfer_event_count: 0,
+                ft_transfer_event_count: 0,
+                ft_mint_event_count: 0,
+                ft_burn_event_count: 0,
+                nft_transfer_event_count: 0,
+                nft_mint_event_count: 0,
+                nft_burn_event_count: 0,
               });
             }
           };
