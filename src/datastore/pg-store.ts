@@ -4447,24 +4447,23 @@ export class PgStore extends BasePgStore {
    * Retrieves the last transaction IDs with STX, FT or NFT activity for a principal, with or
    * without mempool transactions.
    * @param includeMempool - include mempool transactions
-   * @returns a list of transaction IDs
+   * @returns the last confirmed and mempool transaction IDs for the principal
    */
   async getPrincipalLastActivityTxIds(
     principal: string,
     includeMempool: boolean = false
-  ): Promise<string[]> {
-    const result = await this.sql<{ tx_id: string }[]>`
-      WITH activity AS (
-        (
+  ): Promise<{ confirmed: string | null; mempool: string | null }> {
+    const result = await this.sql<{ confirmed: string | null; mempool: string | null }[]>`
+      SELECT (
           SELECT '0x' || encode(tx_id, 'hex') AS tx_id
           FROM principal_txs
           WHERE principal = ${principal} AND canonical = true AND microblock_canonical = true
           ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC
           LIMIT 1
-        )
+        ) AS confirmed,
         ${
           includeMempool
-            ? this.sql`UNION
+            ? this.sql`
             (
               SELECT '0x' || encode(tx_id, 'hex') AS tx_id
               FROM mempool_txs
@@ -4475,12 +4474,11 @@ export class PgStore extends BasePgStore {
               ORDER BY receipt_time DESC
               LIMIT 1
             )`
-            : this.sql``
+            : this.sql`NULL`
         }
-      )
-      SELECT tx_id FROM activity WHERE tx_id IS NOT NULL
+        AS mempool
     `;
-    return result.map(r => r.tx_id);
+    return result[0];
   }
 
   /** Returns the `index_block_hash` and canonical status of a single block */

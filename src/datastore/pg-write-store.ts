@@ -1404,9 +1404,9 @@ export class PgWriteStore extends PgStore {
       const addPrincipal = (principal: string, data?: Partial<PrincipalRow>) => {
         const entry = principals.get(principal);
         principals.set(principal, {
-          stx: entry?.stx ?? data?.stx ?? false,
-          ft: entry?.ft ?? data?.ft ?? false,
-          nft: entry?.nft ?? data?.nft ?? false,
+          stx: entry?.stx || data?.stx || false,
+          ft: entry?.ft || data?.ft || false,
+          nft: entry?.nft || data?.nft || false,
           stx_sent: (entry?.stx_sent ?? 0n) + (data?.stx_sent ?? 0n),
           stx_received: (entry?.stx_received ?? 0n) + (data?.stx_received ?? 0n),
           stx_mints: (entry?.stx_mints ?? 0) + (data?.stx_mints ?? 0),
