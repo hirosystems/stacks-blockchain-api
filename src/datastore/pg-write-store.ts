@@ -1526,7 +1526,7 @@ export class PgWriteStore extends PgStore {
     for (const batch of batchIterate(values, INSERT_BATCH_SIZE)) {
       await sql`
         INSERT INTO principal_txs ${sql(batch)}
-        ON CONFLICT ON CONSTRAINT unique_principal_tx_id_index_block_hash_microblock_hash DO NOTHING
+        ON CONFLICT ON CONSTRAINT principal_txs_unique DO NOTHING
       `;
     }
   }
