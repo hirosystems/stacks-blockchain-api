@@ -4,8 +4,6 @@ exports.shorthands = undefined;
 
 /** @param { import("node-pg-migrate").MigrationBuilder } pgm */
 exports.up = pgm => {
-  pgm.dropTable('principal_stx_txs');
-
   pgm.createTable('principal_txs', {
     principal: {
       type: 'string',
@@ -46,22 +44,27 @@ exports.up = pgm => {
     stx_balance_affected: {
       type: 'boolean',
       notNull: true,
+      default: false,
     },
     ft_balance_affected: {
       type: 'boolean',
       notNull: true,
+      default: false,
     },
     nft_balance_affected: {
       type: 'boolean',
       notNull: true,
+      default: false,
     },
     stx_sent: {
       type: 'bigint',
       notNull: true,
+      default: 0,
     },
     stx_received: {
       type: 'bigint',
       notNull: true,
+      default: 0,
     },
     stx_transfer_event_count: {
       type: 'integer',
@@ -74,11 +77,6 @@ exports.up = pgm => {
       default: 0,
     },
     stx_burn_event_count: {
-      type: 'integer',
-      notNull: true,
-      default: 0,
-    },
-    stx_lock_event_count: {
       type: 'integer',
       notNull: true,
       default: 0,
@@ -129,9 +127,209 @@ exports.up = pgm => {
   );
   pgm.addConstraint(
     'principal_txs',
-    'unique_principal_tx_id_index_block_hash_microblock_hash',
+    'principal_txs_unique',
     `UNIQUE(principal, tx_id, index_block_hash, microblock_hash)`
   );
+
+  // Migrate principal mentions from `principal_stx_txs` to `principal_txs`
+  pgm.sql(`
+    INSERT INTO principal_txs
+      (principal, tx_id, block_height, index_block_hash, microblock_hash,
+      microblock_sequence, tx_index, canonical, microblock_canonical)
+    (
+      SELECT principal, tx_id, block_height, index_block_hash, microblock_hash, microblock_sequence,
+        tx_index, canonical, microblock_canonical
+      FROM principal_stx_txs
+    )
+  `);
+  // Migrate amounts from `stx_events` senders (transfers and burns)
+  pgm.sql(`
+    INSERT INTO principal_txs
+      (principal, tx_id, block_height, index_block_hash, microblock_hash,
+      microblock_sequence, tx_index, canonical, microblock_canonical, stx_balance_affected,
+      stx_sent, stx_received,
+      stx_transfer_event_count, stx_mint_event_count, stx_burn_event_count)
+    (
+      SELECT
+        sender AS principal,
+        tx_id,
+        index_block_hash,
+        microblock_hash,
+        MAX(block_height) AS block_height,
+        MAX(microblock_sequence) AS microblock_sequence,
+        MAX(tx_index) AS tx_index,
+        MAX(canonical) AS canonical,
+        MAX(microblock_canonical) AS microblock_canonical,
+        TRUE AS stx_balance_affected,
+        SUM(amount) AS stx_sent,
+        COUNT(*) FILTER (WHERE asset_event_type_id = 1) AS stx_transfer_event_count,
+        COUNT(*) FILTER (WHERE asset_event_type_id = 3) AS stx_burn_event_count
+      FROM stx_events
+      WHERE sender IS NOT NULL AND asset_event_type_id IN (1, 3)
+      GROUP BY sender, index_block_hash, tx_id
+    )
+    ON CONFLICT ON CONSTRAINT principal_txs_unique DO UPDATE
+    SET
+      stx_balance_affected = TRUE,
+      stx_sent = principal_txs.stx_sent + EXCLUDED.stx_sent,
+      stx_transfer_event_count = principal_txs.stx_transfer_event_count + EXCLUDED.stx_transfer_event_count,
+      stx_burn_event_count = principal_txs.stx_burn_event_count + EXCLUDED.stx_burn_event_count
+  `);
+  // Migrate amounts from `stx_events` recipients (transfers and mints)
+  pgm.sql(`
+    INSERT INTO principal_txs
+      (principal, tx_id, block_height, index_block_hash, microblock_hash,
+      microblock_sequence, tx_index, canonical, microblock_canonical, stx_balance_affected,
+      stx_sent, stx_received,
+      stx_transfer_event_count, stx_mint_event_count, stx_burn_event_count)
+    (
+      SELECT
+        recipient AS principal,
+        tx_id,
+        index_block_hash,
+        microblock_hash,
+        MAX(block_height) AS block_height,
+        MAX(microblock_sequence) AS microblock_sequence,
+        MAX(tx_index) AS tx_index,
+        MAX(canonical) AS canonical,
+        MAX(microblock_canonical) AS microblock_canonical,
+        TRUE AS stx_balance_affected,
+        SUM(amount) AS stx_received,
+        COUNT(*) FILTER (WHERE asset_event_type_id = 1) AS stx_transfer_event_count,
+        COUNT(*) FILTER (WHERE asset_event_type_id = 2) AS stx_mint_event_count
+      FROM stx_events
+      WHERE recipient IS NOT NULL AND asset_event_type_id IN (1, 2)
+      GROUP BY recipient, index_block_hash, tx_id
+    )
+    ON CONFLICT ON CONSTRAINT principal_txs_unique DO UPDATE
+    SET
+      stx_balance_affected = TRUE,
+      stx_received = principal_txs.stx_received + EXCLUDED.stx_received,
+      stx_transfer_event_count = principal_txs.stx_transfer_event_count + EXCLUDED.stx_transfer_event_count,
+      stx_mint_event_count = principal_txs.stx_mint_event_count + EXCLUDED.stx_mint_event_count
+  `);
+  // Migrate counts from `ft_events` senders (transfers and burns)
+  pgm.sql(`
+    INSERT INTO principal_txs
+      (principal, tx_id, block_height, index_block_hash, microblock_hash,
+      microblock_sequence, tx_index, canonical, microblock_canonical, ft_balance_affected,
+      ft_transfer_event_count, ft_mint_event_count, ft_burn_event_count)
+    (
+      SELECT
+        sender AS principal,
+        tx_id,
+        index_block_hash,
+        microblock_hash,
+        MAX(block_height) AS block_height,
+        MAX(microblock_sequence) AS microblock_sequence,
+        MAX(tx_index) AS tx_index,
+        MAX(canonical) AS canonical,
+        MAX(microblock_canonical) AS microblock_canonical,
+        TRUE AS ft_balance_affected,
+        COUNT(*) FILTER (WHERE asset_event_type_id = 1) AS ft_transfer_event_count,
+        COUNT(*) FILTER (WHERE asset_event_type_id = 3) AS ft_burn_event_count
+      FROM ft_events
+      WHERE sender IS NOT NULL AND asset_event_type_id IN (1, 3)
+      GROUP BY sender, index_block_hash, tx_id
+    )
+    ON CONFLICT ON CONSTRAINT principal_txs_unique DO UPDATE
+    SET
+      ft_balance_affected = TRUE,
+      ft_transfer_event_count = principal_txs.ft_transfer_event_count + EXCLUDED.ft_transfer_event_count,
+      ft_burn_event_count = principal_txs.ft_burn_event_count + EXCLUDED.ft_burn_event_count
+  `);
+  // Migrate counts from `ft_events` recipients (transfers and mints)
+  pgm.sql(`
+    INSERT INTO principal_txs
+      (principal, tx_id, block_height, index_block_hash, microblock_hash,
+      microblock_sequence, tx_index, canonical, microblock_canonical, ft_balance_affected,
+      ft_transfer_event_count, ft_mint_event_count, ft_burn_event_count)
+    (
+      SELECT
+        recipient AS principal,
+        tx_id,
+        index_block_hash,
+        microblock_hash,
+        MAX(block_height) AS block_height,
+        MAX(microblock_sequence) AS microblock_sequence,
+        MAX(tx_index) AS tx_index,
+        MAX(canonical) AS canonical,
+        MAX(microblock_canonical) AS microblock_canonical,
+        TRUE AS ft_balance_affected,
+        COUNT(*) FILTER (WHERE asset_event_type_id = 1) AS ft_transfer_event_count,
+        COUNT(*) FILTER (WHERE asset_event_type_id = 2) AS ft_mint_event_count
+      FROM ft_events
+      WHERE recipient IS NOT NULL AND asset_event_type_id IN (1, 2)
+      GROUP BY recipient, index_block_hash, tx_id
+    )
+    ON CONFLICT ON CONSTRAINT principal_txs_unique DO UPDATE
+    SET
+      ft_balance_affected = TRUE,
+      ft_transfer_event_count = principal_txs.ft_transfer_event_count + EXCLUDED.ft_transfer_event_count,
+      ft_mint_event_count = principal_txs.ft_mint_event_count + EXCLUDED.ft_mint_event_count
+  `);
+  // Migrate counts from `nft_events` senders (transfers and burns)
+  pgm.sql(`
+    INSERT INTO principal_txs
+      (principal, tx_id, block_height, index_block_hash, microblock_hash,
+      microblock_sequence, tx_index, canonical, microblock_canonical, nft_balance_affected,
+      nft_transfer_event_count, nft_mint_event_count, nft_burn_event_count)
+    (
+      SELECT
+        sender AS principal,
+        tx_id,
+        index_block_hash,
+        microblock_hash,
+        MAX(block_height) AS block_height,
+        MAX(microblock_sequence) AS microblock_sequence,
+        MAX(tx_index) AS tx_index,
+        MAX(canonical) AS canonical,
+        MAX(microblock_canonical) AS microblock_canonical,
+        TRUE AS nft_balance_affected,
+        COUNT(*) FILTER (WHERE asset_event_type_id = 1) AS nft_transfer_event_count,
+        COUNT(*) FILTER (WHERE asset_event_type_id = 3) AS nft_burn_event_count
+      FROM nft_events
+      WHERE sender IS NOT NULL AND asset_event_type_id IN (1, 3)
+      GROUP BY sender, index_block_hash, tx_id
+    )
+    ON CONFLICT ON CONSTRAINT principal_txs_unique DO UPDATE
+    SET
+      nft_balance_affected = TRUE,
+      nft_transfer_event_count = principal_txs.nft_transfer_event_count + EXCLUDED.nft_transfer_event_count,
+      nft_burn_event_count = principal_txs.nft_burn_event_count + EXCLUDED.nft_burn_event_count
+  `);
+  // Migrate counts from `nft_events` recipients (transfers and mints)
+  pgm.sql(`
+    INSERT INTO principal_txs
+      (principal, tx_id, block_height, index_block_hash, microblock_hash,
+      microblock_sequence, tx_index, canonical, microblock_canonical, nft_balance_affected,
+      nft_transfer_event_count, nft_mint_event_count, nft_burn_event_count)
+    (
+      SELECT
+        recipient AS principal,
+        tx_id,
+        index_block_hash,
+        microblock_hash,
+        MAX(block_height) AS block_height,
+        MAX(microblock_sequence) AS microblock_sequence,
+        MAX(tx_index) AS tx_index,
+        MAX(canonical) AS canonical,
+        MAX(microblock_canonical) AS microblock_canonical,
+        TRUE AS nft_balance_affected,
+        COUNT(*) FILTER (WHERE asset_event_type_id = 1) AS nft_transfer_event_count,
+        COUNT(*) FILTER (WHERE asset_event_type_id = 2) AS nft_mint_event_count
+      FROM nft_events
+      WHERE recipient IS NOT NULL AND asset_event_type_id IN (1, 2)
+      GROUP BY recipient, index_block_hash, tx_id
+    )
+    ON CONFLICT ON CONSTRAINT principal_txs_unique DO UPDATE
+    SET
+      nft_balance_affected = TRUE,
+      nft_transfer_event_count = principal_txs.nft_transfer_event_count + EXCLUDED.nft_transfer_event_count,
+      nft_mint_event_count = principal_txs.nft_mint_event_count + EXCLUDED.nft_mint_event_count
+  `);
+
+  pgm.dropTable('principal_stx_txs');
 };
 
 exports.down = pgm => {
