@@ -147,26 +147,26 @@ exports.up = pgm => {
     INSERT INTO principal_txs
       (principal, tx_id, block_height, index_block_hash, microblock_hash,
       microblock_sequence, tx_index, canonical, microblock_canonical, stx_balance_affected,
-      stx_sent, stx_received,
-      stx_transfer_event_count, stx_mint_event_count, stx_burn_event_count)
+      stx_sent,
+      stx_transfer_event_count, stx_burn_event_count)
     (
       SELECT
         sender AS principal,
         tx_id,
+        MAX(block_height),
         index_block_hash,
         microblock_hash,
-        MAX(block_height) AS block_height,
-        MAX(microblock_sequence) AS microblock_sequence,
-        MAX(tx_index) AS tx_index,
-        MAX(canonical) AS canonical,
-        MAX(microblock_canonical) AS microblock_canonical,
+        MAX(microblock_sequence),
+        MAX(tx_index),
+        BOOL_AND(canonical),
+        BOOL_AND(microblock_canonical),
         TRUE AS stx_balance_affected,
-        SUM(amount) AS stx_sent,
-        COUNT(*) FILTER (WHERE asset_event_type_id = 1) AS stx_transfer_event_count,
-        COUNT(*) FILTER (WHERE asset_event_type_id = 3) AS stx_burn_event_count
+        SUM(amount),
+        COUNT(*) FILTER (WHERE asset_event_type_id = 1),
+        COUNT(*) FILTER (WHERE asset_event_type_id = 3)
       FROM stx_events
       WHERE sender IS NOT NULL AND asset_event_type_id IN (1, 3)
-      GROUP BY sender, index_block_hash, tx_id
+      GROUP BY sender, tx_id, index_block_hash, microblock_hash
     )
     ON CONFLICT ON CONSTRAINT principal_txs_unique DO UPDATE
     SET
@@ -180,26 +180,26 @@ exports.up = pgm => {
     INSERT INTO principal_txs
       (principal, tx_id, block_height, index_block_hash, microblock_hash,
       microblock_sequence, tx_index, canonical, microblock_canonical, stx_balance_affected,
-      stx_sent, stx_received,
-      stx_transfer_event_count, stx_mint_event_count, stx_burn_event_count)
+      stx_received,
+      stx_transfer_event_count, stx_mint_event_count)
     (
       SELECT
         recipient AS principal,
         tx_id,
+        MAX(block_height),
         index_block_hash,
         microblock_hash,
-        MAX(block_height) AS block_height,
-        MAX(microblock_sequence) AS microblock_sequence,
-        MAX(tx_index) AS tx_index,
-        MAX(canonical) AS canonical,
-        MAX(microblock_canonical) AS microblock_canonical,
+        MAX(microblock_sequence),
+        MAX(tx_index),
+        BOOL_AND(canonical),
+        BOOL_AND(microblock_canonical),
         TRUE AS stx_balance_affected,
-        SUM(amount) AS stx_received,
-        COUNT(*) FILTER (WHERE asset_event_type_id = 1) AS stx_transfer_event_count,
-        COUNT(*) FILTER (WHERE asset_event_type_id = 2) AS stx_mint_event_count
+        SUM(amount),
+        COUNT(*) FILTER (WHERE asset_event_type_id = 1),
+        COUNT(*) FILTER (WHERE asset_event_type_id = 2)
       FROM stx_events
       WHERE recipient IS NOT NULL AND asset_event_type_id IN (1, 2)
-      GROUP BY recipient, index_block_hash, tx_id
+      GROUP BY recipient, tx_id, index_block_hash, microblock_hash
     )
     ON CONFLICT ON CONSTRAINT principal_txs_unique DO UPDATE
     SET
@@ -213,24 +213,24 @@ exports.up = pgm => {
     INSERT INTO principal_txs
       (principal, tx_id, block_height, index_block_hash, microblock_hash,
       microblock_sequence, tx_index, canonical, microblock_canonical, ft_balance_affected,
-      ft_transfer_event_count, ft_mint_event_count, ft_burn_event_count)
+      ft_transfer_event_count, ft_burn_event_count)
     (
       SELECT
         sender AS principal,
         tx_id,
+        MAX(block_height),
         index_block_hash,
         microblock_hash,
-        MAX(block_height) AS block_height,
-        MAX(microblock_sequence) AS microblock_sequence,
-        MAX(tx_index) AS tx_index,
-        MAX(canonical) AS canonical,
-        MAX(microblock_canonical) AS microblock_canonical,
+        MAX(microblock_sequence),
+        MAX(tx_index),
+        BOOL_AND(canonical),
+        BOOL_AND(microblock_canonical),
         TRUE AS ft_balance_affected,
-        COUNT(*) FILTER (WHERE asset_event_type_id = 1) AS ft_transfer_event_count,
-        COUNT(*) FILTER (WHERE asset_event_type_id = 3) AS ft_burn_event_count
+        COUNT(*) FILTER (WHERE asset_event_type_id = 1),
+        COUNT(*) FILTER (WHERE asset_event_type_id = 3)
       FROM ft_events
       WHERE sender IS NOT NULL AND asset_event_type_id IN (1, 3)
-      GROUP BY sender, index_block_hash, tx_id
+      GROUP BY sender, tx_id, index_block_hash, microblock_hash
     )
     ON CONFLICT ON CONSTRAINT principal_txs_unique DO UPDATE
     SET
@@ -243,24 +243,24 @@ exports.up = pgm => {
     INSERT INTO principal_txs
       (principal, tx_id, block_height, index_block_hash, microblock_hash,
       microblock_sequence, tx_index, canonical, microblock_canonical, ft_balance_affected,
-      ft_transfer_event_count, ft_mint_event_count, ft_burn_event_count)
+      ft_transfer_event_count, ft_mint_event_count)
     (
       SELECT
         recipient AS principal,
         tx_id,
+        MAX(block_height),
         index_block_hash,
         microblock_hash,
-        MAX(block_height) AS block_height,
-        MAX(microblock_sequence) AS microblock_sequence,
-        MAX(tx_index) AS tx_index,
-        MAX(canonical) AS canonical,
-        MAX(microblock_canonical) AS microblock_canonical,
+        MAX(microblock_sequence),
+        MAX(tx_index),
+        BOOL_AND(canonical),
+        BOOL_AND(microblock_canonical),
         TRUE AS ft_balance_affected,
-        COUNT(*) FILTER (WHERE asset_event_type_id = 1) AS ft_transfer_event_count,
-        COUNT(*) FILTER (WHERE asset_event_type_id = 2) AS ft_mint_event_count
+        COUNT(*) FILTER (WHERE asset_event_type_id = 1),
+        COUNT(*) FILTER (WHERE asset_event_type_id = 2)
       FROM ft_events
       WHERE recipient IS NOT NULL AND asset_event_type_id IN (1, 2)
-      GROUP BY recipient, index_block_hash, tx_id
+      GROUP BY recipient, tx_id, index_block_hash, microblock_hash
     )
     ON CONFLICT ON CONSTRAINT principal_txs_unique DO UPDATE
     SET
@@ -273,24 +273,24 @@ exports.up = pgm => {
     INSERT INTO principal_txs
       (principal, tx_id, block_height, index_block_hash, microblock_hash,
       microblock_sequence, tx_index, canonical, microblock_canonical, nft_balance_affected,
-      nft_transfer_event_count, nft_mint_event_count, nft_burn_event_count)
+      nft_transfer_event_count, nft_burn_event_count)
     (
       SELECT
         sender AS principal,
         tx_id,
+        MAX(block_height),
         index_block_hash,
         microblock_hash,
-        MAX(block_height) AS block_height,
-        MAX(microblock_sequence) AS microblock_sequence,
-        MAX(tx_index) AS tx_index,
-        MAX(canonical) AS canonical,
-        MAX(microblock_canonical) AS microblock_canonical,
+        MAX(microblock_sequence),
+        MAX(tx_index),
+        BOOL_AND(canonical),
+        BOOL_AND(microblock_canonical),
         TRUE AS nft_balance_affected,
-        COUNT(*) FILTER (WHERE asset_event_type_id = 1) AS nft_transfer_event_count,
-        COUNT(*) FILTER (WHERE asset_event_type_id = 3) AS nft_burn_event_count
+        COUNT(*) FILTER (WHERE asset_event_type_id = 1),
+        COUNT(*) FILTER (WHERE asset_event_type_id = 3)
       FROM nft_events
       WHERE sender IS NOT NULL AND asset_event_type_id IN (1, 3)
-      GROUP BY sender, index_block_hash, tx_id
+      GROUP BY sender, tx_id, index_block_hash, microblock_hash
     )
     ON CONFLICT ON CONSTRAINT principal_txs_unique DO UPDATE
     SET
@@ -303,24 +303,24 @@ exports.up = pgm => {
     INSERT INTO principal_txs
       (principal, tx_id, block_height, index_block_hash, microblock_hash,
       microblock_sequence, tx_index, canonical, microblock_canonical, nft_balance_affected,
-      nft_transfer_event_count, nft_mint_event_count, nft_burn_event_count)
+      nft_transfer_event_count, nft_mint_event_count)
     (
       SELECT
         recipient AS principal,
         tx_id,
+        MAX(block_height),
         index_block_hash,
         microblock_hash,
-        MAX(block_height) AS block_height,
-        MAX(microblock_sequence) AS microblock_sequence,
-        MAX(tx_index) AS tx_index,
-        MAX(canonical) AS canonical,
-        MAX(microblock_canonical) AS microblock_canonical,
+        MAX(microblock_sequence),
+        MAX(tx_index),
+        BOOL_AND(canonical),
+        BOOL_AND(microblock_canonical),
         TRUE AS nft_balance_affected,
-        COUNT(*) FILTER (WHERE asset_event_type_id = 1) AS nft_transfer_event_count,
-        COUNT(*) FILTER (WHERE asset_event_type_id = 2) AS nft_mint_event_count
+        COUNT(*) FILTER (WHERE asset_event_type_id = 1),
+        COUNT(*) FILTER (WHERE asset_event_type_id = 2)
       FROM nft_events
       WHERE recipient IS NOT NULL AND asset_event_type_id IN (1, 2)
-      GROUP BY recipient, index_block_hash, tx_id
+      GROUP BY recipient, tx_id, index_block_hash, microblock_hash
     )
     ON CONFLICT ON CONSTRAINT principal_txs_unique DO UPDATE
     SET
