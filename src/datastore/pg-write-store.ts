@@ -363,6 +363,7 @@ export class PgWriteStore extends PgStore {
           );
           q.enqueue(() => this.updateStxEvents(sql, newTxData));
           q.enqueue(() => this.updatePrincipalTxs(sql, newTxData));
+          q.enqueue(() => this.updatePrincipalStxTxs(sql, newTxData));
           q.enqueue(() => this.updateSmartContractEvents(sql, newTxData));
           q.enqueue(() => this.updatePoxSyntheticEvents(sql, 'pox2_events', newTxData));
           q.enqueue(() => this.updatePoxSyntheticEvents(sql, 'pox3_events', newTxData));
@@ -1527,6 +1528,52 @@ export class PgWriteStore extends PgStore {
       await sql`
         INSERT INTO principal_txs ${sql(batch)}
         ON CONFLICT ON CONSTRAINT principal_txs_unique DO NOTHING
+      `;
+    }
+  }
+
+  /**
+   * Update the `principal_stx_tx` table with the latest `tx_id`s that resulted in a STX
+   * transfer relevant to a principal (stx address or contract id).
+   * @param sql - DB client
+   * @param entries - list of tx and stxEvents
+   * @deprecated Use `updatePrincipalTxs` instead.
+   */
+  async updatePrincipalStxTxs(sql: PgSqlClient, entries: { tx: DbTx; stxEvents: DbStxEvent[] }[]) {
+    const values = [];
+    for (const { tx, stxEvents } of entries) {
+      const principals = new Set<string>(
+        [
+          tx.sender_address,
+          tx.token_transfer_recipient_address,
+          tx.contract_call_contract_id,
+          tx.smart_contract_contract_id,
+          tx.sponsor_address,
+        ].filter((p): p is string => !!p)
+      );
+      for (const event of stxEvents) {
+        if (event.sender) principals.add(event.sender);
+        if (event.recipient) principals.add(event.recipient);
+      }
+      for (const principal of principals) {
+        values.push({
+          principal: principal,
+          tx_id: tx.tx_id,
+          block_height: tx.block_height,
+          index_block_hash: tx.index_block_hash,
+          microblock_hash: tx.microblock_hash,
+          microblock_sequence: tx.microblock_sequence,
+          tx_index: tx.tx_index,
+          canonical: tx.canonical,
+          microblock_canonical: tx.microblock_canonical,
+        });
+      }
+    }
+
+    for (const eventBatch of batchIterate(values, INSERT_BATCH_SIZE)) {
+      await sql`
+        INSERT INTO principal_stx_txs ${sql(eventBatch)}
+        ON CONFLICT ON CONSTRAINT unique_principal_tx_id_index_block_hash_microblock_hash DO NOTHING
       `;
     }
   }
@@ -2861,6 +2908,7 @@ export class PgWriteStore extends PgStore {
       });
       q.enqueue(() => this.updateStxEvents(sql, txs));
       q.enqueue(() => this.updatePrincipalTxs(sql, txs));
+      q.enqueue(() => this.updatePrincipalStxTxs(sql, txs));
       q.enqueue(() => this.updateSmartContractEvents(sql, txs));
       q.enqueue(() => this.updatePoxSyntheticEvents(sql, 'pox2_events', txs));
       q.enqueue(() => this.updatePoxSyntheticEvents(sql, 'pox3_events', txs));

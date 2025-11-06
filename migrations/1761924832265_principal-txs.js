@@ -329,76 +329,11 @@ exports.up = pgm => {
       nft_mint_event_count = principal_txs.nft_mint_event_count + EXCLUDED.nft_mint_event_count
   `);
 
-  pgm.dropTable('principal_stx_txs');
+  pgm.sql(`COMMENT ON TABLE principal_stx_txs IS 'Deprecated. Use principal_txs instead.'`);
 };
 
 exports.down = pgm => {
   pgm.dropTable('principal_txs');
-  pgm.createTable('principal_stx_txs', {
-    id: {
-      type: 'serial',
-      primaryKey: true,
-    },
-    principal: {
-      type: 'string',
-      notNull: true,
-    },
-    tx_id: {
-      type: 'bytea',
-      notNull: true,
-    },
-    block_height: {
-      type: 'integer',
-      notNull: true,
-    },
-    index_block_hash: {
-      type: 'bytea',
-      notNull: true,
-    },
-    microblock_hash: {
-      type: 'bytea',
-      notNull: true,
-    },
-    microblock_sequence: {
-      type: 'integer',
-      notNull: true,
-    },
-    tx_index: {
-      type: 'smallint',
-      notNull: true,
-    },
-    canonical: {
-      type: 'boolean',
-      notNull: true,
-    },
-    microblock_canonical: {
-      type: 'boolean',
-      notNull: true,
-    },
-  });
-  pgm.createIndex('principal_stx_txs', 'tx_id');
-  pgm.createIndex(
-    'principal_stx_txs',
-    [
-      { name: 'principal' },
-      { name: 'block_height', sort: 'DESC' },
-      { name: 'microblock_sequence', sort: 'DESC' },
-      { name: 'tx_index', sort: 'DESC' },
-    ],
-    {
-      name: 'idx_principal_stx_txs_optimized',
-      where: 'canonical = TRUE AND microblock_canonical = TRUE',
-    }
-  );
-  pgm.createIndex('principal_stx_txs', [
-    { name: 'block_height', sort: 'DESC' },
-    { name: 'microblock_sequence', sort: 'DESC' },
-    { name: 'tx_index', sort: 'DESC' }
-  ]);
-  pgm.addConstraint(
-    'principal_stx_txs',
-    'unique_principal_tx_id_index_block_hash_microblock_hash',
-    `UNIQUE(principal, tx_id, index_block_hash, microblock_hash)`
-  );
+  pgm.sql(`COMMENT ON TABLE principal_stx_txs IS NULL`);
 };
 
