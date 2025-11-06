@@ -1,3 +1,10 @@
+## [8.13.4](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.13.3...v8.13.4) (2025-11-06)
+
+
+### Bug Fixes
+
+* upgrade to latest stacks-encoding-native-js with arm64 support ([#2376](https://github.com/hirosystems/stacks-blockchain-api/issues/2376)) ([5ab7328](https://github.com/hirosystems/stacks-blockchain-api/commit/5ab7328c4c63c270fe0c43cec45f2a5a3e84d4cf))
+
 ## [8.13.3](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.13.2...v8.13.3) (2025-11-06)
 
 
