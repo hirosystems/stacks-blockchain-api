@@ -3001,6 +3001,14 @@ export class PgWriteStore extends PgStore {
           AND (index_block_hash = ${args.indexBlockHash} OR index_block_hash = '\\x'::bytea)
           AND tx_id IN ${sql(txIds)}
       `;
+      await sql`
+        UPDATE principal_stx_txs
+        SET microblock_canonical = ${args.isMicroCanonical},
+          canonical = ${args.isCanonical}, index_block_hash = ${args.indexBlockHash}
+        WHERE microblock_hash IN ${sql(args.microblocks)}
+          AND (index_block_hash = ${args.indexBlockHash} OR index_block_hash = '\\x'::bytea)
+          AND tx_id IN ${sql(txIds)}
+      `;
     }
 
     // Update unanchored tx count in `chain_tip` table
@@ -3424,6 +3432,12 @@ export class PgWriteStore extends PgStore {
       if (txResult.count) {
         await sql`
           UPDATE principal_txs
+          SET canonical = ${canonical}
+          WHERE tx_id IN ${sql(txs.map(t => t.txId))}
+            AND index_block_hash = ${indexBlockHash} AND canonical != ${canonical}
+        `;
+        await sql`
+          UPDATE principal_stx_txs
           SET canonical = ${canonical}
           WHERE tx_id IN ${sql(txs.map(t => t.txId))}
             AND index_block_hash = ${indexBlockHash} AND canonical != ${canonical}
