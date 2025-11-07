@@ -68,7 +68,7 @@ export function createRosettaAccountRouter(db: PgStore, chainId: ChainID): expre
             throw RosettaErrors[RosettaErrorsTypes.invalidBlockHash];
           }
 
-          let balance = 0n;
+          let rawBalance = 0n;
           let locked = 0n;
 
           // Fetch chain tip balance from pre-computed table when possible.
@@ -77,23 +77,23 @@ export function createRosettaAccountRouter(db: PgStore, chainId: ChainID): expre
               sql,
               stxAddress: accountIdentifier.address,
             });
-            balance = stxBalancesResult.found ? stxBalancesResult.result.balance : 0n;
+            rawBalance = stxBalancesResult.found ? stxBalancesResult.result.balance : 0n;
             const stxPoxLockedResult = await db.v2.getStxPoxLockedAtBlock({
               sql,
               stxAddress: accountIdentifier.address,
               blockHeight: block.block_height,
               burnBlockHeight: block.burn_block_height,
             });
-            balance = balance - stxPoxLockedResult.locked;
             locked = stxPoxLockedResult.locked;
           } else {
             const stxBalance = await db.getStxBalanceAtBlock(
               accountIdentifier.address,
               block.block_height
             );
-            balance = stxBalance.balance - stxBalance.locked;
+            rawBalance = stxBalance.balance;
             locked = stxBalance.locked;
           }
+          let balance = rawBalance - locked;
 
           const accountNonceQuery = await db.getAddressNonceAtBlock({
             stxAddress: accountIdentifier.address,
@@ -111,7 +111,7 @@ export function createRosettaAccountRouter(db: PgStore, chainId: ChainID): expre
                 balance = locked;
                 break;
               case RosettaConstants.SpendableBalance:
-                balance = balance - locked;
+                // Spendable balance is the standard raw balance minus the locked balance
                 break;
               case RosettaConstants.VestingLockedBalance:
               case RosettaConstants.VestingUnlockedBalance:
