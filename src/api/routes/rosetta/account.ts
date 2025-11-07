@@ -37,6 +37,7 @@ export function createRosettaAccountRouter(db: PgStore, chainId: ChainID): expre
         .sqlTransaction(async sql => {
           let blockQuery: FoundOrNot<DbBlock>;
           let blockHash: string = '0x';
+          let atChainTip: boolean = false;
           // we need to return the block height/hash in the response, so we
           // need to fetch the block first.
           if (
@@ -44,6 +45,7 @@ export function createRosettaAccountRouter(db: PgStore, chainId: ChainID): expre
             (blockIdentifier && blockIdentifier.index <= 0)
           ) {
             blockQuery = await db.getCurrentBlock();
+            atChainTip = true;
           } else if (blockIdentifier.index > 0) {
             blockQuery = await db.getBlock({ height: blockIdentifier.index });
           } else if (blockIdentifier.hash !== undefined) {
@@ -66,12 +68,32 @@ export function createRosettaAccountRouter(db: PgStore, chainId: ChainID): expre
             throw RosettaErrors[RosettaErrorsTypes.invalidBlockHash];
           }
 
-          const stxBalance = await db.getStxBalanceAtBlock(
-            accountIdentifier.address,
-            block.block_height
-          );
-          // return spendable balance (liquid) if no sub-account is specified
-          let balance = (stxBalance.balance - stxBalance.locked).toString();
+          let balance = 0n;
+          let locked = 0n;
+
+          // Fetch chain tip balance from pre-computed table when possible.
+          if (atChainTip) {
+            const stxBalancesResult = await db.v2.getStxHolderBalance({
+              sql,
+              stxAddress: accountIdentifier.address,
+            });
+            balance = stxBalancesResult.found ? stxBalancesResult.result.balance : 0n;
+            const stxPoxLockedResult = await db.v2.getStxPoxLockedAtBlock({
+              sql,
+              stxAddress: accountIdentifier.address,
+              blockHeight: block.block_height,
+              burnBlockHeight: block.burn_block_height,
+            });
+            balance = balance - stxPoxLockedResult.locked;
+            locked = stxPoxLockedResult.locked;
+          } else {
+            const stxBalance = await db.getStxBalanceAtBlock(
+              accountIdentifier.address,
+              block.block_height
+            );
+            balance = stxBalance.balance - stxBalance.locked;
+            locked = stxBalance.locked;
+          }
 
           const accountNonceQuery = await db.getAddressNonceAtBlock({
             stxAddress: accountIdentifier.address,
@@ -86,12 +108,10 @@ export function createRosettaAccountRouter(db: PgStore, chainId: ChainID): expre
           if (subAccountIdentifier !== undefined) {
             switch (subAccountIdentifier.address) {
               case RosettaConstants.StackedBalance:
-                const lockedBalance = stxBalance.locked;
-                balance = lockedBalance.toString();
+                balance = locked;
                 break;
               case RosettaConstants.SpendableBalance:
-                const spendableBalance = stxBalance.balance - stxBalance.locked;
-                balance = spendableBalance.toString();
+                balance = balance - locked;
                 break;
               case RosettaConstants.VestingLockedBalance:
               case RosettaConstants.VestingUnlockedBalance:
@@ -101,11 +121,10 @@ export function createRosettaAccountRouter(db: PgStore, chainId: ChainID): expre
                 );
                 if (stxVesting.found) {
                   const vestingInfo = getVestingInfo(stxVesting.result);
-                  balance = vestingInfo[subAccountIdentifier.address].toString();
                   extra_metadata[RosettaConstants.VestingSchedule] =
                     vestingInfo[RosettaConstants.VestingSchedule];
                 } else {
-                  balance = '0';
+                  balance = 0n;
                 }
                 break;
               default:
@@ -114,7 +133,7 @@ export function createRosettaAccountRouter(db: PgStore, chainId: ChainID): expre
           }
           const balances: RosettaAmount[] = [
             {
-              value: balance,
+              value: balance.toString(),
               currency: {
                 symbol: RosettaConstants.symbol,
                 decimals: RosettaConstants.decimals,
@@ -166,16 +185,15 @@ export function createRosettaAccountRouter(db: PgStore, chainId: ChainID): expre
   return router;
 }
 
-function getVestingInfo(info: AddressTokenOfferingLocked): { [key: string]: string | string[] } {
-  const vestingData: { [key: string]: string | string[] } = {};
+function getVestingInfo(info: AddressTokenOfferingLocked) {
   const jsonVestingSchedule: string[] = [];
   info.unlock_schedule.forEach(schedule => {
     const item = { amount: schedule.amount, unlock_height: schedule.block_height };
     jsonVestingSchedule.push(JSON.stringify(item));
   });
-
-  vestingData[RosettaConstants.VestingLockedBalance] = info.total_locked;
-  vestingData[RosettaConstants.VestingUnlockedBalance] = info.total_unlocked;
-  vestingData[RosettaConstants.VestingSchedule] = jsonVestingSchedule;
-  return vestingData;
+  return {
+    [RosettaConstants.VestingLockedBalance]: info.total_locked,
+    [RosettaConstants.VestingUnlockedBalance]: info.total_unlocked,
+    [RosettaConstants.VestingSchedule]: jsonVestingSchedule,
+  };
 }
