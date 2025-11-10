@@ -131,6 +131,7 @@ exports.up = pgm => {
     `UNIQUE(principal, tx_id, index_block_hash, microblock_hash)`
   );
 
+  console.log('1');
   // Migrate principal mentions from `principal_stx_txs` to `principal_txs`
   pgm.sql(`
     INSERT INTO principal_txs
@@ -142,7 +143,13 @@ exports.up = pgm => {
       FROM principal_stx_txs
     )
   `);
+
   // Migrate amounts from `stx_events` senders (transfers and burns)
+  console.log('2');
+  pgm.createIndex('stx_events', ['sender', 'tx_id', 'index_block_hash', 'microblock_hash'], { name: 'tmp_stx_events_1' });
+  console.log('3');
+  pgm.createIndex('stx_events', ['recipient', 'tx_id', 'index_block_hash', 'microblock_hash'], { name: 'tmp_stx_events_2' });
+  console.log('4');
   pgm.sql(`
     INSERT INTO principal_txs
       (principal, tx_id, block_height, index_block_hash, microblock_hash,
@@ -175,6 +182,7 @@ exports.up = pgm => {
       stx_transfer_event_count = principal_txs.stx_transfer_event_count + EXCLUDED.stx_transfer_event_count,
       stx_burn_event_count = principal_txs.stx_burn_event_count + EXCLUDED.stx_burn_event_count
   `);
+  console.log('5');
   // Migrate amounts from `stx_events` recipients (transfers and mints)
   pgm.sql(`
     INSERT INTO principal_txs
@@ -208,7 +216,13 @@ exports.up = pgm => {
       stx_transfer_event_count = principal_txs.stx_transfer_event_count + EXCLUDED.stx_transfer_event_count,
       stx_mint_event_count = principal_txs.stx_mint_event_count + EXCLUDED.stx_mint_event_count
   `);
+
   // Migrate counts from `ft_events` senders (transfers and burns)
+  console.log('5');
+  pgm.createIndex('ft_events', ['sender', 'tx_id', 'index_block_hash', 'microblock_hash'], { name: 'tmp_ft_events_1' });
+  console.log('6');
+  pgm.createIndex('ft_events', ['recipient', 'tx_id', 'index_block_hash', 'microblock_hash'], { name: 'tmp_ft_events_2' });
+  console.log('7');
   pgm.sql(`
     INSERT INTO principal_txs
       (principal, tx_id, block_height, index_block_hash, microblock_hash,
@@ -238,6 +252,7 @@ exports.up = pgm => {
       ft_transfer_event_count = principal_txs.ft_transfer_event_count + EXCLUDED.ft_transfer_event_count,
       ft_burn_event_count = principal_txs.ft_burn_event_count + EXCLUDED.ft_burn_event_count
   `);
+  console.log('8');
   // Migrate counts from `ft_events` recipients (transfers and mints)
   pgm.sql(`
     INSERT INTO principal_txs
@@ -268,7 +283,13 @@ exports.up = pgm => {
       ft_transfer_event_count = principal_txs.ft_transfer_event_count + EXCLUDED.ft_transfer_event_count,
       ft_mint_event_count = principal_txs.ft_mint_event_count + EXCLUDED.ft_mint_event_count
   `);
+
   // Migrate counts from `nft_events` senders (transfers and burns)
+  console.log('9');
+  pgm.createIndex('nft_events', ['sender', 'tx_id', 'index_block_hash', 'microblock_hash'], { name: 'tmp_nft_events_1' });
+  console.log('10');
+  pgm.createIndex('nft_events', ['recipient', 'tx_id', 'index_block_hash', 'microblock_hash'], { name: 'tmp_nft_events_2' });
+  console.log('11');
   pgm.sql(`
     INSERT INTO principal_txs
       (principal, tx_id, block_height, index_block_hash, microblock_hash,
@@ -299,6 +320,7 @@ exports.up = pgm => {
       nft_burn_event_count = principal_txs.nft_burn_event_count + EXCLUDED.nft_burn_event_count
   `);
   // Migrate counts from `nft_events` recipients (transfers and mints)
+  console.log('12');
   pgm.sql(`
     INSERT INTO principal_txs
       (principal, tx_id, block_height, index_block_hash, microblock_hash,
@@ -329,7 +351,14 @@ exports.up = pgm => {
       nft_mint_event_count = principal_txs.nft_mint_event_count + EXCLUDED.nft_mint_event_count
   `);
 
+  console.log('13');
   pgm.sql(`COMMENT ON TABLE principal_stx_txs IS 'Deprecated. Use principal_txs instead.'`);
+  pgm.dropIndex('stx_events', 'tmp_stx_events_1');
+  pgm.dropIndex('stx_events', 'tmp_stx_events_2');
+  pgm.dropIndex('ft_events', 'tmp_ft_events_1');
+  pgm.dropIndex('ft_events', 'tmp_ft_events_2');
+  pgm.dropIndex('nft_events', 'tmp_nft_events_1');
+  pgm.dropIndex('nft_events', 'tmp_nft_events_2');
 };
 
 exports.down = pgm => {
