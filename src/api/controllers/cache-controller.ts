@@ -141,8 +141,8 @@ async function calculateETag(
           principal,
           etagType == ETagType.principalMempool
         );
-        if (!activity.length) return ETAG_EMPTY;
-        return sha256(activity.join(':'));
+        if (!activity.confirmed && !activity.mempool) return ETAG_EMPTY;
+        return sha256(`${activity.confirmed ?? ''}:${activity.mempool ?? ''}`);
     }
   } catch (error) {
     logger.error(error, `Unable to calculate ${etagType} etag`);
