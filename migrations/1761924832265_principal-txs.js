@@ -218,11 +218,11 @@ exports.up = pgm => {
   `);
 
   // Migrate counts from `ft_events` senders (transfers and burns)
-  console.log('5');
-  pgm.createIndex('ft_events', ['sender', 'tx_id', 'index_block_hash', 'microblock_hash'], { name: 'tmp_ft_events_1' });
   console.log('6');
-  pgm.createIndex('ft_events', ['recipient', 'tx_id', 'index_block_hash', 'microblock_hash'], { name: 'tmp_ft_events_2' });
+  pgm.createIndex('ft_events', ['sender', 'tx_id', 'index_block_hash', 'microblock_hash'], { name: 'tmp_ft_events_1' });
   console.log('7');
+  pgm.createIndex('ft_events', ['recipient', 'tx_id', 'index_block_hash', 'microblock_hash'], { name: 'tmp_ft_events_2' });
+  console.log('8');
   pgm.sql(`
     INSERT INTO principal_txs
       (principal, tx_id, block_height, index_block_hash, microblock_hash,
@@ -252,7 +252,7 @@ exports.up = pgm => {
       ft_transfer_event_count = principal_txs.ft_transfer_event_count + EXCLUDED.ft_transfer_event_count,
       ft_burn_event_count = principal_txs.ft_burn_event_count + EXCLUDED.ft_burn_event_count
   `);
-  console.log('8');
+  console.log('9');
   // Migrate counts from `ft_events` recipients (transfers and mints)
   pgm.sql(`
     INSERT INTO principal_txs
@@ -285,11 +285,11 @@ exports.up = pgm => {
   `);
 
   // Migrate counts from `nft_events` senders (transfers and burns)
-  console.log('9');
-  pgm.createIndex('nft_events', ['sender', 'tx_id', 'index_block_hash', 'microblock_hash'], { name: 'tmp_nft_events_1' });
   console.log('10');
-  pgm.createIndex('nft_events', ['recipient', 'tx_id', 'index_block_hash', 'microblock_hash'], { name: 'tmp_nft_events_2' });
+  pgm.createIndex('nft_events', ['sender', 'tx_id', 'index_block_hash', 'microblock_hash'], { name: 'tmp_nft_events_1' });
   console.log('11');
+  pgm.createIndex('nft_events', ['recipient', 'tx_id', 'index_block_hash', 'microblock_hash'], { name: 'tmp_nft_events_2' });
+  console.log('12');
   pgm.sql(`
     INSERT INTO principal_txs
       (principal, tx_id, block_height, index_block_hash, microblock_hash,
@@ -320,7 +320,7 @@ exports.up = pgm => {
       nft_burn_event_count = principal_txs.nft_burn_event_count + EXCLUDED.nft_burn_event_count
   `);
   // Migrate counts from `nft_events` recipients (transfers and mints)
-  console.log('12');
+  console.log('13');
   pgm.sql(`
     INSERT INTO principal_txs
       (principal, tx_id, block_height, index_block_hash, microblock_hash,
@@ -351,14 +351,21 @@ exports.up = pgm => {
       nft_mint_event_count = principal_txs.nft_mint_event_count + EXCLUDED.nft_mint_event_count
   `);
 
-  console.log('13');
+  console.log('14');
   pgm.sql(`COMMENT ON TABLE principal_stx_txs IS 'Deprecated. Use principal_txs instead.'`);
+  console.log('15');
   pgm.sql(`DROP INDEX tmp_stx_events_1`);
+  console.log('16');
   pgm.sql(`DROP INDEX tmp_stx_events_2`);
+  console.log('17');
   pgm.sql(`DROP INDEX tmp_ft_events_1`);
+  console.log('18');
   pgm.sql(`DROP INDEX tmp_ft_events_2`);
+  console.log('19');
   pgm.sql(`DROP INDEX tmp_nft_events_1`);
+  console.log('20');
   pgm.sql(`DROP INDEX tmp_nft_events_2`);
+  console.log('done');
 };
 
 exports.down = pgm => {
