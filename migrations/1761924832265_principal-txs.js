@@ -353,12 +353,12 @@ exports.up = pgm => {
 
   console.log('13');
   pgm.sql(`COMMENT ON TABLE principal_stx_txs IS 'Deprecated. Use principal_txs instead.'`);
-  pgm.dropIndex('stx_events', 'tmp_stx_events_1');
-  pgm.dropIndex('stx_events', 'tmp_stx_events_2');
-  pgm.dropIndex('ft_events', 'tmp_ft_events_1');
-  pgm.dropIndex('ft_events', 'tmp_ft_events_2');
-  pgm.dropIndex('nft_events', 'tmp_nft_events_1');
-  pgm.dropIndex('nft_events', 'tmp_nft_events_2');
+  pgm.dropIndex('stx_events', { name: 'tmp_stx_events_1'});
+  pgm.dropIndex('stx_events', { name: 'tmp_stx_events_2'});
+  pgm.dropIndex('ft_events', { name: 'tmp_ft_events_1'});
+  pgm.dropIndex('ft_events', { name: 'tmp_ft_events_2'});
+  pgm.dropIndex('nft_events', { name: 'tmp_nft_events_1'});
+  pgm.dropIndex('nft_events', { name: 'tmp_nft_events_2'});
 };
 
 exports.down = pgm => {
