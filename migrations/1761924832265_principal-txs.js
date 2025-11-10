@@ -112,27 +112,9 @@ exports.up = pgm => {
       default: 0,
     },
   });
-  pgm.createIndex('principal_txs', 'tx_id');
-  pgm.createIndex(
-    'principal_txs',
-    [
-      { name: 'principal' },
-      { name: 'block_height', sort: 'DESC' },
-      { name: 'microblock_sequence', sort: 'DESC' },
-      { name: 'tx_index', sort: 'DESC' },
-    ],
-    {
-      where: 'canonical = TRUE AND microblock_canonical = TRUE',
-    }
-  );
-  pgm.addConstraint(
-    'principal_txs',
-    'principal_txs_unique',
-    `UNIQUE(principal, tx_id, index_block_hash, microblock_hash)`
-  );
 
-  console.log('1');
-  // Migrate principal mentions from `principal_stx_txs` to `principal_txs`
+  // Migrate principal mentions from `principal_stx_txs` to `principal_txs`. Do this before creating
+  // the unique constraint to gain some speed.
   pgm.sql(`
     INSERT INTO principal_txs
       (principal, tx_id, block_height, index_block_hash, microblock_hash,
@@ -144,12 +126,17 @@ exports.up = pgm => {
     )
   `);
 
-  // Migrate amounts from `stx_events` senders (transfers and burns)
-  console.log('2');
+  // Add the unique constraint.
+  pgm.addConstraint(
+    'principal_txs',
+    'principal_txs_unique',
+    `UNIQUE(principal, tx_id, index_block_hash, microblock_hash)`
+  );
+
+  // Migrate amounts from `stx_events` senders (transfers and burns) and recipients (transfers and
+  // mints). Create indexes first to gain some speed.
   pgm.createIndex('stx_events', ['sender', 'tx_id', 'index_block_hash', 'microblock_hash'], { name: 'tmp_stx_events_1' });
-  console.log('3');
   pgm.createIndex('stx_events', ['recipient', 'tx_id', 'index_block_hash', 'microblock_hash'], { name: 'tmp_stx_events_2' });
-  console.log('4');
   pgm.sql(`
     INSERT INTO principal_txs
       (principal, tx_id, block_height, index_block_hash, microblock_hash,
@@ -182,8 +169,6 @@ exports.up = pgm => {
       stx_transfer_event_count = principal_txs.stx_transfer_event_count + EXCLUDED.stx_transfer_event_count,
       stx_burn_event_count = principal_txs.stx_burn_event_count + EXCLUDED.stx_burn_event_count
   `);
-  console.log('5');
-  // Migrate amounts from `stx_events` recipients (transfers and mints)
   pgm.sql(`
     INSERT INTO principal_txs
       (principal, tx_id, block_height, index_block_hash, microblock_hash,
@@ -216,13 +201,13 @@ exports.up = pgm => {
       stx_transfer_event_count = principal_txs.stx_transfer_event_count + EXCLUDED.stx_transfer_event_count,
       stx_mint_event_count = principal_txs.stx_mint_event_count + EXCLUDED.stx_mint_event_count
   `);
+  pgm.sql(`DROP INDEX tmp_stx_events_1`);
+  pgm.sql(`DROP INDEX tmp_stx_events_2`);
 
-  // Migrate counts from `ft_events` senders (transfers and burns)
-  console.log('6');
+  // Migrate counts from `ft_events` senders (transfers and burns) and recipients (transfers and
+  // mints). Create indexes first to gain some speed.
   pgm.createIndex('ft_events', ['sender', 'tx_id', 'index_block_hash', 'microblock_hash'], { name: 'tmp_ft_events_1' });
-  console.log('7');
   pgm.createIndex('ft_events', ['recipient', 'tx_id', 'index_block_hash', 'microblock_hash'], { name: 'tmp_ft_events_2' });
-  console.log('8');
   pgm.sql(`
     INSERT INTO principal_txs
       (principal, tx_id, block_height, index_block_hash, microblock_hash,
@@ -252,8 +237,6 @@ exports.up = pgm => {
       ft_transfer_event_count = principal_txs.ft_transfer_event_count + EXCLUDED.ft_transfer_event_count,
       ft_burn_event_count = principal_txs.ft_burn_event_count + EXCLUDED.ft_burn_event_count
   `);
-  console.log('9');
-  // Migrate counts from `ft_events` recipients (transfers and mints)
   pgm.sql(`
     INSERT INTO principal_txs
       (principal, tx_id, block_height, index_block_hash, microblock_hash,
@@ -283,13 +266,13 @@ exports.up = pgm => {
       ft_transfer_event_count = principal_txs.ft_transfer_event_count + EXCLUDED.ft_transfer_event_count,
       ft_mint_event_count = principal_txs.ft_mint_event_count + EXCLUDED.ft_mint_event_count
   `);
+  pgm.sql(`DROP INDEX tmp_ft_events_1`);
+  pgm.sql(`DROP INDEX tmp_ft_events_2`);
 
-  // Migrate counts from `nft_events` senders (transfers and burns)
-  console.log('10');
+  // Migrate counts from `nft_events` senders (transfers and burns) and recipients (transfers and
+  // mints). Create indexes first to gain some speed.
   pgm.createIndex('nft_events', ['sender', 'tx_id', 'index_block_hash', 'microblock_hash'], { name: 'tmp_nft_events_1' });
-  console.log('11');
   pgm.createIndex('nft_events', ['recipient', 'tx_id', 'index_block_hash', 'microblock_hash'], { name: 'tmp_nft_events_2' });
-  console.log('12');
   pgm.sql(`
     INSERT INTO principal_txs
       (principal, tx_id, block_height, index_block_hash, microblock_hash,
@@ -319,8 +302,6 @@ exports.up = pgm => {
       nft_transfer_event_count = principal_txs.nft_transfer_event_count + EXCLUDED.nft_transfer_event_count,
       nft_burn_event_count = principal_txs.nft_burn_event_count + EXCLUDED.nft_burn_event_count
   `);
-  // Migrate counts from `nft_events` recipients (transfers and mints)
-  console.log('13');
   pgm.sql(`
     INSERT INTO principal_txs
       (principal, tx_id, block_height, index_block_hash, microblock_hash,
@@ -350,22 +331,26 @@ exports.up = pgm => {
       nft_transfer_event_count = principal_txs.nft_transfer_event_count + EXCLUDED.nft_transfer_event_count,
       nft_mint_event_count = principal_txs.nft_mint_event_count + EXCLUDED.nft_mint_event_count
   `);
-
-  console.log('14');
-  pgm.sql(`COMMENT ON TABLE principal_stx_txs IS 'Deprecated. Use principal_txs instead.'`);
-  console.log('15');
-  pgm.sql(`DROP INDEX tmp_stx_events_1`);
-  console.log('16');
-  pgm.sql(`DROP INDEX tmp_stx_events_2`);
-  console.log('17');
-  pgm.sql(`DROP INDEX tmp_ft_events_1`);
-  console.log('18');
-  pgm.sql(`DROP INDEX tmp_ft_events_2`);
-  console.log('19');
   pgm.sql(`DROP INDEX tmp_nft_events_1`);
-  console.log('20');
   pgm.sql(`DROP INDEX tmp_nft_events_2`);
-  console.log('done');
+
+  // Mark the `principal_stx_txs` table as deprecated.
+  pgm.sql(`COMMENT ON TABLE principal_stx_txs IS 'Deprecated. Use principal_txs instead.'`);
+
+  // Add indexes to the `principal_txs` table.
+  pgm.createIndex('principal_txs', 'tx_id');
+  pgm.createIndex(
+    'principal_txs',
+    [
+      { name: 'principal' },
+      { name: 'block_height', sort: 'DESC' },
+      { name: 'microblock_sequence', sort: 'DESC' },
+      { name: 'tx_index', sort: 'DESC' },
+    ],
+    {
+      where: 'canonical = TRUE AND microblock_canonical = TRUE',
+    }
+  );
 };
 
 exports.down = pgm => {
