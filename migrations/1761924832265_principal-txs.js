@@ -234,10 +234,20 @@ exports.up = pgm => {
 
   // Migrate counts from `ft_events` senders (transfers and burns) and recipients (transfers and
   // mints). Create indexes first to gain some speed.
-  pgm.createIndex('ft_events', ['sender', 'asset_event_type_id', 'tx_id', 'index_block_hash', 'microblock_hash'], {
-    name: 'tmp_ft_events_1',
-    include: ['block_height', 'microblock_sequence', 'tx_index', 'canonical', 'microblock_canonical', 'amount'],
-  });
+  pgm.createIndex(
+    'ft_events',
+    ['sender', 'asset_event_type_id', 'tx_id', 'index_block_hash', 'microblock_hash'],
+    {
+      name: 'tmp_ft_events_1',
+      include: [
+        'block_height',
+        'microblock_sequence',
+        'tx_index',
+        'canonical',
+        'microblock_canonical',
+      ],
+    }
+  );
   pgm.sql(`
     INSERT INTO principal_txs
       (principal, tx_id, block_height, index_block_hash, microblock_hash,
@@ -268,10 +278,20 @@ exports.up = pgm => {
       ft_burn_event_count = principal_txs.ft_burn_event_count + EXCLUDED.ft_burn_event_count
   `);
   pgm.sql(`DROP INDEX tmp_ft_events_1`);
-  pgm.createIndex('ft_events', ['recipient', 'asset_event_type_id', 'tx_id', 'index_block_hash', 'microblock_hash'], {
-    name: 'tmp_ft_events_2',
-    include: ['block_height', 'microblock_sequence', 'tx_index', 'canonical', 'microblock_canonical', 'amount'],
-  });
+  pgm.createIndex(
+    'ft_events',
+    ['recipient', 'asset_event_type_id', 'tx_id', 'index_block_hash', 'microblock_hash'],
+    {
+      name: 'tmp_ft_events_2',
+      include: [
+        'block_height',
+        'microblock_sequence',
+        'tx_index',
+        'canonical',
+        'microblock_canonical',
+      ],
+    }
+  );
   pgm.sql(`
     INSERT INTO principal_txs
       (principal, tx_id, block_height, index_block_hash, microblock_hash,
@@ -305,10 +325,20 @@ exports.up = pgm => {
 
   // Migrate counts from `nft_events` senders (transfers and burns) and recipients (transfers and
   // mints). Create indexes first to gain some speed.
-  pgm.createIndex('nft_events', ['sender', 'asset_event_type_id', 'tx_id', 'index_block_hash', 'microblock_hash'], {
-    name: 'tmp_nft_events_1',
-    include: ['block_height', 'microblock_sequence', 'tx_index', 'canonical', 'microblock_canonical', 'amount'],
-  });
+  pgm.createIndex(
+    'nft_events',
+    ['sender', 'asset_event_type_id', 'tx_id', 'index_block_hash', 'microblock_hash'],
+    {
+      name: 'tmp_nft_events_1',
+      include: [
+        'block_height',
+        'microblock_sequence',
+        'tx_index',
+        'canonical',
+        'microblock_canonical',
+      ],
+    }
+  );
   pgm.sql(`
     INSERT INTO principal_txs
       (principal, tx_id, block_height, index_block_hash, microblock_hash,
@@ -339,10 +369,20 @@ exports.up = pgm => {
       nft_burn_event_count = principal_txs.nft_burn_event_count + EXCLUDED.nft_burn_event_count
   `);
   pgm.sql(`DROP INDEX tmp_nft_events_1`);
-  pgm.createIndex('nft_events', ['recipient', 'asset_event_type_id', 'tx_id', 'index_block_hash', 'microblock_hash'], {
-    name: 'tmp_nft_events_2',
-    include: ['block_height', 'microblock_sequence', 'tx_index', 'canonical', 'microblock_canonical', 'amount'],
-  });
+  pgm.createIndex(
+    'nft_events',
+    ['recipient', 'asset_event_type_id', 'tx_id', 'index_block_hash', 'microblock_hash'],
+    {
+      name: 'tmp_nft_events_2',
+      include: [
+        'block_height',
+        'microblock_sequence',
+        'tx_index',
+        'canonical',
+        'microblock_canonical',
+      ],
+    }
+  );
   pgm.sql(`
     INSERT INTO principal_txs
       (principal, tx_id, block_height, index_block_hash, microblock_hash,
