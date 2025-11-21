@@ -1945,6 +1945,8 @@ export interface operations {
                  * @example 123
                  */
                 nonce?: number;
+                /** @description Exclude function_args from contract call responses for smaller transaction sizes. */
+                exclude_function_args?: boolean;
             };
             header?: never;
             path?: never;
@@ -2063,12 +2065,15 @@ export interface operations {
                             burn_block_height: number;
                             /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this block was mined. */
                             burn_block_time_iso: string;
+                            /** @description The only hash that can uniquely identify an anchored block or an unconfirmed state trie */
+                            index_block_hash: string;
                             /** @description Unix timestamp (in seconds) indicating when this parent block was mined */
                             parent_burn_block_time: number;
                             /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this parent block was mined. */
                             parent_burn_block_time_iso: string;
                             /** @description Set to `true` if block corresponds to the canonical chain tip */
                             canonical: boolean;
+                            tenure_height: number | null;
                             /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                             tx_index: number;
                             /** @description Status of the transaction */
@@ -2278,12 +2283,15 @@ export interface operations {
                             burn_block_height: number;
                             /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this block was mined. */
                             burn_block_time_iso: string;
+                            /** @description The only hash that can uniquely identify an anchored block or an unconfirmed state trie */
+                            index_block_hash: string;
                             /** @description Unix timestamp (in seconds) indicating when this parent block was mined */
                             parent_burn_block_time: number;
                             /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this parent block was mined. */
                             parent_burn_block_time_iso: string;
                             /** @description Set to `true` if block corresponds to the canonical chain tip */
                             canonical: boolean;
+                            tenure_height: number | null;
                             /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                             tx_index: number;
                             /** @description Status of the transaction */
@@ -2493,12 +2501,15 @@ export interface operations {
                             burn_block_height: number;
                             /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this block was mined. */
                             burn_block_time_iso: string;
+                            /** @description The only hash that can uniquely identify an anchored block or an unconfirmed state trie */
+                            index_block_hash: string;
                             /** @description Unix timestamp (in seconds) indicating when this parent block was mined */
                             parent_burn_block_time: number;
                             /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this parent block was mined. */
                             parent_burn_block_time_iso: string;
                             /** @description Set to `true` if block corresponds to the canonical chain tip */
                             canonical: boolean;
+                            tenure_height: number | null;
                             /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                             tx_index: number;
                             /** @description Status of the transaction */
@@ -2715,12 +2726,15 @@ export interface operations {
                             burn_block_height: number;
                             /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this block was mined. */
                             burn_block_time_iso: string;
+                            /** @description The only hash that can uniquely identify an anchored block or an unconfirmed state trie */
+                            index_block_hash: string;
                             /** @description Unix timestamp (in seconds) indicating when this parent block was mined */
                             parent_burn_block_time: number;
                             /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this parent block was mined. */
                             parent_burn_block_time_iso: string;
                             /** @description Set to `true` if block corresponds to the canonical chain tip */
                             canonical: boolean;
+                            tenure_height: number | null;
                             /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                             tx_index: number;
                             /** @description Status of the transaction */
@@ -2929,12 +2943,15 @@ export interface operations {
                             burn_block_height: number;
                             /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this block was mined. */
                             burn_block_time_iso: string;
+                            /** @description The only hash that can uniquely identify an anchored block or an unconfirmed state trie */
+                            index_block_hash: string;
                             /** @description Unix timestamp (in seconds) indicating when this parent block was mined */
                             parent_burn_block_time: number;
                             /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this parent block was mined. */
                             parent_burn_block_time_iso: string;
                             /** @description Set to `true` if block corresponds to the canonical chain tip */
                             canonical: boolean;
+                            tenure_height: number | null;
                             /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                             tx_index: number;
                             /** @description Status of the transaction */
@@ -3143,12 +3160,15 @@ export interface operations {
                             burn_block_height: number;
                             /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this block was mined. */
                             burn_block_time_iso: string;
+                            /** @description The only hash that can uniquely identify an anchored block or an unconfirmed state trie */
+                            index_block_hash: string;
                             /** @description Unix timestamp (in seconds) indicating when this parent block was mined */
                             parent_burn_block_time: number;
                             /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this parent block was mined. */
                             parent_burn_block_time_iso: string;
                             /** @description Set to `true` if block corresponds to the canonical chain tip */
                             canonical: boolean;
+                            tenure_height: number | null;
                             /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                             tx_index: number;
                             /** @description Status of the transaction */
@@ -3302,6 +3322,8 @@ export interface operations {
                  * @example true
                  */
                 unanchored?: boolean;
+                /** @description Exclude function_args from contract call responses for smaller transaction sizes. */
+                exclude_function_args?: boolean;
             };
             header?: never;
             path?: never;
@@ -3417,12 +3439,15 @@ export interface operations {
                                 burn_block_height: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this block was mined. */
                                 burn_block_time_iso: string;
+                                /** @description The only hash that can uniquely identify an anchored block or an unconfirmed state trie */
+                                index_block_hash: string;
                                 /** @description Unix timestamp (in seconds) indicating when this parent block was mined */
                                 parent_burn_block_time: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this parent block was mined. */
                                 parent_burn_block_time_iso: string;
                                 /** @description Set to `true` if block corresponds to the canonical chain tip */
                                 canonical: boolean;
+                                tenure_height: number | null;
                                 /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                                 tx_index: number;
                                 /** @description Status of the transaction */
@@ -3632,12 +3657,15 @@ export interface operations {
                                 burn_block_height: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this block was mined. */
                                 burn_block_time_iso: string;
+                                /** @description The only hash that can uniquely identify an anchored block or an unconfirmed state trie */
+                                index_block_hash: string;
                                 /** @description Unix timestamp (in seconds) indicating when this parent block was mined */
                                 parent_burn_block_time: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this parent block was mined. */
                                 parent_burn_block_time_iso: string;
                                 /** @description Set to `true` if block corresponds to the canonical chain tip */
                                 canonical: boolean;
+                                tenure_height: number | null;
                                 /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                                 tx_index: number;
                                 /** @description Status of the transaction */
@@ -3847,12 +3875,15 @@ export interface operations {
                                 burn_block_height: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this block was mined. */
                                 burn_block_time_iso: string;
+                                /** @description The only hash that can uniquely identify an anchored block or an unconfirmed state trie */
+                                index_block_hash: string;
                                 /** @description Unix timestamp (in seconds) indicating when this parent block was mined */
                                 parent_burn_block_time: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this parent block was mined. */
                                 parent_burn_block_time_iso: string;
                                 /** @description Set to `true` if block corresponds to the canonical chain tip */
                                 canonical: boolean;
+                                tenure_height: number | null;
                                 /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                                 tx_index: number;
                                 /** @description Status of the transaction */
@@ -4069,12 +4100,15 @@ export interface operations {
                                 burn_block_height: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this block was mined. */
                                 burn_block_time_iso: string;
+                                /** @description The only hash that can uniquely identify an anchored block or an unconfirmed state trie */
+                                index_block_hash: string;
                                 /** @description Unix timestamp (in seconds) indicating when this parent block was mined */
                                 parent_burn_block_time: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this parent block was mined. */
                                 parent_burn_block_time_iso: string;
                                 /** @description Set to `true` if block corresponds to the canonical chain tip */
                                 canonical: boolean;
+                                tenure_height: number | null;
                                 /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                                 tx_index: number;
                                 /** @description Status of the transaction */
@@ -4283,12 +4317,15 @@ export interface operations {
                                 burn_block_height: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this block was mined. */
                                 burn_block_time_iso: string;
+                                /** @description The only hash that can uniquely identify an anchored block or an unconfirmed state trie */
+                                index_block_hash: string;
                                 /** @description Unix timestamp (in seconds) indicating when this parent block was mined */
                                 parent_burn_block_time: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this parent block was mined. */
                                 parent_burn_block_time_iso: string;
                                 /** @description Set to `true` if block corresponds to the canonical chain tip */
                                 canonical: boolean;
+                                tenure_height: number | null;
                                 /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                                 tx_index: number;
                                 /** @description Status of the transaction */
@@ -4497,12 +4534,15 @@ export interface operations {
                                 burn_block_height: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this block was mined. */
                                 burn_block_time_iso: string;
+                                /** @description The only hash that can uniquely identify an anchored block or an unconfirmed state trie */
+                                index_block_hash: string;
                                 /** @description Unix timestamp (in seconds) indicating when this parent block was mined */
                                 parent_burn_block_time: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this parent block was mined. */
                                 parent_burn_block_time_iso: string;
                                 /** @description Set to `true` if block corresponds to the canonical chain tip */
                                 canonical: boolean;
+                                tenure_height: number | null;
                                 /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                                 tx_index: number;
                                 /** @description Status of the transaction */
@@ -4709,6 +4749,7 @@ export interface operations {
                                 anchor_mode: "on_chain_only" | "off_chain_only" | "any";
                                 /** @description Status of the transaction */
                                 tx_status: "pending" | "dropped_replace_by_fee" | "dropped_replace_across_fork" | "dropped_too_expensive" | "dropped_stale_garbage_collect" | "dropped_problematic";
+                                replaced_by_tx_id: string | null;
                                 /** @description A unix timestamp (in seconds) indicating when the transaction broadcast was received by the node. */
                                 receipt_time: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when the transaction broadcast was received by the node. */
@@ -4808,6 +4849,7 @@ export interface operations {
                                 anchor_mode: "on_chain_only" | "off_chain_only" | "any";
                                 /** @description Status of the transaction */
                                 tx_status: "pending" | "dropped_replace_by_fee" | "dropped_replace_across_fork" | "dropped_too_expensive" | "dropped_stale_garbage_collect" | "dropped_problematic";
+                                replaced_by_tx_id: string | null;
                                 /** @description A unix timestamp (in seconds) indicating when the transaction broadcast was received by the node. */
                                 receipt_time: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when the transaction broadcast was received by the node. */
@@ -4907,6 +4949,7 @@ export interface operations {
                                 anchor_mode: "on_chain_only" | "off_chain_only" | "any";
                                 /** @description Status of the transaction */
                                 tx_status: "pending" | "dropped_replace_by_fee" | "dropped_replace_across_fork" | "dropped_too_expensive" | "dropped_stale_garbage_collect" | "dropped_problematic";
+                                replaced_by_tx_id: string | null;
                                 /** @description A unix timestamp (in seconds) indicating when the transaction broadcast was received by the node. */
                                 receipt_time: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when the transaction broadcast was received by the node. */
@@ -5013,6 +5056,7 @@ export interface operations {
                                 anchor_mode: "on_chain_only" | "off_chain_only" | "any";
                                 /** @description Status of the transaction */
                                 tx_status: "pending" | "dropped_replace_by_fee" | "dropped_replace_across_fork" | "dropped_too_expensive" | "dropped_stale_garbage_collect" | "dropped_problematic";
+                                replaced_by_tx_id: string | null;
                                 /** @description A unix timestamp (in seconds) indicating when the transaction broadcast was received by the node. */
                                 receipt_time: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when the transaction broadcast was received by the node. */
@@ -5111,6 +5155,7 @@ export interface operations {
                                 anchor_mode: "on_chain_only" | "off_chain_only" | "any";
                                 /** @description Status of the transaction */
                                 tx_status: "pending" | "dropped_replace_by_fee" | "dropped_replace_across_fork" | "dropped_too_expensive" | "dropped_stale_garbage_collect" | "dropped_problematic";
+                                replaced_by_tx_id: string | null;
                                 /** @description A unix timestamp (in seconds) indicating when the transaction broadcast was received by the node. */
                                 receipt_time: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when the transaction broadcast was received by the node. */
@@ -5209,6 +5254,7 @@ export interface operations {
                                 anchor_mode: "on_chain_only" | "off_chain_only" | "any";
                                 /** @description Status of the transaction */
                                 tx_status: "pending" | "dropped_replace_by_fee" | "dropped_replace_across_fork" | "dropped_too_expensive" | "dropped_stale_garbage_collect" | "dropped_problematic";
+                                replaced_by_tx_id: string | null;
                                 /** @description A unix timestamp (in seconds) indicating when the transaction broadcast was received by the node. */
                                 receipt_time: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when the transaction broadcast was received by the node. */
@@ -5289,6 +5335,8 @@ export interface operations {
                 offset?: number;
                 /** @description Results per page */
                 limit?: number;
+                /** @description Exclude function_args from contract call responses for smaller transaction sizes. */
+                exclude_function_args?: boolean;
             };
             header?: never;
             path?: never;
@@ -5395,6 +5443,7 @@ export interface operations {
                             anchor_mode: "on_chain_only" | "off_chain_only" | "any";
                             /** @description Status of the transaction */
                             tx_status: "pending" | "dropped_replace_by_fee" | "dropped_replace_across_fork" | "dropped_too_expensive" | "dropped_stale_garbage_collect" | "dropped_problematic";
+                            replaced_by_tx_id: string | null;
                             /** @description A unix timestamp (in seconds) indicating when the transaction broadcast was received by the node. */
                             receipt_time: number;
                             /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when the transaction broadcast was received by the node. */
@@ -5494,6 +5543,7 @@ export interface operations {
                             anchor_mode: "on_chain_only" | "off_chain_only" | "any";
                             /** @description Status of the transaction */
                             tx_status: "pending" | "dropped_replace_by_fee" | "dropped_replace_across_fork" | "dropped_too_expensive" | "dropped_stale_garbage_collect" | "dropped_problematic";
+                            replaced_by_tx_id: string | null;
                             /** @description A unix timestamp (in seconds) indicating when the transaction broadcast was received by the node. */
                             receipt_time: number;
                             /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when the transaction broadcast was received by the node. */
@@ -5593,6 +5643,7 @@ export interface operations {
                             anchor_mode: "on_chain_only" | "off_chain_only" | "any";
                             /** @description Status of the transaction */
                             tx_status: "pending" | "dropped_replace_by_fee" | "dropped_replace_across_fork" | "dropped_too_expensive" | "dropped_stale_garbage_collect" | "dropped_problematic";
+                            replaced_by_tx_id: string | null;
                             /** @description A unix timestamp (in seconds) indicating when the transaction broadcast was received by the node. */
                             receipt_time: number;
                             /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when the transaction broadcast was received by the node. */
@@ -5699,6 +5750,7 @@ export interface operations {
                             anchor_mode: "on_chain_only" | "off_chain_only" | "any";
                             /** @description Status of the transaction */
                             tx_status: "pending" | "dropped_replace_by_fee" | "dropped_replace_across_fork" | "dropped_too_expensive" | "dropped_stale_garbage_collect" | "dropped_problematic";
+                            replaced_by_tx_id: string | null;
                             /** @description A unix timestamp (in seconds) indicating when the transaction broadcast was received by the node. */
                             receipt_time: number;
                             /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when the transaction broadcast was received by the node. */
@@ -5797,6 +5849,7 @@ export interface operations {
                             anchor_mode: "on_chain_only" | "off_chain_only" | "any";
                             /** @description Status of the transaction */
                             tx_status: "pending" | "dropped_replace_by_fee" | "dropped_replace_across_fork" | "dropped_too_expensive" | "dropped_stale_garbage_collect" | "dropped_problematic";
+                            replaced_by_tx_id: string | null;
                             /** @description A unix timestamp (in seconds) indicating when the transaction broadcast was received by the node. */
                             receipt_time: number;
                             /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when the transaction broadcast was received by the node. */
@@ -5895,6 +5948,7 @@ export interface operations {
                             anchor_mode: "on_chain_only" | "off_chain_only" | "any";
                             /** @description Status of the transaction */
                             tx_status: "pending" | "dropped_replace_by_fee" | "dropped_replace_across_fork" | "dropped_too_expensive" | "dropped_stale_garbage_collect" | "dropped_problematic";
+                            replaced_by_tx_id: string | null;
                             /** @description A unix timestamp (in seconds) indicating when the transaction broadcast was received by the node. */
                             receipt_time: number;
                             /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when the transaction broadcast was received by the node. */
@@ -6140,6 +6194,8 @@ export interface operations {
                  * @example true
                  */
                 unanchored?: boolean;
+                /** @description Exclude function_args from contract call responses for smaller transaction sizes. */
+                exclude_function_args?: boolean;
             };
             header?: never;
             path: {
@@ -6257,12 +6313,15 @@ export interface operations {
                         burn_block_height: number;
                         /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this block was mined. */
                         burn_block_time_iso: string;
+                        /** @description The only hash that can uniquely identify an anchored block or an unconfirmed state trie */
+                        index_block_hash: string;
                         /** @description Unix timestamp (in seconds) indicating when this parent block was mined */
                         parent_burn_block_time: number;
                         /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this parent block was mined. */
                         parent_burn_block_time_iso: string;
                         /** @description Set to `true` if block corresponds to the canonical chain tip */
                         canonical: boolean;
+                        tenure_height: number | null;
                         /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                         tx_index: number;
                         /** @description Status of the transaction */
@@ -6472,12 +6531,15 @@ export interface operations {
                         burn_block_height: number;
                         /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this block was mined. */
                         burn_block_time_iso: string;
+                        /** @description The only hash that can uniquely identify an anchored block or an unconfirmed state trie */
+                        index_block_hash: string;
                         /** @description Unix timestamp (in seconds) indicating when this parent block was mined */
                         parent_burn_block_time: number;
                         /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this parent block was mined. */
                         parent_burn_block_time_iso: string;
                         /** @description Set to `true` if block corresponds to the canonical chain tip */
                         canonical: boolean;
+                        tenure_height: number | null;
                         /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                         tx_index: number;
                         /** @description Status of the transaction */
@@ -6687,12 +6749,15 @@ export interface operations {
                         burn_block_height: number;
                         /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this block was mined. */
                         burn_block_time_iso: string;
+                        /** @description The only hash that can uniquely identify an anchored block or an unconfirmed state trie */
+                        index_block_hash: string;
                         /** @description Unix timestamp (in seconds) indicating when this parent block was mined */
                         parent_burn_block_time: number;
                         /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this parent block was mined. */
                         parent_burn_block_time_iso: string;
                         /** @description Set to `true` if block corresponds to the canonical chain tip */
                         canonical: boolean;
+                        tenure_height: number | null;
                         /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                         tx_index: number;
                         /** @description Status of the transaction */
@@ -6909,12 +6974,15 @@ export interface operations {
                         burn_block_height: number;
                         /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this block was mined. */
                         burn_block_time_iso: string;
+                        /** @description The only hash that can uniquely identify an anchored block or an unconfirmed state trie */
+                        index_block_hash: string;
                         /** @description Unix timestamp (in seconds) indicating when this parent block was mined */
                         parent_burn_block_time: number;
                         /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this parent block was mined. */
                         parent_burn_block_time_iso: string;
                         /** @description Set to `true` if block corresponds to the canonical chain tip */
                         canonical: boolean;
+                        tenure_height: number | null;
                         /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                         tx_index: number;
                         /** @description Status of the transaction */
@@ -7123,12 +7191,15 @@ export interface operations {
                         burn_block_height: number;
                         /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this block was mined. */
                         burn_block_time_iso: string;
+                        /** @description The only hash that can uniquely identify an anchored block or an unconfirmed state trie */
+                        index_block_hash: string;
                         /** @description Unix timestamp (in seconds) indicating when this parent block was mined */
                         parent_burn_block_time: number;
                         /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this parent block was mined. */
                         parent_burn_block_time_iso: string;
                         /** @description Set to `true` if block corresponds to the canonical chain tip */
                         canonical: boolean;
+                        tenure_height: number | null;
                         /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                         tx_index: number;
                         /** @description Status of the transaction */
@@ -7337,12 +7408,15 @@ export interface operations {
                         burn_block_height: number;
                         /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this block was mined. */
                         burn_block_time_iso: string;
+                        /** @description The only hash that can uniquely identify an anchored block or an unconfirmed state trie */
+                        index_block_hash: string;
                         /** @description Unix timestamp (in seconds) indicating when this parent block was mined */
                         parent_burn_block_time: number;
                         /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this parent block was mined. */
                         parent_burn_block_time_iso: string;
                         /** @description Set to `true` if block corresponds to the canonical chain tip */
                         canonical: boolean;
+                        tenure_height: number | null;
                         /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                         tx_index: number;
                         /** @description Status of the transaction */
@@ -7549,6 +7623,7 @@ export interface operations {
                         anchor_mode: "on_chain_only" | "off_chain_only" | "any";
                         /** @description Status of the transaction */
                         tx_status: "pending" | "dropped_replace_by_fee" | "dropped_replace_across_fork" | "dropped_too_expensive" | "dropped_stale_garbage_collect" | "dropped_problematic";
+                        replaced_by_tx_id: string | null;
                         /** @description A unix timestamp (in seconds) indicating when the transaction broadcast was received by the node. */
                         receipt_time: number;
                         /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when the transaction broadcast was received by the node. */
@@ -7648,6 +7723,7 @@ export interface operations {
                         anchor_mode: "on_chain_only" | "off_chain_only" | "any";
                         /** @description Status of the transaction */
                         tx_status: "pending" | "dropped_replace_by_fee" | "dropped_replace_across_fork" | "dropped_too_expensive" | "dropped_stale_garbage_collect" | "dropped_problematic";
+                        replaced_by_tx_id: string | null;
                         /** @description A unix timestamp (in seconds) indicating when the transaction broadcast was received by the node. */
                         receipt_time: number;
                         /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when the transaction broadcast was received by the node. */
@@ -7747,6 +7823,7 @@ export interface operations {
                         anchor_mode: "on_chain_only" | "off_chain_only" | "any";
                         /** @description Status of the transaction */
                         tx_status: "pending" | "dropped_replace_by_fee" | "dropped_replace_across_fork" | "dropped_too_expensive" | "dropped_stale_garbage_collect" | "dropped_problematic";
+                        replaced_by_tx_id: string | null;
                         /** @description A unix timestamp (in seconds) indicating when the transaction broadcast was received by the node. */
                         receipt_time: number;
                         /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when the transaction broadcast was received by the node. */
@@ -7853,6 +7930,7 @@ export interface operations {
                         anchor_mode: "on_chain_only" | "off_chain_only" | "any";
                         /** @description Status of the transaction */
                         tx_status: "pending" | "dropped_replace_by_fee" | "dropped_replace_across_fork" | "dropped_too_expensive" | "dropped_stale_garbage_collect" | "dropped_problematic";
+                        replaced_by_tx_id: string | null;
                         /** @description A unix timestamp (in seconds) indicating when the transaction broadcast was received by the node. */
                         receipt_time: number;
                         /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when the transaction broadcast was received by the node. */
@@ -7951,6 +8029,7 @@ export interface operations {
                         anchor_mode: "on_chain_only" | "off_chain_only" | "any";
                         /** @description Status of the transaction */
                         tx_status: "pending" | "dropped_replace_by_fee" | "dropped_replace_across_fork" | "dropped_too_expensive" | "dropped_stale_garbage_collect" | "dropped_problematic";
+                        replaced_by_tx_id: string | null;
                         /** @description A unix timestamp (in seconds) indicating when the transaction broadcast was received by the node. */
                         receipt_time: number;
                         /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when the transaction broadcast was received by the node. */
@@ -8049,6 +8128,7 @@ export interface operations {
                         anchor_mode: "on_chain_only" | "off_chain_only" | "any";
                         /** @description Status of the transaction */
                         tx_status: "pending" | "dropped_replace_by_fee" | "dropped_replace_across_fork" | "dropped_too_expensive" | "dropped_stale_garbage_collect" | "dropped_problematic";
+                        replaced_by_tx_id: string | null;
                         /** @description A unix timestamp (in seconds) indicating when the transaction broadcast was received by the node. */
                         receipt_time: number;
                         /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when the transaction broadcast was received by the node. */
@@ -8144,6 +8224,8 @@ export interface operations {
                 offset?: number;
                 /** @description Results per page */
                 limit?: number;
+                /** @description Exclude function_args from contract call responses for smaller transaction sizes. */
+                exclude_function_args?: boolean;
             };
             header?: never;
             path: {
@@ -8264,12 +8346,15 @@ export interface operations {
                             burn_block_height: number;
                             /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this block was mined. */
                             burn_block_time_iso: string;
+                            /** @description The only hash that can uniquely identify an anchored block or an unconfirmed state trie */
+                            index_block_hash: string;
                             /** @description Unix timestamp (in seconds) indicating when this parent block was mined */
                             parent_burn_block_time: number;
                             /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this parent block was mined. */
                             parent_burn_block_time_iso: string;
                             /** @description Set to `true` if block corresponds to the canonical chain tip */
                             canonical: boolean;
+                            tenure_height: number | null;
                             /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                             tx_index: number;
                             /** @description Status of the transaction */
@@ -8479,12 +8564,15 @@ export interface operations {
                             burn_block_height: number;
                             /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this block was mined. */
                             burn_block_time_iso: string;
+                            /** @description The only hash that can uniquely identify an anchored block or an unconfirmed state trie */
+                            index_block_hash: string;
                             /** @description Unix timestamp (in seconds) indicating when this parent block was mined */
                             parent_burn_block_time: number;
                             /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this parent block was mined. */
                             parent_burn_block_time_iso: string;
                             /** @description Set to `true` if block corresponds to the canonical chain tip */
                             canonical: boolean;
+                            tenure_height: number | null;
                             /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                             tx_index: number;
                             /** @description Status of the transaction */
@@ -8694,12 +8782,15 @@ export interface operations {
                             burn_block_height: number;
                             /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this block was mined. */
                             burn_block_time_iso: string;
+                            /** @description The only hash that can uniquely identify an anchored block or an unconfirmed state trie */
+                            index_block_hash: string;
                             /** @description Unix timestamp (in seconds) indicating when this parent block was mined */
                             parent_burn_block_time: number;
                             /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this parent block was mined. */
                             parent_burn_block_time_iso: string;
                             /** @description Set to `true` if block corresponds to the canonical chain tip */
                             canonical: boolean;
+                            tenure_height: number | null;
                             /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                             tx_index: number;
                             /** @description Status of the transaction */
@@ -8916,12 +9007,15 @@ export interface operations {
                             burn_block_height: number;
                             /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this block was mined. */
                             burn_block_time_iso: string;
+                            /** @description The only hash that can uniquely identify an anchored block or an unconfirmed state trie */
+                            index_block_hash: string;
                             /** @description Unix timestamp (in seconds) indicating when this parent block was mined */
                             parent_burn_block_time: number;
                             /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this parent block was mined. */
                             parent_burn_block_time_iso: string;
                             /** @description Set to `true` if block corresponds to the canonical chain tip */
                             canonical: boolean;
+                            tenure_height: number | null;
                             /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                             tx_index: number;
                             /** @description Status of the transaction */
@@ -9130,12 +9224,15 @@ export interface operations {
                             burn_block_height: number;
                             /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this block was mined. */
                             burn_block_time_iso: string;
+                            /** @description The only hash that can uniquely identify an anchored block or an unconfirmed state trie */
+                            index_block_hash: string;
                             /** @description Unix timestamp (in seconds) indicating when this parent block was mined */
                             parent_burn_block_time: number;
                             /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this parent block was mined. */
                             parent_burn_block_time_iso: string;
                             /** @description Set to `true` if block corresponds to the canonical chain tip */
                             canonical: boolean;
+                            tenure_height: number | null;
                             /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                             tx_index: number;
                             /** @description Status of the transaction */
@@ -9344,12 +9441,15 @@ export interface operations {
                             burn_block_height: number;
                             /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this block was mined. */
                             burn_block_time_iso: string;
+                            /** @description The only hash that can uniquely identify an anchored block or an unconfirmed state trie */
+                            index_block_hash: string;
                             /** @description Unix timestamp (in seconds) indicating when this parent block was mined */
                             parent_burn_block_time: number;
                             /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this parent block was mined. */
                             parent_burn_block_time_iso: string;
                             /** @description Set to `true` if block corresponds to the canonical chain tip */
                             canonical: boolean;
+                            tenure_height: number | null;
                             /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                             tx_index: number;
                             /** @description Status of the transaction */
@@ -9497,6 +9597,8 @@ export interface operations {
                 offset?: number;
                 /** @description Results per page */
                 limit?: number;
+                /** @description Exclude function_args from contract call responses for smaller transaction sizes. */
+                exclude_function_args?: boolean;
             };
             header?: never;
             path: {
@@ -9621,12 +9723,15 @@ export interface operations {
                             burn_block_height: number;
                             /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this block was mined. */
                             burn_block_time_iso: string;
+                            /** @description The only hash that can uniquely identify an anchored block or an unconfirmed state trie */
+                            index_block_hash: string;
                             /** @description Unix timestamp (in seconds) indicating when this parent block was mined */
                             parent_burn_block_time: number;
                             /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this parent block was mined. */
                             parent_burn_block_time_iso: string;
                             /** @description Set to `true` if block corresponds to the canonical chain tip */
                             canonical: boolean;
+                            tenure_height: number | null;
                             /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                             tx_index: number;
                             /** @description Status of the transaction */
@@ -9836,12 +9941,15 @@ export interface operations {
                             burn_block_height: number;
                             /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this block was mined. */
                             burn_block_time_iso: string;
+                            /** @description The only hash that can uniquely identify an anchored block or an unconfirmed state trie */
+                            index_block_hash: string;
                             /** @description Unix timestamp (in seconds) indicating when this parent block was mined */
                             parent_burn_block_time: number;
                             /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this parent block was mined. */
                             parent_burn_block_time_iso: string;
                             /** @description Set to `true` if block corresponds to the canonical chain tip */
                             canonical: boolean;
+                            tenure_height: number | null;
                             /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                             tx_index: number;
                             /** @description Status of the transaction */
@@ -10051,12 +10159,15 @@ export interface operations {
                             burn_block_height: number;
                             /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this block was mined. */
                             burn_block_time_iso: string;
+                            /** @description The only hash that can uniquely identify an anchored block or an unconfirmed state trie */
+                            index_block_hash: string;
                             /** @description Unix timestamp (in seconds) indicating when this parent block was mined */
                             parent_burn_block_time: number;
                             /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this parent block was mined. */
                             parent_burn_block_time_iso: string;
                             /** @description Set to `true` if block corresponds to the canonical chain tip */
                             canonical: boolean;
+                            tenure_height: number | null;
                             /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                             tx_index: number;
                             /** @description Status of the transaction */
@@ -10273,12 +10384,15 @@ export interface operations {
                             burn_block_height: number;
                             /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this block was mined. */
                             burn_block_time_iso: string;
+                            /** @description The only hash that can uniquely identify an anchored block or an unconfirmed state trie */
+                            index_block_hash: string;
                             /** @description Unix timestamp (in seconds) indicating when this parent block was mined */
                             parent_burn_block_time: number;
                             /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this parent block was mined. */
                             parent_burn_block_time_iso: string;
                             /** @description Set to `true` if block corresponds to the canonical chain tip */
                             canonical: boolean;
+                            tenure_height: number | null;
                             /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                             tx_index: number;
                             /** @description Status of the transaction */
@@ -10487,12 +10601,15 @@ export interface operations {
                             burn_block_height: number;
                             /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this block was mined. */
                             burn_block_time_iso: string;
+                            /** @description The only hash that can uniquely identify an anchored block or an unconfirmed state trie */
+                            index_block_hash: string;
                             /** @description Unix timestamp (in seconds) indicating when this parent block was mined */
                             parent_burn_block_time: number;
                             /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this parent block was mined. */
                             parent_burn_block_time_iso: string;
                             /** @description Set to `true` if block corresponds to the canonical chain tip */
                             canonical: boolean;
+                            tenure_height: number | null;
                             /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                             tx_index: number;
                             /** @description Status of the transaction */
@@ -10701,12 +10818,15 @@ export interface operations {
                             burn_block_height: number;
                             /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this block was mined. */
                             burn_block_time_iso: string;
+                            /** @description The only hash that can uniquely identify an anchored block or an unconfirmed state trie */
+                            index_block_hash: string;
                             /** @description Unix timestamp (in seconds) indicating when this parent block was mined */
                             parent_burn_block_time: number;
                             /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this parent block was mined. */
                             parent_burn_block_time_iso: string;
                             /** @description Set to `true` if block corresponds to the canonical chain tip */
                             canonical: boolean;
+                            tenure_height: number | null;
                             /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                             tx_index: number;
                             /** @description Status of the transaction */
@@ -11266,12 +11386,15 @@ export interface operations {
                                 burn_block_height: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this block was mined. */
                                 burn_block_time_iso: string;
+                                /** @description The only hash that can uniquely identify an anchored block or an unconfirmed state trie */
+                                index_block_hash: string;
                                 /** @description Unix timestamp (in seconds) indicating when this parent block was mined */
                                 parent_burn_block_time: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this parent block was mined. */
                                 parent_burn_block_time_iso: string;
                                 /** @description Set to `true` if block corresponds to the canonical chain tip */
                                 canonical: boolean;
+                                tenure_height: number | null;
                                 /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                                 tx_index: number;
                                 /** @description Status of the transaction */
@@ -11481,12 +11604,15 @@ export interface operations {
                                 burn_block_height: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this block was mined. */
                                 burn_block_time_iso: string;
+                                /** @description The only hash that can uniquely identify an anchored block or an unconfirmed state trie */
+                                index_block_hash: string;
                                 /** @description Unix timestamp (in seconds) indicating when this parent block was mined */
                                 parent_burn_block_time: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this parent block was mined. */
                                 parent_burn_block_time_iso: string;
                                 /** @description Set to `true` if block corresponds to the canonical chain tip */
                                 canonical: boolean;
+                                tenure_height: number | null;
                                 /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                                 tx_index: number;
                                 /** @description Status of the transaction */
@@ -11696,12 +11822,15 @@ export interface operations {
                                 burn_block_height: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this block was mined. */
                                 burn_block_time_iso: string;
+                                /** @description The only hash that can uniquely identify an anchored block or an unconfirmed state trie */
+                                index_block_hash: string;
                                 /** @description Unix timestamp (in seconds) indicating when this parent block was mined */
                                 parent_burn_block_time: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this parent block was mined. */
                                 parent_burn_block_time_iso: string;
                                 /** @description Set to `true` if block corresponds to the canonical chain tip */
                                 canonical: boolean;
+                                tenure_height: number | null;
                                 /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                                 tx_index: number;
                                 /** @description Status of the transaction */
@@ -11918,12 +12047,15 @@ export interface operations {
                                 burn_block_height: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this block was mined. */
                                 burn_block_time_iso: string;
+                                /** @description The only hash that can uniquely identify an anchored block or an unconfirmed state trie */
+                                index_block_hash: string;
                                 /** @description Unix timestamp (in seconds) indicating when this parent block was mined */
                                 parent_burn_block_time: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this parent block was mined. */
                                 parent_burn_block_time_iso: string;
                                 /** @description Set to `true` if block corresponds to the canonical chain tip */
                                 canonical: boolean;
+                                tenure_height: number | null;
                                 /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                                 tx_index: number;
                                 /** @description Status of the transaction */
@@ -12132,12 +12264,15 @@ export interface operations {
                                 burn_block_height: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this block was mined. */
                                 burn_block_time_iso: string;
+                                /** @description The only hash that can uniquely identify an anchored block or an unconfirmed state trie */
+                                index_block_hash: string;
                                 /** @description Unix timestamp (in seconds) indicating when this parent block was mined */
                                 parent_burn_block_time: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this parent block was mined. */
                                 parent_burn_block_time_iso: string;
                                 /** @description Set to `true` if block corresponds to the canonical chain tip */
                                 canonical: boolean;
+                                tenure_height: number | null;
                                 /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                                 tx_index: number;
                                 /** @description Status of the transaction */
@@ -12346,12 +12481,15 @@ export interface operations {
                                 burn_block_height: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this block was mined. */
                                 burn_block_time_iso: string;
+                                /** @description The only hash that can uniquely identify an anchored block or an unconfirmed state trie */
+                                index_block_hash: string;
                                 /** @description Unix timestamp (in seconds) indicating when this parent block was mined */
                                 parent_burn_block_time: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this parent block was mined. */
                                 parent_burn_block_time_iso: string;
                                 /** @description Set to `true` if block corresponds to the canonical chain tip */
                                 canonical: boolean;
+                                tenure_height: number | null;
                                 /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                                 tx_index: number;
                                 /** @description Status of the transaction */
@@ -12646,12 +12784,15 @@ export interface operations {
                                 burn_block_height: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this block was mined. */
                                 burn_block_time_iso: string;
+                                /** @description The only hash that can uniquely identify an anchored block or an unconfirmed state trie */
+                                index_block_hash: string;
                                 /** @description Unix timestamp (in seconds) indicating when this parent block was mined */
                                 parent_burn_block_time: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this parent block was mined. */
                                 parent_burn_block_time_iso: string;
                                 /** @description Set to `true` if block corresponds to the canonical chain tip */
                                 canonical: boolean;
+                                tenure_height: number | null;
                                 /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                                 tx_index: number;
                                 /** @description Status of the transaction */
@@ -12861,12 +13002,15 @@ export interface operations {
                                 burn_block_height: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this block was mined. */
                                 burn_block_time_iso: string;
+                                /** @description The only hash that can uniquely identify an anchored block or an unconfirmed state trie */
+                                index_block_hash: string;
                                 /** @description Unix timestamp (in seconds) indicating when this parent block was mined */
                                 parent_burn_block_time: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this parent block was mined. */
                                 parent_burn_block_time_iso: string;
                                 /** @description Set to `true` if block corresponds to the canonical chain tip */
                                 canonical: boolean;
+                                tenure_height: number | null;
                                 /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                                 tx_index: number;
                                 /** @description Status of the transaction */
@@ -13076,12 +13220,15 @@ export interface operations {
                                 burn_block_height: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this block was mined. */
                                 burn_block_time_iso: string;
+                                /** @description The only hash that can uniquely identify an anchored block or an unconfirmed state trie */
+                                index_block_hash: string;
                                 /** @description Unix timestamp (in seconds) indicating when this parent block was mined */
                                 parent_burn_block_time: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this parent block was mined. */
                                 parent_burn_block_time_iso: string;
                                 /** @description Set to `true` if block corresponds to the canonical chain tip */
                                 canonical: boolean;
+                                tenure_height: number | null;
                                 /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                                 tx_index: number;
                                 /** @description Status of the transaction */
@@ -13298,12 +13445,15 @@ export interface operations {
                                 burn_block_height: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this block was mined. */
                                 burn_block_time_iso: string;
+                                /** @description The only hash that can uniquely identify an anchored block or an unconfirmed state trie */
+                                index_block_hash: string;
                                 /** @description Unix timestamp (in seconds) indicating when this parent block was mined */
                                 parent_burn_block_time: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this parent block was mined. */
                                 parent_burn_block_time_iso: string;
                                 /** @description Set to `true` if block corresponds to the canonical chain tip */
                                 canonical: boolean;
+                                tenure_height: number | null;
                                 /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                                 tx_index: number;
                                 /** @description Status of the transaction */
@@ -13512,12 +13662,15 @@ export interface operations {
                                 burn_block_height: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this block was mined. */
                                 burn_block_time_iso: string;
+                                /** @description The only hash that can uniquely identify an anchored block or an unconfirmed state trie */
+                                index_block_hash: string;
                                 /** @description Unix timestamp (in seconds) indicating when this parent block was mined */
                                 parent_burn_block_time: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this parent block was mined. */
                                 parent_burn_block_time_iso: string;
                                 /** @description Set to `true` if block corresponds to the canonical chain tip */
                                 canonical: boolean;
+                                tenure_height: number | null;
                                 /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                                 tx_index: number;
                                 /** @description Status of the transaction */
@@ -13726,12 +13879,15 @@ export interface operations {
                                 burn_block_height: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this block was mined. */
                                 burn_block_time_iso: string;
+                                /** @description The only hash that can uniquely identify an anchored block or an unconfirmed state trie */
+                                index_block_hash: string;
                                 /** @description Unix timestamp (in seconds) indicating when this parent block was mined */
                                 parent_burn_block_time: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this parent block was mined. */
                                 parent_burn_block_time_iso: string;
                                 /** @description Set to `true` if block corresponds to the canonical chain tip */
                                 canonical: boolean;
+                                tenure_height: number | null;
                                 /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                                 tx_index: number;
                                 /** @description Status of the transaction */
@@ -14031,12 +14187,15 @@ export interface operations {
                                 burn_block_height: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this block was mined. */
                                 burn_block_time_iso: string;
+                                /** @description The only hash that can uniquely identify an anchored block or an unconfirmed state trie */
+                                index_block_hash: string;
                                 /** @description Unix timestamp (in seconds) indicating when this parent block was mined */
                                 parent_burn_block_time: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this parent block was mined. */
                                 parent_burn_block_time_iso: string;
                                 /** @description Set to `true` if block corresponds to the canonical chain tip */
                                 canonical: boolean;
+                                tenure_height: number | null;
                                 /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                                 tx_index: number;
                                 /** @description Status of the transaction */
@@ -14246,12 +14405,15 @@ export interface operations {
                                 burn_block_height: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this block was mined. */
                                 burn_block_time_iso: string;
+                                /** @description The only hash that can uniquely identify an anchored block or an unconfirmed state trie */
+                                index_block_hash: string;
                                 /** @description Unix timestamp (in seconds) indicating when this parent block was mined */
                                 parent_burn_block_time: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this parent block was mined. */
                                 parent_burn_block_time_iso: string;
                                 /** @description Set to `true` if block corresponds to the canonical chain tip */
                                 canonical: boolean;
+                                tenure_height: number | null;
                                 /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                                 tx_index: number;
                                 /** @description Status of the transaction */
@@ -14461,12 +14623,15 @@ export interface operations {
                                 burn_block_height: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this block was mined. */
                                 burn_block_time_iso: string;
+                                /** @description The only hash that can uniquely identify an anchored block or an unconfirmed state trie */
+                                index_block_hash: string;
                                 /** @description Unix timestamp (in seconds) indicating when this parent block was mined */
                                 parent_burn_block_time: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this parent block was mined. */
                                 parent_burn_block_time_iso: string;
                                 /** @description Set to `true` if block corresponds to the canonical chain tip */
                                 canonical: boolean;
+                                tenure_height: number | null;
                                 /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                                 tx_index: number;
                                 /** @description Status of the transaction */
@@ -14683,12 +14848,15 @@ export interface operations {
                                 burn_block_height: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this block was mined. */
                                 burn_block_time_iso: string;
+                                /** @description The only hash that can uniquely identify an anchored block or an unconfirmed state trie */
+                                index_block_hash: string;
                                 /** @description Unix timestamp (in seconds) indicating when this parent block was mined */
                                 parent_burn_block_time: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this parent block was mined. */
                                 parent_burn_block_time_iso: string;
                                 /** @description Set to `true` if block corresponds to the canonical chain tip */
                                 canonical: boolean;
+                                tenure_height: number | null;
                                 /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                                 tx_index: number;
                                 /** @description Status of the transaction */
@@ -14897,12 +15065,15 @@ export interface operations {
                                 burn_block_height: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this block was mined. */
                                 burn_block_time_iso: string;
+                                /** @description The only hash that can uniquely identify an anchored block or an unconfirmed state trie */
+                                index_block_hash: string;
                                 /** @description Unix timestamp (in seconds) indicating when this parent block was mined */
                                 parent_burn_block_time: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this parent block was mined. */
                                 parent_burn_block_time_iso: string;
                                 /** @description Set to `true` if block corresponds to the canonical chain tip */
                                 canonical: boolean;
+                                tenure_height: number | null;
                                 /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                                 tx_index: number;
                                 /** @description Status of the transaction */
@@ -15111,12 +15282,15 @@ export interface operations {
                                 burn_block_height: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this block was mined. */
                                 burn_block_time_iso: string;
+                                /** @description The only hash that can uniquely identify an anchored block or an unconfirmed state trie */
+                                index_block_hash: string;
                                 /** @description Unix timestamp (in seconds) indicating when this parent block was mined */
                                 parent_burn_block_time: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this parent block was mined. */
                                 parent_burn_block_time_iso: string;
                                 /** @description Set to `true` if block corresponds to the canonical chain tip */
                                 canonical: boolean;
+                                tenure_height: number | null;
                                 /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                                 tx_index: number;
                                 /** @description Status of the transaction */
@@ -15845,12 +16019,15 @@ export interface operations {
                             burn_block_height: number;
                             /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this block was mined. */
                             burn_block_time_iso: string;
+                            /** @description The only hash that can uniquely identify an anchored block or an unconfirmed state trie */
+                            index_block_hash: string;
                             /** @description Unix timestamp (in seconds) indicating when this parent block was mined */
                             parent_burn_block_time: number;
                             /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this parent block was mined. */
                             parent_burn_block_time_iso: string;
                             /** @description Set to `true` if block corresponds to the canonical chain tip */
                             canonical: boolean;
+                            tenure_height: number | null;
                             /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                             tx_index: number;
                             /** @description Status of the transaction */
@@ -16060,12 +16237,15 @@ export interface operations {
                             burn_block_height: number;
                             /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this block was mined. */
                             burn_block_time_iso: string;
+                            /** @description The only hash that can uniquely identify an anchored block or an unconfirmed state trie */
+                            index_block_hash: string;
                             /** @description Unix timestamp (in seconds) indicating when this parent block was mined */
                             parent_burn_block_time: number;
                             /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this parent block was mined. */
                             parent_burn_block_time_iso: string;
                             /** @description Set to `true` if block corresponds to the canonical chain tip */
                             canonical: boolean;
+                            tenure_height: number | null;
                             /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                             tx_index: number;
                             /** @description Status of the transaction */
@@ -16275,12 +16455,15 @@ export interface operations {
                             burn_block_height: number;
                             /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this block was mined. */
                             burn_block_time_iso: string;
+                            /** @description The only hash that can uniquely identify an anchored block or an unconfirmed state trie */
+                            index_block_hash: string;
                             /** @description Unix timestamp (in seconds) indicating when this parent block was mined */
                             parent_burn_block_time: number;
                             /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this parent block was mined. */
                             parent_burn_block_time_iso: string;
                             /** @description Set to `true` if block corresponds to the canonical chain tip */
                             canonical: boolean;
+                            tenure_height: number | null;
                             /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                             tx_index: number;
                             /** @description Status of the transaction */
@@ -16497,12 +16680,15 @@ export interface operations {
                             burn_block_height: number;
                             /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this block was mined. */
                             burn_block_time_iso: string;
+                            /** @description The only hash that can uniquely identify an anchored block or an unconfirmed state trie */
+                            index_block_hash: string;
                             /** @description Unix timestamp (in seconds) indicating when this parent block was mined */
                             parent_burn_block_time: number;
                             /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this parent block was mined. */
                             parent_burn_block_time_iso: string;
                             /** @description Set to `true` if block corresponds to the canonical chain tip */
                             canonical: boolean;
+                            tenure_height: number | null;
                             /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                             tx_index: number;
                             /** @description Status of the transaction */
@@ -16711,12 +16897,15 @@ export interface operations {
                             burn_block_height: number;
                             /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this block was mined. */
                             burn_block_time_iso: string;
+                            /** @description The only hash that can uniquely identify an anchored block or an unconfirmed state trie */
+                            index_block_hash: string;
                             /** @description Unix timestamp (in seconds) indicating when this parent block was mined */
                             parent_burn_block_time: number;
                             /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this parent block was mined. */
                             parent_burn_block_time_iso: string;
                             /** @description Set to `true` if block corresponds to the canonical chain tip */
                             canonical: boolean;
+                            tenure_height: number | null;
                             /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                             tx_index: number;
                             /** @description Status of the transaction */
@@ -16925,12 +17114,15 @@ export interface operations {
                             burn_block_height: number;
                             /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this block was mined. */
                             burn_block_time_iso: string;
+                            /** @description The only hash that can uniquely identify an anchored block or an unconfirmed state trie */
+                            index_block_hash: string;
                             /** @description Unix timestamp (in seconds) indicating when this parent block was mined */
                             parent_burn_block_time: number;
                             /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this parent block was mined. */
                             parent_burn_block_time_iso: string;
                             /** @description Set to `true` if block corresponds to the canonical chain tip */
                             canonical: boolean;
+                            tenure_height: number | null;
                             /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                             tx_index: number;
                             /** @description Status of the transaction */
@@ -18018,6 +18210,8 @@ export interface operations {
                 unanchored?: boolean;
                 /** @description Block hash or block height. Return data representing the state up until that point in time, rather than the current block. Note - Use either of the query parameters but not both at a time. */
                 until_block?: string;
+                /** @description Exclude function_args from contract call responses for smaller transaction sizes. */
+                exclude_function_args?: boolean;
             };
             header?: never;
             path: {
@@ -18138,12 +18332,15 @@ export interface operations {
                             burn_block_height: number;
                             /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this block was mined. */
                             burn_block_time_iso: string;
+                            /** @description The only hash that can uniquely identify an anchored block or an unconfirmed state trie */
+                            index_block_hash: string;
                             /** @description Unix timestamp (in seconds) indicating when this parent block was mined */
                             parent_burn_block_time: number;
                             /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this parent block was mined. */
                             parent_burn_block_time_iso: string;
                             /** @description Set to `true` if block corresponds to the canonical chain tip */
                             canonical: boolean;
+                            tenure_height: number | null;
                             /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                             tx_index: number;
                             /** @description Status of the transaction */
@@ -18353,12 +18550,15 @@ export interface operations {
                             burn_block_height: number;
                             /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this block was mined. */
                             burn_block_time_iso: string;
+                            /** @description The only hash that can uniquely identify an anchored block or an unconfirmed state trie */
+                            index_block_hash: string;
                             /** @description Unix timestamp (in seconds) indicating when this parent block was mined */
                             parent_burn_block_time: number;
                             /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this parent block was mined. */
                             parent_burn_block_time_iso: string;
                             /** @description Set to `true` if block corresponds to the canonical chain tip */
                             canonical: boolean;
+                            tenure_height: number | null;
                             /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                             tx_index: number;
                             /** @description Status of the transaction */
@@ -18568,12 +18768,15 @@ export interface operations {
                             burn_block_height: number;
                             /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this block was mined. */
                             burn_block_time_iso: string;
+                            /** @description The only hash that can uniquely identify an anchored block or an unconfirmed state trie */
+                            index_block_hash: string;
                             /** @description Unix timestamp (in seconds) indicating when this parent block was mined */
                             parent_burn_block_time: number;
                             /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this parent block was mined. */
                             parent_burn_block_time_iso: string;
                             /** @description Set to `true` if block corresponds to the canonical chain tip */
                             canonical: boolean;
+                            tenure_height: number | null;
                             /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                             tx_index: number;
                             /** @description Status of the transaction */
@@ -18790,12 +18993,15 @@ export interface operations {
                             burn_block_height: number;
                             /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this block was mined. */
                             burn_block_time_iso: string;
+                            /** @description The only hash that can uniquely identify an anchored block or an unconfirmed state trie */
+                            index_block_hash: string;
                             /** @description Unix timestamp (in seconds) indicating when this parent block was mined */
                             parent_burn_block_time: number;
                             /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this parent block was mined. */
                             parent_burn_block_time_iso: string;
                             /** @description Set to `true` if block corresponds to the canonical chain tip */
                             canonical: boolean;
+                            tenure_height: number | null;
                             /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                             tx_index: number;
                             /** @description Status of the transaction */
@@ -19004,12 +19210,15 @@ export interface operations {
                             burn_block_height: number;
                             /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this block was mined. */
                             burn_block_time_iso: string;
+                            /** @description The only hash that can uniquely identify an anchored block or an unconfirmed state trie */
+                            index_block_hash: string;
                             /** @description Unix timestamp (in seconds) indicating when this parent block was mined */
                             parent_burn_block_time: number;
                             /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this parent block was mined. */
                             parent_burn_block_time_iso: string;
                             /** @description Set to `true` if block corresponds to the canonical chain tip */
                             canonical: boolean;
+                            tenure_height: number | null;
                             /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                             tx_index: number;
                             /** @description Status of the transaction */
@@ -19218,12 +19427,15 @@ export interface operations {
                             burn_block_height: number;
                             /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this block was mined. */
                             burn_block_time_iso: string;
+                            /** @description The only hash that can uniquely identify an anchored block or an unconfirmed state trie */
+                            index_block_hash: string;
                             /** @description Unix timestamp (in seconds) indicating when this parent block was mined */
                             parent_burn_block_time: number;
                             /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this parent block was mined. */
                             parent_burn_block_time_iso: string;
                             /** @description Set to `true` if block corresponds to the canonical chain tip */
                             canonical: boolean;
+                            tenure_height: number | null;
                             /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                             tx_index: number;
                             /** @description Status of the transaction */
@@ -19485,12 +19697,15 @@ export interface operations {
                             burn_block_height: number;
                             /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this block was mined. */
                             burn_block_time_iso: string;
+                            /** @description The only hash that can uniquely identify an anchored block or an unconfirmed state trie */
+                            index_block_hash: string;
                             /** @description Unix timestamp (in seconds) indicating when this parent block was mined */
                             parent_burn_block_time: number;
                             /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this parent block was mined. */
                             parent_burn_block_time_iso: string;
                             /** @description Set to `true` if block corresponds to the canonical chain tip */
                             canonical: boolean;
+                            tenure_height: number | null;
                             /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                             tx_index: number;
                             /** @description Status of the transaction */
@@ -19700,12 +19915,15 @@ export interface operations {
                             burn_block_height: number;
                             /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this block was mined. */
                             burn_block_time_iso: string;
+                            /** @description The only hash that can uniquely identify an anchored block or an unconfirmed state trie */
+                            index_block_hash: string;
                             /** @description Unix timestamp (in seconds) indicating when this parent block was mined */
                             parent_burn_block_time: number;
                             /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this parent block was mined. */
                             parent_burn_block_time_iso: string;
                             /** @description Set to `true` if block corresponds to the canonical chain tip */
                             canonical: boolean;
+                            tenure_height: number | null;
                             /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                             tx_index: number;
                             /** @description Status of the transaction */
@@ -19915,12 +20133,15 @@ export interface operations {
                             burn_block_height: number;
                             /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this block was mined. */
                             burn_block_time_iso: string;
+                            /** @description The only hash that can uniquely identify an anchored block or an unconfirmed state trie */
+                            index_block_hash: string;
                             /** @description Unix timestamp (in seconds) indicating when this parent block was mined */
                             parent_burn_block_time: number;
                             /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this parent block was mined. */
                             parent_burn_block_time_iso: string;
                             /** @description Set to `true` if block corresponds to the canonical chain tip */
                             canonical: boolean;
+                            tenure_height: number | null;
                             /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                             tx_index: number;
                             /** @description Status of the transaction */
@@ -20137,12 +20358,15 @@ export interface operations {
                             burn_block_height: number;
                             /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this block was mined. */
                             burn_block_time_iso: string;
+                            /** @description The only hash that can uniquely identify an anchored block or an unconfirmed state trie */
+                            index_block_hash: string;
                             /** @description Unix timestamp (in seconds) indicating when this parent block was mined */
                             parent_burn_block_time: number;
                             /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this parent block was mined. */
                             parent_burn_block_time_iso: string;
                             /** @description Set to `true` if block corresponds to the canonical chain tip */
                             canonical: boolean;
+                            tenure_height: number | null;
                             /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                             tx_index: number;
                             /** @description Status of the transaction */
@@ -20351,12 +20575,15 @@ export interface operations {
                             burn_block_height: number;
                             /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this block was mined. */
                             burn_block_time_iso: string;
+                            /** @description The only hash that can uniquely identify an anchored block or an unconfirmed state trie */
+                            index_block_hash: string;
                             /** @description Unix timestamp (in seconds) indicating when this parent block was mined */
                             parent_burn_block_time: number;
                             /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this parent block was mined. */
                             parent_burn_block_time_iso: string;
                             /** @description Set to `true` if block corresponds to the canonical chain tip */
                             canonical: boolean;
+                            tenure_height: number | null;
                             /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                             tx_index: number;
                             /** @description Status of the transaction */
@@ -20565,12 +20792,15 @@ export interface operations {
                             burn_block_height: number;
                             /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this block was mined. */
                             burn_block_time_iso: string;
+                            /** @description The only hash that can uniquely identify an anchored block or an unconfirmed state trie */
+                            index_block_hash: string;
                             /** @description Unix timestamp (in seconds) indicating when this parent block was mined */
                             parent_burn_block_time: number;
                             /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this parent block was mined. */
                             parent_burn_block_time_iso: string;
                             /** @description Set to `true` if block corresponds to the canonical chain tip */
                             canonical: boolean;
+                            tenure_height: number | null;
                             /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                             tx_index: number;
                             /** @description Status of the transaction */
@@ -20883,12 +21113,15 @@ export interface operations {
                                 burn_block_height: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this block was mined. */
                                 burn_block_time_iso: string;
+                                /** @description The only hash that can uniquely identify an anchored block or an unconfirmed state trie */
+                                index_block_hash: string;
                                 /** @description Unix timestamp (in seconds) indicating when this parent block was mined */
                                 parent_burn_block_time: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this parent block was mined. */
                                 parent_burn_block_time_iso: string;
                                 /** @description Set to `true` if block corresponds to the canonical chain tip */
                                 canonical: boolean;
+                                tenure_height: number | null;
                                 /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                                 tx_index: number;
                                 /** @description Status of the transaction */
@@ -21098,12 +21331,15 @@ export interface operations {
                                 burn_block_height: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this block was mined. */
                                 burn_block_time_iso: string;
+                                /** @description The only hash that can uniquely identify an anchored block or an unconfirmed state trie */
+                                index_block_hash: string;
                                 /** @description Unix timestamp (in seconds) indicating when this parent block was mined */
                                 parent_burn_block_time: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this parent block was mined. */
                                 parent_burn_block_time_iso: string;
                                 /** @description Set to `true` if block corresponds to the canonical chain tip */
                                 canonical: boolean;
+                                tenure_height: number | null;
                                 /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                                 tx_index: number;
                                 /** @description Status of the transaction */
@@ -21313,12 +21549,15 @@ export interface operations {
                                 burn_block_height: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this block was mined. */
                                 burn_block_time_iso: string;
+                                /** @description The only hash that can uniquely identify an anchored block or an unconfirmed state trie */
+                                index_block_hash: string;
                                 /** @description Unix timestamp (in seconds) indicating when this parent block was mined */
                                 parent_burn_block_time: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this parent block was mined. */
                                 parent_burn_block_time_iso: string;
                                 /** @description Set to `true` if block corresponds to the canonical chain tip */
                                 canonical: boolean;
+                                tenure_height: number | null;
                                 /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                                 tx_index: number;
                                 /** @description Status of the transaction */
@@ -21535,12 +21774,15 @@ export interface operations {
                                 burn_block_height: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this block was mined. */
                                 burn_block_time_iso: string;
+                                /** @description The only hash that can uniquely identify an anchored block or an unconfirmed state trie */
+                                index_block_hash: string;
                                 /** @description Unix timestamp (in seconds) indicating when this parent block was mined */
                                 parent_burn_block_time: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this parent block was mined. */
                                 parent_burn_block_time_iso: string;
                                 /** @description Set to `true` if block corresponds to the canonical chain tip */
                                 canonical: boolean;
+                                tenure_height: number | null;
                                 /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                                 tx_index: number;
                                 /** @description Status of the transaction */
@@ -21749,12 +21991,15 @@ export interface operations {
                                 burn_block_height: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this block was mined. */
                                 burn_block_time_iso: string;
+                                /** @description The only hash that can uniquely identify an anchored block or an unconfirmed state trie */
+                                index_block_hash: string;
                                 /** @description Unix timestamp (in seconds) indicating when this parent block was mined */
                                 parent_burn_block_time: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this parent block was mined. */
                                 parent_burn_block_time_iso: string;
                                 /** @description Set to `true` if block corresponds to the canonical chain tip */
                                 canonical: boolean;
+                                tenure_height: number | null;
                                 /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                                 tx_index: number;
                                 /** @description Status of the transaction */
@@ -21963,12 +22208,15 @@ export interface operations {
                                 burn_block_height: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this block was mined. */
                                 burn_block_time_iso: string;
+                                /** @description The only hash that can uniquely identify an anchored block or an unconfirmed state trie */
+                                index_block_hash: string;
                                 /** @description Unix timestamp (in seconds) indicating when this parent block was mined */
                                 parent_burn_block_time: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this parent block was mined. */
                                 parent_burn_block_time_iso: string;
                                 /** @description Set to `true` if block corresponds to the canonical chain tip */
                                 canonical: boolean;
+                                tenure_height: number | null;
                                 /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                                 tx_index: number;
                                 /** @description Status of the transaction */
@@ -22353,6 +22601,8 @@ export interface operations {
                  * @example true
                  */
                 unanchored?: boolean;
+                /** @description Exclude function_args from contract call responses for smaller transaction sizes. */
+                exclude_function_args?: boolean;
             };
             header?: never;
             path: {
@@ -22461,6 +22711,7 @@ export interface operations {
                             anchor_mode: "on_chain_only" | "off_chain_only" | "any";
                             /** @description Status of the transaction */
                             tx_status: "pending" | "dropped_replace_by_fee" | "dropped_replace_across_fork" | "dropped_too_expensive" | "dropped_stale_garbage_collect" | "dropped_problematic";
+                            replaced_by_tx_id: string | null;
                             /** @description A unix timestamp (in seconds) indicating when the transaction broadcast was received by the node. */
                             receipt_time: number;
                             /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when the transaction broadcast was received by the node. */
@@ -22560,6 +22811,7 @@ export interface operations {
                             anchor_mode: "on_chain_only" | "off_chain_only" | "any";
                             /** @description Status of the transaction */
                             tx_status: "pending" | "dropped_replace_by_fee" | "dropped_replace_across_fork" | "dropped_too_expensive" | "dropped_stale_garbage_collect" | "dropped_problematic";
+                            replaced_by_tx_id: string | null;
                             /** @description A unix timestamp (in seconds) indicating when the transaction broadcast was received by the node. */
                             receipt_time: number;
                             /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when the transaction broadcast was received by the node. */
@@ -22659,6 +22911,7 @@ export interface operations {
                             anchor_mode: "on_chain_only" | "off_chain_only" | "any";
                             /** @description Status of the transaction */
                             tx_status: "pending" | "dropped_replace_by_fee" | "dropped_replace_across_fork" | "dropped_too_expensive" | "dropped_stale_garbage_collect" | "dropped_problematic";
+                            replaced_by_tx_id: string | null;
                             /** @description A unix timestamp (in seconds) indicating when the transaction broadcast was received by the node. */
                             receipt_time: number;
                             /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when the transaction broadcast was received by the node. */
@@ -22765,6 +23018,7 @@ export interface operations {
                             anchor_mode: "on_chain_only" | "off_chain_only" | "any";
                             /** @description Status of the transaction */
                             tx_status: "pending" | "dropped_replace_by_fee" | "dropped_replace_across_fork" | "dropped_too_expensive" | "dropped_stale_garbage_collect" | "dropped_problematic";
+                            replaced_by_tx_id: string | null;
                             /** @description A unix timestamp (in seconds) indicating when the transaction broadcast was received by the node. */
                             receipt_time: number;
                             /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when the transaction broadcast was received by the node. */
@@ -22863,6 +23117,7 @@ export interface operations {
                             anchor_mode: "on_chain_only" | "off_chain_only" | "any";
                             /** @description Status of the transaction */
                             tx_status: "pending" | "dropped_replace_by_fee" | "dropped_replace_across_fork" | "dropped_too_expensive" | "dropped_stale_garbage_collect" | "dropped_problematic";
+                            replaced_by_tx_id: string | null;
                             /** @description A unix timestamp (in seconds) indicating when the transaction broadcast was received by the node. */
                             receipt_time: number;
                             /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when the transaction broadcast was received by the node. */
@@ -22961,6 +23216,7 @@ export interface operations {
                             anchor_mode: "on_chain_only" | "off_chain_only" | "any";
                             /** @description Status of the transaction */
                             tx_status: "pending" | "dropped_replace_by_fee" | "dropped_replace_across_fork" | "dropped_too_expensive" | "dropped_stale_garbage_collect" | "dropped_problematic";
+                            replaced_by_tx_id: string | null;
                             /** @description A unix timestamp (in seconds) indicating when the transaction broadcast was received by the node. */
                             receipt_time: number;
                             /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when the transaction broadcast was received by the node. */
@@ -23313,12 +23569,15 @@ export interface operations {
                                 burn_block_height: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this block was mined. */
                                 burn_block_time_iso: string;
+                                /** @description The only hash that can uniquely identify an anchored block or an unconfirmed state trie */
+                                index_block_hash: string;
                                 /** @description Unix timestamp (in seconds) indicating when this parent block was mined */
                                 parent_burn_block_time: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this parent block was mined. */
                                 parent_burn_block_time_iso: string;
                                 /** @description Set to `true` if block corresponds to the canonical chain tip */
                                 canonical: boolean;
+                                tenure_height: number | null;
                                 /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                                 tx_index: number;
                                 /** @description Status of the transaction */
@@ -23528,12 +23787,15 @@ export interface operations {
                                 burn_block_height: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this block was mined. */
                                 burn_block_time_iso: string;
+                                /** @description The only hash that can uniquely identify an anchored block or an unconfirmed state trie */
+                                index_block_hash: string;
                                 /** @description Unix timestamp (in seconds) indicating when this parent block was mined */
                                 parent_burn_block_time: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this parent block was mined. */
                                 parent_burn_block_time_iso: string;
                                 /** @description Set to `true` if block corresponds to the canonical chain tip */
                                 canonical: boolean;
+                                tenure_height: number | null;
                                 /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                                 tx_index: number;
                                 /** @description Status of the transaction */
@@ -23743,12 +24005,15 @@ export interface operations {
                                 burn_block_height: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this block was mined. */
                                 burn_block_time_iso: string;
+                                /** @description The only hash that can uniquely identify an anchored block or an unconfirmed state trie */
+                                index_block_hash: string;
                                 /** @description Unix timestamp (in seconds) indicating when this parent block was mined */
                                 parent_burn_block_time: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this parent block was mined. */
                                 parent_burn_block_time_iso: string;
                                 /** @description Set to `true` if block corresponds to the canonical chain tip */
                                 canonical: boolean;
+                                tenure_height: number | null;
                                 /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                                 tx_index: number;
                                 /** @description Status of the transaction */
@@ -23965,12 +24230,15 @@ export interface operations {
                                 burn_block_height: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this block was mined. */
                                 burn_block_time_iso: string;
+                                /** @description The only hash that can uniquely identify an anchored block or an unconfirmed state trie */
+                                index_block_hash: string;
                                 /** @description Unix timestamp (in seconds) indicating when this parent block was mined */
                                 parent_burn_block_time: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this parent block was mined. */
                                 parent_burn_block_time_iso: string;
                                 /** @description Set to `true` if block corresponds to the canonical chain tip */
                                 canonical: boolean;
+                                tenure_height: number | null;
                                 /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                                 tx_index: number;
                                 /** @description Status of the transaction */
@@ -24179,12 +24447,15 @@ export interface operations {
                                 burn_block_height: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this block was mined. */
                                 burn_block_time_iso: string;
+                                /** @description The only hash that can uniquely identify an anchored block or an unconfirmed state trie */
+                                index_block_hash: string;
                                 /** @description Unix timestamp (in seconds) indicating when this parent block was mined */
                                 parent_burn_block_time: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this parent block was mined. */
                                 parent_burn_block_time_iso: string;
                                 /** @description Set to `true` if block corresponds to the canonical chain tip */
                                 canonical: boolean;
+                                tenure_height: number | null;
                                 /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                                 tx_index: number;
                                 /** @description Status of the transaction */
@@ -24393,12 +24664,15 @@ export interface operations {
                                 burn_block_height: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this block was mined. */
                                 burn_block_time_iso: string;
+                                /** @description The only hash that can uniquely identify an anchored block or an unconfirmed state trie */
+                                index_block_hash: string;
                                 /** @description Unix timestamp (in seconds) indicating when this parent block was mined */
                                 parent_burn_block_time: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this parent block was mined. */
                                 parent_burn_block_time_iso: string;
                                 /** @description Set to `true` if block corresponds to the canonical chain tip */
                                 canonical: boolean;
+                                tenure_height: number | null;
                                 /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                                 tx_index: number;
                                 /** @description Status of the transaction */
@@ -24605,6 +24879,7 @@ export interface operations {
                                 anchor_mode: "on_chain_only" | "off_chain_only" | "any";
                                 /** @description Status of the transaction */
                                 tx_status: "pending" | "dropped_replace_by_fee" | "dropped_replace_across_fork" | "dropped_too_expensive" | "dropped_stale_garbage_collect" | "dropped_problematic";
+                                replaced_by_tx_id: string | null;
                                 /** @description A unix timestamp (in seconds) indicating when the transaction broadcast was received by the node. */
                                 receipt_time: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when the transaction broadcast was received by the node. */
@@ -24704,6 +24979,7 @@ export interface operations {
                                 anchor_mode: "on_chain_only" | "off_chain_only" | "any";
                                 /** @description Status of the transaction */
                                 tx_status: "pending" | "dropped_replace_by_fee" | "dropped_replace_across_fork" | "dropped_too_expensive" | "dropped_stale_garbage_collect" | "dropped_problematic";
+                                replaced_by_tx_id: string | null;
                                 /** @description A unix timestamp (in seconds) indicating when the transaction broadcast was received by the node. */
                                 receipt_time: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when the transaction broadcast was received by the node. */
@@ -24803,6 +25079,7 @@ export interface operations {
                                 anchor_mode: "on_chain_only" | "off_chain_only" | "any";
                                 /** @description Status of the transaction */
                                 tx_status: "pending" | "dropped_replace_by_fee" | "dropped_replace_across_fork" | "dropped_too_expensive" | "dropped_stale_garbage_collect" | "dropped_problematic";
+                                replaced_by_tx_id: string | null;
                                 /** @description A unix timestamp (in seconds) indicating when the transaction broadcast was received by the node. */
                                 receipt_time: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when the transaction broadcast was received by the node. */
@@ -24909,6 +25186,7 @@ export interface operations {
                                 anchor_mode: "on_chain_only" | "off_chain_only" | "any";
                                 /** @description Status of the transaction */
                                 tx_status: "pending" | "dropped_replace_by_fee" | "dropped_replace_across_fork" | "dropped_too_expensive" | "dropped_stale_garbage_collect" | "dropped_problematic";
+                                replaced_by_tx_id: string | null;
                                 /** @description A unix timestamp (in seconds) indicating when the transaction broadcast was received by the node. */
                                 receipt_time: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when the transaction broadcast was received by the node. */
@@ -25007,6 +25285,7 @@ export interface operations {
                                 anchor_mode: "on_chain_only" | "off_chain_only" | "any";
                                 /** @description Status of the transaction */
                                 tx_status: "pending" | "dropped_replace_by_fee" | "dropped_replace_across_fork" | "dropped_too_expensive" | "dropped_stale_garbage_collect" | "dropped_problematic";
+                                replaced_by_tx_id: string | null;
                                 /** @description A unix timestamp (in seconds) indicating when the transaction broadcast was received by the node. */
                                 receipt_time: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when the transaction broadcast was received by the node. */
@@ -25105,6 +25384,7 @@ export interface operations {
                                 anchor_mode: "on_chain_only" | "off_chain_only" | "any";
                                 /** @description Status of the transaction */
                                 tx_status: "pending" | "dropped_replace_by_fee" | "dropped_replace_across_fork" | "dropped_too_expensive" | "dropped_stale_garbage_collect" | "dropped_problematic";
+                                replaced_by_tx_id: string | null;
                                 /** @description A unix timestamp (in seconds) indicating when the transaction broadcast was received by the node. */
                                 receipt_time: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when the transaction broadcast was received by the node. */
@@ -25222,6 +25502,7 @@ export interface operations {
                                 anchor_mode: "on_chain_only" | "off_chain_only" | "any";
                                 /** @description Status of the transaction */
                                 tx_status: "pending" | "dropped_replace_by_fee" | "dropped_replace_across_fork" | "dropped_too_expensive" | "dropped_stale_garbage_collect" | "dropped_problematic";
+                                replaced_by_tx_id: string | null;
                                 /** @description A unix timestamp (in seconds) indicating when the transaction broadcast was received by the node. */
                                 receipt_time: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when the transaction broadcast was received by the node. */
@@ -25321,6 +25602,7 @@ export interface operations {
                                 anchor_mode: "on_chain_only" | "off_chain_only" | "any";
                                 /** @description Status of the transaction */
                                 tx_status: "pending" | "dropped_replace_by_fee" | "dropped_replace_across_fork" | "dropped_too_expensive" | "dropped_stale_garbage_collect" | "dropped_problematic";
+                                replaced_by_tx_id: string | null;
                                 /** @description A unix timestamp (in seconds) indicating when the transaction broadcast was received by the node. */
                                 receipt_time: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when the transaction broadcast was received by the node. */
@@ -25420,6 +25702,7 @@ export interface operations {
                                 anchor_mode: "on_chain_only" | "off_chain_only" | "any";
                                 /** @description Status of the transaction */
                                 tx_status: "pending" | "dropped_replace_by_fee" | "dropped_replace_across_fork" | "dropped_too_expensive" | "dropped_stale_garbage_collect" | "dropped_problematic";
+                                replaced_by_tx_id: string | null;
                                 /** @description A unix timestamp (in seconds) indicating when the transaction broadcast was received by the node. */
                                 receipt_time: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when the transaction broadcast was received by the node. */
@@ -25526,6 +25809,7 @@ export interface operations {
                                 anchor_mode: "on_chain_only" | "off_chain_only" | "any";
                                 /** @description Status of the transaction */
                                 tx_status: "pending" | "dropped_replace_by_fee" | "dropped_replace_across_fork" | "dropped_too_expensive" | "dropped_stale_garbage_collect" | "dropped_problematic";
+                                replaced_by_tx_id: string | null;
                                 /** @description A unix timestamp (in seconds) indicating when the transaction broadcast was received by the node. */
                                 receipt_time: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when the transaction broadcast was received by the node. */
@@ -25624,6 +25908,7 @@ export interface operations {
                                 anchor_mode: "on_chain_only" | "off_chain_only" | "any";
                                 /** @description Status of the transaction */
                                 tx_status: "pending" | "dropped_replace_by_fee" | "dropped_replace_across_fork" | "dropped_too_expensive" | "dropped_stale_garbage_collect" | "dropped_problematic";
+                                replaced_by_tx_id: string | null;
                                 /** @description A unix timestamp (in seconds) indicating when the transaction broadcast was received by the node. */
                                 receipt_time: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when the transaction broadcast was received by the node. */
@@ -25722,6 +26007,7 @@ export interface operations {
                                 anchor_mode: "on_chain_only" | "off_chain_only" | "any";
                                 /** @description Status of the transaction */
                                 tx_status: "pending" | "dropped_replace_by_fee" | "dropped_replace_across_fork" | "dropped_too_expensive" | "dropped_stale_garbage_collect" | "dropped_problematic";
+                                replaced_by_tx_id: string | null;
                                 /** @description A unix timestamp (in seconds) indicating when the transaction broadcast was received by the node. */
                                 receipt_time: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when the transaction broadcast was received by the node. */
@@ -25855,12 +26141,15 @@ export interface operations {
                                 burn_block_height: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this block was mined. */
                                 burn_block_time_iso: string;
+                                /** @description The only hash that can uniquely identify an anchored block or an unconfirmed state trie */
+                                index_block_hash: string;
                                 /** @description Unix timestamp (in seconds) indicating when this parent block was mined */
                                 parent_burn_block_time: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this parent block was mined. */
                                 parent_burn_block_time_iso: string;
                                 /** @description Set to `true` if block corresponds to the canonical chain tip */
                                 canonical: boolean;
+                                tenure_height: number | null;
                                 /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                                 tx_index: number;
                                 /** @description Status of the transaction */
@@ -26070,12 +26359,15 @@ export interface operations {
                                 burn_block_height: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this block was mined. */
                                 burn_block_time_iso: string;
+                                /** @description The only hash that can uniquely identify an anchored block or an unconfirmed state trie */
+                                index_block_hash: string;
                                 /** @description Unix timestamp (in seconds) indicating when this parent block was mined */
                                 parent_burn_block_time: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this parent block was mined. */
                                 parent_burn_block_time_iso: string;
                                 /** @description Set to `true` if block corresponds to the canonical chain tip */
                                 canonical: boolean;
+                                tenure_height: number | null;
                                 /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                                 tx_index: number;
                                 /** @description Status of the transaction */
@@ -26285,12 +26577,15 @@ export interface operations {
                                 burn_block_height: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this block was mined. */
                                 burn_block_time_iso: string;
+                                /** @description The only hash that can uniquely identify an anchored block or an unconfirmed state trie */
+                                index_block_hash: string;
                                 /** @description Unix timestamp (in seconds) indicating when this parent block was mined */
                                 parent_burn_block_time: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this parent block was mined. */
                                 parent_burn_block_time_iso: string;
                                 /** @description Set to `true` if block corresponds to the canonical chain tip */
                                 canonical: boolean;
+                                tenure_height: number | null;
                                 /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                                 tx_index: number;
                                 /** @description Status of the transaction */
@@ -26507,12 +26802,15 @@ export interface operations {
                                 burn_block_height: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this block was mined. */
                                 burn_block_time_iso: string;
+                                /** @description The only hash that can uniquely identify an anchored block or an unconfirmed state trie */
+                                index_block_hash: string;
                                 /** @description Unix timestamp (in seconds) indicating when this parent block was mined */
                                 parent_burn_block_time: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this parent block was mined. */
                                 parent_burn_block_time_iso: string;
                                 /** @description Set to `true` if block corresponds to the canonical chain tip */
                                 canonical: boolean;
+                                tenure_height: number | null;
                                 /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                                 tx_index: number;
                                 /** @description Status of the transaction */
@@ -26721,12 +27019,15 @@ export interface operations {
                                 burn_block_height: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this block was mined. */
                                 burn_block_time_iso: string;
+                                /** @description The only hash that can uniquely identify an anchored block or an unconfirmed state trie */
+                                index_block_hash: string;
                                 /** @description Unix timestamp (in seconds) indicating when this parent block was mined */
                                 parent_burn_block_time: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this parent block was mined. */
                                 parent_burn_block_time_iso: string;
                                 /** @description Set to `true` if block corresponds to the canonical chain tip */
                                 canonical: boolean;
+                                tenure_height: number | null;
                                 /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                                 tx_index: number;
                                 /** @description Status of the transaction */
@@ -26935,12 +27236,15 @@ export interface operations {
                                 burn_block_height: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this block was mined. */
                                 burn_block_time_iso: string;
+                                /** @description The only hash that can uniquely identify an anchored block or an unconfirmed state trie */
+                                index_block_hash: string;
                                 /** @description Unix timestamp (in seconds) indicating when this parent block was mined */
                                 parent_burn_block_time: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this parent block was mined. */
                                 parent_burn_block_time_iso: string;
                                 /** @description Set to `true` if block corresponds to the canonical chain tip */
                                 canonical: boolean;
+                                tenure_height: number | null;
                                 /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                                 tx_index: number;
                                 /** @description Status of the transaction */
@@ -27347,7 +27651,7 @@ export interface operations {
                 limit?: number;
                 /** @description Result offset */
                 offset?: number;
-                /** @description Cursor for pagination */
+                /** @description Cursor for block pagination */
                 cursor?: string;
             };
             header?: never;
@@ -27680,12 +27984,15 @@ export interface operations {
                             burn_block_height: number;
                             /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this block was mined. */
                             burn_block_time_iso: string;
+                            /** @description The only hash that can uniquely identify an anchored block or an unconfirmed state trie */
+                            index_block_hash: string;
                             /** @description Unix timestamp (in seconds) indicating when this parent block was mined */
                             parent_burn_block_time: number;
                             /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this parent block was mined. */
                             parent_burn_block_time_iso: string;
                             /** @description Set to `true` if block corresponds to the canonical chain tip */
                             canonical: boolean;
+                            tenure_height: number | null;
                             /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                             tx_index: number;
                             /** @description Status of the transaction */
@@ -27895,12 +28202,15 @@ export interface operations {
                             burn_block_height: number;
                             /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this block was mined. */
                             burn_block_time_iso: string;
+                            /** @description The only hash that can uniquely identify an anchored block or an unconfirmed state trie */
+                            index_block_hash: string;
                             /** @description Unix timestamp (in seconds) indicating when this parent block was mined */
                             parent_burn_block_time: number;
                             /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this parent block was mined. */
                             parent_burn_block_time_iso: string;
                             /** @description Set to `true` if block corresponds to the canonical chain tip */
                             canonical: boolean;
+                            tenure_height: number | null;
                             /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                             tx_index: number;
                             /** @description Status of the transaction */
@@ -28110,12 +28420,15 @@ export interface operations {
                             burn_block_height: number;
                             /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this block was mined. */
                             burn_block_time_iso: string;
+                            /** @description The only hash that can uniquely identify an anchored block or an unconfirmed state trie */
+                            index_block_hash: string;
                             /** @description Unix timestamp (in seconds) indicating when this parent block was mined */
                             parent_burn_block_time: number;
                             /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this parent block was mined. */
                             parent_burn_block_time_iso: string;
                             /** @description Set to `true` if block corresponds to the canonical chain tip */
                             canonical: boolean;
+                            tenure_height: number | null;
                             /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                             tx_index: number;
                             /** @description Status of the transaction */
@@ -28332,12 +28645,15 @@ export interface operations {
                             burn_block_height: number;
                             /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this block was mined. */
                             burn_block_time_iso: string;
+                            /** @description The only hash that can uniquely identify an anchored block or an unconfirmed state trie */
+                            index_block_hash: string;
                             /** @description Unix timestamp (in seconds) indicating when this parent block was mined */
                             parent_burn_block_time: number;
                             /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this parent block was mined. */
                             parent_burn_block_time_iso: string;
                             /** @description Set to `true` if block corresponds to the canonical chain tip */
                             canonical: boolean;
+                            tenure_height: number | null;
                             /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                             tx_index: number;
                             /** @description Status of the transaction */
@@ -28546,12 +28862,15 @@ export interface operations {
                             burn_block_height: number;
                             /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this block was mined. */
                             burn_block_time_iso: string;
+                            /** @description The only hash that can uniquely identify an anchored block or an unconfirmed state trie */
+                            index_block_hash: string;
                             /** @description Unix timestamp (in seconds) indicating when this parent block was mined */
                             parent_burn_block_time: number;
                             /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this parent block was mined. */
                             parent_burn_block_time_iso: string;
                             /** @description Set to `true` if block corresponds to the canonical chain tip */
                             canonical: boolean;
+                            tenure_height: number | null;
                             /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                             tx_index: number;
                             /** @description Status of the transaction */
@@ -28760,12 +29079,15 @@ export interface operations {
                             burn_block_height: number;
                             /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this block was mined. */
                             burn_block_time_iso: string;
+                            /** @description The only hash that can uniquely identify an anchored block or an unconfirmed state trie */
+                            index_block_hash: string;
                             /** @description Unix timestamp (in seconds) indicating when this parent block was mined */
                             parent_burn_block_time: number;
                             /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this parent block was mined. */
                             parent_burn_block_time_iso: string;
                             /** @description Set to `true` if block corresponds to the canonical chain tip */
                             canonical: boolean;
+                            tenure_height: number | null;
                             /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                             tx_index: number;
                             /** @description Status of the transaction */
@@ -29165,7 +29487,7 @@ export interface operations {
                 limit?: number;
                 /** @description Result offset */
                 offset?: number;
-                /** @description Cursor for pagination */
+                /** @description Cursor for block pagination */
                 cursor?: string;
             };
             header?: never;
@@ -29651,6 +29973,8 @@ export interface operations {
                 limit?: number;
                 /** @description Result offset */
                 offset?: number;
+                /** @description Exclude function_args from contract call responses for smaller transaction sizes. */
+                exclude_function_args?: boolean;
             };
             header?: never;
             path: {
@@ -29772,12 +30096,15 @@ export interface operations {
                                 burn_block_height: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this block was mined. */
                                 burn_block_time_iso: string;
+                                /** @description The only hash that can uniquely identify an anchored block or an unconfirmed state trie */
+                                index_block_hash: string;
                                 /** @description Unix timestamp (in seconds) indicating when this parent block was mined */
                                 parent_burn_block_time: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this parent block was mined. */
                                 parent_burn_block_time_iso: string;
                                 /** @description Set to `true` if block corresponds to the canonical chain tip */
                                 canonical: boolean;
+                                tenure_height: number | null;
                                 /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                                 tx_index: number;
                                 /** @description Status of the transaction */
@@ -29987,12 +30314,15 @@ export interface operations {
                                 burn_block_height: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this block was mined. */
                                 burn_block_time_iso: string;
+                                /** @description The only hash that can uniquely identify an anchored block or an unconfirmed state trie */
+                                index_block_hash: string;
                                 /** @description Unix timestamp (in seconds) indicating when this parent block was mined */
                                 parent_burn_block_time: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this parent block was mined. */
                                 parent_burn_block_time_iso: string;
                                 /** @description Set to `true` if block corresponds to the canonical chain tip */
                                 canonical: boolean;
+                                tenure_height: number | null;
                                 /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                                 tx_index: number;
                                 /** @description Status of the transaction */
@@ -30202,12 +30532,15 @@ export interface operations {
                                 burn_block_height: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this block was mined. */
                                 burn_block_time_iso: string;
+                                /** @description The only hash that can uniquely identify an anchored block or an unconfirmed state trie */
+                                index_block_hash: string;
                                 /** @description Unix timestamp (in seconds) indicating when this parent block was mined */
                                 parent_burn_block_time: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this parent block was mined. */
                                 parent_burn_block_time_iso: string;
                                 /** @description Set to `true` if block corresponds to the canonical chain tip */
                                 canonical: boolean;
+                                tenure_height: number | null;
                                 /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                                 tx_index: number;
                                 /** @description Status of the transaction */
@@ -30424,12 +30757,15 @@ export interface operations {
                                 burn_block_height: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this block was mined. */
                                 burn_block_time_iso: string;
+                                /** @description The only hash that can uniquely identify an anchored block or an unconfirmed state trie */
+                                index_block_hash: string;
                                 /** @description Unix timestamp (in seconds) indicating when this parent block was mined */
                                 parent_burn_block_time: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this parent block was mined. */
                                 parent_burn_block_time_iso: string;
                                 /** @description Set to `true` if block corresponds to the canonical chain tip */
                                 canonical: boolean;
+                                tenure_height: number | null;
                                 /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                                 tx_index: number;
                                 /** @description Status of the transaction */
@@ -30638,12 +30974,15 @@ export interface operations {
                                 burn_block_height: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this block was mined. */
                                 burn_block_time_iso: string;
+                                /** @description The only hash that can uniquely identify an anchored block or an unconfirmed state trie */
+                                index_block_hash: string;
                                 /** @description Unix timestamp (in seconds) indicating when this parent block was mined */
                                 parent_burn_block_time: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this parent block was mined. */
                                 parent_burn_block_time_iso: string;
                                 /** @description Set to `true` if block corresponds to the canonical chain tip */
                                 canonical: boolean;
+                                tenure_height: number | null;
                                 /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                                 tx_index: number;
                                 /** @description Status of the transaction */
@@ -30852,12 +31191,15 @@ export interface operations {
                                 burn_block_height: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this block was mined. */
                                 burn_block_time_iso: string;
+                                /** @description The only hash that can uniquely identify an anchored block or an unconfirmed state trie */
+                                index_block_hash: string;
                                 /** @description Unix timestamp (in seconds) indicating when this parent block was mined */
                                 parent_burn_block_time: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this parent block was mined. */
                                 parent_burn_block_time_iso: string;
                                 /** @description Set to `true` if block corresponds to the canonical chain tip */
                                 canonical: boolean;
+                                tenure_height: number | null;
                                 /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                                 tx_index: number;
                                 /** @description Status of the transaction */
