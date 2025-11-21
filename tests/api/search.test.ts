@@ -555,6 +555,7 @@ describe('search tests', () => {
           anchor_mode: 'any',
           is_unanchored: false,
           block_hash: '0x1234000000000000000000000000000000000000000000000000000000000000',
+          index_block_hash: '0xdeadbeef',
           parent_block_hash: '0x',
           block_height: 1,
           block_time: 2837565,
@@ -1553,6 +1554,7 @@ describe('search tests', () => {
         metadata: {
           anchor_mode: 'any',
           block_hash: '0x1234',
+          index_block_hash: '0x1234',
           block_height: 1,
           block_time: 2837565,
           block_time_iso: '1970-02-02T20:12:45.000Z',
