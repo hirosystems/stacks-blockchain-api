@@ -294,6 +294,12 @@ export function abiColumn(sql: PgSqlClient, tableName: string = 'txs'): postgres
     `;
 }
 
+export function tenureHeightColumn(sql: PgSqlClient): postgres.Fragment {
+  return sql`
+    SELECT tenure_height FROM blocks WHERE index_block_hash = txs.index_block_hash
+  `;
+}
+
 export function parseMempoolTxQueryResult(result: MempoolTxQueryResult): DbMempoolTx {
   const tx: DbMempoolTx = {
     pruned: result.pruned,

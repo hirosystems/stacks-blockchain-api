@@ -555,6 +555,7 @@ describe('search tests', () => {
           anchor_mode: 'any',
           is_unanchored: false,
           block_hash: '0x1234000000000000000000000000000000000000000000000000000000000000',
+          index_block_hash: '0xdeadbeef',
           parent_block_hash: '0x',
           block_height: 1,
           block_time: 2837565,
@@ -565,6 +566,7 @@ describe('search tests', () => {
           parent_burn_block_time: 1626122935,
           parent_burn_block_time_iso: '2021-07-12T20:48:55.000Z',
           canonical: true,
+          tenure_height: 1,
           tx_index: 4,
           tx_status: 'success',
           tx_result: {
@@ -1568,6 +1570,7 @@ describe('search tests', () => {
           execution_cost_write_count: 0,
           execution_cost_write_length: 0,
           fee_rate: '1234',
+          index_block_hash: '0x1234',
           is_unanchored: false,
           microblock_canonical: true,
           microblock_hash: '0x',
@@ -1585,6 +1588,7 @@ describe('search tests', () => {
             source_code: '(some-src)',
           },
           sponsored: false,
+          tenure_height: 1,
           tx_id: '0x1111880000000000000000000000000000000000000000000000000000000000',
           tx_index: 0,
           tx_result: {

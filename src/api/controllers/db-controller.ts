@@ -1125,6 +1125,7 @@ function parseDbAbstractTx(dbTx: DbTx, baseTx: BaseTransaction): AbstractTransac
     ...baseTx,
     is_unanchored: dbTx.block_hash === '0x',
     block_hash: dbTx.block_hash,
+    index_block_hash: dbTx.index_block_hash,
     parent_block_hash: dbTx.parent_block_hash,
     block_height: dbTx.block_height,
     block_time: dbTx.block_time || dbTx.burn_block_time,
@@ -1140,6 +1141,7 @@ function parseDbAbstractTx(dbTx: DbTx, baseTx: BaseTransaction): AbstractTransac
     parent_burn_block_time_iso:
       dbTx.parent_burn_block_time > 0 ? unixEpochToIso(dbTx.parent_burn_block_time) : '',
     canonical: dbTx.canonical,
+    tenure_height: dbTx.tenure_height || dbTx.block_height,
     tx_index: dbTx.tx_index,
     tx_status: getTxStatusString(dbTx.status) as TransactionStatus,
     tx_result: {
