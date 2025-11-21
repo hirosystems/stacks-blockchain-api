@@ -55,6 +55,9 @@ const AbstractTransactionProperties = {
   block_hash: Type.String({
     description: 'Hash of the blocked this transactions was associated with',
   }),
+  index_block_hash: Type.String({
+    description: 'Hash of the block index this transactions was associated with',
+  }),
   block_height: Type.Integer({
     description: 'Height of the block this transactions was associated with',
   }),

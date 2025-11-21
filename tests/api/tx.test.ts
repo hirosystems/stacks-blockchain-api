@@ -462,6 +462,7 @@ describe('tx tests', () => {
 
     const expectedResp = {
       block_hash: '0xff',
+      index_block_hash: '0x1234',
       block_height: 1,
       block_time: 1594647995,
       block_time_iso: '2020-07-13T13:46:35.000Z',
@@ -618,6 +619,7 @@ describe('tx tests', () => {
 
     const expectedResp = {
       block_hash: '0xff',
+      index_block_hash: '0x1234',
       block_height: 1,
       block_time: 1594647995,
       block_time_iso: '2020-07-13T13:46:35.000Z',
@@ -773,6 +775,7 @@ describe('tx tests', () => {
 
     const expectedResp = {
       block_hash: '0xff',
+      index_block_hash: '0x1234',
       block_height: 1,
       block_time: 1594647995,
       block_time_iso: '2020-07-13T13:46:35.000Z',
@@ -962,6 +965,7 @@ describe('tx tests', () => {
 
     const expectedResp = {
       block_hash: '0xff',
+      index_block_hash: '0x1234',
       block_height: 1,
       block_time: 1594647995,
       block_time_iso: '2020-07-13T13:46:35.000Z',
@@ -1601,6 +1605,7 @@ describe('tx tests', () => {
 
     const expectedResp: Transaction = {
       block_hash: '0xff',
+      index_block_hash: '0x1234',
       block_height: 1,
       block_time: 1594647995,
       block_time_iso: '2020-07-13T13:46:35.000Z',
@@ -1818,6 +1823,7 @@ describe('tx tests', () => {
 
     const expectedResp = {
       block_hash: '0x5678',
+      index_block_hash: '0x1234',
       block_height: 1,
       block_time: 1594647995,
       block_time_iso: '2020-07-13T13:46:35.000Z',
@@ -1980,6 +1986,7 @@ describe('tx tests', () => {
 
     const expectedResp = {
       block_hash: '0xff',
+      index_block_hash: '0x1234',
       block_height: 1,
       block_time: 1594647995,
       block_time_iso: '2020-07-13T13:46:35.000Z',
@@ -3643,6 +3650,7 @@ describe('tx tests', () => {
       parent_burn_block_time_iso: '2021-07-12T20:48:55.000Z',
       tx_status: 'success',
       block_hash: '0x1234',
+      index_block_hash: '0xdeadbeef',
       block_height: 1,
       block_time: 1594647995,
       block_time_iso: '2020-07-13T13:46:35.000Z',
@@ -3827,6 +3835,7 @@ describe('tx tests', () => {
       anchor_mode: 'any',
       is_unanchored: false,
       block_hash: '0xd10ccecfd7ac9e5f8a10de0532fac028559b31a6ff494d82147f6297fb663139',
+      index_block_hash: '0xd10ccecfd7ac9e5f8a10de0532fac028559b31a6ff494d82147f6297fb663139',
       block_time: 1637003433,
       block_time_iso: '2021-11-15T19:10:33.000Z',
       parent_block_hash: '0x',
@@ -3929,6 +3938,7 @@ describe('tx tests', () => {
       anchor_mode: 'any',
       is_unanchored: false,
       block_hash: '0xd10ccecfd7ac9e5f8a10de0532fac028559b31a6ff494d82147f6297fb663139',
+      index_block_hash: '0xd10ccecfd7ac9e5f8a10de0532fac028559b31a6ff494d82147f6297fb663139',
       parent_block_hash: '0x',
       block_height: 1,
       block_time: 1637003433,
@@ -4290,6 +4300,7 @@ describe('tx tests', () => {
     expect(json.results[0]).toStrictEqual({
       anchor_mode: 'any',
       block_hash: '0x00000000000000000001e2ee7f0c6bd5361b5e7afd76156ca7d6f524ee5ca3d8',
+      index_block_hash: '0xdeadbeef',
       block_height: 1,
       block_time: 94869287,
       block_time_iso: '1973-01-03T00:34:47.000Z',
