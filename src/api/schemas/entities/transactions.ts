@@ -61,6 +61,11 @@ const AbstractTransactionProperties = {
   block_height: Type.Integer({
     description: 'Height of the block this transactions was associated with',
   }),
+  tenure_height: Nullable(
+    Type.Integer({
+      description: 'Height of the block index (tenure) this transactions was associated with',
+    })
+  ),
   block_time: Type.Number({
     description: 'Unix timestamp (in seconds) indicating when this block was mined.',
   }),

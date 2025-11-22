@@ -744,6 +744,7 @@ export interface CoreNodeMsgBlockData {
   parent_burn_block_height: number;
   parent_burn_block_hash: string;
   block_height: number;
+  tenure_height: number | null;
   burn_block_time: number;
   burn_block_height: number;
   block_time: number;
@@ -941,6 +942,7 @@ export function parseMessageTransaction(
       parent_burn_block_hash: blockData.parent_burn_block_hash,
       parent_burn_block_time: blockData.parent_burn_block_timestamp,
       block_height: blockData.block_height,
+      tenure_height: blockData.tenure_height,
       burn_block_height: blockData.burn_block_height,
       burn_block_time: blockData.burn_block_time,
       microblock_sequence: coreTx.microblock_sequence ?? I32_MAX,
