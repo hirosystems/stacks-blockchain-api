@@ -1379,8 +1379,12 @@ export class PgStore extends BasePgStore {
     return await this.sqlTransaction(async sql => {
       const maxBlockHeight = await this.getMaxBlockHeight(sql, { includeUnanchored });
       const result = await sql<ContractTxQueryResult[]>`
-        SELECT ${sql(TX_COLUMNS)}, ${abiColumn(sql)}
+        SELECT ${sql(TX_COLUMNS)}, blocks.tenure_height, ${abiColumn(sql)}
         FROM txs
+        LEFT JOIN (
+          SELECT index_block_hash, tenure_height
+          FROM blocks
+        ) AS blocks USING (index_block_hash)
         WHERE tx_id = ${txId} AND block_height <= ${maxBlockHeight}
         ORDER BY canonical DESC, microblock_canonical DESC, block_height DESC
         LIMIT 1
@@ -3573,8 +3577,12 @@ export class PgStore extends BasePgStore {
     return await this.sqlTransaction(async sql => {
       const maxBlockHeight = await this.getMaxBlockHeight(sql, { includeUnanchored });
       const result = await sql<ContractTxQueryResult[]>`
-        SELECT ${sql(TX_COLUMNS)}, ${abiColumn(sql)}
+        SELECT ${sql(TX_COLUMNS)}, blocks.tenure_height, ${abiColumn(sql)}
         FROM txs
+        LEFT JOIN (
+          SELECT index_block_hash, tenure_height
+          FROM blocks
+        ) AS blocks USING (index_block_hash)
         WHERE tx_id IN ${sql(txIds)}
           AND block_height <= ${maxBlockHeight}
           AND canonical = true

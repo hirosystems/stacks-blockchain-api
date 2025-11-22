@@ -1125,8 +1125,10 @@ function parseDbAbstractTx(dbTx: DbTx, baseTx: BaseTransaction): AbstractTransac
     ...baseTx,
     is_unanchored: dbTx.block_hash === '0x',
     block_hash: dbTx.block_hash,
+    index_block_hash: dbTx.index_block_hash,
     parent_block_hash: dbTx.parent_block_hash,
     block_height: dbTx.block_height,
+    tenure_height: dbTx.tenure_height,
     block_time: dbTx.block_time || dbTx.burn_block_time,
     block_time_iso: dbTx.block_time
       ? unixEpochToIso(dbTx.block_time)

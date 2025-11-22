@@ -34,6 +34,7 @@ import { bufferToHex } from '@hirosystems/api-toolkit';
 
 // Default values when none given. Useful when they are irrelevant for a particular test.
 const BLOCK_HEIGHT = 1;
+const TENURE_HEIGHT = 1;
 const BLOCK_HASH = '0x123456';
 const INDEX_BLOCK_HASH = '0xdeadbeef';
 const MICROBLOCK_HASH = '0x123466';
@@ -219,6 +220,7 @@ function testTx(args?: TestTxArgs): DataStoreTxEventData {
       index_block_hash: args?.index_block_hash ?? INDEX_BLOCK_HASH,
       block_hash: args?.block_hash ?? BLOCK_HASH,
       block_height: args?.block_height ?? BLOCK_HEIGHT,
+      tenure_height: args?.tenure_height ?? TENURE_HEIGHT,
       burn_block_height: args?.block_height ?? BLOCK_HEIGHT,
       burn_block_time: args?.burn_block_time ?? BURN_BLOCK_TIME,
       block_time: args?.block_time ?? STACKS_BLOCK_TIME,

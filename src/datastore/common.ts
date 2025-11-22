@@ -185,6 +185,7 @@ export interface DbTx extends BaseTx {
   block_hash: string;
   parent_block_hash: string;
   block_height: number;
+  tenure_height: number | null;
   burn_block_time: number;
   burn_block_height: number;
   parent_burn_block_time: number;
@@ -963,6 +964,7 @@ export interface TxQueryResult {
   block_time: number;
   parent_block_hash: string;
   block_height: number;
+  tenure_height: number | null;
   burn_block_height: number;
   burn_block_time: number;
   parent_burn_block_time: number;

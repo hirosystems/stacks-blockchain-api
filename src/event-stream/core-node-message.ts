@@ -345,6 +345,7 @@ export interface CoreNodeParsedTxMessage {
   microblock_sequence: number;
   microblock_hash: string;
   block_height: number;
+  tenure_height: number | null,
   burn_block_height: number;
   burn_block_time: number;
   parent_burn_block_time: number;
