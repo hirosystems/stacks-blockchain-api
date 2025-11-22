@@ -2057,6 +2057,7 @@ export interface operations {
                             index_block_hash: string;
                             /** @description Height of the block this transactions was associated with */
                             block_height: number;
+                            tenure_height: number | null;
                             /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                             block_time: number;
                             /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) indicating when this block was mined. */
@@ -2274,6 +2275,7 @@ export interface operations {
                             index_block_hash: string;
                             /** @description Height of the block this transactions was associated with */
                             block_height: number;
+                            tenure_height: number | null;
                             /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                             block_time: number;
                             /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) indicating when this block was mined. */
@@ -2491,6 +2493,7 @@ export interface operations {
                             index_block_hash: string;
                             /** @description Height of the block this transactions was associated with */
                             block_height: number;
+                            tenure_height: number | null;
                             /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                             block_time: number;
                             /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) indicating when this block was mined. */
@@ -2715,6 +2718,7 @@ export interface operations {
                             index_block_hash: string;
                             /** @description Height of the block this transactions was associated with */
                             block_height: number;
+                            tenure_height: number | null;
                             /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                             block_time: number;
                             /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) indicating when this block was mined. */
@@ -2931,6 +2935,7 @@ export interface operations {
                             index_block_hash: string;
                             /** @description Height of the block this transactions was associated with */
                             block_height: number;
+                            tenure_height: number | null;
                             /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                             block_time: number;
                             /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) indicating when this block was mined. */
@@ -3147,6 +3152,7 @@ export interface operations {
                             index_block_hash: string;
                             /** @description Height of the block this transactions was associated with */
                             block_height: number;
+                            tenure_height: number | null;
                             /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                             block_time: number;
                             /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) indicating when this block was mined. */
@@ -3425,6 +3431,7 @@ export interface operations {
                                 index_block_hash: string;
                                 /** @description Height of the block this transactions was associated with */
                                 block_height: number;
+                                tenure_height: number | null;
                                 /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                                 block_time: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) indicating when this block was mined. */
@@ -3642,6 +3649,7 @@ export interface operations {
                                 index_block_hash: string;
                                 /** @description Height of the block this transactions was associated with */
                                 block_height: number;
+                                tenure_height: number | null;
                                 /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                                 block_time: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) indicating when this block was mined. */
@@ -3859,6 +3867,7 @@ export interface operations {
                                 index_block_hash: string;
                                 /** @description Height of the block this transactions was associated with */
                                 block_height: number;
+                                tenure_height: number | null;
                                 /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                                 block_time: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) indicating when this block was mined. */
@@ -4083,6 +4092,7 @@ export interface operations {
                                 index_block_hash: string;
                                 /** @description Height of the block this transactions was associated with */
                                 block_height: number;
+                                tenure_height: number | null;
                                 /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                                 block_time: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) indicating when this block was mined. */
@@ -4299,6 +4309,7 @@ export interface operations {
                                 index_block_hash: string;
                                 /** @description Height of the block this transactions was associated with */
                                 block_height: number;
+                                tenure_height: number | null;
                                 /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                                 block_time: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) indicating when this block was mined. */
@@ -4515,6 +4526,7 @@ export interface operations {
                                 index_block_hash: string;
                                 /** @description Height of the block this transactions was associated with */
                                 block_height: number;
+                                tenure_height: number | null;
                                 /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                                 block_time: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) indicating when this block was mined. */
@@ -6293,6 +6305,7 @@ export interface operations {
                         index_block_hash: string;
                         /** @description Height of the block this transactions was associated with */
                         block_height: number;
+                        tenure_height: number | null;
                         /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                         block_time: number;
                         /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) indicating when this block was mined. */
@@ -6510,6 +6523,7 @@ export interface operations {
                         index_block_hash: string;
                         /** @description Height of the block this transactions was associated with */
                         block_height: number;
+                        tenure_height: number | null;
                         /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                         block_time: number;
                         /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) indicating when this block was mined. */
@@ -6727,6 +6741,7 @@ export interface operations {
                         index_block_hash: string;
                         /** @description Height of the block this transactions was associated with */
                         block_height: number;
+                        tenure_height: number | null;
                         /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                         block_time: number;
                         /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) indicating when this block was mined. */
@@ -6951,6 +6966,7 @@ export interface operations {
                         index_block_hash: string;
                         /** @description Height of the block this transactions was associated with */
                         block_height: number;
+                        tenure_height: number | null;
                         /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                         block_time: number;
                         /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) indicating when this block was mined. */
@@ -7167,6 +7183,7 @@ export interface operations {
                         index_block_hash: string;
                         /** @description Height of the block this transactions was associated with */
                         block_height: number;
+                        tenure_height: number | null;
                         /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                         block_time: number;
                         /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) indicating when this block was mined. */
@@ -7383,6 +7400,7 @@ export interface operations {
                         index_block_hash: string;
                         /** @description Height of the block this transactions was associated with */
                         block_height: number;
+                        tenure_height: number | null;
                         /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                         block_time: number;
                         /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) indicating when this block was mined. */
@@ -8320,6 +8338,7 @@ export interface operations {
                             index_block_hash: string;
                             /** @description Height of the block this transactions was associated with */
                             block_height: number;
+                            tenure_height: number | null;
                             /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                             block_time: number;
                             /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) indicating when this block was mined. */
@@ -8537,6 +8556,7 @@ export interface operations {
                             index_block_hash: string;
                             /** @description Height of the block this transactions was associated with */
                             block_height: number;
+                            tenure_height: number | null;
                             /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                             block_time: number;
                             /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) indicating when this block was mined. */
@@ -8754,6 +8774,7 @@ export interface operations {
                             index_block_hash: string;
                             /** @description Height of the block this transactions was associated with */
                             block_height: number;
+                            tenure_height: number | null;
                             /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                             block_time: number;
                             /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) indicating when this block was mined. */
@@ -8978,6 +8999,7 @@ export interface operations {
                             index_block_hash: string;
                             /** @description Height of the block this transactions was associated with */
                             block_height: number;
+                            tenure_height: number | null;
                             /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                             block_time: number;
                             /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) indicating when this block was mined. */
@@ -9194,6 +9216,7 @@ export interface operations {
                             index_block_hash: string;
                             /** @description Height of the block this transactions was associated with */
                             block_height: number;
+                            tenure_height: number | null;
                             /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                             block_time: number;
                             /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) indicating when this block was mined. */
@@ -9410,6 +9433,7 @@ export interface operations {
                             index_block_hash: string;
                             /** @description Height of the block this transactions was associated with */
                             block_height: number;
+                            tenure_height: number | null;
                             /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                             block_time: number;
                             /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) indicating when this block was mined. */
@@ -9691,6 +9715,7 @@ export interface operations {
                             index_block_hash: string;
                             /** @description Height of the block this transactions was associated with */
                             block_height: number;
+                            tenure_height: number | null;
                             /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                             block_time: number;
                             /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) indicating when this block was mined. */
@@ -9908,6 +9933,7 @@ export interface operations {
                             index_block_hash: string;
                             /** @description Height of the block this transactions was associated with */
                             block_height: number;
+                            tenure_height: number | null;
                             /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                             block_time: number;
                             /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) indicating when this block was mined. */
@@ -10125,6 +10151,7 @@ export interface operations {
                             index_block_hash: string;
                             /** @description Height of the block this transactions was associated with */
                             block_height: number;
+                            tenure_height: number | null;
                             /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                             block_time: number;
                             /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) indicating when this block was mined. */
@@ -10349,6 +10376,7 @@ export interface operations {
                             index_block_hash: string;
                             /** @description Height of the block this transactions was associated with */
                             block_height: number;
+                            tenure_height: number | null;
                             /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                             block_time: number;
                             /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) indicating when this block was mined. */
@@ -10565,6 +10593,7 @@ export interface operations {
                             index_block_hash: string;
                             /** @description Height of the block this transactions was associated with */
                             block_height: number;
+                            tenure_height: number | null;
                             /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                             block_time: number;
                             /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) indicating when this block was mined. */
@@ -10781,6 +10810,7 @@ export interface operations {
                             index_block_hash: string;
                             /** @description Height of the block this transactions was associated with */
                             block_height: number;
+                            tenure_height: number | null;
                             /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                             block_time: number;
                             /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) indicating when this block was mined. */
@@ -11348,6 +11378,7 @@ export interface operations {
                                 index_block_hash: string;
                                 /** @description Height of the block this transactions was associated with */
                                 block_height: number;
+                                tenure_height: number | null;
                                 /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                                 block_time: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) indicating when this block was mined. */
@@ -11565,6 +11596,7 @@ export interface operations {
                                 index_block_hash: string;
                                 /** @description Height of the block this transactions was associated with */
                                 block_height: number;
+                                tenure_height: number | null;
                                 /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                                 block_time: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) indicating when this block was mined. */
@@ -11782,6 +11814,7 @@ export interface operations {
                                 index_block_hash: string;
                                 /** @description Height of the block this transactions was associated with */
                                 block_height: number;
+                                tenure_height: number | null;
                                 /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                                 block_time: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) indicating when this block was mined. */
@@ -12006,6 +12039,7 @@ export interface operations {
                                 index_block_hash: string;
                                 /** @description Height of the block this transactions was associated with */
                                 block_height: number;
+                                tenure_height: number | null;
                                 /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                                 block_time: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) indicating when this block was mined. */
@@ -12222,6 +12256,7 @@ export interface operations {
                                 index_block_hash: string;
                                 /** @description Height of the block this transactions was associated with */
                                 block_height: number;
+                                tenure_height: number | null;
                                 /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                                 block_time: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) indicating when this block was mined. */
@@ -12438,6 +12473,7 @@ export interface operations {
                                 index_block_hash: string;
                                 /** @description Height of the block this transactions was associated with */
                                 block_height: number;
+                                tenure_height: number | null;
                                 /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                                 block_time: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) indicating when this block was mined. */
@@ -12740,6 +12776,7 @@ export interface operations {
                                 index_block_hash: string;
                                 /** @description Height of the block this transactions was associated with */
                                 block_height: number;
+                                tenure_height: number | null;
                                 /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                                 block_time: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) indicating when this block was mined. */
@@ -12957,6 +12994,7 @@ export interface operations {
                                 index_block_hash: string;
                                 /** @description Height of the block this transactions was associated with */
                                 block_height: number;
+                                tenure_height: number | null;
                                 /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                                 block_time: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) indicating when this block was mined. */
@@ -13174,6 +13212,7 @@ export interface operations {
                                 index_block_hash: string;
                                 /** @description Height of the block this transactions was associated with */
                                 block_height: number;
+                                tenure_height: number | null;
                                 /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                                 block_time: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) indicating when this block was mined. */
@@ -13398,6 +13437,7 @@ export interface operations {
                                 index_block_hash: string;
                                 /** @description Height of the block this transactions was associated with */
                                 block_height: number;
+                                tenure_height: number | null;
                                 /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                                 block_time: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) indicating when this block was mined. */
@@ -13614,6 +13654,7 @@ export interface operations {
                                 index_block_hash: string;
                                 /** @description Height of the block this transactions was associated with */
                                 block_height: number;
+                                tenure_height: number | null;
                                 /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                                 block_time: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) indicating when this block was mined. */
@@ -13830,6 +13871,7 @@ export interface operations {
                                 index_block_hash: string;
                                 /** @description Height of the block this transactions was associated with */
                                 block_height: number;
+                                tenure_height: number | null;
                                 /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                                 block_time: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) indicating when this block was mined. */
@@ -14137,6 +14179,7 @@ export interface operations {
                                 index_block_hash: string;
                                 /** @description Height of the block this transactions was associated with */
                                 block_height: number;
+                                tenure_height: number | null;
                                 /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                                 block_time: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) indicating when this block was mined. */
@@ -14354,6 +14397,7 @@ export interface operations {
                                 index_block_hash: string;
                                 /** @description Height of the block this transactions was associated with */
                                 block_height: number;
+                                tenure_height: number | null;
                                 /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                                 block_time: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) indicating when this block was mined. */
@@ -14571,6 +14615,7 @@ export interface operations {
                                 index_block_hash: string;
                                 /** @description Height of the block this transactions was associated with */
                                 block_height: number;
+                                tenure_height: number | null;
                                 /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                                 block_time: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) indicating when this block was mined. */
@@ -14795,6 +14840,7 @@ export interface operations {
                                 index_block_hash: string;
                                 /** @description Height of the block this transactions was associated with */
                                 block_height: number;
+                                tenure_height: number | null;
                                 /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                                 block_time: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) indicating when this block was mined. */
@@ -15011,6 +15057,7 @@ export interface operations {
                                 index_block_hash: string;
                                 /** @description Height of the block this transactions was associated with */
                                 block_height: number;
+                                tenure_height: number | null;
                                 /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                                 block_time: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) indicating when this block was mined. */
@@ -15227,6 +15274,7 @@ export interface operations {
                                 index_block_hash: string;
                                 /** @description Height of the block this transactions was associated with */
                                 block_height: number;
+                                tenure_height: number | null;
                                 /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                                 block_time: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) indicating when this block was mined. */
@@ -15963,6 +16011,7 @@ export interface operations {
                             index_block_hash: string;
                             /** @description Height of the block this transactions was associated with */
                             block_height: number;
+                            tenure_height: number | null;
                             /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                             block_time: number;
                             /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) indicating when this block was mined. */
@@ -16180,6 +16229,7 @@ export interface operations {
                             index_block_hash: string;
                             /** @description Height of the block this transactions was associated with */
                             block_height: number;
+                            tenure_height: number | null;
                             /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                             block_time: number;
                             /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) indicating when this block was mined. */
@@ -16397,6 +16447,7 @@ export interface operations {
                             index_block_hash: string;
                             /** @description Height of the block this transactions was associated with */
                             block_height: number;
+                            tenure_height: number | null;
                             /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                             block_time: number;
                             /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) indicating when this block was mined. */
@@ -16621,6 +16672,7 @@ export interface operations {
                             index_block_hash: string;
                             /** @description Height of the block this transactions was associated with */
                             block_height: number;
+                            tenure_height: number | null;
                             /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                             block_time: number;
                             /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) indicating when this block was mined. */
@@ -16837,6 +16889,7 @@ export interface operations {
                             index_block_hash: string;
                             /** @description Height of the block this transactions was associated with */
                             block_height: number;
+                            tenure_height: number | null;
                             /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                             block_time: number;
                             /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) indicating when this block was mined. */
@@ -17053,6 +17106,7 @@ export interface operations {
                             index_block_hash: string;
                             /** @description Height of the block this transactions was associated with */
                             block_height: number;
+                            tenure_height: number | null;
                             /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                             block_time: number;
                             /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) indicating when this block was mined. */
@@ -18270,6 +18324,7 @@ export interface operations {
                             index_block_hash: string;
                             /** @description Height of the block this transactions was associated with */
                             block_height: number;
+                            tenure_height: number | null;
                             /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                             block_time: number;
                             /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) indicating when this block was mined. */
@@ -18487,6 +18542,7 @@ export interface operations {
                             index_block_hash: string;
                             /** @description Height of the block this transactions was associated with */
                             block_height: number;
+                            tenure_height: number | null;
                             /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                             block_time: number;
                             /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) indicating when this block was mined. */
@@ -18704,6 +18760,7 @@ export interface operations {
                             index_block_hash: string;
                             /** @description Height of the block this transactions was associated with */
                             block_height: number;
+                            tenure_height: number | null;
                             /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                             block_time: number;
                             /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) indicating when this block was mined. */
@@ -18928,6 +18985,7 @@ export interface operations {
                             index_block_hash: string;
                             /** @description Height of the block this transactions was associated with */
                             block_height: number;
+                            tenure_height: number | null;
                             /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                             block_time: number;
                             /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) indicating when this block was mined. */
@@ -19144,6 +19202,7 @@ export interface operations {
                             index_block_hash: string;
                             /** @description Height of the block this transactions was associated with */
                             block_height: number;
+                            tenure_height: number | null;
                             /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                             block_time: number;
                             /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) indicating when this block was mined. */
@@ -19360,6 +19419,7 @@ export interface operations {
                             index_block_hash: string;
                             /** @description Height of the block this transactions was associated with */
                             block_height: number;
+                            tenure_height: number | null;
                             /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                             block_time: number;
                             /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) indicating when this block was mined. */
@@ -19629,6 +19689,7 @@ export interface operations {
                             index_block_hash: string;
                             /** @description Height of the block this transactions was associated with */
                             block_height: number;
+                            tenure_height: number | null;
                             /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                             block_time: number;
                             /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) indicating when this block was mined. */
@@ -19846,6 +19907,7 @@ export interface operations {
                             index_block_hash: string;
                             /** @description Height of the block this transactions was associated with */
                             block_height: number;
+                            tenure_height: number | null;
                             /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                             block_time: number;
                             /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) indicating when this block was mined. */
@@ -20063,6 +20125,7 @@ export interface operations {
                             index_block_hash: string;
                             /** @description Height of the block this transactions was associated with */
                             block_height: number;
+                            tenure_height: number | null;
                             /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                             block_time: number;
                             /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) indicating when this block was mined. */
@@ -20287,6 +20350,7 @@ export interface operations {
                             index_block_hash: string;
                             /** @description Height of the block this transactions was associated with */
                             block_height: number;
+                            tenure_height: number | null;
                             /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                             block_time: number;
                             /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) indicating when this block was mined. */
@@ -20503,6 +20567,7 @@ export interface operations {
                             index_block_hash: string;
                             /** @description Height of the block this transactions was associated with */
                             block_height: number;
+                            tenure_height: number | null;
                             /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                             block_time: number;
                             /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) indicating when this block was mined. */
@@ -20719,6 +20784,7 @@ export interface operations {
                             index_block_hash: string;
                             /** @description Height of the block this transactions was associated with */
                             block_height: number;
+                            tenure_height: number | null;
                             /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                             block_time: number;
                             /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) indicating when this block was mined. */
@@ -21039,6 +21105,7 @@ export interface operations {
                                 index_block_hash: string;
                                 /** @description Height of the block this transactions was associated with */
                                 block_height: number;
+                                tenure_height: number | null;
                                 /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                                 block_time: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) indicating when this block was mined. */
@@ -21256,6 +21323,7 @@ export interface operations {
                                 index_block_hash: string;
                                 /** @description Height of the block this transactions was associated with */
                                 block_height: number;
+                                tenure_height: number | null;
                                 /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                                 block_time: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) indicating when this block was mined. */
@@ -21473,6 +21541,7 @@ export interface operations {
                                 index_block_hash: string;
                                 /** @description Height of the block this transactions was associated with */
                                 block_height: number;
+                                tenure_height: number | null;
                                 /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                                 block_time: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) indicating when this block was mined. */
@@ -21697,6 +21766,7 @@ export interface operations {
                                 index_block_hash: string;
                                 /** @description Height of the block this transactions was associated with */
                                 block_height: number;
+                                tenure_height: number | null;
                                 /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                                 block_time: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) indicating when this block was mined. */
@@ -21913,6 +21983,7 @@ export interface operations {
                                 index_block_hash: string;
                                 /** @description Height of the block this transactions was associated with */
                                 block_height: number;
+                                tenure_height: number | null;
                                 /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                                 block_time: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) indicating when this block was mined. */
@@ -22129,6 +22200,7 @@ export interface operations {
                                 index_block_hash: string;
                                 /** @description Height of the block this transactions was associated with */
                                 block_height: number;
+                                tenure_height: number | null;
                                 /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                                 block_time: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) indicating when this block was mined. */
@@ -23489,6 +23561,7 @@ export interface operations {
                                 index_block_hash: string;
                                 /** @description Height of the block this transactions was associated with */
                                 block_height: number;
+                                tenure_height: number | null;
                                 /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                                 block_time: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) indicating when this block was mined. */
@@ -23706,6 +23779,7 @@ export interface operations {
                                 index_block_hash: string;
                                 /** @description Height of the block this transactions was associated with */
                                 block_height: number;
+                                tenure_height: number | null;
                                 /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                                 block_time: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) indicating when this block was mined. */
@@ -23923,6 +23997,7 @@ export interface operations {
                                 index_block_hash: string;
                                 /** @description Height of the block this transactions was associated with */
                                 block_height: number;
+                                tenure_height: number | null;
                                 /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                                 block_time: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) indicating when this block was mined. */
@@ -24147,6 +24222,7 @@ export interface operations {
                                 index_block_hash: string;
                                 /** @description Height of the block this transactions was associated with */
                                 block_height: number;
+                                tenure_height: number | null;
                                 /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                                 block_time: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) indicating when this block was mined. */
@@ -24363,6 +24439,7 @@ export interface operations {
                                 index_block_hash: string;
                                 /** @description Height of the block this transactions was associated with */
                                 block_height: number;
+                                tenure_height: number | null;
                                 /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                                 block_time: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) indicating when this block was mined. */
@@ -24579,6 +24656,7 @@ export interface operations {
                                 index_block_hash: string;
                                 /** @description Height of the block this transactions was associated with */
                                 block_height: number;
+                                tenure_height: number | null;
                                 /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                                 block_time: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) indicating when this block was mined. */
@@ -26055,6 +26133,7 @@ export interface operations {
                                 index_block_hash: string;
                                 /** @description Height of the block this transactions was associated with */
                                 block_height: number;
+                                tenure_height: number | null;
                                 /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                                 block_time: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) indicating when this block was mined. */
@@ -26272,6 +26351,7 @@ export interface operations {
                                 index_block_hash: string;
                                 /** @description Height of the block this transactions was associated with */
                                 block_height: number;
+                                tenure_height: number | null;
                                 /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                                 block_time: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) indicating when this block was mined. */
@@ -26489,6 +26569,7 @@ export interface operations {
                                 index_block_hash: string;
                                 /** @description Height of the block this transactions was associated with */
                                 block_height: number;
+                                tenure_height: number | null;
                                 /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                                 block_time: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) indicating when this block was mined. */
@@ -26713,6 +26794,7 @@ export interface operations {
                                 index_block_hash: string;
                                 /** @description Height of the block this transactions was associated with */
                                 block_height: number;
+                                tenure_height: number | null;
                                 /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                                 block_time: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) indicating when this block was mined. */
@@ -26929,6 +27011,7 @@ export interface operations {
                                 index_block_hash: string;
                                 /** @description Height of the block this transactions was associated with */
                                 block_height: number;
+                                tenure_height: number | null;
                                 /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                                 block_time: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) indicating when this block was mined. */
@@ -27145,6 +27228,7 @@ export interface operations {
                                 index_block_hash: string;
                                 /** @description Height of the block this transactions was associated with */
                                 block_height: number;
+                                tenure_height: number | null;
                                 /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                                 block_time: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) indicating when this block was mined. */
@@ -27892,6 +27976,7 @@ export interface operations {
                             index_block_hash: string;
                             /** @description Height of the block this transactions was associated with */
                             block_height: number;
+                            tenure_height: number | null;
                             /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                             block_time: number;
                             /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) indicating when this block was mined. */
@@ -28109,6 +28194,7 @@ export interface operations {
                             index_block_hash: string;
                             /** @description Height of the block this transactions was associated with */
                             block_height: number;
+                            tenure_height: number | null;
                             /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                             block_time: number;
                             /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) indicating when this block was mined. */
@@ -28326,6 +28412,7 @@ export interface operations {
                             index_block_hash: string;
                             /** @description Height of the block this transactions was associated with */
                             block_height: number;
+                            tenure_height: number | null;
                             /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                             block_time: number;
                             /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) indicating when this block was mined. */
@@ -28550,6 +28637,7 @@ export interface operations {
                             index_block_hash: string;
                             /** @description Height of the block this transactions was associated with */
                             block_height: number;
+                            tenure_height: number | null;
                             /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                             block_time: number;
                             /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) indicating when this block was mined. */
@@ -28766,6 +28854,7 @@ export interface operations {
                             index_block_hash: string;
                             /** @description Height of the block this transactions was associated with */
                             block_height: number;
+                            tenure_height: number | null;
                             /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                             block_time: number;
                             /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) indicating when this block was mined. */
@@ -28982,6 +29071,7 @@ export interface operations {
                             index_block_hash: string;
                             /** @description Height of the block this transactions was associated with */
                             block_height: number;
+                            tenure_height: number | null;
                             /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                             block_time: number;
                             /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) indicating when this block was mined. */
@@ -29998,6 +30088,7 @@ export interface operations {
                                 index_block_hash: string;
                                 /** @description Height of the block this transactions was associated with */
                                 block_height: number;
+                                tenure_height: number | null;
                                 /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                                 block_time: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) indicating when this block was mined. */
@@ -30215,6 +30306,7 @@ export interface operations {
                                 index_block_hash: string;
                                 /** @description Height of the block this transactions was associated with */
                                 block_height: number;
+                                tenure_height: number | null;
                                 /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                                 block_time: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) indicating when this block was mined. */
@@ -30432,6 +30524,7 @@ export interface operations {
                                 index_block_hash: string;
                                 /** @description Height of the block this transactions was associated with */
                                 block_height: number;
+                                tenure_height: number | null;
                                 /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                                 block_time: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) indicating when this block was mined. */
@@ -30656,6 +30749,7 @@ export interface operations {
                                 index_block_hash: string;
                                 /** @description Height of the block this transactions was associated with */
                                 block_height: number;
+                                tenure_height: number | null;
                                 /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                                 block_time: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) indicating when this block was mined. */
@@ -30872,6 +30966,7 @@ export interface operations {
                                 index_block_hash: string;
                                 /** @description Height of the block this transactions was associated with */
                                 block_height: number;
+                                tenure_height: number | null;
                                 /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                                 block_time: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) indicating when this block was mined. */
@@ -31088,6 +31183,7 @@ export interface operations {
                                 index_block_hash: string;
                                 /** @description Height of the block this transactions was associated with */
                                 block_height: number;
+                                tenure_height: number | null;
                                 /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                                 block_time: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) indicating when this block was mined. */
