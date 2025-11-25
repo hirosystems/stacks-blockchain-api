@@ -257,21 +257,21 @@ describe('smart contract tests', () => {
           contract_log: expect.objectContaining({ contract_id: contractId }),
         }),
       ]),
-      next_cursor: expect.any(String),
-      prev_cursor: null,
+      next_cursor: null,
+      prev_cursor: expect.any(String),
       cursor: null,
     });
 
     expect(page1.body.results).toHaveLength(3);
     const firstPageResults = page1.body.results;
-    const nextCursor = page1.body.next_cursor;
+    const prevCursor = page1.body.prev_cursor;
 
     // Use cursor for next page
     const page2 = await supertest(api.server)
       .get(
         `/extended/v1/contract/${encodeURIComponent(
           contractId
-        )}/events?limit=3&cursor=${nextCursor}`
+        )}/events?limit=3&cursor=${prevCursor}`
       )
       .expect(200);
 
@@ -286,8 +286,8 @@ describe('smart contract tests', () => {
         }),
       ]),
       next_cursor: expect.any(String),
-      prev_cursor: null,
-      cursor: nextCursor,
+      prev_cursor: expect.any(String),
+      cursor: prevCursor,
     });
 
     expect(page2.body.results).toHaveLength(3);
@@ -302,13 +302,14 @@ describe('smart contract tests', () => {
       .get(`/extended/v1/contract/${encodeURIComponent(contractId)}/events?limit=3&offset=3`)
       .expect(200);
 
+    console.log('Offset Page Test: ', offsetPage.body);
     expect(offsetPage.body).toMatchObject({
       limit: 3,
       offset: 3,
       total: 20,
       results: expect.any(Array),
       next_cursor: expect.any(String),
-      prev_cursor: null,
+      prev_cursor: expect.any(String),
       cursor: null,
     });
 
@@ -317,9 +318,14 @@ describe('smart contract tests', () => {
       .get(`/extended/v1/contract/${encodeURIComponent(contractId)}/events?cursor=invalid-cursor`)
       .expect(400);
 
-    // Cursor format validation - should be "blockHeight-txIndex-eventIndex"
+    // Cursor format validation - should be "indexBlockHash-txIndex-eventIndex"
+    // Using index_block_hash from block 10 (0x0000000000000000000000000000000000000000000000000000000000000010)
     const validCursorFormat = await supertest(api.server)
-      .get(`/extended/v1/contract/${encodeURIComponent(contractId)}/events?cursor=10-1-0&limit=2`)
+      .get(
+        `/extended/v1/contract/${encodeURIComponent(
+          contractId
+        )}/events?cursor=0000000000000000000000000000000000000000000000000000000000000010:1:0&limit=2`
+      )
       .expect(200);
 
     expect(validCursorFormat.body.results).toHaveLength(2);
@@ -340,7 +346,7 @@ describe('smart contract tests', () => {
       const response: any = await supertest(api.server).get(url).expect(200);
 
       allPages.push(response.body);
-      currentCursor = response.body.next_cursor;
+      currentCursor = response.body.prev_cursor;
       pageCount++;
 
       if (pageCount >= maxPages) break; // Safety break

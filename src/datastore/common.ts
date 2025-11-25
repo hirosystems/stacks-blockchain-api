@@ -556,6 +556,7 @@ export interface DbSmartContractEvent extends DbEventBase {
 export type DbCursorPaginatedFoundOrNot<T> = FoundOrNot<T> & {
   nextCursor?: string | null;
   prevCursor?: string | null;
+  currentCursor?: string | null;
   total: number;
 };
 

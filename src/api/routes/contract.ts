@@ -117,7 +117,7 @@ export const ContractRoutes: FastifyPluginAsync<
           offset: OffsetParam(),
           cursor: Type.Optional(
             Type.String({
-              description: 'Cursor for pagination',
+              description: 'Cursor for pagination in the format: indexBlockHash:txIndex:eventIndex',
             })
           ),
         }),
@@ -133,9 +133,9 @@ export const ContractRoutes: FastifyPluginAsync<
       const cursor = req.query.cursor;
 
       // Validate cursor format if provided
-      if (cursor && !cursor.match(/^\d+-\d+-\d+$/)) {
+      if (cursor && !cursor.match(/^[0-9a-fA-F]{64}:\d+:\d+$/)) {
         throw new InvalidRequestError(
-          'Invalid cursor format. Expected format: blockHeight-txIndex-eventIndex',
+          'Invalid cursor format. Expected format: indexBlockHash:txIndex:eventIndex',
           InvalidRequestErrorType.invalid_param
         );
       }
@@ -155,7 +155,7 @@ export const ContractRoutes: FastifyPluginAsync<
         total: eventsQuery.total || 0,
         results: parsedEvents as SmartContractLogTransactionEvent[],
         next_cursor: eventsQuery.nextCursor || null,
-        prev_cursor: null, // TODO: Implement prev_cursor as well
+        prev_cursor: eventsQuery.prevCursor || null,
         cursor: cursor || null,
       };
       await reply.send(response);
