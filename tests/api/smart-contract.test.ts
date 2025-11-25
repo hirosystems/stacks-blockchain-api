@@ -317,9 +317,14 @@ describe('smart contract tests', () => {
       .get(`/extended/v1/contract/${encodeURIComponent(contractId)}/events?cursor=invalid-cursor`)
       .expect(400);
 
-    // Cursor format validation - should be "blockHeight-txIndex-eventIndex"
+    // Cursor format validation - should be "indexBlockHash-txIndex-eventIndex"
+    // Using index_block_hash from block 10 (0x0000000000000000000000000000000000000000000000000000000000000010)
     const validCursorFormat = await supertest(api.server)
-      .get(`/extended/v1/contract/${encodeURIComponent(contractId)}/events?cursor=10-1-0&limit=2`)
+      .get(
+        `/extended/v1/contract/${encodeURIComponent(
+          contractId
+        )}/events?cursor=0000000000000000000000000000000000000000000000000000000000000010-1-0&limit=2`
+      )
       .expect(200);
 
     expect(validCursorFormat.body.results).toHaveLength(2);

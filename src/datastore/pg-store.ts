@@ -10,6 +10,7 @@ import {
   bnsNameFromSubdomain,
   ChainID,
   REPO_DIR,
+  normalizeHashString,
 } from '../helpers';
 import { PgStoreEventEmitter } from './pg-store-event-emitter';
 import {
@@ -103,25 +104,25 @@ import { parseBlockParam } from '../api/routes/v2/schemas';
 export const MIGRATIONS_DIR = path.join(REPO_DIR, 'migrations');
 
 // Cursor utilities for smart contract events
-function createEventCursor(blockHeight: number, txIndex: number, eventIndex: number): string {
-  return `${blockHeight}-${txIndex}-${eventIndex}`;
+function createEventCursor(indexBlockHash: string, txIndex: number, eventIndex: number): string {
+  return `${indexBlockHash}-${txIndex}-${eventIndex}`;
 }
 
 function parseEventCursor(
   cursor: string
-): { blockHeight: number; txIndex: number; eventIndex: number } | null {
+): { indexBlockHash: string; txIndex: number; eventIndex: number } | null {
   const parts = cursor.split('-');
   if (parts.length !== 3) return null;
-  const blockHeight = parseInt(parts[0]);
+  const indexBlockHash = parts[0];
   const txIndex = parseInt(parts[1]);
   const eventIndex = parseInt(parts[2]);
 
-  // Validate that parsing was successful
-  if (isNaN(blockHeight) || isNaN(txIndex) || isNaN(eventIndex)) {
+  // Validate that parsing was successful (indexBlockHash should be hex, txIndex and eventIndex should be numbers)
+  if (!indexBlockHash.match(/^[0-9a-fA-F]{64}$/) || isNaN(txIndex) || isNaN(eventIndex)) {
     return null;
   }
 
-  return { blockHeight, txIndex, eventIndex };
+  return { indexBlockHash, txIndex, eventIndex };
 }
 
 /**
@@ -2136,27 +2137,51 @@ export class PgStore extends BasePgStore {
     `;
     const totalCount = parseInt(totalCountResult[0]?.count || '0');
 
+    // If cursor is provided, look up the block_height from index_block_hash
+    let cursorBlockHeight: number | null = null;
+    if (parsedCursor) {
+      const normalizedHash = normalizeHashString(parsedCursor.indexBlockHash);
+      if (normalizedHash === false) {
+        throw new Error(`Invalid index_block_hash in cursor: ${parsedCursor.indexBlockHash}`);
+      }
+      const blockHeightResult = await this.sql<{ block_height: number }[]>`
+        SELECT block_height
+        FROM blocks
+        WHERE index_block_hash = ${normalizedHash} AND canonical = true
+        LIMIT 1
+      `;
+      if (blockHeightResult.length === 0) {
+        // Cursor references a block that doesn't exist or was re-orged
+        throw new Error(
+          `Block not found for cursor index_block_hash: ${parsedCursor.indexBlockHash}`
+        );
+      }
+      cursorBlockHeight = blockHeightResult[0].block_height;
+    }
+
     const logResults = await this.sql<
       {
         event_index: number;
         tx_id: string;
         tx_index: number;
         block_height: number;
+        index_block_hash: string;
         contract_identifier: string;
         topic: string;
         value: string;
       }[]
     >`
       SELECT
-        event_index, tx_id, tx_index, block_height, contract_identifier, topic, value
+        event_index, tx_id, tx_index, block_height, encode(index_block_hash, 'hex') as index_block_hash,
+        contract_identifier, topic, value
       FROM contract_logs
       WHERE canonical = true 
         AND microblock_canonical = true 
         AND contract_identifier = ${contractId}
         ${
-          parsedCursor
+          parsedCursor && cursorBlockHeight !== null
             ? this
-                .sql`AND (block_height, tx_index, event_index) < (${parsedCursor.blockHeight}, ${parsedCursor.txIndex}, ${parsedCursor.eventIndex})`
+                .sql`AND (block_height, tx_index, event_index) < (${cursorBlockHeight}, ${parsedCursor.txIndex}, ${parsedCursor.eventIndex})`
             : this.sql``
         }
       ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
@@ -2172,7 +2197,7 @@ export class PgStore extends BasePgStore {
     const nextCursor =
       hasMore && results.length > 0
         ? createEventCursor(
-            results[results.length - 1].block_height,
+            results[results.length - 1].index_block_hash,
             results[results.length - 1].tx_index,
             results[results.length - 1].event_index
           )
