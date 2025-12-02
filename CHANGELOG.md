@@ -1,3 +1,10 @@
+## [8.13.5](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.13.4...v8.13.5) (2025-12-02)
+
+
+### Bug Fixes
+
+* support new sip-034 tenure change causes ([#2384](https://github.com/hirosystems/stacks-blockchain-api/issues/2384)) ([399908f](https://github.com/hirosystems/stacks-blockchain-api/commit/399908fd08fdaee3edc5b0820f0526378f7ab51a))
+
 ## [8.13.4](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.13.3...v8.13.4) (2025-11-06)
 
 
