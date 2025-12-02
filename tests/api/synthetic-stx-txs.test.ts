@@ -1,7 +1,7 @@
 import { ChainID } from '@stacks/transactions';
 import * as fs from 'fs';
 import * as path from 'path';
-import { DecodedTxResult, TxPayloadTypeID } from 'stacks-encoding-native-js';
+import { DecodedTxResult, TxPayloadTypeID } from '@hirosystems/stacks-encoding-native-js';
 import { CoreNodeBlockMessage } from '../../src/event-stream/core-node-message';
 import { CoreNodeMsgBlockData, parseMessageTransaction } from '../../src/event-stream/reader';
 import { parseNewBlockMessage } from '../../src/event-stream/event-server';

@@ -324,10 +324,21 @@ export const TenureChangeTransactionMetadataProperties = {
     previous_tenure_blocks: Type.Integer({
       description: 'The number of blocks produced in the previous tenure.',
     }),
-    cause: Type.Union([Type.Literal('block_found'), Type.Literal('extended')], {
-      description:
-        'Cause of change in mining tenure. Depending on cause, tenure can be ended or extended.',
-    }),
+    cause: Type.Union(
+      [
+        Type.Literal('block_found'),
+        Type.Literal('extended'),
+        Type.Literal('extended_runtime'),
+        Type.Literal('extended_read_count'),
+        Type.Literal('extended_read_length'),
+        Type.Literal('extended_write_count'),
+        Type.Literal('extended_write_length'),
+      ],
+      {
+        description:
+          'Cause of change in mining tenure. Depending on cause, tenure can be ended or extended.',
+      }
+    ),
     pubkey_hash: Type.String({
       description: '(Hex string) The ECDSA public key hash of the current tenure.',
     }),
