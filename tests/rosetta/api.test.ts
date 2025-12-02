@@ -848,7 +848,7 @@ describe('Rosetta API', () => {
       tenure_change_previous_tenure_end:
         '0xb77b061202b1e6dce889ba1633efa969d3c24679d32a7542d29015ee94e8a860',
       tenure_change_previous_tenure_blocks: 9,
-      tenure_change_cause: 0,
+      tenure_change_cause: 4,
       tenure_change_pubkey_hash: '0x62b4273562dfa3825496094507564bf2b30c8b11',
     };
     const blockData1 = new TestBlockBuilder(block1).addTx(txTenureChange1).build();
@@ -885,7 +885,7 @@ describe('Rosetta API', () => {
             burn_view_consensus_hash: txTenureChange1.tenure_change_burn_view_consensus_hash,
             previous_tenure_end: txTenureChange1.tenure_change_previous_tenure_end,
             previous_tenure_blocks: txTenureChange1.tenure_change_previous_tenure_blocks,
-            cause: 'block_found',
+            cause: 'extended_read_length',
             pubkey_hash: txTenureChange1.tenure_change_pubkey_hash,
           },
         },
@@ -930,7 +930,7 @@ describe('Rosetta API', () => {
                   burn_view_consensus_hash: txTenureChange1.tenure_change_burn_view_consensus_hash,
                   previous_tenure_end: txTenureChange1.tenure_change_previous_tenure_end,
                   previous_tenure_blocks: txTenureChange1.tenure_change_previous_tenure_blocks,
-                  cause: 'block_found',
+                  cause: 'extended_read_length',
                   pubkey_hash: txTenureChange1.tenure_change_pubkey_hash,
                 },
               },
