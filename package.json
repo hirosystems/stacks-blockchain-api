@@ -131,7 +131,7 @@
     "lru-cache": "6.0.0",
     "micro-base58": "0.5.1",
     "node-fetch": "2.6.7",
-    "node-pg-migrate": "8.0.3",
+    "node-pg-migrate": "6.2.2",
     "p-queue": "6.6.2",
     "pg": "8.16.3",
     "pg-copy-streams": "5.1.1",
