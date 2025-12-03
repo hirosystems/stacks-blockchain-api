@@ -60,4 +60,3 @@ Provide context on how tests should be performed.
 - [ ] Unit test coverage for new or modified code paths
 - [ ] `npm run test` passes
 - [ ] Changelog is updated
-- [ ] Tag 1 of @rafaelcr or @zone117x for review
