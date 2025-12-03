@@ -34,37 +34,32 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
     },
     grace_period: {
       type: 'string',
-      notNull: false,
     },
     renewal_deadline: {
       type: 'integer',
-      notNull: false,
     },
     resolver: {
       type: 'string',
-      notNull: false,
     },
     tx_id: {
       type: 'bytea',
-      notNull: false,
     },
     tx_index: {
       type: 'smallint',
       notNull: true,
     },
-    event_index: 'integer',
+    event_index: {
+      type: 'integer',
+    },
     status: {
       type: 'string',
-      notNull: false,
     },
     canonical: {
       type: 'boolean',
-      notNull: true,
       default: true,
     },
     index_block_hash: {
       type: 'bytea',
-      notNull: false,
     },
     parent_index_block_hash: {
       type: 'bytea',
@@ -102,4 +97,3 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
 export async function down(pgm: MigrationBuilder): Promise<void> {
   pgm.dropTable('names');
 }
-
