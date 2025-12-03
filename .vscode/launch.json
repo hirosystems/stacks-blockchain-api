@@ -17,12 +17,26 @@
     {
       "type": "node",
       "request": "launch",
-      "name": "Launch: app",
+      "name": "Launch: app dev mainnet",
       "runtimeArgs": ["-r", "ts-node/register/transpile-only", "-r", "tsconfig-paths/register"],
       "args": ["${workspaceFolder}/src/index.ts"],
       "outputCapture": "std",
       "internalConsoleOptions": "openOnSessionStart",
       "env": {
+        "NODE_ENV": "development",
+        "TS_NODE_SKIP_IGNORE": "true"
+      }
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Launch: app dev testnet",
+      "runtimeArgs": ["-r", "ts-node/register/transpile-only", "-r", "tsconfig-paths/register"],
+      "args": ["${workspaceFolder}/src/index.ts"],
+      "outputCapture": "std",
+      "internalConsoleOptions": "openOnSessionStart",
+      "env": {
+        "STACKS_CHAIN_ID": "0x80000000",
         "NODE_ENV": "development",
         "TS_NODE_SKIP_IGNORE": "true"
       }
