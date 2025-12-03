@@ -82,6 +82,7 @@ import {
   POX4_SYNTHETIC_EVENT_COLUMNS,
   POX_SYNTHETIC_EVENT_COLUMNS,
   prefixedCols,
+  tenureHeightColumn,
   TX_COLUMNS,
   validateZonefileHash,
 } from './helpers';
@@ -818,7 +819,7 @@ export class PgStore extends BasePgStore {
           AND index_block_hash = ${blockQuery.result.index_block_hash}
       `;
       const result = await sql<ContractTxQueryResult[]>`
-        SELECT ${sql(TX_COLUMNS)}, ${abiColumn(sql)}
+        SELECT ${sql(TX_COLUMNS)}, ${abiColumn(sql)}, (${tenureHeightColumn(sql)}) AS tenure_height
         FROM txs
         WHERE canonical = true AND microblock_canonical = true
           AND index_block_hash = ${blockQuery.result.index_block_hash}
@@ -1379,7 +1380,7 @@ export class PgStore extends BasePgStore {
     return await this.sqlTransaction(async sql => {
       const maxBlockHeight = await this.getMaxBlockHeight(sql, { includeUnanchored });
       const result = await sql<ContractTxQueryResult[]>`
-        SELECT ${sql(TX_COLUMNS)}, ${abiColumn(sql)}
+        SELECT ${sql(TX_COLUMNS)}, ${abiColumn(sql)}, (${tenureHeightColumn(sql)}) AS tenure_height
         FROM txs
         WHERE tx_id = ${txId} AND block_height <= ${maxBlockHeight}
         ORDER BY canonical DESC, microblock_canonical DESC, block_height DESC
@@ -3334,15 +3335,15 @@ export class PgStore extends BasePgStore {
       { address: string; balance: string; count: number; total_supply: string }[]
     >`
       WITH totals AS (
-        SELECT 
+        SELECT
           SUM(balance) AS total,
           COUNT(*)::int AS total_count
         FROM ft_balances
         WHERE token = ${args.token}
       )
-      SELECT 
-        fb.address, 
-        fb.balance, 
+      SELECT
+        fb.address,
+        fb.balance,
         ts.total AS total_supply,
         ts.total_count AS count
       FROM ft_balances fb
@@ -3573,7 +3574,7 @@ export class PgStore extends BasePgStore {
     return await this.sqlTransaction(async sql => {
       const maxBlockHeight = await this.getMaxBlockHeight(sql, { includeUnanchored });
       const result = await sql<ContractTxQueryResult[]>`
-        SELECT ${sql(TX_COLUMNS)}, ${abiColumn(sql)}
+        SELECT ${sql(TX_COLUMNS)}, ${abiColumn(sql)}, (${tenureHeightColumn(sql)}) AS tenure_height
         FROM txs
         WHERE tx_id IN ${sql(txIds)}
           AND block_height <= ${maxBlockHeight}
