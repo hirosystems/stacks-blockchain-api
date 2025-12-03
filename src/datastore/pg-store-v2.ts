@@ -173,8 +173,8 @@ export class PgStoreV2 extends BasePgStoreModule {
         args.block.type === 'latest'
           ? sql`burn_block_hash = (SELECT burn_block_hash FROM blocks WHERE canonical = TRUE ORDER BY block_height DESC LIMIT 1)`
           : args.block.type === 'hash'
-          ? sql`burn_block_hash = ${normalizeHashString(args.block.hash)}`
-          : sql`burn_block_height = ${args.block.height}`;
+            ? sql`burn_block_hash = ${normalizeHashString(args.block.hash)}`
+            : sql`burn_block_height = ${args.block.height}`;
       const blockCheck = await sql`SELECT burn_block_hash FROM blocks WHERE ${filter} LIMIT 1`;
       if (blockCheck.count === 0)
         throw new InvalidRequestError(
@@ -218,11 +218,11 @@ export class PgStoreV2 extends BasePgStoreModule {
         args.type === 'latest'
           ? sql`index_block_hash = (SELECT index_block_hash FROM blocks WHERE canonical = TRUE ORDER BY block_height DESC LIMIT 1)`
           : args.type === 'hash'
-          ? sql`(
+            ? sql`(
               block_hash = ${normalizeHashString(args.hash)}
               OR index_block_hash = ${normalizeHashString(args.hash)}
             )`
-          : sql`block_height = ${args.height}`;
+            : sql`block_height = ${args.height}`;
       const blockQuery = await sql<BlockQueryResult[]>`
         SELECT ${sql(BLOCK_COLUMNS)}
         FROM blocks
@@ -246,11 +246,11 @@ export class PgStoreV2 extends BasePgStoreModule {
         blockId.type === 'latest'
           ? sql`index_block_hash = (SELECT index_block_hash FROM blocks WHERE canonical = TRUE ORDER BY block_height DESC LIMIT 1)`
           : blockId.type === 'hash'
-          ? sql`(
+            ? sql`(
               block_hash = ${normalizeHashString(blockId.hash)}
               OR index_block_hash = ${normalizeHashString(blockId.hash)}
             )`
-          : sql`block_height = ${blockId.height}`;
+            : sql`block_height = ${blockId.height}`;
       const blockQuery = await sql<{ signer_signatures: string[]; total: number }[]>`
         SELECT
           signer_signatures[${offset + 1}:${offset + limit}] as signer_signatures,
@@ -344,11 +344,11 @@ export class PgStoreV2 extends BasePgStoreModule {
             args.block.type === 'latest'
               ? sql`canonical = TRUE ORDER BY block_height DESC`
               : args.block.type === 'hash'
-              ? sql`(
+                ? sql`(
                   block_hash = ${normalizeHashString(args.block.hash)}
                   OR index_block_hash = ${normalizeHashString(args.block.hash)}
                 ) AND canonical = TRUE`
-              : sql`block_height = ${args.block.height} AND canonical = TRUE`
+                : sql`block_height = ${args.block.height} AND canonical = TRUE`
           }
           LIMIT 1
         ),
@@ -448,8 +448,8 @@ export class PgStoreV2 extends BasePgStoreModule {
         args.type === 'latest'
           ? sql`burn_block_hash = (SELECT burn_block_hash FROM blocks WHERE canonical = TRUE ORDER BY block_height DESC LIMIT 1)`
           : args.type === 'hash'
-          ? sql`burn_block_hash = ${args.hash}`
-          : sql`burn_block_height = ${args.height}`;
+            ? sql`burn_block_hash = ${args.hash}`
+            : sql`burn_block_height = ${args.height}`;
       const blockQuery = await sql<DbBurnBlock[]>`
         WITH BlocksWithPrevTime AS (
           SELECT

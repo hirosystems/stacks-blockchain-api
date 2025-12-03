@@ -18,7 +18,7 @@ export function asyncHandler<
   ResBody = any,
   ReqBody = any,
   ReqQuery = core.Query,
-  Locals extends Record<string, any> = Record<string, any>
+  Locals extends Record<string, any> = Record<string, any>,
 >(
   handler: (
     ...args: Parameters<express.RequestHandler<P, ResBody, ReqBody, ReqQuery, Locals>>
