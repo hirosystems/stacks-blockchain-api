@@ -16,7 +16,7 @@ import {
   getTxStatusString,
   parseDbTx,
 } from '../../../api/controllers/db-controller';
-import { decodeClarityValueToRepr } from 'stacks-encoding-native-js';
+import { decodeClarityValueToRepr } from '@hirosystems/stacks-encoding-native-js';
 import { TransactionVersion, getAddressFromPublicKey } from '@stacks/transactions';
 import { SmartContractStatusList } from '../../schemas/entities/smart-contracts';
 import { AddressTransaction, AddressTransactionEvent } from '../../schemas/entities/addresses';

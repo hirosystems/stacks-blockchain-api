@@ -21,7 +21,7 @@ import {
   ClarityValueTuple,
   ClarityValueUInt,
   TxPayloadTypeID,
-} from 'stacks-encoding-native-js';
+} from '@hirosystems/stacks-encoding-native-js';
 import { SmartContractEvent } from '../core-node-message';
 import { DbBnsNamespace, DbBnsName } from '../../datastore/common';
 import { hexToBuffer, hexToUtf8String } from '@hirosystems/api-toolkit';

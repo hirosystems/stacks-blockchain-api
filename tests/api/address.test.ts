@@ -12,7 +12,7 @@ import {
   serializeCV,
 } from '@stacks/transactions';
 import { createClarityValueArray } from '../../src/stacks-encoding-helpers';
-import { decodeTransaction } from 'stacks-encoding-native-js';
+import { decodeTransaction } from '@hirosystems/stacks-encoding-native-js';
 import {
   DbBlock,
   DbTxTypeId,

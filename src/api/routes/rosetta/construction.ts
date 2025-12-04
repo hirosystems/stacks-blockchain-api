@@ -52,7 +52,7 @@ import {
   uintCV,
 } from '@stacks/transactions';
 import * as express from 'express';
-import { bitcoinToStacksAddress } from 'stacks-encoding-native-js';
+import { bitcoinToStacksAddress } from '@hirosystems/stacks-encoding-native-js';
 import { StacksCoreRpcClient, getCoreNodeEndpoint } from '../../../core-rpc/client';
 import { DbBlock } from '../../../datastore/common';
 import { PgStore } from '../../../datastore/pg-store';

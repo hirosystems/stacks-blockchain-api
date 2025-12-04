@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
-import { stacksToBitcoinAddress } from 'stacks-encoding-native-js';
+import { stacksToBitcoinAddress } from '@hirosystems/stacks-encoding-native-js';
 import { htmlEscape } from 'escape-goat';
 import {
   makeSTXTokenTransfer,

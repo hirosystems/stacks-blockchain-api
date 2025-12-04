@@ -1,6 +1,6 @@
 import { migrate } from '../utils/test-helpers';
 import { importEventsFromTsv } from '../../src/event-replay/event-replay';
-import { decodeClarityValueList } from 'stacks-encoding-native-js';
+import { decodeClarityValueList } from '@hirosystems/stacks-encoding-native-js';
 import * as fs from 'fs';
 import * as readline from 'readline';
 import { PgSqlClient, timeout } from '@hirosystems/api-toolkit';

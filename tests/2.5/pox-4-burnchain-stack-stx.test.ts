@@ -30,7 +30,7 @@ import { ApiServer } from '../../src/api/init';
 import { StacksNetwork } from '@stacks/network';
 import { RPCClient } from 'rpc-bitcoin';
 import * as supertest from 'supertest';
-import { ClarityValueUInt, decodeClarityValue } from 'stacks-encoding-native-js';
+import { ClarityValueUInt, decodeClarityValue } from '@hirosystems/stacks-encoding-native-js';
 import { decodeBtcAddress, poxAddressToTuple } from '@stacks/stacking';
 import { timeout } from '@hirosystems/api-toolkit';
 import { hexToBytes } from '@stacks/common';

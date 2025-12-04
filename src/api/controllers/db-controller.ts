@@ -9,7 +9,7 @@ import {
   decodeClarityValueToRepr,
   decodeClarityValueToTypeName,
   decodePostConditions,
-} from 'stacks-encoding-native-js';
+} from '@hirosystems/stacks-encoding-native-js';
 
 import {
   RosettaBlock,
@@ -152,6 +152,16 @@ export function getTxTenureChangeCauseString(cause: number) {
       return 'block_found';
     case 1:
       return 'extended';
+    case 2:
+      return 'extended_runtime';
+    case 3:
+      return 'extended_read_count';
+    case 4:
+      return 'extended_read_length';
+    case 5:
+      return 'extended_write_count';
+    case 6:
+      return 'extended_write_length';
     default:
       throw new Error(`Unexpected tenure change cause value ${cause}`);
   }

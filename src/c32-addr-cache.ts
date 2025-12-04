@@ -9,7 +9,7 @@ and for now this approach is much easier and faster.
 
 import * as c32check from 'c32check';
 import * as LruCache from 'lru-cache';
-import { stacksAddressFromParts } from 'stacks-encoding-native-js';
+import { stacksAddressFromParts } from '@hirosystems/stacks-encoding-native-js';
 
 type c32AddressFn = typeof c32check.c32address;
 
