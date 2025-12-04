@@ -59,7 +59,7 @@ import {
   ClarityValueStringAscii,
   ClarityValueTuple,
   TxPayloadTypeID,
-} from 'stacks-encoding-native-js';
+} from '@hirosystems/stacks-encoding-native-js';
 import { BnsContractIdentifier } from './bns/bns-constants';
 import {
   parseNameFromContractEvent,

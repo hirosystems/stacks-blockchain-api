@@ -25,7 +25,7 @@ import {
 } from '@stacks/transactions';
 import { StacksCoreRpcClient } from '../../src/core-rpc/client';
 import { StacksTestnet } from '@stacks/network';
-import { ClarityTypeID, decodeClarityValue } from 'stacks-encoding-native-js';
+import { ClarityTypeID, decodeClarityValue } from '@hirosystems/stacks-encoding-native-js';
 import { timeout } from '@hirosystems/api-toolkit';
 import {
   TransactionEventsResponse,

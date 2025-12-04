@@ -1,4 +1,4 @@
-import { DecodedTxResult } from 'stacks-encoding-native-js';
+import { DecodedTxResult } from '@hirosystems/stacks-encoding-native-js';
 import { ClarityAbi } from './contract-abi';
 
 export enum CoreNodeEventType {

@@ -5,7 +5,7 @@ import * as util from 'util';
 import * as readline from 'readline';
 import * as path from 'path';
 import * as zlib from 'zlib';
-import { bitcoinToStacksAddress } from 'stacks-encoding-native-js';
+import { bitcoinToStacksAddress } from '@hirosystems/stacks-encoding-native-js';
 import * as split2 from 'split2';
 import {
   DataStoreBnsBlockTxData,

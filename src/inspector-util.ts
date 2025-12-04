@@ -9,7 +9,7 @@ import { Socket } from 'net';
 import * as os from 'os';
 import * as path from 'path';
 import * as fs from 'fs';
-import { startProfiler, stopProfiler } from 'stacks-encoding-native-js';
+import { startProfiler, stopProfiler } from '@hirosystems/stacks-encoding-native-js';
 import { logger } from './logger';
 import { stopwatch, Stopwatch, timeout } from '@hirosystems/api-toolkit';
 

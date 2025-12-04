@@ -58,7 +58,7 @@ import {
   PostConditionAuthFlag,
   PrincipalTypeID,
   TxPayloadTypeID,
-} from 'stacks-encoding-native-js';
+} from '@hirosystems/stacks-encoding-native-js';
 import { getTxSenderAddress } from '../event-stream/reader';
 import postgres = require('postgres');
 import * as prom from 'prom-client';
@@ -292,6 +292,12 @@ export function abiColumn(sql: PgSqlClient, tableName: string = 'txs'): postgres
       LIMIT 1
     ) END as abi
     `;
+}
+
+export function tenureHeightColumn(sql: PgSqlClient): postgres.Fragment {
+  return sql`
+    SELECT tenure_height FROM blocks WHERE index_block_hash = txs.index_block_hash
+  `;
 }
 
 export function parseMempoolTxQueryResult(result: MempoolTxQueryResult): DbMempoolTx {

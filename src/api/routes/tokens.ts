@@ -1,6 +1,6 @@
 import { getPagingQueryLimit, parsePagingQueryInput, ResourceType } from '../pagination';
 import { isValidPrincipal } from '../../helpers';
-import { decodeClarityValueToRepr } from 'stacks-encoding-native-js';
+import { decodeClarityValueToRepr } from '@hirosystems/stacks-encoding-native-js';
 import { getAssetEventTypeString, parseDbTx } from '../controllers/db-controller';
 import { handleChainTipCache } from '../controllers/cache-controller';
 import { has0xPrefix } from '@hirosystems/api-toolkit';

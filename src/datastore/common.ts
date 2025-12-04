@@ -192,6 +192,8 @@ export interface DbTx extends BaseTx {
 
   tx_index: number;
 
+  tenure_height?: number | null;
+
   /** Hex encoded Clarity values. */
   raw_result: string;
 
@@ -973,6 +975,7 @@ export interface TxQueryResult {
   status: number;
   raw_result: string;
   canonical: boolean;
+  tenure_height?: number | null;
 
   microblock_canonical: boolean;
   microblock_sequence: number;

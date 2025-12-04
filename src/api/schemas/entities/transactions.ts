@@ -74,6 +74,10 @@ const AbstractTransactionProperties = {
     description:
       'An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this block was mined.',
   }),
+  index_block_hash: Type.String({
+    description:
+      'The only hash that can uniquely identify an anchored block or an unconfirmed state trie',
+  }),
   parent_burn_block_time: Type.Integer({
     description: 'Unix timestamp (in seconds) indicating when this parent block was mined',
   }),
@@ -84,6 +88,11 @@ const AbstractTransactionProperties = {
   canonical: Type.Boolean({
     description: 'Set to `true` if block corresponds to the canonical chain tip',
   }),
+  tenure_height: Nullable(
+    Type.Integer({
+      description: 'The tenure height (AKA coinbase height) of this block',
+    })
+  ),
   tx_index: Type.Integer({
     description:
       'Index of the transaction, indicating the order. Starts at `0` and increases with each transaction',
@@ -324,10 +333,21 @@ export const TenureChangeTransactionMetadataProperties = {
     previous_tenure_blocks: Type.Integer({
       description: 'The number of blocks produced in the previous tenure.',
     }),
-    cause: Type.Union([Type.Literal('block_found'), Type.Literal('extended')], {
-      description:
-        'Cause of change in mining tenure. Depending on cause, tenure can be ended or extended.',
-    }),
+    cause: Type.Union(
+      [
+        Type.Literal('block_found'),
+        Type.Literal('extended'),
+        Type.Literal('extended_runtime'),
+        Type.Literal('extended_read_count'),
+        Type.Literal('extended_read_length'),
+        Type.Literal('extended_write_count'),
+        Type.Literal('extended_write_length'),
+      ],
+      {
+        description:
+          'Cause of change in mining tenure. Depending on cause, tenure can be ended or extended.',
+      }
+    ),
     pubkey_hash: Type.String({
       description: '(Hex string) The ECDSA public key hash of the current tenure.',
     }),
