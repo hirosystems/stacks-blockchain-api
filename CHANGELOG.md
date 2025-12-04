@@ -1,3 +1,31 @@
+## [9.0.0-next.1](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.13.1...v9.0.0-next.1) (2025-12-04)
+
+
+### ⚠ BREAKING CHANGES
+
+* consolidate db migrations into one file per table (#2392)
+* This change will require resyncing from genesis
+* optimize principal transaction lists and etags (#2370)
+
+### Features
+
+* migrate default postgres schema ([2cc2459](https://github.com/hirosystems/stacks-blockchain-api/commit/2cc245967ec8ce0ff6ecc3c5b2c75f2b314bcec3))
+* migrate default postgres schema ([#2373](https://github.com/hirosystems/stacks-blockchain-api/issues/2373)) ([eb183cf](https://github.com/hirosystems/stacks-blockchain-api/commit/eb183cf253179a589761970663bc6b132b8d3a8f))
+* optimize principal transaction lists and etags ([#2370](https://github.com/hirosystems/stacks-blockchain-api/issues/2370)) ([30c63d7](https://github.com/hirosystems/stacks-blockchain-api/commit/30c63d7e21915579626ad3d290584112b8037e4d))
+
+
+### Bug Fixes
+
+* calculate burnchain reward reorgs correctly ([#2355](https://github.com/hirosystems/stacks-blockchain-api/issues/2355)) ([f82efbc](https://github.com/hirosystems/stacks-blockchain-api/commit/f82efbc6ddc0d98bea92c389888dfc7b5b17926b))
+* do not display revoked pool delegations ([#2357](https://github.com/hirosystems/stacks-blockchain-api/issues/2357)) ([c6de314](https://github.com/hirosystems/stacks-blockchain-api/commit/c6de31493b92c4e5ae5dcc44519dcc9867886abd))
+* push redis updates to a stream ([#2360](https://github.com/hirosystems/stacks-blockchain-api/issues/2360)) ([2bfacf6](https://github.com/hirosystems/stacks-blockchain-api/commit/2bfacf6ee5ef19758f0b7b24cdbd677f4d89e0ed))
+* sanitize event observer strings ([#2361](https://github.com/hirosystems/stacks-blockchain-api/issues/2361)) ([2604539](https://github.com/hirosystems/stacks-blockchain-api/commit/2604539d5e94f0f2ec20d05d86aa3690dcdb1474))
+
+
+### Miscellaneous Chores
+
+* consolidate db migrations into one file per table ([#2392](https://github.com/hirosystems/stacks-blockchain-api/issues/2392)) ([60b8db0](https://github.com/hirosystems/stacks-blockchain-api/commit/60b8db0b6ce9569ef36da232be1b643b583a7ce4))
+
 ## [8.13.1](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.13.0...v8.13.1) (2025-09-23)
 
 
