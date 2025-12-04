@@ -7,8 +7,8 @@
       "prerelease": true
     },
     {
-      "name": "nakamoto",
-      "channel": "nakamoto",
+      "name": "next",
+      "channel": "next",
       "prerelease": true
     }
   ],
@@ -44,7 +44,13 @@
         "pkgRoot": "./client"
       }
     ],
-    "@semantic-release/github",
+    [
+      "@semantic-release/github",
+      {
+        "successComment": false,
+        "draftRelease": true
+      }
+    ],
     "@semantic-release/changelog",
     "@semantic-release/git"
   ]

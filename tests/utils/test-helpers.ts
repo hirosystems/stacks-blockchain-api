@@ -45,7 +45,13 @@ import { CoreRpcPoxInfo, StacksCoreRpcClient } from '../../src/core-rpc/client';
 import { DbBlock, DbTx, DbTxStatus } from '../../src/datastore/common';
 import { PgWriteStore } from '../../src/datastore/pg-write-store';
 import { BitcoinAddressFormat, ECPair, getBitcoinAddressFromKey } from '../../src/ec-helpers';
-import { coerceToBuffer, connectPostgres, runMigrations, timeout } from '@hirosystems/api-toolkit';
+import {
+  coerceToBuffer,
+  connectPostgres,
+  PgConnectionArgs,
+  runMigrations,
+  timeout,
+} from '@hirosystems/api-toolkit';
 import { MIGRATIONS_DIR } from '../../src/datastore/pg-store';
 import { getConnectionArgs } from '../../src/datastore/connection';
 import { AddressStxBalance } from '../../src/api/schemas/entities/addresses';
@@ -53,6 +59,11 @@ import { ServerStatusResponse } from '../../src/api/schemas/responses/responses'
 
 export async function migrate(direction: 'up' | 'down') {
   const connArgs = getConnectionArgs();
+  await createSchema(connArgs);
+  await runMigrations(MIGRATIONS_DIR, direction, connArgs);
+}
+
+export async function createSchema(connArgs: PgConnectionArgs) {
   if (typeof connArgs !== 'string' && connArgs.schema) {
     const sql = await connectPostgres({
       usageName: 'tests-migrations-setup',
@@ -61,7 +72,6 @@ export async function migrate(direction: 'up' | 'down') {
     await sql`CREATE SCHEMA IF NOT EXISTS ${sql(connArgs.schema)}`;
     await sql.end();
   }
-  await runMigrations(MIGRATIONS_DIR, direction, connArgs);
 }
 
 export interface TestEnvContext {

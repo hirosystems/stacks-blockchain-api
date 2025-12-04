@@ -105,14 +105,6 @@ The feature can be used via program args. For example, if there are breaking cha
 SQL schema, like adding a new column that requires events to be re-played, the following steps
 could be run:
 
-### Event Replay V2
-
-This version of the replay process relies on parquet files processing instead of TSV files.
-
-There are some improvements on the replay process and this version is is, around, 10x times faster than the previous (V1) one.
-
-__Note: the previous event-replay version is still available and can be used as well, for the same purpose.__
-
 #### Instructions
 
 To run the new event-replay, please follow the instructions at [stacks-event-replay](https://github.com/hirosystems/stacks-event-replay#installation) repository.

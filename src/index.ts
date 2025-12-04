@@ -283,15 +283,6 @@ function getProgramArgs() {
           ['wipe-db']?: boolean;
           ['force']?: boolean;
         };
-      }
-    | {
-        operand: 'from-parquet-events';
-        options: {
-          ['new-burn-block']?: boolean;
-          ['attachment-new']?: boolean;
-          ['new-block']?: boolean;
-          ['ids-path']?: string;
-        };
       };
   return { args, parsedOpts };
 }
@@ -307,12 +298,6 @@ async function handleProgramArgs() {
       args.options['wipe-db'],
       args.options.force
     );
-  } else if (args.operand === 'from-parquet-events') {
-    const { ReplayController } = await import('./event-replay/parquet-based/replay-controller');
-    const replay = await ReplayController.init();
-    await replay.prepare();
-    await replay.do();
-    await replay.finalize();
   } else if (parsedOpts._[0]) {
     throw new Error(`Unexpected program argument: ${parsedOpts._[0]}`);
   } else {
