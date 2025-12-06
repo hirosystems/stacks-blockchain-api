@@ -1,3 +1,4 @@
+import { FoundOrNot } from 'src/helpers';
 import { Block } from '../api/schemas/entities/block';
 import { SyntheticPoxEventName } from '../pox-helpers';
 import { PgBytea, PgJsonb, PgNumeric } from '@hirosystems/api-toolkit';
@@ -553,6 +554,12 @@ export interface DbSmartContractEvent extends DbEventBase {
   topic: string;
   value: string;
 }
+
+export type DbCursorPaginatedFoundOrNot<T> = FoundOrNot<T> & {
+  nextCursor?: string | null;
+  prevCursor?: string | null;
+  total: number;
+};
 
 export interface DbStxLockEvent extends DbEventBase {
   event_type: DbEventTypeId.StxLock;
