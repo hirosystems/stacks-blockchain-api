@@ -30,7 +30,7 @@ import {
   RewardSlotHolderInsertValues,
   StxLockEventInsertValues,
   StxEventInsertValues,
-  PrincipalStxTxsInsertValues,
+  PrincipalTxsInsertValues,
   BnsSubdomainInsertValues,
   BnsZonefileInsertValues,
   FtEventInsertValues,
@@ -64,6 +64,7 @@ import {
   DbPoxSetSigners,
   PoxSetSignerValues,
   PoxCycleInsertValues,
+  DbAssetEventTypeId,
 } from './common';
 import {
   BLOCK_COLUMNS,
@@ -361,7 +362,7 @@ export class PgWriteStore extends PgStore {
             )
           );
           q.enqueue(() => this.updateStxEvents(sql, newTxData));
-          q.enqueue(() => this.updatePrincipalStxTxs(sql, newTxData));
+          q.enqueue(() => this.updatePrincipalTxs(sql, newTxData));
           q.enqueue(() => this.updateSmartContractEvents(sql, newTxData));
           q.enqueue(() => this.updatePoxSyntheticEvents(sql, 'pox2_events', newTxData));
           q.enqueue(() => this.updatePoxSyntheticEvents(sql, 'pox3_events', newTxData));
@@ -1373,30 +1374,130 @@ export class PgWriteStore extends PgStore {
   }
 
   /**
-   * Update the `principal_stx_tx` table with the latest `tx_id`s that resulted in a STX
-   * transfer relevant to a principal (stx address or contract id).
+   * Update the `principal_txs` table with the latest `tx_id`s that resulted in activity for a
+   * principal (contract or address), and mark the type of token balance that was affected.
    * @param sql - DB client
-   * @param entries - list of tx and stxEvents
+   * @param txs - list of transactions
    */
-  async updatePrincipalStxTxs(sql: PgSqlClient, entries: { tx: DbTx; stxEvents: DbStxEvent[] }[]) {
-    const values: PrincipalStxTxsInsertValues[] = [];
-    for (const { tx, stxEvents } of entries) {
-      const principals = new Set<string>(
-        [
-          tx.sender_address,
-          tx.token_transfer_recipient_address,
-          tx.contract_call_contract_id,
-          tx.smart_contract_contract_id,
-          tx.sponsor_address,
-        ].filter((p): p is string => !!p)
-      );
-      for (const event of stxEvents) {
-        if (event.sender) principals.add(event.sender);
-        if (event.recipient) principals.add(event.recipient);
+  async updatePrincipalTxs(sql: PgSqlClient, txs: DataStoreTxEventData[]) {
+    type PrincipalRow = {
+      stx: boolean;
+      ft: boolean;
+      nft: boolean;
+      stx_sent: bigint;
+      stx_received: bigint;
+      stx_mints: number;
+      stx_burns: number;
+      stx_transfers: number;
+      ft_mints: number;
+      ft_burns: number;
+      ft_transfers: number;
+      nft_mints: number;
+      nft_burns: number;
+      nft_transfers: number;
+    };
+    const values: PrincipalTxsInsertValues[] = [];
+    for (const { tx, stxEvents, ftEvents, nftEvents } of txs) {
+      // Mark principals who participated in this transaction, along with the type of token balance
+      // they affected.
+      const principals = new Map<string, PrincipalRow>();
+      const addPrincipal = (principal: string, data?: Partial<PrincipalRow>) => {
+        const entry = principals.get(principal);
+        principals.set(principal, {
+          stx: entry?.stx || data?.stx || false,
+          ft: entry?.ft || data?.ft || false,
+          nft: entry?.nft || data?.nft || false,
+          stx_sent: (entry?.stx_sent ?? 0n) + (data?.stx_sent ?? 0n),
+          stx_received: (entry?.stx_received ?? 0n) + (data?.stx_received ?? 0n),
+          stx_mints: (entry?.stx_mints ?? 0) + (data?.stx_mints ?? 0),
+          stx_burns: (entry?.stx_burns ?? 0) + (data?.stx_burns ?? 0),
+          stx_transfers: (entry?.stx_transfers ?? 0) + (data?.stx_transfers ?? 0),
+          ft_mints: (entry?.ft_mints ?? 0) + (data?.ft_mints ?? 0),
+          ft_burns: (entry?.ft_burns ?? 0) + (data?.ft_burns ?? 0),
+          ft_transfers: (entry?.ft_transfers ?? 0) + (data?.ft_transfers ?? 0),
+          nft_mints: (entry?.nft_mints ?? 0) + (data?.nft_mints ?? 0),
+          nft_burns: (entry?.nft_burns ?? 0) + (data?.nft_burns ?? 0),
+          nft_transfers: (entry?.nft_transfers ?? 0) + (data?.nft_transfers ?? 0),
+        });
+      };
+
+      // Record participating principals. No amounts yet, that will be included in stx_events below.
+      addPrincipal(tx.sender_address);
+      if (tx.token_transfer_recipient_address)
+        addPrincipal(tx.token_transfer_recipient_address, { stx: true });
+      if (tx.contract_call_contract_id) addPrincipal(tx.contract_call_contract_id);
+      if (tx.smart_contract_contract_id) addPrincipal(tx.smart_contract_contract_id);
+
+      // Record fee paid.
+      if (tx.sponsor_address) {
+        addPrincipal(tx.sponsor_address, { stx: true, stx_sent: BigInt(tx.fee_rate) });
+      } else {
+        addPrincipal(tx.sender_address, { stx: true, stx_sent: BigInt(tx.fee_rate) });
       }
-      for (const principal of principals) {
+
+      // Record token amounts and event counts.
+      for (const event of stxEvents) {
+        switch (event.asset_event_type_id) {
+          case DbAssetEventTypeId.Mint:
+            if (event.recipient)
+              addPrincipal(event.recipient, {
+                stx: true,
+                stx_received: event.amount,
+                stx_mints: 1,
+              });
+            break;
+          case DbAssetEventTypeId.Burn:
+            if (event.sender)
+              addPrincipal(event.sender, { stx: true, stx_sent: event.amount, stx_burns: 1 });
+            break;
+          case DbAssetEventTypeId.Transfer:
+            if (event.sender)
+              addPrincipal(event.sender, { stx: true, stx_sent: event.amount, stx_transfers: 1 });
+            if (event.recipient)
+              addPrincipal(event.recipient, {
+                stx: true,
+                stx_received: event.amount,
+                stx_transfers: 1,
+              });
+            break;
+        }
+      }
+      for (const event of ftEvents) {
+        switch (event.asset_event_type_id) {
+          case DbAssetEventTypeId.Mint:
+            if (event.recipient) addPrincipal(event.recipient, { ft: true, ft_mints: 1 });
+            break;
+          case DbAssetEventTypeId.Burn:
+            if (event.sender) addPrincipal(event.sender, { ft: true, ft_burns: 1 });
+            break;
+          case DbAssetEventTypeId.Transfer:
+            if (event.sender) addPrincipal(event.sender, { ft: true, ft_transfers: 1 });
+            if (event.recipient)
+              addPrincipal(event.recipient, {
+                ft: true,
+                ft_transfers: 1,
+              });
+            break;
+        }
+      }
+      for (const event of nftEvents) {
+        switch (event.asset_event_type_id) {
+          case DbAssetEventTypeId.Mint:
+            if (event.recipient) addPrincipal(event.recipient, { nft: true, nft_mints: 1 });
+            break;
+          case DbAssetEventTypeId.Burn:
+            if (event.sender) addPrincipal(event.sender, { nft: true, nft_burns: 1 });
+            break;
+          case DbAssetEventTypeId.Transfer:
+            if (event.sender) addPrincipal(event.sender, { nft: true, nft_transfers: 1 });
+            if (event.recipient) addPrincipal(event.recipient, { nft: true, nft_transfers: 1 });
+            break;
+        }
+      }
+
+      for (const [principal, data] of principals.entries()) {
         values.push({
-          principal: principal,
+          principal,
           tx_id: tx.tx_id,
           block_height: tx.block_height,
           index_block_hash: tx.index_block_hash,
@@ -1405,14 +1506,27 @@ export class PgWriteStore extends PgStore {
           tx_index: tx.tx_index,
           canonical: tx.canonical,
           microblock_canonical: tx.microblock_canonical,
+          stx_balance_affected: data.stx,
+          ft_balance_affected: data.ft,
+          nft_balance_affected: data.nft,
+          stx_sent: data.stx_sent,
+          stx_received: data.stx_received,
+          stx_mint_event_count: data.stx_mints,
+          stx_burn_event_count: data.stx_burns,
+          stx_transfer_event_count: data.stx_transfers,
+          ft_mint_event_count: data.ft_mints,
+          ft_burn_event_count: data.ft_burns,
+          ft_transfer_event_count: data.ft_transfers,
+          nft_mint_event_count: data.nft_mints,
+          nft_burn_event_count: data.nft_burns,
+          nft_transfer_event_count: data.nft_transfers,
         });
       }
     }
-
-    for (const eventBatch of batchIterate(values, INSERT_BATCH_SIZE)) {
+    for (const batch of batchIterate(values, INSERT_BATCH_SIZE)) {
       await sql`
-        INSERT INTO principal_stx_txs ${sql(eventBatch)}
-        ON CONFLICT ON CONSTRAINT unique_principal_tx_id_index_block_hash_microblock_hash DO NOTHING
+        INSERT INTO principal_txs ${sql(batch)}
+        ON CONFLICT ON CONSTRAINT principal_txs_unique DO NOTHING
       `;
     }
   }
@@ -2746,7 +2860,7 @@ export class PgWriteStore extends PgStore {
           );
       });
       q.enqueue(() => this.updateStxEvents(sql, txs));
-      q.enqueue(() => this.updatePrincipalStxTxs(sql, txs));
+      q.enqueue(() => this.updatePrincipalTxs(sql, txs));
       q.enqueue(() => this.updateSmartContractEvents(sql, txs));
       q.enqueue(() => this.updatePoxSyntheticEvents(sql, 'pox2_events', txs));
       q.enqueue(() => this.updatePoxSyntheticEvents(sql, 'pox3_events', txs));
@@ -2832,7 +2946,7 @@ export class PgWriteStore extends PgStore {
         `;
       }
       await sql`
-        UPDATE principal_stx_txs
+        UPDATE principal_txs
         SET microblock_canonical = ${args.isMicroCanonical},
           canonical = ${args.isCanonical}, index_block_hash = ${args.indexBlockHash}
         WHERE microblock_hash IN ${sql(args.microblocks)}
@@ -3261,7 +3375,7 @@ export class PgWriteStore extends PgStore {
       }
       if (txResult.count) {
         await sql`
-          UPDATE principal_stx_txs
+          UPDATE principal_txs
           SET canonical = ${canonical}
           WHERE tx_id IN ${sql(txs.map(t => t.txId))}
             AND index_block_hash = ${indexBlockHash} AND canonical != ${canonical}
@@ -3886,9 +4000,9 @@ export class PgWriteStore extends PgStore {
     await sql`INSERT INTO txs ${sql(values)}`;
   }
 
-  async insertPrincipalStxTxsBatch(sql: PgSqlClient, values: PrincipalStxTxsInsertValues[]) {
+  async insertPrincipalTxsBatch(sql: PgSqlClient, values: PrincipalTxsInsertValues[]) {
     await sql`
-      INSERT INTO principal_stx_txs ${sql(values)}
+      INSERT INTO principal_txs ${sql(values)}
     `;
   }
 
