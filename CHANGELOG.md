@@ -1,17 +1,25 @@
-## [9.0.0-next.1](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.13.1...v9.0.0-next.1) (2025-12-04)
+## [8.13.5](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.13.4...v8.13.5) (2025-12-02)
 
 
-### ⚠ BREAKING CHANGES
+### Bug Fixes
 
-* consolidate db migrations into one file per table (#2392)
-* This change will require resyncing from genesis
-* optimize principal transaction lists and etags (#2370)
+* support new sip-034 tenure change causes ([#2384](https://github.com/hirosystems/stacks-blockchain-api/issues/2384)) ([399908f](https://github.com/hirosystems/stacks-blockchain-api/commit/399908fd08fdaee3edc5b0820f0526378f7ab51a))
 
-### Features
+## [8.13.4](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.13.3...v8.13.4) (2025-11-06)
 
-* migrate default postgres schema ([2cc2459](https://github.com/hirosystems/stacks-blockchain-api/commit/2cc245967ec8ce0ff6ecc3c5b2c75f2b314bcec3))
-* migrate default postgres schema ([#2373](https://github.com/hirosystems/stacks-blockchain-api/issues/2373)) ([eb183cf](https://github.com/hirosystems/stacks-blockchain-api/commit/eb183cf253179a589761970663bc6b132b8d3a8f))
-* optimize principal transaction lists and etags ([#2370](https://github.com/hirosystems/stacks-blockchain-api/issues/2370)) ([30c63d7](https://github.com/hirosystems/stacks-blockchain-api/commit/30c63d7e21915579626ad3d290584112b8037e4d))
+
+### Bug Fixes
+
+* upgrade to latest stacks-encoding-native-js with arm64 support ([#2376](https://github.com/hirosystems/stacks-blockchain-api/issues/2376)) ([5ab7328](https://github.com/hirosystems/stacks-blockchain-api/commit/5ab7328c4c63c270fe0c43cec45f2a5a3e84d4cf))
+
+## [8.13.3](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.13.2...v8.13.3) (2025-11-06)
+
+
+### Bug Fixes
+
+* upgrade stacks-encoding-native-js ([#2375](https://github.com/hirosystems/stacks-blockchain-api/issues/2375)) ([ae9933b](https://github.com/hirosystems/stacks-blockchain-api/commit/ae9933b1d0caf303838db621997c31f749100ff8))
+
+## [8.13.2](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.13.1...v8.13.2) (2025-10-21)
 
 
 ### Bug Fixes
@@ -20,11 +28,6 @@
 * do not display revoked pool delegations ([#2357](https://github.com/hirosystems/stacks-blockchain-api/issues/2357)) ([c6de314](https://github.com/hirosystems/stacks-blockchain-api/commit/c6de31493b92c4e5ae5dcc44519dcc9867886abd))
 * push redis updates to a stream ([#2360](https://github.com/hirosystems/stacks-blockchain-api/issues/2360)) ([2bfacf6](https://github.com/hirosystems/stacks-blockchain-api/commit/2bfacf6ee5ef19758f0b7b24cdbd677f4d89e0ed))
 * sanitize event observer strings ([#2361](https://github.com/hirosystems/stacks-blockchain-api/issues/2361)) ([2604539](https://github.com/hirosystems/stacks-blockchain-api/commit/2604539d5e94f0f2ec20d05d86aa3690dcdb1474))
-
-
-### Miscellaneous Chores
-
-* consolidate db migrations into one file per table ([#2392](https://github.com/hirosystems/stacks-blockchain-api/issues/2392)) ([60b8db0](https://github.com/hirosystems/stacks-blockchain-api/commit/60b8db0b6ce9569ef36da232be1b643b583a7ce4))
 
 ## [8.13.1](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.13.0...v8.13.1) (2025-09-23)
 

@@ -1,6 +1,9 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import * as c32check from 'c32check';
-import { bitcoinToStacksAddress, stacksToBitcoinAddress } from 'stacks-encoding-native-js';
+import {
+  bitcoinToStacksAddress,
+  stacksToBitcoinAddress,
+} from '@hirosystems/stacks-encoding-native-js';
 import * as c32AddrCache from '../../src/c32-addr-cache';
 import { ADDR_CACHE_ENV_VAR } from '../../src/c32-addr-cache';
 import { isValidBitcoinAddress, getUintEnvOrDefault, BitVec } from '../../src/helpers';

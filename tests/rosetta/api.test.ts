@@ -818,131 +818,157 @@ describe('Rosetta API', () => {
     });
   });
 
-  test('epoch3 tenure-change block/transaction', async () => {
-    const parentData = new TestBlockBuilder().addTx().build();
-    const block1: TestBlockArgs = {
-      block_height: 2,
-      block_hash: '0xd0dd05e3d0a1bd60640c9d9d30d57012ffe47b52fe643140c39199c757d37e3f',
-      index_block_hash: '0x6a36c14514047074c2877065809bbb70d81d52507747f4616da997deb7228fad',
-      parent_index_block_hash: parentData.block.index_block_hash,
-      parent_block_hash: parentData.block.block_hash,
-      parent_microblock_hash: '0x0000000000000000000000000000000000000000000000000000000000000000',
-      burn_block_hash: '0xfe15c0d3ebe314fad720a08b839a004c2e6386f5aecc19ec74807d1920cb6aeb',
-      miner_txid: '0x0000000000000000000000000000000000000000000000000000000000000000',
-    };
-    const txTenureChange1: TestTxArgs = {
-      tx_id: '0xc152de9376bab4fc27291c9cd088643698290a12bb511d768f873cb3d280eb48',
-      tx_index: 1,
-      type_id: DbTxTypeId.TenureChange,
-      status: DbTxStatus.Success,
-      raw_result: '0x0703',
-      canonical: true,
-      microblock_canonical: true,
-      microblock_sequence: 2147483647,
-      microblock_hash: '0x00',
-      fee_rate: 0n,
-      sender_address: 'ST1HB1T8WRNBYB0Y3T7WXZS38NKKPTBR3EG9EPJKR',
-      tenure_change_tenure_consensus_hash: '0x2fedd90a5f318ed8cec419fd1c6656b5af452497',
-      tenure_change_prev_tenure_consensus_hash: '0x5104aae6d442b49c8e8d2031df7f40b67528e654',
-      tenure_change_burn_view_consensus_hash: '0x2fedd90a5f318ed8cec419fd1c6656b5af452497',
-      tenure_change_previous_tenure_end:
-        '0xb77b061202b1e6dce889ba1633efa969d3c24679d32a7542d29015ee94e8a860',
-      tenure_change_previous_tenure_blocks: 9,
-      tenure_change_cause: 0,
-      tenure_change_pubkey_hash: '0x62b4273562dfa3825496094507564bf2b30c8b11',
-    };
-    const blockData1 = new TestBlockBuilder(block1).addTx(txTenureChange1).build();
+  describe('epoch3 tenure-change block/transaction', () => {
+    const changeTenure = async (cause: number, causeString: string) => {
+      const parentData = new TestBlockBuilder().addTx().build();
+      const block1: TestBlockArgs = {
+        block_height: 2,
+        block_hash: '0xd0dd05e3d0a1bd60640c9d9d30d57012ffe47b52fe643140c39199c757d37e3f',
+        index_block_hash: '0x6a36c14514047074c2877065809bbb70d81d52507747f4616da997deb7228fad',
+        parent_index_block_hash: parentData.block.index_block_hash,
+        parent_block_hash: parentData.block.block_hash,
+        parent_microblock_hash:
+          '0x0000000000000000000000000000000000000000000000000000000000000000',
+        burn_block_hash: '0xfe15c0d3ebe314fad720a08b839a004c2e6386f5aecc19ec74807d1920cb6aeb',
+        miner_txid: '0x0000000000000000000000000000000000000000000000000000000000000000',
+      };
+      const txTenureChange1: TestTxArgs = {
+        tx_id: '0xc152de9376bab4fc27291c9cd088643698290a12bb511d768f873cb3d280eb48',
+        tx_index: 1,
+        type_id: DbTxTypeId.TenureChange,
+        status: DbTxStatus.Success,
+        raw_result: '0x0703',
+        canonical: true,
+        microblock_canonical: true,
+        microblock_sequence: 2147483647,
+        microblock_hash: '0x00',
+        fee_rate: 0n,
+        sender_address: 'ST1HB1T8WRNBYB0Y3T7WXZS38NKKPTBR3EG9EPJKR',
+        tenure_change_tenure_consensus_hash: '0x2fedd90a5f318ed8cec419fd1c6656b5af452497',
+        tenure_change_prev_tenure_consensus_hash: '0x5104aae6d442b49c8e8d2031df7f40b67528e654',
+        tenure_change_burn_view_consensus_hash: '0x2fedd90a5f318ed8cec419fd1c6656b5af452497',
+        tenure_change_previous_tenure_end:
+          '0xb77b061202b1e6dce889ba1633efa969d3c24679d32a7542d29015ee94e8a860',
+        tenure_change_previous_tenure_blocks: 9,
+        tenure_change_cause: cause,
+        tenure_change_pubkey_hash: '0x62b4273562dfa3825496094507564bf2b30c8b11',
+      };
+      const blockData1 = new TestBlockBuilder(block1).addTx(txTenureChange1).build();
 
-    await db.update(parentData);
-    await db.update(blockData1);
+      await db.update(parentData);
+      await db.update(blockData1);
 
-    const query1 = await supertest(api.server)
-      .post(`/rosetta/v1/block/transaction`)
-      .send({
-        network_identifier: { blockchain: 'stacks', network: 'testnet' },
-        block_identifier: {
-          index: blockData1.block.block_height,
-          hash: blockData1.block.block_hash,
-        },
-        transaction_identifier: { hash: txTenureChange1.tx_id },
-      });
-    expect(query1.status).toBe(200);
-    expect(query1.type).toBe('application/json');
-    expect(query1.body).toEqual({
-      transaction_identifier: {
-        hash: txTenureChange1.tx_id,
-      },
-      operations: [
-        {
-          operation_identifier: {
-            index: 0,
+      const query1 = await supertest(api.server)
+        .post(`/rosetta/v1/block/transaction`)
+        .send({
+          network_identifier: { blockchain: 'stacks', network: 'testnet' },
+          block_identifier: {
+            index: blockData1.block.block_height,
+            hash: blockData1.block.block_hash,
           },
-          type: 'tenure_change',
-          status: 'success',
-          metadata: {
-            tenure_consensus_hash: txTenureChange1.tenure_change_tenure_consensus_hash,
-            prev_tenure_consensus_hash: txTenureChange1.tenure_change_prev_tenure_consensus_hash,
-            burn_view_consensus_hash: txTenureChange1.tenure_change_burn_view_consensus_hash,
-            previous_tenure_end: txTenureChange1.tenure_change_previous_tenure_end,
-            previous_tenure_blocks: txTenureChange1.tenure_change_previous_tenure_blocks,
-            cause: 'block_found',
-            pubkey_hash: txTenureChange1.tenure_change_pubkey_hash,
-          },
+          transaction_identifier: { hash: txTenureChange1.tx_id },
+        });
+      expect(query1.status).toBe(200);
+      expect(query1.type).toBe('application/json');
+      expect(query1.body).toEqual({
+        transaction_identifier: {
+          hash: txTenureChange1.tx_id,
         },
-      ],
-    });
-
-    const query2 = await supertest(api.address)
-      .post(`/rosetta/v1/block`)
-      .send({
-        network_identifier: { blockchain: 'stacks', network: 'testnet' },
-        block_identifier: { index: blockData1.block.block_height },
-      });
-    expect(query1.status).toBe(200);
-    expect(query1.type).toBe('application/json');
-    const expected: RosettaBlockResponse = {
-      block: {
-        block_identifier: {
-          index: blockData1.block.block_height,
-          hash: blockData1.block.block_hash,
-        },
-        parent_block_identifier: {
-          index: blockData1.block.block_height - 1,
-          hash: blockData1.block.parent_block_hash,
-        },
-        timestamp: blockData1.block.burn_block_time * 1000,
-        transactions: [
+        operations: [
           {
-            transaction_identifier: {
-              hash: txTenureChange1.tx_id as string,
+            operation_identifier: {
+              index: 0,
             },
-            operations: [
-              {
-                operation_identifier: {
-                  index: 0,
-                },
-                type: 'tenure_change',
-                status: 'success',
-                metadata: {
-                  tenure_consensus_hash: txTenureChange1.tenure_change_tenure_consensus_hash,
-                  prev_tenure_consensus_hash:
-                    txTenureChange1.tenure_change_prev_tenure_consensus_hash,
-                  burn_view_consensus_hash: txTenureChange1.tenure_change_burn_view_consensus_hash,
-                  previous_tenure_end: txTenureChange1.tenure_change_previous_tenure_end,
-                  previous_tenure_blocks: txTenureChange1.tenure_change_previous_tenure_blocks,
-                  cause: 'block_found',
-                  pubkey_hash: txTenureChange1.tenure_change_pubkey_hash,
-                },
-              },
-            ],
+            type: 'tenure_change',
+            status: 'success',
+            metadata: {
+              tenure_consensus_hash: txTenureChange1.tenure_change_tenure_consensus_hash,
+              prev_tenure_consensus_hash: txTenureChange1.tenure_change_prev_tenure_consensus_hash,
+              burn_view_consensus_hash: txTenureChange1.tenure_change_burn_view_consensus_hash,
+              previous_tenure_end: txTenureChange1.tenure_change_previous_tenure_end,
+              previous_tenure_blocks: txTenureChange1.tenure_change_previous_tenure_blocks,
+              cause: causeString,
+              pubkey_hash: txTenureChange1.tenure_change_pubkey_hash,
+            },
           },
         ],
-        metadata: {
-          burn_block_height: blockData1.block.burn_block_height,
+      });
+
+      const query2 = await supertest(api.address)
+        .post(`/rosetta/v1/block`)
+        .send({
+          network_identifier: { blockchain: 'stacks', network: 'testnet' },
+          block_identifier: { index: blockData1.block.block_height },
+        });
+      expect(query1.status).toBe(200);
+      expect(query1.type).toBe('application/json');
+      const expected: RosettaBlockResponse = {
+        block: {
+          block_identifier: {
+            index: blockData1.block.block_height,
+            hash: blockData1.block.block_hash,
+          },
+          parent_block_identifier: {
+            index: blockData1.block.block_height - 1,
+            hash: blockData1.block.parent_block_hash,
+          },
+          timestamp: blockData1.block.burn_block_time * 1000,
+          transactions: [
+            {
+              transaction_identifier: {
+                hash: txTenureChange1.tx_id as string,
+              },
+              operations: [
+                {
+                  operation_identifier: {
+                    index: 0,
+                  },
+                  type: 'tenure_change',
+                  status: 'success',
+                  metadata: {
+                    tenure_consensus_hash: txTenureChange1.tenure_change_tenure_consensus_hash,
+                    prev_tenure_consensus_hash:
+                      txTenureChange1.tenure_change_prev_tenure_consensus_hash,
+                    burn_view_consensus_hash:
+                      txTenureChange1.tenure_change_burn_view_consensus_hash,
+                    previous_tenure_end: txTenureChange1.tenure_change_previous_tenure_end,
+                    previous_tenure_blocks: txTenureChange1.tenure_change_previous_tenure_blocks,
+                    cause: causeString,
+                    pubkey_hash: txTenureChange1.tenure_change_pubkey_hash,
+                  },
+                },
+              ],
+            },
+          ],
+          metadata: {
+            burn_block_height: blockData1.block.burn_block_height,
+          },
         },
-      },
+      };
+      expect(query2.body).toEqual(expected);
     };
-    expect(query2.body).toEqual(expected);
+
+    test('block_found', async () => {
+      await expect(changeTenure(0, 'block_found')).resolves.not.toThrow();
+    });
+    test('extended', async () => {
+      await expect(changeTenure(1, 'extended')).resolves.not.toThrow();
+    });
+    test('extended_runtime', async () => {
+      await expect(changeTenure(2, 'extended_runtime')).resolves.not.toThrow();
+    });
+    test('extended_read_count', async () => {
+      await expect(changeTenure(3, 'extended_read_count')).resolves.not.toThrow();
+    });
+    test('extended_read_length', async () => {
+      await expect(changeTenure(4, 'extended_read_length')).resolves.not.toThrow();
+    });
+    test('extended_write_length', async () => {
+      await expect(changeTenure(5, 'extended_write_count')).resolves.not.toThrow();
+    });
+    test('extended_read_count', async () => {
+      await expect(changeTenure(6, 'extended_write_length')).resolves.not.toThrow();
+    });
   });
 
   test('block/transaction - invalid transaction hash', async () => {

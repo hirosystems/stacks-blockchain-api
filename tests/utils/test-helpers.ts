@@ -37,7 +37,7 @@ import {
   ClarityTypeID,
   ClarityValue as NativeClarityValue,
   decodeClarityValue,
-} from 'stacks-encoding-native-js';
+} from '@hirosystems/stacks-encoding-native-js';
 import * as supertest from 'supertest';
 import { ApiServer } from '../../src/api/init';
 import { testnetKeys } from '../../src/api/routes/debug';
