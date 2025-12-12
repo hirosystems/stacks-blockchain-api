@@ -1,3 +1,14 @@
+## [9.0.0-next.2](https://github.com/hirosystems/stacks-blockchain-api/compare/v9.0.0-next.1...v9.0.0-next.2) (2025-12-12)
+
+### Bug Fixes
+
+* revert migration files to CommonJS ([#2397](https://github.com/hirosystems/stacks-blockchain-api/issues/2397)) ([957458d](https://github.com/hirosystems/stacks-blockchain-api/commit/957458dafdfcc83470c5a5568c15d6adc22566a0))
+* security patches for jws and node-forge ([83ebe2d](https://github.com/hirosystems/stacks-blockchain-api/commit/83ebe2d721610d83d99fe17f33837801135c4f8f))
+* stacks-blockchain/dist-tool/package.json & stacks-blockchain/dist-tool/package-lock.json to reduce vulnerabilities ([#2387](https://github.com/hirosystems/stacks-blockchain-api/issues/2387)) ([8f242ed](https://github.com/hirosystems/stacks-blockchain-api/commit/8f242ed7374acfe7fdb214ee46c269290e702842))
+* support new sip-034 tenure change causes ([#2384](https://github.com/hirosystems/stacks-blockchain-api/issues/2384)) ([399908f](https://github.com/hirosystems/stacks-blockchain-api/commit/399908fd08fdaee3edc5b0820f0526378f7ab51a))
+* upgrade stacks-encoding-native-js ([#2375](https://github.com/hirosystems/stacks-blockchain-api/issues/2375)) ([ae9933b](https://github.com/hirosystems/stacks-blockchain-api/commit/ae9933b1d0caf303838db621997c31f749100ff8))
+* upgrade to latest stacks-encoding-native-js with arm64 support ([#2376](https://github.com/hirosystems/stacks-blockchain-api/issues/2376)) ([5ab7328](https://github.com/hirosystems/stacks-blockchain-api/commit/5ab7328c4c63c270fe0c43cec45f2a5a3e84d4cf))
+
 ## [8.13.5](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.13.4...v8.13.5) (2025-12-02)
 
 
