@@ -2502,11 +2502,12 @@ export class PgWriteStore extends PgStore {
     txIds: string[];
     new_tx_id: string | null;
   }): Promise<void> {
+    const replaced_by = new_tx_id ?? null;
     for (const batch of batchIterate(txIds, INSERT_BATCH_SIZE)) {
       const updateResults = await this.sql<{ tx_id: string }[]>`
         WITH pruned AS (
           UPDATE mempool_txs
-          SET pruned = TRUE, status = ${status}, replaced_by_tx_id = ${new_tx_id}
+          SET pruned = TRUE, status = ${status}, replaced_by_tx_id = ${replaced_by}
           WHERE tx_id IN ${this.sql(batch)} AND pruned = FALSE
           RETURNING tx_id
         ),
