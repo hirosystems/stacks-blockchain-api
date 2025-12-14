@@ -2385,7 +2385,7 @@ export class PgWriteStore extends PgStore {
           ORDER BY address, nonce, fee_rate DESC, receipt_time DESC
         ),
         winning_txs AS (
-          SELECT
+          SELECT DISTINCT
             g.address,
             g.nonce,
             COALESCE(l.tx_id, h.tx_id) AS tx_id
@@ -2410,6 +2410,7 @@ export class PgWriteStore extends PgStore {
               FROM winning_txs w
               INNER JOIN same_nonce_mempool_txs s ON w.address = s.address AND w.nonce = s.nonce
               WHERE s.tx_id = m.tx_id
+              LIMIT 1
             )
           FROM txs_to_prune p
           WHERE m.tx_id = p.tx_id
