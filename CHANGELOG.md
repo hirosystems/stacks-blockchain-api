@@ -1,3 +1,9 @@
+## [9.0.0-next.3](https://github.com/hirosystems/stacks-blockchain-api/compare/v9.0.0-next.2...v9.0.0-next.3) (2025-12-14)
+
+### Bug Fixes
+
+* guard against undefined in drop mempool msgs ([#2405](https://github.com/hirosystems/stacks-blockchain-api/issues/2405)) ([dac7e3e](https://github.com/hirosystems/stacks-blockchain-api/commit/dac7e3ed833cfe0db5f7a0b5e470607f65ad9aad))
+
 ## [9.0.0-next.2](https://github.com/hirosystems/stacks-blockchain-api/compare/v9.0.0-next.1...v9.0.0-next.2) (2025-12-12)
 
 ### Bug Fixes
