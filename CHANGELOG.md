@@ -1,3 +1,9 @@
+## [9.0.0-next.4](https://github.com/hirosystems/stacks-blockchain-api/compare/v9.0.0-next.3...v9.0.0-next.4) (2025-12-15)
+
+### Bug Fixes
+
+* rbf duplicate transactions ([#2406](https://github.com/hirosystems/stacks-blockchain-api/issues/2406)) ([1eb4b2e](https://github.com/hirosystems/stacks-blockchain-api/commit/1eb4b2e03b8bb4a93671d82f0e573bf4c5a18743))
+
 ## [9.0.0-next.3](https://github.com/hirosystems/stacks-blockchain-api/compare/v9.0.0-next.2...v9.0.0-next.3) (2025-12-14)
 
 ### Bug Fixes
