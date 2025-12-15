@@ -1,3 +1,9 @@
+## [9.0.0-next.5](https://github.com/hirosystems/stacks-blockchain-api/compare/v9.0.0-next.4...v9.0.0-next.5) (2025-12-15)
+
+### Bug Fixes
+
+* create new schema on db start in docker-compose files ([#2404](https://github.com/hirosystems/stacks-blockchain-api/issues/2404)) ([0f68711](https://github.com/hirosystems/stacks-blockchain-api/commit/0f687110c2a13edf3d4a06d96206eeacd7704c55))
+
 ## [9.0.0-next.4](https://github.com/hirosystems/stacks-blockchain-api/compare/v9.0.0-next.3...v9.0.0-next.4) (2025-12-15)
 
 ### Bug Fixes
