@@ -951,10 +951,7 @@ function parseDbTxTypeMetadata(
             dbTx.smart_contract_contract_id,
             () => 'Unexpected nullish smart_contract_contract_id'
           ),
-          source_code: unwrapOptional(
-            dbTx.smart_contract_source_code,
-            () => 'Unexpected nullish smart_contract_source_code'
-          ),
+          source_code: dbTx.smart_contract_source_code || '',
         },
       };
       return metadata;
@@ -971,10 +968,7 @@ function parseDbTxTypeMetadata(
             dbTx.smart_contract_contract_id,
             () => 'Unexpected nullish smart_contract_contract_id'
           ),
-          source_code: unwrapOptional(
-            dbTx.smart_contract_source_code,
-            () => 'Unexpected nullish smart_contract_source_code'
-          ),
+          source_code: dbTx.smart_contract_source_code || '',
         },
       };
       return metadata;
