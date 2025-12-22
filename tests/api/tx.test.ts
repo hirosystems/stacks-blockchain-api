@@ -515,6 +515,80 @@ describe('tx tests', () => {
     expect(txQuery.result).toEqual(expectedResp);
   });
 
+  test('tx - check empty contract source code string', async () => {
+    const testContractAddr = 'ST27W5M8BRKA7C5MZE2R1S1F4XTPHFWFRNHA9M04Y.hello-world';
+    const testContractFnName = 'test-contract-fn';
+    const testContractFnName2 = 'test-contract-fn-2';
+    const contractJsonAbi = {
+      maps: [],
+      functions: [
+        {
+          args: [
+            { type: 'uint128', name: 'amount' },
+            { type: 'string-ascii', name: 'desc' },
+          ],
+          name: testContractFnName,
+          access: 'public',
+          outputs: {
+            type: {
+              response: {
+                ok: 'uint128',
+                error: 'none',
+              },
+            },
+          },
+        },
+        {
+          args: [
+            { type: 'uint128', name: 'amount' },
+            { type: 'string-ascii', name: 'desc' },
+          ],
+          name: testContractFnName2,
+          access: 'public',
+          outputs: {
+            type: {
+              response: {
+                ok: 'uint128',
+                error: 'none',
+              },
+            },
+          },
+        },
+      ],
+      variables: [],
+      fungible_tokens: [],
+      non_fungible_tokens: [],
+    };
+    const block1 = new TestBlockBuilder({
+      block_height: 1,
+      index_block_hash: '0x01',
+      burn_block_time: 1710000000,
+    })
+      .addTx({
+        tx_id: '0x0001',
+        fee_rate: 1n,
+        type_id: DbTxTypeId.SmartContract,
+        smart_contract_contract_id: testContractAddr,
+        smart_contract_clarity_version: 1,
+        smart_contract_source_code: '',
+        abi: JSON.stringify(contractJsonAbi),
+      })
+      .build();
+
+    await db.update(block1);
+
+    const txsReq1 = await supertest(api.server).get('/extended/v1/tx/0x0001');
+    expect(txsReq1.status).toBe(200);
+    expect(txsReq1.body).toEqual(
+      expect.objectContaining({
+        tx_id: block1.txs[0].tx.tx_id,
+        smart_contract: expect.objectContaining({
+          source_code: '',
+        }),
+      })
+    );
+  });
+
   test('tx - coinbase pay to alt recipient - standard principal', async () => {
     const dbBlock: DbBlock = {
       block_hash: '0xff',
