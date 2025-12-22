@@ -6,7 +6,7 @@ on:
       - master
       - develop
       - beta
-      - nakamoto
+      - next
     tags-ignore:
       - "**"
     paths-ignore:
@@ -19,10 +19,10 @@ jobs:
   lint:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Use Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version-file: ".nvmrc"
 
@@ -69,10 +69,10 @@ jobs:
           ]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Use Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version-file: ".nvmrc"
 
@@ -134,10 +134,10 @@ jobs:
   test-snp:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Use Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version-file: ".nvmrc"
 
@@ -191,10 +191,10 @@ jobs:
           ]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Use Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version-file: ".nvmrc"
 
@@ -255,10 +255,10 @@ jobs:
           ]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Use Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version-file: ".nvmrc"
 
@@ -315,7 +315,7 @@ jobs:
           token: ${{ secrets.CODECOV_TOKEN }}
         if: always()
 
-  build-publish:
+  semantic-release:
     permissions:
       contents: write
       id-token: write
@@ -327,10 +327,14 @@ jobs:
       - test
       - test-2_5
       - test-rosetta
+    outputs:
+      new_release_version: ${{ steps.semantic.outputs.new_release_version }}
+      new_release_published: ${{ steps.semantic.outputs.new_release_published }}
+      latest: ${{ steps.semantic.outputs.new_release_published == 'true' && github.ref_name == 'master' }}
     steps:
       - name: Generate release bot app token
         id: generate_token
-        uses: actions/create-github-app-token@v1
+        uses: actions/create-github-app-token@v2
         with:
           app-id: ${{ secrets.HIROSYSTEMS_RELEASE_BOT_ID }}
           private-key: ${{ secrets.HIROSYSTEMS_RELEASE_BOT_PEM }}
@@ -374,6 +378,22 @@ jobs:
             @semantic-release/exec@6.0.3
             conventional-changelog-conventionalcommits@9.1.0
 
+  build-publish:
+    runs-on: ubuntu-latest
+    needs: semantic-release
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Checkout tag
+        if: needs.semantic-release.outputs.new_release_published == 'true'
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+          ref: v${{ needs.semantic-release.outputs.new_release_version }}
+
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
 
@@ -389,8 +409,8 @@ jobs:
           tags: |
             type=ref,event=branch
             type=ref,event=pr
-            type=semver,pattern={{version}},value=${{ steps.semantic.outputs.new_release_version }},enable=${{ steps.semantic.outputs.new_release_version != '' }}
-            type=semver,pattern={{major}}.{{minor}},value=${{ steps.semantic.outputs.new_release_version }},enable=${{ steps.semantic.outputs.new_release_version != '' }}
+            type=semver,pattern={{version}},value=${{ needs.semantic-release.outputs.new_release_version }},enable=${{ needs.semantic-release.outputs.new_release_published }}
+            type=semver,pattern={{major}}.{{minor}},value=${{ needs.semantic-release.outputs.new_release_version }},enable=${{ needs.semantic-release.outputs.new_release_published }}
             type=raw,value=latest,enable=${{ github.ref == format('refs/heads/{0}', 'master') }}
 
       - name: Login to DockerHub
@@ -400,11 +420,11 @@ jobs:
           password: ${{ secrets.DOCKERHUB_PASSWORD }}
 
       - name: Build/Tag/Push Image
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           context: .
           platforms: ${{ (github.ref == 'refs/heads/master' || github.ref == 'refs/heads/beta') && 'linux/amd64,linux/arm64' || 'linux/amd64' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           # Only push if (there's a new release on main branch, or if building a non-main branch) and (Only run on non-PR events or only PRs that aren't from forks)
-          push: ${{ (github.ref != 'refs/heads/master' || steps.semantic.outputs.new_release_version != '') && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) }}
+          push: ${{ (github.ref != 'refs/heads/master' || needs.semantic-release.outputs.new_release_published == 'true') && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) }}

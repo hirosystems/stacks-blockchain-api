@@ -43,6 +43,7 @@ import {
   parseAccountTransferSummaryTxQueryResult,
   POX4_SYNTHETIC_EVENT_COLUMNS,
   parseDbPoxSyntheticEvent,
+  prefixedCols,
 } from './helpers';
 import { SyntheticPoxEventName } from '../pox-helpers';
 
@@ -532,105 +533,27 @@ export class PgStoreV2 extends BasePgStoreModule {
     return await this.sqlTransaction(async sql => {
       const limit = args.limit ?? TransactionLimitParamSchema.default;
       const offset = args.offset ?? 0;
-
-      const eventCond = sql`
-        tx_id = address_txs.tx_id
-        AND index_block_hash = address_txs.index_block_hash
-        AND microblock_hash = address_txs.microblock_hash
-      `;
-      const eventAcctCond = sql`
-        ${eventCond} AND (sender = ${args.address} OR recipient = ${args.address})
-      `;
       const resultQuery = await sql<(AddressTransfersTxQueryResult & { count: number })[]>`
-        WITH address_txs AS (
-          (
-            SELECT tx_id, index_block_hash, microblock_hash
-            FROM principal_stx_txs
-            WHERE principal = ${args.address}
-          )
-          UNION
-          (
-            SELECT tx_id, index_block_hash, microblock_hash
-            FROM stx_events
-            WHERE sender = ${args.address} OR recipient = ${args.address}
-          )
-          UNION
-          (
-            SELECT tx_id, index_block_hash, microblock_hash
-            FROM ft_events
-            WHERE sender = ${args.address} OR recipient = ${args.address}
-          )
-          UNION
-          (
-            SELECT tx_id, index_block_hash, microblock_hash
-            FROM nft_events
-            WHERE sender = ${args.address} OR recipient = ${args.address}
-          )
-        ),
-        count AS (
-          SELECT COUNT(*)::int AS total_count
-          FROM address_txs
-          INNER JOIN txs USING (tx_id, index_block_hash, microblock_hash)
-          WHERE canonical = TRUE AND microblock_canonical = TRUE
-        )
         SELECT
-          ${sql(TX_COLUMNS)},
-          (
-            SELECT COALESCE(SUM(amount), 0)
-            FROM stx_events
-            WHERE ${eventCond} AND sender = ${args.address}
-          ) +
-          CASE
-            WHEN (txs.sponsored = false AND txs.sender_address = ${args.address})
-              OR (txs.sponsored = true AND txs.sponsor_address = ${args.address})
-            THEN txs.fee_rate ELSE 0
-          END AS stx_sent,
-          (
-            SELECT COALESCE(SUM(amount), 0)
-            FROM stx_events
-            WHERE ${eventCond} AND recipient = ${args.address}
-          ) AS stx_received,
-          (
-            SELECT COUNT(*)::int FROM stx_events
-            WHERE ${eventAcctCond} AND asset_event_type_id = ${DbAssetEventTypeId.Transfer}
-          ) AS stx_transfer,
-          (
-            SELECT COUNT(*)::int FROM stx_events
-            WHERE ${eventAcctCond} AND asset_event_type_id = ${DbAssetEventTypeId.Mint}
-          ) AS stx_mint,
-          (
-            SELECT COUNT(*)::int FROM stx_events
-            WHERE ${eventAcctCond} AND asset_event_type_id = ${DbAssetEventTypeId.Burn}
-          ) AS stx_burn,
-          (
-            SELECT COUNT(*)::int FROM ft_events
-            WHERE ${eventAcctCond} AND asset_event_type_id = ${DbAssetEventTypeId.Transfer}
-          ) AS ft_transfer,
-          (
-            SELECT COUNT(*)::int FROM ft_events
-            WHERE ${eventAcctCond} AND asset_event_type_id = ${DbAssetEventTypeId.Mint}
-          ) AS ft_mint,
-          (
-            SELECT COUNT(*)::int FROM ft_events
-            WHERE ${eventAcctCond} AND asset_event_type_id = ${DbAssetEventTypeId.Burn}
-          ) AS ft_burn,
-          (
-            SELECT COUNT(*)::int FROM nft_events
-            WHERE ${eventAcctCond} AND asset_event_type_id = ${DbAssetEventTypeId.Transfer}
-          ) AS nft_transfer,
-          (
-            SELECT COUNT(*)::int FROM nft_events
-            WHERE ${eventAcctCond} AND asset_event_type_id = ${DbAssetEventTypeId.Mint}
-          ) AS nft_mint,
-          (
-            SELECT COUNT(*)::int FROM nft_events
-            WHERE ${eventAcctCond} AND asset_event_type_id = ${DbAssetEventTypeId.Burn}
-          ) AS nft_burn,
-          (SELECT total_count FROM count) AS count
-        FROM address_txs
-        INNER JOIN txs USING (tx_id, index_block_hash, microblock_hash)
-        WHERE canonical = TRUE AND microblock_canonical = TRUE
-        ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC
+          ${sql(prefixedCols(TX_COLUMNS, 't'))},
+          p.stx_transfer_event_count AS stx_transfer,
+          p.stx_mint_event_count AS stx_mint,
+          p.stx_burn_event_count AS stx_burn,
+          p.ft_transfer_event_count AS ft_transfer,
+          p.ft_mint_event_count AS ft_mint,
+          p.ft_burn_event_count AS ft_burn,
+          p.nft_transfer_event_count AS nft_transfer,
+          p.nft_mint_event_count AS nft_mint,
+          p.nft_burn_event_count AS nft_burn,
+          p.stx_sent,
+          p.stx_received,
+          COUNT(*) OVER()::int AS count
+        FROM principal_txs AS p
+        INNER JOIN txs AS t USING (tx_id, index_block_hash, microblock_hash)
+        WHERE p.principal = ${args.address}
+          AND p.canonical = TRUE
+          AND p.microblock_canonical = TRUE
+        ORDER BY p.block_height DESC, p.microblock_sequence DESC, p.tx_index DESC
         LIMIT ${limit}
         OFFSET ${offset}
       `;
