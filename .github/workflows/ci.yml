@@ -318,6 +318,7 @@ jobs:
   build-publish:
     permissions:
       contents: write
+      id-token: write
       issues: write
       pull-requests: write
     runs-on: ubuntu-latest
@@ -367,7 +368,6 @@ jobs:
           GIT_AUTHOR_EMAIL: "${{ steps.bot-user-id.outputs.user-id }}+${{ steps.generate_token.outputs.app-slug }}[bot]@users.noreply.github.com"
           GIT_COMMITTER_EMAIL: "${{ steps.bot-user-id.outputs.user-id }}+${{ steps.generate_token.outputs.app-slug }}[bot]@users.noreply.github.com"
         with:
-          semantic_version: 19
           extra_plugins: |
             @semantic-release/changelog@6.0.3
             @semantic-release/git@10.0.1
