@@ -1,3 +1,9 @@
+## [9.0.0-next.7](https://github.com/hirosystems/stacks-blockchain-api/compare/v9.0.0-next.6...v9.0.0-next.7) (2025-12-23)
+
+### Features
+
+* add option to stream blocks only with SNP ([#2414](https://github.com/hirosystems/stacks-blockchain-api/issues/2414)) ([f1bb1c1](https://github.com/hirosystems/stacks-blockchain-api/commit/f1bb1c1e86079a90e065940a17feab189f1f8730))
+
 ## [9.0.0-next.6](https://github.com/hirosystems/stacks-blockchain-api/compare/v9.0.0-next.5...v9.0.0-next.6) (2025-12-22)
 
 ### Bug Fixes
