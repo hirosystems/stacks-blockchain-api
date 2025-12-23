@@ -1528,11 +1528,12 @@ export class PgWriteStore extends PgStore {
         WITH inserts AS (
           INSERT INTO principal_txs ${sql(batch)}
           ON CONFLICT ON CONSTRAINT principal_txs_unique DO NOTHING
-          RETURNING principal
+          RETURNING principal, canonical
         ),
         count_deltas AS (
           SELECT principal, COUNT(*) AS count
           FROM inserts
+          WHERE canonical = true
           GROUP BY principal
         )
         INSERT INTO principal_tx_counts (principal, count)
