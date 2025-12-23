@@ -3401,12 +3401,10 @@ export class PgWriteStore extends PgStore {
             FROM updates
             GROUP BY principal
           )
-          UPDATE principal_tx_counts
-          SET count = ${
-            canonical ? sql`count + count_deltas.count` : sql`count - count_deltas.count`
-          }
-          FROM count_deltas
-          WHERE principal_tx_counts.principal = count_deltas.principal
+          UPDATE principal_tx_counts AS pc
+          SET count = ${canonical ? sql`pc.count + cd.count` : sql`pc.count - cd.count`}
+          FROM count_deltas AS cd
+          WHERE pc.principal = cd.principal
         `;
       }
     });
