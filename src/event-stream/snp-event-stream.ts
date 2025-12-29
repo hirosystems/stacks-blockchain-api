@@ -1,4 +1,4 @@
-import { SERVER_VERSION } from '@hirosystems/api-toolkit';
+import { parseBoolean, SERVER_VERSION } from '@hirosystems/api-toolkit';
 import { logger as defaultLogger } from '@hirosystems/api-toolkit';
 import { StacksEventStream, StacksEventStreamType } from '@hirosystems/salt-n-pepper-client';
 import { EventEmitter } from 'node:events';
@@ -28,14 +28,22 @@ export class SnpEventStreamHandler {
 
     this.redisStreamPrefix = process.env.SNP_REDIS_STREAM_KEY_PREFIX;
 
-    this.logger.info(`SNP streaming enabled, lastMsgId: ${opts.lastMessageId}`);
+    const blocksOnly = process.env.SNP_BLOCKS_ONLY_STREAMING
+      ? parseBoolean(process.env.SNP_BLOCKS_ONLY_STREAMING)
+      : false;
+    const eventStreamType = blocksOnly
+      ? StacksEventStreamType.confirmedChainEvents
+      : StacksEventStreamType.chainEvents;
+    this.logger.info(
+      `SNP streaming enabled, lastMsgId: ${opts.lastMessageId}, eventStreamType: ${eventStreamType}`
+    );
 
     const appName = `stacks-blockchain-api ${SERVER_VERSION.tag} (${SERVER_VERSION.branch}:${SERVER_VERSION.commit})`;
 
     this.snpClientStream = new StacksEventStream({
       redisUrl: this.redisUrl,
       redisStreamPrefix: this.redisStreamPrefix,
-      eventStreamType: StacksEventStreamType.chainEvents,
+      eventStreamType,
       lastMessageId: opts.lastMessageId,
       appName,
     });
