@@ -1,3 +1,9 @@
+## [9.0.0-next.8](https://github.com/hirosystems/stacks-blockchain-api/compare/v9.0.0-next.7...v9.0.0-next.8) (2025-12-29)
+
+### Bug Fixes
+
+* optimize principal transaction count calculations ([#2415](https://github.com/hirosystems/stacks-blockchain-api/issues/2415)) ([51c8a85](https://github.com/hirosystems/stacks-blockchain-api/commit/51c8a85b8888de7f2d64f9ba4f4decb846e3f8cd))
+
 ## [9.0.0-next.7](https://github.com/hirosystems/stacks-blockchain-api/compare/v9.0.0-next.6...v9.0.0-next.7) (2025-12-23)
 
 ### Features
