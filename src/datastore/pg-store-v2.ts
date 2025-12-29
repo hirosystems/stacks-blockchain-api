@@ -547,7 +547,9 @@ export class PgStoreV2 extends BasePgStoreModule {
           p.nft_burn_event_count AS nft_burn,
           p.stx_sent,
           p.stx_received,
-          COUNT(*) OVER()::int AS count
+          (
+            SELECT COALESCE(count, 0) FROM principal_tx_counts WHERE principal = ${args.address}
+          ) AS count
         FROM principal_txs AS p
         INNER JOIN txs AS t USING (tx_id, index_block_hash, microblock_hash)
         WHERE p.principal = ${args.address}
