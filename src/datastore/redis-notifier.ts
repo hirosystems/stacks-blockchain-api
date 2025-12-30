@@ -55,6 +55,12 @@ export class RedisNotifier {
     };
     logger.info(message, 'RedisNotifier broadcasting index progress message');
     await this.redis.xadd(this.queue, '*', 'data', JSON.stringify(message));
+    await this.redis.xtrim(
+      this.queue,
+      'MAXLEN',
+      '~',
+      parseInt(process.env.REDIS_QUEUE_MAXLEN ?? '10000')
+    );
   }
 
   async close() {
