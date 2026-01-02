@@ -528,11 +528,49 @@ export class PgStoreV2 extends BasePgStoreModule {
   }
 
   async getAddressTransactions(
-    args: AddressParams & TransactionPaginationQueryParams
-  ): Promise<DbPaginatedResult<DbTxWithAddressTransfers>> {
+    args: AddressParams & TransactionPaginationQueryParams & { cursor?: string }
+  ): Promise<DbCursorPaginatedResult<DbTxWithAddressTransfers>> {
     return await this.sqlTransaction(async sql => {
       const limit = args.limit ?? TransactionLimitParamSchema.default;
       const offset = args.offset ?? 0;
+
+      // Parse cursor if provided (format: "indexBlockHash:microblockSequence:txIndex")
+      let cursorFilter = sql``;
+      if (args.cursor) {
+        const parts = args.cursor.split(':');
+        if (parts.length !== 3) {
+          throw new InvalidRequestError(
+            'Invalid cursor format',
+            InvalidRequestErrorType.invalid_param
+          );
+        }
+        const [indexBlockHash, microblockSequenceStr, txIndexStr] = parts;
+        const microblockSequence = parseInt(microblockSequenceStr, 10);
+        const txIndex = parseInt(txIndexStr, 10);
+        if (!indexBlockHash || isNaN(microblockSequence) || isNaN(txIndex)) {
+          throw new InvalidRequestError(
+            'Invalid cursor format',
+            InvalidRequestErrorType.invalid_param
+          );
+        }
+        // Look up block_height from index_block_hash for the row-value comparison
+        const blockHeightQuery = await sql<{ block_height: number }[]>`
+          SELECT block_height FROM blocks WHERE index_block_hash = ${indexBlockHash} LIMIT 1
+        `;
+        if (blockHeightQuery.length === 0) {
+          throw new InvalidRequestError(
+            'Invalid cursor: block not found',
+            InvalidRequestErrorType.invalid_param
+          );
+        }
+        const blockHeight = blockHeightQuery[0].block_height;
+
+        cursorFilter = sql`
+          AND (p.block_height, p.microblock_sequence, p.tx_index)
+              < (${blockHeight}, ${microblockSequence}, ${txIndex})
+        `;
+      }
+
       const resultQuery = await sql<(AddressTransfersTxQueryResult & { count: number })[]>`
         SELECT
           ${sql(prefixedCols(TX_COLUMNS, 't'))},
@@ -555,17 +593,68 @@ export class PgStoreV2 extends BasePgStoreModule {
         WHERE p.principal = ${args.address}
           AND p.canonical = TRUE
           AND p.microblock_canonical = TRUE
+          ${cursorFilter}
         ORDER BY p.block_height DESC, p.microblock_sequence DESC, p.tx_index DESC
-        LIMIT ${limit}
-        OFFSET ${offset}
+        LIMIT ${limit + 1}
       `;
-      const total = resultQuery.length > 0 ? resultQuery[0].count : 0;
-      const parsed = resultQuery.map(r => parseAccountTransferSummaryTxQueryResult(r));
+
+      const hasNextPage = resultQuery.count > limit;
+      const results = hasNextPage ? resultQuery.slice(0, limit) : resultQuery;
+
+      const total = resultQuery.count > 0 ? resultQuery[0].count : 0;
+      const parsed = results.map(r => parseAccountTransferSummaryTxQueryResult(r));
+
+      // Generate prev cursor from the last result
+      const lastResult = results[results.length - 1];
+      const prevCursor =
+        hasNextPage && lastResult
+          ? `${lastResult.index_block_hash}:${lastResult.microblock_sequence}:${lastResult.tx_index}`
+          : null;
+
+      // Generate current cursor from first result
+      const firstResult = results[0];
+      const currentCursor = firstResult
+        ? `${firstResult.index_block_hash}:${firstResult.microblock_sequence}:${firstResult.tx_index}`
+        : null;
+
+      // Generate next cursor by looking for the first item of the previous page
+      let nextCursor: string | null = null;
+      if (args.cursor && firstResult) {
+        // Find the item that would start the previous page
+        // We look for items "before" our current first result (greater in DESC order)
+        // and skip (limit - 1) to find the start of that page
+        const prevQuery = await sql<
+          { index_block_hash: string; microblock_sequence: number; tx_index: number }[]
+        >`
+          SELECT p.index_block_hash, p.microblock_sequence, p.tx_index
+          FROM principal_txs AS p
+          WHERE p.principal = ${args.address}
+            AND p.canonical = TRUE
+            AND p.microblock_canonical = TRUE
+            AND (p.block_height, p.microblock_sequence, p.tx_index)
+                > (
+                  ${firstResult.block_height},
+                  ${firstResult.microblock_sequence},
+                  ${firstResult.tx_index}
+                )
+          ORDER BY p.block_height ASC, p.microblock_sequence ASC, p.tx_index ASC
+          OFFSET ${limit - 1}
+          LIMIT 1
+        `;
+        if (prevQuery.length > 0) {
+          const prev = prevQuery[0];
+          nextCursor = `${prev.index_block_hash}:${prev.microblock_sequence}:${prev.tx_index}`;
+        }
+      }
+
       return {
         total,
         limit,
         offset,
         results: parsed,
+        next_cursor: prevCursor,
+        prev_cursor: nextCursor,
+        current_cursor: currentCursor,
       };
     });
   }
