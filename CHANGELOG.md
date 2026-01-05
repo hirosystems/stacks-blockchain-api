@@ -1,3 +1,9 @@
+## [9.0.0-next.9](https://github.com/hirosystems/stacks-blockchain-api/compare/v9.0.0-next.8...v9.0.0-next.9) (2026-01-05)
+
+### Features
+
+* add cursor pagination to address transactions endpoint ([#2422](https://github.com/hirosystems/stacks-blockchain-api/issues/2422)) ([f09c2e2](https://github.com/hirosystems/stacks-blockchain-api/commit/f09c2e2276500f5cff0badd31f0d27e0368603ea))
+
 ## [9.0.0-next.8](https://github.com/hirosystems/stacks-blockchain-api/compare/v9.0.0-next.7...v9.0.0-next.8) (2025-12-29)
 
 ### Bug Fixes
