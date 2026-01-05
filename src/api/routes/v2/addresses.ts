@@ -45,7 +45,7 @@ export const AddressRoutesV2: FastifyPluginAsync<
         summary: 'Get address transactions',
         description: `Retrieves a paginated list of confirmed transactions sent or received by a STX address or Smart Contract ID, alongside the total amount of STX sent or received and the number of STX, FT and NFT transfers contained within each transaction.
 
-        More information on Transaction types can be found [here](https://docs.stacks.co/understand-stacks/transactions#types).`,
+        More information on Transaction types can be found [here](https://docs.stacks.co/transactions/how-transactions-work#types).`,
         tags: ['Transactions'],
         params: AddressParamsSchema,
         querystring: Type.Object({

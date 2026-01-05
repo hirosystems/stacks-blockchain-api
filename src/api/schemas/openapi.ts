@@ -26,7 +26,7 @@ export const OpenApiSchemaOptions: SwaggerOptions = {
         description: 'Read-only endpoints to obtain Stacks account details',
         externalDocs: {
           description: 'Stacks Documentation - Accounts',
-          url: 'https://docs.stacks.co/understand-stacks/accounts',
+          url: 'https://docs.stacks.co/network-fundamentals/accounts',
         },
       },
       { name: 'Blocks', description: 'Read-only endpoints to obtain Stacks block details' },
@@ -54,7 +54,7 @@ export const OpenApiSchemaOptions: SwaggerOptions = {
         description: 'Read-only endpoints realted to the Blockchain Naming System on Stacks',
         externalDocs: {
           description: 'Stacks Documentation - Blockchain Naming System',
-          url: 'https://docs.stacks.co/build-apps/references/bns',
+          url: 'https://docs.stacks.co/network-fundamentals/bitcoin-name-system',
         },
       },
       {
@@ -62,7 +62,7 @@ export const OpenApiSchemaOptions: SwaggerOptions = {
         description: 'Read-only endpoints to obtain non-fungible token details',
         externalDocs: {
           description: 'Stacks Documentation - Tokens',
-          url: 'https://docs.stacks.co/write-smart-contracts/tokens',
+          url: 'https://docs.stacks.co/build/create-tokens',
         },
       },
       {
@@ -83,7 +83,7 @@ export const OpenApiSchemaOptions: SwaggerOptions = {
         description: 'Read-only endpoints to obtain Clarity smart contract details',
         externalDocs: {
           description: 'Stacks Documentation - Clarity Smart Contracts',
-          url: 'https://docs.stacks.co/write-smart-contracts/overview',
+          url: 'https://docs.stacks.co/clarity/overview',
         },
       },
       {
@@ -91,7 +91,7 @@ export const OpenApiSchemaOptions: SwaggerOptions = {
         description: 'Read-only endpoints to obtain Stacking reward details',
         externalDocs: {
           description: 'Stacks Documentation - Stacking',
-          url: 'https://docs.stacks.co/understand-stacks/stacking',
+          url: 'https://docs.stacks.co/block-production/stacking',
         },
       },
       {
