@@ -1,3 +1,10 @@
+## [9.0.0-next.10](https://github.com/hirosystems/stacks-blockchain-api/compare/v9.0.0-next.9...v9.0.0-next.10) (2026-01-05)
+
+### Features
+
+* add option to stream blocks only with SNP ([#2417](https://github.com/hirosystems/stacks-blockchain-api/issues/2417)) ([34c20cd](https://github.com/hirosystems/stacks-blockchain-api/commit/34c20cdc618643a114893111bc492643fe129898))
+* enforce Redis stream max length for notifier queue ([#2419](https://github.com/hirosystems/stacks-blockchain-api/issues/2419)) ([17be15c](https://github.com/hirosystems/stacks-blockchain-api/commit/17be15cb844e0371771b38cfd0a8c2595749e25e))
+
 ## [8.13.6](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.13.5...v8.13.6) (2025-12-22)
 
 ### Bug Fixes
