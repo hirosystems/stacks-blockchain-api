@@ -148,8 +148,7 @@ export const AddressRoutesV2: FastifyPluginAsync<
     '/:principal/balances/stx',
     {
       preHandler: (req, reply) => {
-        // TODO: use `ETagType.principal` instead of chaintip cache type when it's optimized
-        const etagType = req.query.include_mempool ? ETagType.principalMempool : ETagType.chainTip;
+        const etagType = req.query.include_mempool ? ETagType.principalMempool : ETagType.principal;
         return handleCache(etagType, req, reply);
       },
       schema: {
@@ -232,7 +231,7 @@ export const AddressRoutesV2: FastifyPluginAsync<
   fastify.get(
     '/:principal/balances/ft',
     {
-      preHandler: handleChainTipCache, // TODO: use handlePrincipalCache once it's optimized
+      preHandler: handlePrincipalCache,
       schema: {
         operationId: 'get_principal_ft_balances',
         summary: 'Get principal FT balances',
@@ -284,7 +283,7 @@ export const AddressRoutesV2: FastifyPluginAsync<
   fastify.get(
     '/:principal/balances/ft/:token',
     {
-      preHandler: handleChainTipCache, // TODO: use handlePrincipalCache once it's optimized
+      preHandler: handlePrincipalCache,
       schema: {
         operationId: 'get_principal_ft_balance',
         summary: 'Get principal FT balance',
