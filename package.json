@@ -123,7 +123,7 @@
     "elliptic": "6.6.1",
     "escape-goat": "3.0.0",
     "evt": "1.10.1",
-    "express": "4.21.2",
+    "express": "4.22.0",
     "fastify": "4.29.1",
     "fastify-metrics": "11.0.0",
     "getopts": "2.3.0",

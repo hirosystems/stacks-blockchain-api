@@ -1,3 +1,9 @@
+## [8.13.6](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.13.5...v8.13.6) (2025-12-22)
+
+### Bug Fixes
+
+* allow nullish smart contract source code in tx metadata ([#2412](https://github.com/hirosystems/stacks-blockchain-api/issues/2412)) ([e13c3b9](https://github.com/hirosystems/stacks-blockchain-api/commit/e13c3b99776839e017344ff6e0428bcdd9f863da))
+
 ## [8.13.5](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.13.4...v8.13.5) (2025-12-02)
 
 
