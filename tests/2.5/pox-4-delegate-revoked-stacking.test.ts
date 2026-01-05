@@ -13,7 +13,11 @@ import {
   standardPrincipalCV,
   uintCV,
 } from '@stacks/transactions';
-import { ClarityValueTuple, ClarityValueUInt, decodeClarityValue } from 'stacks-encoding-native-js';
+import {
+  ClarityValueTuple,
+  ClarityValueUInt,
+  decodeClarityValue,
+} from '@hirosystems/stacks-encoding-native-js';
 import { testnetKeys } from '../../src/api/routes/debug';
 import { CoreRpcPoxInfo } from '../../src/core-rpc/client';
 import { DbTxStatus } from '../../src/datastore/common';

@@ -14,7 +14,7 @@ import {
   parseDbTx,
 } from '../controllers/db-controller';
 import { InvalidRequestError, InvalidRequestErrorType, NotFoundError } from '../../errors';
-import { decodeClarityValueToRepr } from 'stacks-encoding-native-js';
+import { decodeClarityValueToRepr } from '@hirosystems/stacks-encoding-native-js';
 import {
   handlePrincipalCache,
   handlePrincipalMempoolCache,

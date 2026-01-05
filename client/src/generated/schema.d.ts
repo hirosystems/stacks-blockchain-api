@@ -3267,7 +3267,7 @@ export interface operations {
                                 /** @description The number of blocks produced in the previous tenure. */
                                 previous_tenure_blocks: number;
                                 /** @description Cause of change in mining tenure. Depending on cause, tenure can be ended or extended. */
-                                cause: "block_found" | "extended";
+                                cause: "block_found" | "extended" | "extended_runtime" | "extended_read_count" | "extended_read_length" | "extended_write_count" | "extended_write_length";
                                 /** @description (Hex string) The ECDSA public key hash of the current tenure. */
                                 pubkey_hash: string;
                             };
@@ -4623,7 +4623,7 @@ export interface operations {
                                     /** @description The number of blocks produced in the previous tenure. */
                                     previous_tenure_blocks: number;
                                     /** @description Cause of change in mining tenure. Depending on cause, tenure can be ended or extended. */
-                                    cause: "block_found" | "extended";
+                                    cause: "block_found" | "extended" | "extended_runtime" | "extended_read_count" | "extended_read_length" | "extended_write_count" | "extended_write_length";
                                     /** @description (Hex string) The ECDSA public key hash of the current tenure. */
                                     pubkey_hash: string;
                                 };
@@ -5237,7 +5237,7 @@ export interface operations {
                                     /** @description The number of blocks produced in the previous tenure. */
                                     previous_tenure_blocks: number;
                                     /** @description Cause of change in mining tenure. Depending on cause, tenure can be ended or extended. */
-                                    cause: "block_found" | "extended";
+                                    cause: "block_found" | "extended" | "extended_runtime" | "extended_read_count" | "extended_read_length" | "extended_write_count" | "extended_write_length";
                                     /** @description (Hex string) The ECDSA public key hash of the current tenure. */
                                     pubkey_hash: string;
                                 };
@@ -5931,7 +5931,7 @@ export interface operations {
                                 /** @description The number of blocks produced in the previous tenure. */
                                 previous_tenure_blocks: number;
                                 /** @description Cause of change in mining tenure. Depending on cause, tenure can be ended or extended. */
-                                cause: "block_found" | "extended";
+                                cause: "block_found" | "extended" | "extended_runtime" | "extended_read_count" | "extended_read_length" | "extended_write_count" | "extended_write_length";
                                 /** @description (Hex string) The ECDSA public key hash of the current tenure. */
                                 pubkey_hash: string;
                             };
@@ -7479,7 +7479,7 @@ export interface operations {
                             /** @description The number of blocks produced in the previous tenure. */
                             previous_tenure_blocks: number;
                             /** @description Cause of change in mining tenure. Depending on cause, tenure can be ended or extended. */
-                            cause: "block_found" | "extended";
+                            cause: "block_found" | "extended" | "extended_runtime" | "extended_read_count" | "extended_read_length" | "extended_write_count" | "extended_write_length";
                             /** @description (Hex string) The ECDSA public key hash of the current tenure. */
                             pubkey_hash: string;
                         };
@@ -8093,7 +8093,7 @@ export interface operations {
                             /** @description The number of blocks produced in the previous tenure. */
                             previous_tenure_blocks: number;
                             /** @description Cause of change in mining tenure. Depending on cause, tenure can be ended or extended. */
-                            cause: "block_found" | "extended";
+                            cause: "block_found" | "extended" | "extended_runtime" | "extended_read_count" | "extended_read_length" | "extended_write_count" | "extended_write_length";
                             /** @description (Hex string) The ECDSA public key hash of the current tenure. */
                             pubkey_hash: string;
                         };
@@ -9494,7 +9494,7 @@ export interface operations {
                                 /** @description The number of blocks produced in the previous tenure. */
                                 previous_tenure_blocks: number;
                                 /** @description Cause of change in mining tenure. Depending on cause, tenure can be ended or extended. */
-                                cause: "block_found" | "extended";
+                                cause: "block_found" | "extended" | "extended_runtime" | "extended_read_count" | "extended_read_length" | "extended_write_count" | "extended_write_length";
                                 /** @description (Hex string) The ECDSA public key hash of the current tenure. */
                                 pubkey_hash: string;
                             };
@@ -10853,7 +10853,7 @@ export interface operations {
                                 /** @description The number of blocks produced in the previous tenure. */
                                 previous_tenure_blocks: number;
                                 /** @description Cause of change in mining tenure. Depending on cause, tenure can be ended or extended. */
-                                cause: "block_found" | "extended";
+                                cause: "block_found" | "extended" | "extended_runtime" | "extended_read_count" | "extended_read_length" | "extended_write_count" | "extended_write_length";
                                 /** @description (Hex string) The ECDSA public key hash of the current tenure. */
                                 pubkey_hash: string;
                             };
@@ -12498,7 +12498,7 @@ export interface operations {
                                     /** @description The number of blocks produced in the previous tenure. */
                                     previous_tenure_blocks: number;
                                     /** @description Cause of change in mining tenure. Depending on cause, tenure can be ended or extended. */
-                                    cause: "block_found" | "extended";
+                                    cause: "block_found" | "extended" | "extended_runtime" | "extended_read_count" | "extended_read_length" | "extended_write_count" | "extended_write_length";
                                     /** @description (Hex string) The ECDSA public key hash of the current tenure. */
                                     pubkey_hash: string;
                                 };
@@ -13878,7 +13878,7 @@ export interface operations {
                                     /** @description The number of blocks produced in the previous tenure. */
                                     previous_tenure_blocks: number;
                                     /** @description Cause of change in mining tenure. Depending on cause, tenure can be ended or extended. */
-                                    cause: "block_found" | "extended";
+                                    cause: "block_found" | "extended" | "extended_runtime" | "extended_read_count" | "extended_read_length" | "extended_write_count" | "extended_write_length";
                                     /** @description (Hex string) The ECDSA public key hash of the current tenure. */
                                     pubkey_hash: string;
                                 };
@@ -15263,7 +15263,7 @@ export interface operations {
                                     /** @description The number of blocks produced in the previous tenure. */
                                     previous_tenure_blocks: number;
                                     /** @description Cause of change in mining tenure. Depending on cause, tenure can be ended or extended. */
-                                    cause: "block_found" | "extended";
+                                    cause: "block_found" | "extended" | "extended_runtime" | "extended_read_count" | "extended_read_length" | "extended_write_count" | "extended_write_length";
                                     /** @description (Hex string) The ECDSA public key hash of the current tenure. */
                                     pubkey_hash: string;
                                 };
@@ -17077,7 +17077,7 @@ export interface operations {
                                 /** @description The number of blocks produced in the previous tenure. */
                                 previous_tenure_blocks: number;
                                 /** @description Cause of change in mining tenure. Depending on cause, tenure can be ended or extended. */
-                                cause: "block_found" | "extended";
+                                cause: "block_found" | "extended" | "extended_runtime" | "extended_read_count" | "extended_read_length" | "extended_write_count" | "extended_write_length";
                                 /** @description (Hex string) The ECDSA public key hash of the current tenure. */
                                 pubkey_hash: string;
                             };
@@ -19372,7 +19372,7 @@ export interface operations {
                                 /** @description The number of blocks produced in the previous tenure. */
                                 previous_tenure_blocks: number;
                                 /** @description Cause of change in mining tenure. Depending on cause, tenure can be ended or extended. */
-                                cause: "block_found" | "extended";
+                                cause: "block_found" | "extended" | "extended_runtime" | "extended_read_count" | "extended_read_length" | "extended_write_count" | "extended_write_length";
                                 /** @description (Hex string) The ECDSA public key hash of the current tenure. */
                                 pubkey_hash: string;
                             };
@@ -20719,7 +20719,7 @@ export interface operations {
                                 /** @description The number of blocks produced in the previous tenure. */
                                 previous_tenure_blocks: number;
                                 /** @description Cause of change in mining tenure. Depending on cause, tenure can be ended or extended. */
-                                cause: "block_found" | "extended";
+                                cause: "block_found" | "extended" | "extended_runtime" | "extended_read_count" | "extended_read_length" | "extended_write_count" | "extended_write_length";
                                 /** @description (Hex string) The ECDSA public key hash of the current tenure. */
                                 pubkey_hash: string;
                             };
@@ -22117,7 +22117,7 @@ export interface operations {
                                     /** @description The number of blocks produced in the previous tenure. */
                                     previous_tenure_blocks: number;
                                     /** @description Cause of change in mining tenure. Depending on cause, tenure can be ended or extended. */
-                                    cause: "block_found" | "extended";
+                                    cause: "block_found" | "extended" | "extended_runtime" | "extended_read_count" | "extended_read_length" | "extended_write_count" | "extended_write_length";
                                     /** @description (Hex string) The ECDSA public key hash of the current tenure. */
                                     pubkey_hash: string;
                                 };
@@ -23019,7 +23019,7 @@ export interface operations {
                                 /** @description The number of blocks produced in the previous tenure. */
                                 previous_tenure_blocks: number;
                                 /** @description Cause of change in mining tenure. Depending on cause, tenure can be ended or extended. */
-                                cause: "block_found" | "extended";
+                                cause: "block_found" | "extended" | "extended_runtime" | "extended_read_count" | "extended_read_length" | "extended_write_count" | "extended_write_length";
                                 /** @description (Hex string) The ECDSA public key hash of the current tenure. */
                                 pubkey_hash: string;
                             };
@@ -24555,7 +24555,7 @@ export interface operations {
                                     /** @description The number of blocks produced in the previous tenure. */
                                     previous_tenure_blocks: number;
                                     /** @description Cause of change in mining tenure. Depending on cause, tenure can be ended or extended. */
-                                    cause: "block_found" | "extended";
+                                    cause: "block_found" | "extended" | "extended_runtime" | "extended_read_count" | "extended_read_length" | "extended_write_count" | "extended_write_length";
                                     /** @description (Hex string) The ECDSA public key hash of the current tenure. */
                                     pubkey_hash: string;
                                 };
@@ -25169,7 +25169,7 @@ export interface operations {
                                     /** @description The number of blocks produced in the previous tenure. */
                                     previous_tenure_blocks: number;
                                     /** @description Cause of change in mining tenure. Depending on cause, tenure can be ended or extended. */
-                                    cause: "block_found" | "extended";
+                                    cause: "block_found" | "extended" | "extended_runtime" | "extended_read_count" | "extended_read_length" | "extended_write_count" | "extended_write_length";
                                     /** @description (Hex string) The ECDSA public key hash of the current tenure. */
                                     pubkey_hash: string;
                                 };
@@ -25792,7 +25792,7 @@ export interface operations {
                                     /** @description The number of blocks produced in the previous tenure. */
                                     previous_tenure_blocks: number;
                                     /** @description Cause of change in mining tenure. Depending on cause, tenure can be ended or extended. */
-                                    cause: "block_found" | "extended";
+                                    cause: "block_found" | "extended" | "extended_runtime" | "extended_read_count" | "extended_read_length" | "extended_write_count" | "extended_write_length";
                                     /** @description (Hex string) The ECDSA public key hash of the current tenure. */
                                     pubkey_hash: string;
                                 };
@@ -27109,7 +27109,7 @@ export interface operations {
                                     /** @description The number of blocks produced in the previous tenure. */
                                     previous_tenure_blocks: number;
                                     /** @description Cause of change in mining tenure. Depending on cause, tenure can be ended or extended. */
-                                    cause: "block_found" | "extended";
+                                    cause: "block_found" | "extended" | "extended_runtime" | "extended_read_count" | "extended_read_length" | "extended_write_count" | "extended_write_length";
                                     /** @description (Hex string) The ECDSA public key hash of the current tenure. */
                                     pubkey_hash: string;
                                 };
@@ -28934,7 +28934,7 @@ export interface operations {
                                 /** @description The number of blocks produced in the previous tenure. */
                                 previous_tenure_blocks: number;
                                 /** @description Cause of change in mining tenure. Depending on cause, tenure can be ended or extended. */
-                                cause: "block_found" | "extended";
+                                cause: "block_found" | "extended" | "extended_runtime" | "extended_read_count" | "extended_read_length" | "extended_write_count" | "extended_write_length";
                                 /** @description (Hex string) The ECDSA public key hash of the current tenure. */
                                 pubkey_hash: string;
                             };
@@ -31028,7 +31028,7 @@ export interface operations {
                                     /** @description The number of blocks produced in the previous tenure. */
                                     previous_tenure_blocks: number;
                                     /** @description Cause of change in mining tenure. Depending on cause, tenure can be ended or extended. */
-                                    cause: "block_found" | "extended";
+                                    cause: "block_found" | "extended" | "extended_runtime" | "extended_read_count" | "extended_read_length" | "extended_write_count" | "extended_write_length";
                                     /** @description (Hex string) The ECDSA public key hash of the current tenure. */
                                     pubkey_hash: string;
                                 };

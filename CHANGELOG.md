@@ -1,3 +1,40 @@
+## [8.13.6](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.13.5...v8.13.6) (2025-12-22)
+
+### Bug Fixes
+
+* allow nullish smart contract source code in tx metadata ([#2412](https://github.com/hirosystems/stacks-blockchain-api/issues/2412)) ([e13c3b9](https://github.com/hirosystems/stacks-blockchain-api/commit/e13c3b99776839e017344ff6e0428bcdd9f863da))
+
+## [8.13.5](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.13.4...v8.13.5) (2025-12-02)
+
+
+### Bug Fixes
+
+* support new sip-034 tenure change causes ([#2384](https://github.com/hirosystems/stacks-blockchain-api/issues/2384)) ([399908f](https://github.com/hirosystems/stacks-blockchain-api/commit/399908fd08fdaee3edc5b0820f0526378f7ab51a))
+
+## [8.13.4](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.13.3...v8.13.4) (2025-11-06)
+
+
+### Bug Fixes
+
+* upgrade to latest stacks-encoding-native-js with arm64 support ([#2376](https://github.com/hirosystems/stacks-blockchain-api/issues/2376)) ([5ab7328](https://github.com/hirosystems/stacks-blockchain-api/commit/5ab7328c4c63c270fe0c43cec45f2a5a3e84d4cf))
+
+## [8.13.3](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.13.2...v8.13.3) (2025-11-06)
+
+
+### Bug Fixes
+
+* upgrade stacks-encoding-native-js ([#2375](https://github.com/hirosystems/stacks-blockchain-api/issues/2375)) ([ae9933b](https://github.com/hirosystems/stacks-blockchain-api/commit/ae9933b1d0caf303838db621997c31f749100ff8))
+
+## [8.13.2](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.13.1...v8.13.2) (2025-10-21)
+
+
+### Bug Fixes
+
+* calculate burnchain reward reorgs correctly ([#2355](https://github.com/hirosystems/stacks-blockchain-api/issues/2355)) ([f82efbc](https://github.com/hirosystems/stacks-blockchain-api/commit/f82efbc6ddc0d98bea92c389888dfc7b5b17926b))
+* do not display revoked pool delegations ([#2357](https://github.com/hirosystems/stacks-blockchain-api/issues/2357)) ([c6de314](https://github.com/hirosystems/stacks-blockchain-api/commit/c6de31493b92c4e5ae5dcc44519dcc9867886abd))
+* push redis updates to a stream ([#2360](https://github.com/hirosystems/stacks-blockchain-api/issues/2360)) ([2bfacf6](https://github.com/hirosystems/stacks-blockchain-api/commit/2bfacf6ee5ef19758f0b7b24cdbd677f4d89e0ed))
+* sanitize event observer strings ([#2361](https://github.com/hirosystems/stacks-blockchain-api/issues/2361)) ([2604539](https://github.com/hirosystems/stacks-blockchain-api/commit/2604539d5e94f0f2ec20d05d86aa3690dcdb1474))
+
 ## [8.13.1](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.13.0...v8.13.1) (2025-09-23)
 
 

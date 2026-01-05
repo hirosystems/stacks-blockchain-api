@@ -282,7 +282,8 @@ export const AddressRoutesV2: FastifyPluginAsync<
         params: Type.Object({
           principal: PrincipalSchema,
           token: Type.String({
-            description: 'fungible token identifier',
+            description:
+              'fungible token identifier, e.g. `SM3VDXK3WZZSA84XXFKAFAF15NNZX32CTSG82JFQ4.sbtc-token::sbtc-token`',
             examples: [
               'SM3VDXK3WZZSA84XXFKAFAF15NNZX32CTSG82JFQ4.sbtc-token::sbtc-token',
               'SP3Y2ZSH8P7D50B0VBTSX11S7XSG24M1VB9YFQA4K.token-aeusdc::aeUSDC',

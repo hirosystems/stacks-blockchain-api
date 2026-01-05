@@ -72,9 +72,12 @@ export async function defaultSetupTeardown() {
     // eslint-disable-next-line @typescript-eslint/no-var-requires
     const whyIsNodeRunning = require('why-is-node-running');
     let whyRunInterval = 1000;
-    setInterval(() => {
-      console.log('\n\n\n\n_____WHY IS NODE RUNNING_____');
-      whyIsNodeRunning();
-    }, (whyRunInterval *= 2)).unref();
+    setInterval(
+      () => {
+        console.log('\n\n\n\n_____WHY IS NODE RUNNING_____');
+        whyIsNodeRunning();
+      },
+      (whyRunInterval *= 2)
+    ).unref();
   }
 }
