@@ -567,7 +567,7 @@ export class PgStoreV2 extends BasePgStoreModule {
 
         cursorFilter = sql`
           AND (p.block_height, p.microblock_sequence, p.tx_index)
-              < (${blockHeight}, ${microblockSequence}, ${txIndex})
+              <= (${blockHeight}, ${microblockSequence}, ${txIndex})
         `;
       }
 
@@ -605,7 +605,7 @@ export class PgStoreV2 extends BasePgStoreModule {
       const parsed = results.map(r => parseAccountTransferSummaryTxQueryResult(r));
 
       // Generate prev cursor from the last result
-      const lastResult = results[results.length - 1];
+      const lastResult = resultQuery[resultQuery.length - 1];
       const prevCursor =
         hasNextPage && lastResult
           ? `${lastResult.index_block_hash}:${lastResult.microblock_sequence}:${lastResult.tx_index}`
@@ -619,7 +619,7 @@ export class PgStoreV2 extends BasePgStoreModule {
 
       // Generate next cursor by looking for the first item of the previous page
       let nextCursor: string | null = null;
-      if (args.cursor && firstResult) {
+      if (firstResult) {
         // Find the item that would start the previous page
         // We look for items "before" our current first result (greater in DESC order)
         // and skip (limit - 1) to find the start of that page
@@ -652,8 +652,8 @@ export class PgStoreV2 extends BasePgStoreModule {
         limit,
         offset,
         results: parsed,
-        next_cursor: prevCursor,
-        prev_cursor: nextCursor,
+        next_cursor: nextCursor,
+        prev_cursor: prevCursor,
         current_cursor: currentCursor,
       };
     });
