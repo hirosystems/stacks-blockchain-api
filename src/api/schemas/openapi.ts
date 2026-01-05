@@ -5,9 +5,7 @@ export const OpenApiSchemaOptions: SwaggerOptions = {
   openapi: {
     info: {
       title: 'Stacks Blockchain API',
-      description: `Welcome to the API reference overview for the [Stacks Blockchain API](https://docs.hiro.so/stacks-blockchain-api).
-
-      [Download Postman collection](https://hirosystems.github.io/stacks-blockchain-api/collection.json)`,
+      description: `Welcome to the API reference overview for the [Stacks Blockchain API](https://docs.hiro.so/stacks-blockchain-api). [Download Postman collection](https://hirosystems.github.io/stacks-blockchain-api/collection.json).`,
       version: SERVER_VERSION.tag,
     },
     externalDocs: {
