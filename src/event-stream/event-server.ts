@@ -59,7 +59,7 @@ import {
   ClarityValueStringAscii,
   ClarityValueTuple,
   TxPayloadTypeID,
-} from 'stacks-encoding-native-js';
+} from '@hirosystems/stacks-encoding-native-js';
 import { BnsContractIdentifier } from './bns/bns-constants';
 import {
   parseNameFromContractEvent,
@@ -121,8 +121,6 @@ async function handleBurnBlockMessage(
     return slotHolder;
   });
   await db.updateBurnchainRewards({
-    burnchainBlockHash: burnBlockMsg.burn_block_hash,
-    burnchainBlockHeight: burnBlockMsg.burn_block_height,
     rewards: rewards,
   });
   await db.updateBurnchainRewardSlotHolders({

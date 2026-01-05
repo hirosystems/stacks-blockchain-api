@@ -31,7 +31,7 @@ import { StacksNetwork } from '@stacks/network';
 import { RPCClient } from 'rpc-bitcoin';
 import * as supertest from 'supertest';
 import { PoxContractIdentifier } from '../../src/pox-helpers';
-import { ClarityValueUInt, decodeClarityValue } from 'stacks-encoding-native-js';
+import { ClarityValueUInt, decodeClarityValue } from '@hirosystems/stacks-encoding-native-js';
 import { decodeBtcAddress, poxAddressToBtcAddress } from '@stacks/stacking';
 import { timeout } from '@hirosystems/api-toolkit';
 import { AddressStxBalance } from '../../src/api/schemas/entities/addresses';

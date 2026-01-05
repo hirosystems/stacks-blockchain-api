@@ -1,3 +1,90 @@
+## [8.13.6](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.13.5...v8.13.6) (2025-12-22)
+
+### Bug Fixes
+
+* allow nullish smart contract source code in tx metadata ([#2412](https://github.com/hirosystems/stacks-blockchain-api/issues/2412)) ([e13c3b9](https://github.com/hirosystems/stacks-blockchain-api/commit/e13c3b99776839e017344ff6e0428bcdd9f863da))
+
+## [8.13.5](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.13.4...v8.13.5) (2025-12-02)
+
+
+### Bug Fixes
+
+* support new sip-034 tenure change causes ([#2384](https://github.com/hirosystems/stacks-blockchain-api/issues/2384)) ([399908f](https://github.com/hirosystems/stacks-blockchain-api/commit/399908fd08fdaee3edc5b0820f0526378f7ab51a))
+
+## [8.13.4](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.13.3...v8.13.4) (2025-11-06)
+
+
+### Bug Fixes
+
+* upgrade to latest stacks-encoding-native-js with arm64 support ([#2376](https://github.com/hirosystems/stacks-blockchain-api/issues/2376)) ([5ab7328](https://github.com/hirosystems/stacks-blockchain-api/commit/5ab7328c4c63c270fe0c43cec45f2a5a3e84d4cf))
+
+## [8.13.3](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.13.2...v8.13.3) (2025-11-06)
+
+
+### Bug Fixes
+
+* upgrade stacks-encoding-native-js ([#2375](https://github.com/hirosystems/stacks-blockchain-api/issues/2375)) ([ae9933b](https://github.com/hirosystems/stacks-blockchain-api/commit/ae9933b1d0caf303838db621997c31f749100ff8))
+
+## [8.13.2](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.13.1...v8.13.2) (2025-10-21)
+
+
+### Bug Fixes
+
+* calculate burnchain reward reorgs correctly ([#2355](https://github.com/hirosystems/stacks-blockchain-api/issues/2355)) ([f82efbc](https://github.com/hirosystems/stacks-blockchain-api/commit/f82efbc6ddc0d98bea92c389888dfc7b5b17926b))
+* do not display revoked pool delegations ([#2357](https://github.com/hirosystems/stacks-blockchain-api/issues/2357)) ([c6de314](https://github.com/hirosystems/stacks-blockchain-api/commit/c6de31493b92c4e5ae5dcc44519dcc9867886abd))
+* push redis updates to a stream ([#2360](https://github.com/hirosystems/stacks-blockchain-api/issues/2360)) ([2bfacf6](https://github.com/hirosystems/stacks-blockchain-api/commit/2bfacf6ee5ef19758f0b7b24cdbd677f4d89e0ed))
+* sanitize event observer strings ([#2361](https://github.com/hirosystems/stacks-blockchain-api/issues/2361)) ([2604539](https://github.com/hirosystems/stacks-blockchain-api/commit/2604539d5e94f0f2ec20d05d86aa3690dcdb1474))
+
+## [8.13.1](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.13.0...v8.13.1) (2025-09-23)
+
+
+### Bug Fixes
+
+* **notifier:** include block times in redis updates ([#2352](https://github.com/hirosystems/stacks-blockchain-api/issues/2352)) ([d4324b8](https://github.com/hirosystems/stacks-blockchain-api/commit/d4324b8df0e8d6a2b3704540e2c88c132666b272))
+
+## [8.13.0](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.12.1...v8.13.0) (2025-09-09)
+
+
+### Features
+
+* add redis index notifier ([#2321](https://github.com/hirosystems/stacks-blockchain-api/issues/2321)) ([5c49f49](https://github.com/hirosystems/stacks-blockchain-api/commit/5c49f49fb6f3c56c92ccd4be63e301d2b495a550))
+
+## [8.12.1](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.12.0...v8.12.1) (2025-08-26)
+
+
+### Bug Fixes
+
+* include nakamoto coinbase txs on coinbase txs filter ([#2339](https://github.com/hirosystems/stacks-blockchain-api/issues/2339)) ([c9ef5e8](https://github.com/hirosystems/stacks-blockchain-api/commit/c9ef5e810776f11ca30e71846ebe297e0adbb1e6))
+* pox cycle signer stackers query pagination ([#2345](https://github.com/hirosystems/stacks-blockchain-api/issues/2345)) ([1353554](https://github.com/hirosystems/stacks-blockchain-api/commit/1353554c11e6f51bf8a8676bb8f9e35ae670ffbc))
+
+## [8.12.0](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.11.6...v8.12.0) (2025-08-06)
+
+
+### Features
+
+* Add exclude_function_args parameter to reduce transaction response sizes ([#2312](https://github.com/hirosystems/stacks-blockchain-api/issues/2312)) ([852a60e](https://github.com/hirosystems/stacks-blockchain-api/commit/852a60e96080c82c95b8942d6828a72c778f7d87))
+* add replaced_by_tx_id to replaced mempool transactions ([#2271](https://github.com/hirosystems/stacks-blockchain-api/issues/2271)) ([a70c3d1](https://github.com/hirosystems/stacks-blockchain-api/commit/a70c3d176091a66ede2e21f6941d5e4c416ae2a3))
+* **prometheus:** add chain tip metrics ([#2333](https://github.com/hirosystems/stacks-blockchain-api/issues/2333)) ([bde1037](https://github.com/hirosystems/stacks-blockchain-api/commit/bde1037edf88452e20ed707cfd138876c68ea8a3))
+* SNP integration ([#2291](https://github.com/hirosystems/stacks-blockchain-api/issues/2291)) ([9a159e1](https://github.com/hirosystems/stacks-blockchain-api/commit/9a159e14dacfac40544ad9ded76c2136e419ed0b))
+
+
+### Bug Fixes
+
+* drop redundant db indexes ([#2329](https://github.com/hirosystems/stacks-blockchain-api/issues/2329)) ([0ddd6a6](https://github.com/hirosystems/stacks-blockchain-api/commit/0ddd6a613219671533a5f3d9c33ead501d7fc3f8))
+* ensure some ops only run when SNP is not enabled ([fd4717b](https://github.com/hirosystems/stacks-blockchain-api/commit/fd4717be91ecd89328d15b2fea29b5297ca76a33))
+* only ingest snp chain events to avoid db bloat ([287f572](https://github.com/hirosystems/stacks-blockchain-api/commit/287f572c49fa8405a907a5023aa815157f6162ca))
+* optimize queries to prune and restore mempool rbf txs ([#2327](https://github.com/hirosystems/stacks-blockchain-api/issues/2327)) ([0b196f0](https://github.com/hirosystems/stacks-blockchain-api/commit/0b196f0b81b3e4661e092e372df476ab13f284b8))
+* optimize replace-by-fee mempool calculations ([#2326](https://github.com/hirosystems/stacks-blockchain-api/issues/2326)) ([01998bc](https://github.com/hirosystems/stacks-blockchain-api/commit/01998bcecf337200ee9582cb45682f9966977432))
+* parallelize mempool rbf updates ([#2328](https://github.com/hirosystems/stacks-blockchain-api/issues/2328)) ([e7347e5](https://github.com/hirosystems/stacks-blockchain-api/commit/e7347e525f938d67cd77253b8efcc8ec33c923d4))
+* update snp image in tests ([c7c0dbb](https://github.com/hirosystems/stacks-blockchain-api/commit/c7c0dbbac6d2f5736fbca338798da23fb16e3ada))
+
+## [8.11.6](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.11.5...v8.11.6) (2025-07-30)
+
+
+### Bug Fixes
+
+* update stx year 2050 supply to reflect sip-031 increase ([#2334](https://github.com/hirosystems/stacks-blockchain-api/issues/2334)) ([6916796](https://github.com/hirosystems/stacks-blockchain-api/commit/6916796f3f11dcc182460367ade104cbda480d46))
+
 ## [8.11.5](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.11.4...v8.11.5) (2025-07-18)
 
 

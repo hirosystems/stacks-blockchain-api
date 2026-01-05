@@ -966,7 +966,7 @@ export class PgStoreV2 extends BasePgStoreModule {
         WHERE ps.canonical = TRUE 
           AND ps.cycle_number = ${cycleNumber} 
           AND ps.signing_key = ${signerKey}
-        ORDER BY locked DESC
+        ORDER BY locked DESC, stacker ASC
         LIMIT ${limit}
         OFFSET ${offset}
       `;

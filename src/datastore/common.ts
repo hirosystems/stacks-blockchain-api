@@ -1110,7 +1110,14 @@ export interface DbPoxCycleSignerStacker {
   stacker_type: 'solo' | 'pooled';
 }
 
+export interface BlockHeader {
+  index_block_hash: string;
+  block_height: number;
+  block_time: number;
+}
+
 interface ReOrgEntities {
+  blockHeaders: BlockHeader[];
   blocks: number;
   microblockHashes: string[];
   microblocks: number;
