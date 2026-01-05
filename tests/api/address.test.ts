@@ -986,6 +986,51 @@ describe('address tests', () => {
       ],
     };
     expect(JSON.parse(fetch2.text)).toEqual(expected2);
+
+    // Cursor fetch
+    const cursorFetch1 = await supertest(api.server).get(
+      `/extended/v2/addresses/${testAddr2}/transactions?limit=2`
+    );
+    const cursorFetch1Json = JSON.parse(cursorFetch1.text);
+    expect(cursorFetch1Json.cursor).toBeDefined();
+    expect(cursorFetch1Json.limit).toBe(2);
+    expect(cursorFetch1Json.offset).toBe(0);
+    expect(cursorFetch1Json.total).toBe(7);
+    expect(cursorFetch1Json.results).toHaveLength(2);
+    expect(cursorFetch1Json.results[0].tx).toEqual(v2Fetch1Json.results[0].tx);
+    expect(cursorFetch1Json.results[1].tx).toEqual(v2Fetch1Json.results[1].tx);
+    expect(cursorFetch1Json.next_cursor).toBeNull();
+    expect(cursorFetch1Json.prev_cursor).toBeDefined();
+
+    // First cursor should be equivalent to the original fetch
+    const cursorFetch2 = await supertest(api.server).get(
+      `/extended/v2/addresses/${testAddr2}/transactions?cursor=${cursorFetch1Json.cursor}&limit=2`
+    );
+    const cursorFetch2Json = JSON.parse(cursorFetch2.text);
+    expect(cursorFetch2Json.cursor).toBe(cursorFetch1Json.cursor);
+    expect(cursorFetch2Json.limit).toBe(2);
+    expect(cursorFetch2Json.offset).toBe(0);
+    expect(cursorFetch2Json.total).toBe(7);
+    expect(cursorFetch2Json.results).toHaveLength(2);
+    expect(cursorFetch2Json.results[0].tx).toEqual(v2Fetch1Json.results[0].tx);
+    expect(cursorFetch2Json.results[1].tx).toEqual(v2Fetch1Json.results[1].tx);
+    expect(cursorFetch2Json.next_cursor).toBeNull();
+    expect(cursorFetch2Json.prev_cursor).not.toBeNull();
+
+    // Go back one page
+    const cursorFetch3 = await supertest(api.server).get(
+      `/extended/v2/addresses/${testAddr2}/transactions?cursor=${cursorFetch2Json.prev_cursor}&limit=2`
+    );
+    const cursorFetch3Json = JSON.parse(cursorFetch3.text);
+    expect(cursorFetch3Json.cursor).toBe(cursorFetch2Json.prev_cursor);
+    expect(cursorFetch3Json.limit).toBe(2);
+    expect(cursorFetch3Json.offset).toBe(0);
+    expect(cursorFetch3Json.total).toBe(7);
+    expect(cursorFetch3Json.results).toHaveLength(2);
+    expect(cursorFetch3Json.results[0].tx).toEqual(v2Fetch1Json.results[2].tx);
+    expect(cursorFetch3Json.results[1].tx).toEqual(v2Fetch1Json.results[3].tx);
+    expect(cursorFetch3Json.next_cursor).toBe(cursorFetch2Json.cursor);
+    expect(cursorFetch3Json.prev_cursor).not.toBeNull();
   });
 
   test('address nonce', async () => {

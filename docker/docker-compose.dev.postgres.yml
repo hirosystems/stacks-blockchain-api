@@ -8,5 +8,17 @@ services:
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: stacks_blockchain_api
       POSTGRES_PORT: 5432
+    healthcheck:
+      test: ["CMD-SHELL", "cat /ready.txt && pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    entrypoint: [
+      "/bin/bash",
+      "-c",
+      "docker-entrypoint.sh postgres & rm -f /ready.txt || true && until pg_isready -U postgres; do sleep 3; done &&
+      psql -U postgres -d stacks_blockchain_api -c 'CREATE SCHEMA IF NOT EXISTS stacks_blockchain_api;' || true &&
+      echo 'done' > /ready.txt && wait"
+    ]
     volumes:
       - ../tests/event-replay/.tmp/local/:/root/

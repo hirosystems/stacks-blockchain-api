@@ -30,7 +30,7 @@ import {
   RewardSlotHolderInsertValues,
   StxLockEventInsertValues,
   StxEventInsertValues,
-  PrincipalStxTxsInsertValues,
+  PrincipalTxsInsertValues,
   BnsSubdomainInsertValues,
   BnsZonefileInsertValues,
   FtEventInsertValues,
@@ -64,6 +64,7 @@ import {
   DbPoxSetSigners,
   PoxSetSignerValues,
   PoxCycleInsertValues,
+  DbAssetEventTypeId,
 } from './common';
 import {
   BLOCK_COLUMNS,
@@ -361,7 +362,7 @@ export class PgWriteStore extends PgStore {
             )
           );
           q.enqueue(() => this.updateStxEvents(sql, newTxData));
-          q.enqueue(() => this.updatePrincipalStxTxs(sql, newTxData));
+          q.enqueue(() => this.updatePrincipalTxs(sql, newTxData));
           q.enqueue(() => this.updateSmartContractEvents(sql, newTxData));
           q.enqueue(() => this.updatePoxSyntheticEvents(sql, 'pox2_events', newTxData));
           q.enqueue(() => this.updatePoxSyntheticEvents(sql, 'pox3_events', newTxData));
@@ -1373,30 +1374,130 @@ export class PgWriteStore extends PgStore {
   }
 
   /**
-   * Update the `principal_stx_tx` table with the latest `tx_id`s that resulted in a STX
-   * transfer relevant to a principal (stx address or contract id).
+   * Update the `principal_txs` table with the latest `tx_id`s that resulted in activity for a
+   * principal (contract or address), and mark the type of token balance that was affected.
    * @param sql - DB client
-   * @param entries - list of tx and stxEvents
+   * @param txs - list of transactions
    */
-  async updatePrincipalStxTxs(sql: PgSqlClient, entries: { tx: DbTx; stxEvents: DbStxEvent[] }[]) {
-    const values: PrincipalStxTxsInsertValues[] = [];
-    for (const { tx, stxEvents } of entries) {
-      const principals = new Set<string>(
-        [
-          tx.sender_address,
-          tx.token_transfer_recipient_address,
-          tx.contract_call_contract_id,
-          tx.smart_contract_contract_id,
-          tx.sponsor_address,
-        ].filter((p): p is string => !!p)
-      );
-      for (const event of stxEvents) {
-        if (event.sender) principals.add(event.sender);
-        if (event.recipient) principals.add(event.recipient);
+  async updatePrincipalTxs(sql: PgSqlClient, txs: DataStoreTxEventData[]) {
+    type PrincipalRow = {
+      stx: boolean;
+      ft: boolean;
+      nft: boolean;
+      stx_sent: bigint;
+      stx_received: bigint;
+      stx_mints: number;
+      stx_burns: number;
+      stx_transfers: number;
+      ft_mints: number;
+      ft_burns: number;
+      ft_transfers: number;
+      nft_mints: number;
+      nft_burns: number;
+      nft_transfers: number;
+    };
+    const values: PrincipalTxsInsertValues[] = [];
+    for (const { tx, stxEvents, ftEvents, nftEvents } of txs) {
+      // Mark principals who participated in this transaction, along with the type of token balance
+      // they affected.
+      const principals = new Map<string, PrincipalRow>();
+      const addPrincipal = (principal: string, data?: Partial<PrincipalRow>) => {
+        const entry = principals.get(principal);
+        principals.set(principal, {
+          stx: entry?.stx || data?.stx || false,
+          ft: entry?.ft || data?.ft || false,
+          nft: entry?.nft || data?.nft || false,
+          stx_sent: (entry?.stx_sent ?? 0n) + (data?.stx_sent ?? 0n),
+          stx_received: (entry?.stx_received ?? 0n) + (data?.stx_received ?? 0n),
+          stx_mints: (entry?.stx_mints ?? 0) + (data?.stx_mints ?? 0),
+          stx_burns: (entry?.stx_burns ?? 0) + (data?.stx_burns ?? 0),
+          stx_transfers: (entry?.stx_transfers ?? 0) + (data?.stx_transfers ?? 0),
+          ft_mints: (entry?.ft_mints ?? 0) + (data?.ft_mints ?? 0),
+          ft_burns: (entry?.ft_burns ?? 0) + (data?.ft_burns ?? 0),
+          ft_transfers: (entry?.ft_transfers ?? 0) + (data?.ft_transfers ?? 0),
+          nft_mints: (entry?.nft_mints ?? 0) + (data?.nft_mints ?? 0),
+          nft_burns: (entry?.nft_burns ?? 0) + (data?.nft_burns ?? 0),
+          nft_transfers: (entry?.nft_transfers ?? 0) + (data?.nft_transfers ?? 0),
+        });
+      };
+
+      // Record participating principals. No amounts yet, that will be included in stx_events below.
+      addPrincipal(tx.sender_address);
+      if (tx.token_transfer_recipient_address)
+        addPrincipal(tx.token_transfer_recipient_address, { stx: true });
+      if (tx.contract_call_contract_id) addPrincipal(tx.contract_call_contract_id);
+      if (tx.smart_contract_contract_id) addPrincipal(tx.smart_contract_contract_id);
+
+      // Record fee paid.
+      if (tx.sponsor_address) {
+        addPrincipal(tx.sponsor_address, { stx: true, stx_sent: BigInt(tx.fee_rate) });
+      } else {
+        addPrincipal(tx.sender_address, { stx: true, stx_sent: BigInt(tx.fee_rate) });
       }
-      for (const principal of principals) {
+
+      // Record token amounts and event counts.
+      for (const event of stxEvents) {
+        switch (event.asset_event_type_id) {
+          case DbAssetEventTypeId.Mint:
+            if (event.recipient)
+              addPrincipal(event.recipient, {
+                stx: true,
+                stx_received: event.amount,
+                stx_mints: 1,
+              });
+            break;
+          case DbAssetEventTypeId.Burn:
+            if (event.sender)
+              addPrincipal(event.sender, { stx: true, stx_sent: event.amount, stx_burns: 1 });
+            break;
+          case DbAssetEventTypeId.Transfer:
+            if (event.sender)
+              addPrincipal(event.sender, { stx: true, stx_sent: event.amount, stx_transfers: 1 });
+            if (event.recipient)
+              addPrincipal(event.recipient, {
+                stx: true,
+                stx_received: event.amount,
+                stx_transfers: 1,
+              });
+            break;
+        }
+      }
+      for (const event of ftEvents) {
+        switch (event.asset_event_type_id) {
+          case DbAssetEventTypeId.Mint:
+            if (event.recipient) addPrincipal(event.recipient, { ft: true, ft_mints: 1 });
+            break;
+          case DbAssetEventTypeId.Burn:
+            if (event.sender) addPrincipal(event.sender, { ft: true, ft_burns: 1 });
+            break;
+          case DbAssetEventTypeId.Transfer:
+            if (event.sender) addPrincipal(event.sender, { ft: true, ft_transfers: 1 });
+            if (event.recipient)
+              addPrincipal(event.recipient, {
+                ft: true,
+                ft_transfers: 1,
+              });
+            break;
+        }
+      }
+      for (const event of nftEvents) {
+        switch (event.asset_event_type_id) {
+          case DbAssetEventTypeId.Mint:
+            if (event.recipient) addPrincipal(event.recipient, { nft: true, nft_mints: 1 });
+            break;
+          case DbAssetEventTypeId.Burn:
+            if (event.sender) addPrincipal(event.sender, { nft: true, nft_burns: 1 });
+            break;
+          case DbAssetEventTypeId.Transfer:
+            if (event.sender) addPrincipal(event.sender, { nft: true, nft_transfers: 1 });
+            if (event.recipient) addPrincipal(event.recipient, { nft: true, nft_transfers: 1 });
+            break;
+        }
+      }
+
+      for (const [principal, data] of principals.entries()) {
         values.push({
-          principal: principal,
+          principal,
           tx_id: tx.tx_id,
           block_height: tx.block_height,
           index_block_hash: tx.index_block_hash,
@@ -1405,14 +1506,39 @@ export class PgWriteStore extends PgStore {
           tx_index: tx.tx_index,
           canonical: tx.canonical,
           microblock_canonical: tx.microblock_canonical,
+          stx_balance_affected: data.stx,
+          ft_balance_affected: data.ft,
+          nft_balance_affected: data.nft,
+          stx_sent: data.stx_sent,
+          stx_received: data.stx_received,
+          stx_mint_event_count: data.stx_mints,
+          stx_burn_event_count: data.stx_burns,
+          stx_transfer_event_count: data.stx_transfers,
+          ft_mint_event_count: data.ft_mints,
+          ft_burn_event_count: data.ft_burns,
+          ft_transfer_event_count: data.ft_transfers,
+          nft_mint_event_count: data.nft_mints,
+          nft_burn_event_count: data.nft_burns,
+          nft_transfer_event_count: data.nft_transfers,
         });
       }
     }
-
-    for (const eventBatch of batchIterate(values, INSERT_BATCH_SIZE)) {
+    for (const batch of batchIterate(values, INSERT_BATCH_SIZE)) {
       await sql`
-        INSERT INTO principal_stx_txs ${sql(eventBatch)}
-        ON CONFLICT ON CONSTRAINT unique_principal_tx_id_index_block_hash_microblock_hash DO NOTHING
+        WITH inserts AS (
+          INSERT INTO principal_txs ${sql(batch)}
+          ON CONFLICT ON CONSTRAINT principal_txs_unique DO NOTHING
+          RETURNING principal, canonical
+        ),
+        count_deltas AS (
+          SELECT principal, COUNT(*) AS count
+          FROM inserts
+          WHERE canonical = true
+          GROUP BY principal
+        )
+        INSERT INTO principal_tx_counts (principal, count)
+        (SELECT principal, count FROM count_deltas)
+        ON CONFLICT (principal) DO UPDATE SET count = principal_tx_counts.count + EXCLUDED.count
       `;
     }
   }
@@ -2271,7 +2397,7 @@ export class PgWriteStore extends PgStore {
           ORDER BY address, nonce, fee_rate DESC, receipt_time DESC
         ),
         winning_txs AS (
-          SELECT
+          SELECT DISTINCT
             g.address,
             g.nonce,
             COALESCE(l.tx_id, h.tx_id) AS tx_id
@@ -2296,6 +2422,7 @@ export class PgWriteStore extends PgStore {
               FROM winning_txs w
               INNER JOIN same_nonce_mempool_txs s ON w.address = s.address AND w.nonce = s.nonce
               WHERE s.tx_id = m.tx_id
+              LIMIT 1
             )
           FROM txs_to_prune p
           WHERE m.tx_id = p.tx_id
@@ -2388,11 +2515,12 @@ export class PgWriteStore extends PgStore {
     txIds: string[];
     new_tx_id: string | null;
   }): Promise<void> {
+    const replaced_by = new_tx_id ?? null;
     for (const batch of batchIterate(txIds, INSERT_BATCH_SIZE)) {
       const updateResults = await this.sql<{ tx_id: string }[]>`
         WITH pruned AS (
           UPDATE mempool_txs
-          SET pruned = TRUE, status = ${status}, replaced_by_tx_id = ${new_tx_id}
+          SET pruned = TRUE, status = ${status}, replaced_by_tx_id = ${replaced_by}
           WHERE tx_id IN ${this.sql(batch)} AND pruned = FALSE
           RETURNING tx_id
         ),
@@ -2746,7 +2874,7 @@ export class PgWriteStore extends PgStore {
           );
       });
       q.enqueue(() => this.updateStxEvents(sql, txs));
-      q.enqueue(() => this.updatePrincipalStxTxs(sql, txs));
+      q.enqueue(() => this.updatePrincipalTxs(sql, txs));
       q.enqueue(() => this.updateSmartContractEvents(sql, txs));
       q.enqueue(() => this.updatePoxSyntheticEvents(sql, 'pox2_events', txs));
       q.enqueue(() => this.updatePoxSyntheticEvents(sql, 'pox3_events', txs));
@@ -2832,7 +2960,7 @@ export class PgWriteStore extends PgStore {
         `;
       }
       await sql`
-        UPDATE principal_stx_txs
+        UPDATE principal_txs
         SET microblock_canonical = ${args.isMicroCanonical},
           canonical = ${args.isCanonical}, index_block_hash = ${args.indexBlockHash}
         WHERE microblock_hash IN ${sql(args.microblocks)}
@@ -3261,10 +3389,23 @@ export class PgWriteStore extends PgStore {
       }
       if (txResult.count) {
         await sql`
-          UPDATE principal_stx_txs
-          SET canonical = ${canonical}
-          WHERE tx_id IN ${sql(txs.map(t => t.txId))}
-            AND index_block_hash = ${indexBlockHash} AND canonical != ${canonical}
+          WITH updates AS (
+            UPDATE principal_txs
+            SET canonical = ${canonical}
+            WHERE tx_id IN ${sql(txs.map(t => t.txId))}
+              AND index_block_hash = ${indexBlockHash}
+              AND canonical != ${canonical}
+            RETURNING principal
+          ),
+          count_deltas AS (
+            SELECT principal, COUNT(*) AS count
+            FROM updates
+            GROUP BY principal
+          )
+          UPDATE principal_tx_counts AS pc
+          SET count = ${canonical ? sql`pc.count + cd.count` : sql`pc.count - cd.count`}
+          FROM count_deltas AS cd
+          WHERE pc.principal = cd.principal
         `;
       }
     });
@@ -3755,279 +3896,6 @@ export class PgWriteStore extends PgStore {
       `;
     }
     return updatedEntities;
-  }
-
-  /**
-   * batch operations (mainly for event-replay)
-   */
-
-  async insertBlockBatch(sql: PgSqlClient, blocks: DbBlock[]) {
-    const values: BlockInsertValues[] = blocks.map(block => ({
-      block_hash: block.block_hash,
-      block_time: block.block_time,
-      index_block_hash: block.index_block_hash,
-      parent_index_block_hash: block.parent_index_block_hash,
-      parent_block_hash: block.parent_block_hash,
-      parent_microblock_hash: block.parent_microblock_hash,
-      parent_microblock_sequence: block.parent_microblock_sequence,
-      block_height: block.block_height,
-      burn_block_time: block.burn_block_time,
-      burn_block_hash: block.burn_block_hash,
-      burn_block_height: block.burn_block_height,
-      miner_txid: block.miner_txid,
-      canonical: block.canonical,
-      execution_cost_read_count: block.execution_cost_read_count,
-      execution_cost_read_length: block.execution_cost_read_length,
-      execution_cost_runtime: block.execution_cost_runtime,
-      execution_cost_write_count: block.execution_cost_write_count,
-      execution_cost_write_length: block.execution_cost_write_length,
-      tx_total_size: block.tx_total_size,
-      tx_count: block.tx_count,
-      signer_bitvec: block.signer_bitvec,
-      signer_signatures: block.signer_signatures,
-      tenure_height: block.tenure_height,
-    }));
-    await sql`
-      INSERT INTO blocks ${sql(values)}
-    `;
-  }
-
-  async insertMicroblock(sql: PgSqlClient, microblocks: DbMicroblock[]): Promise<void> {
-    const values: MicroblockInsertValues[] = microblocks.map(mb => ({
-      canonical: mb.canonical,
-      microblock_canonical: mb.microblock_canonical,
-      microblock_hash: mb.microblock_hash,
-      microblock_sequence: mb.microblock_sequence,
-      microblock_parent_hash: mb.microblock_parent_hash,
-      parent_index_block_hash: mb.parent_index_block_hash,
-      block_height: mb.block_height,
-      parent_block_height: mb.parent_block_height,
-      parent_block_hash: mb.parent_block_hash,
-      index_block_hash: mb.index_block_hash,
-      block_hash: mb.block_hash,
-      parent_burn_block_height: mb.parent_burn_block_height,
-      parent_burn_block_hash: mb.parent_burn_block_hash,
-      parent_burn_block_time: mb.parent_burn_block_time,
-    }));
-    const mbResult = await sql`
-      INSERT INTO microblocks ${sql(values)}
-    `;
-    if (mbResult.count !== microblocks.length) {
-      throw new Error(
-        `Unexpected row count after inserting microblocks: ${mbResult.count} vs ${values.length}`
-      );
-    }
-  }
-
-  // alias to insertMicroblock
-  async insertMicroblockBatch(sql: PgSqlClient, microblocks: DbMicroblock[]): Promise<void> {
-    return this.insertMicroblock(sql, microblocks);
-  }
-
-  async insertTxBatch(sql: PgSqlClient, txs: DbTx[]): Promise<void> {
-    const values: TxInsertValues[] = txs.map(tx => ({
-      tx_id: tx.tx_id,
-      raw_tx: tx.raw_result,
-      tx_index: tx.tx_index,
-      index_block_hash: tx.index_block_hash,
-      parent_index_block_hash: tx.parent_index_block_hash,
-      block_hash: tx.block_hash,
-      parent_block_hash: tx.parent_block_hash,
-      block_height: tx.block_height,
-      block_time: tx.block_time ?? 0,
-      burn_block_height: tx.burn_block_height,
-      burn_block_time: tx.burn_block_time,
-      parent_burn_block_time: tx.parent_burn_block_time,
-      type_id: tx.type_id,
-      anchor_mode: tx.anchor_mode,
-      status: tx.status,
-      canonical: tx.canonical,
-      post_conditions: tx.post_conditions,
-      nonce: tx.nonce,
-      fee_rate: tx.fee_rate,
-      sponsored: tx.sponsored,
-      sponsor_nonce: tx.sponsor_nonce ?? null,
-      sponsor_address: tx.sponsor_address ?? null,
-      sender_address: tx.sender_address,
-      origin_hash_mode: tx.origin_hash_mode,
-      microblock_canonical: tx.microblock_canonical,
-      microblock_sequence: tx.microblock_sequence,
-      microblock_hash: tx.microblock_hash,
-      token_transfer_recipient_address: tx.token_transfer_recipient_address ?? null,
-      token_transfer_amount: tx.token_transfer_amount ?? null,
-      token_transfer_memo: tx.token_transfer_memo ?? null,
-      smart_contract_clarity_version: tx.smart_contract_clarity_version ?? null,
-      smart_contract_contract_id: tx.smart_contract_contract_id ?? null,
-      smart_contract_source_code: tx.smart_contract_source_code ?? null,
-      contract_call_contract_id: tx.contract_call_contract_id ?? null,
-      contract_call_function_name: tx.contract_call_function_name ?? null,
-      contract_call_function_args: tx.contract_call_function_args ?? null,
-      poison_microblock_header_1: tx.poison_microblock_header_1 ?? null,
-      poison_microblock_header_2: tx.poison_microblock_header_2 ?? null,
-      coinbase_payload: tx.coinbase_payload ?? null,
-      coinbase_alt_recipient: tx.coinbase_alt_recipient ?? null,
-      coinbase_vrf_proof: tx.coinbase_vrf_proof ?? null,
-      tenure_change_tenure_consensus_hash: tx.tenure_change_tenure_consensus_hash ?? null,
-      tenure_change_prev_tenure_consensus_hash: tx.tenure_change_prev_tenure_consensus_hash ?? null,
-      tenure_change_burn_view_consensus_hash: tx.tenure_change_burn_view_consensus_hash ?? null,
-      tenure_change_previous_tenure_end: tx.tenure_change_previous_tenure_end ?? null,
-      tenure_change_previous_tenure_blocks: tx.tenure_change_previous_tenure_blocks ?? null,
-      tenure_change_cause: tx.tenure_change_cause ?? null,
-      tenure_change_pubkey_hash: tx.tenure_change_pubkey_hash ?? null,
-      raw_result: tx.raw_result,
-      event_count: tx.event_count,
-      execution_cost_read_count: tx.execution_cost_read_count,
-      execution_cost_read_length: tx.execution_cost_read_length,
-      execution_cost_runtime: tx.execution_cost_runtime,
-      execution_cost_write_count: tx.execution_cost_write_count,
-      execution_cost_write_length: tx.execution_cost_write_length,
-      vm_error: tx.vm_error ?? null,
-    }));
-    await sql`INSERT INTO txs ${sql(values)}`;
-  }
-
-  async insertPrincipalStxTxsBatch(sql: PgSqlClient, values: PrincipalStxTxsInsertValues[]) {
-    await sql`
-      INSERT INTO principal_stx_txs ${sql(values)}
-    `;
-  }
-
-  async insertContractEventBatch(sql: PgSqlClient, values: SmartContractEventInsertValues[]) {
-    await sql`
-      INSERT INTO contract_logs ${sql(values)}
-    `;
-  }
-
-  async insertFtEventBatch(sql: PgSqlClient, values: FtEventInsertValues[]) {
-    await sql`
-      INSERT INTO ft_events ${sql(values)}
-    `;
-  }
-
-  async insertNftEventBatch(sql: PgSqlClient, values: NftEventInsertValues[]) {
-    await sql`INSERT INTO nft_events ${sql(values)}`;
-  }
-
-  async insertNameBatch(sql: PgSqlClient, values: BnsNameInsertValues[]) {
-    await sql`
-      INSERT INTO names ${sql(values)}
-    `;
-  }
-
-  async insertNamespace(
-    sql: PgSqlClient,
-    blockData: {
-      index_block_hash: string;
-      parent_index_block_hash: string;
-      microblock_hash: string;
-      microblock_sequence: number;
-      microblock_canonical: boolean;
-    },
-    bnsNamespace: DbBnsNamespace
-  ) {
-    const values: BnsNamespaceInsertValues = {
-      namespace_id: bnsNamespace.namespace_id,
-      launched_at: bnsNamespace.launched_at ?? null,
-      address: bnsNamespace.address,
-      reveal_block: bnsNamespace.reveal_block,
-      ready_block: bnsNamespace.ready_block,
-      buckets: bnsNamespace.buckets,
-      base: bnsNamespace.base.toString(),
-      coeff: bnsNamespace.coeff.toString(),
-      nonalpha_discount: bnsNamespace.nonalpha_discount.toString(),
-      no_vowel_discount: bnsNamespace.no_vowel_discount.toString(),
-      lifetime: bnsNamespace.lifetime,
-      status: bnsNamespace.status ?? null,
-      tx_index: bnsNamespace.tx_index,
-      tx_id: bnsNamespace.tx_id,
-      canonical: bnsNamespace.canonical,
-      index_block_hash: blockData.index_block_hash,
-      parent_index_block_hash: blockData.parent_index_block_hash,
-      microblock_hash: blockData.microblock_hash,
-      microblock_sequence: blockData.microblock_sequence,
-      microblock_canonical: blockData.microblock_canonical,
-    };
-    await sql`
-      INSERT INTO namespaces ${sql(values)}
-    `;
-  }
-
-  async insertZonefileBatch(sql: PgSqlClient, values: BnsZonefileInsertValues[]) {
-    await sql`
-      INSERT INTO zonefiles ${sql(values)}
-    `;
-  }
-
-  async insertRawEventRequestBatch(
-    sql: PgSqlClient,
-    events: RawEventRequestInsertValues[]
-  ): Promise<void> {
-    await sql`
-      INSERT INTO event_observer_requests ${this.sql(events)}
-    `;
-  }
-
-  /**
-   * (event-replay) Enable or disable indexes for DB tables.
-   */
-  async toggleAllTableIndexes(sql: PgSqlClient, state: IndexesState): Promise<void> {
-    const enable: boolean = Boolean(state);
-    const dbName = sql.options.database;
-    const tableSchema = sql.options.connection.search_path ?? 'public';
-    const tablesQuery = await sql<{ tablename: string }[]>`
-      SELECT tablename FROM pg_catalog.pg_tables
-      WHERE tablename != ${MIGRATIONS_TABLE}
-      AND schemaname = ${tableSchema}`;
-    if (tablesQuery.length === 0) {
-      const errorMsg = `No tables found in database '${dbName}', schema '${tableSchema}'`;
-      console.error(errorMsg);
-      throw new Error(errorMsg);
-    }
-    const tables: string[] = tablesQuery.map((r: { tablename: string }) => r.tablename);
-
-    // Exclude subdomains table since its constraints
-    // are need to handle the ingestion of attachments_new events.
-    const filtered = tables.filter(item => item !== 'subdomains');
-
-    const result = await sql`
-      UPDATE pg_index
-      SET ${sql({ indisready: enable, indisvalid: enable })}
-      WHERE indrelid = ANY (
-        SELECT oid FROM pg_class
-        WHERE relname IN ${sql(filtered)}
-        AND relnamespace = (
-          SELECT oid FROM pg_namespace WHERE nspname = ${tableSchema}
-        )
-      )
-    `;
-    if (result.count === 0) {
-      throw new Error(`No updates made while toggling table indexes`);
-    }
-  }
-
-  /**
-   * (event-replay) Reindex all DB tables.
-   */
-  async reindexAllTables(sql: PgSqlClient): Promise<void> {
-    const dbName = sql.options.database;
-    const tableSchema = sql.options.connection.search_path ?? 'public';
-    const tablesQuery = await sql<{ tablename: string }[]>`
-      SELECT tablename FROM pg_catalog.pg_tables
-      WHERE tablename != ${MIGRATIONS_TABLE}
-      AND schemaname = ${tableSchema}`;
-    if (tablesQuery.length === 0) {
-      const errorMsg = `No tables found in database '${dbName}', schema '${tableSchema}'`;
-      console.error(errorMsg);
-      throw new Error(errorMsg);
-    }
-    const tables: string[] = tablesQuery.map((r: { tablename: string }) => r.tablename);
-
-    for (const table of tables) {
-      const result = await sql`REINDEX TABLE ${sql(table)}`;
-      if (result.count === 0) {
-        throw new Error(`No updates made while toggling table indexes`);
-      }
-    }
   }
 
   async getLastIngestedSnpRedisMsgId(): Promise<string> {

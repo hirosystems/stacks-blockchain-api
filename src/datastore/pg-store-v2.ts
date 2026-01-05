@@ -43,6 +43,7 @@ import {
   parseAccountTransferSummaryTxQueryResult,
   POX4_SYNTHETIC_EVENT_COLUMNS,
   parseDbPoxSyntheticEvent,
+  prefixedCols,
 } from './helpers';
 import { SyntheticPoxEventName } from '../pox-helpers';
 
@@ -527,120 +528,133 @@ export class PgStoreV2 extends BasePgStoreModule {
   }
 
   async getAddressTransactions(
-    args: AddressParams & TransactionPaginationQueryParams
-  ): Promise<DbPaginatedResult<DbTxWithAddressTransfers>> {
+    args: AddressParams & TransactionPaginationQueryParams & { cursor?: string }
+  ): Promise<DbCursorPaginatedResult<DbTxWithAddressTransfers>> {
     return await this.sqlTransaction(async sql => {
       const limit = args.limit ?? TransactionLimitParamSchema.default;
       const offset = args.offset ?? 0;
 
-      const eventCond = sql`
-        tx_id = address_txs.tx_id
-        AND index_block_hash = address_txs.index_block_hash
-        AND microblock_hash = address_txs.microblock_hash
-      `;
-      const eventAcctCond = sql`
-        ${eventCond} AND (sender = ${args.address} OR recipient = ${args.address})
-      `;
+      // Parse cursor if provided (format: "indexBlockHash:microblockSequence:txIndex")
+      let cursorFilter = sql``;
+      if (args.cursor) {
+        const parts = args.cursor.split(':');
+        if (parts.length !== 3) {
+          throw new InvalidRequestError(
+            'Invalid cursor format',
+            InvalidRequestErrorType.invalid_param
+          );
+        }
+        const [indexBlockHash, microblockSequenceStr, txIndexStr] = parts;
+        const microblockSequence = parseInt(microblockSequenceStr, 10);
+        const txIndex = parseInt(txIndexStr, 10);
+        if (!indexBlockHash || isNaN(microblockSequence) || isNaN(txIndex)) {
+          throw new InvalidRequestError(
+            'Invalid cursor format',
+            InvalidRequestErrorType.invalid_param
+          );
+        }
+        // Look up block_height from index_block_hash for the row-value comparison
+        const blockHeightQuery = await sql<{ block_height: number }[]>`
+          SELECT block_height FROM blocks WHERE index_block_hash = ${indexBlockHash} LIMIT 1
+        `;
+        if (blockHeightQuery.length === 0) {
+          throw new InvalidRequestError(
+            'Invalid cursor: block not found',
+            InvalidRequestErrorType.invalid_param
+          );
+        }
+        const blockHeight = blockHeightQuery[0].block_height;
+
+        cursorFilter = sql`
+          AND (p.block_height, p.microblock_sequence, p.tx_index)
+              <= (${blockHeight}, ${microblockSequence}, ${txIndex})
+        `;
+      }
+
       const resultQuery = await sql<(AddressTransfersTxQueryResult & { count: number })[]>`
-        WITH address_txs AS (
-          (
-            SELECT tx_id, index_block_hash, microblock_hash
-            FROM principal_stx_txs
-            WHERE principal = ${args.address}
-          )
-          UNION
-          (
-            SELECT tx_id, index_block_hash, microblock_hash
-            FROM stx_events
-            WHERE sender = ${args.address} OR recipient = ${args.address}
-          )
-          UNION
-          (
-            SELECT tx_id, index_block_hash, microblock_hash
-            FROM ft_events
-            WHERE sender = ${args.address} OR recipient = ${args.address}
-          )
-          UNION
-          (
-            SELECT tx_id, index_block_hash, microblock_hash
-            FROM nft_events
-            WHERE sender = ${args.address} OR recipient = ${args.address}
-          )
-        ),
-        count AS (
-          SELECT COUNT(*)::int AS total_count
-          FROM address_txs
-          INNER JOIN txs USING (tx_id, index_block_hash, microblock_hash)
-          WHERE canonical = TRUE AND microblock_canonical = TRUE
-        )
         SELECT
-          ${sql(TX_COLUMNS)},
+          ${sql(prefixedCols(TX_COLUMNS, 't'))},
+          p.stx_transfer_event_count AS stx_transfer,
+          p.stx_mint_event_count AS stx_mint,
+          p.stx_burn_event_count AS stx_burn,
+          p.ft_transfer_event_count AS ft_transfer,
+          p.ft_mint_event_count AS ft_mint,
+          p.ft_burn_event_count AS ft_burn,
+          p.nft_transfer_event_count AS nft_transfer,
+          p.nft_mint_event_count AS nft_mint,
+          p.nft_burn_event_count AS nft_burn,
+          p.stx_sent,
+          p.stx_received,
           (
-            SELECT COALESCE(SUM(amount), 0)
-            FROM stx_events
-            WHERE ${eventCond} AND sender = ${args.address}
-          ) +
-          CASE
-            WHEN (txs.sponsored = false AND txs.sender_address = ${args.address})
-              OR (txs.sponsored = true AND txs.sponsor_address = ${args.address})
-            THEN txs.fee_rate ELSE 0
-          END AS stx_sent,
-          (
-            SELECT COALESCE(SUM(amount), 0)
-            FROM stx_events
-            WHERE ${eventCond} AND recipient = ${args.address}
-          ) AS stx_received,
-          (
-            SELECT COUNT(*)::int FROM stx_events
-            WHERE ${eventAcctCond} AND asset_event_type_id = ${DbAssetEventTypeId.Transfer}
-          ) AS stx_transfer,
-          (
-            SELECT COUNT(*)::int FROM stx_events
-            WHERE ${eventAcctCond} AND asset_event_type_id = ${DbAssetEventTypeId.Mint}
-          ) AS stx_mint,
-          (
-            SELECT COUNT(*)::int FROM stx_events
-            WHERE ${eventAcctCond} AND asset_event_type_id = ${DbAssetEventTypeId.Burn}
-          ) AS stx_burn,
-          (
-            SELECT COUNT(*)::int FROM ft_events
-            WHERE ${eventAcctCond} AND asset_event_type_id = ${DbAssetEventTypeId.Transfer}
-          ) AS ft_transfer,
-          (
-            SELECT COUNT(*)::int FROM ft_events
-            WHERE ${eventAcctCond} AND asset_event_type_id = ${DbAssetEventTypeId.Mint}
-          ) AS ft_mint,
-          (
-            SELECT COUNT(*)::int FROM ft_events
-            WHERE ${eventAcctCond} AND asset_event_type_id = ${DbAssetEventTypeId.Burn}
-          ) AS ft_burn,
-          (
-            SELECT COUNT(*)::int FROM nft_events
-            WHERE ${eventAcctCond} AND asset_event_type_id = ${DbAssetEventTypeId.Transfer}
-          ) AS nft_transfer,
-          (
-            SELECT COUNT(*)::int FROM nft_events
-            WHERE ${eventAcctCond} AND asset_event_type_id = ${DbAssetEventTypeId.Mint}
-          ) AS nft_mint,
-          (
-            SELECT COUNT(*)::int FROM nft_events
-            WHERE ${eventAcctCond} AND asset_event_type_id = ${DbAssetEventTypeId.Burn}
-          ) AS nft_burn,
-          (SELECT total_count FROM count) AS count
-        FROM address_txs
-        INNER JOIN txs USING (tx_id, index_block_hash, microblock_hash)
-        WHERE canonical = TRUE AND microblock_canonical = TRUE
-        ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC
-        LIMIT ${limit}
-        OFFSET ${offset}
+            SELECT COALESCE(count, 0) FROM principal_tx_counts WHERE principal = ${args.address}
+          ) AS count
+        FROM principal_txs AS p
+        INNER JOIN txs AS t USING (tx_id, index_block_hash, microblock_hash)
+        WHERE p.principal = ${args.address}
+          AND p.canonical = TRUE
+          AND p.microblock_canonical = TRUE
+          ${cursorFilter}
+        ORDER BY p.block_height DESC, p.microblock_sequence DESC, p.tx_index DESC
+        LIMIT ${limit + 1}
       `;
-      const total = resultQuery.length > 0 ? resultQuery[0].count : 0;
-      const parsed = resultQuery.map(r => parseAccountTransferSummaryTxQueryResult(r));
+
+      const hasNextPage = resultQuery.count > limit;
+      const results = hasNextPage ? resultQuery.slice(0, limit) : resultQuery;
+
+      const total = resultQuery.count > 0 ? resultQuery[0].count : 0;
+      const parsed = results.map(r => parseAccountTransferSummaryTxQueryResult(r));
+
+      // Generate prev cursor from the last result
+      const lastResult = resultQuery[resultQuery.length - 1];
+      const prevCursor =
+        hasNextPage && lastResult
+          ? `${lastResult.index_block_hash}:${lastResult.microblock_sequence}:${lastResult.tx_index}`
+          : null;
+
+      // Generate current cursor from first result
+      const firstResult = results[0];
+      const currentCursor = firstResult
+        ? `${firstResult.index_block_hash}:${firstResult.microblock_sequence}:${firstResult.tx_index}`
+        : null;
+
+      // Generate next cursor by looking for the first item of the previous page
+      let nextCursor: string | null = null;
+      if (firstResult) {
+        // Find the item that would start the previous page
+        // We look for items "before" our current first result (greater in DESC order)
+        // and skip (limit - 1) to find the start of that page
+        const prevQuery = await sql<
+          { index_block_hash: string; microblock_sequence: number; tx_index: number }[]
+        >`
+          SELECT p.index_block_hash, p.microblock_sequence, p.tx_index
+          FROM principal_txs AS p
+          WHERE p.principal = ${args.address}
+            AND p.canonical = TRUE
+            AND p.microblock_canonical = TRUE
+            AND (p.block_height, p.microblock_sequence, p.tx_index)
+                > (
+                  ${firstResult.block_height},
+                  ${firstResult.microblock_sequence},
+                  ${firstResult.tx_index}
+                )
+          ORDER BY p.block_height ASC, p.microblock_sequence ASC, p.tx_index ASC
+          OFFSET ${limit - 1}
+          LIMIT 1
+        `;
+        if (prevQuery.length > 0) {
+          const prev = prevQuery[0];
+          nextCursor = `${prev.index_block_hash}:${prev.microblock_sequence}:${prev.tx_index}`;
+        }
+      }
+
       return {
         total,
         limit,
         offset,
         results: parsed,
+        next_cursor: nextCursor,
+        prev_cursor: prevCursor,
+        current_cursor: currentCursor,
       };
     });
   }

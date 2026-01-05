@@ -19,7 +19,7 @@ import {
   ExcludeFunctionArgsParamSchema,
 } from '../../schemas/params';
 import { getPagingQueryLimit, ResourceType } from '../../pagination';
-import { PaginatedResponse } from '../../schemas/util';
+import { PaginatedCursorResponse, PaginatedResponse } from '../../schemas/util';
 import {
   AddressTransaction,
   AddressTransactionEvent,
@@ -54,7 +54,7 @@ export const AddressRoutesV2: FastifyPluginAsync<
           exclude_function_args: ExcludeFunctionArgsParamSchema,
         }),
         response: {
-          200: PaginatedResponse(AddressTransactionSchema),
+          200: PaginatedCursorResponse(AddressTransactionSchema),
         },
       },
     },
@@ -64,7 +64,15 @@ export const AddressRoutesV2: FastifyPluginAsync<
       const excludeFunctionArgs = req.query.exclude_function_args ?? false;
 
       try {
-        const { limit, offset, results, total } = await fastify.db.v2.getAddressTransactions({
+        const {
+          limit,
+          offset,
+          results,
+          total,
+          next_cursor,
+          prev_cursor,
+          current_cursor: cursor,
+        } = await fastify.db.v2.getAddressTransactions({
           ...params,
           ...query,
         });
@@ -75,6 +83,9 @@ export const AddressRoutesV2: FastifyPluginAsync<
           limit,
           offset,
           total,
+          next_cursor,
+          prev_cursor,
+          cursor,
           results: transfers,
         });
       } catch (error) {
