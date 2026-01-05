@@ -23,7 +23,6 @@ export const BlockRoutes: FastifyPluginAsync<
       preHandler: handleChainTipCache,
       schema: {
         deprecated: true,
-        deprecatedMessage: 'This endpoint is deprecated in favor of `get_blocks`.',
         operationId: 'get_block_list',
         summary: 'Get recent blocks',
         description:
@@ -57,7 +56,6 @@ export const BlockRoutes: FastifyPluginAsync<
       preHandler: handleChainTipCache,
       schema: {
         deprecated: true,
-        deprecatedMessage: 'This endpoint is deprecated in favor of `get_block`.',
         operationId: 'get_block_by_height',
         summary: 'Get block by height',
         description:
@@ -91,7 +89,6 @@ export const BlockRoutes: FastifyPluginAsync<
       preHandler: handleChainTipCache,
       schema: {
         deprecated: true,
-        deprecatedMessage: 'This endpoint is deprecated in favor of `get_blocks_by_burn_block`.',
         operationId: 'get_block_by_burn_block_height',
         summary: 'Get block by burnchain height',
         description:
@@ -128,7 +125,6 @@ export const BlockRoutes: FastifyPluginAsync<
       preHandler: handleChainTipCache,
       schema: {
         deprecated: true,
-        deprecatedMessage: 'This endpoint is deprecated in favor of `get_block`.',
         operationId: 'get_block_by_hash',
         summary: 'Get block by hash',
         description:
@@ -168,7 +164,6 @@ export const BlockRoutes: FastifyPluginAsync<
       preHandler: handleChainTipCache,
       schema: {
         deprecated: true,
-        deprecatedMessage: 'This endpoint is deprecated in favor of `get_blocks_by_burn_block`.',
         operationId: 'get_block_by_burn_block_hash',
         summary: 'Get block by burnchain block hash',
         description:

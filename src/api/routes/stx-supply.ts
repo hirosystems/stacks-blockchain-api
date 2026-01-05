@@ -120,7 +120,6 @@ export const StxSupplyRoutes: FastifyPluginAsync<
       preHandler: handleChainTipCache,
       schema: {
         deprecated: true,
-        deprecatedMessage: 'This endpoint is deprecated in favor of `get_stx_supply`.',
         operationId: 'get_stx_supply_total_supply_plain',
         summary: 'Get total STX supply in plain text format',
         description:
@@ -149,7 +148,6 @@ export const StxSupplyRoutes: FastifyPluginAsync<
       preHandler: handleChainTipCache,
       schema: {
         deprecated: true,
-        deprecatedMessage: 'This endpoint is deprecated in favor of `get_stx_supply`.',
         operationId: 'get_stx_supply_circulating_plain',
         summary: 'Get circulating STX supply in plain text format',
         description:
@@ -178,7 +176,6 @@ export const StxSupplyRoutes: FastifyPluginAsync<
       preHandler: handleChainTipCache,
       schema: {
         deprecated: true,
-        deprecatedMessage: 'This endpoint is deprecated in favor of `get_stx_supply`.',
         operationId: 'get_total_stx_supply_legacy_format',
         summary:
           'Get total and unlocked STX supply (results formatted the same as the legacy 1.0 API)',

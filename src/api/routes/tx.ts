@@ -577,7 +577,6 @@ export const TxRoutes: FastifyPluginAsync<
       preHandler: handleChainTipCache,
       schema: {
         deprecated: true,
-        deprecatedMessage: 'This endpoint is deprecated in favor of `get_transactions_by_block`.',
         operationId: 'get_transactions_by_block_hash',
         summary: 'Transactions by block hash',
         description:
@@ -625,7 +624,6 @@ export const TxRoutes: FastifyPluginAsync<
       preHandler: handleChainTipCache,
       schema: {
         deprecated: true,
-        deprecatedMessage: 'This endpoint is deprecated in favor of `get_transactions_by_block`.',
         operationId: 'get_transactions_by_block_height',
         summary: 'Transactions by block height',
         description:

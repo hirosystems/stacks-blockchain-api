@@ -93,7 +93,6 @@ export const AddressRoutes: FastifyPluginAsync<
       preHandler: handlePrincipalMempoolCache,
       schema: {
         deprecated: true,
-        deprecatedMessage: 'This endpoint is deprecated in favor of `get_principal_stx_balance`.',
         operationId: 'get_account_stx_balance',
         summary: 'Get account STX balance',
         description:
@@ -164,7 +163,6 @@ export const AddressRoutes: FastifyPluginAsync<
       preHandler: handlePrincipalMempoolCache,
       schema: {
         deprecated: true,
-        deprecatedMessage: 'This endpoint is deprecated in favor of `get_principal_ft_balances`.',
         operationId: 'get_account_balance',
         summary: 'Get account balances',
         description:
@@ -272,7 +270,6 @@ export const AddressRoutes: FastifyPluginAsync<
       preHandler: handlePrincipalCache,
       schema: {
         deprecated: true,
-        deprecatedMessage: 'This endpoint is deprecated in favor of `get_address_transactions`.',
         operationId: 'get_account_transactions',
         summary: 'Get account transactions',
         description:
@@ -345,8 +342,6 @@ export const AddressRoutes: FastifyPluginAsync<
       preHandler: handleTransactionCache,
       schema: {
         deprecated: true,
-        deprecatedMessage:
-          'This endpoint is deprecated in favor of `get_address_transaction_events`.',
         operationId: 'get_single_transaction_with_transfers',
         summary: 'Get account transaction information for specific transaction',
         description:
@@ -413,7 +408,6 @@ export const AddressRoutes: FastifyPluginAsync<
       preHandler: handlePrincipalCache,
       schema: {
         deprecated: true,
-        deprecatedMessage: 'This endpoint is deprecated in favor of `get_address_transactions`.',
         operationId: 'get_account_transactions_with_transfers',
         summary: 'Get account transactions including STX transfers for each transaction.',
         description:
@@ -528,8 +522,6 @@ export const AddressRoutes: FastifyPluginAsync<
       preHandler: handlePrincipalCache,
       schema: {
         deprecated: true,
-        deprecatedMessage:
-          'This endpoint is deprecated in favor of `get_address_transaction_events`.',
         operationId: 'get_account_assets',
         summary: 'Get account assets',
         description:
@@ -580,7 +572,6 @@ export const AddressRoutes: FastifyPluginAsync<
       preHandler: handlePrincipalCache,
       schema: {
         deprecated: true,
-        deprecatedMessage: 'This endpoint is deprecated in favor of `get_address_transactions`.',
         operationId: 'get_account_inbound',
         summary: 'Get inbound STX transfers',
         description:
