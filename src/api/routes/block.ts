@@ -25,11 +25,8 @@ export const BlockRoutes: FastifyPluginAsync<
         deprecated: true,
         operationId: 'get_block_list',
         summary: 'Get recent blocks',
-        description: `**NOTE:** This endpoint is deprecated in favor of [Get blocks](/api/get-blocks).
-
-          Retrieves a list of recently mined blocks
-
-          If you need to actively monitor new blocks, we highly recommend subscribing to [WebSockets or Socket.io](https://github.com/hirosystems/stacks-blockchain-api/tree/master/client) for real-time updates.`,
+        description:
+          'Retrieves a list of recently mined blocks. **This endpoint is deprecated in favor of `get_blocks`.**',
         tags: ['Blocks'],
         querystring: Type.Object({
           limit: LimitParam(ResourceType.Block, 'Limit', 'max number of blocks to fetch'),
@@ -61,9 +58,8 @@ export const BlockRoutes: FastifyPluginAsync<
         deprecated: true,
         operationId: 'get_block_by_height',
         summary: 'Get block by height',
-        description: `**NOTE:** This endpoint is deprecated in favor of [Get block](/api/get-block).
-
-        Retrieves block details of a specific block at a given block height`,
+        description:
+          'Retrieves block details of a specific block at a given block height. **This endpoint is deprecated in favor of `get_block`.**',
         tags: ['Blocks'],
         params: Type.Object({
           height: Type.Integer({
@@ -95,9 +91,8 @@ export const BlockRoutes: FastifyPluginAsync<
         deprecated: true,
         operationId: 'get_block_by_burn_block_height',
         summary: 'Get block by burnchain height',
-        description: `**NOTE:** This endpoint is deprecated in favor of [Get blocks](/api/get-blocks).
-
-        Retrieves block details of a specific block for a given burn chain height`,
+        description:
+          'Retrieves block details of a specific block for a given burn chain height. **This endpoint is deprecated in favor of `get_blocks_by_burn_block`.**',
         tags: ['Blocks'],
         params: Type.Object({
           burn_block_height: Type.Integer({
@@ -132,9 +127,8 @@ export const BlockRoutes: FastifyPluginAsync<
         deprecated: true,
         operationId: 'get_block_by_hash',
         summary: 'Get block by hash',
-        description: `**NOTE:** This endpoint is deprecated in favor of [Get block](/api/get-block).
-        
-        Retrieves block details of a specific block for a given chain height. You can use the hash from your latest block ('get_block_list' API) to get your block details.`,
+        description:
+          'Retrieves block details of a specific block for a given chain height. **This endpoint is deprecated in favor of `get_block`.**',
         tags: ['Blocks'],
         params: Type.Object({
           hash: Type.String({
@@ -172,9 +166,8 @@ export const BlockRoutes: FastifyPluginAsync<
         deprecated: true,
         operationId: 'get_block_by_burn_block_hash',
         summary: 'Get block by burnchain block hash',
-        description: `**NOTE:** This endpoint is deprecated in favor of [Get blocks](/api/get-blocks).
-
-        Retrieves block details of a specific block for a given burnchain block hash`,
+        description:
+          'Retrieves block details of a specific block for a given burnchain block hash. **This endpoint is deprecated in favor of `get_blocks_by_burn_block`.**',
         tags: ['Blocks'],
         params: Type.Object({
           burn_block_hash: Type.String({

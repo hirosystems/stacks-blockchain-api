@@ -579,9 +579,8 @@ export const TxRoutes: FastifyPluginAsync<
         deprecated: true,
         operationId: 'get_transactions_by_block_hash',
         summary: 'Transactions by block hash',
-        description: `**NOTE:** This endpoint is deprecated in favor of [Get transactions by block](/api/get-transactions-by-block).
-
-        Retrieves a list of all transactions within a block for a given block hash.`,
+        description:
+          'Retrieves a list of all transactions within a block for a given block hash. **This endpoint is deprecated in favor of `get_transactions_by_block`.**',
         tags: ['Transactions'],
         params: Type.Object({
           block_hash: Type.String(),
@@ -627,9 +626,8 @@ export const TxRoutes: FastifyPluginAsync<
         deprecated: true,
         operationId: 'get_transactions_by_block_height',
         summary: 'Transactions by block height',
-        description: `**NOTE:** This endpoint is deprecated in favor of [Get transactions by block](/api/get-transactions-by-block).
-
-        Retrieves all transactions within a block at a given height`,
+        description:
+          'Retrieves all transactions within a block at a given height. **This endpoint is deprecated in favor of `get_transactions_by_block`.**',
         tags: ['Transactions'],
         params: Type.Object({
           height: BlockHeightSchema,

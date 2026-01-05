@@ -95,9 +95,8 @@ export const AddressRoutes: FastifyPluginAsync<
         deprecated: true,
         operationId: 'get_account_stx_balance',
         summary: 'Get account STX balance',
-        description: `**NOTE:** This endpoint is deprecated in favor of [Get address STX balance](/api/get-principal-stx-balance).
-
-        Retrieves STX token balance for a given Address or Contract Identifier.`,
+        description:
+          'Retrieves STX token balance for a given Address or Contract Identifier. **This endpoint is deprecated in favor of `get_principal_stx_balance`.**',
         tags: ['Accounts'],
         params: Type.Object({
           principal: PrincipalSchema,
@@ -166,9 +165,8 @@ export const AddressRoutes: FastifyPluginAsync<
         deprecated: true,
         operationId: 'get_account_balance',
         summary: 'Get account balances',
-        description: `**NOTE:** This endpoint is deprecated in favor of [Get address FT balances](/api/get-principal-ft-balances).
-
-        Retrieves total account balance information for a given Address or Contract Identifier. This includes the balances of STX Tokens, Fungible Tokens and Non-Fungible Tokens for the account.`,
+        description:
+          'Retrieves total account balance information for a given Address or Contract Identifier. This includes the balances of STX Tokens, Fungible Tokens and Non-Fungible Tokens for the account. **This endpoint is deprecated in favor of `get_principal_ft_balances`.**',
         tags: ['Accounts'],
         params: Type.Object({
           principal: PrincipalSchema,
@@ -274,11 +272,8 @@ export const AddressRoutes: FastifyPluginAsync<
         deprecated: true,
         operationId: 'get_account_transactions',
         summary: 'Get account transactions',
-        description: `**NOTE:** This endpoint is deprecated in favor of [Get address transactions](/api/get-address-transactions).
-
-        Retrieves a list of all Transactions for a given Address or Contract Identifier. More information on Transaction types can be found [here](https://docs.stacks.co/transactions/how-transactions-work#types).
-
-        If you need to actively monitor new transactions for an address or contract id, we highly recommend subscribing to [WebSockets or Socket.io](https://github.com/hirosystems/stacks-blockchain-api/tree/master/client) for real-time updates.`,
+        description:
+          'Retrieves a list of all Transactions for a given Address or Contract Identifier. **This endpoint is deprecated in favor of `get_address_transactions`.**',
         tags: ['Accounts'],
         params: Type.Object({
           principal: PrincipalSchema,
@@ -349,9 +344,8 @@ export const AddressRoutes: FastifyPluginAsync<
         deprecated: true,
         operationId: 'get_single_transaction_with_transfers',
         summary: 'Get account transaction information for specific transaction',
-        description: `**NOTE:** This endpoint is deprecated in favor of [Get events for an address transaction](/api/get-address-transaction-events).
-
-        Retrieves transaction details for a given Transaction Id \`tx_id\`, for a given account or contract Identifier.`,
+        description:
+          'Retrieves transaction details for a given Transaction Id, for a given account or contract Identifier. **This endpoint is deprecated in favor of `get_address_transaction_events`.**',
         tags: ['Accounts'],
         params: Type.Object({
           principal: PrincipalSchema,
@@ -416,7 +410,8 @@ export const AddressRoutes: FastifyPluginAsync<
         deprecated: true,
         operationId: 'get_account_transactions_with_transfers',
         summary: 'Get account transactions including STX transfers for each transaction.',
-        description: `Retrieve all transactions for an account or contract identifier including STX transfers for each transaction.`,
+        description:
+          'Retrieve all transactions for an account or contract identifier including STX transfers for each transaction. **This endpoint is deprecated in favor of `get_address_transactions`.**',
         tags: ['Accounts'],
         params: Type.Object({
           principal: PrincipalSchema,
@@ -526,9 +521,11 @@ export const AddressRoutes: FastifyPluginAsync<
     {
       preHandler: handlePrincipalCache,
       schema: {
+        deprecated: true,
         operationId: 'get_account_assets',
         summary: 'Get account assets',
-        description: `Retrieves a list of all assets events associated with an account or a Contract Identifier. This includes Transfers, Mints.`,
+        description:
+          'Retrieves a list of all assets events associated with an account or a Contract Identifier. This includes Transfers, Mints. **This endpoint is deprecated in favor of `get_address_transaction_events`.**',
         tags: ['Accounts'],
         params: Type.Object({
           principal: PrincipalSchema,
@@ -574,10 +571,11 @@ export const AddressRoutes: FastifyPluginAsync<
     {
       preHandler: handlePrincipalCache,
       schema: {
+        deprecated: true,
         operationId: 'get_account_inbound',
         summary: 'Get inbound STX transfers',
-        description: `Retrieves a list of STX transfers with memos to the given principal. This includes regular transfers from a stx-transfer transaction type,
-        and transfers from contract-call transactions a the \`send-many-memo\` bulk sending contract.`,
+        description:
+          'Retrieves a list of STX transfers with memos to the given principal. This includes regular transfers from a stx-transfer transaction type, and transfers from contract-call transactions a the `send-many-memo` bulk sending contract. **This endpoint is deprecated in favor of `get_address_transactions`.**',
         tags: ['Accounts'],
         params: Type.Object({
           principal: PrincipalSchema,

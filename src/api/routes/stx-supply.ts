@@ -122,7 +122,8 @@ export const StxSupplyRoutes: FastifyPluginAsync<
         deprecated: true,
         operationId: 'get_stx_supply_total_supply_plain',
         summary: 'Get total STX supply in plain text format',
-        description: `Retrieves the total circulating STX token supply as plain text.`,
+        description:
+          'Retrieves the total circulating STX token supply as plain text. **This endpoint is deprecated in favor of `get_stx_supply`.**',
         tags: ['Info'],
         response: {
           200: {
@@ -149,7 +150,8 @@ export const StxSupplyRoutes: FastifyPluginAsync<
         deprecated: true,
         operationId: 'get_stx_supply_circulating_plain',
         summary: 'Get circulating STX supply in plain text format',
-        description: `Retrieves the STX tokens currently in circulation that have been unlocked as plain text.`,
+        description:
+          'Retrieves the STX tokens currently in circulation that have been unlocked as plain text. **This endpoint is deprecated in favor of `get_stx_supply`.**',
         tags: ['Info'],
         response: {
           200: {
@@ -177,7 +179,8 @@ export const StxSupplyRoutes: FastifyPluginAsync<
         operationId: 'get_total_stx_supply_legacy_format',
         summary:
           'Get total and unlocked STX supply (results formatted the same as the legacy 1.0 API)',
-        description: `Retrieves total supply of STX tokens including those currently in circulation that have been unlocked.`,
+        description:
+          'Retrieves total supply of STX tokens including those currently in circulation that have been unlocked. **This endpoint is deprecated in favor of `get_stx_supply`.**',
         tags: ['Info'],
         querystring: Type.Object({
           height: Type.Optional(
