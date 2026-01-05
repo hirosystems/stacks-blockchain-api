@@ -1,27 +1,3 @@
-## [9.0.0-next.9](https://github.com/hirosystems/stacks-blockchain-api/compare/v9.0.0-next.8...v9.0.0-next.9) (2026-01-05)
-
-### Features
-
-* add cursor pagination to address transactions endpoint ([#2422](https://github.com/hirosystems/stacks-blockchain-api/issues/2422)) ([f09c2e2](https://github.com/hirosystems/stacks-blockchain-api/commit/f09c2e2276500f5cff0badd31f0d27e0368603ea))
-
-## [9.0.0-next.8](https://github.com/hirosystems/stacks-blockchain-api/compare/v9.0.0-next.7...v9.0.0-next.8) (2025-12-29)
-
-### Bug Fixes
-
-* optimize principal transaction count calculations ([#2415](https://github.com/hirosystems/stacks-blockchain-api/issues/2415)) ([51c8a85](https://github.com/hirosystems/stacks-blockchain-api/commit/51c8a85b8888de7f2d64f9ba4f4decb846e3f8cd))
-
-## [9.0.0-next.7](https://github.com/hirosystems/stacks-blockchain-api/compare/v9.0.0-next.6...v9.0.0-next.7) (2025-12-23)
-
-### Features
-
-* add option to stream blocks only with SNP ([#2414](https://github.com/hirosystems/stacks-blockchain-api/issues/2414)) ([f1bb1c1](https://github.com/hirosystems/stacks-blockchain-api/commit/f1bb1c1e86079a90e065940a17feab189f1f8730))
-
-## [9.0.0-next.6](https://github.com/hirosystems/stacks-blockchain-api/compare/v9.0.0-next.5...v9.0.0-next.6) (2025-12-22)
-
-### Bug Fixes
-
-* allow nullish smart contract source code in tx metadata ([#2412](https://github.com/hirosystems/stacks-blockchain-api/issues/2412)) ([e13c3b9](https://github.com/hirosystems/stacks-blockchain-api/commit/e13c3b99776839e017344ff6e0428bcdd9f863da))
-
 ## [8.13.6](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.13.5...v8.13.6) (2025-12-22)
 
 ### Bug Fixes

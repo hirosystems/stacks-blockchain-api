@@ -873,8 +873,8 @@ export class PgWriteStore extends PgStore {
         table === 'names'
           ? sql('registered_at')
           : table === 'namespaces'
-          ? sql('ready_block')
-          : sql('block_height');
+            ? sql('ready_block')
+            : sql('block_height');
       // The smart_contracts table does not have a tx_index column
       const txIndexBump = table === 'smart_contracts' ? sql`` : sql`tx_index = tx_index + 1,`;
       const metadataResult = await sql`
@@ -896,10 +896,10 @@ export class PgWriteStore extends PgStore {
     Entry extends { tx: DbTx } & ('pox2_events' extends T
       ? { pox2Events: DbPoxSyntheticEvent[] }
       : 'pox3_events' extends T
-      ? { pox3Events: DbPoxSyntheticEvent[] }
-      : 'pox4_events' extends T
-      ? { pox4Events: DbPoxSyntheticEvent[] }
-      : never)
+        ? { pox3Events: DbPoxSyntheticEvent[] }
+        : 'pox4_events' extends T
+          ? { pox4Events: DbPoxSyntheticEvent[] }
+          : never),
   >(sql: PgSqlClient, poxTable: T, entries: Entry[]) {
     const values: PoxSyntheticEventInsertValues[] = [];
     for (const entry of entries) {
@@ -2547,7 +2547,7 @@ export class PgWriteStore extends PgStore {
         block_height: smartContract.block_height,
         index_block_hash: tx.index_block_hash,
         source_code: smartContract.source_code,
-        abi: smartContract.abi ? JSON.parse(smartContract.abi) ?? 'null' : 'null',
+        abi: smartContract.abi ? (JSON.parse(smartContract.abi) ?? 'null') : 'null',
         parent_index_block_hash: tx.parent_index_block_hash,
         microblock_hash: tx.microblock_hash,
         microblock_sequence: tx.microblock_sequence,

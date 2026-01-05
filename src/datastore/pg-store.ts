@@ -333,10 +333,10 @@ export class PgStore extends BasePgStore {
         'hash' in blockIdentifer
           ? sql`block_hash = ${blockIdentifer.hash}`
           : 'height' in blockIdentifer
-          ? sql`block_height = ${blockIdentifer.height}`
-          : 'burnBlockHash' in blockIdentifer
-          ? sql`burn_block_hash = ${blockIdentifer.burnBlockHash}`
-          : sql`burn_block_height = ${blockIdentifer.burnBlockHeight}`
+            ? sql`block_height = ${blockIdentifer.height}`
+            : 'burnBlockHash' in blockIdentifer
+              ? sql`burn_block_hash = ${blockIdentifer.burnBlockHash}`
+              : sql`burn_block_height = ${blockIdentifer.burnBlockHeight}`
       }
       ORDER BY canonical DESC, block_height DESC
       LIMIT 1
@@ -1325,13 +1325,13 @@ export class PgStore extends BasePgStore {
                 OR smart_contract_contract_id = ${address}
                 OR contract_call_contract_id = ${address})`
             : senderAddress && recipientAddress
-            ? sql`(sender_address = ${senderAddress}
+              ? sql`(sender_address = ${senderAddress}
                 AND token_transfer_recipient_address = ${recipientAddress})`
-            : senderAddress
-            ? sql`sender_address = ${senderAddress}`
-            : recipientAddress
-            ? sql`token_transfer_recipient_address = ${recipientAddress}`
-            : sql`TRUE`
+              : senderAddress
+                ? sql`sender_address = ${senderAddress}`
+                : recipientAddress
+                  ? sql`token_transfer_recipient_address = ${recipientAddress}`
+                  : sql`TRUE`
         }
           AND (pruned = false ${
             !includeUnanchored && unanchoredTxs.length
@@ -4494,8 +4494,8 @@ export class PgStore extends BasePgStore {
           param.type == 'latest'
             ? this.sql`index_block_hash = (SELECT index_block_hash FROM chain_tip)`
             : param.type == 'hash'
-            ? this.sql`index_block_hash = ${param.hash}`
-            : this.sql`block_height = ${param.height} AND canonical = true`
+              ? this.sql`index_block_hash = ${param.hash}`
+              : this.sql`block_height = ${param.height} AND canonical = true`
         }
       LIMIT 1
     `;
