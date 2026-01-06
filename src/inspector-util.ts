@@ -458,6 +458,9 @@ export async function startProfilerServer(httpServerPort?: number | string): Pro
     const heapProfiler = initHeapSnapshot(fileWriteStream);
     existingSession = { instance: heapProfiler, response: reply.raw };
     try {
+      // Taking a heap snapshot (with current implementation) is a one-shot process ran to get the
+      // applications current heap memory usage, rather than something done over time. So start and
+      // stop without waiting.
       reply.header('Cache-Control', 'no-store');
       reply.header('Transfer-Encoding', 'chunked');
       reply.header('Content-Disposition', `attachment; filename="${filename}"`);
