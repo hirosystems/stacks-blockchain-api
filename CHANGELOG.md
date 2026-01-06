@@ -1,3 +1,10 @@
+## [9.0.0-next.11](https://github.com/hirosystems/stacks-blockchain-api/compare/v9.0.0-next.10...v9.0.0-next.11) (2026-01-06)
+
+### Bug Fixes
+
+* add more error handling to SNP message handler ([#2429](https://github.com/hirosystems/stacks-blockchain-api/issues/2429)) ([3e9b605](https://github.com/hirosystems/stacks-blockchain-api/commit/3e9b60564feb2563a74ea4d589ae159b8c42c5dd))
+* **rosetta:** use faster balance calculation for chain tip queries ([#2377](https://github.com/hirosystems/stacks-blockchain-api/issues/2377)) ([f852715](https://github.com/hirosystems/stacks-blockchain-api/commit/f8527152b5f265521f58c7cf6656739f58314da4))
+
 ## [9.0.0-next.10](https://github.com/hirosystems/stacks-blockchain-api/compare/v9.0.0-next.9...v9.0.0-next.10) (2026-01-05)
 
 ### Features
