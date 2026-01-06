@@ -97,13 +97,13 @@ describe('import/export tests', () => {
     await migrate('up');
     await expect(
       importEventsFromTsv('tests/event-replay/tsv/mocknet.tsv', 'archival', false, false)
-    ).rejects.toThrowError('contains existing data');
+    ).rejects.toThrow('contains existing data');
 
     // Create strange table
     await db.sql`CREATE TABLE IF NOT EXISTS test (a varchar(10))`;
     await expect(
       importEventsFromTsv('tests/event-replay/tsv/mocknet.tsv', 'archival', true, false)
-    ).rejects.toThrowError('migration cycle failed');
+    ).rejects.toThrow('migration cycle failed');
 
     // Force and test
     await expect(
