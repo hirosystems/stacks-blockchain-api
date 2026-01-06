@@ -327,10 +327,10 @@ export async function startProfilerServer(httpServerPort?: number | string): Pro
     existingSession = { instance: cpuProfiler, response: reply.raw };
     try {
       const filename = `cpu_${Math.round(Date.now() / 1000)}_${seconds}-seconds.cpuprofile`;
-      reply.header('Cache-Control', 'no-store');
-      reply.header('Transfer-Encoding', 'chunked');
-      reply.header('Content-Disposition', `attachment; filename="${filename}"`);
-      reply.header('Content-Type', 'application/json; charset=utf-8');
+      void reply.header('Cache-Control', 'no-store');
+      void reply.header('Transfer-Encoding', 'chunked');
+      void reply.header('Content-Disposition', `attachment; filename="${filename}"`);
+      void reply.header('Content-Type', 'application/json; charset=utf-8');
       reply.raw.flushHeaders();
       await cpuProfiler.start();
       const ac = new AbortController();
@@ -410,10 +410,10 @@ export async function startProfilerServer(httpServerPort?: number | string): Pro
       return reply.status(500).send(error);
     }
     const fileName = `profile-${Date.now()}.svg`;
-    reply.header('Cache-Control', 'no-store');
-    reply.header('Transfer-Encoding', 'chunked');
-    reply.header('Content-Disposition', `attachment; filename="${fileName}"`);
-    reply.header('Content-Type', 'image/svg+xml');
+    void reply.header('Cache-Control', 'no-store');
+    void reply.header('Transfer-Encoding', 'chunked');
+    void reply.header('Content-Disposition', `attachment; filename="${fileName}"`);
+    void reply.header('Content-Type', 'image/svg+xml');
     return reply.send(profilerResults);
   });
 
@@ -436,10 +436,10 @@ export async function startProfilerServer(httpServerPort?: number | string): Pro
         `[CpuProfiler] Completed, total profile report JSON string length: ${resultString.length}`
       );
 
-      reply.header('Cache-Control', 'no-store');
-      reply.header('Transfer-Encoding', 'chunked');
-      reply.header('Content-Disposition', `attachment; filename="${filename}"`);
-      reply.header('Content-Type', 'application/json; charset=utf-8');
+      void reply.header('Cache-Control', 'no-store');
+      void reply.header('Transfer-Encoding', 'chunked');
+      void reply.header('Content-Disposition', `attachment; filename="${filename}"`);
+      void reply.header('Content-Type', 'application/json; charset=utf-8');
       reply.raw.end(resultString);
     } finally {
       const session = existingSession;
@@ -461,10 +461,10 @@ export async function startProfilerServer(httpServerPort?: number | string): Pro
       // Taking a heap snapshot (with current implementation) is a one-shot process ran to get the
       // applications current heap memory usage, rather than something done over time. So start and
       // stop without waiting.
-      reply.header('Cache-Control', 'no-store');
-      reply.header('Transfer-Encoding', 'chunked');
-      reply.header('Content-Disposition', `attachment; filename="${filename}"`);
-      reply.header('Content-Type', 'application/json; charset=utf-8');
+      void reply.header('Cache-Control', 'no-store');
+      void reply.header('Transfer-Encoding', 'chunked');
+      void reply.header('Content-Disposition', `attachment; filename="${filename}"`);
+      void reply.header('Content-Type', 'application/json; charset=utf-8');
       reply.raw.flushHeaders();
       await heapProfiler.start();
       const result = await heapProfiler.stop();
