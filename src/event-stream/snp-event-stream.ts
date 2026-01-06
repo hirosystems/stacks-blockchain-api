@@ -59,14 +59,21 @@ export class SnpEventStreamHandler {
 
   async handleMsg(messageId: string, timestamp: string, path: string, body: any) {
     this.logger.debug(`Received SNP stream event ${path}, msgId: ${messageId}`);
+    let response;
 
-    const response = await this.eventServer.fastifyInstance.inject({
-      method: 'POST',
-      url: path,
-      payload: body,
-    });
+    try {
+      response = await this.eventServer.fastifyInstance.inject({
+        method: 'POST',
+        url: path,
+        payload: body,
+      });
+    } catch (error) {
+      const errorMessage = `Failed to process SNP message ${messageId} at path ${path}: ${error}`;
+      this.logger.error(error, errorMessage);
+      throw new Error(errorMessage);
+    }
 
-    if (response.statusCode < 200 || response.statusCode > 299) {
+    if (response?.statusCode < 200 || response?.statusCode > 299) {
       const errorMessage = `Failed to process SNP message ${messageId} at path ${path}, status: ${response.statusCode}, body: ${response.body}`;
       this.logger.error(errorMessage);
       throw new Error(errorMessage);

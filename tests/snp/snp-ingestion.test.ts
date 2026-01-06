@@ -127,4 +127,49 @@ describe('SNP integration tests', () => {
       hash: sampleEventsLastBlockHash,
     });
   });
+
+  test('handleMsg throws error when inject() fails', async () => {
+    const snpClient = new SnpEventStreamHandler({
+      db,
+      eventServer,
+      lastMessageId: '0',
+    });
+
+    const originalInject = eventServer.fastifyInstance.inject.bind(eventServer.fastifyInstance);
+    eventServer.fastifyInstance.inject = () => {
+      throw new Error('Simulated inject failure');
+    };
+
+    await expect(
+      snpClient.handleMsg('test-msg-id', '2024-01-01T00:00:00Z', '/test/path', {})
+    ).rejects.toThrow(
+      'Failed to process SNP message test-msg-id at path /test/path: Error: Simulated inject failure'
+    );
+
+    eventServer.fastifyInstance.inject = originalInject;
+  });
+
+  test('handleMsg throws error when response status is not 200', async () => {
+    const snpClient = new SnpEventStreamHandler({
+      db,
+      eventServer,
+      lastMessageId: '0',
+    });
+
+    const originalInject = eventServer.fastifyInstance.inject.bind(eventServer.fastifyInstance);
+    eventServer.fastifyInstance.inject = (() => {
+      return Promise.resolve({
+        statusCode: 500,
+        body: 'Internal Server Error',
+      });
+    }) as any;
+
+    await expect(
+      snpClient.handleMsg('test-msg-id', '2024-01-01T00:00:00Z', '/test/path', {})
+    ).rejects.toThrow(
+      'Failed to process SNP message test-msg-id at path /test/path, status: 500, body: Internal Server Error'
+    );
+
+    eventServer.fastifyInstance.inject = originalInject;
+  });
 });
