@@ -22,6 +22,7 @@
     "test:btc-faucet": "npm run test -- --config ./tests/jest.config.btc-faucet.js",
     "test:snp": "npm run test -- --config ./tests/jest.config.snp.js",
     "test:integration": "concurrently \"docker compose -f docker/docker-compose.dev.postgres.yml up --force-recreate -V\" \"cross-env NODE_ENV=test jest --config ./tests/jest.config.js --no-cache --runInBand; npm run devenv:stop:pg\"",
+    "test:integration:api": "concurrently --hide \"devenv:deploy-krypton\" \"npm:devenv:deploy-krypton\" \"cross-env NODE_ENV=test jest --config ./tests/jest.config.api.js --no-cache --runInBand; npm run devenv:stop-krypton\"",
     "test:integration:subnets": "concurrently --hide \"devenv:deploy:subnets\" \"npm:devenv:deploy:subnets\" \"cross-env NODE_ENV=test jest --config ./tests/jest.config.subnets.js --no-cache --runInBand; npm run devenv:stop:subnets\"",
     "test:integration:2.5": "concurrently --hide \"devenv:deploy-krypton\" \"npm:devenv:deploy-krypton\" \"cross-env NODE_ENV=test jest --config ./tests/jest.config.2.5.js --no-cache --runInBand; npm run devenv:stop-krypton\"",
     "test:integration:rosetta": "concurrently \"npm:devenv:deploy-krypton\" \"cross-env NODE_ENV=test jest --config ./tests/jest.config.rosetta.js --no-cache --runInBand; npm run devenv:stop-krypton\"",

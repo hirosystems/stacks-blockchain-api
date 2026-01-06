@@ -1,7 +1,7 @@
 import * as inspector from 'inspector';
 import * as stream from 'stream';
 import { once } from 'events';
-import { createServer, Server } from 'http';
+import { Server } from 'http';
 import Fastify from 'fastify';
 import { parsePort, pipelineAsync } from './helpers';
 import { Socket } from 'net';
@@ -327,10 +327,10 @@ export async function startProfilerServer(httpServerPort?: number | string): Pro
     existingSession = { instance: cpuProfiler, response: reply.raw };
     try {
       const filename = `cpu_${Math.round(Date.now() / 1000)}_${seconds}-seconds.cpuprofile`;
-      void reply.header('Cache-Control', 'no-store');
-      void reply.header('Transfer-Encoding', 'chunked');
-      void reply.header('Content-Disposition', `attachment; filename="${filename}"`);
-      void reply.header('Content-Type', 'application/json; charset=utf-8');
+      reply.raw.setHeader('Cache-Control', 'no-store');
+      reply.raw.setHeader('Transfer-Encoding', 'chunked');
+      reply.raw.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+      reply.raw.setHeader('Content-Type', 'application/json; charset=utf-8');
       reply.raw.flushHeaders();
       await cpuProfiler.start();
       const ac = new AbortController();
@@ -499,7 +499,8 @@ export async function startProfilerServer(httpServerPort?: number | string): Pro
     await reply.send({ ok: 'existing profile session stopped' });
   });
 
-  const server = createServer(fastify.server);
+  await fastify.ready();
+  const server = fastify.server;
 
   const serverSockets = new Set<Socket>();
   server.on('connection', socket => {
