@@ -620,6 +620,9 @@ describe('address tests', () => {
     expect(v2Fetch1offset.type).toBe('application/json');
     const v2Fetch1offsetJson = JSON.parse(v2Fetch1offset.text);
     expect(v2Fetch1offsetJson.total).toBe(7);
+    // Verify offset actually skips the first result
+    expect(v2Fetch1offsetJson.results.length).toBe(6);
+    expect(v2Fetch1offsetJson.results[0].tx.tx_id).toBe(v2Fetch1Json.results[1].tx.tx_id);
 
     const v2Fetch2 = await supertest(api.server).get(
       `/extended/v2/addresses/${testAddr2}/transactions/${v2Fetch1Json.results[0].tx.tx_id}/events?limit=3`
