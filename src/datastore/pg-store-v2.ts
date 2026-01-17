@@ -596,6 +596,7 @@ export class PgStoreV2 extends BasePgStoreModule {
           ${cursorFilter}
         ORDER BY p.block_height DESC, p.microblock_sequence DESC, p.tx_index DESC
         LIMIT ${limit + 1}
+        OFFSET ${offset}
       `;
 
       const hasNextPage = resultQuery.count > limit;
