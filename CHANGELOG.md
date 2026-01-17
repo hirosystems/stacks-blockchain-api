@@ -1,3 +1,9 @@
+## [9.0.0-next.12](https://github.com/hirosystems/stacks-blockchain-api/compare/v9.0.0-next.11...v9.0.0-next.12) (2026-01-17)
+
+### Bug Fixes
+
+* apply offset to transactions endpoint correctly ([#2435](https://github.com/hirosystems/stacks-blockchain-api/issues/2435)) ([e4da1c1](https://github.com/hirosystems/stacks-blockchain-api/commit/e4da1c17a45d841cd6c2cfd38596231e0c1b341b))
+
 ## [9.0.0-next.11](https://github.com/hirosystems/stacks-blockchain-api/compare/v9.0.0-next.10...v9.0.0-next.11) (2026-01-06)
 
 ### Bug Fixes
