@@ -1,3 +1,9 @@
+## [9.0.0-next.13](https://github.com/hirosystems/stacks-blockchain-api/compare/v9.0.0-next.12...v9.0.0-next.13) (2026-01-31)
+
+### Bug Fixes
+
+* guard against non-string topic subscriptions ([#2441](https://github.com/hirosystems/stacks-blockchain-api/issues/2441)) ([b0b7809](https://github.com/hirosystems/stacks-blockchain-api/commit/b0b780901aae8c26261f3f76ea129bddd0c593fc))
+
 ## [9.0.0-next.12](https://github.com/hirosystems/stacks-blockchain-api/compare/v9.0.0-next.11...v9.0.0-next.12) (2026-01-17)
 
 ### Bug Fixes
