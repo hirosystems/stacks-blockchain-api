@@ -569,6 +569,29 @@ describe('socket-io', () => {
     }
   });
 
+  test('socket-io > non-string topic connection', async () => {
+    const address = apiServer.address;
+    const socket = io(`http://${address}`, {
+      reconnection: false,
+      // Pass a non-string value as subscription topic
+      query: { subscriptions: ['block', { invalid: 'object' }] as unknown as string },
+    });
+    const updateWaiter: Waiter<Error> = waiter();
+
+    socket.on(`connect_error`, err => {
+      updateWaiter.finish(err);
+    });
+
+    const result = await updateWaiter;
+    try {
+      throw result;
+    } catch (err: any) {
+      expect(err.message).toContain('Invalid topic:');
+    } finally {
+      socket.close();
+    }
+  });
+
   test('socket-io > multiple invalid topic connection', async () => {
     const faultyAddrStx = 'address-stx-balance:faulty address';
     const faultyTx = 'transaction:0x1';
