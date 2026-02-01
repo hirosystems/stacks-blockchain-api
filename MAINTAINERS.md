@@ -54,7 +54,7 @@ managing this repository. At a glance, this means:
     - descriptive
     - sentence case
     - If instead the PR author took the time to craft individual, informative messages for each commit, then use the `Rebase and merge` method,to honor that work and preserve the history of the changes.
-    - For less clear-cut cases, a simple heuristic you can follow is that if there are more "dirty" commits than "clean" commits,then prefer squash, else do a rebase.
+    - For less clear-cut cases, a simple heuristic you can follow is that if there are more "dirty" commits than "clean" commits, then prefer squash, else do a rebase.
 
   2. Ensure [conventional commits](https://www.conventionalcommits.org/en/v1.0.0/) are used in the PR. When properly annotated, the commit messages will automatically update the changelog.
   
