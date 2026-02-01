@@ -189,7 +189,7 @@ Please **do not** use the issue tracker for personal support requests or to ask 
 Development of this product happens in the open on GitHub, and we are grateful to the community for contributing bug fixes and improvements. Read below to learn how you can take part in improving the product.
 
 ### Code of Conduct
-Please read our [Code of Conduct](../../../.github/blob/main/CODE_OF_CONDUCT.md) since we expect project participants to adhere to it.
+Please read our [Code of Conduct](https://github.com/hirosystems/.github/blob/main/CODE_OF_CONDUCT.md) since we expect project participants to adhere to it.
 
 ### Contributing Guide
 
