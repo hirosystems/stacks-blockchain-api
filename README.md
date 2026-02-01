@@ -109,7 +109,7 @@ could be run:
 
 This version of the replay process relies on parquet files processing instead of TSV files.
 
-There are some improvements on the replay process and this version is is, around, 10x times faster than the previous (V1) one.
+There are some improvements on the replay process and this version is around 10x times faster than the previous (V1) one.
 
 __Note: the previous event-replay version is still available and can be used as well, for the same purpose.__
 
