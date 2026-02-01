@@ -14,8 +14,8 @@ Please note that the following guide is meant for a Unix-like OS (Linux/MacOS) -
     - [Starting postgres](#starting-postgres)
     - [Stopping Postgres](#stopping-postgres)
   - [Stacks Blockchain API](#stacks-blockchain-api)
-    - [Starting stacks-blockchain-api](#starting-stacks-blockchain-api)
-    - [Stopping stacks-blockchain-api](#stopping-stacks-blockchain-api)
+    - [Starting Stacks Blockchain API](#starting-stacks-blockchain-api)
+    - [Stopping Stacks Blockchain API](#stopping-stacks-blockchain-api)
   - [Stacks Blockchain](#stacks-blockchain)
     - [Starting stacks-blockchain](#starting-stacks-blockchain)
     - [Stopping stacks-blockchain](#stopping-stacks-blockchain)
@@ -150,7 +150,7 @@ The other Environment Variables to pay attention to:
 - `STACKS_CORE_RPC_HOST`: Set this to your **stacks blockchain** node. In this guide, we'll be using a container named `stacks-blockchain`.
 - `API_DOCS_URL`: Set this to enable your docs API http://localhost:3999/doc.
 
-### Starting stacks-blockchain-api
+### Starting Stacks Blockchain API
 
 ```bash
 docker run -d --rm \
@@ -172,7 +172,7 @@ a86a26da6c5a   blockstack/stacks-blockchain-api   "docker-entrypoint.s…"   1 m
 
 **Note**: on initial sync, it will take several minutes for port `3999` to become available.
 
-### Stopping stacks-blockchain-api
+### Stopping Stacks Blockchain API
 
 To stop the stacks-blockchain-api service (this will also remove the container):
 
