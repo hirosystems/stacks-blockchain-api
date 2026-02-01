@@ -24,10 +24,10 @@ managing this repository. At a glance, this means:
 ## I. Branch Naming Conventions
 
 - In addition to master and develop branches, these are the standards for features, fixes, chores and releases, 
-  1. **features** All feature branches must be created under **feat/**,
-  2. **bug-fixes** All fixes must be created under **fix/**,
-  3. **chores** Ad-hoc tasks that are not features, minor housekeeping, maintenance tasks should be created under **chores/**
-  4. Avoid branches being grouped under your usernames
+  1. **features**: All feature branches must be created under **feat/**.
+  2. **bug-fixes**: All fixes must be created under **fix/**.
+  3. **chores**: Ad-hoc tasks that are not features, minor housekeeping, maintenance tasks should be created under **chores/**.
+  4. Avoid branches being grouped under your usernames.
   
 ## II. Handling PRs
 
