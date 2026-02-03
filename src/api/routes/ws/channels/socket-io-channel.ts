@@ -251,6 +251,9 @@ export class SocketIOChannel extends WebSocketChannel {
 
   private getInvalidSubscriptionTopics(subscriptions: Topic | Topic[]): undefined | string[] {
     const isSubValid = (sub: Topic): undefined | string => {
+      if (typeof sub !== 'string') {
+        return String(sub);
+      }
       if (sub.includes(':')) {
         const txOrAddr = sub.split(':')[0];
         const value = sub.split(':')[1];
