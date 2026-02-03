@@ -1,3 +1,9 @@
+## [9.0.0-next.14](https://github.com/hirosystems/stacks-blockchain-api/compare/v9.0.0-next.13...v9.0.0-next.14) (2026-02-03)
+
+### Bug Fixes
+
+* upgrade stacks codec for clarity 5 ([#2445](https://github.com/hirosystems/stacks-blockchain-api/issues/2445)) ([01c783f](https://github.com/hirosystems/stacks-blockchain-api/commit/01c783feac0ab9c3efd0ea95d749ad322b590781))
+
 ## [9.0.0-next.13](https://github.com/hirosystems/stacks-blockchain-api/compare/v9.0.0-next.12...v9.0.0-next.13) (2026-01-31)
 
 ### Bug Fixes
