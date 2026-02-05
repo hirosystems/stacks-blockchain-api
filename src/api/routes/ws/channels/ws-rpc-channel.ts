@@ -110,7 +110,12 @@ class SubscriptionManager {
           }
           // Assume client is dead until it responds to our ping.
           this.liveSockets.delete(ws);
-          ws.ping();
+          try {
+            ws.ping();
+          } catch (error) {
+            logger.error(error, 'Error sending ping to WebSocket client');
+            this.removeSubscription(ws, topic);
+          }
         });
       });
     }, this.heartbeatIntervalMs);
@@ -153,9 +158,17 @@ export class WsRpcChannel extends WebSocketChannel {
         request.headers['x-forwarded-for'] || request.socket.remoteAddress || 'unknown';
       logger.info(`WsRpcChannel upgrade event received from ${clientAddress}`);
       if (request.url?.startsWith(wsPath)) {
-        wsServer.handleUpgrade(request, socket as net.Socket, head, ws => {
-          wsServer.emit('connection', ws, request);
-        });
+        try {
+          wsServer.handleUpgrade(request, socket as net.Socket, head, ws => {
+            wsServer.emit('connection', ws, request);
+          });
+        } catch (error) {
+          logger.error(
+            error,
+            `WsRpcChannel error handling WebSocket upgrade from ${clientAddress}: ${error}`
+          );
+          socket.destroy();
+        }
       }
     });
 
@@ -186,10 +199,16 @@ export class WsRpcChannel extends WebSocketChannel {
         logger.info(`WsRpcChannel client disconnected from ${clientAddress}`);
         this.prometheus?.disconnect(clientSocket);
       });
+      clientSocket.on('error', error => {
+        logger.error(error, `WsRpcChannel client error from ${clientAddress}: ${error}`);
+      });
     });
     wsServer.on('close', (_: WebSocket.Server) => {
       logger.info(`WsRpcChannel server closed`);
       this.subscriptions.forEach(manager => manager.close());
+    });
+    wsServer.on('error', error => {
+      logger.error(error, `WsRpcChannel server error: ${error}`);
     });
 
     this.wsServer = wsServer;
@@ -342,9 +361,17 @@ export class WsRpcChannel extends WebSocketChannel {
       });
 
       if (isBatchRequest) {
-        client.send(JSON.stringify(responses));
+        client.send(JSON.stringify(responses), err => {
+          if (err) {
+            logger.error(err, `WsRpcChannel error sending batch RPC response to client: ${err}`);
+          }
+        });
       } else if (responses.length === 1) {
-        client.send(responses[0].serialize());
+        client.send(responses[0].serialize(), err => {
+          if (err) {
+            logger.error(err, `WsRpcChannel error sending RPC response to client: ${err}`);
+          }
+        });
       }
     } catch (err: any) {
       // Response `id` is null for invalid JSON requests (or other errors where the request ID isn't known).
@@ -358,7 +385,11 @@ export class WsRpcChannel extends WebSocketChannel {
   }
 
   private sendRpcResponse(client: WebSocket, res: JsonRpc) {
-    client.send(res.serialize());
+    client.send(res.serialize(), err => {
+      if (err) {
+        logger.error(err, 'Error sending RPC response to WebSocket client');
+      }
+    });
   }
 
   /** Route supported RPC methods */
