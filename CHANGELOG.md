@@ -1,3 +1,9 @@
+## [9.0.0-next.16](https://github.com/hirosystems/stacks-blockchain-api/compare/v9.0.0-next.15...v9.0.0-next.16) (2026-02-06)
+
+### Bug Fixes
+
+* wait at most 60 seconds for services to shutdown ([#2448](https://github.com/hirosystems/stacks-blockchain-api/issues/2448)) ([e78192a](https://github.com/hirosystems/stacks-blockchain-api/commit/e78192a2ff7a7b85416a9e630d0018d664728b37))
+
 ## [9.0.0-next.15](https://github.com/hirosystems/stacks-blockchain-api/compare/v9.0.0-next.14...v9.0.0-next.15) (2026-02-06)
 
 ### Bug Fixes
