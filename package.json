@@ -124,7 +124,7 @@
     "escape-goat": "3.0.0",
     "evt": "1.10.1",
     "express": "4.21.2",
-    "fastify": "4.29.1",
+    "fastify": "5.7.3",
     "fastify-metrics": "11.0.0",
     "getopts": "2.3.0",
     "ioredis": "5.6.1",
