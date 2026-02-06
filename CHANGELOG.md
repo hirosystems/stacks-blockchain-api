@@ -1,3 +1,9 @@
+## [9.0.0-next.15](https://github.com/hirosystems/stacks-blockchain-api/compare/v9.0.0-next.14...v9.0.0-next.15) (2026-02-06)
+
+### Bug Fixes
+
+* add detailed websocket server logs ([#2446](https://github.com/hirosystems/stacks-blockchain-api/issues/2446)) ([1e9dbd4](https://github.com/hirosystems/stacks-blockchain-api/commit/1e9dbd481357f44ba64ac8ab8e3ecc846ef574cc))
+
 ## [9.0.0-next.14](https://github.com/hirosystems/stacks-blockchain-api/compare/v9.0.0-next.13...v9.0.0-next.14) (2026-02-03)
 
 ### Bug Fixes
