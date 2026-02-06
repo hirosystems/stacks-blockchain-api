@@ -110,7 +110,12 @@ class SubscriptionManager {
           }
           // Assume client is dead until it responds to our ping.
           this.liveSockets.delete(ws);
-          ws.ping();
+          try {
+            ws.ping();
+          } catch (error) {
+            logger.error(error, 'Error sending ping to WebSocket client');
+            this.removeSubscription(ws, topic);
+          }
         });
       });
     }, this.heartbeatIntervalMs);
@@ -149,10 +154,21 @@ export class WsRpcChannel extends WebSocketChannel {
     const wsPath = '/extended/v1/ws';
     const wsServer = new WebSocket.Server({ noServer: true, path: wsPath });
     this.server.on('upgrade', (request: http.IncomingMessage, socket, head) => {
+      const clientAddress =
+        request.headers['x-forwarded-for'] || request.socket.remoteAddress || 'unknown';
+      logger.info(`WsRpcChannel upgrade event received from ${clientAddress}`);
       if (request.url?.startsWith(wsPath)) {
-        wsServer.handleUpgrade(request, socket as net.Socket, head, ws => {
-          wsServer.emit('connection', ws, request);
-        });
+        try {
+          wsServer.handleUpgrade(request, socket as net.Socket, head, ws => {
+            wsServer.emit('connection', ws, request);
+          });
+        } catch (error) {
+          logger.error(
+            error,
+            `WsRpcChannel error handling WebSocket upgrade from ${clientAddress}: ${error}`
+          );
+          socket.destroy();
+        }
       }
     });
 
@@ -166,7 +182,11 @@ export class WsRpcChannel extends WebSocketChannel {
     this.subscriptions.set('nftAssetEvent', new SubscriptionManager());
     this.subscriptions.set('nftCollectionEvent', new SubscriptionManager());
 
+    logger.info(`WsRpcChannel server created at path: ${wsPath}`);
     wsServer.on('connection', (clientSocket, req) => {
+      const clientAddress = req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'unknown';
+      logger.info(`WsRpcChannel client connected from ${clientAddress}`);
+
       if (req.headers['x-forwarded-for']) {
         this.prometheus?.connect(req.headers['x-forwarded-for'] as string);
       } else if (req.socket.remoteAddress) {
@@ -176,11 +196,19 @@ export class WsRpcChannel extends WebSocketChannel {
         this.handleClientMessage(clientSocket, data);
       });
       clientSocket.on('close', (_: WebSocket) => {
+        logger.info(`WsRpcChannel client disconnected from ${clientAddress}`);
         this.prometheus?.disconnect(clientSocket);
+      });
+      clientSocket.on('error', error => {
+        logger.error(error, `WsRpcChannel client error from ${clientAddress}: ${error}`);
       });
     });
     wsServer.on('close', (_: WebSocket.Server) => {
+      logger.info(`WsRpcChannel server closed`);
       this.subscriptions.forEach(manager => manager.close());
+    });
+    wsServer.on('error', error => {
+      logger.error(error, `WsRpcChannel server error: ${error}`);
     });
 
     this.wsServer = wsServer;
@@ -296,6 +324,7 @@ export class WsRpcChannel extends WebSocketChannel {
   }
 
   private handleClientMessage(client: WebSocket, data: WebSocket.Data) {
+    logger.info(data, `WsRpcChannel received message from client`);
     try {
       if (typeof data !== 'string') {
         throw JsonRpcError.parseError(`unexpected data type: ${data.constructor.name}`);
@@ -332,9 +361,17 @@ export class WsRpcChannel extends WebSocketChannel {
       });
 
       if (isBatchRequest) {
-        client.send(JSON.stringify(responses));
+        client.send(JSON.stringify(responses), err => {
+          if (err) {
+            logger.error(err, `WsRpcChannel error sending batch RPC response to client: ${err}`);
+          }
+        });
       } else if (responses.length === 1) {
-        client.send(responses[0].serialize());
+        client.send(responses[0].serialize(), err => {
+          if (err) {
+            logger.error(err, `WsRpcChannel error sending RPC response to client: ${err}`);
+          }
+        });
       }
     } catch (err: any) {
       // Response `id` is null for invalid JSON requests (or other errors where the request ID isn't known).
@@ -348,7 +385,11 @@ export class WsRpcChannel extends WebSocketChannel {
   }
 
   private sendRpcResponse(client: WebSocket, res: JsonRpc) {
-    client.send(res.serialize());
+    client.send(res.serialize(), err => {
+      if (err) {
+        logger.error(err, 'Error sending RPC response to WebSocket client');
+      }
+    });
   }
 
   /** Route supported RPC methods */
@@ -396,6 +437,7 @@ export class WsRpcChannel extends WebSocketChannel {
       case 'nft_collection_event':
         return this.handleNftCollectionEventUpdateSubscription(client, req, params, subscribe);
       default:
+        logger.info(`WsRpcChannel client subscribed to invalid event`);
         return jsonRpcError(
           req.payload.id,
           JsonRpcError.invalidParams('subscription request must use a valid event name')
@@ -415,9 +457,11 @@ export class WsRpcChannel extends WebSocketChannel {
       return jsonRpcError(req.payload.id, JsonRpcError.invalidParams('invalid tx_id'));
     }
     if (subscribe) {
+      logger.info(`WsRpcChannel client subscribed to 'transaction': ${txId}`);
       this.subscriptions.get('transaction')?.addSubscription(client, txId);
       this.prometheus?.subscribe(client, `transaction:${txId}`);
     } else {
+      logger.info(`WsRpcChannel client unsubscribed from 'transaction': ${txId}`);
       this.subscriptions.get('transaction')?.removeSubscription(client, txId);
       this.prometheus?.unsubscribe(client, `transaction:${txId}`);
     }
@@ -436,9 +480,11 @@ export class WsRpcChannel extends WebSocketChannel {
       return jsonRpcError(req.payload.id, JsonRpcError.invalidParams('invalid address'));
     }
     if (subscribe) {
+      logger.info(`WsRpcChannel client subscribed to 'principalTransactions': ${address}`);
       this.subscriptions.get('principalTransactions')?.addSubscription(client, address);
       this.prometheus?.subscribe(client, `address-transaction:${address}`);
     } else {
+      logger.info(`WsRpcChannel client unsubscribed from 'principalTransactions': ${address}`);
       this.subscriptions.get('principalTransactions')?.removeSubscription(client, address);
       this.prometheus?.unsubscribe(client, `address-transaction:${address}`);
     }
@@ -456,9 +502,11 @@ export class WsRpcChannel extends WebSocketChannel {
       return jsonRpcError(req.payload.id, JsonRpcError.invalidParams('invalid address'));
     }
     if (subscribe) {
+      logger.info(`WsRpcChannel client subscribed to 'address-stx-balance': ${address}`);
       this.subscriptions.get('principalStxBalance')?.addSubscription(client, address);
       this.prometheus?.subscribe(client, `address-stx-balance:${address}`);
     } else {
+      logger.info(`WsRpcChannel client unsubscribed from 'address-stx-balance': ${address}`);
       this.subscriptions.get('principalStxBalance')?.removeSubscription(client, address);
       this.prometheus?.unsubscribe(client, `address-stx-balance:${address}`);
     }
@@ -472,9 +520,11 @@ export class WsRpcChannel extends WebSocketChannel {
     subscribe: boolean
   ) {
     if (subscribe) {
+      logger.info(`WsRpcChannel client subscribed to 'block'`);
       this.subscriptions.get('block')?.addSubscription(client, params.event);
       this.prometheus?.subscribe(client, 'block');
     } else {
+      logger.info(`WsRpcChannel client unsubscribed from 'block'`);
       this.subscriptions.get('block')?.removeSubscription(client, params.event);
       this.prometheus?.unsubscribe(client, 'block');
     }
@@ -488,9 +538,11 @@ export class WsRpcChannel extends WebSocketChannel {
     subscribe: boolean
   ) {
     if (subscribe) {
+      logger.info(`WsRpcChannel client subscribed to 'microblock'`);
       this.subscriptions.get('microblock')?.addSubscription(client, params.event);
       this.prometheus?.subscribe(client, 'microblock');
     } else {
+      logger.info(`WsRpcChannel client unsubscribed from 'microblock'`);
       this.subscriptions.get('microblock')?.removeSubscription(client, params.event);
       this.prometheus?.unsubscribe(client, 'microblock');
     }
@@ -504,9 +556,11 @@ export class WsRpcChannel extends WebSocketChannel {
     subscribe: boolean
   ) {
     if (subscribe) {
+      logger.info(`WsRpcChannel client subscribed to 'mempool'`);
       this.subscriptions.get('mempool')?.addSubscription(client, params.event);
       this.prometheus?.subscribe(client, 'mempool');
     } else {
+      logger.info(`WsRpcChannel client unsubscribed from 'mempool'`);
       this.subscriptions.get('mempool')?.removeSubscription(client, params.event);
       this.prometheus?.unsubscribe(client, 'mempool');
     }
@@ -520,9 +574,11 @@ export class WsRpcChannel extends WebSocketChannel {
     subscribe: boolean
   ) {
     if (subscribe) {
+      logger.info(`WsRpcChannel client subscribed to 'nft-event'`);
       this.subscriptions.get('nftEvent')?.addSubscription(client, params.event);
       this.prometheus?.subscribe(client, 'nft-event');
     } else {
+      logger.info(`WsRpcChannel client unsubscribed from 'nft-event'`);
       this.subscriptions.get('nftEvent')?.removeSubscription(client, params.event);
       this.prometheus?.unsubscribe(client, 'nft-event');
     }
@@ -538,11 +594,17 @@ export class WsRpcChannel extends WebSocketChannel {
     const assetIdentifier = params.asset_identifier;
     const value = params.value;
     if (subscribe) {
+      logger.info(
+        `WsRpcChannel client subscribed to 'nft-asset-event': ${assetIdentifier}+${value}`
+      );
       this.subscriptions
         .get('nftAssetEvent')
         ?.addSubscription(client, `${assetIdentifier}+${value}`);
       this.prometheus?.subscribe(client, `nft-asset-event:${assetIdentifier}+${value}`);
     } else {
+      logger.info(
+        `WsRpcChannel client unsubscribed from 'nft-asset-event': ${assetIdentifier}+${value}`
+      );
       this.subscriptions
         .get('nftAssetEvent')
         ?.removeSubscription(client, `${assetIdentifier}+${value}`);
@@ -559,9 +621,13 @@ export class WsRpcChannel extends WebSocketChannel {
   ) {
     const assetIdentifier = params.asset_identifier;
     if (subscribe) {
+      logger.info(`WsRpcChannel client subscribed to 'nft-collection-event': ${assetIdentifier}`);
       this.subscriptions.get('nftCollectionEvent')?.addSubscription(client, assetIdentifier);
       this.prometheus?.subscribe(client, `nft-collection-event:${assetIdentifier}`);
     } else {
+      logger.info(
+        `WsRpcChannel client unsubscribed from 'nft-collection-event': ${assetIdentifier}`
+      );
       this.subscriptions.get('nftCollectionEvent')?.removeSubscription(client, assetIdentifier);
       this.prometheus?.unsubscribe(client, `nft-collection-event:${assetIdentifier}`);
     }
