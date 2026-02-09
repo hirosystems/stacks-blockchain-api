@@ -32,9 +32,11 @@ export class SnpEventStreamHandler {
     const blocksOnly = process.env.SNP_BLOCKS_ONLY_STREAMING
       ? parseBoolean(process.env.SNP_BLOCKS_ONLY_STREAMING)
       : false;
-    const selectedMessagePaths = blocksOnly
-      ? [MessagePath.NewBlock, MessagePath.NewBurnBlock]
-      : '*';
+    const selectedMessagePaths: MessagePath[] = [MessagePath.NewBlock, MessagePath.NewBurnBlock];
+    if (!blocksOnly) {
+      selectedMessagePaths.push(MessagePath.NewMempoolTx);
+      selectedMessagePaths.push(MessagePath.DropMempoolTx);
+    }
     this.logger.info(`SNP streaming enabled, blocksOnly: ${blocksOnly}`);
 
     const appName = `stacks-blockchain-api ${SERVER_VERSION.tag} (${SERVER_VERSION.branch}:${SERVER_VERSION.commit})`;
