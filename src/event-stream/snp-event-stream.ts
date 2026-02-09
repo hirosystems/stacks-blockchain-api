@@ -18,7 +18,7 @@ export class SnpEventStreamHandler {
     processedMessage: [{ msgId: string }];
   }>();
 
-  constructor(opts: { db: PgWriteStore; eventServer: EventStreamServer; lastMessageId: string }) {
+  constructor(opts: { db: PgWriteStore; eventServer: EventStreamServer }) {
     this.db = opts.db;
     this.eventServer = opts.eventServer;
 
@@ -35,9 +35,7 @@ export class SnpEventStreamHandler {
     const selectedMessagePaths = blocksOnly
       ? [MessagePath.NewBlock, MessagePath.NewBurnBlock]
       : '*';
-    this.logger.info(
-      `SNP streaming enabled, lastMsgId: ${opts.lastMessageId}, blocksOnly: ${blocksOnly}`
-    );
+    this.logger.info(`SNP streaming enabled, blocksOnly: ${blocksOnly}`);
 
     const appName = `stacks-blockchain-api ${SERVER_VERSION.tag} (${SERVER_VERSION.branch}:${SERVER_VERSION.commit})`;
 
@@ -57,6 +55,9 @@ export class SnpEventStreamHandler {
     this.snpClientStream.start(
       async () => {
         const chainTip = await this.db.getChainTip(this.db.sql);
+        this.logger.info(
+          `Starting SNP stream at position: ${chainTip.index_block_hash}@${chainTip.block_height}`
+        );
         return {
           indexBlockHash: chainTip.index_block_hash,
           blockHeight: chainTip.block_height,
@@ -89,8 +90,6 @@ export class SnpEventStreamHandler {
       this.logger.error(errorMessage);
       throw new Error(errorMessage);
     }
-
-    await this.db.updateLastIngestedSnpRedisMsgId(this.db.sql, messageId);
 
     this.events.emit('processedMessage', { msgId: messageId });
   }
