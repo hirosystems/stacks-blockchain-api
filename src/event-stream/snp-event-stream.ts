@@ -1,15 +1,16 @@
 import { parseBoolean, SERVER_VERSION } from '@hirosystems/api-toolkit';
 import { logger as defaultLogger } from '@hirosystems/api-toolkit';
-import { StacksEventStream, StacksEventStreamType } from '@hirosystems/salt-n-pepper-client';
 import { EventEmitter } from 'node:events';
 import { EventStreamServer } from './event-server';
 import { PgWriteStore } from '../datastore/pg-write-store';
+import { StacksMessageStream } from '@stacks/node-publisher-client';
+import { MessagePath } from '@stacks/node-publisher-client/dist/messages';
 
 export class SnpEventStreamHandler {
   db: PgWriteStore;
   eventServer: EventStreamServer;
   logger = defaultLogger.child({ name: 'SnpEventStreamHandler' });
-  snpClientStream: StacksEventStream;
+  snpClientStream: StacksMessageStream;
   redisUrl: string;
   redisStreamPrefix: string | undefined;
 
@@ -31,33 +32,43 @@ export class SnpEventStreamHandler {
     const blocksOnly = process.env.SNP_BLOCKS_ONLY_STREAMING
       ? parseBoolean(process.env.SNP_BLOCKS_ONLY_STREAMING)
       : false;
-    const eventStreamType = blocksOnly
-      ? StacksEventStreamType.confirmedChainEvents
-      : StacksEventStreamType.chainEvents;
+    const selectedMessagePaths = blocksOnly
+      ? [MessagePath.NewBlock, MessagePath.NewBurnBlock]
+      : '*';
     this.logger.info(
-      `SNP streaming enabled, lastMsgId: ${opts.lastMessageId}, eventStreamType: ${eventStreamType}`
+      `SNP streaming enabled, lastMsgId: ${opts.lastMessageId}, blocksOnly: ${blocksOnly}`
     );
 
     const appName = `stacks-blockchain-api ${SERVER_VERSION.tag} (${SERVER_VERSION.branch}:${SERVER_VERSION.commit})`;
 
-    this.snpClientStream = new StacksEventStream({
+    this.snpClientStream = new StacksMessageStream({
+      appName,
       redisUrl: this.redisUrl,
       redisStreamPrefix: this.redisStreamPrefix,
-      eventStreamType,
-      lastMessageId: opts.lastMessageId,
-      appName,
+      options: {
+        selectedMessagePaths,
+      },
     });
   }
 
   async start() {
     this.logger.info(`Connecting to SNP event stream at ${this.redisUrl} ...`);
     await this.snpClientStream.connect({ waitForReady: true });
-    this.snpClientStream.start(async (messageId, timestamp, path, body) => {
-      return this.handleMsg(messageId, timestamp, path, body);
-    });
+    this.snpClientStream.start(
+      async () => {
+        const chainTip = await this.db.getChainTip(this.db.sql);
+        return {
+          indexBlockHash: chainTip.index_block_hash,
+          blockHeight: chainTip.block_height,
+        };
+      },
+      async (id, timestamp, message) => {
+        return this.handleMsg(id, timestamp, message.path, message.payload);
+      }
+    );
   }
 
-  async handleMsg(messageId: string, timestamp: string, path: string, body: any) {
+  async handleMsg(messageId: string, _timestamp: string, path: string, body: any) {
     this.logger.debug(`Received SNP stream event ${path}, msgId: ${messageId}`);
     let response;
 
