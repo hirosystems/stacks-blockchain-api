@@ -1,11 +1,4 @@
-import {
-  BurnchainOpDelegateStx,
-  BurnchainOpRegisterAssetFt,
-  BurnchainOpRegisterAssetNft,
-  BurnchainOpStackStx,
-  CoreNodeParsedTxMessage,
-  isTxWithMicroblockInfo,
-} from './core-node-message';
+import { CoreNodeParsedTxMessage, isTxWithMicroblockInfo } from './core-node-message';
 import {
   decodeClarityValue,
   decodeTransaction,
@@ -63,6 +56,10 @@ import { logger } from '../logger';
 import { bufferToHex, hexToBuffer } from '@hirosystems/api-toolkit';
 import { hexToBytes } from '@stacks/common';
 import {
+  BurnchainOpDelegateStx,
+  BurnchainOpRegisterAssetFt,
+  BurnchainOpRegisterAssetNft,
+  BurnchainOpStackStx,
   NewBlockContractEvent,
   NewBlockEvent,
   NewBlockEventType,
