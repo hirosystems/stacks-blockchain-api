@@ -558,6 +558,26 @@ describe('burnchain tests', () => {
       expect(jsonResult.offset).toBe(0);
       expect(jsonResult.total).toBe(0);
       expect(jsonResult.results.length).toBe(0);
+
+      // Fetch for address with a limit and offset
+      result = await supertest(api.server).get(
+        `/extended/v2/addresses/${recipients[0]}/pox-transactions?limit=2&offset=1`
+      );
+      expect(result.status).toBe(200);
+      expect(result.type).toBe('application/json');
+      jsonResult = JSON.parse(result.text);
+      expect(jsonResult.limit).toBe(2);
+      expect(jsonResult.offset).toBe(1);
+      expect(jsonResult.total).toBe(4);
+      expect(jsonResult.results.length).toBe(2);
+      expect(jsonResult.results[0]).toStrictEqual({
+        amount: '11000',
+        burn_block_hash: burnBlocks[1].hash,
+        burn_block_height: burnBlocks[1].height,
+        recipient: recipients[0],
+        tx_id: '0x000b',
+        utxo_idx: 10,
+      });
     });
   });
 });

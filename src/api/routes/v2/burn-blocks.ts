@@ -138,7 +138,7 @@ export const BurnBlockRoutesV2: FastifyPluginAsync<
         operationId: 'get_burn_block_pox_transactions',
         summary: 'Get PoX transactions by burn block',
         description: `Retrieves a list of PoX transactions confirmed by a specific burn block`,
-        tags: ['Burn Blocks'],
+        tags: ['Proof of Transfer'],
         params: BurnBlockParamsSchema,
         querystring: Type.Object({
           limit: LimitParam(ResourceType.BurnBlock),
