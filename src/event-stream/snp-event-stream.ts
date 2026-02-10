@@ -57,6 +57,10 @@ export class SnpEventStreamHandler {
     this.snpClientStream.start(
       async () => {
         const chainTip = await this.db.getChainTip(this.db.sql);
+        if (chainTip.block_count === 0) {
+          this.logger.error('Chainstate is empty, starting SNP stream from genesis');
+          return null;
+        }
         this.logger.info(
           `Starting SNP stream at position: ${chainTip.index_block_hash}@${chainTip.block_height}`
         );
