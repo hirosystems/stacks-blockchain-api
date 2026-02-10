@@ -1,5 +1,27 @@
 import { DecodedTxResult } from '@hirosystems/stacks-encoding-native-js';
 import { ClarityAbi } from './contract-abi';
+import { NewBlockTransaction } from '@stacks/node-publisher-client';
+
+export interface CoreNodeParsedTxMessage {
+  core_tx: NewBlockTransaction;
+  parsed_tx: DecodedTxResult;
+  raw_tx: string;
+  nonce: number;
+  sender_address: string;
+  sponsor_address: string | undefined;
+  block_hash: string;
+  index_block_hash: string;
+  parent_index_block_hash: string;
+  parent_block_hash: string;
+  microblock_sequence: number;
+  microblock_hash: string;
+  block_height: number;
+  burn_block_height: number;
+  burn_block_time: number;
+  parent_burn_block_time: number;
+  parent_burn_block_hash: string;
+  block_time: number;
+}
 
 export enum CoreNodeEventType {
   ContractEvent = 'contract_event',
@@ -329,27 +351,6 @@ export interface CoreNodeBlockMessage {
   block_time: number | null;
   signer_bitvec?: string | null;
   signer_signature?: string[];
-}
-
-export interface CoreNodeParsedTxMessage {
-  core_tx: CoreNodeTxMessage;
-  parsed_tx: DecodedTxResult;
-  raw_tx: string;
-  nonce: number;
-  sender_address: string;
-  sponsor_address: string | undefined;
-  block_hash: string;
-  index_block_hash: string;
-  parent_index_block_hash: string;
-  parent_block_hash: string;
-  microblock_sequence: number;
-  microblock_hash: string;
-  block_height: number;
-  burn_block_height: number;
-  burn_block_time: number;
-  parent_burn_block_time: number;
-  parent_burn_block_hash: string;
-  block_time: number;
 }
 
 export interface CoreNodeBurnBlockMessage {
