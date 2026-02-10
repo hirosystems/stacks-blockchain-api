@@ -126,8 +126,8 @@ async function handleBurnBlockMessage(
     slotHolders: slotHolders,
   });
   const burnBlockPoxTxs: DbBurnBlockPoxTx[] = [];
-  for (const tx of burnBlockMsg.pox_transactions) {
-    for (const recipient of tx.reward_recipients) {
+  for (const tx of burnBlockMsg.pox_transactions ?? []) {
+    for (const recipient of tx.reward_recipients ?? []) {
       burnBlockPoxTxs.push({
         canonical: true,
         burn_block_hash: burnBlockMsg.burn_block_hash,

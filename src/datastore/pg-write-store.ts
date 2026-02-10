@@ -657,6 +657,7 @@ export class PgWriteStore extends PgStore {
   }
 
   async updateBurnBlockPoxTxs(args: { burnBlockPoxTxs: DbBurnBlockPoxTx[] }): Promise<void> {
+    if (args.burnBlockPoxTxs.length === 0) return;
     await this.sql`
       INSERT INTO burn_block_pox_txs ${this.sql(args.burnBlockPoxTxs)}
       ON CONFLICT ON CONSTRAINT burn_block_pox_txs_unique_idx DO NOTHING
