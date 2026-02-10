@@ -41,11 +41,13 @@ exports.up = pgm => {
   pgm.createIndex('burn_block_pox_txs', [
     'recipient',
     { name: 'burn_block_height', sort: 'DESC' },
+    { name: 'tx_id', sort: 'ASC' },
   ], { where: 'canonical = true' });
   pgm.createIndex('burn_block_pox_txs', [
     'recipient',
     'burn_block_hash',
     { name: 'burn_block_height', sort: 'DESC' },
+    { name: 'tx_id', sort: 'ASC' },
   ], { where: 'canonical = true' });
 };
 

@@ -1,6 +1,10 @@
 import * as supertest from 'supertest';
 import { ChainID } from '@stacks/transactions';
-import { DbBurnchainReward, DbRewardSlotHolder } from '../../src/datastore/common';
+import {
+  DbBurnBlockPoxTx,
+  DbBurnchainReward,
+  DbRewardSlotHolder,
+} from '../../src/datastore/common';
 import { startApiServer, ApiServer } from '../../src/api/init';
 import { PgWriteStore } from '../../src/datastore/pg-write-store';
 import { PgSqlClient } from '@hirosystems/api-toolkit';
@@ -452,5 +456,108 @@ describe('burnchain tests', () => {
     };
 
     expect(JSON.parse(rewardResult.text)).toEqual(expectedResp1);
+  });
+
+  describe('pox transactions', () => {
+    test('fetch pox transactions for burn block', async () => {
+      const burnBlocks = [
+        { hash: '0xaa01a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1', height: 200 },
+        { hash: '0xbb02a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0', height: 201 },
+        { hash: '0xcc03a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9', height: 202 },
+      ];
+      const recipients = [
+        '1G4ayBXJvxZMoZpaNdZG6VyWwWq2mHpMjQ',
+        '1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa',
+        '3J98t1WpEZ73CNmQviecrnyiWrnqRhWNLy',
+        'bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq',
+        '1BoatSLRHtKNngkdXEeobR76b53LETtpyT',
+      ];
+
+      const poxTransactions: DbBurnBlockPoxTx[] = [];
+      for (let i = 0; i < 20; i++) {
+        const burnBlock = burnBlocks[i % 3];
+        poxTransactions.push({
+          canonical: true,
+          burn_block_hash: burnBlock.hash,
+          burn_block_height: burnBlock.height,
+          tx_id: `0x${(i + 1).toString(16).padStart(4, '0')}`,
+          recipient: recipients[i % 5],
+          utxo_idx: i,
+          amount: BigInt((i + 1) * 1000),
+        });
+      }
+
+      await db.updateBurnBlockPoxTxs({
+        burnBlockPoxTxs: poxTransactions,
+      });
+
+      // Fetch for first block by hash with a limit
+      let result = await supertest(api.server).get(
+        `/extended/v2/burn-blocks/${burnBlocks[0].hash}/pox-transactions?limit=5`
+      );
+      expect(result.status).toBe(200);
+      expect(result.type).toBe('application/json');
+      let jsonResult = JSON.parse(result.text);
+      expect(jsonResult.limit).toBe(5);
+      expect(jsonResult.offset).toBe(0);
+      expect(jsonResult.total).toBe(7);
+      expect(jsonResult.results.length).toBe(5);
+      expect(jsonResult.results[0]).toStrictEqual({
+        amount: '1000',
+        burn_block_hash: burnBlocks[0].hash,
+        burn_block_height: burnBlocks[0].height,
+        recipient: '1G4ayBXJvxZMoZpaNdZG6VyWwWq2mHpMjQ',
+        tx_id: '0x0001',
+        utxo_idx: 0,
+      });
+
+      // Fetch for second block by height with an offset
+      result = await supertest(api.server).get(
+        `/extended/v2/burn-blocks/${burnBlocks[1].height}/pox-transactions?offset=1`
+      );
+      expect(result.status).toBe(200);
+      expect(result.type).toBe('application/json');
+      jsonResult = JSON.parse(result.text);
+      expect(jsonResult.limit).toBe(20);
+      expect(jsonResult.offset).toBe(1);
+      expect(jsonResult.total).toBe(7);
+      expect(jsonResult.results.length).toBe(6);
+      expect(jsonResult.results[0]).toStrictEqual({
+        amount: '5000',
+        burn_block_hash: burnBlocks[1].hash,
+        burn_block_height: burnBlocks[1].height,
+        recipient: '1BoatSLRHtKNngkdXEeobR76b53LETtpyT',
+        tx_id: '0x0005',
+        utxo_idx: 4,
+      });
+
+      // Fetch for third block by latest
+      result = await supertest(api.server).get(`/extended/v2/burn-blocks/latest/pox-transactions`);
+      expect(result.status).toBe(200);
+      expect(result.type).toBe('application/json');
+      jsonResult = JSON.parse(result.text);
+      expect(jsonResult.limit).toBe(20);
+      expect(jsonResult.offset).toBe(0);
+      expect(jsonResult.total).toBe(6);
+      expect(jsonResult.results.length).toBe(6);
+      expect(jsonResult.results[0]).toStrictEqual({
+        amount: '3000',
+        burn_block_hash: burnBlocks[2].hash,
+        burn_block_height: burnBlocks[2].height,
+        recipient: '3J98t1WpEZ73CNmQviecrnyiWrnqRhWNLy',
+        tx_id: '0x0003',
+        utxo_idx: 2,
+      });
+
+      // Fetch unknown block
+      result = await supertest(api.server).get(`/extended/v2/burn-blocks/300/pox-transactions`);
+      expect(result.status).toBe(200);
+      expect(result.type).toBe('application/json');
+      jsonResult = JSON.parse(result.text);
+      expect(jsonResult.limit).toBe(20);
+      expect(jsonResult.offset).toBe(0);
+      expect(jsonResult.total).toBe(0);
+      expect(jsonResult.results.length).toBe(0);
+    });
   });
 });

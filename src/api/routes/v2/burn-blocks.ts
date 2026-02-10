@@ -1,5 +1,5 @@
 import { handleChainTipCache } from '../../controllers/cache-controller';
-import { parseDbBurnBlock, parseDbNakamotoBlock } from './helpers';
+import { parseDbBurnBlock, parseDbBurnBlockPoxTx, parseDbNakamotoBlock } from './helpers';
 import { BurnBlockParamsSchema, cleanBlockHeightOrHashParam, parseBlockParam } from './schemas';
 import { InvalidRequestError, NotFoundError } from '../../../errors';
 import { FastifyPluginAsync } from 'fastify';
@@ -10,6 +10,7 @@ import { ResourceType } from '../../pagination';
 import { PaginatedResponse } from '../../schemas/util';
 import { BurnBlock, BurnBlockSchema } from '../../schemas/entities/burn-blocks';
 import { NakamotoBlockSchema } from '../../schemas/entities/block';
+import { BurnBlockPoxTxSchema } from '../../schemas/entities/pox-transaction';
 
 export const BurnBlockRoutesV2: FastifyPluginAsync<
   Record<never, never>,
@@ -115,6 +116,53 @@ export const BurnBlockRoutesV2: FastifyPluginAsync<
           offset,
           total,
           results: blocks,
+        });
+      } catch (error) {
+        if (error instanceof InvalidRequestError) {
+          throw new NotFoundError(error.message);
+        }
+        throw error;
+      }
+    }
+  );
+
+  fastify.get(
+    '/:height_or_hash/pox-transactions',
+    {
+      preHandler: handleChainTipCache,
+      preValidation: (req, _reply, done) => {
+        cleanBlockHeightOrHashParam(req.params);
+        done();
+      },
+      schema: {
+        operationId: 'get_burn_block_pox_transactions',
+        summary: 'Get PoX transactions by burn block',
+        description: `Retrieves a list of PoX transactions confirmed by a specific burn block`,
+        tags: ['Burn Blocks'],
+        params: BurnBlockParamsSchema,
+        querystring: Type.Object({
+          limit: LimitParam(ResourceType.BurnBlock),
+          offset: OffsetParam(),
+        }),
+        response: {
+          200: PaginatedResponse(BurnBlockPoxTxSchema),
+        },
+      },
+    },
+    async (req, reply) => {
+      const params = parseBlockParam(req.params.height_or_hash);
+      const query = req.query;
+
+      try {
+        const { limit, offset, results, total } = await fastify.db.v2.getBurnBlockPoxTransactions({
+          block: params,
+          ...query,
+        });
+        await reply.send({
+          limit,
+          offset,
+          total,
+          results: results.map(r => parseDbBurnBlockPoxTx(r)),
         });
       } catch (error) {
         if (error instanceof InvalidRequestError) {
