@@ -27,7 +27,6 @@ import {
   DbTxWithAddressTransfers,
   DbEventTypeId,
   DbAddressTransactionEvent,
-  DbAssetEventTypeId,
   DbPoxCycle,
   PoxCycleQueryResult,
   DbPoxCycleSigner,

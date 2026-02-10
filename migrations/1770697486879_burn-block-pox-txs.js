@@ -49,6 +49,12 @@ exports.up = pgm => {
     { name: 'burn_block_height', sort: 'DESC' },
     { name: 'tx_id', sort: 'ASC' },
   ], { where: 'canonical = true' });
+  pgm.createIndex('burn_block_pox_txs', ['burn_block_hash', 'canonical']);
+  pgm.createIndex('burn_block_pox_txs', [
+    'burn_block_hash',
+    { name: 'burn_block_height', sort: 'DESC' },
+    { name: 'tx_id', sort: 'ASC' },
+  ]);
 };
 
 exports.down = pgm => {
