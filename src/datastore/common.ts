@@ -90,6 +90,16 @@ export interface DbRewardSlotHolder {
   slot_index: number;
 }
 
+export interface DbBurnBlockPoxTx {
+  canonical: boolean;
+  burn_block_hash: string;
+  burn_block_height: number;
+  tx_id: string;
+  recipient: string;
+  utxo_idx: number;
+  amount: bigint;
+}
+
 export interface DbMinerReward {
   block_hash: string;
   index_block_hash: string;

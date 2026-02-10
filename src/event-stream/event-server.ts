@@ -31,6 +31,7 @@ import {
   DbPoxSyntheticEvent,
   DbTxStatus,
   DbPoxSetSigners,
+  DbBurnBlockPoxTx,
 } from '../datastore/common';
 import {
   getTxSenderAddress,
@@ -124,6 +125,21 @@ async function handleBurnBlockMessage(
     burnchainBlockHeight: burnBlockMsg.burn_block_height,
     slotHolders: slotHolders,
   });
+  const burnBlockPoxTxs: DbBurnBlockPoxTx[] = [];
+  for (const tx of burnBlockMsg.pox_transactions) {
+    for (const recipient of tx.reward_recipients) {
+      burnBlockPoxTxs.push({
+        canonical: true,
+        burn_block_hash: burnBlockMsg.burn_block_hash,
+        burn_block_height: burnBlockMsg.burn_block_height,
+        tx_id: tx.txid,
+        recipient: recipient.recipient,
+        utxo_idx: recipient.utxo_idx,
+        amount: BigInt(recipient.amt),
+      });
+    }
+  }
+  await db.updateBurnBlockPoxTxs({ burnBlockPoxTxs });
   await db.updateBurnChainBlockHeight({ blockHeight: burnBlockMsg.burn_block_height });
 }
 
