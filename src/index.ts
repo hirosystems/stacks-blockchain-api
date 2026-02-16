@@ -168,9 +168,7 @@ async function init(): Promise<void> {
     }
 
     if (snpEnabled) {
-      const lastRedisMsgId = await dbWriteStore.getLastIngestedSnpRedisMsgId();
       const snpStream = new SnpEventStreamHandler({
-        lastMessageId: lastRedisMsgId,
         db: dbWriteStore,
         eventServer,
       });
