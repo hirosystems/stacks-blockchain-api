@@ -2,9 +2,9 @@ import { ChainID } from '@stacks/transactions';
 import * as fs from 'fs';
 import * as path from 'path';
 import { DecodedTxResult, TxPayloadTypeID } from '@hirosystems/stacks-encoding-native-js';
-import { CoreNodeBlockMessage } from '../../src/event-stream/core-node-message';
 import { CoreNodeMsgBlockData, parseMessageTransaction } from '../../src/event-stream/reader';
 import { parseNewBlockMessage } from '../../src/event-stream/event-server';
+import { NewBlockMessage } from '@stacks/node-publisher-client';
 
 // Test processing of the psuedo-Stacks transactions, i.e. the ones that
 // originate on the Bitcoin chain, and have a `raw_tx == '0x00'.
@@ -15,7 +15,7 @@ describe('synthetic stx txs', () => {
       'synthetic-tx-payloads/token_transfer-120-0xc0263c14f689ae757290f90765a28314497f52bd22b8bcbf87a12c764dd9d9be.json';
     const txid = file.split('-').slice(-1)[0].split('.')[0];
     const payloadStr = fs.readFileSync(path.join(__dirname, file), { encoding: 'utf8' });
-    const blockMsg = JSON.parse(payloadStr) as CoreNodeBlockMessage;
+    const blockMsg = JSON.parse(payloadStr) as NewBlockMessage;
     const txMsg = blockMsg.transactions.find(t => t.txid === txid);
     if (!txMsg) {
       throw new Error(`Cound not find tx ${txid}`);
@@ -75,7 +75,7 @@ describe('synthetic stx txs', () => {
       'synthetic-tx-payloads/token_transfer-51655-0x2553c7c5b49eab5a0569e5d0f14c8f15945965a51976ac6697641003533986f6.json';
     const txid = file.split('-').slice(-1)[0].split('.')[0];
     const payloadStr = fs.readFileSync(path.join(__dirname, file), { encoding: 'utf8' });
-    const blockMsg = JSON.parse(payloadStr) as CoreNodeBlockMessage;
+    const blockMsg = JSON.parse(payloadStr) as NewBlockMessage;
     const txMsg = blockMsg.transactions.find(t => t.txid === txid);
     if (!txMsg) {
       throw new Error(`Cound not find tx ${txid}`);
@@ -135,7 +135,7 @@ describe('synthetic stx txs', () => {
       'synthetic-tx-payloads/stx_lock-1379-0xb182e2aacfe2ed4257d66dd2ed4872f672cf10d873852b5218f41594d6b42b11.json';
     const txid = file.split('-').slice(-1)[0].split('.')[0];
     const payloadStr = fs.readFileSync(path.join(__dirname, file), { encoding: 'utf8' });
-    const blockMsg = JSON.parse(payloadStr) as CoreNodeBlockMessage;
+    const blockMsg = JSON.parse(payloadStr) as NewBlockMessage;
     const txMsg = blockMsg.transactions.find(t => t.txid === txid);
     if (!txMsg) {
       throw new Error(`Cound not find tx ${txid}`);
@@ -215,7 +215,7 @@ describe('synthetic stx txs', () => {
       'synthetic-tx-payloads/stx_lock-1994-0xd45e090ac442380cf50655e3d1c904c355a501d6dffa3b5e4799083062469dbc.json';
     const txid = file.split('-').slice(-1)[0].split('.')[0];
     const payloadStr = fs.readFileSync(path.join(__dirname, file), { encoding: 'utf8' });
-    const blockMsg = JSON.parse(payloadStr) as CoreNodeBlockMessage;
+    const blockMsg = JSON.parse(payloadStr) as NewBlockMessage;
     const txMsg = blockMsg.transactions.find(t => t.txid === txid);
     if (!txMsg) {
       throw new Error(`Cound not find tx ${txid}`);
@@ -244,7 +244,7 @@ describe('synthetic stx txs', () => {
       'synthetic-tx-payloads/stx_lock-51451-0xa64ad136e51a3a50eb1fdfd7eefa0b7aeb89e2521b2a2218d887477baa1775c9.json';
     const txid = file.split('-').slice(-1)[0].split('.')[0];
     const payloadStr = fs.readFileSync(path.join(__dirname, file), { encoding: 'utf8' });
-    const blockMsg = JSON.parse(payloadStr) as CoreNodeBlockMessage;
+    const blockMsg = JSON.parse(payloadStr) as NewBlockMessage;
     const txMsg = blockMsg.transactions.find(t => t.txid === txid);
     if (!txMsg) {
       throw new Error(`Cound not find tx ${txid}`);
@@ -334,7 +334,7 @@ describe('synthetic stx txs', () => {
         const [block, txid] = path.basename(f, '.json').split('-');
         const filePath = path.join(payloadDir, f);
         const payloadString = fs.readFileSync(filePath, { encoding: 'utf8' });
-        const blockMsg = JSON.parse(payloadString) as CoreNodeBlockMessage;
+        const blockMsg = JSON.parse(payloadString) as NewBlockMessage;
         const txMsg = blockMsg.transactions.find(t => t.txid === txid);
         if (!txMsg) {
           throw new Error(`Cound not find tx ${txid}`);

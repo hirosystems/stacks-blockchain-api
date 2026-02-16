@@ -82,6 +82,12 @@ export const AddressParamSchema = Type.String({
   examples: ['SP318Q55DEKHRXJK696033DQN5C54D9K2EE6DHRWP'],
 });
 
+export const BurnchainAddressParamSchema = Type.String({
+  title: 'Bitcoin Address',
+  description: 'Bitcoin Address',
+  examples: ['bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq'],
+});
+
 const SmartContractIdParamSchema = Type.String({
   pattern: isTestEnv
     ? undefined

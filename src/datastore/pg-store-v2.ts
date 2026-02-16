@@ -27,13 +27,13 @@ import {
   DbTxWithAddressTransfers,
   DbEventTypeId,
   DbAddressTransactionEvent,
-  DbAssetEventTypeId,
   DbPoxCycle,
   PoxCycleQueryResult,
   DbPoxCycleSigner,
   DbPoxCycleSignerStacker,
   DbCursorPaginatedResult,
   PoxSyntheticEventQueryResult,
+  DbBurnBlockPoxTx,
 } from './common';
 import {
   BLOCK_COLUMNS,
@@ -209,6 +209,40 @@ export class PgStoreV2 extends BasePgStoreModule {
         offset,
         results: blocks,
         total: blocksQuery[0].total,
+      };
+    });
+  }
+
+  async getBurnBlockPoxTransactions(args: {
+    block?: BlockIdParam;
+    recipient?: string;
+    limit?: number;
+    offset?: number;
+  }): Promise<DbPaginatedResult<DbBurnBlockPoxTx>> {
+    return await this.sqlTransaction(async sql => {
+      const limit = args.limit ?? BlockLimitParamSchema.default;
+      const offset = args.offset ?? 0;
+      const blockFilter = args.block
+        ? args.block.type === 'latest'
+          ? sql`burn_block_hash = (SELECT burn_block_hash FROM burn_block_pox_txs WHERE canonical = true ORDER BY burn_block_height DESC LIMIT 1)`
+          : args.block.type === 'hash'
+            ? sql`burn_block_hash = ${normalizeHashString(args.block.hash)}`
+            : sql`burn_block_height = ${args.block.height}`
+        : sql`TRUE`;
+      const recipientFilter = args.recipient ? sql`recipient = ${args.recipient}` : sql`TRUE`;
+      const results = await sql<(DbBurnBlockPoxTx & { total: number })[]>`
+        SELECT *, COUNT(*) OVER()::int AS total
+        FROM burn_block_pox_txs
+        WHERE ${blockFilter} AND ${recipientFilter}
+        ORDER BY burn_block_height DESC, tx_id ASC
+        LIMIT ${limit}
+        OFFSET ${offset}
+      `;
+      return {
+        limit,
+        offset,
+        results,
+        total: results[0]?.total ?? 0,
       };
     });
   }

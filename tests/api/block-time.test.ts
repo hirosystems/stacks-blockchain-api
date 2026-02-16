@@ -1,10 +1,10 @@
 import { ChainID } from '@stacks/transactions';
-import { CoreNodeBlockMessage } from '../../src/event-stream/core-node-message';
 import { parseNewBlockMessage } from '../../src/event-stream/event-server';
+import { NewBlockMessage } from '@stacks/node-publisher-client';
 
 describe('block time tests', () => {
   test('takes block_time from block header', () => {
-    const block: CoreNodeBlockMessage = {
+    const block: NewBlockMessage = {
       block_time: 1716238792,
       block_height: 1,
       block_hash: '0x1234',
@@ -23,13 +23,15 @@ describe('block time tests', () => {
       events: [],
       transactions: [],
       matured_miner_rewards: [],
+      signer_signature_hash: '0x1234',
+      miner_signature: '0x1234',
     };
     const { dbData: parsed } = parseNewBlockMessage(ChainID.Mainnet, block, false);
     expect(parsed.block.block_time).toEqual(1716238792); // Takes block_time from block header
   });
 
   test('takes burn_block_time from block header when block_time is not present', () => {
-    const block: CoreNodeBlockMessage = {
+    const block: NewBlockMessage = {
       block_time: null,
       block_height: 1,
       block_hash: '0x1234',
@@ -48,6 +50,8 @@ describe('block time tests', () => {
       events: [],
       transactions: [],
       matured_miner_rewards: [],
+      signer_signature_hash: '0x1234',
+      miner_signature: '0x1234',
     };
     const { dbData: parsed } = parseNewBlockMessage(ChainID.Mainnet, block, false);
     expect(parsed.block.block_time).toEqual(1234567890); // Takes burn_block_time from block header
@@ -74,6 +78,8 @@ describe('block time tests', () => {
       events: [],
       transactions: [],
       matured_miner_rewards: [],
+      signer_signature_hash: '0x1234',
+      miner_signature: '0x1234',
     };
     expect(() => parseNewBlockMessage(ChainID.Mainnet, block, false)).toThrow(
       'Block message has no block_time or burn_block_time'

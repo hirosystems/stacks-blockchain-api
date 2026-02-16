@@ -2,6 +2,7 @@ import {
   DbAddressTransactionEvent,
   DbBlock,
   DbBurnBlock,
+  DbBurnBlockPoxTx,
   DbEventTypeId,
   DbPoxCycle,
   DbPoxCycleSigner,
@@ -23,6 +24,7 @@ import { AddressTransaction, AddressTransactionEvent } from '../../schemas/entit
 import { NakamotoBlock } from '../../schemas/entities/block';
 import { BurnBlock } from '../../schemas/entities/burn-blocks';
 import { PoxCycle, PoxSigner, PoxStacker } from '../../schemas/entities/pox';
+import { BurnBlockPoxTx } from '../../schemas/entities/pox-transaction';
 
 export function parseDbNakamotoBlock(block: DbBlock): NakamotoBlock {
   const apiBlock: NakamotoBlock = {
@@ -49,6 +51,17 @@ export function parseDbNakamotoBlock(block: DbBlock): NakamotoBlock {
     execution_cost_write_length: block.execution_cost_write_length,
   };
   return apiBlock;
+}
+
+export function parseDbBurnBlockPoxTx(tx: DbBurnBlockPoxTx): BurnBlockPoxTx {
+  return {
+    burn_block_height: tx.burn_block_height,
+    burn_block_hash: tx.burn_block_hash,
+    tx_id: tx.tx_id,
+    recipient: tx.recipient,
+    utxo_idx: tx.utxo_idx,
+    amount: tx.amount.toString(),
+  };
 }
 
 export function parseDbBurnBlock(block: DbBurnBlock): BurnBlock {

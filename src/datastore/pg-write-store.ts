@@ -65,6 +65,7 @@ import {
   PoxSetSignerValues,
   PoxCycleInsertValues,
   DbAssetEventTypeId,
+  DbBurnBlockPoxTx,
 } from './common';
 import {
   BLOCK_COLUMNS,
@@ -653,6 +654,14 @@ export class PgWriteStore extends PgStore {
         );
       }
     });
+  }
+
+  async updateBurnBlockPoxTxs(args: { burnBlockPoxTxs: DbBurnBlockPoxTx[] }): Promise<void> {
+    if (args.burnBlockPoxTxs.length === 0) return;
+    await this.sql`
+      INSERT INTO burn_block_pox_txs ${this.sql(args.burnBlockPoxTxs)}
+      ON CONFLICT ON CONSTRAINT burn_block_pox_txs_unique_idx DO NOTHING
+    `;
   }
 
   async updateMicroblocks(data: DataStoreMicroblockUpdateData): Promise<void> {
@@ -3304,6 +3313,7 @@ export class PgWriteStore extends PgStore {
   async markEntitiesCanonical(
     sql: PgSqlClient,
     indexBlockHash: string,
+    burnBlockHash: string,
     canonical: boolean,
     updatedEntities: ReOrgUpdatedEntities
   ): Promise<{
@@ -3685,6 +3695,20 @@ export class PgWriteStore extends PgStore {
         updatedEntities.markedNonCanonical.poxCycles += poxCycleResult.count;
       }
     });
+    q.enqueue(async () => {
+      await sql`
+        UPDATE burnchain_rewards
+        SET canonical = ${canonical}
+        WHERE burn_block_hash = ${burnBlockHash} AND canonical != ${canonical}
+      `;
+    });
+    q.enqueue(async () => {
+      await sql`
+        UPDATE burn_block_pox_txs
+        SET canonical = ${canonical}
+        WHERE burn_block_hash = ${burnBlockHash} AND canonical != ${canonical}
+      `;
+    });
 
     await q.done();
 
@@ -3695,12 +3719,14 @@ export class PgWriteStore extends PgStore {
    * Recursively restore previously orphaned blocks to canonical.
    * @param sql - The SQL client
    * @param indexBlockHash - The index block hash that we will restore first
+   * @param burnBlockHash - The burn block hash that we will restore first
    * @param updatedEntities - The updated entities
    * @returns The updated entities
    */
   async restoreOrphanedChain(
     sql: PgSqlClient,
     indexBlockHash: string,
+    burnBlockHash: string,
     updatedEntities: ReOrgUpdatedEntities
   ): Promise<ReOrgUpdatedEntities> {
     // Restore the previously orphaned block to canonical
@@ -3739,11 +3765,6 @@ export class PgWriteStore extends PgStore {
     if (orphanedBlockResult.length > 0) {
       const orphanedBlocks = orphanedBlockResult.map(b => parseBlockQueryResult(b));
       for (const orphanedBlock of orphanedBlocks) {
-        await sql`
-          UPDATE burnchain_rewards
-          SET canonical = false
-          WHERE canonical = true AND burn_block_hash = ${orphanedBlock.burn_block_hash}
-        `;
         const microCanonicalUpdateResult = await this.updateMicroCanonical(sql, {
           isCanonical: false,
           blockHeight: orphanedBlock.block_height,
@@ -3774,6 +3795,7 @@ export class PgWriteStore extends PgStore {
       const markNonCanonicalResult = await this.markEntitiesCanonical(
         sql,
         orphanedBlockResult[0].index_block_hash,
+        orphanedBlockResult[0].burn_block_hash,
         false,
         updatedEntities
       );
@@ -3819,6 +3841,7 @@ export class PgWriteStore extends PgStore {
     const markCanonicalResult = await this.markEntitiesCanonical(
       sql,
       indexBlockHash,
+      burnBlockHash,
       true,
       updatedEntities
     );
@@ -3829,8 +3852,8 @@ export class PgWriteStore extends PgStore {
     updatedEntities.prunedMempoolTxs += prunedMempoolTxs.removedTxs.length;
 
     // Do we have a parent that is non-canonical? If so, restore it recursively.
-    const parentResult = await sql<{ index_block_hash: string }[]>`
-      SELECT index_block_hash
+    const parentResult = await sql<{ index_block_hash: string; burn_block_hash: string }[]>`
+      SELECT index_block_hash, burn_block_hash
       FROM blocks
       WHERE
         block_height = ${restoredBlockResult[0].block_height - 1} AND
@@ -3841,7 +3864,12 @@ export class PgWriteStore extends PgStore {
       throw new Error('Found more than one non-canonical parent to restore during reorg');
     }
     if (parentResult.length > 0) {
-      await this.restoreOrphanedChain(sql, parentResult[0].index_block_hash, updatedEntities);
+      await this.restoreOrphanedChain(
+        sql,
+        parentResult[0].index_block_hash,
+        parentResult[0].burn_block_hash,
+        updatedEntities
+      );
     }
     return updatedEntities;
   }
@@ -3858,10 +3886,11 @@ export class PgWriteStore extends PgStore {
         {
           canonical: boolean;
           index_block_hash: string;
+          burn_block_hash: string;
           parent_index_block_hash: string;
         }[]
       >`
-        SELECT canonical, index_block_hash, parent_index_block_hash
+        SELECT canonical, index_block_hash, burn_block_hash, parent_index_block_hash
         FROM blocks
         WHERE block_height = ${block.block_height - 1}
           AND index_block_hash = ${block.parent_index_block_hash}
@@ -3880,7 +3909,12 @@ export class PgWriteStore extends PgStore {
         );
       // This block builds off a previously orphaned chain. Restore canonical status for this chain.
       if (!parentResult[0].canonical && block.block_height > chainTipHeight) {
-        await this.restoreOrphanedChain(sql, parentResult[0].index_block_hash, updatedEntities);
+        await this.restoreOrphanedChain(
+          sql,
+          parentResult[0].index_block_hash,
+          parentResult[0].burn_block_hash,
+          updatedEntities
+        );
         logger.info(
           updatedEntities,
           `Re-org resolved. Block ${block.block_height} builds off a previously orphaned chain.`
