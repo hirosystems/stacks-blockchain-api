@@ -84,12 +84,9 @@ describe('SNP integration tests', () => {
   });
 
   test('ingest SNP events', async () => {
-    const lastMsgId = await db.getLastIngestedSnpRedisMsgId();
-    expect(lastMsgId).toBe('0');
     const snpClient = new SnpEventStreamHandler({
       db,
       eventServer,
-      lastMessageId: lastMsgId,
     });
 
     await snpClient.start();
@@ -108,15 +105,10 @@ describe('SNP integration tests', () => {
     await snpClient.stop();
   });
 
-  test('validate all events ingested', async () => {
-    const finalPostgresMsgId = await db.getLastIngestedSnpRedisMsgId();
-    expect(finalPostgresMsgId).toBe(sampleEventsLastMsgId);
-  });
-
   test('validate blocks ingested', async () => {
-    const chainTip = await db.getCurrentBlockHeight();
-    assert(chainTip.found);
-    expect(chainTip.result).toBe(sampleEventsLastBlockHeight);
+    const chainTip = await db.getChainTip(db.sql);
+    expect(chainTip.block_hash).toBe(sampleEventsLastBlockHash);
+    expect(chainTip.block_height).toBe(sampleEventsLastBlockHeight);
   });
 
   test('test block API fetch', async () => {
