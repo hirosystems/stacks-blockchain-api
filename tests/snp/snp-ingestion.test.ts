@@ -20,7 +20,7 @@ describe('SNP integration tests', () => {
   let eventServer: EventStreamServer;
   let apiServer: ApiServer;
 
-  const sampleEventsLastMsgId = '238-0';
+  const sampleEventsLastMsgId = '237-0';
   const sampleEventsLastBlockHeight = 50;
   const sampleEventsLastBlockHash =
     '0x5705546ec6741f77957bb3e73bf795dcf120c0a869c1d408396e7e30a3b2f94f';
