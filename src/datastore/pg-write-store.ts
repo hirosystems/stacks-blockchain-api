@@ -2237,33 +2237,35 @@ export class PgWriteStore extends PgStore {
           FROM source_txs
         ),
         same_nonce_mempool_txs AS (
-          SELECT
-            m.tx_id,
-            m.fee_rate,
-            m.receipt_time,
-            m.pruned,
-            g.address,
-            g.nonce
+          SELECT m.tx_id, m.fee_rate, m.receipt_time, m.pruned, g.address, g.nonce
           FROM mempool_txs m
           INNER JOIN affected_groups g
-            ON m.nonce = g.nonce
-            AND (m.sponsor_address = g.address OR m.sender_address = g.address)
+            ON m.sender_address = g.address AND m.nonce = g.nonce
+          UNION
+          SELECT m.tx_id, m.fee_rate, m.receipt_time, m.pruned, g.address, g.nonce
+          FROM mempool_txs m
+          INNER JOIN affected_groups g
+            ON m.sponsor_address = g.address AND m.nonce = g.nonce
         ),
         mined_txs AS (
-          SELECT
-            t.tx_id,
-            g.address,
-            g.nonce
+          SELECT t.tx_id, g.address, g.nonce,
+            t.block_height, t.microblock_sequence, t.tx_index
           FROM txs t
           INNER JOIN affected_groups g
-            ON t.nonce = g.nonce
-            AND (t.sponsor_address = g.address OR t.sender_address = g.address)
+            ON t.sender_address = g.address AND t.nonce = g.nonce
           WHERE t.canonical = true AND t.microblock_canonical = true
-          ORDER BY t.block_height DESC, t.microblock_sequence DESC, t.tx_index DESC
+          UNION
+          SELECT t.tx_id, g.address, g.nonce,
+            t.block_height, t.microblock_sequence, t.tx_index
+          FROM txs t
+          INNER JOIN affected_groups g
+            ON t.sponsor_address = g.address AND t.nonce = g.nonce
+          WHERE t.canonical = true AND t.microblock_canonical = true
         ),
         latest_mined_txs AS (
           SELECT DISTINCT ON (address, nonce) tx_id, address, nonce
           FROM mined_txs
+          ORDER BY address, nonce, block_height DESC, microblock_sequence DESC, tx_index DESC
         ),
         highest_fee_mempool_txs AS (
           SELECT DISTINCT ON (address, nonce) tx_id, address, nonce
