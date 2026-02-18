@@ -55,8 +55,6 @@ import {
   DbTxRaw,
   DbMempoolTxRaw,
   DbChainTip,
-  RawEventRequestInsertValues,
-  IndexesState,
   NftCustodyInsertValues,
   DataStoreBnsBlockTxData,
   DbPoxSyntheticEvent,
@@ -3141,14 +3139,20 @@ export class PgWriteStore extends PgStore {
       affected_sponsored AS (
         SELECT m.tx_id
         FROM mempool_txs m
-        INNER JOIN sponsored_inputs i ON m.nonce = i.nonce::int
-        AND (m.sponsor_address = i.sponsor_address OR m.sender_address = i.sponsor_address)
+        INNER JOIN sponsored_inputs i ON m.sponsor_address = i.sponsor_address AND m.nonce = i.nonce::int
+        UNION
+        SELECT m.tx_id
+        FROM mempool_txs m
+        INNER JOIN sponsored_inputs i ON m.sender_address = i.sponsor_address AND m.nonce = i.nonce::int
       ),
       affected_non_sponsored AS (
         SELECT m.tx_id
         FROM mempool_txs m
-        INNER JOIN non_sponsored_inputs i ON m.nonce = i.nonce::int
-        AND (m.sponsor_address = i.sender_address OR m.sender_address = i.sender_address)
+        INNER JOIN non_sponsored_inputs i ON m.sponsor_address = i.sender_address AND m.nonce = i.nonce::int
+        UNION
+        SELECT m.tx_id
+        FROM mempool_txs m
+        INNER JOIN non_sponsored_inputs i ON m.sender_address = i.sender_address AND m.nonce = i.nonce::int
       ),
       affected_mempool_tx_ids AS (
         SELECT tx_id FROM affected_sponsored
@@ -3236,14 +3240,20 @@ export class PgWriteStore extends PgStore {
       affected_sponsored AS (
         SELECT m.tx_id
         FROM mempool_txs m
-        INNER JOIN sponsored_inputs i ON m.nonce = i.nonce::int
-        AND (m.sponsor_address = i.sponsor_address OR m.sender_address = i.sponsor_address)
+        INNER JOIN sponsored_inputs i ON m.sponsor_address = i.sponsor_address AND m.nonce = i.nonce::int
+        UNION
+        SELECT m.tx_id
+        FROM mempool_txs m
+        INNER JOIN sponsored_inputs i ON m.sender_address = i.sponsor_address AND m.nonce = i.nonce::int
       ),
       affected_non_sponsored AS (
         SELECT m.tx_id
         FROM mempool_txs m
-        INNER JOIN non_sponsored_inputs i ON m.nonce = i.nonce::int
-        AND (m.sponsor_address = i.sender_address OR m.sender_address = i.sender_address)
+        INNER JOIN non_sponsored_inputs i ON m.sponsor_address = i.sender_address AND m.nonce = i.nonce::int
+        UNION
+        SELECT m.tx_id
+        FROM mempool_txs m
+        INNER JOIN non_sponsored_inputs i ON m.sender_address = i.sender_address AND m.nonce = i.nonce::int
       ),
       affected_mempool_tx_ids AS (
         SELECT tx_id FROM affected_sponsored
