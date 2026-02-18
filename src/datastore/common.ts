@@ -1389,11 +1389,6 @@ export interface StxLockEventInsertValues {
   contract_name: string;
 }
 
-export interface RawEventRequestInsertValues {
-  event_path: string;
-  payload: string;
-}
-
 export interface PoxSyntheticEventQueryResult {
   event_index: number;
   tx_id: string;
@@ -1767,11 +1762,6 @@ export interface DbChainTip {
   tx_count: number;
   tx_count_unanchored: number;
   mempool_tx_count: number;
-}
-
-export enum IndexesState {
-  Off = 0,
-  On = 1,
 }
 
 export interface DbSmartContractStatus {
