@@ -1,6 +1,11 @@
 import { inspect } from 'util';
 import * as net from 'net';
-import Fastify, { FastifyInstance, FastifyRequest, FastifyServerOptions } from 'fastify';
+import Fastify, {
+  FastifyInstance,
+  FastifyReply,
+  FastifyRequest,
+  FastifyServerOptions,
+} from 'fastify';
 import PQueue from 'p-queue';
 import * as prom from 'prom-client';
 import {
@@ -808,7 +813,7 @@ export async function startEventServer(opts: {
     name: 'stacks-node-event',
     serializers: {
       req: reqLogSerializer,
-      res: reply => ({
+      res: (reply: FastifyReply) => ({
         statusCode: reply.statusCode,
         method: reply.request?.method,
         url: reply.request?.url,
@@ -828,7 +833,7 @@ export async function startEventServer(opts: {
   app.addHook('onRequest', (req, reply, done) => {
     req.raw.on('close', () => {
       if (req.raw.aborted) {
-        req.log.warn(
+        logger.warn(
           reqLogSerializer(req),
           `Request was aborted by the client: ${req.method} ${req.url}`
         );

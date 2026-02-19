@@ -2,11 +2,7 @@ import * as prom from 'prom-client';
 import { normalizeHashString } from '../../helpers';
 import { PgStore } from '../../datastore/pg-store';
 import { logger } from '../../logger';
-import {
-  CACHE_CONTROL_MUST_REVALIDATE,
-  parseIfNoneMatchHeader,
-  sha256,
-} from '@stacks/api-toolkit';
+import { CACHE_CONTROL_MUST_REVALIDATE, parseIfNoneMatchHeader, sha256 } from '@stacks/api-toolkit';
 import { FastifyReply, FastifyRequest } from 'fastify';
 import { BlockParams } from '../routes/v2/schemas';
 
