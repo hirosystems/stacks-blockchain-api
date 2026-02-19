@@ -11,7 +11,7 @@ import * as path from 'path';
 import * as fs from 'fs';
 import { startProfiler, stopProfiler } from '@hirosystems/stacks-encoding-native-js';
 import { logger } from './logger';
-import { stopwatch, Stopwatch, timeout } from '@hirosystems/api-toolkit';
+import { stopwatch, Stopwatch, timeout } from '@stacks/api-toolkit';
 
 type CpuProfileResult = inspector.Profiler.Profile;
 

@@ -1,6 +1,6 @@
 import { Block } from '../api/schemas/entities/block';
 import { SyntheticPoxEventName } from '../pox-helpers';
-import { PgBytea, PgJsonb, PgNumeric } from '@hirosystems/api-toolkit';
+import { PgBytea, PgJsonb, PgNumeric } from '@stacks/api-toolkit';
 
 export interface DbBlock {
   block_hash: string;

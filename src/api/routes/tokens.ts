@@ -3,7 +3,7 @@ import { isValidPrincipal } from '../../helpers';
 import { decodeClarityValueToRepr } from '@hirosystems/stacks-encoding-native-js';
 import { getAssetEventTypeString, parseDbTx } from '../controllers/db-controller';
 import { handleChainTipCache } from '../controllers/cache-controller';
-import { has0xPrefix } from '@hirosystems/api-toolkit';
+import { has0xPrefix } from '@stacks/api-toolkit';
 import { InvalidRequestError, InvalidRequestErrorType } from '../../errors';
 
 import { FastifyPluginAsync } from 'fastify';

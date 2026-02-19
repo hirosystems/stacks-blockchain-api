@@ -15,7 +15,7 @@ import { v2 as compose } from 'docker-compose';
 import * as path from 'path';
 import { PgWriteStore } from '../../src/datastore/pg-write-store';
 import { NonceJar, migrate, standByForTxSuccess } from '../utils/test-helpers';
-import { timeout } from '@hirosystems/api-toolkit';
+import { timeout } from '@stacks/api-toolkit';
 
 const sender1 = {
   address: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',

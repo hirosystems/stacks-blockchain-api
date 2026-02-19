@@ -3,7 +3,7 @@ import { NotFoundError } from '../../errors';
 import { getPagingQueryLimit, parsePagingQueryInput, ResourceType } from '../pagination';
 import { validateRequestHexInput } from '../query-helpers';
 import { handleChainTipCache } from '../controllers/cache-controller';
-import { has0xPrefix } from '@hirosystems/api-toolkit';
+import { has0xPrefix } from '@stacks/api-toolkit';
 
 import { FastifyPluginAsync } from 'fastify';
 import { Type, TypeBoxTypeProvider } from '@fastify/type-provider-typebox';

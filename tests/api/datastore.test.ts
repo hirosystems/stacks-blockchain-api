@@ -28,7 +28,7 @@ import { PgWriteStore } from '../../src/datastore/pg-write-store';
 import { bnsNameCV, I32_MAX } from '../../src/helpers';
 import { ChainID } from '@stacks/transactions';
 import { TestBlockBuilder } from '../utils/test-builders';
-import { PgSqlClient, bufferToHex } from '@hirosystems/api-toolkit';
+import { PgSqlClient, bufferToHex } from '@stacks/api-toolkit';
 import { migrate } from '../utils/test-helpers';
 
 describe('postgres datastore', () => {

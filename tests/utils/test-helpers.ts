@@ -51,7 +51,7 @@ import {
   PgConnectionArgs,
   runMigrations,
   timeout,
-} from '@hirosystems/api-toolkit';
+} from '@stacks/api-toolkit';
 import { MIGRATIONS_DIR } from '../../src/datastore/pg-store';
 import { getConnectionArgs } from '../../src/datastore/connection';
 import { AddressStxBalance } from '../../src/api/schemas/entities/addresses';

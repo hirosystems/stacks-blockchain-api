@@ -26,7 +26,7 @@ import {
   getWsPingTimeoutMs,
 } from '../web-socket-transmitter';
 import { logger } from '../../../../logger';
-import { isProdEnv } from '@hirosystems/api-toolkit';
+import { isProdEnv } from '@stacks/api-toolkit';
 
 const component = { component: 'socket-io' };
 

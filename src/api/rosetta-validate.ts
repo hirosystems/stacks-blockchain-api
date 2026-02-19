@@ -12,7 +12,7 @@ import {
 import { dereferenceSchema, getDocSchemaFile } from './validate';
 import { ChainID } from '@stacks/transactions';
 import { logger } from '../logger';
-import { has0xPrefix, hexToBuffer } from '@hirosystems/api-toolkit';
+import { has0xPrefix, hexToBuffer } from '@stacks/api-toolkit';
 import {
   RosettaBlockIdentifier,
   RosettaError,

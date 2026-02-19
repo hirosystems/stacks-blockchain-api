@@ -93,7 +93,7 @@ import {
   isProdEnv,
   isTestEnv,
   runMigrations,
-} from '@hirosystems/api-toolkit';
+} from '@stacks/api-toolkit';
 import { PgServer, getConnectionArgs, getConnectionConfig } from './connection';
 import { BigNumber } from 'bignumber.js';
 import { RedisNotifier } from './redis-notifier';

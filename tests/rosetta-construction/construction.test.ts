@@ -1,4 +1,4 @@
-import { bufferToHex, timeout } from '@hirosystems/api-toolkit';
+import { bufferToHex, timeout } from '@stacks/api-toolkit';
 import { hexToBytes } from '@stacks/common';
 import { StackingClient, decodeBtcAddress, poxAddressToTuple } from '@stacks/stacking';
 import {

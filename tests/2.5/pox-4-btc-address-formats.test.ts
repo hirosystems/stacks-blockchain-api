@@ -1,4 +1,4 @@
-import { hexToBuffer, timeout } from '@hirosystems/api-toolkit';
+import { hexToBuffer, timeout } from '@stacks/api-toolkit';
 import { StackingClient, decodeBtcAddress } from '@stacks/stacking';
 import {
   AnchorMode,

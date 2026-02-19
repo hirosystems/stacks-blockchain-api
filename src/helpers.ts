@@ -14,7 +14,7 @@ import * as util from 'util';
 import { StacksCoreRpcClient } from './core-rpc/client';
 import { DbEventTypeId } from './datastore/common';
 import { logger } from './logger';
-import { has0xPrefix, isDevEnv, numberToHex } from '@hirosystems/api-toolkit';
+import { has0xPrefix, isDevEnv, numberToHex } from '@stacks/api-toolkit';
 import { StacksNetwork, StacksTestnet } from '@stacks/network';
 import { getStacksTestnetNetwork } from './api/routes/debug';
 import { EventEmitter, addAbortListener } from 'node:events';

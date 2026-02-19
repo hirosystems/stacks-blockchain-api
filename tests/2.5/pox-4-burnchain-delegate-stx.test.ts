@@ -33,7 +33,7 @@ import * as supertest from 'supertest';
 import { PoxContractIdentifier } from '../../src/pox-helpers';
 import { ClarityValueUInt, decodeClarityValue } from '@hirosystems/stacks-encoding-native-js';
 import { decodeBtcAddress, poxAddressToBtcAddress } from '@stacks/stacking';
-import { timeout } from '@hirosystems/api-toolkit';
+import { timeout } from '@stacks/api-toolkit';
 import { AddressStxBalance } from '../../src/api/schemas/entities/addresses';
 import { ContractCallTransaction } from '../../src/api/schemas/entities/transactions';
 import {

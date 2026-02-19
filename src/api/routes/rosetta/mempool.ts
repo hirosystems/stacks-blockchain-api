@@ -10,7 +10,7 @@ import {
 } from '../../../rosetta/types';
 import { getOperations, parseTransactionMemo } from '../../../rosetta/rosetta-helpers';
 import { RosettaErrors, RosettaErrorsTypes } from '../../rosetta-constants';
-import { has0xPrefix } from '@hirosystems/api-toolkit';
+import { has0xPrefix } from '@stacks/api-toolkit';
 
 export function createRosettaMempoolRouter(db: PgStore, chainId: ChainID): express.Router {
   const router = express.Router();

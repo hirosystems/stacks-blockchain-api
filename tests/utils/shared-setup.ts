@@ -9,7 +9,7 @@ import {
 import { ChainID } from '@stacks/common';
 import * as isCI from 'is-ci';
 import { migrate } from './test-helpers';
-import { timeout } from '@hirosystems/api-toolkit';
+import { timeout } from '@stacks/api-toolkit';
 
 interface GlobalTestEnv {
   db: PgWriteStore;

@@ -1,4 +1,4 @@
-import { BasePgStoreModule, PgSqlClient, has0xPrefix } from '@hirosystems/api-toolkit';
+import { BasePgStoreModule, PgSqlClient, has0xPrefix } from '@stacks/api-toolkit';
 import {
   BlockLimitParamSchema,
   TransactionPaginationQueryParams,

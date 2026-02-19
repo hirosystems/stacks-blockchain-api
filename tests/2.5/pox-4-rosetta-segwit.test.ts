@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
-import { hexToBuffer, timeout } from '@hirosystems/api-toolkit';
+import { hexToBuffer, timeout } from '@stacks/api-toolkit';
 import { bytesToHex } from '@stacks/common';
 import {
   AnchorMode,

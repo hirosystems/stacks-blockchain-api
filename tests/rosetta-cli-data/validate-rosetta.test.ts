@@ -22,7 +22,7 @@ import * as path from 'path';
 import { PgWriteStore } from '../../src/datastore/pg-write-store';
 import { EventStreamServer, startEventServer } from '../../src/event-stream/event-server';
 import { NonceJar, migrate, standByForTxSuccess } from '../utils/test-helpers';
-import { timeout } from '@hirosystems/api-toolkit';
+import { timeout } from '@stacks/api-toolkit';
 
 const sender1 = {
   address: 'STF9B75ADQAVXQHNEQ6KGHXTG7JP305J2GRWF3A2',

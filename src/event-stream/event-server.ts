@@ -65,7 +65,7 @@ import {
 import { handleBnsImport } from '../import-v1';
 import { decodePoxSyntheticPrintEvent } from './pox-event-parsing';
 import { logger } from '../logger';
-import { hexToBuffer, isProdEnv, PINO_LOGGER_CONFIG, stopwatch } from '@hirosystems/api-toolkit';
+import { hexToBuffer, isProdEnv, PINO_LOGGER_CONFIG, stopwatch } from '@stacks/api-toolkit';
 import { POX_2_CONTRACT_NAME, POX_3_CONTRACT_NAME, POX_4_CONTRACT_NAME } from '../pox-helpers';
 import {
   DropMempoolTxMessage,

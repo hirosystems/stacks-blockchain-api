@@ -12,7 +12,7 @@ import {
   parseDbTx,
   searchHashWithMetadata,
 } from '../controllers/db-controller';
-import { has0xPrefix } from '@hirosystems/api-toolkit';
+import { has0xPrefix } from '@stacks/api-toolkit';
 import { FastifyPluginAsync } from 'fastify';
 import { Type, TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
 import { Server } from 'node:http';

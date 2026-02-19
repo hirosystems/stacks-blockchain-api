@@ -1,5 +1,5 @@
-import { parseBoolean, SERVER_VERSION } from '@hirosystems/api-toolkit';
-import { logger as defaultLogger } from '@hirosystems/api-toolkit';
+import { parseBoolean, SERVER_VERSION } from '@stacks/api-toolkit';
+import { logger as defaultLogger } from '@stacks/api-toolkit';
 import { EventEmitter } from 'node:events';
 import { EventStreamServer } from './event-server';
 import { PgWriteStore } from '../datastore/pg-write-store';

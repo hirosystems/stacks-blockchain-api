@@ -70,7 +70,7 @@ import { PgStore } from '../datastore/pg-store';
 import { poxAddressToBtcAddress } from '@stacks/stacking';
 import { parseRecoverableSignatureVrs } from '@stacks/common';
 import { logger } from '../logger';
-import { hexToBuffer } from '@hirosystems/api-toolkit';
+import { hexToBuffer } from '@stacks/api-toolkit';
 import { RosettaFtMetadata, RosettaFtMetadataClient } from './rosetta-ft-metadata-client';
 import { PoxContractIdentifiers } from '../pox-helpers';
 import { ContractCallTransaction } from '../api/schemas/entities/transactions';

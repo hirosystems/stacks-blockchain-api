@@ -2,7 +2,7 @@ import { Type, Static, TSchema } from '@sinclair/typebox';
 import { ResourceType, pagingQueryLimits } from '../../../api/pagination';
 import Ajv from 'ajv';
 import addFormats from 'ajv-formats';
-import { has0xPrefix, isTestEnv } from '@hirosystems/api-toolkit';
+import { has0xPrefix, isTestEnv } from '@stacks/api-toolkit';
 
 const ajv = addFormats(new Ajv({ coerceTypes: true }), [
   'date-time',

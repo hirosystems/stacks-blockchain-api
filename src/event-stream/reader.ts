@@ -53,7 +53,7 @@ import { decodePoxSyntheticPrintEvent } from './pox-event-parsing';
 import { PoxContractIdentifiers, SyntheticPoxEventName } from '../pox-helpers';
 import { principalCV } from '@stacks/transactions/dist/clarity/types/principalCV';
 import { logger } from '../logger';
-import { bufferToHex, hexToBuffer } from '@hirosystems/api-toolkit';
+import { bufferToHex, hexToBuffer } from '@stacks/api-toolkit';
 import { hexToBytes } from '@stacks/common';
 import {
   BurnchainOpDelegateStx,

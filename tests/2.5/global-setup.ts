@@ -4,7 +4,7 @@ import { PgWriteStore } from '../../src/datastore/pg-write-store';
 import { EventStreamServer, startEventServer } from '../../src/event-stream/event-server';
 import { ChainID } from '@stacks/transactions';
 import { migrate } from '../utils/test-helpers';
-import { timeout } from '@hirosystems/api-toolkit';
+import { timeout } from '@stacks/api-toolkit';
 
 export interface GlobalTestEnv {
   db: PgWriteStore;

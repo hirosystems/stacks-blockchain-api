@@ -16,7 +16,7 @@ import { createClarityValueArray } from '../../src/stacks-encoding-helpers';
 import { PgWriteStore } from '../../src/datastore/pg-write-store';
 import { principalCV } from '@stacks/transactions/dist/clarity/types/principalCV';
 import { migrate } from '../utils/test-helpers';
-import { bufferToHex } from '@hirosystems/api-toolkit';
+import { bufferToHex } from '@stacks/api-toolkit';
 import nock = require('nock');
 
 describe('/block tests', () => {

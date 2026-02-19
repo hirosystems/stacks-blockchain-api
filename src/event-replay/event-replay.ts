@@ -7,7 +7,7 @@ import { getApiConfiguredChainID, HttpClientResponse, httpPostRequest } from '..
 import { importV1TokenOfferingData } from '../import-v1';
 import { findTsvBlockHeight, getDbBlockHeight } from './helpers';
 import { logger } from '../logger';
-import { cycleMigrations, dangerousDropAllTables, databaseHasData } from '@hirosystems/api-toolkit';
+import { cycleMigrations, dangerousDropAllTables, databaseHasData } from '@stacks/api-toolkit';
 import { MIGRATIONS_DIR } from '../datastore/pg-store';
 import { PgServer, getConnectionArgs } from '../datastore/connection';
 

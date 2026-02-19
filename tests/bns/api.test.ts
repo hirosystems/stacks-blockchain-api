@@ -13,7 +13,7 @@ import { bnsNameCV, I32_MAX } from '../../src/helpers';
 import { PgWriteStore } from '../../src/datastore/pg-write-store';
 import { TestBlockBuilder, TestMicroblockStreamBuilder } from '../utils/test-builders';
 import { migrate } from '../utils/test-helpers';
-import { PgSqlClient } from '@hirosystems/api-toolkit';
+import { PgSqlClient } from '@stacks/api-toolkit';
 
 const nameSpaceExpected = {
   type: StacksTransactions.ClarityType.ResponseOk,

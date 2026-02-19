@@ -1,6 +1,6 @@
 import { Type } from '@sinclair/typebox';
 import { pagingQueryLimits, ResourceType } from '../pagination';
-import { isTestEnv } from '@hirosystems/api-toolkit';
+import { isTestEnv } from '@stacks/api-toolkit';
 
 export const OffsetParam = (title?: string, description?: string) =>
   Type.Optional(

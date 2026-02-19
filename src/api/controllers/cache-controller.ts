@@ -6,7 +6,7 @@ import {
   CACHE_CONTROL_MUST_REVALIDATE,
   parseIfNoneMatchHeader,
   sha256,
-} from '@hirosystems/api-toolkit';
+} from '@stacks/api-toolkit';
 import { FastifyReply, FastifyRequest } from 'fastify';
 import { BlockParams } from '../routes/v2/schemas';
 

@@ -7,7 +7,7 @@ import {
 } from '../../src/datastore/common';
 import { startApiServer, ApiServer } from '../../src/api/init';
 import { PgWriteStore } from '../../src/datastore/pg-write-store';
-import { PgSqlClient } from '@hirosystems/api-toolkit';
+import { PgSqlClient } from '@stacks/api-toolkit';
 import { migrate } from '../utils/test-helpers';
 
 describe('burnchain tests', () => {

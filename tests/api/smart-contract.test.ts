@@ -11,7 +11,7 @@ import {
 import { startApiServer, ApiServer } from '../../src/api/init';
 import { I32_MAX } from '../../src/helpers';
 import { PgWriteStore } from '../../src/datastore/pg-write-store';
-import { bufferToHex, PgSqlClient, waiter } from '@hirosystems/api-toolkit';
+import { bufferToHex, PgSqlClient, waiter } from '@stacks/api-toolkit';
 import { migrate } from '../utils/test-helpers';
 import { TestBlockBuilder, testMempoolTx } from '../utils/test-builders';
 

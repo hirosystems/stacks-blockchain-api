@@ -30,7 +30,7 @@ import {
 } from '../../src/datastore/common';
 import { bufferCV, bufferCVFromString, serializeCV, uintCV } from '@stacks/transactions';
 import { createClarityValueArray } from '../../src/stacks-encoding-helpers';
-import { bufferToHex } from '@hirosystems/api-toolkit';
+import { bufferToHex } from '@stacks/api-toolkit';
 
 // Default values when none given. Useful when they are irrelevant for a particular test.
 const BLOCK_HEIGHT = 1;

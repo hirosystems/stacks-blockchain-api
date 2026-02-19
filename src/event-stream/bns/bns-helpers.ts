@@ -19,7 +19,7 @@ import {
   TxPayloadTypeID,
 } from '@hirosystems/stacks-encoding-native-js';
 import { DbBnsNamespace, DbBnsName } from '../../datastore/common';
-import { hexToBuffer, hexToUtf8String } from '@hirosystems/api-toolkit';
+import { hexToBuffer, hexToUtf8String } from '@stacks/api-toolkit';
 import {
   NewBlockContractEvent,
   NewBlockEvent,

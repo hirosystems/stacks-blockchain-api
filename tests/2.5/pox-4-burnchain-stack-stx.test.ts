@@ -32,7 +32,7 @@ import { RPCClient } from 'rpc-bitcoin';
 import * as supertest from 'supertest';
 import { ClarityValueUInt, decodeClarityValue } from '@hirosystems/stacks-encoding-native-js';
 import { decodeBtcAddress, poxAddressToTuple } from '@stacks/stacking';
-import { timeout } from '@hirosystems/api-toolkit';
+import { timeout } from '@stacks/api-toolkit';
 import { hexToBytes } from '@stacks/common';
 import { AddressStxBalance } from '../../src/api/schemas/entities/addresses';
 import { TransactionEventsResponse } from '../../src/api/schemas/responses/responses';

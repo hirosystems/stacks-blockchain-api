@@ -1,5 +1,5 @@
 import { SwaggerOptions } from '@fastify/swagger';
-import { SERVER_VERSION } from '@hirosystems/api-toolkit';
+import { SERVER_VERSION } from '@stacks/api-toolkit';
 
 export const OpenApiSchemaOptions: SwaggerOptions = {
   openapi: {
