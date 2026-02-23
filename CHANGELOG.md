@@ -1,3 +1,9 @@
+## [9.0.0-next.18](https://github.com/hirosystems/stacks-blockchain-api/compare/v9.0.0-next.17...v9.0.0-next.18) (2026-02-23)
+
+### Features
+
+* ingest bitcoin pox transactions, upgrade to SNP 2.0 streams ([#2449](https://github.com/hirosystems/stacks-blockchain-api/issues/2449)) ([e12fe84](https://github.com/hirosystems/stacks-blockchain-api/commit/e12fe84a87f1d6499f55b1a80ba36b4656d206c3)), closes [#2450](https://github.com/hirosystems/stacks-blockchain-api/issues/2450)
+
 ## [9.0.0-next.17](https://github.com/hirosystems/stacks-blockchain-api/compare/v9.0.0-next.16...v9.0.0-next.17) (2026-02-23)
 
 ### Bug Fixes
