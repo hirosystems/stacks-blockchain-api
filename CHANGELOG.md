@@ -1,3 +1,10 @@
+## [9.0.0-next.17](https://github.com/hirosystems/stacks-blockchain-api/compare/v9.0.0-next.16...v9.0.0-next.17) (2026-02-23)
+
+### Bug Fixes
+
+* drop slow unused gin index on blocks ([0cf4329](https://github.com/hirosystems/stacks-blockchain-api/commit/0cf43295c17bd0e4cc165bb2cbd0f74529b5da60))
+* use a secondary processing queue for mempool events ([#2461](https://github.com/hirosystems/stacks-blockchain-api/issues/2461)) ([234d266](https://github.com/hirosystems/stacks-blockchain-api/commit/234d2664b3e9f44b6ed2a900526ab2aba07aeb33))
+
 ## [9.0.0-next.16](https://github.com/hirosystems/stacks-blockchain-api/compare/v9.0.0-next.15...v9.0.0-next.16) (2026-02-06)
 
 ### Bug Fixes
