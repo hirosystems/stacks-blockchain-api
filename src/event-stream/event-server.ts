@@ -689,7 +689,11 @@ function createMessageProcessorQueue(db: PgWriteStore): EventMessageHandler {
 
   const handler: EventMessageHandler = {
     handleRawEventRequest: (eventPath: string, payload: any, db: PgWriteStore) => {
-      return primaryQueue
+      const queue =
+        eventPath === '/new_block' || eventPath === '/new_burn_block'
+          ? primaryQueue
+          : secondaryQueue;
+      return queue
         .add(() => observeEvent('raw_event', () => handleRawEventRequest(eventPath, payload, db)))
         .catch(e => {
           logger.error(e, 'Error storing raw core node request data');
