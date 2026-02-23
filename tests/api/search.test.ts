@@ -17,7 +17,7 @@ import {
 import { startApiServer, ApiServer } from '../../src/api/init';
 import { I32_MAX } from '../../src/helpers';
 import { PgWriteStore } from '../../src/datastore/pg-write-store';
-import { PgSqlClient, bufferToHex } from '@hirosystems/api-toolkit';
+import { PgSqlClient, bufferToHex } from '@stacks/api-toolkit';
 import { migrate } from '../utils/test-helpers';
 
 describe('search tests', () => {

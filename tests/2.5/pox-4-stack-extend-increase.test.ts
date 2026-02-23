@@ -21,7 +21,7 @@ import {
   testEnv,
 } from '../utils/test-helpers';
 import { decodeBtcAddress, StackingClient } from '@stacks/stacking';
-import { hexToBuffer } from '@hirosystems/api-toolkit';
+import { hexToBuffer } from '@stacks/api-toolkit';
 import * as assert from 'assert';
 import { hexToBytes } from '@stacks/common';
 import { getPublicKeyFromPrivate } from '@stacks/encryption';

@@ -26,7 +26,7 @@ import {
   PINO_LOGGER_CONFIG,
   registerShutdownConfig,
   timeout,
-} from '@hirosystems/api-toolkit';
+} from '@stacks/api-toolkit';
 import Fastify from 'fastify';
 import { SnpEventStreamHandler } from './event-stream/snp-event-stream';
 
@@ -168,9 +168,7 @@ async function init(): Promise<void> {
     }
 
     if (snpEnabled) {
-      const lastRedisMsgId = await dbWriteStore.getLastIngestedSnpRedisMsgId();
       const snpStream = new SnpEventStreamHandler({
-        lastMessageId: lastRedisMsgId,
         db: dbWriteStore,
         eventServer,
       });

@@ -9,7 +9,7 @@ import { ADDR_CACHE_ENV_VAR } from '../../src/c32-addr-cache';
 import { isValidBitcoinAddress, getUintEnvOrDefault, BitVec } from '../../src/helpers';
 import { ECPair, getBitcoinAddressFromKey } from '../../src/ec-helpers';
 import { decodeBtcAddress, poxAddressToBtcAddress } from '@stacks/stacking';
-import { has0xPrefix } from '@hirosystems/api-toolkit';
+import { has0xPrefix } from '@stacks/api-toolkit';
 
 describe('has0xPrefix()', () => {
   test('falsy case, where there be no 0x', () => {

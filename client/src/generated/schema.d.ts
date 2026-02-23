@@ -178,9 +178,7 @@ export interface paths {
         /**
          * Transactions by block hash
          * @deprecated
-         * @description **NOTE:** This endpoint is deprecated in favor of [Get transactions by block](/api/get-transactions-by-block).
-         *
-         *             Retrieves a list of all transactions within a block for a given block hash.
+         * @description Retrieves a list of all transactions within a block for a given block hash. **This endpoint is deprecated in favor of `get_transactions_by_block`.**
          */
         get: operations["get_transactions_by_block_hash"];
         put?: never;
@@ -201,9 +199,7 @@ export interface paths {
         /**
          * Transactions by block height
          * @deprecated
-         * @description **NOTE:** This endpoint is deprecated in favor of [Get transactions by block](/api/get-transactions-by-block).
-         *
-         *             Retrieves all transactions within a block at a given height
+         * @description Retrieves all transactions within a block at a given height. **This endpoint is deprecated in favor of `get_transactions_by_block`.**
          */
         get: operations["get_transactions_by_block_height"];
         put?: never;
@@ -244,7 +240,7 @@ export interface paths {
         /**
          * Get total STX supply in plain text format
          * @deprecated
-         * @description Retrieves the total circulating STX token supply as plain text.
+         * @description Retrieves the total circulating STX token supply as plain text. **This endpoint is deprecated in favor of `get_stx_supply`.**
          */
         get: operations["get_stx_supply_total_supply_plain"];
         put?: never;
@@ -265,7 +261,7 @@ export interface paths {
         /**
          * Get circulating STX supply in plain text format
          * @deprecated
-         * @description Retrieves the STX tokens currently in circulation that have been unlocked as plain text.
+         * @description Retrieves the STX tokens currently in circulation that have been unlocked as plain text. **This endpoint is deprecated in favor of `get_stx_supply`.**
          */
         get: operations["get_stx_supply_circulating_plain"];
         put?: never;
@@ -286,7 +282,7 @@ export interface paths {
         /**
          * Get total and unlocked STX supply (results formatted the same as the legacy 1.0 API)
          * @deprecated
-         * @description Retrieves total supply of STX tokens including those currently in circulation that have been unlocked.
+         * @description Retrieves total supply of STX tokens including those currently in circulation that have been unlocked. **This endpoint is deprecated in favor of `get_stx_supply`.**
          */
         get: operations["get_total_stx_supply_legacy_format"];
         put?: never;
@@ -579,11 +575,7 @@ export interface paths {
         /**
          * Get recent blocks
          * @deprecated
-         * @description **NOTE:** This endpoint is deprecated in favor of [Get blocks](/api/get-blocks).
-         *
-         *               Retrieves a list of recently mined blocks
-         *
-         *               If you need to actively monitor new blocks, we highly recommend subscribing to [WebSockets or Socket.io](https://github.com/hirosystems/stacks-blockchain-api/tree/master/client) for real-time updates.
+         * @description Retrieves a list of recently mined blocks. **This endpoint is deprecated in favor of `get_blocks`.**
          */
         get: operations["get_block_list"];
         put?: never;
@@ -604,9 +596,7 @@ export interface paths {
         /**
          * Get block by height
          * @deprecated
-         * @description **NOTE:** This endpoint is deprecated in favor of [Get block](/api/get-block).
-         *
-         *             Retrieves block details of a specific block at a given block height
+         * @description Retrieves block details of a specific block at a given block height. **This endpoint is deprecated in favor of `get_block`.**
          */
         get: operations["get_block_by_height"];
         put?: never;
@@ -627,9 +617,7 @@ export interface paths {
         /**
          * Get block by burnchain height
          * @deprecated
-         * @description **NOTE:** This endpoint is deprecated in favor of [Get blocks](/api/get-blocks).
-         *
-         *             Retrieves block details of a specific block for a given burn chain height
+         * @description Retrieves block details of a specific block for a given burn chain height. **This endpoint is deprecated in favor of `get_blocks_by_burn_block`.**
          */
         get: operations["get_block_by_burn_block_height"];
         put?: never;
@@ -650,9 +638,7 @@ export interface paths {
         /**
          * Get block by hash
          * @deprecated
-         * @description **NOTE:** This endpoint is deprecated in favor of [Get block](/api/get-block).
-         *
-         *             Retrieves block details of a specific block for a given chain height. You can use the hash from your latest block ('get_block_list' API) to get your block details.
+         * @description Retrieves block details of a specific block for a given chain height. **This endpoint is deprecated in favor of `get_block`.**
          */
         get: operations["get_block_by_hash"];
         put?: never;
@@ -673,9 +659,7 @@ export interface paths {
         /**
          * Get block by burnchain block hash
          * @deprecated
-         * @description **NOTE:** This endpoint is deprecated in favor of [Get blocks](/api/get-blocks).
-         *
-         *             Retrieves block details of a specific block for a given burnchain block hash
+         * @description Retrieves block details of a specific block for a given burnchain block hash. **This endpoint is deprecated in favor of `get_blocks_by_burn_block`.**
          */
         get: operations["get_block_by_burn_block_hash"];
         put?: never;
@@ -796,9 +780,7 @@ export interface paths {
         /**
          * Get account STX balance
          * @deprecated
-         * @description **NOTE:** This endpoint is deprecated in favor of [Get address STX balance](/api/get-principal-stx-balance).
-         *
-         *             Retrieves STX token balance for a given Address or Contract Identifier.
+         * @description Retrieves STX token balance for a given Address or Contract Identifier. **This endpoint is deprecated in favor of `get_principal_stx_balance`.**
          */
         get: operations["get_account_stx_balance"];
         put?: never;
@@ -819,9 +801,7 @@ export interface paths {
         /**
          * Get account balances
          * @deprecated
-         * @description **NOTE:** This endpoint is deprecated in favor of [Get address FT balances](/api/get-principal-ft-balances).
-         *
-         *             Retrieves total account balance information for a given Address or Contract Identifier. This includes the balances of STX Tokens, Fungible Tokens and Non-Fungible Tokens for the account.
+         * @description Retrieves total account balance information for a given Address or Contract Identifier. This includes the balances of STX Tokens, Fungible Tokens and Non-Fungible Tokens for the account. **This endpoint is deprecated in favor of `get_principal_ft_balances`.**
          */
         get: operations["get_account_balance"];
         put?: never;
@@ -842,11 +822,7 @@ export interface paths {
         /**
          * Get account transactions
          * @deprecated
-         * @description **NOTE:** This endpoint is deprecated in favor of [Get address transactions](/api/get-address-transactions).
-         *
-         *             Retrieves a list of all Transactions for a given Address or Contract Identifier. More information on Transaction types can be found [here](https://docs.stacks.co/transactions/how-transactions-work#types).
-         *
-         *             If you need to actively monitor new transactions for an address or contract id, we highly recommend subscribing to [WebSockets or Socket.io](https://github.com/hirosystems/stacks-blockchain-api/tree/master/client) for real-time updates.
+         * @description Retrieves a list of all Transactions for a given Address or Contract Identifier. **This endpoint is deprecated in favor of `get_address_transactions`.**
          */
         get: operations["get_account_transactions"];
         put?: never;
@@ -867,9 +843,7 @@ export interface paths {
         /**
          * Get account transaction information for specific transaction
          * @deprecated
-         * @description **NOTE:** This endpoint is deprecated in favor of [Get events for an address transaction](/api/get-address-transaction-events).
-         *
-         *             Retrieves transaction details for a given Transaction Id `tx_id`, for a given account or contract Identifier.
+         * @description Retrieves transaction details for a given Transaction Id, for a given account or contract Identifier. **This endpoint is deprecated in favor of `get_address_transaction_events`.**
          */
         get: operations["get_single_transaction_with_transfers"];
         put?: never;
@@ -890,7 +864,7 @@ export interface paths {
         /**
          * Get account transactions including STX transfers for each transaction.
          * @deprecated
-         * @description Retrieve all transactions for an account or contract identifier including STX transfers for each transaction.
+         * @description Retrieve all transactions for an account or contract identifier including STX transfers for each transaction. **This endpoint is deprecated in favor of `get_address_transactions`.**
          */
         get: operations["get_account_transactions_with_transfers"];
         put?: never;
@@ -910,7 +884,8 @@ export interface paths {
         };
         /**
          * Get account assets
-         * @description Retrieves a list of all assets events associated with an account or a Contract Identifier. This includes Transfers, Mints.
+         * @deprecated
+         * @description Retrieves a list of all assets events associated with an account or a Contract Identifier. This includes Transfers, Mints. **This endpoint is deprecated in favor of `get_address_transaction_events`.**
          */
         get: operations["get_account_assets"];
         put?: never;
@@ -930,8 +905,8 @@ export interface paths {
         };
         /**
          * Get inbound STX transfers
-         * @description Retrieves a list of STX transfers with memos to the given principal. This includes regular transfers from a stx-transfer transaction type,
-         *             and transfers from contract-call transactions a the `send-many-memo` bulk sending contract.
+         * @deprecated
+         * @description Retrieves a list of STX transfers with memos to the given principal. This includes regular transfers from a stx-transfer transaction type, and transfers from contract-call transactions a the `send-many-memo` bulk sending contract. **This endpoint is deprecated in favor of `get_address_transactions`.**
          */
         get: operations["get_account_inbound"];
         put?: never;
@@ -1370,6 +1345,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/extended/v2/burn-blocks/{height_or_hash}/pox-transactions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get PoX transactions by burn block
+         * @description Retrieves a list of PoX transactions confirmed by a specific burn block
+         */
+        get: operations["get_burn_block_pox_transactions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/extended/v2/block-tenures/{tenure_height}/blocks": {
         parameters: {
             query?: never;
@@ -1624,6 +1619,26 @@ export interface paths {
          * @description Retrieves a specific fungible-token balance for a given principal.
          */
         get: operations["get_principal_ft_balance"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/extended/v2/addresses/{burnchain_address}/pox-transactions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get PoX transactions for a burnchain address
+         * @description Retrieves a list of PoX transactions
+         */
+        get: operations["get_burnchain_address_pox_transactions"];
         put?: never;
         post?: never;
         delete?: never;
@@ -29210,6 +29225,68 @@ export interface operations {
             };
         };
     };
+    get_burn_block_pox_transactions: {
+        parameters: {
+            query?: {
+                /** @description Results per page */
+                limit?: number;
+                /** @description Result offset */
+                offset?: number;
+            };
+            header?: never;
+            path: {
+                height_or_hash: "latest" | string | number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @example 20 */
+                        limit: number;
+                        /** @example 0 */
+                        offset: number;
+                        /** @example 1 */
+                        total: number;
+                        results: {
+                            /** @description Height of the burn block */
+                            burn_block_height: number;
+                            /** @description Hash of the burn block */
+                            burn_block_hash: string;
+                            /** @description Transaction ID */
+                            tx_id: string;
+                            /** @description Recipient address */
+                            recipient: string;
+                            /** @description UTXO index */
+                            utxo_idx: number;
+                            /** @description Amount */
+                            amount: string;
+                        }[];
+                    };
+                };
+            };
+            /** @description Default Response */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: string;
+                        message?: string;
+                    } & {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
     get_tenure_blocks: {
         parameters: {
             query?: {
@@ -29727,6 +29804,9 @@ export interface operations {
                         offset: number;
                         /** @example 1 */
                         total: number;
+                        next_cursor: string | null;
+                        prev_cursor: string | null;
+                        cursor: string | null;
                         results: {
                             tx: {
                                 /** @description Transaction ID */
@@ -31292,7 +31372,7 @@ export interface operations {
             header?: never;
             path: {
                 principal: string;
-                /** @description fungible token identifier */
+                /** @description fungible token identifier, e.g. `SM3VDXK3WZZSA84XXFKAFAF15NNZX32CTSG82JFQ4.sbtc-token::sbtc-token` */
                 token: string;
             };
             cookie?: never;
@@ -31307,6 +31387,72 @@ export interface operations {
                 content: {
                     "application/json": {
                         balance: string;
+                    };
+                };
+            };
+            /** @description Default Response */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: string;
+                        message?: string;
+                    } & {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
+    get_burnchain_address_pox_transactions: {
+        parameters: {
+            query?: {
+                /** @description Results per page */
+                limit?: number;
+                /** @description Result offset */
+                offset?: number;
+            };
+            header?: never;
+            path: {
+                /**
+                 * @description Bitcoin Address
+                 * @example bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq
+                 */
+                burnchain_address: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @example 20 */
+                        limit: number;
+                        /** @example 0 */
+                        offset: number;
+                        /** @example 1 */
+                        total: number;
+                        results: {
+                            /** @description Height of the burn block */
+                            burn_block_height: number;
+                            /** @description Hash of the burn block */
+                            burn_block_hash: string;
+                            /** @description Transaction ID */
+                            tx_id: string;
+                            /** @description Recipient address */
+                            recipient: string;
+                            /** @description UTXO index */
+                            utxo_idx: number;
+                            /** @description Amount */
+                            amount: string;
+                        }[];
                     };
                 };
             };

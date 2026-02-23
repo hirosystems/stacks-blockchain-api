@@ -44,7 +44,7 @@ import {
   isProdEnv,
   parseBoolean,
   waiter,
-} from '@hirosystems/api-toolkit';
+} from '@stacks/api-toolkit';
 import { BlockRoutesV2 } from './routes/v2/blocks';
 import { BurnBlockRoutesV2 } from './routes/v2/burn-blocks';
 import { MempoolRoutesV2 } from './routes/v2/mempool';

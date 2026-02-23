@@ -1,4 +1,4 @@
-import { PgConnectionArgs, PgConnectionOptions } from '@hirosystems/api-toolkit';
+import { PgConnectionArgs, PgConnectionOptions } from '@stacks/api-toolkit';
 
 /**
  * The postgres server being used for a particular connection, transaction or query.

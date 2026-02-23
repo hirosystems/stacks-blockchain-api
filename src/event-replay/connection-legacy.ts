@@ -4,7 +4,7 @@
 import { Client, ClientConfig, Pool, PoolClient, PoolConfig } from 'pg';
 import { PgServer } from '../datastore/connection';
 import { logger } from '../logger';
-import { isPgConnectionError, parseBoolean, stopwatch, timeout } from '@hirosystems/api-toolkit';
+import { isPgConnectionError, parseBoolean, stopwatch, timeout } from '@stacks/api-toolkit';
 import { parsePort } from '../helpers';
 
 type PgClientConfig = ClientConfig & { schema?: string };

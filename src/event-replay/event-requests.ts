@@ -5,7 +5,7 @@ import { getConnectionArgs, getConnectionConfig, PgServer } from '../datastore/c
 import { connectPgPool } from './connection-legacy';
 import * as pgCopyStreams from 'pg-copy-streams';
 import * as PgCursor from 'pg-cursor';
-import { connectPostgres } from '@hirosystems/api-toolkit';
+import { connectPostgres } from '@stacks/api-toolkit';
 import { createWriteStream } from 'node:fs';
 
 export async function exportRawEventRequests(filePath: string, local: boolean): Promise<void> {

@@ -12,7 +12,7 @@ import {
 } from '../../../rosetta/types';
 import { RosettaErrors, RosettaConstants, RosettaErrorsTypes } from '../../rosetta-constants';
 import { rosettaValidateRequest, ValidSchema, makeRosettaError } from '../../rosetta-validate';
-import { has0xPrefix } from '@hirosystems/api-toolkit';
+import { has0xPrefix } from '@stacks/api-toolkit';
 import { RosettaFtMetadataClient } from '../../../rosetta/rosetta-ft-metadata-client';
 import { AddressTokenOfferingLocked } from '../../schemas/entities/addresses';
 

@@ -8,7 +8,7 @@ import { TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
 import { Server, ServerResponse } from 'node:http';
 import { fastifyHttpProxy } from '@fastify/http-proxy';
 import { StacksCoreRpcClient } from '../../core-rpc/client';
-import { parseBoolean } from '@hirosystems/api-toolkit';
+import { parseBoolean } from '@stacks/api-toolkit';
 
 function GetStacksNodeProxyEndpoint() {
   // Use STACKS_CORE_PROXY env vars if available, otherwise fallback to `STACKS_CORE_RPC

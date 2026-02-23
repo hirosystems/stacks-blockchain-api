@@ -5,7 +5,7 @@ import { httpPostRequest } from '../../src/helpers';
 import { EventStreamServer, startEventServer } from '../../src/event-stream/event-server';
 import { getRawEventRequests } from '../../src/event-replay/event-requests';
 import { useWithCleanup } from '../api/test-helpers';
-import { PgSqlClient } from '@hirosystems/api-toolkit';
+import { PgSqlClient } from '@stacks/api-toolkit';
 import { migrate } from '../utils/test-helpers';
 
 describe('Events table', () => {

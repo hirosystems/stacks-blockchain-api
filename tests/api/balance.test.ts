@@ -4,7 +4,7 @@ import { DbTxTypeId } from '../../src/datastore/common';
 import { startApiServer, ApiServer } from '../../src/api/init';
 import { TestBlockBuilder, TestMicroblockStreamBuilder } from '../utils/test-builders';
 import { PgWriteStore } from '../../src/datastore/pg-write-store';
-import { PgSqlClient } from '@hirosystems/api-toolkit';
+import { PgSqlClient } from '@stacks/api-toolkit';
 import { migrate } from '../utils/test-helpers';
 
 describe('balance tests', () => {

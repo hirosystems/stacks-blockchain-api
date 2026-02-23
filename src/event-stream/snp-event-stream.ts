@@ -1,15 +1,16 @@
-import { parseBoolean, SERVER_VERSION } from '@hirosystems/api-toolkit';
-import { logger as defaultLogger } from '@hirosystems/api-toolkit';
-import { StacksEventStream, StacksEventStreamType } from '@hirosystems/salt-n-pepper-client';
+import { parseBoolean, SERVER_VERSION } from '@stacks/api-toolkit';
+import { logger as defaultLogger } from '@stacks/api-toolkit';
 import { EventEmitter } from 'node:events';
 import { EventStreamServer } from './event-server';
 import { PgWriteStore } from '../datastore/pg-write-store';
+import { StacksMessageStream } from '@stacks/node-publisher-client';
+import { MessagePath } from '@stacks/node-publisher-client/dist/messages';
 
 export class SnpEventStreamHandler {
   db: PgWriteStore;
   eventServer: EventStreamServer;
   logger = defaultLogger.child({ name: 'SnpEventStreamHandler' });
-  snpClientStream: StacksEventStream;
+  snpClientStream: StacksMessageStream;
   redisUrl: string;
   redisStreamPrefix: string | undefined;
 
@@ -17,7 +18,7 @@ export class SnpEventStreamHandler {
     processedMessage: [{ msgId: string }];
   }>();
 
-  constructor(opts: { db: PgWriteStore; eventServer: EventStreamServer; lastMessageId: string }) {
+  constructor(opts: { db: PgWriteStore; eventServer: EventStreamServer }) {
     this.db = opts.db;
     this.eventServer = opts.eventServer;
 
@@ -31,33 +32,50 @@ export class SnpEventStreamHandler {
     const blocksOnly = process.env.SNP_BLOCKS_ONLY_STREAMING
       ? parseBoolean(process.env.SNP_BLOCKS_ONLY_STREAMING)
       : false;
-    const eventStreamType = blocksOnly
-      ? StacksEventStreamType.confirmedChainEvents
-      : StacksEventStreamType.chainEvents;
-    this.logger.info(
-      `SNP streaming enabled, lastMsgId: ${opts.lastMessageId}, eventStreamType: ${eventStreamType}`
-    );
+    const selectedMessagePaths: MessagePath[] = [MessagePath.NewBlock, MessagePath.NewBurnBlock];
+    if (!blocksOnly) {
+      selectedMessagePaths.push(MessagePath.NewMempoolTx);
+      selectedMessagePaths.push(MessagePath.DropMempoolTx);
+    }
+    this.logger.info(`SNP streaming enabled, blocksOnly: ${blocksOnly}`);
 
     const appName = `stacks-blockchain-api ${SERVER_VERSION.tag} (${SERVER_VERSION.branch}:${SERVER_VERSION.commit})`;
 
-    this.snpClientStream = new StacksEventStream({
+    this.snpClientStream = new StacksMessageStream({
+      appName,
       redisUrl: this.redisUrl,
       redisStreamPrefix: this.redisStreamPrefix,
-      eventStreamType,
-      lastMessageId: opts.lastMessageId,
-      appName,
+      options: {
+        selectedMessagePaths,
+      },
     });
   }
 
   async start() {
     this.logger.info(`Connecting to SNP event stream at ${this.redisUrl} ...`);
     await this.snpClientStream.connect({ waitForReady: true });
-    this.snpClientStream.start(async (messageId, timestamp, path, body) => {
-      return this.handleMsg(messageId, timestamp, path, body);
-    });
+    this.snpClientStream.start(
+      async () => {
+        const chainTip = await this.db.getChainTip(this.db.sql);
+        if (chainTip.block_count === 0) {
+          this.logger.error('Chainstate is empty, starting SNP stream from genesis');
+          return null;
+        }
+        this.logger.info(
+          `Starting SNP stream at position: ${chainTip.index_block_hash}@${chainTip.block_height}`
+        );
+        return {
+          indexBlockHash: chainTip.index_block_hash,
+          blockHeight: chainTip.block_height,
+        };
+      },
+      async (id, timestamp, message) => {
+        return this.handleMsg(id, timestamp, message.path, message.payload);
+      }
+    );
   }
 
-  async handleMsg(messageId: string, timestamp: string, path: string, body: any) {
+  async handleMsg(messageId: string, _timestamp: string, path: string, body: any) {
     this.logger.debug(`Received SNP stream event ${path}, msgId: ${messageId}`);
     let response;
 
@@ -78,8 +96,6 @@ export class SnpEventStreamHandler {
       this.logger.error(errorMessage);
       throw new Error(errorMessage);
     }
-
-    await this.db.updateLastIngestedSnpRedisMsgId(this.db.sql, messageId);
 
     this.events.emit('processedMessage', { msgId: messageId });
   }

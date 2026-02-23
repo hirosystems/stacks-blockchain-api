@@ -1,4 +1,4 @@
-import { timeout } from '@hirosystems/api-toolkit';
+import { timeout } from '@stacks/api-toolkit';
 import { testnetKeys } from '../../src/api/routes/debug';
 import { CoreRpcPoxInfo } from '../../src/core-rpc/client';
 import { DbTxStatus } from '../../src/datastore/common';

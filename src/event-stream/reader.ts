@@ -1,20 +1,4 @@
-import {
-  BurnchainOpDelegateStx,
-  BurnchainOpRegisterAssetFt,
-  BurnchainOpRegisterAssetNft,
-  BurnchainOpStackStx,
-  CoreNodeEvent,
-  CoreNodeEventType,
-  CoreNodeParsedTxMessage,
-  CoreNodeTxMessage,
-  FtMintEvent,
-  isTxWithMicroblockInfo,
-  NftMintEvent,
-  SmartContractEvent,
-  StxLockEvent,
-  StxMintEvent,
-  StxTransferEvent,
-} from './core-node-message';
+import { CoreNodeParsedTxMessage, isTxWithMicroblockInfo } from './core-node-message';
 import {
   decodeClarityValue,
   decodeTransaction,
@@ -69,8 +53,23 @@ import { decodePoxSyntheticPrintEvent } from './pox-event-parsing';
 import { PoxContractIdentifiers, SyntheticPoxEventName } from '../pox-helpers';
 import { principalCV } from '@stacks/transactions/dist/clarity/types/principalCV';
 import { logger } from '../logger';
-import { bufferToHex, hexToBuffer } from '@hirosystems/api-toolkit';
+import { bufferToHex, hexToBuffer } from '@stacks/api-toolkit';
 import { hexToBytes } from '@stacks/common';
+import {
+  BurnchainOpDelegateStx,
+  BurnchainOpRegisterAssetFt,
+  BurnchainOpRegisterAssetNft,
+  BurnchainOpStackStx,
+  NewBlockContractEvent,
+  NewBlockEvent,
+  NewBlockEventType,
+  NewBlockFtMintEvent,
+  NewBlockNftMintEvent,
+  NewBlockStxLockEvent,
+  NewBlockStxMintEvent,
+  NewBlockStxTransferEvent,
+  NewBlockTransaction,
+} from '@stacks/node-publisher-client';
 
 export function getTxSenderAddress(tx: DecodedTxResult): string {
   const txSender = tx.auth.origin_condition.signer.address;
@@ -88,7 +87,7 @@ export function getTxSponsorAddress(tx: DecodedTxResult): string | undefined {
 function createSubnetTransactionFromL1RegisterAsset(
   chainId: ChainID,
   burnchainOp: BurnchainOpRegisterAssetNft | BurnchainOpRegisterAssetFt,
-  subnetEvent: SmartContractEvent,
+  subnetEvent: NewBlockContractEvent,
   txId: string
 ): DecodedTxResult {
   if (
@@ -171,7 +170,7 @@ function createSubnetTransactionFromL1RegisterAsset(
 
 function createSubnetTransactionFromL1NftDeposit(
   chainId: ChainID,
-  event: NftMintEvent,
+  event: NewBlockNftMintEvent,
   txId: string
 ): DecodedTxResult {
   const decRecipientAddress = decodeStacksAddress(event.nft_mint_event.recipient);
@@ -231,7 +230,7 @@ function createSubnetTransactionFromL1NftDeposit(
 
 function createSubnetTransactionFromL1FtDeposit(
   chainId: ChainID,
-  event: FtMintEvent,
+  event: NewBlockFtMintEvent,
   txId: string
 ): DecodedTxResult {
   const decRecipientAddress = decodeStacksAddress(event.ft_mint_event.recipient);
@@ -291,7 +290,7 @@ function createSubnetTransactionFromL1FtDeposit(
 
 function createSubnetTransactionFromL1StxDeposit(
   chainId: ChainID,
-  event: StxMintEvent,
+  event: NewBlockStxMintEvent,
   txId: string
 ): DecodedTxResult {
   const recipientAddress = decodeStacksAddress(event.stx_mint_event.recipient);
@@ -344,7 +343,7 @@ function createSubnetTransactionFromL1StxDeposit(
 
 function createTransactionFromCoreBtcStxLockEvent(
   chainId: ChainID,
-  event: StxLockEvent,
+  event: NewBlockStxLockEvent,
   burnBlockHeight: number,
   txResult: string,
   txId: string,
@@ -521,7 +520,7 @@ function createTransactionFromCoreBtcStxLockEventPox4(
 
 function createTransactionFromCoreBtcDelegateStxEventPox4(
   chainId: ChainID,
-  contractEvent: SmartContractEvent,
+  contractEvent: NewBlockContractEvent,
   decodedEvent: DbPoxSyntheticDelegateStxEvent,
   burnOpData: BurnchainOpDelegateStx,
   txResult: string,
@@ -607,7 +606,7 @@ function createTransactionFromCoreBtcDelegateStxEventPox4(
 */
 function createTransactionFromCoreBtcDelegateStxEvent(
   chainId: ChainID,
-  contractEvent: SmartContractEvent,
+  contractEvent: NewBlockContractEvent,
   decodedEvent: DbPoxSyntheticDelegateStxEvent,
   txResult: string,
   txId: string
@@ -689,7 +688,7 @@ function createTransactionFromCoreBtcDelegateStxEvent(
 
 function createTransactionFromCoreBtcTxEvent(
   chainId: ChainID,
-  event: StxTransferEvent,
+  event: NewBlockStxTransferEvent,
   txId: string
 ): DecodedTxResult {
   const recipientAddress = decodeStacksAddress(event.stx_transfer_event.recipient);
@@ -751,7 +750,7 @@ export interface CoreNodeMsgBlockData {
 
 export function parseMicroblocksFromTxs(args: {
   parentIndexBlockHash: string;
-  txs: CoreNodeTxMessage[];
+  txs: NewBlockTransaction[];
   parentBurnBlock: {
     hash: string;
     time: number;
@@ -781,9 +780,9 @@ export function parseMicroblocksFromTxs(args: {
 
 export function parseMessageTransaction(
   chainId: ChainID,
-  coreTx: CoreNodeTxMessage,
+  coreTx: NewBlockTransaction,
   blockData: CoreNodeMsgBlockData,
-  allEvents: CoreNodeEvent[]
+  allEvents: NewBlockEvent[]
 ): CoreNodeParsedTxMessage | null {
   try {
     let rawTx: DecodedTxResult;
@@ -796,26 +795,26 @@ export function parseMessageTransaction(
         return null;
       }
       const stxTransferEvent = events.find(
-        (e): e is StxTransferEvent => e.type === CoreNodeEventType.StxTransferEvent
+        (e): e is NewBlockStxTransferEvent => e.type === NewBlockEventType.StxTransfer
       );
       const stxLockEvent = events.find(
-        (e): e is StxLockEvent => e.type === CoreNodeEventType.StxLockEvent
+        (e): e is NewBlockStxLockEvent => e.type === NewBlockEventType.StxLock
       );
       const nftMintEvent = events.find(
-        (e): e is NftMintEvent => e.type === CoreNodeEventType.NftMintEvent
+        (e): e is NewBlockNftMintEvent => e.type === NewBlockEventType.NftMint
       );
       const ftMintEvent = events.find(
-        (e): e is FtMintEvent => e.type === CoreNodeEventType.FtMintEvent
+        (e): e is NewBlockFtMintEvent => e.type === NewBlockEventType.FtMint
       );
       const stxMintEvent = events.find(
-        (e): e is StxMintEvent => e.type === CoreNodeEventType.StxMintEvent
+        (e): e is NewBlockStxMintEvent => e.type === NewBlockEventType.StxMint
       );
 
       // pox-2, pox-3, and pox-4 compatible events
       const poxEvent = events
         .filter(
-          (e): e is SmartContractEvent =>
-            e.type === CoreNodeEventType.ContractEvent && isPoxPrintEvent(e)
+          (e): e is NewBlockContractEvent =>
+            e.type === NewBlockEventType.Contract && isPoxPrintEvent(e)
         )
         .map(e => {
           const network = getChainIDNetwork(chainId);
@@ -830,8 +829,8 @@ export function parseMessageTransaction(
         .find(e => !!e);
 
       const subnetEvents = events.filter(
-        (e): e is SmartContractEvent =>
-          e.type === CoreNodeEventType.ContractEvent &&
+        (e): e is NewBlockContractEvent =>
+          e.type === NewBlockEventType.Contract &&
           e.contract_event.topic === 'print' &&
           (e.contract_event.contract_identifier === SubnetContractIdentifer.mainnet ||
             e.contract_event.contract_identifier === SubnetContractIdentifer.testnet)
@@ -1035,7 +1034,7 @@ export function parseMessageTransaction(
   }
 }
 
-export function isPoxPrintEvent(event: SmartContractEvent): boolean {
+export function isPoxPrintEvent(event: NewBlockContractEvent): boolean {
   if (event.contract_event.topic !== 'print') return false;
   return PoxContractIdentifiers.includes(event.contract_event.contract_identifier);
 }

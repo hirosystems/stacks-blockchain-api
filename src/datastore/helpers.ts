@@ -47,11 +47,7 @@ import {
   AddressTransfersTxQueryResult,
   DbTxWithAddressTransfers,
 } from './common';
-import {
-  CoreNodeDropMempoolTxReasonType,
-  CoreNodeParsedTxMessage,
-  CoreNodeTxStatus,
-} from '../event-stream/core-node-message';
+import { CoreNodeParsedTxMessage } from '../event-stream/core-node-message';
 import {
   decodeClarityValueToRepr,
   DecodedTxResult,
@@ -66,8 +62,9 @@ import { getAssetEventTypeString } from '../api/controllers/db-controller';
 import { PgStoreEventEmitter } from './pg-store-event-emitter';
 import { SyntheticPoxEventName } from '../pox-helpers';
 import { logger } from '../logger';
-import { PgSqlClient } from '@hirosystems/api-toolkit';
+import { PgSqlClient } from '@stacks/api-toolkit';
 import PQueue from 'p-queue';
+import { DropMempoolTxReasonType, NewBlockTransactionStatus } from '@stacks/node-publisher-client';
 
 export const TX_COLUMNS = [
   'tx_id',
@@ -1027,7 +1024,7 @@ export function validateZonefileHash(zonefileHash: string) {
 }
 
 export function getTxDbStatus(
-  txCoreStatus: CoreNodeTxStatus | CoreNodeDropMempoolTxReasonType
+  txCoreStatus: NewBlockTransactionStatus | DropMempoolTxReasonType
 ): DbTxStatus {
   switch (txCoreStatus) {
     case 'success':

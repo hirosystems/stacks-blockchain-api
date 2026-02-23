@@ -8,7 +8,7 @@ import { startEventServer } from '../../src/event-stream/event-server';
 import { httpPostRequest } from '../../src/helpers';
 import { useWithCleanup } from '../api/test-helpers';
 import { createSchema, migrate } from '../utils/test-helpers';
-import { PgSqlClient, dangerousDropAllTables, databaseHasData } from '@hirosystems/api-toolkit';
+import { PgSqlClient, dangerousDropAllTables, databaseHasData } from '@stacks/api-toolkit';
 import { getConnectionArgs } from '../../src/datastore/connection';
 
 describe('import/export tests', () => {

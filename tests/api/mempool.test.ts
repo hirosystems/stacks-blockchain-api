@@ -17,7 +17,7 @@ import {
   TestMicroblockStreamBuilder,
 } from '../utils/test-builders';
 import { getPagingQueryLimit, ResourceType } from '../../src/api/pagination';
-import { PgSqlClient, bufferToHex } from '@hirosystems/api-toolkit';
+import { PgSqlClient, bufferToHex } from '@stacks/api-toolkit';
 import { migrate } from '../utils/test-helpers';
 
 describe('mempool tests', () => {

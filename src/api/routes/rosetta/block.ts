@@ -9,7 +9,7 @@ import {
 import { ChainID } from '../../../helpers';
 import { RosettaErrors, RosettaErrorsTypes } from '../../rosetta-constants';
 import { rosettaValidateRequest, ValidSchema, makeRosettaError } from '../../rosetta-validate';
-import { has0xPrefix } from '@hirosystems/api-toolkit';
+import { has0xPrefix } from '@stacks/api-toolkit';
 
 export function createRosettaBlockRouter(db: PgStore, chainId: ChainID): express.Router {
   const router = express.Router();

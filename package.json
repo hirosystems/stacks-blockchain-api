@@ -35,7 +35,7 @@
     "test:integration:btc-faucet": "concurrently \"docker compose -f docker/docker-compose.dev.postgres.yml -f docker/docker-compose.dev.bitcoind.yml up --force-recreate -V\" \"cross-env NODE_ENV=test jest --config ./tests/jest.config.btc-faucet.js --no-cache --runInBand; npm run devenv:stop\"",
     "generate:git-info": "rimraf .git-info && api-toolkit-git-info",
     "generate:openapi": "node -r ts-node/register/transpile-only ./src/openapi-generator.ts",
-    "generate:redoc": "redocly build-docs ./docs/openapi.yaml --output ./docs/.tmp/index.html",
+    "generate:redoc": "cross-env NODE_OPTIONS=--require=./redoc-react-global.cjs redocly build-docs ./docs/openapi.yaml --output ./docs/.tmp/index.html",
     "generate:postman": "openapi2postmanv2 --spec ./docs/openapi.yaml --output ./docs/.tmp/collection.json --options folderStrategy=Tags,requestParametersResolution=Example,exampleParametersResolution=Example,schemaFaker=false 2>/dev/null",
     "generate:client": "openapi-typescript ./docs/openapi.yaml -o ./client/src/generated/schema.d.ts",
     "build": "npm run generate:git-info && rimraf ./lib && tsc -p tsconfig.build.json",
@@ -95,14 +95,14 @@
     "@fastify/multipart": "8.3.1",
     "@fastify/swagger": "8.15.0",
     "@fastify/type-provider-typebox": "4.0.0",
-    "@hirosystems/api-toolkit": "1.11.0",
-    "@hirosystems/salt-n-pepper-client": "1.2.0",
     "@hirosystems/stacks-encoding-native-js": "1.3.0",
     "@scure/base": "1.1.1",
     "@sinclair/typebox": "0.32.35",
+    "@stacks/api-toolkit": "1.12.2",
     "@stacks/common": "6.10.0",
     "@stacks/encryption": "6.13.1",
     "@stacks/network": "6.11.3",
+    "@stacks/node-publisher-client": "2.0.4",
     "@stacks/stacking": "6.13.2",
     "@stacks/transactions": "6.11.3",
     "@types/lru-cache": "5.1.1",
@@ -139,7 +139,7 @@
     "pino": "8.11.0",
     "pino-http": "8.3.3",
     "pino-pretty": "10.3.0",
-    "postgres": "3.3.1",
+    "postgres": "3.4.8",
     "prom-client": "15.1.3",
     "rpc-bitcoin": "2.0.0",
     "socket.io": "4.8.0",
@@ -205,5 +205,8 @@
   "optionalDependencies": {
     "bufferutil": "4.0.5",
     "utf-8-validate": "5.0.7"
+  },
+  "overrides": {
+    "postgres": "3.4.8"
   }
 }

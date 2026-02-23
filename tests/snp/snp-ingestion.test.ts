@@ -7,7 +7,7 @@ import { ChainID } from '@stacks/transactions';
 import { ApiServer, startApiServer } from '../../src/api/init';
 import { EventStreamServer, startEventServer } from '../../src/event-stream/event-server';
 import { PgWriteStore } from '../../src/datastore/pg-write-store';
-import { onceWhen, PgSqlClient } from '@hirosystems/api-toolkit';
+import { onceWhen, PgSqlClient } from '@stacks/api-toolkit';
 import { migrate } from '../utils/test-helpers';
 import { SnpEventStreamHandler } from '../../src/event-stream/snp-event-stream';
 import { fetch } from 'undici';
@@ -20,7 +20,7 @@ describe('SNP integration tests', () => {
   let eventServer: EventStreamServer;
   let apiServer: ApiServer;
 
-  const sampleEventsLastMsgId = '238-0';
+  const sampleEventsLastMsgId = '237-0';
   const sampleEventsLastBlockHeight = 50;
   const sampleEventsLastBlockHash =
     '0x5705546ec6741f77957bb3e73bf795dcf120c0a869c1d408396e7e30a3b2f94f';
@@ -84,12 +84,9 @@ describe('SNP integration tests', () => {
   });
 
   test('ingest SNP events', async () => {
-    const lastMsgId = await db.getLastIngestedSnpRedisMsgId();
-    expect(lastMsgId).toBe('0');
     const snpClient = new SnpEventStreamHandler({
       db,
       eventServer,
-      lastMessageId: lastMsgId,
     });
 
     await snpClient.start();
@@ -108,15 +105,10 @@ describe('SNP integration tests', () => {
     await snpClient.stop();
   });
 
-  test('validate all events ingested', async () => {
-    const finalPostgresMsgId = await db.getLastIngestedSnpRedisMsgId();
-    expect(finalPostgresMsgId).toBe(sampleEventsLastMsgId);
-  });
-
   test('validate blocks ingested', async () => {
-    const chainTip = await db.getCurrentBlockHeight();
-    assert(chainTip.found);
-    expect(chainTip.result).toBe(sampleEventsLastBlockHeight);
+    const chainTip = await db.getChainTip(db.sql);
+    expect(chainTip.block_hash).toBe(sampleEventsLastBlockHash);
+    expect(chainTip.block_height).toBe(sampleEventsLastBlockHeight);
   });
 
   test('test block API fetch', async () => {
@@ -132,7 +124,6 @@ describe('SNP integration tests', () => {
     const snpClient = new SnpEventStreamHandler({
       db,
       eventServer,
-      lastMessageId: '0',
     });
 
     const originalInject = eventServer.fastifyInstance.inject.bind(eventServer.fastifyInstance);
@@ -153,7 +144,6 @@ describe('SNP integration tests', () => {
     const snpClient = new SnpEventStreamHandler({
       db,
       eventServer,
-      lastMessageId: '0',
     });
 
     const originalInject = eventServer.fastifyInstance.inject.bind(eventServer.fastifyInstance);

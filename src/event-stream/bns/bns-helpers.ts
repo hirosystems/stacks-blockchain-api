@@ -1,10 +1,6 @@
 import { BufferCV, ClarityType, hexToCV } from '@stacks/transactions';
 import { bnsNameCV, ChainID, getChainIDNetwork } from '../../helpers';
-import {
-  CoreNodeEvent,
-  CoreNodeEventType,
-  CoreNodeParsedTxMessage,
-} from '../../event-stream/core-node-message';
+import { CoreNodeParsedTxMessage } from '../../event-stream/core-node-message';
 import { getCoreNodeEndpoint } from '../../core-rpc/client';
 import { StacksMainnet, StacksTestnet } from '@stacks/network';
 import { URIType } from 'zone-file/dist/zoneFile';
@@ -22,9 +18,13 @@ import {
   ClarityValueUInt,
   TxPayloadTypeID,
 } from '@hirosystems/stacks-encoding-native-js';
-import { SmartContractEvent } from '../core-node-message';
 import { DbBnsNamespace, DbBnsName } from '../../datastore/common';
-import { hexToBuffer, hexToUtf8String } from '@hirosystems/api-toolkit';
+import { hexToBuffer, hexToUtf8String } from '@stacks/api-toolkit';
+import {
+  NewBlockContractEvent,
+  NewBlockEvent,
+  NewBlockEventType,
+} from '@stacks/node-publisher-client';
 
 interface Attachment {
   attachment: {
@@ -246,7 +246,7 @@ export function getBnsContractID(chainId: ChainID) {
   return contractId;
 }
 
-function isEventFromBnsContract(event: SmartContractEvent): boolean {
+function isEventFromBnsContract(event: NewBlockContractEvent): boolean {
   return (
     event.committed === true &&
     event.contract_event.topic === printTopic &&
@@ -298,9 +298,9 @@ export function parseNameRenewalWithNoZonefileHashFromContractCall(
 }
 
 export function parseNameFromContractEvent(
-  event: SmartContractEvent,
+  event: NewBlockContractEvent,
   tx: CoreNodeParsedTxMessage,
-  allEvents: CoreNodeEvent[],
+  allEvents: NewBlockEvent[],
   blockHeight: number,
   chainId: ChainID
 ): DbBnsName | undefined {
@@ -321,7 +321,7 @@ export function parseNameFromContractEvent(
     for (const eventItem of allEvents) {
       if (
         eventItem.txid === event.txid &&
-        eventItem.type === CoreNodeEventType.NftTransferEvent &&
+        eventItem.type === NewBlockEventType.NftTransfer &&
         eventItem.nft_transfer_event.asset_identifier === `${getBnsContractID(chainId)}::names` &&
         eventItem.nft_transfer_event.raw_value === bnsNameCV(fullName)
       ) {
@@ -350,7 +350,7 @@ export function parseNameFromContractEvent(
 }
 
 export function parseNamespaceFromContractEvent(
-  event: SmartContractEvent,
+  event: NewBlockContractEvent,
   tx: CoreNodeParsedTxMessage,
   blockHeight: number
 ): DbBnsNamespace | undefined {

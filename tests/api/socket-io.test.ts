@@ -9,7 +9,7 @@ import {
 } from '../utils/test-builders';
 import { PgWriteStore } from '../../src/datastore/pg-write-store';
 import { migrate } from '../utils/test-helpers';
-import { Waiter, waiter } from '@hirosystems/api-toolkit';
+import { Waiter, waiter } from '@stacks/api-toolkit';
 import { StacksApiSocketClient } from '../../client/src/socket-io';
 import {
   AddressStxBalanceResponse,

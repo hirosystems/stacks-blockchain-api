@@ -46,7 +46,7 @@ import { TestBlockBuilder } from '../utils/test-builders';
 import { PgWriteStore } from '../../src/datastore/pg-write-store';
 import { createDbTxFromCoreMsg } from '../../src/datastore/helpers';
 import { getPagingQueryLimit, ResourceType } from '../../src/api/pagination';
-import { PgSqlClient, bufferToHex } from '@hirosystems/api-toolkit';
+import { PgSqlClient, bufferToHex } from '@stacks/api-toolkit';
 import { migrate } from '../utils/test-helpers';
 import { Transaction } from '../../src/api/schemas/entities/transactions';
 

@@ -1,4 +1,4 @@
-import { has0xPrefix, hexToBuffer } from '@hirosystems/api-toolkit';
+import { has0xPrefix, hexToBuffer } from '@stacks/api-toolkit';
 import { hexToBytes } from '@stacks/common';
 import { StacksMainnet, StacksTestnet } from '@stacks/network';
 import { StackingClient, decodeBtcAddress, poxAddressToTuple } from '@stacks/stacking';

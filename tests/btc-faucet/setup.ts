@@ -1,6 +1,6 @@
 import { loadDotEnv } from '../../src/helpers';
 import { getRpcClient } from '../../src/btc-faucet';
-import { timeout } from '@hirosystems/api-toolkit';
+import { timeout } from '@stacks/api-toolkit';
 
 // ts-unused-exports:disable-next-line
 export default async () => {

@@ -55,8 +55,6 @@ import {
   DbTxRaw,
   DbMempoolTxRaw,
   DbChainTip,
-  RawEventRequestInsertValues,
-  IndexesState,
   NftCustodyInsertValues,
   DataStoreBnsBlockTxData,
   DbPoxSyntheticEvent,
@@ -65,6 +63,7 @@ import {
   PoxSetSignerValues,
   PoxCycleInsertValues,
   DbAssetEventTypeId,
+  DbBurnBlockPoxTx,
 } from './common';
 import {
   BLOCK_COLUMNS,
@@ -94,7 +93,7 @@ import {
   isProdEnv,
   isTestEnv,
   runMigrations,
-} from '@hirosystems/api-toolkit';
+} from '@stacks/api-toolkit';
 import { PgServer, getConnectionArgs, getConnectionConfig } from './connection';
 import { BigNumber } from 'bignumber.js';
 import { RedisNotifier } from './redis-notifier';
@@ -653,6 +652,14 @@ export class PgWriteStore extends PgStore {
         );
       }
     });
+  }
+
+  async updateBurnBlockPoxTxs(args: { burnBlockPoxTxs: DbBurnBlockPoxTx[] }): Promise<void> {
+    if (args.burnBlockPoxTxs.length === 0) return;
+    await this.sql`
+      INSERT INTO burn_block_pox_txs ${this.sql(args.burnBlockPoxTxs)}
+      ON CONFLICT ON CONSTRAINT burn_block_pox_txs_unique_idx DO NOTHING
+    `;
   }
 
   async updateMicroblocks(data: DataStoreMicroblockUpdateData): Promise<void> {
@@ -2363,33 +2370,35 @@ export class PgWriteStore extends PgStore {
           FROM source_txs
         ),
         same_nonce_mempool_txs AS (
-          SELECT
-            m.tx_id,
-            m.fee_rate,
-            m.receipt_time,
-            m.pruned,
-            g.address,
-            g.nonce
+          SELECT m.tx_id, m.fee_rate, m.receipt_time, m.pruned, g.address, g.nonce
           FROM mempool_txs m
           INNER JOIN affected_groups g
-            ON m.nonce = g.nonce
-            AND (m.sponsor_address = g.address OR m.sender_address = g.address)
+            ON m.sender_address = g.address AND m.nonce = g.nonce
+          UNION
+          SELECT m.tx_id, m.fee_rate, m.receipt_time, m.pruned, g.address, g.nonce
+          FROM mempool_txs m
+          INNER JOIN affected_groups g
+            ON m.sponsor_address = g.address AND m.nonce = g.nonce
         ),
         mined_txs AS (
-          SELECT
-            t.tx_id,
-            g.address,
-            g.nonce
+          SELECT t.tx_id, g.address, g.nonce,
+            t.block_height, t.microblock_sequence, t.tx_index
           FROM txs t
           INNER JOIN affected_groups g
-            ON t.nonce = g.nonce
-            AND (t.sponsor_address = g.address OR t.sender_address = g.address)
+            ON t.sender_address = g.address AND t.nonce = g.nonce
           WHERE t.canonical = true AND t.microblock_canonical = true
-          ORDER BY t.block_height DESC, t.microblock_sequence DESC, t.tx_index DESC
+          UNION
+          SELECT t.tx_id, g.address, g.nonce,
+            t.block_height, t.microblock_sequence, t.tx_index
+          FROM txs t
+          INNER JOIN affected_groups g
+            ON t.sponsor_address = g.address AND t.nonce = g.nonce
+          WHERE t.canonical = true AND t.microblock_canonical = true
         ),
         latest_mined_txs AS (
           SELECT DISTINCT ON (address, nonce) tx_id, address, nonce
           FROM mined_txs
+          ORDER BY address, nonce, block_height DESC, microblock_sequence DESC, tx_index DESC
         ),
         highest_fee_mempool_txs AS (
           SELECT DISTINCT ON (address, nonce) tx_id, address, nonce
@@ -3130,14 +3139,20 @@ export class PgWriteStore extends PgStore {
       affected_sponsored AS (
         SELECT m.tx_id
         FROM mempool_txs m
-        INNER JOIN sponsored_inputs i ON m.nonce = i.nonce::int
-        AND (m.sponsor_address = i.sponsor_address OR m.sender_address = i.sponsor_address)
+        INNER JOIN sponsored_inputs i ON m.sponsor_address = i.sponsor_address AND m.nonce = i.nonce::int
+        UNION
+        SELECT m.tx_id
+        FROM mempool_txs m
+        INNER JOIN sponsored_inputs i ON m.sender_address = i.sponsor_address AND m.nonce = i.nonce::int
       ),
       affected_non_sponsored AS (
         SELECT m.tx_id
         FROM mempool_txs m
-        INNER JOIN non_sponsored_inputs i ON m.nonce = i.nonce::int
-        AND (m.sponsor_address = i.sender_address OR m.sender_address = i.sender_address)
+        INNER JOIN non_sponsored_inputs i ON m.sponsor_address = i.sender_address AND m.nonce = i.nonce::int
+        UNION
+        SELECT m.tx_id
+        FROM mempool_txs m
+        INNER JOIN non_sponsored_inputs i ON m.sender_address = i.sender_address AND m.nonce = i.nonce::int
       ),
       affected_mempool_tx_ids AS (
         SELECT tx_id FROM affected_sponsored
@@ -3225,14 +3240,20 @@ export class PgWriteStore extends PgStore {
       affected_sponsored AS (
         SELECT m.tx_id
         FROM mempool_txs m
-        INNER JOIN sponsored_inputs i ON m.nonce = i.nonce::int
-        AND (m.sponsor_address = i.sponsor_address OR m.sender_address = i.sponsor_address)
+        INNER JOIN sponsored_inputs i ON m.sponsor_address = i.sponsor_address AND m.nonce = i.nonce::int
+        UNION
+        SELECT m.tx_id
+        FROM mempool_txs m
+        INNER JOIN sponsored_inputs i ON m.sender_address = i.sponsor_address AND m.nonce = i.nonce::int
       ),
       affected_non_sponsored AS (
         SELECT m.tx_id
         FROM mempool_txs m
-        INNER JOIN non_sponsored_inputs i ON m.nonce = i.nonce::int
-        AND (m.sponsor_address = i.sender_address OR m.sender_address = i.sender_address)
+        INNER JOIN non_sponsored_inputs i ON m.sponsor_address = i.sender_address AND m.nonce = i.nonce::int
+        UNION
+        SELECT m.tx_id
+        FROM mempool_txs m
+        INNER JOIN non_sponsored_inputs i ON m.sender_address = i.sender_address AND m.nonce = i.nonce::int
       ),
       affected_mempool_tx_ids AS (
         SELECT tx_id FROM affected_sponsored
@@ -3304,6 +3325,7 @@ export class PgWriteStore extends PgStore {
   async markEntitiesCanonical(
     sql: PgSqlClient,
     indexBlockHash: string,
+    burnBlockHash: string,
     canonical: boolean,
     updatedEntities: ReOrgUpdatedEntities
   ): Promise<{
@@ -3685,6 +3707,20 @@ export class PgWriteStore extends PgStore {
         updatedEntities.markedNonCanonical.poxCycles += poxCycleResult.count;
       }
     });
+    q.enqueue(async () => {
+      await sql`
+        UPDATE burnchain_rewards
+        SET canonical = ${canonical}
+        WHERE burn_block_hash = ${burnBlockHash} AND canonical != ${canonical}
+      `;
+    });
+    q.enqueue(async () => {
+      await sql`
+        UPDATE burn_block_pox_txs
+        SET canonical = ${canonical}
+        WHERE burn_block_hash = ${burnBlockHash} AND canonical != ${canonical}
+      `;
+    });
 
     await q.done();
 
@@ -3695,12 +3731,14 @@ export class PgWriteStore extends PgStore {
    * Recursively restore previously orphaned blocks to canonical.
    * @param sql - The SQL client
    * @param indexBlockHash - The index block hash that we will restore first
+   * @param burnBlockHash - The burn block hash that we will restore first
    * @param updatedEntities - The updated entities
    * @returns The updated entities
    */
   async restoreOrphanedChain(
     sql: PgSqlClient,
     indexBlockHash: string,
+    burnBlockHash: string,
     updatedEntities: ReOrgUpdatedEntities
   ): Promise<ReOrgUpdatedEntities> {
     // Restore the previously orphaned block to canonical
@@ -3739,11 +3777,6 @@ export class PgWriteStore extends PgStore {
     if (orphanedBlockResult.length > 0) {
       const orphanedBlocks = orphanedBlockResult.map(b => parseBlockQueryResult(b));
       for (const orphanedBlock of orphanedBlocks) {
-        await sql`
-          UPDATE burnchain_rewards
-          SET canonical = false
-          WHERE canonical = true AND burn_block_hash = ${orphanedBlock.burn_block_hash}
-        `;
         const microCanonicalUpdateResult = await this.updateMicroCanonical(sql, {
           isCanonical: false,
           blockHeight: orphanedBlock.block_height,
@@ -3774,6 +3807,7 @@ export class PgWriteStore extends PgStore {
       const markNonCanonicalResult = await this.markEntitiesCanonical(
         sql,
         orphanedBlockResult[0].index_block_hash,
+        orphanedBlockResult[0].burn_block_hash,
         false,
         updatedEntities
       );
@@ -3819,6 +3853,7 @@ export class PgWriteStore extends PgStore {
     const markCanonicalResult = await this.markEntitiesCanonical(
       sql,
       indexBlockHash,
+      burnBlockHash,
       true,
       updatedEntities
     );
@@ -3829,8 +3864,8 @@ export class PgWriteStore extends PgStore {
     updatedEntities.prunedMempoolTxs += prunedMempoolTxs.removedTxs.length;
 
     // Do we have a parent that is non-canonical? If so, restore it recursively.
-    const parentResult = await sql<{ index_block_hash: string }[]>`
-      SELECT index_block_hash
+    const parentResult = await sql<{ index_block_hash: string; burn_block_hash: string }[]>`
+      SELECT index_block_hash, burn_block_hash
       FROM blocks
       WHERE
         block_height = ${restoredBlockResult[0].block_height - 1} AND
@@ -3841,7 +3876,12 @@ export class PgWriteStore extends PgStore {
       throw new Error('Found more than one non-canonical parent to restore during reorg');
     }
     if (parentResult.length > 0) {
-      await this.restoreOrphanedChain(sql, parentResult[0].index_block_hash, updatedEntities);
+      await this.restoreOrphanedChain(
+        sql,
+        parentResult[0].index_block_hash,
+        parentResult[0].burn_block_hash,
+        updatedEntities
+      );
     }
     return updatedEntities;
   }
@@ -3858,10 +3898,11 @@ export class PgWriteStore extends PgStore {
         {
           canonical: boolean;
           index_block_hash: string;
+          burn_block_hash: string;
           parent_index_block_hash: string;
         }[]
       >`
-        SELECT canonical, index_block_hash, parent_index_block_hash
+        SELECT canonical, index_block_hash, burn_block_hash, parent_index_block_hash
         FROM blocks
         WHERE block_height = ${block.block_height - 1}
           AND index_block_hash = ${block.parent_index_block_hash}
@@ -3880,7 +3921,12 @@ export class PgWriteStore extends PgStore {
         );
       // This block builds off a previously orphaned chain. Restore canonical status for this chain.
       if (!parentResult[0].canonical && block.block_height > chainTipHeight) {
-        await this.restoreOrphanedChain(sql, parentResult[0].index_block_hash, updatedEntities);
+        await this.restoreOrphanedChain(
+          sql,
+          parentResult[0].index_block_hash,
+          parentResult[0].burn_block_hash,
+          updatedEntities
+        );
         logger.info(
           updatedEntities,
           `Re-org resolved. Block ${block.block_height} builds off a previously orphaned chain.`
@@ -3896,17 +3942,6 @@ export class PgWriteStore extends PgStore {
       `;
     }
     return updatedEntities;
-  }
-
-  async getLastIngestedSnpRedisMsgId(): Promise<string> {
-    const [{ last_redis_msg_id }] = await this.sql<
-      { last_redis_msg_id: string }[]
-    >`SELECT last_redis_msg_id FROM snp_state`;
-    return last_redis_msg_id;
-  }
-
-  async updateLastIngestedSnpRedisMsgId(sql: PgSqlClient, msgId: string): Promise<void> {
-    await sql`UPDATE snp_state SET last_redis_msg_id = ${msgId}`;
   }
 
   async close(args?: { timeout?: number }): Promise<void> {

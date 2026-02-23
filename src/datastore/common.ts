@@ -1,6 +1,6 @@
 import { Block } from '../api/schemas/entities/block';
 import { SyntheticPoxEventName } from '../pox-helpers';
-import { PgBytea, PgJsonb, PgNumeric } from '@hirosystems/api-toolkit';
+import { PgBytea, PgJsonb, PgNumeric } from '@stacks/api-toolkit';
 
 export interface DbBlock {
   block_hash: string;
@@ -88,6 +88,16 @@ export interface DbRewardSlotHolder {
   burn_block_height: number;
   address: string;
   slot_index: number;
+}
+
+export interface DbBurnBlockPoxTx {
+  canonical: boolean;
+  burn_block_hash: string;
+  burn_block_height: number;
+  tx_id: string;
+  recipient: string;
+  utxo_idx: number;
+  amount: bigint;
 }
 
 export interface DbMinerReward {
@@ -1379,11 +1389,6 @@ export interface StxLockEventInsertValues {
   contract_name: string;
 }
 
-export interface RawEventRequestInsertValues {
-  event_path: string;
-  payload: string;
-}
-
 export interface PoxSyntheticEventQueryResult {
   event_index: number;
   tx_id: string;
@@ -1757,11 +1762,6 @@ export interface DbChainTip {
   tx_count: number;
   tx_count_unanchored: number;
   mempool_tx_count: number;
-}
-
-export enum IndexesState {
-  Off = 0,
-  On = 1,
 }
 
 export interface DbSmartContractStatus {

@@ -1,6 +1,6 @@
 import { isValidPrincipal } from './../helpers';
 import { InvalidRequestError, InvalidRequestErrorType } from '../errors';
-import { has0xPrefix, hexToBuffer } from '@hirosystems/api-toolkit';
+import { has0xPrefix, hexToBuffer } from '@stacks/api-toolkit';
 
 /**
  * Determines if the query parameters of a request are intended to include data for a specific block height,

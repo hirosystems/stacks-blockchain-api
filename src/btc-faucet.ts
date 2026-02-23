@@ -6,7 +6,7 @@ import * as coinselect from 'coinselect';
 import { ECPair, ECPairInterface, validateSigFunction } from './ec-helpers';
 import { BtcFaucetConfigError } from './errors';
 import { logger } from './logger';
-import { time } from '@hirosystems/api-toolkit';
+import { time } from '@stacks/api-toolkit';
 
 function getFaucetPk(): string {
   const { BTC_FAUCET_PK } = process.env;

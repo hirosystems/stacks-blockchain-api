@@ -3,7 +3,7 @@ import { ApiServer, startApiServer } from '../../src/api/init';
 import { httpPostRequest } from '../../src/helpers';
 import { EventStreamServer, startEventServer } from '../../src/event-stream/event-server';
 import { PgWriteStore } from '../../src/datastore/pg-write-store';
-import { PgSqlClient } from '@hirosystems/api-toolkit';
+import { PgSqlClient } from '@stacks/api-toolkit';
 import { migrate } from '../utils/test-helpers';
 import { TestBlockBuilder, TestMicroblockStreamBuilder } from '../utils/test-builders';
 

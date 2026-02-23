@@ -1,5 +1,5 @@
 import * as supertest from 'supertest';
-import { PgSqlClient, timeout } from '@hirosystems/api-toolkit';
+import { PgSqlClient, timeout } from '@stacks/api-toolkit';
 import { ChainID } from '@stacks/common';
 import { ApiServer, startApiServer } from '../../src/api/init';
 import { PgWriteStore } from '../../src/datastore/pg-write-store';

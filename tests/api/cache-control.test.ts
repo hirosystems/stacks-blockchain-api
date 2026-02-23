@@ -12,7 +12,7 @@ import { startApiServer, ApiServer } from '../../src/api/init';
 import { I32_MAX } from '../../src/helpers';
 import { TestBlockBuilder, testMempoolTx } from '../utils/test-builders';
 import { PgWriteStore } from '../../src/datastore/pg-write-store';
-import { bufferToHex } from '@hirosystems/api-toolkit';
+import { bufferToHex } from '@stacks/api-toolkit';
 import { migrate } from '../utils/test-helpers';
 
 describe('cache-control tests', () => {

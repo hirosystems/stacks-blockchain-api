@@ -16,7 +16,7 @@ import {
   handleTransactionCache,
 } from '../controllers/cache-controller';
 import { DbEventTypeId } from '../../datastore/common';
-import { has0xPrefix, parseBoolean } from '@hirosystems/api-toolkit';
+import { has0xPrefix, parseBoolean } from '@stacks/api-toolkit';
 
 import { FastifyPluginAsync } from 'fastify';
 import { Server } from 'node:http';

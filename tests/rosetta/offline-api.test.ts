@@ -56,7 +56,7 @@ import {
 import * as nock from 'nock';
 import { PgStore } from '../../src/datastore/pg-store';
 import { StackingClient, decodeBtcAddress, poxAddressToTuple } from '@stacks/stacking';
-import { bufferToHex } from '@hirosystems/api-toolkit';
+import { bufferToHex } from '@stacks/api-toolkit';
 import { hexToBytes } from '@stacks/common';
 
 describe('Rosetta offline API', () => {

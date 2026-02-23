@@ -3,7 +3,7 @@ import { importEventsFromTsv } from '../../src/event-replay/event-replay';
 import { decodeClarityValueList } from '@hirosystems/stacks-encoding-native-js';
 import * as fs from 'fs';
 import * as readline from 'readline';
-import { PgSqlClient, timeout } from '@hirosystems/api-toolkit';
+import { PgSqlClient, timeout } from '@stacks/api-toolkit';
 import { ChainID } from '@stacks/common';
 import { ApiServer, startApiServer } from '../../src/api/init';
 import { PgWriteStore } from '../../src/datastore/pg-write-store';

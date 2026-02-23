@@ -87,7 +87,7 @@ import {
 } from './helpers';
 import { PgNotifier } from './pg-notifier';
 import { SyntheticPoxEventName } from '../pox-helpers';
-import { BasePgStore, PgSqlClient, PgSqlQuery, connectPostgres } from '@hirosystems/api-toolkit';
+import { BasePgStore, PgSqlClient, PgSqlQuery, connectPostgres } from '@stacks/api-toolkit';
 import {
   PgServer,
   getConnectionArgs,
@@ -96,7 +96,6 @@ import {
 } from './connection';
 import * as path from 'path';
 import { PgStoreV2 } from './pg-store-v2';
-import { Fragment } from 'postgres';
 import { parseBlockParam } from '../api/routes/v2/schemas';
 
 export const MIGRATIONS_DIR = path.join(REPO_DIR, 'migrations');
@@ -1439,7 +1438,7 @@ export class PgStore extends BasePgStore {
       const maxHeight = await this.getMaxBlockHeight(sql, { includeUnanchored });
       const orderSql = order === 'asc' ? sql`ASC` : sql`DESC`;
 
-      let orderBySql: Fragment;
+      let orderBySql: PgSqlQuery;
       switch (sortBy) {
         case undefined:
         case 'block_height':

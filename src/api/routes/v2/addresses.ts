@@ -3,11 +3,14 @@ import {
   handleCache,
   handleChainTipCache,
   handlePrincipalCache,
-  handlePrincipalMempoolCache,
   handleTransactionCache,
 } from '../../../api/controllers/cache-controller';
 import { AddressParamsSchema, AddressTransactionParamsSchema } from './schemas';
-import { parseDbAddressTransactionTransfer, parseDbTxWithAccountTransferSummary } from './helpers';
+import {
+  parseDbAddressTransactionTransfer,
+  parseDbBurnBlockPoxTx,
+  parseDbTxWithAccountTransferSummary,
+} from './helpers';
 import { InvalidRequestError, NotFoundError } from '../../../errors';
 import { FastifyPluginAsync } from 'fastify';
 import { Type, TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
@@ -17,6 +20,7 @@ import {
   OffsetParam,
   PrincipalSchema,
   ExcludeFunctionArgsParamSchema,
+  BurnchainAddressParamSchema,
 } from '../../schemas/params';
 import { getPagingQueryLimit, ResourceType } from '../../pagination';
 import { PaginatedCursorResponse, PaginatedResponse } from '../../schemas/util';
@@ -30,6 +34,7 @@ import {
 } from '../../schemas/entities/addresses';
 import { validatePrincipal } from '../../query-helpers';
 import { StxBalance, StxBalanceSchema } from '../../schemas/entities/balances';
+import { BurnBlockPoxTxSchema } from '../../schemas/entities/pox-transaction';
 
 export const AddressRoutesV2: FastifyPluginAsync<
   Record<never, never>,
@@ -323,6 +328,50 @@ export const AddressRoutesV2: FastifyPluginAsync<
         return result;
       });
       await reply.send(result);
+    }
+  );
+
+  fastify.get(
+    '/:burnchain_address/pox-transactions',
+    {
+      preHandler: handleChainTipCache,
+      schema: {
+        operationId: 'get_burnchain_address_pox_transactions',
+        summary: 'Get PoX transactions for a burnchain address',
+        description: `Retrieves a list of PoX transactions`,
+        tags: ['Proof of Transfer'],
+        params: Type.Object({
+          burnchain_address: BurnchainAddressParamSchema,
+        }),
+        querystring: Type.Object({
+          limit: LimitParam(ResourceType.BurnBlock),
+          offset: OffsetParam(),
+        }),
+        response: {
+          200: PaginatedResponse(BurnBlockPoxTxSchema),
+        },
+      },
+    },
+    async (req, reply) => {
+      const query = req.query;
+
+      try {
+        const { limit, offset, results, total } = await fastify.db.v2.getBurnBlockPoxTransactions({
+          recipient: req.params.burnchain_address,
+          ...query,
+        });
+        await reply.send({
+          limit,
+          offset,
+          total,
+          results: results.map(r => parseDbBurnBlockPoxTx(r)),
+        });
+      } catch (error) {
+        if (error instanceof InvalidRequestError) {
+          throw new NotFoundError(error.message);
+        }
+        throw error;
+      }
     }
   );
 

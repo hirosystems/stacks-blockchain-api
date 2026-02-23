@@ -2,7 +2,7 @@ import Redis, { Cluster, RedisOptions } from 'ioredis';
 import { BlockHeader, ReOrgUpdatedEntities } from './common';
 import { ChainID } from '@stacks/transactions';
 import { getApiConfiguredChainID } from '../helpers';
-import { logger } from '@hirosystems/api-toolkit';
+import { logger } from '@stacks/api-toolkit';
 
 /**
  * Notifies Chainhooks of the progress of the Stacks index via a message sent to a Redis queue. This

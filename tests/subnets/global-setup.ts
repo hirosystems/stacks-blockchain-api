@@ -3,7 +3,7 @@ import { StacksCoreRpcClient } from '../../src/core-rpc/client';
 import { PgWriteStore } from '../../src/datastore/pg-write-store';
 import { EventStreamServer, startEventServer } from '../../src/event-stream/event-server';
 import { ChainID } from '@stacks/transactions';
-import { cycleMigrations, timeout } from '@hirosystems/api-toolkit';
+import { cycleMigrations, timeout } from '@stacks/api-toolkit';
 import { MIGRATIONS_DIR } from '../../src/datastore/pg-store';
 import { getConnectionArgs } from '../../src/datastore/connection';
 
