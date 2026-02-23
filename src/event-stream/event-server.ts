@@ -635,8 +635,10 @@ interface EventMessageHandler {
 }
 
 function createMessageProcessorQueue(db: PgWriteStore): EventMessageHandler {
-  // Create a promise queue so that only one message is handled at a time.
-  const processorQueue = new PQueue({ concurrency: 1 });
+  // Primary queue for block and burn_block events (highest priority, processed in series).
+  const primaryQueue = new PQueue({ concurrency: 1 });
+  // Secondary queue for mempool and other best-effort events (processed in series).
+  const secondaryQueue = new PQueue({ concurrency: 1 });
 
   let metrics:
     | {
@@ -687,7 +689,7 @@ function createMessageProcessorQueue(db: PgWriteStore): EventMessageHandler {
 
   const handler: EventMessageHandler = {
     handleRawEventRequest: (eventPath: string, payload: any, db: PgWriteStore) => {
-      return processorQueue
+      return primaryQueue
         .add(() => observeEvent('raw_event', () => handleRawEventRequest(eventPath, payload, db)))
         .catch(e => {
           logger.error(e, 'Error storing raw core node request data');
@@ -695,10 +697,18 @@ function createMessageProcessorQueue(db: PgWriteStore): EventMessageHandler {
         });
     },
     handleBlockMessage: (chainId: ChainID, msg: CoreNodeBlockMessage, db: PgWriteStore) => {
-      return processorQueue
+      return primaryQueue
         .add(() => observeEvent('block', () => handleBlockMessage(chainId, msg, db)))
         .catch(e => {
           logger.error(e, 'Error processing core node block message');
+          throw e;
+        });
+    },
+    handleBurnBlock: (msg: CoreNodeBurnBlockMessage, db: PgWriteStore) => {
+      return primaryQueue
+        .add(() => observeEvent('burn_block', () => handleBurnBlockMessage(msg, db)))
+        .catch(e => {
+          logger.error(e, 'Error processing core node burn block message');
           throw e;
         });
     },
@@ -707,23 +717,15 @@ function createMessageProcessorQueue(db: PgWriteStore): EventMessageHandler {
       msg: CoreNodeMicroblockMessage,
       db: PgWriteStore
     ) => {
-      return processorQueue
+      return secondaryQueue
         .add(() => observeEvent('microblock', () => handleMicroblockMessage(chainId, msg, db)))
         .catch(e => {
           logger.error(e, 'Error processing core node microblock message');
           throw e;
         });
     },
-    handleBurnBlock: (msg: CoreNodeBurnBlockMessage, db: PgWriteStore) => {
-      return processorQueue
-        .add(() => observeEvent('burn_block', () => handleBurnBlockMessage(msg, db)))
-        .catch(e => {
-          logger.error(e, 'Error processing core node burn block message');
-          throw e;
-        });
-    },
     handleMempoolTxs: (rawTxs: string[], db: PgWriteStore) => {
-      return processorQueue
+      return secondaryQueue
         .add(() => observeEvent('mempool_txs', () => handleMempoolTxsMessage(rawTxs, db)))
         .catch(e => {
           logger.error(e, 'Error processing core node mempool message');
@@ -731,7 +733,7 @@ function createMessageProcessorQueue(db: PgWriteStore): EventMessageHandler {
         });
     },
     handleDroppedMempoolTxs: (msg: CoreNodeDropMempoolTxMessage, db: PgWriteStore) => {
-      return processorQueue
+      return secondaryQueue
         .add(() =>
           observeEvent('dropped_mempool_txs', () => handleDroppedMempoolTxsMessage(msg, db))
         )
@@ -741,7 +743,7 @@ function createMessageProcessorQueue(db: PgWriteStore): EventMessageHandler {
         });
     },
     handleNewAttachment: (msg: CoreNodeAttachmentMessage[], db: PgWriteStore) => {
-      return processorQueue
+      return secondaryQueue
         .add(() => observeEvent('new_attachment', () => handleNewAttachmentMessage(msg, db)))
         .catch(e => {
           logger.error(e, 'Error processing new attachment message');
