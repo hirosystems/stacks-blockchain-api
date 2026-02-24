@@ -657,8 +657,20 @@ export class PgWriteStore extends PgStore {
   async updateBurnBlockPoxTxs(args: { burnBlockPoxTxs: DbBurnBlockPoxTx[] }): Promise<void> {
     if (args.burnBlockPoxTxs.length === 0) return;
     await this.sql`
-      INSERT INTO burn_block_pox_txs ${this.sql(args.burnBlockPoxTxs)}
-      ON CONFLICT ON CONSTRAINT burn_block_pox_txs_unique_idx DO NOTHING
+      WITH inserts AS (
+        INSERT INTO burn_block_pox_txs ${this.sql(args.burnBlockPoxTxs)}
+        ON CONFLICT ON CONSTRAINT burn_block_pox_txs_unique_idx DO NOTHING
+        RETURNING recipient, canonical
+      ),
+      count_deltas AS (
+        SELECT recipient, COUNT(*) AS count
+        FROM inserts
+        WHERE canonical = true
+        GROUP BY recipient
+      )
+      INSERT INTO burn_block_pox_tx_counts (recipient, count)
+      (SELECT recipient, count FROM count_deltas)
+      ON CONFLICT (recipient) DO UPDATE SET count = burn_block_pox_tx_counts.count + EXCLUDED.count
     `;
   }
 
@@ -3716,9 +3728,21 @@ export class PgWriteStore extends PgStore {
     });
     q.enqueue(async () => {
       await sql`
-        UPDATE burn_block_pox_txs
-        SET canonical = ${canonical}
-        WHERE burn_block_hash = ${burnBlockHash} AND canonical != ${canonical}
+        WITH updates AS (
+          UPDATE burn_block_pox_txs
+          SET canonical = ${canonical}
+          WHERE burn_block_hash = ${burnBlockHash} AND canonical != ${canonical}
+          RETURNING recipient
+        ),
+        count_deltas AS (
+          SELECT recipient, COUNT(*) AS count
+          FROM updates
+          GROUP BY recipient
+        )
+        UPDATE burn_block_pox_tx_counts AS pc
+        SET count = ${canonical ? sql`pc.count + cd.count` : sql`pc.count - cd.count`}
+        FROM count_deltas AS cd
+        WHERE pc.recipient = cd.recipient
       `;
     });
 

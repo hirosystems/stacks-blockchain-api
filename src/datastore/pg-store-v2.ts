@@ -230,8 +230,23 @@ export class PgStoreV2 extends BasePgStoreModule {
             : sql`burn_block_height = ${args.block.height}`
         : sql`TRUE`;
       const recipientFilter = args.recipient ? sql`recipient = ${args.recipient}` : sql`TRUE`;
+      const countQuery =
+        args.recipient && !args.block
+          ? sql`
+            SELECT COALESCE(count, 0)::int AS count
+            FROM burn_block_pox_tx_counts
+            WHERE recipient = ${args.recipient}
+          `
+          : sql`
+            SELECT COUNT(*)::int AS count
+            FROM burn_block_pox_txs
+            WHERE ${blockFilter} AND ${recipientFilter}
+          `;
       const results = await sql<(DbBurnBlockPoxTx & { total: number })[]>`
-        SELECT *, COUNT(*) OVER()::int AS total
+        WITH total_count AS (
+          ${countQuery}
+        )
+        SELECT *, (SELECT count FROM total_count) AS total
         FROM burn_block_pox_txs
         WHERE ${blockFilter} AND ${recipientFilter}
         ORDER BY burn_block_height DESC, tx_id ASC
