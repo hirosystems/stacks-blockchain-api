@@ -9,7 +9,8 @@ import { LimitParam, OffsetParam } from '../schemas/params';
 import { InvalidRequestError, InvalidRequestErrorType, NotFoundError } from '../../errors';
 import { ClarityAbi } from '@stacks/transactions';
 import { SmartContractSchema } from '../schemas/entities/smart-contracts';
-import { TransactionEventSchema } from '../schemas/entities/transaction-events';
+import { SmartContractLogTransactionEvent } from '../schemas/entities/transaction-events';
+import { ContractEventListResponseSchema } from '../schemas/responses/responses';
 
 export const ContractRoutes: FastifyPluginAsync<
   Record<never, never>,
@@ -114,16 +115,14 @@ export const ContractRoutes: FastifyPluginAsync<
         querystring: Type.Object({
           limit: LimitParam(ResourceType.Contract, 'Limit', 'max number of events to fetch'),
           offset: OffsetParam(),
+          cursor: Type.Optional(
+            Type.String({
+              description: 'Cursor for pagination in the format: indexBlockHash:txIndex:eventIndex',
+            })
+          ),
         }),
         response: {
-          200: Type.Object(
-            {
-              limit: Type.Integer(),
-              offset: Type.Integer(),
-              results: Type.Array(TransactionEventSchema),
-            },
-            { description: 'List of events' }
-          ),
+          200: ContractEventListResponseSchema,
         },
       },
     },
@@ -131,16 +130,35 @@ export const ContractRoutes: FastifyPluginAsync<
       const { contract_id } = req.params;
       const limit = getPagingQueryLimit(ResourceType.Contract, req.query.limit);
       const offset = parsePagingQueryInput(req.query.offset ?? 0);
+      const cursor = req.query.cursor;
+
+      // Validate cursor format if provided
+      if (cursor && !cursor.match(/^[0-9a-fA-F]{64}:\d+:\d+$/)) {
+        throw new InvalidRequestError(
+          'Invalid cursor format. Expected format: indexBlockHash:txIndex:eventIndex',
+          InvalidRequestErrorType.invalid_param
+        );
+      }
       const eventsQuery = await fastify.db.getSmartContractEvents({
         contractId: contract_id,
         limit,
         offset,
+        cursor,
       });
       if (!eventsQuery.found) {
         throw new NotFoundError(`cannot find events for contract by ID}`);
       }
-      const parsedEvents = eventsQuery.result.map(event => parseDbEvent(event));
-      await reply.send({ limit, offset, results: parsedEvents });
+      const parsedEvents = eventsQuery.result.map((event: any) => parseDbEvent(event));
+      const response = {
+        limit,
+        offset,
+        total: eventsQuery.total || 0,
+        results: parsedEvents as SmartContractLogTransactionEvent[],
+        next_cursor: eventsQuery.nextCursor || null,
+        prev_cursor: eventsQuery.prevCursor || null,
+        cursor: cursor || null,
+      };
+      await reply.send(response);
     }
   );
 

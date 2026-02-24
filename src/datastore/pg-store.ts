@@ -10,6 +10,7 @@ import {
   bnsNameFromSubdomain,
   ChainID,
   REPO_DIR,
+  normalizeHashString,
 } from '../helpers';
 import { PgStoreEventEmitter } from './pg-store-event-emitter';
 import {
@@ -42,6 +43,7 @@ import {
   DbSearchResult,
   DbSmartContract,
   DbSmartContractEvent,
+  DbCursorPaginatedFoundOrNot,
   DbStxBalance,
   DbStxEvent,
   DbStxLockEvent,
@@ -97,8 +99,31 @@ import {
 import * as path from 'path';
 import { PgStoreV2 } from './pg-store-v2';
 import { parseBlockParam } from '../api/routes/v2/schemas';
+import { sql } from 'node-pg-migrate/dist/operations/other';
 
 export const MIGRATIONS_DIR = path.join(REPO_DIR, 'migrations');
+
+// Cursor utilities for smart contract events
+function createEventCursor(indexBlockHash: string, txIndex: number, eventIndex: number): string {
+  return `${indexBlockHash}:${txIndex}:${eventIndex}`;
+}
+
+function parseEventCursor(
+  cursor: string
+): { indexBlockHash: string; txIndex: number; eventIndex: number } | null {
+  const parts = cursor.split(':');
+  if (parts.length !== 3) return null;
+  const indexBlockHash = parts[0];
+  const txIndex = parseInt(parts[1]);
+  const eventIndex = parseInt(parts[2]);
+
+  // Validate that parsing was successful (indexBlockHash should be hex, txIndex and eventIndex should be numbers)
+  if (!indexBlockHash.match(/^[0-9a-fA-F]{64}$/) || isNaN(txIndex) || isNaN(eventIndex)) {
+    return null;
+  }
+
+  return { indexBlockHash, txIndex, eventIndex };
+}
 
 /**
  * This is the main interface between the API and the Postgres database. It contains all methods that
@@ -2095,35 +2120,138 @@ export class PgStore extends BasePgStore {
     });
   }
 
-  async getSmartContractEvents({
-    contractId,
-    limit,
-    offset,
-  }: {
+  async getSmartContractEvents(args: {
     contractId: string;
     limit: number;
-    offset: number;
-  }): Promise<FoundOrNot<DbSmartContractEvent[]>> {
+    offset?: number;
+    cursor?: string;
+  }): Promise<DbCursorPaginatedFoundOrNot<DbSmartContractEvent[]>> {
+    const contractId = args.contractId;
+    const limit = args.limit;
+    const offset = args.offset ?? 0;
+    const cursor = args.cursor ?? null;
+
+    // Parse cursor if provided
+    const parsedCursor = cursor ? parseEventCursor(cursor) : null;
+
+    // Get total count first
+    const totalCountResult = await this.sql<{ count: string }[]>`
+      SELECT COUNT(*) as count
+      FROM contract_logs
+      WHERE contract_identifier = ${contractId}
+        AND canonical = true
+        AND microblock_canonical = true
+    `;
+    const totalCount = parseInt(totalCountResult[0]?.count || '0');
+
+    // If cursor is provided, look up the block_height from index_block_hash
+    let cursorBlockHeight: number | null = null;
+    let cursorFilter = this.sql``;
+    if (parsedCursor) {
+      const normalizedHash = normalizeHashString(parsedCursor.indexBlockHash);
+      if (normalizedHash === false) {
+        throw new Error(`Invalid index_block_hash in cursor: ${parsedCursor.indexBlockHash}`);
+      }
+      const blockHeightResult = await this.sql<{ block_height: number }[]>`
+        SELECT block_height
+        FROM blocks
+        WHERE index_block_hash = ${normalizedHash} AND canonical = true
+        LIMIT 1
+      `;
+      if (blockHeightResult.length === 0) {
+        // Cursor references a block that doesn't exist or was re-orged
+        throw new Error(
+          `Block not found for cursor index_block_hash: ${parsedCursor.indexBlockHash}`
+        );
+      }
+      cursorBlockHeight = blockHeightResult[0].block_height;
+
+      cursorFilter = this
+        .sql`AND (block_height, tx_index, event_index) < (${cursorBlockHeight}, ${parsedCursor.txIndex}, ${parsedCursor.eventIndex})`;
+    }
+
     const logResults = await this.sql<
       {
         event_index: number;
         tx_id: string;
         tx_index: number;
         block_height: number;
+        index_block_hash: string;
         contract_identifier: string;
         topic: string;
         value: string;
       }[]
     >`
       SELECT
-        event_index, tx_id, tx_index, block_height, contract_identifier, topic, value
+        event_index, tx_id, tx_index, block_height, encode(index_block_hash, 'hex') as index_block_hash,
+        contract_identifier, topic, value
       FROM contract_logs
-      WHERE canonical = true AND microblock_canonical = true AND contract_identifier = ${contractId}
+      WHERE canonical = true
+        AND microblock_canonical = true
+        AND contract_identifier = ${contractId}
+        ${cursorFilter}
       ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
-      LIMIT ${limit}
-      OFFSET ${offset}
+      LIMIT ${limit + 1}
+      ${cursor ? this.sql`` : this.sql`OFFSET ${offset}`}
     `;
-    const result = logResults.map(result => {
+
+    // Check if there are more results (for prev cursor)
+    const hasNextPage = logResults.length > limit;
+    const results = hasNextPage ? logResults.slice(0, limit) : logResults;
+
+    // Generate prev cursor from the last result
+    const lastResult = results[results.length - 1];
+    const prevCursor =
+      hasNextPage && results.length > 0
+        ? createEventCursor(
+            lastResult.index_block_hash,
+            lastResult.tx_index,
+            lastResult.event_index
+          )
+        : null;
+
+    // Generate current cursor from the first result
+    const firstResult = results[0];
+    const currentCursor = firstResult
+      ? createEventCursor(
+          firstResult.index_block_hash,
+          firstResult.tx_index,
+          firstResult.event_index
+        )
+      : null;
+
+    // Generate next cursor from the first result of last page
+    let nextCursor: string | null = null;
+    if (firstResult) {
+      const prevEvents = await this.sql<
+        {
+          event_index: number;
+          tx_index: number;
+          index_block_hash: string;
+        }[]
+      >`
+        SELECT event_index, tx_index, encode(index_block_hash, 'hex') as index_block_hash
+        FROM contract_logs
+        WHERE canonical = true
+          AND microblock_canonical = true
+          AND contract_identifier = ${contractId}
+          AND (block_height, tx_index, event_index) >
+            (${firstResult.block_height}, ${firstResult.tx_index}, ${firstResult.event_index})
+        ORDER BY block_height ASC, microblock_sequence ASC, tx_index ASC, event_index ASC
+        OFFSET ${limit - 1}
+        LIMIT 1
+      `;
+      if (prevEvents.length > 0) {
+        const event = prevEvents[0];
+        nextCursor = createEventCursor(event.index_block_hash, event.tx_index, event.event_index);
+      }
+    }
+
+    console.log({ nextCursor, prevCursor, currentCursor });
+    console.log({ firstResult, lastResult });
+
+    // Map to DbSmartContractEvent format
+    const mappedResults = results.map(result => {
       const event: DbSmartContractEvent = {
         event_index: result.event_index,
         tx_id: result.tx_id,
@@ -2137,7 +2265,15 @@ export class PgStore extends BasePgStore {
       };
       return event;
     });
-    return { found: true, result };
+
+    return {
+      found: true,
+      result: mappedResults,
+      nextCursor,
+      prevCursor,
+      currentCursor,
+      total: totalCount,
+    };
   }
 
   async getSmartContractByTrait(args: {
@@ -3333,15 +3469,15 @@ export class PgStore extends BasePgStore {
       { address: string; balance: string; count: number; total_supply: string }[]
     >`
       WITH totals AS (
-        SELECT 
+        SELECT
           SUM(balance) AS total,
           COUNT(*)::int AS total_count
         FROM ft_balances
         WHERE token = ${args.token}
       )
-      SELECT 
-        fb.address, 
-        fb.balance, 
+      SELECT
+        fb.address,
+        fb.balance,
         ts.total AS total_supply,
         ts.total_count AS count
       FROM ft_balances fb

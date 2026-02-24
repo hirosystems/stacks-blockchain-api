@@ -178,6 +178,10 @@ describe('smart contract tests', () => {
     expect(JSON.parse(fetchTx.text)).toEqual({
       limit: 20,
       offset: 0,
+      total: 1,
+      cursor: null,
+      next_cursor: null,
+      prev_cursor: null,
       results: [
         {
           event_index: 4,
@@ -193,6 +197,170 @@ describe('smart contract tests', () => {
     });
 
     db.eventEmitter.removeListener('smartContractLogUpdate', handler);
+  });
+
+  test('contract events cursor pagination', async () => {
+    const contractId = 'ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM.test-contract';
+
+    // Create multiple blocks with contract events for pagination testing
+    for (let blockHeight = 1; blockHeight <= 10; blockHeight++) {
+      const blockBuilder = new TestBlockBuilder({
+        block_height: blockHeight,
+        block_hash: `0x${blockHeight.toString().padStart(64, '0')}`,
+        index_block_hash: `0x${blockHeight.toString().padStart(64, '0')}`,
+        parent_index_block_hash:
+          blockHeight > 1 ? `0x${(blockHeight - 1).toString().padStart(64, '0')}` : '0x00',
+        parent_block_hash:
+          blockHeight > 1 ? `0x${(blockHeight - 1).toString().padStart(64, '0')}` : '0x00',
+        block_time: 1594647996 + blockHeight,
+        burn_block_time: 1594647996 + blockHeight,
+        burn_block_height: 123 + blockHeight,
+      });
+
+      // Add 2 transactions per block, each with 1 contract event
+      for (let txIndex = 0; txIndex < 2; txIndex++) {
+        const txId = `0x${blockHeight.toString().padStart(2, '0')}${txIndex
+          .toString()
+          .padStart(62, '0')}`;
+
+        blockBuilder
+          .addTx({
+            tx_id: txId,
+            type_id: DbTxTypeId.Coinbase,
+            coinbase_payload: bufferToHex(Buffer.from('test-payload')),
+          })
+          .addTxContractLogEvent({
+            contract_identifier: contractId,
+            topic: 'test-topic',
+            value: bufferToHex(
+              Buffer.from(serializeCV(bufferCVFromString(`event-${blockHeight}-${txIndex}`)))
+            ),
+          });
+      }
+
+      const blockData = blockBuilder.build();
+      await db.update(blockData);
+    }
+
+    // Basic pagination with limit (no cursor)
+    const page1 = await supertest(api.server)
+      .get(`/extended/v1/contract/${encodeURIComponent(contractId)}/events?limit=3`)
+      .expect(200);
+
+    expect(page1.body).toMatchObject({
+      limit: 3,
+      offset: 0,
+      total: 20, // Total events for this contract
+      results: expect.arrayContaining([
+        expect.objectContaining({
+          event_type: 'smart_contract_log',
+          contract_log: expect.objectContaining({ contract_id: contractId }),
+        }),
+      ]),
+      next_cursor: null,
+      prev_cursor: expect.any(String),
+      cursor: null,
+    });
+
+    expect(page1.body.results).toHaveLength(3);
+    const firstPageResults = page1.body.results;
+    const prevCursor = page1.body.prev_cursor;
+
+    // Use cursor for next page
+    const page2 = await supertest(api.server)
+      .get(
+        `/extended/v1/contract/${encodeURIComponent(
+          contractId
+        )}/events?limit=3&cursor=${prevCursor}`
+      )
+      .expect(200);
+
+    expect(page2.body).toMatchObject({
+      limit: 3,
+      offset: 0,
+      total: 20,
+      results: expect.arrayContaining([
+        expect.objectContaining({
+          event_type: 'smart_contract_log',
+          contract_log: expect.objectContaining({ contract_id: contractId }),
+        }),
+      ]),
+      next_cursor: expect.any(String),
+      prev_cursor: expect.any(String),
+      cursor: prevCursor,
+    });
+
+    expect(page2.body.results).toHaveLength(3);
+
+    // Ensure different results between pages
+    const page1TxIds = firstPageResults.map((r: { tx_id: string }) => r.tx_id);
+    const page2TxIds = page2.body.results.map((r: { tx_id: string }) => r.tx_id);
+    expect(page1TxIds).not.toEqual(page2TxIds);
+
+    // Backward compatibility - offset pagination still works
+    const offsetPage = await supertest(api.server)
+      .get(`/extended/v1/contract/${encodeURIComponent(contractId)}/events?limit=3&offset=3`)
+      .expect(200);
+
+    console.log('Offset Page Test: ', offsetPage.body);
+    expect(offsetPage.body).toMatchObject({
+      limit: 3,
+      offset: 3,
+      total: 20,
+      results: expect.any(Array),
+      next_cursor: expect.any(String),
+      prev_cursor: expect.any(String),
+      cursor: null,
+    });
+
+    // Invalid cursor returns 400
+    const invalidCursor = await supertest(api.server)
+      .get(`/extended/v1/contract/${encodeURIComponent(contractId)}/events?cursor=invalid-cursor`)
+      .expect(400);
+
+    // Cursor format validation - should be "indexBlockHash-txIndex-eventIndex"
+    // Using index_block_hash from block 10 (0x0000000000000000000000000000000000000000000000000000000000000010)
+    const validCursorFormat = await supertest(api.server)
+      .get(
+        `/extended/v1/contract/${encodeURIComponent(
+          contractId
+        )}/events?cursor=0000000000000000000000000000000000000000000000000000000000000010:1:0&limit=2`
+      )
+      .expect(200);
+
+    expect(validCursorFormat.body.results).toHaveLength(2);
+
+    // Complete pagination flow to demonstrate cursor behavior
+    let currentCursor: string | null = null;
+    let pageCount = 0;
+    const maxPages = 10; // Safety limit
+    const allPages: any[] = [];
+
+    do {
+      const url: string = currentCursor
+        ? `/extended/v1/contract/${encodeURIComponent(
+            contractId
+          )}/events?limit=5&cursor=${currentCursor}`
+        : `/extended/v1/contract/${encodeURIComponent(contractId)}/events?limit=5`;
+
+      const response: any = await supertest(api.server).get(url).expect(200);
+
+      allPages.push(response.body);
+      currentCursor = response.body.prev_cursor;
+      pageCount++;
+
+      if (pageCount >= maxPages) break; // Safety break
+    } while (currentCursor);
+
+    expect(pageCount).toBeGreaterThan(1); // Should have multiple pages
+    expect(currentCursor).toBeNull(); // Last page should have null next_cursor
+
+    // Verify no overlapping results across pages
+    const allTxIds: string[] = allPages.flatMap(page =>
+      (page.results as { tx_id: string }[]).map(r => r.tx_id)
+    );
+    const uniqueTxIds = [...new Set(allTxIds)];
+    expect(allTxIds.length).toBe(uniqueTxIds.length); // No duplicates
   });
 
   test('get contract by ID', async () => {
