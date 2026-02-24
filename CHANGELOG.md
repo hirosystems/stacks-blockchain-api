@@ -1,3 +1,9 @@
+## [9.0.0-next.19](https://github.com/hirosystems/stacks-blockchain-api/compare/v9.0.0-next.18...v9.0.0-next.19) (2026-02-24)
+
+### Bug Fixes
+
+* keep a table of pox tx counts ([#2462](https://github.com/hirosystems/stacks-blockchain-api/issues/2462)) ([5b1fffd](https://github.com/hirosystems/stacks-blockchain-api/commit/5b1fffd89d9e8e39e67e87ff7ffa570ca693970c))
+
 ## [9.0.0-next.18](https://github.com/hirosystems/stacks-blockchain-api/compare/v9.0.0-next.17...v9.0.0-next.18) (2026-02-23)
 
 ### Features
