@@ -55,6 +55,8 @@ import {
   DbTxRaw,
   DbMempoolTxRaw,
   DbChainTip,
+  RawEventRequestInsertValues,
+  IndexesState,
   NftCustodyInsertValues,
   DataStoreBnsBlockTxData,
   DbPoxSyntheticEvent,
