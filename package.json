@@ -108,7 +108,7 @@
     "@stacks/transactions": "6.11.3",
     "@types/lru-cache": "5.1.1",
     "@types/ws": "7.4.7",
-    "ajv": "8.17.1",
+    "ajv": "8.18.0",
     "ajv-formats": "3.0.1",
     "bignumber.js": "9.0.2",
     "bitcoinjs-lib": "6.1.1",
