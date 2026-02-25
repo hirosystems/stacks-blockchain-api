@@ -6,6 +6,7 @@ jest.mock('ioredis', () => {
     xadd: jest.fn((queue, id, field, message) => {
       messages.push(message);
     }),
+    xtrim: jest.fn().mockResolvedValue(undefined),
     quit: jest.fn().mockResolvedValue(undefined),
   }));
   const mock = redisMock as unknown as { default: typeof redisMock };

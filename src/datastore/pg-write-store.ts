@@ -872,8 +872,8 @@ export class PgWriteStore extends PgStore {
         table === 'names'
           ? sql('registered_at')
           : table === 'namespaces'
-          ? sql('ready_block')
-          : sql('block_height');
+            ? sql('ready_block')
+            : sql('block_height');
       // The smart_contracts table does not have a tx_index column
       const txIndexBump = table === 'smart_contracts' ? sql`` : sql`tx_index = tx_index + 1,`;
       const metadataResult = await sql`
@@ -895,10 +895,10 @@ export class PgWriteStore extends PgStore {
     Entry extends { tx: DbTx } & ('pox2_events' extends T
       ? { pox2Events: DbPoxSyntheticEvent[] }
       : 'pox3_events' extends T
-      ? { pox3Events: DbPoxSyntheticEvent[] }
-      : 'pox4_events' extends T
-      ? { pox4Events: DbPoxSyntheticEvent[] }
-      : never)
+        ? { pox3Events: DbPoxSyntheticEvent[] }
+        : 'pox4_events' extends T
+          ? { pox4Events: DbPoxSyntheticEvent[] }
+          : never),
   >(sql: PgSqlClient, poxTable: T, entries: Entry[]) {
     const values: PoxSyntheticEventInsertValues[] = [];
     for (const entry of entries) {
@@ -2237,33 +2237,35 @@ export class PgWriteStore extends PgStore {
           FROM source_txs
         ),
         same_nonce_mempool_txs AS (
-          SELECT
-            m.tx_id,
-            m.fee_rate,
-            m.receipt_time,
-            m.pruned,
-            g.address,
-            g.nonce
+          SELECT m.tx_id, m.fee_rate, m.receipt_time, m.pruned, g.address, g.nonce
           FROM mempool_txs m
           INNER JOIN affected_groups g
-            ON m.nonce = g.nonce
-            AND (m.sponsor_address = g.address OR m.sender_address = g.address)
+            ON m.sender_address = g.address AND m.nonce = g.nonce
+          UNION
+          SELECT m.tx_id, m.fee_rate, m.receipt_time, m.pruned, g.address, g.nonce
+          FROM mempool_txs m
+          INNER JOIN affected_groups g
+            ON m.sponsor_address = g.address AND m.nonce = g.nonce
         ),
         mined_txs AS (
-          SELECT
-            t.tx_id,
-            g.address,
-            g.nonce
+          SELECT t.tx_id, g.address, g.nonce,
+            t.block_height, t.microblock_sequence, t.tx_index
           FROM txs t
           INNER JOIN affected_groups g
-            ON t.nonce = g.nonce
-            AND (t.sponsor_address = g.address OR t.sender_address = g.address)
+            ON t.sender_address = g.address AND t.nonce = g.nonce
           WHERE t.canonical = true AND t.microblock_canonical = true
-          ORDER BY t.block_height DESC, t.microblock_sequence DESC, t.tx_index DESC
+          UNION
+          SELECT t.tx_id, g.address, g.nonce,
+            t.block_height, t.microblock_sequence, t.tx_index
+          FROM txs t
+          INNER JOIN affected_groups g
+            ON t.sponsor_address = g.address AND t.nonce = g.nonce
+          WHERE t.canonical = true AND t.microblock_canonical = true
         ),
         latest_mined_txs AS (
           SELECT DISTINCT ON (address, nonce) tx_id, address, nonce
           FROM mined_txs
+          ORDER BY address, nonce, block_height DESC, microblock_sequence DESC, tx_index DESC
         ),
         highest_fee_mempool_txs AS (
           SELECT DISTINCT ON (address, nonce) tx_id, address, nonce
@@ -2419,7 +2421,7 @@ export class PgWriteStore extends PgStore {
         block_height: smartContract.block_height,
         index_block_hash: tx.index_block_hash,
         source_code: smartContract.source_code,
-        abi: smartContract.abi ? JSON.parse(smartContract.abi) ?? 'null' : 'null',
+        abi: smartContract.abi ? (JSON.parse(smartContract.abi) ?? 'null') : 'null',
         parent_index_block_hash: tx.parent_index_block_hash,
         microblock_hash: tx.microblock_hash,
         microblock_sequence: tx.microblock_sequence,
@@ -3002,14 +3004,20 @@ export class PgWriteStore extends PgStore {
       affected_sponsored AS (
         SELECT m.tx_id
         FROM mempool_txs m
-        INNER JOIN sponsored_inputs i ON m.nonce = i.nonce::int
-        AND (m.sponsor_address = i.sponsor_address OR m.sender_address = i.sponsor_address)
+        INNER JOIN sponsored_inputs i ON m.sponsor_address = i.sponsor_address AND m.nonce = i.nonce::int
+        UNION
+        SELECT m.tx_id
+        FROM mempool_txs m
+        INNER JOIN sponsored_inputs i ON m.sender_address = i.sponsor_address AND m.nonce = i.nonce::int
       ),
       affected_non_sponsored AS (
         SELECT m.tx_id
         FROM mempool_txs m
-        INNER JOIN non_sponsored_inputs i ON m.nonce = i.nonce::int
-        AND (m.sponsor_address = i.sender_address OR m.sender_address = i.sender_address)
+        INNER JOIN non_sponsored_inputs i ON m.sponsor_address = i.sender_address AND m.nonce = i.nonce::int
+        UNION
+        SELECT m.tx_id
+        FROM mempool_txs m
+        INNER JOIN non_sponsored_inputs i ON m.sender_address = i.sender_address AND m.nonce = i.nonce::int
       ),
       affected_mempool_tx_ids AS (
         SELECT tx_id FROM affected_sponsored
@@ -3097,14 +3105,20 @@ export class PgWriteStore extends PgStore {
       affected_sponsored AS (
         SELECT m.tx_id
         FROM mempool_txs m
-        INNER JOIN sponsored_inputs i ON m.nonce = i.nonce::int
-        AND (m.sponsor_address = i.sponsor_address OR m.sender_address = i.sponsor_address)
+        INNER JOIN sponsored_inputs i ON m.sponsor_address = i.sponsor_address AND m.nonce = i.nonce::int
+        UNION
+        SELECT m.tx_id
+        FROM mempool_txs m
+        INNER JOIN sponsored_inputs i ON m.sender_address = i.sponsor_address AND m.nonce = i.nonce::int
       ),
       affected_non_sponsored AS (
         SELECT m.tx_id
         FROM mempool_txs m
-        INNER JOIN non_sponsored_inputs i ON m.nonce = i.nonce::int
-        AND (m.sponsor_address = i.sender_address OR m.sender_address = i.sender_address)
+        INNER JOIN non_sponsored_inputs i ON m.sponsor_address = i.sender_address AND m.nonce = i.nonce::int
+        UNION
+        SELECT m.tx_id
+        FROM mempool_txs m
+        INNER JOIN non_sponsored_inputs i ON m.sender_address = i.sender_address AND m.nonce = i.nonce::int
       ),
       affected_mempool_tx_ids AS (
         SELECT tx_id FROM affected_sponsored
@@ -4028,17 +4042,6 @@ export class PgWriteStore extends PgStore {
         throw new Error(`No updates made while toggling table indexes`);
       }
     }
-  }
-
-  async getLastIngestedSnpRedisMsgId(): Promise<string> {
-    const [{ last_redis_msg_id }] = await this.sql<
-      { last_redis_msg_id: string }[]
-    >`SELECT last_redis_msg_id FROM snp_state`;
-    return last_redis_msg_id;
-  }
-
-  async updateLastIngestedSnpRedisMsgId(sql: PgSqlClient, msgId: string): Promise<void> {
-    await sql`UPDATE snp_state SET last_redis_msg_id = ${msgId}`;
   }
 
   async close(args?: { timeout?: number }): Promise<void> {

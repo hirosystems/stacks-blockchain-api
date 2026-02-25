@@ -144,7 +144,7 @@ async function init(): Promise<void> {
     registerShutdownConfig({
       name: 'Event Server',
       handler: () => eventServer.closeAsync(),
-      forceKillable: false,
+      forceKillable: true,
     });
 
     const skipChainIdCheck = parseBoolean(process.env['SKIP_STACKS_CHAIN_ID_CHECK']);
@@ -168,9 +168,7 @@ async function init(): Promise<void> {
     }
 
     if (snpEnabled) {
-      const lastRedisMsgId = await dbWriteStore.getLastIngestedSnpRedisMsgId();
       const snpStream = new SnpEventStreamHandler({
-        lastMessageId: lastRedisMsgId,
         db: dbWriteStore,
         eventServer,
       });
@@ -178,7 +176,7 @@ async function init(): Promise<void> {
       registerShutdownConfig({
         name: 'SNP client stream',
         handler: () => snpStream.stop(),
-        forceKillable: false,
+        forceKillable: true,
       });
     }
   }
@@ -208,7 +206,7 @@ async function init(): Promise<void> {
     registerShutdownConfig({
       name: 'Profiler server',
       handler: () => profilerServer.close(),
-      forceKillable: false,
+      forceKillable: true,
     });
   }
 
@@ -219,7 +217,7 @@ async function init(): Promise<void> {
         await dbStore.close();
         await dbWriteStore.close();
       },
-      forceKillable: false,
+      forceKillable: true,
     });
   }
 
@@ -239,7 +237,7 @@ async function init(): Promise<void> {
     });
     registerShutdownConfig({
       name: 'Prometheus Server',
-      forceKillable: false,
+      forceKillable: true,
       handler: async () => {
         await promServer.close();
       },

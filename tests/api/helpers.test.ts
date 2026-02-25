@@ -545,9 +545,9 @@ test('getUintEnvOrDefault tests', () => {
   process.env[key] = '123';
   expect(getUintEnvOrDefault(key)).toBe(123);
   process.env[key] = '-123';
-  expect(() => getUintEnvOrDefault(key)).toThrowError();
+  expect(() => getUintEnvOrDefault(key)).toThrow();
   process.env[key] = 'ABC';
-  expect(() => getUintEnvOrDefault(key)).toThrowError();
+  expect(() => getUintEnvOrDefault(key)).toThrow();
 });
 
 test('signer bitvec decoding', () => {

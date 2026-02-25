@@ -21,7 +21,7 @@ export function getPgConnectionEnvValue(
 ): string | undefined {
   const defaultVal = process.env[`PG_${name}`] ?? process.env[`PG${name}`];
   return pgServer === PgServer.primary
-    ? process.env[`PG_PRIMARY_${name}`] ?? defaultVal
+    ? (process.env[`PG_PRIMARY_${name}`] ?? defaultVal)
     : defaultVal;
 }
 
