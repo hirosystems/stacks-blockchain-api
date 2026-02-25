@@ -1,3 +1,20 @@
+## [8.14.0](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.13.6...v8.14.0) (2026-02-25)
+
+### Features
+
+* add option to stream blocks only with SNP ([#2417](https://github.com/hirosystems/stacks-blockchain-api/issues/2417)) ([34c20cd](https://github.com/hirosystems/stacks-blockchain-api/commit/34c20cdc618643a114893111bc492643fe129898))
+* enforce Redis stream max length for notifier queue ([#2419](https://github.com/hirosystems/stacks-blockchain-api/issues/2419)) ([17be15c](https://github.com/hirosystems/stacks-blockchain-api/commit/17be15cb844e0371771b38cfd0a8c2595749e25e))
+* remove unused prod dependencies ([#2427](https://github.com/hirosystems/stacks-blockchain-api/issues/2427)) ([622ea37](https://github.com/hirosystems/stacks-blockchain-api/commit/622ea3748a28367f71254ba8e674d5cc61673c77))
+* upgrade to snp v2 ([#2457](https://github.com/hirosystems/stacks-blockchain-api/issues/2457)) ([b1dfc08](https://github.com/hirosystems/stacks-blockchain-api/commit/b1dfc080bf68c0b14d326ad2fd2090f26a583a22))
+
+### Bug Fixes
+
+* guard against non-string topic subscriptions ([#2439](https://github.com/hirosystems/stacks-blockchain-api/issues/2439)) ([f09553b](https://github.com/hirosystems/stacks-blockchain-api/commit/f09553bd6e7dbdf7085f2ba6ed3d6b6e3a24646f)), closes [#2409](https://github.com/hirosystems/stacks-blockchain-api/issues/2409) [#2412](https://github.com/hirosystems/stacks-blockchain-api/issues/2412)
+* optimize rbf query ([94ffb09](https://github.com/hirosystems/stacks-blockchain-api/commit/94ffb09bae38a2ef61711af69c8cafec02b3f638))
+* remove OR from mempool queries ([91cf73e](https://github.com/hirosystems/stacks-blockchain-api/commit/91cf73ebf7185971f2756490dda5e74987be4b2d))
+* upgrade stacks codec for clarity 5 support ([#2444](https://github.com/hirosystems/stacks-blockchain-api/issues/2444)) ([c1494ac](https://github.com/hirosystems/stacks-blockchain-api/commit/c1494ac46263f0b16ea89ae099e0a65f01c64194))
+* wait at most 60 seconds for services to shutdown ([#2448](https://github.com/hirosystems/stacks-blockchain-api/issues/2448)) ([47c34cb](https://github.com/hirosystems/stacks-blockchain-api/commit/47c34cb591d1620afae933562a962b740a7a62e3))
+
 ## [8.13.6](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.13.5...v8.13.6) (2025-12-22)
 
 ### Bug Fixes
