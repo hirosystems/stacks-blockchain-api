@@ -1,3 +1,9 @@
+## [8.14.1](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.14.0...v8.14.1) (2026-02-25)
+
+### Bug Fixes
+
+* drop slow unused gin index on blocks ([#2468](https://github.com/hirosystems/stacks-blockchain-api/issues/2468)) ([a88cb8a](https://github.com/hirosystems/stacks-blockchain-api/commit/a88cb8a9a399b8f879706b7f565c81a8cb26765a))
+
 ## [8.14.0](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.13.6...v8.14.0) (2026-02-25)
 
 ### Features
