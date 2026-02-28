@@ -1,9 +1,8 @@
 import * as inspector from 'inspector';
 import * as stream from 'stream';
 import { once } from 'events';
-import { createServer, Server } from 'http';
-import * as express from 'express';
-import { asyncHandler } from './api/async-handler';
+import { Server } from 'http';
+import Fastify from 'fastify';
 import { parsePort, pipelineAsync } from './helpers';
 import { Socket } from 'net';
 import * as os from 'os';
@@ -293,122 +292,114 @@ export async function startProfilerServer(httpServerPort?: number | string): Pro
   if (httpServerPort !== undefined) {
     serverPort = parsePort(httpServerPort);
   }
-  const app = express();
+
+  const fastify = Fastify({ logger: logger });
 
   let existingSession:
-    | { instance: ProfilerInstance<unknown>; response: express.Response }
+    | { instance: ProfilerInstance<unknown>; response: import('http').ServerResponse }
     | undefined;
+  let neonProfilerRunning = false;
 
-  app.get(
-    '/profile/cpu',
-    asyncHandler(async (req, res) => {
-      if (existingSession) {
-        res.status(409).json({ error: 'Profile session already in progress' });
-        return;
+  fastify.get<{
+    Querystring: { duration: string; sampling_interval?: string };
+  }>('/profile/cpu', async (req, reply) => {
+    if (existingSession) {
+      return reply.status(409).send({ error: 'Profile session already in progress' });
+    }
+    const durationParam = req.query['duration'];
+    const seconds = Number.parseFloat(durationParam);
+    if (!Number.isFinite(seconds) || seconds < 0) {
+      return reply
+        .status(400)
+        .send({ error: `Invalid 'duration' query parameter "${durationParam}"` });
+    }
+    const samplingIntervalParam = req.query['sampling_interval'];
+    let samplingInterval: number | undefined;
+    if (samplingIntervalParam !== undefined) {
+      samplingInterval = Number.parseFloat(samplingIntervalParam);
+      if (!Number.isInteger(samplingInterval) || samplingInterval < 0) {
+        return reply.status(400).send({
+          error: `Invalid 'sampling_interval' query parameter "${samplingIntervalParam}"`,
+        });
       }
-      const durationParam = req.query['duration'];
-      const seconds = Number.parseFloat(durationParam as string);
-      if (!Number.isFinite(seconds) || seconds < 0) {
-        res.status(400).json({ error: `Invalid 'duration' query parameter "${durationParam}"` });
-        return;
-      }
-      const samplingIntervalParam = req.query['sampling_interval'];
-      let samplingInterval: number | undefined;
-      if (samplingIntervalParam !== undefined) {
-        samplingInterval = Number.parseFloat(samplingIntervalParam as string);
-        if (!Number.isInteger(samplingInterval) || samplingInterval < 0) {
-          res.status(400).json({
-            error: `Invalid 'sampling_interval' query parameter "${samplingIntervalParam}"`,
-          });
-          return;
-        }
-      }
-      const cpuProfiler = initCpuProfiling(samplingInterval);
-      existingSession = { instance: cpuProfiler, response: res };
-      try {
-        const filename = `cpu_${Math.round(Date.now() / 1000)}_${seconds}-seconds.cpuprofile`;
-        res.setHeader('Cache-Control', 'no-store');
-        res.setHeader('Transfer-Encoding', 'chunked');
-        res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-        res.setHeader('Content-Type', 'application/json; charset=utf-8');
-        res.flushHeaders();
-        await cpuProfiler.start();
-        const ac = new AbortController();
-        const timeoutPromise = timeout(seconds * 1000, ac);
-        await Promise.race([timeoutPromise, once(res, 'close')]);
-        if (res.writableEnded || res.destroyed) {
-          // session was cancelled
-          ac.abort();
-          return;
-        }
-        const result = await cpuProfiler.stop();
-        const resultString = JSON.stringify(result);
-        logger.info(
-          `[CpuProfiler] Completed, total profile report JSON string length: ${resultString.length}`
-        );
-        res.end(resultString);
-      } finally {
-        const session = existingSession;
-        existingSession = undefined;
-        await session?.instance.dispose().catch();
-      }
-    })
-  );
-
-  let neonProfilerRunning: boolean = false;
-
-  app.get(
-    '/profile/cpu/start',
-    asyncHandler(async (req, res) => {
-      if (existingSession) {
-        res.status(409).json({ error: 'Profile session already in progress' });
-        return;
-      }
-      const samplingIntervalParam = req.query['sampling_interval'];
-      let samplingInterval: number | undefined;
-      if (samplingIntervalParam !== undefined) {
-        samplingInterval = Number.parseFloat(samplingIntervalParam as string);
-        if (!Number.isInteger(samplingInterval) || samplingInterval < 0) {
-          res.status(400).json({
-            error: `Invalid 'sampling_interval' query parameter "${samplingIntervalParam}"`,
-          });
-          return;
-        }
-      }
-      const cpuProfiler = initCpuProfiling(samplingInterval);
-      existingSession = { instance: cpuProfiler, response: res };
+    }
+    const cpuProfiler = initCpuProfiling(samplingInterval);
+    existingSession = { instance: cpuProfiler, response: reply.raw };
+    try {
+      const filename = `cpu_${Math.round(Date.now() / 1000)}_${seconds}-seconds.cpuprofile`;
+      reply.raw.setHeader('Cache-Control', 'no-store');
+      reply.raw.setHeader('Transfer-Encoding', 'chunked');
+      reply.raw.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+      reply.raw.setHeader('Content-Type', 'application/json; charset=utf-8');
+      reply.raw.flushHeaders();
       await cpuProfiler.start();
-      const profilerRunningLogger = setInterval(() => {
-        if (existingSession) {
-          logger.error(`CPU profiler has been enabled for a long time`);
-        } else {
-          clearInterval(profilerRunningLogger);
-        }
-      }, 10_000).unref();
-      res.end('CPU profiler started');
-    })
-  );
+      const ac = new AbortController();
+      const timeoutPromise = timeout(seconds * 1000, ac);
+      await Promise.race([timeoutPromise, once(reply.raw, 'close')]);
+      if (reply.raw.writableEnded || reply.raw.destroyed) {
+        ac.abort();
+        return;
+      }
+      const result = await cpuProfiler.stop();
+      const resultString = JSON.stringify(result);
+      logger.info(
+        `[CpuProfiler] Completed, total profile report JSON string length: ${resultString.length}`
+      );
+      reply.raw.end(resultString);
+    } finally {
+      const session = existingSession;
+      existingSession = undefined;
+      await session?.instance.dispose().catch();
+    }
+  });
 
-  app.get('/profile/native/cpu/start', (req, res) => {
+  fastify.get<{
+    Querystring: { sampling_interval?: string };
+  }>('/profile/cpu/start', async (req, reply) => {
+    if (existingSession) {
+      return reply.status(409).send({ error: 'Profile session already in progress' });
+    }
+    const samplingIntervalParam = req.query['sampling_interval'];
+    let samplingInterval: number | undefined;
+    if (samplingIntervalParam !== undefined) {
+      samplingInterval = Number.parseFloat(samplingIntervalParam);
+      if (!Number.isInteger(samplingInterval) || samplingInterval < 0) {
+        return reply.status(400).send({
+          error: `Invalid 'sampling_interval' query parameter "${samplingIntervalParam}"`,
+        });
+      }
+    }
+    const cpuProfiler = initCpuProfiling(samplingInterval);
+    existingSession = { instance: cpuProfiler, response: reply.raw };
+    await cpuProfiler.start();
+    const profilerRunningLogger = setInterval(() => {
+      if (existingSession) {
+        logger.error(`CPU profiler has been enabled for a long time`);
+      } else {
+        clearInterval(profilerRunningLogger);
+      }
+    }, 10_000).unref();
+    await reply.send('CPU profiler started');
+  });
+
+  fastify.get('/profile/native/cpu/start', async (_req, reply) => {
     if (neonProfilerRunning) {
-      res.status(500).end('error: profiler already started');
-      return;
+      return reply.status(500).send('error: profiler already started');
     }
     neonProfilerRunning = true;
     try {
       const startResponse = startProfiler();
       console.log(startResponse);
-      res.end(startResponse);
+      await reply.send(startResponse);
     } catch (error) {
       console.error(error);
-      res.status(500).end(error);
+      return reply.status(500).send(String(error));
     }
   });
 
-  app.get('/profile/native/cpu/stop', (req, res) => {
+  fastify.get('/profile/native/cpu/stop', async (_req, reply) => {
     if (!neonProfilerRunning) {
-      res.status(500).end('error: no profiler running');
-      return;
+      return reply.status(500).send('error: no profiler running');
     }
     neonProfilerRunning = false;
     let profilerResults: Buffer;
@@ -416,114 +407,100 @@ export async function startProfilerServer(httpServerPort?: number | string): Pro
       profilerResults = stopProfiler();
     } catch (error: any) {
       console.error(error);
-      res.status(500).end(error);
-      return;
+      return reply.status(500).send(error);
     }
     const fileName = `profile-${Date.now()}.svg`;
-    res.setHeader('Cache-Control', 'no-store');
-    res.setHeader('Transfer-Encoding', 'chunked');
-    res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
-    res.setHeader('Content-Type', 'image/svg+xml');
-    res.status(200).send(profilerResults);
+    void reply.header('Cache-Control', 'no-store');
+    void reply.header('Transfer-Encoding', 'chunked');
+    void reply.header('Content-Disposition', `attachment; filename="${fileName}"`);
+    void reply.header('Content-Type', 'image/svg+xml');
+    return reply.send(profilerResults);
   });
 
-  app.get(
-    '/profile/cpu/stop',
-    asyncHandler(async (req, res) => {
-      if (!existingSession) {
-        res.status(409).json({ error: 'No profile session in progress' });
-        return;
-      }
-      if (existingSession.instance.sessionType !== 'cpu') {
-        res.status(409).json({ error: 'No CPU profile session in progress' });
-        return;
-      }
-      try {
-        const elapsedSeconds = existingSession.instance.stopwatch.getElapsedSeconds();
-        const timestampSeconds = Math.round(Date.now() / 1000);
-        const filename = `cpu_${timestampSeconds}_${elapsedSeconds}-seconds.cpuprofile`;
-        const result = await (
-          existingSession.instance as ProfilerInstance<inspector.Profiler.Profile>
-        ).stop();
-        const resultString = JSON.stringify(result);
-        logger.info(
-          `[CpuProfiler] Completed, total profile report JSON string length: ${resultString.length}`
-        );
+  fastify.get('/profile/cpu/stop', async (req, reply) => {
+    if (!existingSession) {
+      return reply.status(409).send({ error: 'No profile session in progress' });
+    }
+    if (existingSession.instance.sessionType !== 'cpu') {
+      return reply.status(409).send({ error: 'No CPU profile session in progress' });
+    }
+    try {
+      const elapsedSeconds = existingSession.instance.stopwatch.getElapsedSeconds();
+      const timestampSeconds = Math.round(Date.now() / 1000);
+      const filename = `cpu_${timestampSeconds}_${elapsedSeconds}-seconds.cpuprofile`;
+      const result = await (
+        existingSession.instance as ProfilerInstance<inspector.Profiler.Profile>
+      ).stop();
+      const resultString = JSON.stringify(result);
+      logger.info(
+        `[CpuProfiler] Completed, total profile report JSON string length: ${resultString.length}`
+      );
 
-        res.setHeader('Cache-Control', 'no-store');
-        res.setHeader('Transfer-Encoding', 'chunked');
-        res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-        res.setHeader('Content-Type', 'application/json; charset=utf-8');
-        // await new Promise<void>(resolve => res.end(resultString, () => resolve()));
-        res.end(resultString);
-      } finally {
-        const session = existingSession;
-        existingSession = undefined;
-        await session?.instance.dispose().catch();
-      }
-    })
-  );
-
-  app.get(
-    '/profile/heap_snapshot',
-    asyncHandler(async (req, res) => {
-      if (existingSession) {
-        res.status(409).json({ error: 'Profile session already in progress' });
-        return;
-      }
-      const filename = `heap_${Math.round(Date.now() / 1000)}.heapsnapshot`;
-      const tmpFile = path.join(os.tmpdir(), filename);
-      const fileWriteStream = fs.createWriteStream(tmpFile);
-      const heapProfiler = initHeapSnapshot(fileWriteStream);
-      existingSession = { instance: heapProfiler, response: res };
-      try {
-        res.setHeader('Cache-Control', 'no-store');
-        res.setHeader('Transfer-Encoding', 'chunked');
-        res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-        res.setHeader('Content-Type', 'application/json; charset=utf-8');
-        res.flushHeaders();
-        // Taking a heap snapshot (with current implementation) is a one-shot process ran to get the
-        // applications current heap memory usage, rather than something done over time. So start and
-        // stop without waiting.
-        await heapProfiler.start();
-        const result = await heapProfiler.stop();
-        logger.info(
-          `[HeapProfiler] Completed, total snapshot byte size: ${result.totalSnapshotByteSize}`
-        );
-        await pipelineAsync(fs.createReadStream(tmpFile), res);
-      } finally {
-        const session = existingSession;
-        existingSession = undefined;
-        await session?.instance.dispose().catch();
-        try {
-          fileWriteStream.destroy();
-        } catch (_) {}
-        try {
-          logger.info(`[HeapProfiler] Cleaning up tmp file ${tmpFile}`);
-          fs.unlinkSync(tmpFile);
-        } catch (_) {}
-      }
-    })
-  );
-
-  app.get(
-    '/profile/cancel',
-    asyncHandler(async (req, res) => {
-      if (!existingSession) {
-        res.status(409).json({ error: 'No existing profile session is exists to cancel' });
-        return;
-      }
+      void reply.header('Cache-Control', 'no-store');
+      void reply.header('Transfer-Encoding', 'chunked');
+      void reply.header('Content-Disposition', `attachment; filename="${filename}"`);
+      void reply.header('Content-Type', 'application/json; charset=utf-8');
+      reply.raw.end(resultString);
+    } finally {
       const session = existingSession;
-      await session.instance.stop().catch();
-      await session.instance.dispose().catch();
-      session.response.destroy();
       existingSession = undefined;
-      await Promise.resolve();
-      res.json({ ok: 'existing profile session stopped' });
-    })
-  );
+      await session?.instance.dispose().catch();
+    }
+  });
 
-  const server = createServer(app);
+  fastify.get('/profile/heap_snapshot', async (req, reply) => {
+    if (existingSession) {
+      return reply.status(409).send({ error: 'Profile session already in progress' });
+    }
+    const filename = `heap_${Math.round(Date.now() / 1000)}.heapsnapshot`;
+    const tmpFile = path.join(os.tmpdir(), filename);
+    const fileWriteStream = fs.createWriteStream(tmpFile);
+    const heapProfiler = initHeapSnapshot(fileWriteStream);
+    existingSession = { instance: heapProfiler, response: reply.raw };
+    try {
+      // Taking a heap snapshot (with current implementation) is a one-shot process ran to get the
+      // applications current heap memory usage, rather than something done over time. So start and
+      // stop without waiting.
+      void reply.header('Cache-Control', 'no-store');
+      void reply.header('Transfer-Encoding', 'chunked');
+      void reply.header('Content-Disposition', `attachment; filename="${filename}"`);
+      void reply.header('Content-Type', 'application/json; charset=utf-8');
+      reply.raw.flushHeaders();
+      await heapProfiler.start();
+      const result = await heapProfiler.stop();
+      logger.info(
+        `[HeapProfiler] Completed, total snapshot byte size: ${result.totalSnapshotByteSize}`
+      );
+      await pipelineAsync(fs.createReadStream(tmpFile), reply.raw);
+    } finally {
+      const session = existingSession;
+      existingSession = undefined;
+      await session?.instance.dispose().catch();
+      try {
+        fileWriteStream.destroy();
+      } catch (_) {}
+      try {
+        logger.info(`[HeapProfiler] Cleaning up tmp file ${tmpFile}`);
+        fs.unlinkSync(tmpFile);
+      } catch (_) {}
+    }
+  });
+
+  fastify.get('/profile/cancel', async (_req, reply) => {
+    if (!existingSession) {
+      return reply.status(409).send({ error: 'No existing profile session is exists to cancel' });
+    }
+    const session = existingSession;
+    await session.instance.stop().catch();
+    await session.instance.dispose().catch();
+    session.response.destroy();
+    existingSession = undefined;
+    await Promise.resolve();
+    await reply.send({ ok: 'existing profile session stopped' });
+  });
+
+  await fastify.ready();
+  const server = fastify.server;
 
   const serverSockets = new Set<Socket>();
   server.on('connection', socket => {
