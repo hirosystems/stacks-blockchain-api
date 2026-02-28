@@ -225,3 +225,4 @@ Join our community and stay connected with the latest updates and discussions:
 ## Client library
 
 You can use the Stacks Blockchain API Client library if you need to call the API via JavaScript or receive real-time updates via WebSockets or Socket.io. Learn more [here](client/README.md).
+``
