@@ -2818,6 +2818,149 @@ describe('tx tests', () => {
     );
   });
 
+  test('tx list - filter by status', async () => {
+    const testSenderAddr = 'ST27W5M8BRKA7C5MZE2R1S1F4XTPHFWFRNHA9M04Y';
+    const block1 = new TestBlockBuilder({
+      block_height: 1,
+      index_block_hash: '0x01',
+      burn_block_time: 1710000000,
+    })
+      .addTx({
+        tx_id: '0x1234',
+        fee_rate: 1n,
+        sender_address: testSenderAddr,
+        status: DbTxStatus.Success,
+        type_id: DbTxTypeId.TokenTransfer,
+        token_transfer_amount: 123456n,
+        token_transfer_memo: '0x1234',
+        token_transfer_recipient_address: 'ST27W5M8BRKA7C5MZE2R1S1F4XTPHFWFRNHA9M04Y',
+      })
+      .build();
+
+    await db.update(block1);
+
+    const block2 = new TestBlockBuilder({
+      block_height: 2,
+      index_block_hash: '0x02',
+      parent_block_hash: block1.block.block_hash,
+      parent_index_block_hash: block1.block.index_block_hash,
+      burn_block_time: 1720000000,
+    })
+      .addTx({
+        tx_id: '0x2234',
+        fee_rate: 3n,
+        sender_address: testSenderAddr,
+        status: DbTxStatus.AbortByResponse,
+        type_id: DbTxTypeId.ContractCall,
+        contract_call_contract_id: 'SP000000000000000000002Q6VF78.pox-4',
+        contract_call_function_name: 'delegate-stx',
+        contract_call_function_args: bufferToHex(
+          createClarityValueArray(uintCV(123456), stringAsciiCV('hello'))
+        ),
+      })
+      .build();
+    await db.update(block2);
+
+    const block3 = new TestBlockBuilder({
+      block_height: 3,
+      index_block_hash: '0x03',
+      parent_block_hash: block2.block.block_hash,
+      parent_index_block_hash: block2.block.index_block_hash,
+      burn_block_time: 1730000000,
+    })
+      .addTx({
+        tx_id: '0x3234',
+        fee_rate: 2n,
+        sender_address: testSenderAddr,
+        status: DbTxStatus.AbortByPostCondition,
+        type_id: DbTxTypeId.TokenTransfer,
+        token_transfer_amount: 123456n,
+        token_transfer_memo: '0x1234',
+        token_transfer_recipient_address: 'ST27W5M8BRKA7C5MZE2R1S1F4XTPHFWFRNHA9M04Y',
+      })
+      .build();
+    await db.update(block3);
+
+    const txsReq1 = await supertest(api.server).get(`/extended/v1/tx?status=success`);
+    expect(txsReq1.status).toBe(200);
+    expect(txsReq1.body).toEqual(
+      expect.objectContaining({
+        results: [
+          expect.objectContaining({
+            tx_id: block1.txs[0].tx.tx_id,
+            tx_status: 'success',
+          }),
+        ],
+      })
+    );
+
+    const txsReq2 = await supertest(api.server).get(`/extended/v1/tx?status=abort_by_response`);
+    expect(txsReq2.status).toBe(200);
+    expect(txsReq2.body).toEqual(
+      expect.objectContaining({
+        results: [
+          expect.objectContaining({
+            tx_id: block2.txs[0].tx.tx_id,
+            tx_status: 'abort_by_response',
+          }),
+        ],
+      })
+    );
+
+    const txsReq3 = await supertest(api.server).get(
+      `/extended/v1/tx?status=abort_by_response,abort_by_post_condition`
+    );
+    expect(txsReq3.status).toBe(200);
+    expect(txsReq3.body).toEqual(
+      expect.objectContaining({
+        results: [
+          expect.objectContaining({
+            tx_id: block3.txs[0].tx.tx_id,
+            tx_status: 'abort_by_post_condition',
+          }),
+          expect.objectContaining({
+            tx_id: block2.txs[0].tx.tx_id,
+            tx_status: 'abort_by_response',
+          }),
+        ],
+      })
+    );
+
+    const txsReq4 = await supertest(api.server).get(
+      `/extended/v1/tx?status=success&type=token_transfer`
+    );
+    expect(txsReq4.status).toBe(200);
+    expect(txsReq4.body).toEqual(
+      expect.objectContaining({
+        results: [
+          expect.objectContaining({
+            tx_id: block1.txs[0].tx.tx_id,
+            tx_status: 'success',
+            tx_type: 'token_transfer',
+          }),
+        ],
+      })
+    );
+
+    const txsReq5 = await supertest(api.server).get(
+      `/extended/v1/tx?status=abort_by_post_condition&type=coinbase`
+    );
+    expect(txsReq5.status).toBe(200);
+    expect(txsReq5.body).toEqual(
+      expect.objectContaining({
+        results: [],
+      })
+    );
+  });
+
+  test('tx list - invalid status filter', async () => {
+    const txsReq1 = await supertest(api.server).get(`/extended/v1/tx?status=invalid_status`);
+    expect(txsReq1.status).toBe(400);
+
+    const txsReq2 = await supertest(api.server).get(`/extended/v1/tx?status=pending`);
+    expect(txsReq2.status).toBe(400);
+  });
+
   test('fetch raw tx', async () => {
     const block: DbBlock = {
       block_hash: '0x1234',
