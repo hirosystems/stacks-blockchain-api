@@ -1,6 +1,6 @@
 ![API architecture!](api-architecture.png)
 
-* The `stacks-node` has it's own minimal set of http endpoints referred to as `RPC endpoints`
+* The `stacks-node` has its own minimal set of http endpoints referred to as `RPC endpoints`
   * The `stacks-blockchain-api` allows clients to access these endpoints by proxying them through to a load-balanced pool of `stacks-nodes`.
   * See: https://github.com/blockstack/stacks-blockchain/blob/master/docs/rpc-endpoints.md -- some common ones:
     * `POST /v2/transactions` - broadcast a tx.
