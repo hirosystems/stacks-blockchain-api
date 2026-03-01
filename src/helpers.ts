@@ -29,6 +29,11 @@ export const EMPTY_HASH_256 = '0x00000000000000000000000000000000000000000000000
 
 export const pipelineAsync = util.promisify(stream.pipeline);
 
+/**
+ * Returns the block height up to which the API runs in Initial Block Download (IBD) mode.
+ * Reads from the `IBD_MODE_UNTIL_BLOCK` environment variable.
+ * @returns The block height, or `undefined` if not configured or invalid.
+ */
 export function getIbdBlockHeight(): number | undefined {
   const val = process.env.IBD_MODE_UNTIL_BLOCK;
   if (val) {
@@ -37,6 +42,13 @@ export function getIbdBlockHeight(): number | undefined {
   }
 }
 
+/**
+ * Returns the Stacks network instance used by the STX faucet.
+ * If `STACKS_FAUCET_NODE_HOST` and `STACKS_FAUCET_NODE_PORT` are set,
+ * creates a custom `StacksTestnet` pointing to that host; otherwise
+ * falls back to the default testnet network.
+ * @throws {Error} If `STACKS_FAUCET_NODE_HOST` is set but `STACKS_FAUCET_NODE_PORT` is missing.
+ */
 export function getStxFaucetNetwork(): StacksNetwork {
   const faucetNodeHostOverride: string | undefined = process.env.STACKS_FAUCET_NODE_HOST;
   if (faucetNodeHostOverride) {
@@ -96,6 +108,14 @@ function isEnum<T extends string, TEnumValue extends number>(
   return isEnum(enumVariable, value);
 }
 
+/**
+ * Parses a numeric value into a typed enum member.
+ * @param enumVariable - The enum object to validate against.
+ * @param num - The numeric value to parse.
+ * @param invalidEnumErrorFormatter - Optional custom error factory for invalid values.
+ * @returns The validated enum value.
+ * @throws {Error} If the value is not a valid member of the enum.
+ */
 export function parseEnum<T extends string, TEnumValue extends number>(
   enumVariable: { [key in T]: TEnumValue },
   num: number,
@@ -113,6 +133,11 @@ export function parseEnum<T extends string, TEnumValue extends number>(
 // eslint-disable-next-line @typescript-eslint/ban-types
 const enumMaps = new Map<object, Map<unknown, unknown>>();
 
+/**
+ * Returns a human-readable description of an enum value, e.g. `"3 'Purple'"`.
+ * @param enumVariable - The enum object.
+ * @param value - The numeric enum value.
+ */
 export function getEnumDescription<T extends string, TEnumValue extends number>(
   enumVariable: { [key in T]: TEnumValue },
   value: number
@@ -138,6 +163,11 @@ export function getEnumDescription<T extends string, TEnumValue extends number>(
 
 let didLoadDotEnv = false;
 
+/**
+ * Loads environment variables from `.env` files using `dotenv-flow`.
+ * Only loads once; subsequent calls are a no-op.
+ * @throws {Error} If the `.env` file cannot be parsed.
+ */
 export function loadDotEnv(): void {
   if (didLoadDotEnv) {
     return;
@@ -150,6 +180,12 @@ export function loadDotEnv(): void {
   didLoadDotEnv = true;
 }
 
+/**
+ * Converts a `Map` to a plain object, applying a formatter function to each value.
+ * @param map - The source map.
+ * @param formatter - A function to transform each map value.
+ * @returns A record with the same keys and formatted values.
+ */
 export function formatMapToObject<TKey extends string, TValue, TFormatted>(
   map: Map<TKey, TValue>,
   formatter: (value: TValue) => TFormatted
@@ -180,11 +216,21 @@ export const TOTAL_STACKS_YEAR_2050 = new BigNumber(2_318_000_000n.toString());
 const MICROSTACKS_IN_STACKS = 1_000_000n;
 export const STACKS_DECIMAL_PLACES = 6;
 
+/**
+ * Converts a STX amount to microSTX (1 STX = 1,000,000 microSTX).
+ * @param stx - The amount in STX.
+ * @returns The amount in microSTX.
+ */
 export function stxToMicroStx(stx: bigint | number): bigint {
   const input = typeof stx === 'bigint' ? stx : BigInt(stx);
   return input * MICROSTACKS_IN_STACKS;
 }
 
+/**
+ * Converts a microSTX amount to a STX string with 6 decimal places.
+ * @param microStx - The amount in microSTX.
+ * @returns The STX amount as a fixed-point string (e.g. `"1.500000"`).
+ */
 export function microStxToStx(microStx: bigint | BigNumber): string {
   const MAX_BIGNUMBER_ROUND_MODE = 8;
   const input = typeof microStx === 'bigint' ? new BigNumber(microStx.toString()) : microStx;
@@ -221,6 +267,11 @@ export function isValidBitcoinAddress(address: string): boolean {
   return false;
 }
 
+/**
+ * Attempts to convert a Stacks C32 address to a Bitcoin address.
+ * @param address - A Stacks (C32) address.
+ * @returns The corresponding Bitcoin address, or `false` if conversion fails.
+ */
 export function tryConvertC32ToBtc(address: string): string | false {
   try {
     const result = stacksToBitcoinAddress(address);
@@ -230,6 +281,11 @@ export function tryConvertC32ToBtc(address: string): string | false {
   }
 }
 
+/**
+ * Validates whether a string is a valid Stacks C32 address.
+ * @param stxAddress - The address string to validate.
+ * @returns `true` if the address is valid, `false` otherwise.
+ */
 export function isValidC32Address(stxAddress: string): boolean {
   try {
     return isValidStacksAddress(stxAddress);
@@ -251,6 +307,11 @@ function isValidContractName(contractName: string): boolean {
   return contractNameRegex.test(contractName);
 }
 
+/**
+ * Validates whether a string is a valid Stacks principal (standard or contract address).
+ * @param principal - The principal string, e.g. `"SP2J6..."` or `"SP2J6....contract-name"`.
+ * @returns An object indicating the principal type, or `false` if invalid.
+ */
 export function isValidPrincipal(
   principal: string
 ): false | { type: 'standardAddress' | 'contractAddress' } {
@@ -376,6 +437,12 @@ export async function httpGetRequest(url: string, opts?: http.RequestOptions) {
   });
 }
 
+/**
+ * Parses and validates a port number from a string or number.
+ * @param portVal - The port value to parse.
+ * @returns The validated port number (1–65535), or `undefined` if input is `undefined`.
+ * @throws {Error} If the port is not a valid number in the range 1–65535.
+ */
 export function parsePort(portVal: number | string | undefined): number | undefined {
   if (portVal === undefined) {
     return undefined;
@@ -402,6 +469,13 @@ export function unixEpochToIso(timestamp: number): string {
   }
 }
 
+/**
+ * Unwraps a value that may be `null` or `undefined`, throwing an error if it is.
+ * @param val - The value to unwrap.
+ * @param onNullish - Optional factory for a custom error message.
+ * @returns The non-null, non-undefined value.
+ * @throws {Error} If `val` is `null` or `undefined`.
+ */
 export function unwrapOptional<T>(
   val: T | null,
   onNullish?: () => string
@@ -453,6 +527,14 @@ export function unwrapOptionalProp<TObj, TKey extends keyof TObj>(
   return val as Exclude<TObj[TKey], undefined | null>;
 }
 
+/**
+ * Type-guard that asserts a value is not `null` or `undefined`.
+ * Unlike {@link unwrapOptional}, this function returns a boolean and narrows the type.
+ * @param val - The value to check.
+ * @param onNullish - Optional factory for a custom error message.
+ * @returns `true` if the value is defined.
+ * @throws {Error} If `val` is `null` or `undefined`.
+ */
 export function unwrapNotNullish<T>(
   val: T,
   onNullish?: () => string
@@ -466,6 +548,12 @@ export function unwrapNotNullish<T>(
   return true;
 }
 
+/**
+ * Assertion function that throws if a value is `null` or `undefined`.
+ * Narrows the type via TypeScript's `asserts` mechanism.
+ * @param val - The value to assert.
+ * @param onNullish - Optional factory for a custom error message.
+ */
 export function assertNotNullish<T>(
   val: T | null | undefined,
   onNullish?: () => string
@@ -475,12 +563,22 @@ export function assertNotNullish<T>(
   }
 }
 
+/**
+ * Utility class for `bigint` math operations not natively supported.
+ */
 export class BigIntMath {
   static abs(a: bigint): bigint {
     return a < 0n ? -a : a;
   }
 }
 
+/**
+ * Gets a value from a `Map`, creating and inserting it via `create` if the key is absent.
+ * @param map - The target map.
+ * @param key - The key to look up.
+ * @param create - Factory function called if the key is not found.
+ * @returns The existing or newly created value.
+ */
 export function getOrAdd<K, V>(map: Map<K, V>, key: K, create: () => V): V {
   let val = map.get(key);
   if (val === undefined) {
@@ -490,6 +588,10 @@ export function getOrAdd<K, V>(map: Map<K, V>, key: K, create: () => V): V {
   return val;
 }
 
+/**
+ * Async version of {@link getOrAdd}. Gets a value from a `Map`, creating and
+ * inserting it via an async `create` function if the key is absent.
+ */
 export async function getOrAddAsync<K, V>(
   map: Map<K, V>,
   key: K,

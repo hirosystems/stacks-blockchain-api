@@ -7,6 +7,13 @@ export { ECPairInterface };
 
 export const ECPair: ECPairAPI = ECPairFactory(ecc);
 
+/**
+ * Validates an ECDSA signature against a public key and message hash.
+ * @param pubkey - The public key buffer.
+ * @param msghash - The message hash buffer.
+ * @param signature - The DER-encoded signature buffer.
+ * @returns `true` if the signature is valid.
+ */
 export function validateSigFunction(pubkey: Buffer, msghash: Buffer, signature: Buffer): boolean {
   return ECPair.fromPublicKey(pubkey).verify(msghash, signature);
 }
@@ -27,6 +34,12 @@ interface KeyOutput {
   ecPair: ECPairInterface;
 }
 
+/**
+ * Creates an `ECPairInterface` from either a private key or public key.
+ * Handles compression byte stripping and optional x-only pubkey support (BIP340).
+ * @param args - Key input arguments containing the network and either a private or public key.
+ * @param allowXOnlyPubkey - If `true`, allows 32-byte x-only public keys (prepends `0x02` parity byte).
+ */
 function ecPairFromKeyInputArgs(args: KeyInputArgs, allowXOnlyPubkey = false): ECPairInterface {
   const network = BITCOIN_NETWORKS[args.network];
   if ('privateKey' in args) {
@@ -225,6 +238,13 @@ export type BitcoinAddressFormat =
   | 'p2wsh'
   | 'p2tr';
 
+/**
+ * Generates a Bitcoin address from a key in the specified address format.
+ * Supports all major Bitcoin address types: P2PKH, P2SH, P2SH-P2WPKH, P2SH-P2WSH,
+ * P2WPKH, P2WSH, and P2TR (Taproot).
+ * @param args - Key input arguments, address format, and optional verbose flag.
+ * @returns The address string, or a {@link VerboseKeyOutput} if `verbose` is `true`.
+ */
 export function getBitcoinAddressFromKey<TVerbose extends boolean = false>(
   args: KeyInputArgs & {
     addressFormat: BitcoinAddressFormat;
@@ -264,6 +284,11 @@ export function getBitcoinAddressFromKey<TVerbose extends boolean = false>(
   }
 }
 
+/**
+ * Derives the compressed public key from a private key.
+ * @param privateKey - The private key as a hex string or Buffer.
+ * @returns The compressed public key as a Buffer.
+ */
 export function privateToPublicKey(privateKey: string | Buffer): Buffer {
   const ecPair = ecPairFromKeyInputArgs({ privateKey, network: 'mainnet' });
   return ecPair.publicKey;
