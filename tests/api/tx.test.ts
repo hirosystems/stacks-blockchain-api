@@ -4888,4 +4888,161 @@ describe('tx tests', () => {
     expect(txRes.body.tx_type).toBe('contract_call');
     expect(txRes.body.contract_call.function_args).toBeUndefined();
   });
+
+  test('transaction list cursor pagination', async () => {
+    // Create multiple transactions across blocks for cursor pagination testing
+    const block1 = new TestBlockBuilder({
+      block_height: 1,
+      index_block_hash: '0x10',
+      block_hash: '0x10',
+    })
+      .addTx({
+        tx_id: '0x1111000000000000000000000000000000000000000000000000000000000000',
+        type_id: DbTxTypeId.TokenTransfer,
+        token_transfer_recipient_address: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
+        token_transfer_amount: 100n,
+      })
+      .addTx({
+        tx_id: '0x1112000000000000000000000000000000000000000000000000000000000000',
+        type_id: DbTxTypeId.TokenTransfer,
+        token_transfer_recipient_address: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
+        token_transfer_amount: 200n,
+      })
+      .build();
+
+    const block2 = new TestBlockBuilder({
+      block_height: 2,
+      index_block_hash: '0x20',
+      block_hash: '0x20',
+      parent_index_block_hash: '0x10',
+    })
+      .addTx({
+        tx_id: '0x2221000000000000000000000000000000000000000000000000000000000000',
+        type_id: DbTxTypeId.TokenTransfer,
+        token_transfer_recipient_address: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
+        token_transfer_amount: 300n,
+      })
+      .addTx({
+        tx_id: '0x2222000000000000000000000000000000000000000000000000000000000000',
+        type_id: DbTxTypeId.TokenTransfer,
+        token_transfer_recipient_address: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
+        token_transfer_amount: 400n,
+      })
+      .build();
+
+    const block3 = new TestBlockBuilder({
+      block_height: 3,
+      index_block_hash: '0x30',
+      block_hash: '0x30',
+      parent_index_block_hash: '0x20',
+    })
+      .addTx({
+        tx_id: '0x3331000000000000000000000000000000000000000000000000000000000000',
+        type_id: DbTxTypeId.TokenTransfer,
+        token_transfer_recipient_address: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
+        token_transfer_amount: 500n,
+      })
+      .build();
+
+    await db.update(block1);
+    await db.update(block2);
+    await db.update(block3);
+
+    // Test 1: Fetch first page with cursor
+    const page1 = await supertest(api.server).get('/extended/v1/tx?limit=2').expect(200);
+
+    expect(page1.body.limit).toBe(2);
+    expect(page1.body.offset).toBe(0);
+    expect(page1.body.total).toBe(5);
+    expect(page1.body.results).toHaveLength(2);
+    expect(page1.body.cursor).toBeDefined();
+    expect(page1.body.prev_cursor).toBeDefined();
+    expect(page1.body.next_cursor).toBeNull(); // No previous page
+
+    // Results should be in DESC order (newest first)
+    expect(page1.body.results[0].tx_id).toBe(
+      '0x3331000000000000000000000000000000000000000000000000000000000000'
+    );
+    expect(page1.body.results[1].tx_id).toBe(
+      '0x2222000000000000000000000000000000000000000000000000000000000000'
+    );
+
+    // Test 2: Navigate using prev_cursor (next page forward in time = older txs)
+    const page2 = await supertest(api.server)
+      .get(`/extended/v1/tx?cursor=${page1.body.prev_cursor}&limit=2`)
+      .expect(200);
+
+    expect(page2.body.limit).toBe(2);
+    expect(page2.body.results).toHaveLength(2);
+    expect(page2.body.cursor).toBe(page1.body.prev_cursor);
+    expect(page2.body.prev_cursor).toBeDefined();
+    expect(page2.body.next_cursor).toBe(page1.body.cursor); // Can go back to page 1
+
+    // These should be the next 2 oldest transactions
+    expect(page2.body.results[0].tx_id).toBe(
+      '0x2221000000000000000000000000000000000000000000000000000000000000'
+    );
+    expect(page2.body.results[1].tx_id).toBe(
+      '0x1112000000000000000000000000000000000000000000000000000000000000'
+    );
+
+    // Test 3: Navigate back using next_cursor (should get first page again)
+    const page1Again = await supertest(api.server)
+      .get(`/extended/v1/tx?cursor=${page2.body.next_cursor}&limit=2`)
+      .expect(200);
+
+    expect(page1Again.body.cursor).toBe(page2.body.next_cursor);
+    expect(page1Again.body.results).toHaveLength(2);
+    expect(page1Again.body.results[0].tx_id).toBe(page1.body.results[0].tx_id);
+    expect(page1Again.body.results[1].tx_id).toBe(page1.body.results[1].tx_id);
+
+    // Test 4: Fetch last page
+    const page3 = await supertest(api.server)
+      .get(`/extended/v1/tx?cursor=${page2.body.prev_cursor}&limit=2`)
+      .expect(200);
+
+    expect(page3.body.results).toHaveLength(1); // Only 1 transaction left
+    expect(page3.body.results[0].tx_id).toBe(
+      '0x1111000000000000000000000000000000000000000000000000000000000000'
+    );
+    expect(page3.body.prev_cursor).toBeNull(); // No more pages forward
+    expect(page3.body.next_cursor).toBeDefined(); // Can go back
+
+    // Test 5: Cursor with filters (type filter)
+    const filteredPage = await supertest(api.server)
+      .get('/extended/v1/tx?limit=2&type=token_transfer')
+      .expect(200);
+
+    expect(filteredPage.body.results).toHaveLength(2);
+    expect(filteredPage.body.cursor).toBeDefined();
+    expect(filteredPage.body.total).toBe(5); // All 5 are token transfers
+
+    // Test 6: Navigate filtered results with cursor
+    const filteredPage2 = await supertest(api.server)
+      .get(
+        `/extended/v1/tx?cursor=${filteredPage.body.prev_cursor}&limit=2&type=token_transfer`
+      )
+      .expect(200);
+
+    expect(filteredPage2.body.results).toHaveLength(2);
+    expect(filteredPage2.body.cursor).toBe(filteredPage.body.prev_cursor);
+  });
+
+  test('transaction list cursor pagination with invalid cursor', async () => {
+    // Test with malformed cursor
+    const res1 = await supertest(api.server)
+      .get('/extended/v1/tx?cursor=invalid-cursor-format&limit=2')
+      .expect(500);
+
+    expect(res1.body.error).toBeDefined();
+
+    // Test with cursor referencing non-existent block
+    const res2 = await supertest(api.server)
+      .get(
+        '/extended/v1/tx?cursor=0x9999999999999999999999999999999999999999999999999999999999999999:2147483647:0&limit=2'
+      )
+      .expect(500);
+
+    expect(res2.body.error).toBeDefined();
+  });
 });

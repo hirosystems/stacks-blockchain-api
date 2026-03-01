@@ -333,10 +333,36 @@ export class PgStoreV2 extends BasePgStoreModule {
     block: BlockIdParam;
     limit?: number;
     offset?: number;
-  }): Promise<DbPaginatedResult<DbTx>> {
+    cursor?: string;
+  }): Promise<DbCursorPaginatedResult<DbTx>> {
     return await this.sqlTransaction(async sql => {
       const limit = args.limit ?? TransactionLimitParamSchema.default;
       const offset = args.offset ?? 0;
+
+      // Parse cursor if provided (format: "microblockSequence:txIndex")
+      let cursorFilter = sql``;
+      if (args.cursor) {
+        const parts = args.cursor.split(':');
+        if (parts.length !== 2) {
+          throw new InvalidRequestError(
+            'Invalid cursor format',
+            InvalidRequestErrorType.invalid_param
+          );
+        }
+        const [microblockSequenceStr, txIndexStr] = parts;
+        const microblockSequence = parseInt(microblockSequenceStr, 10);
+        const txIndex = parseInt(txIndexStr, 10);
+        if (isNaN(microblockSequence) || isNaN(txIndex)) {
+          throw new InvalidRequestError(
+            'Invalid cursor format',
+            InvalidRequestErrorType.invalid_param
+          );
+        }
+        cursorFilter = sql`
+          AND (microblock_sequence, tx_index) >= (${microblockSequence}, ${txIndex})
+        `;
+      }
+
       const txsQuery = await sql<(TxQueryResult & { total: number })[]>`
         WITH block_ptr AS (
           SELECT index_block_hash FROM blocks
@@ -362,17 +388,71 @@ export class PgStoreV2 extends BasePgStoreModule {
         WHERE canonical = true
           AND microblock_canonical = true
           AND index_block_hash = (SELECT index_block_hash FROM block_ptr)
+          ${cursorFilter}
         ORDER BY microblock_sequence ASC, tx_index ASC
-        LIMIT ${limit}
-        OFFSET ${offset}
+        LIMIT ${limit + 1}
       `;
       if (txsQuery.count === 0)
         throw new InvalidRequestError(`Block not found`, InvalidRequestErrorType.invalid_param);
+
+      const hasNextPage = txsQuery.length > limit;
+      const results = hasNextPage ? txsQuery.slice(0, limit) : txsQuery;
+
+      // Generate cursors
+      const lastResult = txsQuery[txsQuery.length - 1];
+      const prevCursor =
+        hasNextPage && lastResult
+          ? `${lastResult.microblock_sequence}:${lastResult.tx_index}`
+          : null;
+
+      const firstResult = results[0];
+      const currentCursor = firstResult
+        ? `${firstResult.microblock_sequence}:${firstResult.tx_index}`
+        : null;
+
+      // Generate next cursor by looking for the first item of the previous page
+      let nextCursor: string | null = null;
+      if (firstResult && limit > 1) {
+        const prevQuery = await sql<
+          { microblock_sequence: number; tx_index: number }[]
+        >`
+          SELECT microblock_sequence, tx_index
+          FROM txs
+          WHERE canonical = true
+            AND microblock_canonical = true
+            AND index_block_hash = (
+              SELECT index_block_hash FROM blocks
+              WHERE ${
+                args.block.type === 'latest'
+                  ? sql`canonical = TRUE ORDER BY block_height DESC`
+                  : args.block.type === 'hash'
+                    ? sql`(
+                      block_hash = ${normalizeHashString(args.block.hash)}
+                      OR index_block_hash = ${normalizeHashString(args.block.hash)}
+                    ) AND canonical = TRUE`
+                    : sql`block_height = ${args.block.height} AND canonical = TRUE`
+              }
+              LIMIT 1
+            )
+            AND (microblock_sequence, tx_index) < (${firstResult.microblock_sequence}, ${firstResult.tx_index})
+          ORDER BY microblock_sequence DESC, tx_index DESC
+          OFFSET ${limit - 1}
+          LIMIT 1
+        `;
+        if (prevQuery.length > 0) {
+          const prev = prevQuery[0];
+          nextCursor = `${prev.microblock_sequence}:${prev.tx_index}`;
+        }
+      }
+
       return {
         limit,
         offset,
-        results: txsQuery.map(t => parseTxQueryResult(t)),
+        results: results.map(t => parseTxQueryResult(t)),
         total: txsQuery[0].total,
+        next_cursor: nextCursor,
+        prev_cursor: prevCursor,
+        current_cursor: currentCursor,
       };
     });
   }
