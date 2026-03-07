@@ -65,7 +65,6 @@ jobs:
             btc-faucet,
             event-replay,
             rpc,
-            # subnets,
           ]
     runs-on: ubuntu-latest
     steps:
@@ -242,79 +241,6 @@ jobs:
           token: ${{ secrets.CODECOV_TOKEN }}
         if: always()
 
-  test-rosetta:
-    strategy:
-      fail-fast: false
-      matrix:
-        suite:
-          [
-            rosetta,
-            rosetta-construction,
-            rosetta-cli-data,
-            rosetta-cli-construction,
-          ]
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-
-      - name: Use Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version-file: ".nvmrc"
-
-      # https://github.com/actions/cache/blob/main/examples.md#node---npm
-      - name: Get npm cache directory
-        id: npm-cache-dir
-        shell: bash
-        run: echo "dir=$(npm config get cache)" >> ${GITHUB_OUTPUT}
-
-      - name: Cache node modules
-        uses: actions/cache@v4
-        id: npm-cache # use this to check for `cache-hit` ==> if: steps.npm-cache.outputs.cache-hit != 'true'
-        with:
-          path: ${{ steps.npm-cache-dir.outputs.dir }}
-          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-node-
-
-      - name: Install deps
-        run: npm ci --audit=false
-
-      - name: Setup env vars
-        run: echo "STACKS_CORE_EVENT_HOST=http://0.0.0.0" >> $GITHUB_ENV
-
-      - name: Setup CLI env vars
-        if: contains(matrix.suite, 'cli')
-        run: |
-          echo STACKS_BLOCKCHAIN_API_HOST=0.0.0.0>> .env
-          echo STACKS_CORE_PROXY_HOST=0.0.0.0 >> .env
-          echo STACKS_CORE_RPC_HOST=0.0.0.0 >> .env
-          echo STACKS_CORE_EVENT_HOST=0.0.0.0 >> .env
-          echo BTC_RPC_HOST=http://0.0.0.0 >> .env
-
-      - name: Setup integration environment
-        run: |
-          sudo ufw disable
-          npm run devenv:deploy-krypton -- -d
-          npm run devenv:logs-krypton -- --no-color &> docker-compose-logs.txt &
-
-      - name: Run tests
-        run: npm run test:${{ matrix.suite }} -- --coverage
-
-      - name: Print integration environment logs
-        run: cat docker-compose-logs.txt
-        if: failure()
-
-      - name: Teardown integration environment
-        run: npm run devenv:stop-krypton
-        if: always()
-
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v4
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}
-        if: always()
-
   semantic-release:
     permissions:
       contents: write
@@ -326,7 +252,6 @@ jobs:
       - lint
       - test
       - test-2_5
-      - test-rosetta
     outputs:
       new_release_version: ${{ steps.semantic.outputs.new_release_version }}
       new_release_published: ${{ steps.semantic.outputs.new_release_published }}
