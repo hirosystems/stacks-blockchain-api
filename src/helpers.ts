@@ -11,13 +11,11 @@ import {
 import * as stream from 'stream';
 import * as ecc from 'tiny-secp256k1';
 import * as util from 'util';
-import { StacksCoreRpcClient } from './core-rpc/client';
+import { getCoreNodeEndpoint, StacksCoreRpcClient } from './core-rpc/client';
 import { DbEventTypeId } from './datastore/common';
 import { logger } from './logger';
-import { has0xPrefix, isDevEnv, numberToHex } from '@stacks/api-toolkit';
+import { has0xPrefix, numberToHex } from '@stacks/api-toolkit';
 import { StacksNetwork, StacksTestnet } from '@stacks/network';
-import { getStacksTestnetNetwork } from './api/routes/debug';
-import { EventEmitter, addAbortListener } from 'node:events';
 
 export const apiDocumentationUrl = process.env.API_DOCS_URL;
 
@@ -51,7 +49,9 @@ export function getStxFaucetNetwork(): StacksNetwork {
     });
     return network;
   }
-  return getStacksTestnetNetwork();
+  return new StacksTestnet({
+    url: `http://${getCoreNodeEndpoint()}`,
+  });
 }
 
 function createEnumChecker<T extends string, TEnumValue extends number>(enumVariable: {
@@ -475,29 +475,10 @@ export function assertNotNullish<T>(
   }
 }
 
-export class BigIntMath {
-  static abs(a: bigint): bigint {
-    return a < 0n ? -a : a;
-  }
-}
-
 export function getOrAdd<K, V>(map: Map<K, V>, key: K, create: () => V): V {
   let val = map.get(key);
   if (val === undefined) {
     val = create();
-    map.set(key, val);
-  }
-  return val;
-}
-
-export async function getOrAddAsync<K, V>(
-  map: Map<K, V>,
-  key: K,
-  create: () => PromiseLike<V>
-): Promise<V> {
-  let val = map.get(key);
-  if (val === undefined) {
-    val = await create();
     map.set(key, val);
   }
   return val;
@@ -768,15 +749,6 @@ export function parseEventTypeStrings(values: string[]): DbEventTypeId[] {
         throw new Error(`Unexpected event type: ${JSON.stringify(v)}`);
     }
   });
-}
-
-export function doesThrow(fn: () => void) {
-  try {
-    fn();
-    return false;
-  } catch {
-    return true;
-  }
 }
 
 export enum BootContractAddress {

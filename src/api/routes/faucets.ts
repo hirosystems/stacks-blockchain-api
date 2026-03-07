@@ -4,9 +4,10 @@ import PQueue from 'p-queue';
 import { BigNumber } from 'bignumber.js';
 import {
   AnchorMode,
-  estimateTransactionFeeWithFallback,
   getAddressFromPrivateKey,
   makeSTXTokenTransfer,
+  pubKeyfromPrivKey,
+  publicKeyToString,
   SignedTokenTransferOptions,
   StacksTransaction,
   TransactionVersion,
@@ -20,7 +21,6 @@ import {
 } from '../../btc-faucet';
 import { DbFaucetRequestCurrency } from '../../datastore/common';
 import { getChainIDNetwork, getStxFaucetNetwork, stxToMicroStx } from '../../helpers';
-import { testnetKeys } from './debug';
 import { StacksCoreRpcClient } from '../../core-rpc/client';
 import { logger } from '../../logger';
 import { FastifyPluginAsync, preHandlerHookHandler } from 'fastify';
@@ -29,6 +29,45 @@ import { fastifyFormbody } from '@fastify/formbody';
 import { Server } from 'node:http';
 import { OptionalNullable } from '../schemas/util';
 import { RunFaucetResponseSchema } from '../schemas/responses/responses';
+
+const testnetAccounts = [
+  {
+    secretKey: 'cb3df38053d132895220b9ce471f6b676db5b9bf0b4adefb55f2118ece2478df01',
+    stacksAddress: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
+  },
+  {
+    secretKey: '21d43d2ae0da1d9d04cfcaac7d397a33733881081f0b2cd038062cf0ccbb752601',
+    stacksAddress: 'ST11NJTTKGVT6D1HY4NJRVQWMQM7TVAR091EJ8P2Y',
+  },
+  {
+    secretKey: 'c71700b07d520a8c9731e4d0f095aa6efb91e16e25fb27ce2b72e7b698f8127a01',
+    stacksAddress: 'ST1HB1T8WRNBYB0Y3T7WXZS38NKKPTBR3EG9EPJKR',
+  },
+  {
+    secretKey: 'e75dcb66f84287eaf347955e94fa04337298dbd95aa0dbb985771104ef1913db01',
+    stacksAddress: 'STRYYQQ9M8KAF4NS7WNZQYY59X93XEKR31JP64CP',
+  },
+  {
+    secretKey: 'ce109fee08860bb16337c76647dcbc02df0c06b455dd69bcf30af74d4eedd19301',
+    stacksAddress: 'STF9B75ADQAVXQHNEQ6KGHXTG7JP305J2GRWF3A2',
+  },
+  {
+    secretKey: '08c14a1eada0dd42b667b40f59f7c8dedb12113613448dc04980aea20b268ddb01',
+    stacksAddress: 'ST18MDW2PDTBSCR1ACXYRJP2JX70FWNM6YY2VX4SS',
+  },
+];
+
+interface SeededAccount {
+  secretKey: string;
+  stacksAddress: string;
+  pubKey: string;
+}
+
+const testnetKeys: SeededAccount[] = testnetAccounts.map(t => ({
+  secretKey: t.secretKey,
+  stacksAddress: t.stacksAddress,
+  pubKey: publicKeyToString(pubKeyfromPrivKey(t.secretKey)),
+}));
 
 function clientFromNetwork(network: StacksNetwork): StacksCoreRpcClient {
   const coreUrl = new URL(network.coreApiUrl);

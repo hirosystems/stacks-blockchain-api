@@ -95,7 +95,7 @@ export interface CoreRpcPoxInfo {
   }[];
 }
 
-export interface Neighbor {
+interface Neighbor {
   network_id: number;
   peer_version: number;
   ip: string;
@@ -114,7 +114,7 @@ interface ReadOnlyContractCallFailResponse {
   cause: string;
 }
 
-export type ReadOnlyContractCallResponse =
+type ReadOnlyContractCallResponse =
   | ReadOnlyContractCallSuccessResponse
   | ReadOnlyContractCallFailResponse;
 
