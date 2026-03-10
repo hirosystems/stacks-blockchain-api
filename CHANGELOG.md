@@ -1,65 +1,33 @@
-## [9.0.0-next.19](https://github.com/hirosystems/stacks-blockchain-api/compare/v9.0.0-next.18...v9.0.0-next.19) (2026-02-24)
+## [8.14.2](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.14.1...v8.14.2) (2026-03-10)
 
 ### Bug Fixes
 
-* keep a table of pox tx counts ([#2462](https://github.com/hirosystems/stacks-blockchain-api/issues/2462)) ([5b1fffd](https://github.com/hirosystems/stacks-blockchain-api/commit/5b1fffd89d9e8e39e67e87ff7ffa570ca693970c))
+* drop slow unused gin index on blocks ([7c54120](https://github.com/hirosystems/stacks-blockchain-api/commit/7c541200a875b94a7c5a9f2722f164e9c72a332e))
+* force upgrade form-data transitive dependency ([#2479](https://github.com/hirosystems/stacks-blockchain-api/issues/2479)) ([3ceea38](https://github.com/hirosystems/stacks-blockchain-api/commit/3ceea3837a9081f13be9bf16dd31adeadef44f6a))
+* upgrade snp client to 2.0.5 ([#2473](https://github.com/hirosystems/stacks-blockchain-api/issues/2473)) ([a927a9c](https://github.com/hirosystems/stacks-blockchain-api/commit/a927a9c9c71d34496319f3419baae63d8ad4967f))
 
-## [9.0.0-next.18](https://github.com/hirosystems/stacks-blockchain-api/compare/v9.0.0-next.17...v9.0.0-next.18) (2026-02-23)
-
-### Features
-
-* ingest bitcoin pox transactions, upgrade to SNP 2.0 streams ([#2449](https://github.com/hirosystems/stacks-blockchain-api/issues/2449)) ([e12fe84](https://github.com/hirosystems/stacks-blockchain-api/commit/e12fe84a87f1d6499f55b1a80ba36b4656d206c3)), closes [#2450](https://github.com/hirosystems/stacks-blockchain-api/issues/2450)
-
-## [9.0.0-next.17](https://github.com/hirosystems/stacks-blockchain-api/compare/v9.0.0-next.16...v9.0.0-next.17) (2026-02-23)
+## [8.14.1](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.14.0...v8.14.1) (2026-02-25)
 
 ### Bug Fixes
 
-* drop slow unused gin index on blocks ([0cf4329](https://github.com/hirosystems/stacks-blockchain-api/commit/0cf43295c17bd0e4cc165bb2cbd0f74529b5da60))
-* use a secondary processing queue for mempool events ([#2461](https://github.com/hirosystems/stacks-blockchain-api/issues/2461)) ([234d266](https://github.com/hirosystems/stacks-blockchain-api/commit/234d2664b3e9f44b6ed2a900526ab2aba07aeb33))
+* drop slow unused gin index on blocks ([#2468](https://github.com/hirosystems/stacks-blockchain-api/issues/2468)) ([a88cb8a](https://github.com/hirosystems/stacks-blockchain-api/commit/a88cb8a9a399b8f879706b7f565c81a8cb26765a))
 
-## [9.0.0-next.16](https://github.com/hirosystems/stacks-blockchain-api/compare/v9.0.0-next.15...v9.0.0-next.16) (2026-02-06)
-
-### Bug Fixes
-
-* wait at most 60 seconds for services to shutdown ([#2448](https://github.com/hirosystems/stacks-blockchain-api/issues/2448)) ([e78192a](https://github.com/hirosystems/stacks-blockchain-api/commit/e78192a2ff7a7b85416a9e630d0018d664728b37))
-
-## [9.0.0-next.15](https://github.com/hirosystems/stacks-blockchain-api/compare/v9.0.0-next.14...v9.0.0-next.15) (2026-02-06)
-
-### Bug Fixes
-
-* add detailed websocket server logs ([#2446](https://github.com/hirosystems/stacks-blockchain-api/issues/2446)) ([1e9dbd4](https://github.com/hirosystems/stacks-blockchain-api/commit/1e9dbd481357f44ba64ac8ab8e3ecc846ef574cc))
-
-## [9.0.0-next.14](https://github.com/hirosystems/stacks-blockchain-api/compare/v9.0.0-next.13...v9.0.0-next.14) (2026-02-03)
-
-### Bug Fixes
-
-* upgrade stacks codec for clarity 5 ([#2445](https://github.com/hirosystems/stacks-blockchain-api/issues/2445)) ([01c783f](https://github.com/hirosystems/stacks-blockchain-api/commit/01c783feac0ab9c3efd0ea95d749ad322b590781))
-
-## [9.0.0-next.13](https://github.com/hirosystems/stacks-blockchain-api/compare/v9.0.0-next.12...v9.0.0-next.13) (2026-01-31)
-
-### Bug Fixes
-
-* guard against non-string topic subscriptions ([#2441](https://github.com/hirosystems/stacks-blockchain-api/issues/2441)) ([b0b7809](https://github.com/hirosystems/stacks-blockchain-api/commit/b0b780901aae8c26261f3f76ea129bddd0c593fc))
-
-## [9.0.0-next.12](https://github.com/hirosystems/stacks-blockchain-api/compare/v9.0.0-next.11...v9.0.0-next.12) (2026-01-17)
-
-### Bug Fixes
-
-* apply offset to transactions endpoint correctly ([#2435](https://github.com/hirosystems/stacks-blockchain-api/issues/2435)) ([e4da1c1](https://github.com/hirosystems/stacks-blockchain-api/commit/e4da1c17a45d841cd6c2cfd38596231e0c1b341b))
-
-## [9.0.0-next.11](https://github.com/hirosystems/stacks-blockchain-api/compare/v9.0.0-next.10...v9.0.0-next.11) (2026-01-06)
-
-### Bug Fixes
-
-* add more error handling to SNP message handler ([#2429](https://github.com/hirosystems/stacks-blockchain-api/issues/2429)) ([3e9b605](https://github.com/hirosystems/stacks-blockchain-api/commit/3e9b60564feb2563a74ea4d589ae159b8c42c5dd))
-* **rosetta:** use faster balance calculation for chain tip queries ([#2377](https://github.com/hirosystems/stacks-blockchain-api/issues/2377)) ([f852715](https://github.com/hirosystems/stacks-blockchain-api/commit/f8527152b5f265521f58c7cf6656739f58314da4))
-
-## [9.0.0-next.10](https://github.com/hirosystems/stacks-blockchain-api/compare/v9.0.0-next.9...v9.0.0-next.10) (2026-01-05)
+## [8.14.0](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.13.6...v8.14.0) (2026-02-25)
 
 ### Features
 
 * add option to stream blocks only with SNP ([#2417](https://github.com/hirosystems/stacks-blockchain-api/issues/2417)) ([34c20cd](https://github.com/hirosystems/stacks-blockchain-api/commit/34c20cdc618643a114893111bc492643fe129898))
 * enforce Redis stream max length for notifier queue ([#2419](https://github.com/hirosystems/stacks-blockchain-api/issues/2419)) ([17be15c](https://github.com/hirosystems/stacks-blockchain-api/commit/17be15cb844e0371771b38cfd0a8c2595749e25e))
+* remove unused prod dependencies ([#2427](https://github.com/hirosystems/stacks-blockchain-api/issues/2427)) ([622ea37](https://github.com/hirosystems/stacks-blockchain-api/commit/622ea3748a28367f71254ba8e674d5cc61673c77))
+* upgrade to snp v2 ([#2457](https://github.com/hirosystems/stacks-blockchain-api/issues/2457)) ([b1dfc08](https://github.com/hirosystems/stacks-blockchain-api/commit/b1dfc080bf68c0b14d326ad2fd2090f26a583a22))
+
+### Bug Fixes
+
+* guard against non-string topic subscriptions ([#2439](https://github.com/hirosystems/stacks-blockchain-api/issues/2439)) ([f09553b](https://github.com/hirosystems/stacks-blockchain-api/commit/f09553bd6e7dbdf7085f2ba6ed3d6b6e3a24646f)), closes [#2409](https://github.com/hirosystems/stacks-blockchain-api/issues/2409) [#2412](https://github.com/hirosystems/stacks-blockchain-api/issues/2412)
+* optimize rbf query ([94ffb09](https://github.com/hirosystems/stacks-blockchain-api/commit/94ffb09bae38a2ef61711af69c8cafec02b3f638))
+* remove OR from mempool queries ([91cf73e](https://github.com/hirosystems/stacks-blockchain-api/commit/91cf73ebf7185971f2756490dda5e74987be4b2d))
+* upgrade stacks codec for clarity 5 support ([#2444](https://github.com/hirosystems/stacks-blockchain-api/issues/2444)) ([c1494ac](https://github.com/hirosystems/stacks-blockchain-api/commit/c1494ac46263f0b16ea89ae099e0a65f01c64194))
+* wait at most 60 seconds for services to shutdown ([#2448](https://github.com/hirosystems/stacks-blockchain-api/issues/2448)) ([47c34cb](https://github.com/hirosystems/stacks-blockchain-api/commit/47c34cb591d1620afae933562a962b740a7a62e3))
 
 ## [8.13.6](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.13.5...v8.13.6) (2025-12-22)
 

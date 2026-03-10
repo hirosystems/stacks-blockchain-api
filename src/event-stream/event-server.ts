@@ -819,7 +819,7 @@ export async function startEventServer(opts: {
     name: 'stacks-node-event',
     serializers: {
       req: reqLogSerializer,
-      res: (reply: FastifyReply) => ({
+      res: reply => ({
         statusCode: reply.statusCode,
         method: reply.request?.method,
         url: reply.request?.url,
