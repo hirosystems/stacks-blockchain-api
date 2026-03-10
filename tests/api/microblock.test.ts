@@ -41,8 +41,7 @@ import * as fs from 'fs';
 import { createClarityValueArray } from '../../src/stacks-encoding-helpers';
 import { PgWriteStore } from '../../src/datastore/pg-write-store';
 import { getRawEventRequests } from '../../src/event-replay/event-requests';
-import { logger } from '../../src/logger';
-import { PgSqlClient, bufferToHex } from '@stacks/api-toolkit';
+import { PgSqlClient, bufferToHex, logger } from '@stacks/api-toolkit';
 import { migrate } from '../utils/test-helpers';
 
 describe('microblock tests', () => {
