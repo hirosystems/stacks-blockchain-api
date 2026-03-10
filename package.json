@@ -96,14 +96,14 @@
     "@fastify/multipart": "8.3.1",
     "@fastify/swagger": "8.15.0",
     "@fastify/type-provider-typebox": "4.0.0",
-    "@hirosystems/api-toolkit": "1.9.0",
+    "@hirosystems/api-toolkit": "1.12.0",
     "@hirosystems/stacks-encoding-native-js": "1.3.0",
     "@scure/base": "1.1.1",
     "@sinclair/typebox": "0.32.35",
     "@stacks/common": "6.10.0",
     "@stacks/encryption": "6.13.1",
     "@stacks/network": "6.11.3",
-    "@stacks/node-publisher-client": "2.0.2",
+    "@stacks/node-publisher-client": "2.0.5",
     "@stacks/stacking": "6.13.2",
     "@stacks/transactions": "6.11.3",
     "@types/lru-cache": "5.1.1",
@@ -200,6 +200,9 @@
     "ts-node": "10.9.2",
     "typescript": "5.5.4",
     "why-is-node-running": "2.2.0"
+  },
+  "overrides": {
+    "form-data": "4.0.5"
   },
   "optionalDependencies": {
     "bufferutil": "4.0.5",
