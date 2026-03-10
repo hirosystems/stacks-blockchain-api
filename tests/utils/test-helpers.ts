@@ -3,22 +3,6 @@ import { bytesToHex } from '@stacks/common';
 import { StacksNetwork } from '@stacks/network';
 import { decodeBtcAddress } from '@stacks/stacking';
 import {
-  NetworkIdentifier,
-  RosettaAccountBalanceRequest,
-  RosettaAccountBalanceResponse,
-  RosettaBlockRequest,
-  RosettaBlockResponse,
-  RosettaConstructionMetadataRequest,
-  RosettaConstructionMetadataResponse,
-  RosettaConstructionPayloadResponse,
-  RosettaConstructionPayloadsRequest,
-  RosettaConstructionPreprocessRequest,
-  RosettaConstructionPreprocessResponse,
-  RosettaConstructionSubmitRequest,
-  RosettaConstructionSubmitResponse,
-  RosettaOperation,
-} from '../../src/rosetta/types';
-import {
   bufferCV,
   ChainID,
   ClarityValue,
@@ -31,7 +15,6 @@ import {
   tupleCV,
 } from '@stacks/transactions';
 import { RPCClient } from 'rpc-bitcoin';
-import { getRosettaNetworkName, RosettaConstants } from '../../src/api/rosetta-constants';
 
 import {
   ClarityTypeID,
@@ -40,7 +23,6 @@ import {
 } from '@hirosystems/stacks-encoding-native-js';
 import * as supertest from 'supertest';
 import { ApiServer } from '../../src/api/init';
-import { testnetKeys } from '../../src/api/routes/debug';
 import { CoreRpcPoxInfo, StacksCoreRpcClient } from '../../src/core-rpc/client';
 import { DbBlock, DbTx, DbTxStatus } from '../../src/datastore/common';
 import { PgWriteStore } from '../../src/datastore/pg-write-store';
@@ -489,15 +471,6 @@ async function fetchRosetta<TPostBody, TRes>(endpoint: string, body: TPostBody) 
   expect(result.status).toBe(200);
   expect(result.type).toBe('application/json');
   return result.body as TRes;
-}
-
-export async function getRosettaBlockByBurnBlockHeight(burnBlockHeight: number) {
-  const unlockDbBlock = await testEnv.api.datastore.getBlockByBurnBlockHeight(burnBlockHeight);
-  expect(unlockDbBlock.found).toBeTruthy();
-  return fetchRosetta<RosettaBlockRequest, RosettaBlockResponse>('/rosetta/v1/block', {
-    network_identifier: { blockchain: 'stacks', network: 'testnet' },
-    block_identifier: { hash: unlockDbBlock.result!.block_hash },
-  });
 }
 
 export async function getRosettaAccountBalance(stacksAddress: string, atBlockHeight?: number) {
