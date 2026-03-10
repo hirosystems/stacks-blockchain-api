@@ -61,8 +61,7 @@ import * as prom from 'prom-client';
 import { getAssetEventTypeString } from '../api/controllers/db-controller';
 import { PgStoreEventEmitter } from './pg-store-event-emitter';
 import { SyntheticPoxEventName } from '../pox-helpers';
-import { logger } from '../logger';
-import { PgSqlClient } from '@stacks/api-toolkit';
+import { logger, PgSqlClient } from '@stacks/api-toolkit';
 import PQueue from 'p-queue';
 import { DropMempoolTxReasonType, NewBlockTransactionStatus } from '@stacks/node-publisher-client';
 
@@ -288,7 +287,7 @@ export function abiColumn(sql: PgSqlClient, tableName: string = 'txs'): postgres
       ORDER BY abi != 'null' DESC, canonical DESC, microblock_canonical DESC, block_height DESC
       LIMIT 1
     ) END as abi
-    `;
+    ` as unknown as postgres.Fragment;
 }
 
 export function parseMempoolTxQueryResult(result: MempoolTxQueryResult): DbMempoolTx {

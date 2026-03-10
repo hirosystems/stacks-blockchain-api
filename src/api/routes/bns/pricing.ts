@@ -9,7 +9,7 @@ import {
 } from '@stacks/transactions';
 import { getChainIDNetwork, isValidPrincipal } from './../../../helpers';
 import { getBnsContractID, GetStacksNetwork } from '../../../event-stream/bns/bns-helpers';
-import { logger } from '../../../logger';
+import { logger } from '@stacks/api-toolkit';
 import { FastifyPluginAsync } from 'fastify';
 import { Type, TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
 import { Server } from 'node:http';

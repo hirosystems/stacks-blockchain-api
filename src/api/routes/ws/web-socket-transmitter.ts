@@ -13,7 +13,7 @@ import { ListenerType, WebSocketChannel, WebSocketPayload } from './web-socket-c
 import { SocketIOChannel } from './channels/socket-io-channel';
 import { WsRpcChannel } from './channels/ws-rpc-channel';
 import { parseNftEvent } from '../../../datastore/helpers';
-import { logger } from '../../../logger';
+import { logger } from '@stacks/api-toolkit';
 
 export function getWsPingIntervalMs(): number {
   return parseInt(process.env['STACKS_API_WS_PING_INTERVAL'] ?? '5') * 1000;

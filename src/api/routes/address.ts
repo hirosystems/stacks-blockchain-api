@@ -21,8 +21,7 @@ import {
   handleTransactionCache,
 } from '../controllers/cache-controller';
 import { PgStore } from '../../datastore/pg-store';
-import { logger } from '../../logger';
-import { has0xPrefix } from '@stacks/api-toolkit';
+import { has0xPrefix, logger } from '@stacks/api-toolkit';
 
 import { FastifyPluginAsync } from 'fastify';
 import { Type, TypeBoxTypeProvider } from '@fastify/type-provider-typebox';

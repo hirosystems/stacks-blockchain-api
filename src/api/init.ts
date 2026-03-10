@@ -25,13 +25,13 @@ import { PgStore } from '../datastore/pg-store';
 import { PgWriteStore } from '../datastore/pg-write-store';
 import { WebSocketTransmitter } from './routes/ws/web-socket-transmitter';
 import { PoxEventRoutes, PoxRoutes } from './routes/pox';
-import { logger } from '../logger';
 import {
   PINO_LOGGER_CONFIG,
   SERVER_VERSION,
   isPgConnectionError,
   isProdEnv,
   waiter,
+  logger,
 } from '@stacks/api-toolkit';
 import { BlockRoutesV2 } from './routes/v2/blocks';
 import { BurnBlockRoutesV2 } from './routes/v2/burn-blocks';

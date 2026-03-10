@@ -6,7 +6,6 @@ import {
 } from './helpers';
 import * as sourceMapSupport from 'source-map-support';
 import { startApiServer } from './api/init';
-import { startProfilerServer } from './inspector-util';
 import { startEventServer } from './event-stream/event-server';
 import { StacksCoreRpcClient } from './core-rpc/client';
 import * as promClient from 'prom-client';
@@ -18,9 +17,10 @@ import { exportEventsAsTsv, importEventsFromTsv } from './event-replay/event-rep
 import { PgStore } from './datastore/pg-store';
 import { PgWriteStore } from './datastore/pg-write-store';
 import { registerMempoolPromStats } from './datastore/helpers';
-import { logger } from './logger';
 import {
+  buildProfilerServer,
   isProdEnv,
+  logger,
   numberToHex,
   parseBoolean,
   PINO_LOGGER_CONFIG,
@@ -202,11 +202,15 @@ async function init(): Promise<void> {
 
   const profilerHttpServerPort = process.env['STACKS_PROFILER_PORT'];
   if (profilerHttpServerPort) {
-    const profilerServer = await startProfilerServer(profilerHttpServerPort);
+    const profilerServer = await buildProfilerServer();
     registerShutdownConfig({
       name: 'Profiler server',
       handler: () => profilerServer.close(),
       forceKillable: true,
+    });
+    await profilerServer.listen({
+      host: process.env['STACKS_PROFILER_HOST'] ?? '0.0.0.0',
+      port: parseInt(profilerHttpServerPort),
     });
   }
 

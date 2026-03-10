@@ -2,8 +2,7 @@
 import fetch, { RequestInit } from 'node-fetch';
 import { parsePort } from '../helpers';
 import { ClarityValue, cvToHex } from '@stacks/transactions';
-import { logger } from '../logger';
-import { stopwatch, timeout } from '@stacks/api-toolkit';
+import { stopwatch, timeout, logger } from '@stacks/api-toolkit';
 
 interface CoreRpcAccountInfo {
   /** Hex-prefixed uint128. */

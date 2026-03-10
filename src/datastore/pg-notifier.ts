@@ -1,7 +1,6 @@
 import * as postgres from 'postgres';
-import { logger } from '../logger';
 import { DbConfigState } from './common';
-import { PgSqlClient, connectPostgres } from '@stacks/api-toolkit';
+import { PgSqlClient, connectPostgres, logger } from '@stacks/api-toolkit';
 import { PgServer, getConnectionArgs, getConnectionConfig } from './connection';
 
 type PgTxNotificationPayload = {

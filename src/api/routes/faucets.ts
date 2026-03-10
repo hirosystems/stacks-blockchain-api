@@ -22,7 +22,7 @@ import {
 import { DbFaucetRequestCurrency } from '../../datastore/common';
 import { getChainIDNetwork, getStxFaucetNetwork, stxToMicroStx } from '../../helpers';
 import { StacksCoreRpcClient } from '../../core-rpc/client';
-import { logger } from '../../logger';
+import { logger } from '@stacks/api-toolkit';
 import { FastifyPluginAsync, preHandlerHookHandler } from 'fastify';
 import { Type, TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
 import { fastifyFormbody } from '@fastify/formbody';

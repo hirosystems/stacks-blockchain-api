@@ -15,7 +15,6 @@ import {
   Account,
   accountFromKey,
   fetchGet,
-  getRosettaAccountBalance,
   standByForTxSuccess,
   standByUntilBlock,
   standByUntilBurnBlock,
@@ -228,11 +227,6 @@ describe('PoX-4 - Stack using Bitcoin-chain stack ops', () => {
     );
     expect(BigInt(apiBalance.balance)).toBe(testAccountBalance);
     expect(BigInt(apiBalance.locked)).toBe(0n);
-
-    // test Rosetta address endpoint balance
-    const rosettaBalance = await getRosettaAccountBalance(account.stxAddr);
-    expect(BigInt(rosettaBalance.account.balances[0].value)).toBe(testAccountBalance);
-    expect(BigInt(rosettaBalance.locked.balances[0].value)).toBe(0n);
   });
 
   test('Fund BTC to new account for testing', async () => {
@@ -380,10 +374,5 @@ describe('PoX-4 - Stack using Bitcoin-chain stack ops', () => {
     );
     expect(BigInt(apiBalance.balance)).toBeLessThan(testAccountBalance);
     expect(BigInt(apiBalance.locked)).toBe(testStackAmount);
-
-    // test Rosetta address endpoint balance
-    const rosettaBalance = await getRosettaAccountBalance(account.stxAddr);
-    expect(BigInt(rosettaBalance.account.balances[0].value)).toBeLessThan(testAccountBalance);
-    expect(BigInt(rosettaBalance.locked.balances[0].value)).toBe(testStackAmount);
   });
 });

@@ -25,8 +25,7 @@ import {
   getWsPingIntervalMs,
   getWsPingTimeoutMs,
 } from '../web-socket-transmitter';
-import { logger } from '../../../../logger';
-import { isProdEnv } from '@stacks/api-toolkit';
+import { isProdEnv, logger } from '@stacks/api-toolkit';
 
 const component = { component: 'socket-io' };
 

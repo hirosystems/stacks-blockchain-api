@@ -10,7 +10,6 @@ import {
   decodeClarityValueToTypeName,
   decodePostConditions,
 } from '@hirosystems/stacks-encoding-native-js';
-
 import {
   BlockIdentifier,
   DbAssetEventTypeId,
@@ -30,8 +29,7 @@ import { unwrapOptional, FoundOrNot, unixEpochToIso, EMPTY_HASH_256 } from '../.
 import { serializePostCondition, serializePostConditionMode } from '../serializers/post-conditions';
 import { PgStore } from '../../datastore/pg-store';
 import { SyntheticPoxEventName } from '../../pox-helpers';
-import { logger } from '../../logger';
-
+import { logger } from '@stacks/api-toolkit';
 import {
   AbstractMempoolTransaction,
   AbstractTransaction,

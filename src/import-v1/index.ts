@@ -18,8 +18,12 @@ import {
 import { REPO_DIR } from '../helpers';
 import { getBnsGenesisBlockFromBlockMessage } from '../event-replay/helpers';
 import { PgWriteStore } from '../datastore/pg-write-store';
-import { logger } from '../logger';
-import { PgSqlClient, asyncBatchIterate, asyncIterableToGenerator } from '@stacks/api-toolkit';
+import {
+  PgSqlClient,
+  asyncBatchIterate,
+  asyncIterableToGenerator,
+  logger,
+} from '@stacks/api-toolkit';
 
 const finished = util.promisify(stream.finished);
 const pipeline = util.promisify(stream.pipeline);
