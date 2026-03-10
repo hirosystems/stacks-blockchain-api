@@ -15,9 +15,9 @@ import {
   noneCV,
 } from '@stacks/transactions';
 import { logger } from '../../src/logger';
-import { testnetKeys } from '../../src/api/routes/debug';
 import { PgWriteStore } from '../../src/datastore/pg-write-store';
 import { standByForTx as standByForTxShared } from '../utils/test-helpers';
+import { FAUCET_TESTNET_KEYS } from 'src/api/routes/faucets';
 
 function hash160(bfr: Buffer): Buffer {
   const hash160 = createHash('ripemd160')
@@ -346,7 +346,10 @@ describe('BNS integration tests', () => {
     const name = 'alice';
     const importZonefile = `$ORIGIN ${name}.${namespace}\n$TTL 3600\n_http._tcp IN URI 10 1 "https://blockstack.s3.amazonaws.com/${name}.${namespace}"\n`;
     const namespaceHash = hash160(Buffer.concat([Buffer.from(namespace), salt]));
-    const testnetKey = { pkey: testnetKeys[0].secretKey, address: testnetKeys[0].stacksAddress };
+    const testnetKey = {
+      pkey: FAUCET_TESTNET_KEYS[0].secretKey,
+      address: FAUCET_TESTNET_KEYS[0].stacksAddress,
+    };
 
     // initalizing namespace network - preorder and reveal
     await initiateNamespaceNetwork(namespace, salt, namespaceHash, testnetKey, 12);
@@ -379,7 +382,10 @@ describe('BNS integration tests', () => {
     const name = 'update';
     const importZonefile = `$ORIGIN ${name}.${namespace}\n$TTL 3600\n_http._tcp IN URI 10 1 "https://blockstack.s3.amazonaws.com/${name}.${namespace}"\n`;
     const namespaceHash = hash160(Buffer.concat([Buffer.from(namespace), salt]));
-    const testnetKey = { pkey: testnetKeys[1].secretKey, address: testnetKeys[1].stacksAddress };
+    const testnetKey = {
+      pkey: FAUCET_TESTNET_KEYS[1].secretKey,
+      address: FAUCET_TESTNET_KEYS[1].stacksAddress,
+    };
 
     // initalizing namespace network - preorder and reveal
     await initiateNamespaceNetwork(namespace, salt, namespaceHash, testnetKey, 12);
@@ -475,7 +481,10 @@ describe('BNS integration tests', () => {
     const namespaceHash = hash160(Buffer.concat([Buffer.from(namespace), salt]));
     const zonefile = `$ORIGIN ${name}.${namespace}\n$TTL 3600\n_http._tcp IN URI 10 1 "https://blockstack.s3.amazonaws.com/${name}.${namespace}"\n`;
     const importZonefile = `$ORIGIN ${name}.${namespace}\n$TTL 3600\n_http._tcp IN URI 10 1 "https://blockstack.s3.amazonaws.com/${name}.${namespace}"\n`;
-    const testnetKey = { pkey: testnetKeys[2].secretKey, address: testnetKeys[2].stacksAddress };
+    const testnetKey = {
+      pkey: FAUCET_TESTNET_KEYS[2].secretKey,
+      address: FAUCET_TESTNET_KEYS[2].stacksAddress,
+    };
     // initializing namespace network
     await initiateNamespaceNetwork(namespace, salt, namespaceHash, testnetKey, 12);
     await namespaceReady(namespace, testnetKey.pkey);
@@ -495,8 +504,8 @@ describe('BNS integration tests', () => {
     }
     // testing name transfer
     const transferTestnetKey = {
-      pkey: testnetKeys[2].secretKey,
-      address: testnetKeys[3].stacksAddress,
+      pkey: FAUCET_TESTNET_KEYS[2].secretKey,
+      address: FAUCET_TESTNET_KEYS[3].stacksAddress,
     };
     await nameTransfer(namespace, name, transferTestnetKey);
 
@@ -512,7 +521,10 @@ describe('BNS integration tests', () => {
     const namespace = 'name-revoke';
     const name = 'foo';
     const namespaceHash = hash160(Buffer.concat([Buffer.from(namespace), salt]));
-    const testnetKey = { pkey: testnetKeys[4].secretKey, address: testnetKeys[4].stacksAddress };
+    const testnetKey = {
+      pkey: FAUCET_TESTNET_KEYS[4].secretKey,
+      address: FAUCET_TESTNET_KEYS[4].stacksAddress,
+    };
     const zonefile = `$ORIGIN ${name}.${namespace}\n$TTL 3600\n_http._tcp IN URI 10 1 "https://blockstack.s3.amazonaws.com/${name}.${namespace}"\n`;
 
     // initializing namespace network
@@ -532,7 +544,10 @@ describe('BNS integration tests', () => {
     const namespace = 'name-renewal';
     const name = 'renewal';
     const namespaceHash = hash160(Buffer.concat([Buffer.from(namespace), salt]));
-    const testnetKey = { pkey: testnetKeys[5].secretKey, address: testnetKeys[5].stacksAddress };
+    const testnetKey = {
+      pkey: FAUCET_TESTNET_KEYS[5].secretKey,
+      address: FAUCET_TESTNET_KEYS[5].stacksAddress,
+    };
 
     // initializing namespace network
     await initiateNamespaceNetwork(namespace, salt, namespaceHash, testnetKey, 1);
@@ -572,7 +587,10 @@ describe('BNS integration tests', () => {
     const namespace = 'name-renewal2';
     const name = 'renewal2';
     const namespaceHash = hash160(Buffer.concat([Buffer.from(namespace), salt]));
-    const testnetKey = { pkey: testnetKeys[5].secretKey, address: testnetKeys[5].stacksAddress };
+    const testnetKey = {
+      pkey: FAUCET_TESTNET_KEYS[5].secretKey,
+      address: FAUCET_TESTNET_KEYS[5].stacksAddress,
+    };
 
     // initializing namespace network
     await initiateNamespaceNetwork(namespace, salt, namespaceHash, testnetKey, 1);

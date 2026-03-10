@@ -63,7 +63,7 @@ interface SeededAccount {
   pubKey: string;
 }
 
-const testnetKeys: SeededAccount[] = testnetAccounts.map(t => ({
+export const FAUCET_TESTNET_KEYS: SeededAccount[] = testnetAccounts.map(t => ({
   secretKey: t.secretKey,
   stacksAddress: t.stacksAddress,
   pubKey: publicKeyToString(pubKeyfromPrivKey(t.secretKey)),
@@ -281,7 +281,9 @@ export const FaucetRoutes: FastifyPluginAsync<
   const FAUCET_STACKING_TRIGGER_COUNT = 1;
 
   const STX_FAUCET_NETWORK = () => getStxFaucetNetwork();
-  const STX_FAUCET_KEYS = (process.env.FAUCET_PRIVATE_KEY ?? testnetKeys[0].secretKey).split(',');
+  const STX_FAUCET_KEYS = (
+    process.env.FAUCET_PRIVATE_KEY ?? FAUCET_TESTNET_KEYS[0].secretKey
+  ).split(',');
 
   async function calculateSTXFaucetAmount(
     network: StacksNetwork,

@@ -1,5 +1,4 @@
 import { CoreRpcPoxInfo } from '../../src/core-rpc/client';
-import { testnetKeys } from '../../src/api/routes/debug';
 import {
   Account,
   accountFromKey,
@@ -39,9 +38,10 @@ import { hexToBytes } from '@stacks/common';
 import { StackingClient } from '@stacks/stacking';
 import { getPublicKeyFromPrivate } from '@stacks/encryption';
 import { AddressStxBalance } from '../../src/api/schemas/entities/addresses';
+import { FAUCET_TESTNET_KEYS } from 'src/api/routes/faucets';
 
 describe('PoX-4 - Delegate aggregation increase operations', () => {
-  const seedKey = testnetKeys[4].secretKey;
+  const seedKey = FAUCET_TESTNET_KEYS[4].secretKey;
   const delegatorKey = '04608922f3ce63971bb120fa9c9454c5bd06370f61414040a737a6ee8ef8a10f01';
   const delegateeKey = 'b038e143cf4ee4c079b3c3605a8ed28732e5745c138b728408e80faf7a59b8c201';
 
