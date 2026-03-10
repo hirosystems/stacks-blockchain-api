@@ -1,3 +1,11 @@
+## [8.14.2](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.14.1...v8.14.2) (2026-03-10)
+
+### Bug Fixes
+
+* drop slow unused gin index on blocks ([7c54120](https://github.com/hirosystems/stacks-blockchain-api/commit/7c541200a875b94a7c5a9f2722f164e9c72a332e))
+* force upgrade form-data transitive dependency ([#2479](https://github.com/hirosystems/stacks-blockchain-api/issues/2479)) ([3ceea38](https://github.com/hirosystems/stacks-blockchain-api/commit/3ceea3837a9081f13be9bf16dd31adeadef44f6a))
+* upgrade snp client to 2.0.5 ([#2473](https://github.com/hirosystems/stacks-blockchain-api/issues/2473)) ([a927a9c](https://github.com/hirosystems/stacks-blockchain-api/commit/a927a9c9c71d34496319f3419baae63d8ad4967f))
+
 ## [8.14.1](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.14.0...v8.14.1) (2026-02-25)
 
 ### Bug Fixes
