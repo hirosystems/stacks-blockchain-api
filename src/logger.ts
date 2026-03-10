@@ -24,5 +24,3 @@ const loggingConfiguration = {
 
 // ad-hoc logger
 export const logger = pino(loggingConfiguration);
-// logger middleware used by the web application framework
-export const loggerMiddleware = pinoHttp(loggingConfiguration);

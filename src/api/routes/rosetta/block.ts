@@ -1,5 +1,6 @@
-import * as express from 'express';
-import { asyncHandler } from '../../async-handler';
+import { FastifyPluginAsync } from 'fastify';
+import { Server } from 'node:http';
+import { TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
 import { RosettaBlockResponse } from '../../../rosetta/types';
 import { PgStore } from '../../../datastore/pg-store';
 import {
@@ -11,61 +12,59 @@ import { RosettaErrors, RosettaErrorsTypes } from '../../rosetta-constants';
 import { rosettaValidateRequest, ValidSchema, makeRosettaError } from '../../rosetta-validate';
 import { has0xPrefix } from '@hirosystems/api-toolkit';
 
-export function createRosettaBlockRouter(db: PgStore, chainId: ChainID): express.Router {
-  const router = express.Router();
-  router.use(express.json());
+export const RosettaBlockRoutes: FastifyPluginAsync<
+  Record<never, never>,
+  Server,
+  TypeBoxTypeProvider
+> = async fastify => {
+  const db: PgStore = fastify.db;
+  const chainId: ChainID = fastify.chainId;
 
-  router.post(
-    '/',
-    asyncHandler(async (req, res) => {
-      const valid: ValidSchema = await rosettaValidateRequest(req.originalUrl, req.body, chainId);
-      if (!valid.valid) {
-        res.status(400).json(makeRosettaError(valid));
-        return;
-      }
+  fastify.post<{
+    Body: Record<string, any>;
+  }>('/', async (req, reply) => {
+    const valid: ValidSchema = await rosettaValidateRequest(req.originalUrl, req.body, chainId);
+    if (!valid.valid) {
+      return reply.status(400).send(makeRosettaError(valid));
+    }
 
-      let block_hash = req.body.block_identifier?.hash as string | undefined;
-      const index = req.body.block_identifier?.index as number | undefined;
-      if (block_hash && !has0xPrefix(block_hash)) {
-        block_hash = '0x' + block_hash;
-      }
+    let block_hash = req.body.block_identifier?.hash as string | undefined;
+    const index = req.body.block_identifier?.index as number | undefined;
+    if (block_hash && !has0xPrefix(block_hash)) {
+      block_hash = '0x' + block_hash;
+    }
 
-      const block = await getRosettaBlockFromDataStore(db, true, chainId, block_hash, index);
+    const block = await getRosettaBlockFromDataStore(db, true, chainId, block_hash, index);
 
-      if (!block.found) {
-        res.status(500).json(RosettaErrors[RosettaErrorsTypes.blockNotFound]);
-        return;
-      }
-      const blockResponse: RosettaBlockResponse = {
-        block: block.result,
-      };
-      res.json(blockResponse);
-    })
-  );
+    if (!block.found) {
+      return reply.status(500).send(RosettaErrors[RosettaErrorsTypes.blockNotFound]);
+    }
+    const blockResponse: RosettaBlockResponse = {
+      block: block.result,
+    };
+    await reply.send(blockResponse);
+  });
 
-  router.post(
-    '/transaction',
-    asyncHandler(async (req, res) => {
-      const valid: ValidSchema = await rosettaValidateRequest(req.originalUrl, req.body, chainId);
-      if (!valid.valid) {
-        res.status(400).json(makeRosettaError(valid));
-        return;
-      }
+  fastify.post<{
+    Body: Record<string, any>;
+  }>('/transaction', async (req, reply) => {
+    const valid: ValidSchema = await rosettaValidateRequest(req.originalUrl, req.body, chainId);
+    if (!valid.valid) {
+      return reply.status(400).send(makeRosettaError(valid));
+    }
 
-      let tx_hash = req.body.transaction_identifier.hash;
-      if (!has0xPrefix(tx_hash)) {
-        tx_hash = '0x' + tx_hash;
-      }
+    let tx_hash = req.body.transaction_identifier.hash;
+    if (!has0xPrefix(tx_hash)) {
+      tx_hash = '0x' + tx_hash;
+    }
 
-      const transaction = await getRosettaTransactionFromDataStore(tx_hash, db, chainId);
-      if (!transaction.found) {
-        res.status(500).json(RosettaErrors[RosettaErrorsTypes.transactionNotFound]);
-        return;
-      }
+    const transaction = await getRosettaTransactionFromDataStore(tx_hash, db, chainId);
+    if (!transaction.found) {
+      return reply.status(500).send(RosettaErrors[RosettaErrorsTypes.transactionNotFound]);
+    }
 
-      res.json(transaction.result);
-    })
-  );
+    await reply.send(transaction.result);
+  });
 
-  return router;
-}
+  await Promise.resolve();
+};

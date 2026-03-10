@@ -10,11 +10,7 @@ export const OfflineDummyStore: PgWriteStore = new Proxy(
       if (propKey === 'eventEmitter') return target;
       // eslint-disable-next-line @typescript-eslint/no-unsafe-return
       if (propKey in target) return target[propKey];
-      return function () {
-        throw new Error(
-          `Cannot call function on the Dummy datastore. Check if the application is running in offline mode.`
-        );
-      };
+      return undefined;
     },
   }
 );
