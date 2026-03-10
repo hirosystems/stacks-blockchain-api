@@ -201,6 +201,9 @@
     "typescript": "5.5.4",
     "why-is-node-running": "2.2.0"
   },
+  "overrides": {
+    "form-data": "4.0.5"
+  },
   "optionalDependencies": {
     "bufferutil": "4.0.5",
     "utf-8-validate": "5.0.7"
