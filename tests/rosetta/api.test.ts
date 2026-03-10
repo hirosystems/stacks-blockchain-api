@@ -359,7 +359,7 @@ describe('Rosetta API', () => {
           hash: block2.parent_block_hash,
         },
         timestamp: block2.burn_block_time * 1000,
-        transactions: expect.objectContaining({}),
+        transactions: expect.any(Array),
         metadata: {
           burn_block_height: block2.burn_block_height,
         },

@@ -226,7 +226,7 @@ jobs:
           npm run devenv:logs-krypton -- --no-color &> docker-compose-logs.txt &
 
       - name: Run tests
-        run: npm run test:2.5 -- --testPathPattern "${{ matrix.suite }}" --coverage
+        run: npm run test:2.5 -- --testPathPatterns "${{ matrix.suite }}" --coverage
 
       - name: Print integration environment logs
         run: cat docker-compose-logs.txt
