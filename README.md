@@ -1,219 +1,364 @@
-# @hirosystems/stacks-blockchain-api
+# Stacks Blockchain API
 
 [![CI](https://github.com/hirosystems/stacks-blockchain-api/actions/workflows/ci.yml/badge.svg)](https://github.com/hirosystems/stacks-blockchain-api/actions/workflows/ci.yml)
 [![GitHub Releases](https://img.shields.io/github/v/release/hirosystems/stacks-blockchain-api?display_name=release)](https://github.com/hirosystems/stacks-blockchain-api/releases/latest)
-[![Docker Pulls](https://img.shields.io/docker/pulls/blockstack/stacks-blockchain-api)](https://hub.docker.com/r/hirosystems/stacks-blockchain-api/)
+[![Docker Pulls](https://img.shields.io/docker/pulls/hirosystems/stacks-blockchain-api)](https://hub.docker.com/r/hirosystems/stacks-blockchain-api/)
 [![NPM client package](https://img.shields.io/badge/npm-%40stacks%2Fblockchain--api--client-blue)](https://www.npmjs.org/package/@stacks/blockchain-api-client)
 
-## Quick start
+A Fastify-based REST API with real-time WebSocket and Socket.IO support for the [Stacks blockchain](https://www.stacks.co/). It indexes on-chain data from a [Stacks node](https://github.com/stacks-network/stacks-core) into PostgreSQL and exposes it through a rich set of RESTful endpoints, a full OpenAPI specification, and real-time event streams.
 
-### Local
+## Table of Contents
 
-This service requires `postgres`, `stacks-node`, `bitcoind`, and a few other components in order to run.
-The [`clarinet`](https://github.com/hirosystems/clarinet) project provides an easy way to spin up the API and all these services:
-> clarinet devnet - a local standalone development environment that simulates Bitcoin, Stacks node and other helpful components, similar to a staging environment.
+- [Features](#features)
+- [Quick Start](#quick-start)
+- [API Endpoints](#api-endpoints)
+- [Run Modes](#run-modes)
+- [Configuration](#configuration)
+- [Development](#development)
+- [Event Replay](#event-replay)
+- [Deployment](#deployment)
+- [Bugs and Feature Requests](#bugs-and-feature-requests)
+- [Contributing](#contributing)
+- [Community](#community)
 
-Get started at https://docs.hiro.so/clarinet/getting-started
+## Features
+
+- **Nakamoto support** — full support for Nakamoto blocks, tenures, signer signatures, and `NakamotoCoinbase` / `TenureChange` transaction types
+- **Comprehensive REST API** — v1 and v2 endpoints covering blocks, transactions, accounts, smart contracts, NFTs, fungible tokens, BNS (Bitcoin Name System), PoX / stacking, burn chain rewards, and more
+- **Real-time streaming** — subscribe to blocks, microblocks, mempool transactions, address activity, STX balance changes, and NFT events via WebSocket (JSON-RPC) or Socket.IO
+- **Client library** — type-safe TypeScript/JS client for REST and real-time APIs ([`@stacks/blockchain-api-client`](client/README.md))
+- **OpenAPI specification** — auto-generated from route definitions; powers Redoc documentation, Postman collections, and the TypeScript client
+- **Stacks node RPC proxy** — transparently proxies requests to the underlying Stacks node's `/v2/*` endpoints, with optional fee estimation
+- **Multiple run modes** — default (read-write), read-only, and write-only modes for flexible scaling
+- **Prometheus metrics** — built-in `/metrics` endpoint for monitoring
+- **SNP integration** — Stacks Nakamoto Protocol event streaming via Redis
+- **BNS** — full Bitcoin Name System support including name lookups, namespaces, subdomains, zonefiles, and pricing
+- **BTC & STX faucets** — testnet/regtest faucet endpoints for development
+
+## Quick Start
+
+### Local Development with Clarinet
+
+The easiest way to run the API locally is with [Clarinet](https://github.com/hirosystems/clarinet), which spins up a full devnet environment (Bitcoin node, Stacks node, API, and PostgreSQL):
+
+```shell
+clarinet devnet start
+```
+
+See the [Clarinet documentation](https://docs.hiro.so/clarinet/getting-started) to get started.
 
 ### Production
 
-The docker image `hirosystems/stacks-blockchain-api` is recommended when running the API in a mainnet or testnet environment.
+Use the official Docker image for mainnet or testnet:
 
-Note that this image cannot be ran standalone. Other services need to be configured correctly and running. For more information check out [this guide on how to run a node](https://docs.stacks.co/operate).
+```shell
+docker pull hirosystems/stacks-blockchain-api
+```
 
+The API cannot run standalone — it requires a running Stacks node and a PostgreSQL database. See [Deployment](#deployment) for details, or refer to the [Stacks node operator guide](https://docs.stacks.co/operate).
 
-## Development quick start
+## API Endpoints
 
-First, ensure Docker is installed on your machine.
+### Extended API v2
 
-Clone repo and install dependencies with `npm install`.
+The recommended versioned endpoints:
 
-VSCode is recommended for development. Pre-configured "run and debug" configurations are included. Run using `Launch: w/ postgres`.
+| Group | Prefix | Key Endpoints |
+|-------|--------|---------------|
+| **Blocks** | `/extended/v2/blocks` | List blocks, get by height/hash, list transactions, signer signatures, average block times |
+| **Burn Blocks** | `/extended/v2/burn-blocks` | List burn blocks, get by height/hash, list Stacks blocks per burn block, PoX transactions |
+| **Block Tenures** | `/extended/v2/block-tenures` | List blocks for a given tenure height |
+| **Addresses** | `/extended/v2/addresses` | Transactions for address, transaction events, STX balance, FT balances, PoX transactions by BTC address |
+| **PoX** | `/extended/v2/pox` | PoX cycles, signers per cycle, stackers per signer |
+| **Smart Contracts** | `/extended/v2/smart-contracts` | Contract deployment status |
+| **Mempool** | `/extended/v2/mempool` | Mempool fee priorities |
 
-Alternatively, use the command `npm run dev:integrated` -- this command will concurrently start the API server app and the service dependencies.
+### Extended API v1
 
-Check to see if the server started successfully by visiting http://localhost:3999/extended/v1/status
+| Group | Prefix | Key Endpoints |
+|-------|--------|---------------|
+| **Transactions** | `/extended/v1/tx` | Recent, by ID, raw, by block hash/height, mempool, mempool stats, events |
+| **Blocks** | `/extended/v1/block` | List, by height, by hash, by burn block height/hash |
+| **Microblocks** | `/extended/v1/microblock` | List, by hash, unanchored transactions |
+| **Accounts** | `/extended/v1/address` | STX balance, all balances, transactions, assets, inbound transfers, nonces, mempool |
+| **Tokens** | `/extended/v1/tokens` | NFT holdings, NFT history, NFT mints, FT holders |
+| **Smart Contracts** | `/extended/v1/contract` | By trait, by ID, contract events |
+| **Search** | `/extended/v1/search` | Universal search (blocks, transactions, contracts, addresses) |
+| **PoX** | `/extended/v1/pox2`, `pox3`, `pox4` | PoX events, stacker info, delegations |
+| **STX Supply** | `/extended/v1/stx_supply` | Total, circulating, legacy format |
+| **Burn Chain** | `/extended/v1/burnchain` | Reward slot holders, rewards, total rewards |
+| **Fee Rate** | `/extended/v1/fee_rate` | Fee rate estimation |
+| **Info** | `/extended/v1/info` | Network block times |
+| **Faucets** | `/extended/v1/faucets` | BTC and STX testnet faucets |
 
-## Local Development
+### BNS (Bitcoin Name System)
 
-To run the server, run `npm run dev:integrated`, which uses docker-compose to deploy the service dependencies (e.g., PostgreSQL, Stacks core node, etc.).
+| Prefix | Endpoints |
+|--------|-----------|
+| `/v1/names` | List names, get name details, zonefiles, subdomains |
+| `/v1/namespaces` | List namespaces, names in a namespace |
+| `/v1/addresses` | Resolve blockchain address to names |
+| `/v2/prices` | Namespace and name pricing |
 
-You'll have a server on port 3999.
+### Stacks Node RPC Proxy
 
-# Architecture
+All requests to `/v2/*` (e.g. `/v2/info`, `/v2/fees/transaction`) are proxied to the connected Stacks core node.
 
-![API architecture!](api-architecture.png)
+## Run Modes
 
-See [overview.md](overview.md) for architecture details.
+The API supports three run modes, controlled by the `STACKS_API_MODE` environment variable:
 
-# Deployment
+### Default (read-write)
 
-We recommend running the API database on PostgreSQL version 14 or newer for optimal performance.
+Runs the event server (ingests data from a Stacks node) and the API server. This is the standard mode for a single-instance deployment.
 
-## Upgrading
+```shell
+# STACKS_API_MODE is unset or set to any value other than readonly/writeonly
+```
 
-If upgrading the API to a new major version (e.g., `3.0.0` to `4.0.0`), then the Postgres database from the previous version will likely be incompatible, and the process will fail to start. However, in some cases, the major versions are for client library changes (which are synced with the api version number). Check the changelog if you're unclear.
+### Read-only
 
-[Event Replay](#event-replay) must be used when upgrading major versions. Follow the event replay [instructions](#event-replay-instructions) below. Failure to do so will require wiping the Stacks Blockchain chain state data and the API Postgres database and re-syncing from scratch.
+Runs only the API server. Reads data from PostgreSQL but does not ingest events. Requires a separate write-only instance populating the same database.
 
-## API Run Modes
+Useful for horizontally scaling API instances behind a load balancer. Read-only instances fully support WebSocket and Socket.IO subscriptions.
 
-The API supports a series of run modes, each accommodating different use cases for scaling and data access by toggling [architecture](#architecture) components on or off, depending on its objective.
+```shell
+STACKS_API_MODE=readonly
+```
 
-### Default mode (Read-write)
+### Write-only
 
-The default mode runs with all components enabled. It consumes events from a Stacks node, writes them to a Postgres database, and serves API endpoints.
+Runs only the event server. Ingests Stacks node events into PostgreSQL but does not serve any API endpoints.
 
-### Write-only mode
+Useful when consuming blockchain data directly from the database without the overhead of an HTTP server.
 
-During Write-only mode, the API only runs the Stacks node events server to populate the Postgres database, but it does not serve any API endpoints.
+```shell
+STACKS_API_MODE=writeonly
+```
 
-This mode is very useful when you need to consume blockchain data from the Postgres database directly, and you're not interested in taking on the overhead of running an API web server.
+## Configuration
 
-For write-only mode, set the environment variable `STACKS_API_MODE=writeonly`.
+Configuration is done via environment variables. A `.env` file in the project root is loaded automatically via [dotenv-flow](https://github.com/kerimdzhanov/dotenv-flow).
 
-### Read-only mode
+### Required
 
-During Read-only mode, the API runs without an internal event server that listens to events from a Stacks node.
-The API only reads data from the connected Postgres database when building endpoint responses.
-In order to keep serving updated blockchain data, this mode requires the presence of another API instance that keeps writing stacks-node events to the same database.
+| Variable | Description |
+|----------|-------------|
+| `STACKS_CHAIN_ID` | Chain ID — `0x00000001` (mainnet) or `0x80000000` (testnet) |
+| `STACKS_BLOCKCHAIN_API_HOST` | API server bind host |
+| `STACKS_BLOCKCHAIN_API_PORT` | API server port (typically `3999`) |
+| `STACKS_CORE_RPC_HOST` | Stacks node RPC host |
+| `STACKS_CORE_RPC_PORT` | Stacks node RPC port |
 
-This mode is very useful when building an environment that load-balances incoming HTTP requests between multiple API instances that can be scaled up and down quickly.
-Read-only instances support WebSockets and socket.io clients.
+### PostgreSQL
 
-For read-only mode, set the environment variable `STACKS_API_MODE=readonly`.
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `PG_CONNECTION_URI` | Full connection URI (overrides individual vars) | — |
+| `PG_HOST` | Database host | — |
+| `PG_PORT` | Database port | `5432` |
+| `PG_USER` | Database user | — |
+| `PG_PASSWORD` | Database password | — |
+| `PG_DATABASE` | Database name | — |
+| `PG_SCHEMA` | Database schema | — |
+| `PG_SSL` | Enable SSL | `false` |
+| `PG_CONNECTION_POOL_MAX` | Max pool size | `10` |
+| `PG_IDLE_TIMEOUT` | Idle timeout (seconds) | `30` |
+| `PG_MAX_LIFETIME` | Max connection lifetime (seconds) | `60` |
 
-### Offline mode
+A `PG_PRIMARY_*` prefix is available for all PostgreSQL variables to configure a separate primary connection used for `LISTEN/NOTIFY`.
 
-In Offline mode, the app runs without a stacks-node or Postgres connection. In this mode, only the given rosetta endpoints are supported:
-https://www.rosetta-api.org/docs/node_deployment.html#offline-mode-endpoints.
+### Event Server
 
-For running offline mode, set an environment variable `STACKS_API_MODE=offline`
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `STACKS_CORE_EVENT_HOST` | Event server bind host | `127.0.0.1` |
+| `STACKS_CORE_EVENT_PORT` | Event server port | `3700` |
+| `STACKS_CORE_EVENT_BODY_LIMIT` | Max event body size (bytes) | `500000000` |
+
+### RPC Proxy
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `STACKS_CORE_PROXY_HOST` | Proxy host (falls back to RPC host) | — |
+| `STACKS_CORE_PROXY_PORT` | Proxy port (falls back to RPC port) | — |
+| `STACKS_CORE_PROXY_BODY_LIMIT` | Proxy body limit (bytes) | `10000000` |
+| `STACKS_CORE_FEE_ESTIMATOR_ENABLED` | Enable fee estimator proxy | `false` |
+
+### Redis (optional)
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `REDIS_NOTIFIER_ENABLED` | Enable Redis-based index notifier | `false` |
+| `REDIS_URL` | Redis URL | — |
+| `SNP_EVENT_STREAMING` | Enable SNP Redis streaming | `false` |
+| `SNP_REDIS_URL` | SNP Redis URL | — |
+
+### Other
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `STACKS_API_MODE` | Run mode (`readonly`, `writeonly`, or default) | — |
+| `STACKS_API_LOG_LEVEL` | Log level | — |
+| `STACKS_PROFILER_PORT` | Enable profiler on this port | — |
+| `IBD_MODE_UNTIL_BLOCK` | Initial block download mode until block height | — |
+| `BNS_IMPORT_DIR` | Directory with V1 BNS export data | — |
+| `STACKS_SHUTDOWN_FORCE_KILL_TIMEOUT` | Graceful shutdown timeout (seconds) | `60` |
+
+## Development
+
+### Prerequisites
+
+- Node.js >= 22
+- Docker (for service dependencies)
+
+### Setup
+
+```shell
+git clone https://github.com/hirosystems/stacks-blockchain-api.git
+cd stacks-blockchain-api
+npm install
+```
+
+### Running Locally
+
+The quickest way to start with all dependencies (PostgreSQL, Stacks node, Bitcoin node):
+
+```shell
+npm run dev:integrated
+```
+
+This uses Docker Compose to start the service dependencies and runs the API in development mode.
+
+Alternatively, use the VS Code "Launch: w/ postgres" debug configuration.
+
+Verify the server is running:
+
+```
+http://localhost:3999/extended/v1/status
+```
+
+### Building
+
+```shell
+npm run build        # Compile TypeScript
+npm run build:docs   # Generate OpenAPI spec and Redoc docs
+npm run build:client # Generate client types from OpenAPI spec
+```
+
+### Testing
+
+```shell
+npm test                        # Run all tests
+npm run test:api                # API endpoint tests
+npm run test:bns                # BNS tests
+npm run test:2.5                # PoX-4 / stacking tests
+npm run test:event-replay       # Event replay tests
+npm run test:snp                # SNP ingestion tests
+```
+
+Integration tests spin up their own PostgreSQL via Docker:
+
+```shell
+npm run test:integration
+```
+
+### Linting
+
+```shell
+npm run lint        # ESLint + Prettier
+npm run lint:fix    # Auto-fix
+```
+
+### OpenAPI Spec Generation
+
+The OpenAPI specification is generated directly from Fastify route definitions:
+
+```shell
+npm run generate:openapi    # Generate docs/openapi.yaml and docs/openapi.json
+npm run generate:redoc      # Generate Redoc HTML documentation
+npm run generate:postman    # Generate Postman collection
+npm run generate:client     # Generate TypeScript client types
+```
 
 ## Event Replay
 
-The stacks-node is only able to emit events live as they happen. This poses a problem in the
-scenario where the stacks-blockchain-API needs to be upgraded, and its database cannot be migrated to
-a new schema. One way to handle this upgrade is to wipe the stacks-blockchain-api's database and
-stacks-node working directory and re-sync from scratch.
+When upgrading to a new major version with breaking database schema changes, the database must be rebuilt. Event replay allows re-ingesting historical events without a full chain re-sync.
 
-Alternatively, an event-replay feature is available where the API records the HTTP POST requests
-from the stacks-node event emitter, then streams these events back to itself. Essentially simulating
-a wipe & full re-sync, but much quicker.
+### Using stacks-event-replay
 
-The feature can be used via program args. For example, if there are breaking changes in the APIs
-SQL schema, like adding a new column that requires events to be re-played, the following steps
-could be run:
+The recommended approach is the [stacks-event-replay](https://github.com/hirosystems/stacks-event-replay) tool. Follow its [installation instructions](https://github.com/hirosystems/stacks-event-replay#installation).
 
-#### Instructions
+### Manual Export / Import
 
-To run the new event-replay, please follow the instructions at [stacks-event-replay](https://github.com/hirosystems/stacks-event-replay#installation) repository.
+1. Stop the API process (allow in-progress writes to finish).
 
-### Event Replay V1
-
-#### Instructions
-
-##### V1 BNS Data
-
-**Optional but recommended** - If you want the V1 BNS data, there are going to be a few extra steps:
-
-1. Download BNS data:
-   ```shell
-   curl -L https://storage.googleapis.com/blockstack-v1-migration-data/export-data.tar.gz -o /stacks-node/bns/export-data.tar.gz
-   ```
-1. Extract it:
-   ```shell
-   tar -xzvf ./bns/export-data.tar.gz -C /stacks-node/bns/
-   ```
-1. Each file in `./bns` will have a corresponding `sha256` value. To Verify, run a script like the
-   following to check the sha256sum:
-
-    ```bash
-    for file in `ls /stacks-node/bns/* | grep -v sha256 | grep -v .tar.gz`; do
-        if [ $(sha256sum $file | awk {'print $1'}) == $(cat ${file}.sha256 ) ]; then
-            echo "sha256 Matched $file"
-        else
-            echo "sha256 Mismatch $file"
-        fi
-    done
-    ```
-1. Set the data's location as the value of `BNS_IMPORT_DIR` in your `.env` file.
-
-##### Export and Import
-
-1. Ensure the API process is not running. When stopping the API, let the process exit gracefully so
-   that any in-progress SQL writes can finish.
-1. Export event data to disk with the `export-events` command:
-
+2. Export events:
    ```shell
    node ./lib/index.js export-events --file /tmp/stacks-node-events.tsv
    ```
-1. Update to the new stacks-blockchain-api version.
-1. Perform the event playback using the `import-events` command:
 
-   **WARNING**: This will **drop _all_ tables** from the configured Postgres database, including any
-   tables not automatically added by the API.
+3. Update to the new API version.
 
+4. Import events (this drops all existing tables):
    ```shell
    node ./lib/index.js import-events --file /tmp/stacks-node-events.tsv --wipe-db --force
    ```
 
-   This command has two modes of operation, specified by the `--mode` option:
-   * `archival` (default): The process will import and ingest *all* blockchain events that have
-     happened since the first block.
-   * `pruned`: The import process will ignore some prunable events (mempool, microblocks) until the
-     import block height has reached `chain tip - 256` blocks. This saves considerable
-     time during import but sacrifices some historical data. You can use this mode if you're mostly
-     interested in running an API that prioritizes real-time information.
+   Import modes via `--mode`:
+   - `archival` (default) — imports all events from genesis
+   - `pruned` — skips mempool and microblock events until near chain tip, trading historical data for speed
 
-## Bugs and feature requests
+## Deployment
 
-If you encounter a bug or have a feature request, we encourage you to follow the steps below:
+### Requirements
 
- 1. **Search for existing issues:** Before submitting a new issue, please search [existing and closed issues](../../issues) to check if a similar problem or feature request has already been reported.
- 1. **Open a new issue:** If it hasn't been addressed, please [open a new issue](../../issues/new/choose). Choose the appropriate issue template and provide as much detail as possible, including steps to reproduce the bug or a clear description of the requested feature.
- 1. **Evaluation SLA:** Our team reads and evaluates all the issues and pull requests. We are available Monday to Friday and make our best effort to respond within 7 business days.
+- PostgreSQL 14 or newer
+- A synced [Stacks node](https://github.com/stacks-network/stacks-core) configured to emit events to the API
+- (Optional) Redis, for SNP streaming or index notifications in HA setups
 
-Please **do not** use the issue tracker for personal support requests or to ask for the status of a transaction. You'll find help at the [#support Discord channel](https://discord.gg/SK3DxdsP).
+### Docker
 
-## Contribute
+```shell
+docker pull hirosystems/stacks-blockchain-api
+```
 
-Development of this product happens in the open on GitHub, and we are grateful to the community for contributing bug fixes and improvements. Read below to learn how you can take part in improving the product.
+The image runs `node ./lib/index.js` and expects the environment variables described in [Configuration](#configuration).
 
-### Code of Conduct
-Please read our [Code of Conduct](../../../.github/blob/main/CODE_OF_CONDUCT.md) since we expect project participants to adhere to it.
+A standalone regtest Dockerfile is also available at `docker/standalone-regtest.Dockerfile`, which bundles the API, Stacks node, Bitcoin node, and PostgreSQL into a single image for testing.
 
-### Contributing Guide
+### Upgrading
 
-Hiro welcomes all contributions to Hiro documentation. These contributions come in two forms: issues and pull requests.
+Major version upgrades (e.g., `7.x` to `8.x`) may include breaking database schema changes. Use [Event Replay](#event-replay) to rebuild the database. Check the [CHANGELOG](CHANGELOG.md) for details on each release.
 
-#### Issues
+## Bugs and Feature Requests
 
-Bugs, feature requests, and development-related questions should be directed to our [GitHub issues tracker](https://github.com/hirosystems/stacks-blockchain-api/issues/new).
+1. **Search for existing issues** — check [existing and closed issues](../../issues) before opening a new one.
+2. **Open a new issue** — use the appropriate [issue template](../../issues/new/choose) with as much detail as possible.
+3. **Response SLA** — the team evaluates issues Monday through Friday and aims to respond within 7 business days.
 
-If reporting a bug, try to provide as much context as possible and anything else that might be relevant to the describe the issue.  If possible include a simple test case that we can use to reproduce the problem on our own.
+For personal support or transaction status questions, use the [#support channel on Discord](https://discord.gg/SK3DxdsP).
 
-For feature requests, please explain what you're trying to do, and how the requested feature would be a complement to the project.
+## Contributing
 
-The two most important pieces of information we need in order to properly evaluate an issue or a feature request is a clear description of the behavior being reported.
+Development happens in the open on GitHub. Read below to learn how to contribute.
 
-#### Pull requests
+Please read the [Code of Conduct](../../../.github/blob/main/CODE_OF_CONDUCT.md) before participating.
 
-A pull request allows anyone to suggest changes to a repository on GitHub that can be easily reviewed by others. Once a pull request is opened, you can discuss and review the potential changes with collaborators and add follow-up commits before your changes are merged into the base branch.
+### Issues
 
-Keep in mind that pull requests are not merged directly into the `master` branch. It must have `develop` as the base branch.
+Report bugs and request features via the [GitHub issue tracker](https://github.com/hirosystems/stacks-blockchain-api/issues/new). Include reproduction steps and as much context as possible.
 
-### Community
+### Pull Requests
 
-Join our community and stay connected with the latest updates and discussions:
+Pull requests should target the `develop` branch, not `master`.
 
-- [Join our Discord community chat](https://discord.gg/ZQR6cyZC) to engage with other users, ask questions, and participate in discussions.
+## Community
 
-- [Visit hiro.so](https://www.hiro.so/) for updates and subcribing to the mailing list.
+- [Discord](https://discord.gg/ZQR6cyZC) — chat with other developers and the Hiro team
+- [hiro.so](https://www.hiro.so/) — product updates and mailing list
+- [Twitter / X](https://twitter.com/hirosystems) — follow Hiro for announcements
 
-- Follow [Hiro on Twitter.](https://twitter.com/hirosystems)
+## License
 
-
-## Client library
-
-You can use the Stacks Blockchain API Client library if you need to call the API via JavaScript or receive real-time updates via WebSockets or Socket.io. Learn more [here](client/README.md).
+GPL-3.0 — see [LICENSE](LICENSE) for details.
