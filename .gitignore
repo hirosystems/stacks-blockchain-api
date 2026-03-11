@@ -126,8 +126,7 @@ yarn.lock
 # Git info output
 .git-info
 
-# doc schema
-docs/openapi.json
-docs/openapi.yaml
+# docs
+docs/
 
 .claude/
