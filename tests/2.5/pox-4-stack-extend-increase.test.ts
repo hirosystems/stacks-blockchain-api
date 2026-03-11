@@ -1,4 +1,3 @@
-import { testnetKeys } from '../../src/api/routes/debug';
 import { CoreRpcPoxInfo } from '../../src/core-rpc/client';
 import { getBitcoinAddressFromKey, privateToPublicKey } from '../../src/ec-helpers';
 import {
@@ -31,9 +30,10 @@ import {
   BurnchainRewardSlotHolderListResponse,
 } from '../../src/api/schemas/responses/responses';
 import { BurnchainRewardsTotal } from '../../src/api/schemas/entities/burnchain-rewards';
+import { FAUCET_TESTNET_KEYS } from '../../src/api/routes/faucets';
 
 describe('PoX-4 - Stack extend and increase operations', () => {
-  const account = testnetKeys[1];
+  const account = FAUCET_TESTNET_KEYS[1];
   let btcAddr: string;
   let btcAddrRegtest: string;
   let btcPubKey: string;

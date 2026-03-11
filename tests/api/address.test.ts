@@ -11,7 +11,7 @@ import {
   stringAsciiCV,
   serializeCV,
 } from '@stacks/transactions';
-import { createClarityValueArray } from '../../src/stacks-encoding-helpers';
+import { createClarityValueArray } from '../utils/test-helpers';
 import { decodeTransaction } from '@hirosystems/stacks-encoding-native-js';
 import {
   DbBlock,

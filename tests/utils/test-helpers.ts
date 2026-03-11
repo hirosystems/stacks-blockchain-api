@@ -1,38 +1,16 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
-import { bytesToHex } from '@stacks/common';
 import { StacksNetwork } from '@stacks/network';
 import { decodeBtcAddress } from '@stacks/stacking';
 import {
-  NetworkIdentifier,
-  RosettaAccountBalanceRequest,
-  RosettaAccountBalanceResponse,
-  RosettaBlockRequest,
-  RosettaBlockResponse,
-  RosettaConstructionMetadataRequest,
-  RosettaConstructionMetadataResponse,
-  RosettaConstructionPayloadResponse,
-  RosettaConstructionPayloadsRequest,
-  RosettaConstructionPreprocessRequest,
-  RosettaConstructionPreprocessResponse,
-  RosettaConstructionSubmitRequest,
-  RosettaConstructionSubmitResponse,
-  RosettaOperation,
-} from '../../src/rosetta/types';
-import {
   bufferCV,
-  ChainID,
   ClarityValue,
-  createStacksPrivateKey,
-  deserializeTransaction,
   getAddressFromPrivateKey,
-  TransactionSigner,
+  serializeCV,
   TransactionVersion,
   TupleCV,
   tupleCV,
 } from '@stacks/transactions';
 import { RPCClient } from 'rpc-bitcoin';
-import { getRosettaNetworkName, RosettaConstants } from '../../src/api/rosetta-constants';
-
 import {
   ClarityTypeID,
   ClarityValue as NativeClarityValue,
@@ -40,7 +18,6 @@ import {
 } from '@hirosystems/stacks-encoding-native-js';
 import * as supertest from 'supertest';
 import { ApiServer } from '../../src/api/init';
-import { testnetKeys } from '../../src/api/routes/debug';
 import { CoreRpcPoxInfo, StacksCoreRpcClient } from '../../src/core-rpc/client';
 import { DbBlock, DbTx, DbTxStatus } from '../../src/datastore/common';
 import { PgWriteStore } from '../../src/datastore/pg-write-store';
@@ -56,11 +33,23 @@ import { MIGRATIONS_DIR } from '../../src/datastore/pg-store';
 import { getConnectionArgs } from '../../src/datastore/connection';
 import { AddressStxBalance } from '../../src/api/schemas/entities/addresses';
 import { ServerStatusResponse } from '../../src/api/schemas/responses/responses';
+import { FAUCET_TESTNET_KEYS } from '../../src/api/routes/faucets';
 
 export async function migrate(direction: 'up' | 'down') {
   const connArgs = getConnectionArgs();
   await createSchema(connArgs);
   await runMigrations(MIGRATIONS_DIR, direction, connArgs);
+}
+
+export function createClarityValueArray(...input: ClarityValue[]): Buffer {
+  const buffers = new Array<Buffer>(input.length);
+  for (let i = 0; i < input.length; i++) {
+    buffers[i] = Buffer.from(serializeCV(input[i]));
+  }
+  const valueCountBuffer = Buffer.alloc(4);
+  valueCountBuffer.writeUInt32BE(input.length);
+  buffers.unshift(valueCountBuffer);
+  return Buffer.concat(buffers);
 }
 
 export async function createSchema(connArgs: PgConnectionArgs) {
@@ -458,7 +447,7 @@ export async function readOnlyFnCall<T extends NativeClarityValue>(
     contractAddr,
     contractName,
     fnName,
-    sender ?? testnetKeys[0].stacksAddress,
+    sender ?? FAUCET_TESTNET_KEYS[0].stacksAddress,
     args ?? []
   );
   if (!callResp.okay) {
@@ -480,179 +469,4 @@ export async function readOnlyFnCall<T extends NativeClarityValue>(
     }
   }
   return decodedVal;
-}
-
-async function fetchRosetta<TPostBody, TRes>(endpoint: string, body: TPostBody) {
-  const result = await supertest(testEnv.api.server)
-    .post(endpoint)
-    .send(body as any);
-  expect(result.status).toBe(200);
-  expect(result.type).toBe('application/json');
-  return result.body as TRes;
-}
-
-export async function getRosettaBlockByBurnBlockHeight(burnBlockHeight: number) {
-  const unlockDbBlock = await testEnv.api.datastore.getBlockByBurnBlockHeight(burnBlockHeight);
-  expect(unlockDbBlock.found).toBeTruthy();
-  return fetchRosetta<RosettaBlockRequest, RosettaBlockResponse>('/rosetta/v1/block', {
-    network_identifier: { blockchain: 'stacks', network: 'testnet' },
-    block_identifier: { hash: unlockDbBlock.result!.block_hash },
-  });
-}
-
-export async function getRosettaAccountBalance(stacksAddress: string, atBlockHeight?: number) {
-  const req: RosettaAccountBalanceRequest = {
-    network_identifier: { blockchain: 'stacks', network: 'testnet' },
-    account_identifier: { address: stacksAddress },
-  };
-  if (atBlockHeight) {
-    req.block_identifier = { index: atBlockHeight };
-  }
-  const account = await fetchRosetta<RosettaAccountBalanceRequest, RosettaAccountBalanceResponse>(
-    '/rosetta/v1/account/balance',
-    req
-  );
-  // Also query for locked balance, requires specifying a special constant sub_account
-  req.block_identifier = { hash: account.block_identifier.hash };
-  req.account_identifier.sub_account = { address: RosettaConstants.StackedBalance };
-  const locked = await fetchRosetta<RosettaAccountBalanceRequest, RosettaAccountBalanceResponse>(
-    '/rosetta/v1/account/balance',
-    req
-  );
-  return {
-    account,
-    locked,
-  };
-}
-
-export async function stackStxWithRosetta(opts: {
-  btcAddr: string;
-  stacksAddress: string;
-  pubKey: string;
-  privateKey: string;
-  cycleCount: number;
-  ustxAmount: bigint;
-  signerKey: string;
-  signerPrivKey: string;
-}) {
-  const rosettaNetwork: NetworkIdentifier = {
-    blockchain: RosettaConstants.blockchain,
-    network: getRosettaNetworkName(ChainID.Testnet),
-  };
-
-  const stackingOperations: RosettaOperation[] = [
-    {
-      operation_identifier: { index: 0, network_index: 0 },
-      related_operations: [],
-      type: 'stack_stx',
-      account: { address: opts.stacksAddress, metadata: {} },
-      amount: {
-        value: '-' + opts.ustxAmount.toString(),
-        currency: { symbol: 'STX', decimals: 6 },
-        metadata: {},
-      },
-      metadata: {
-        number_of_cycles: opts.cycleCount,
-        pox_addr: opts.btcAddr,
-        signer_key: opts.signerKey,
-        signer_private_key: opts.signerPrivKey,
-      },
-    },
-    {
-      operation_identifier: { index: 1, network_index: 0 },
-      related_operations: [],
-      type: 'fee',
-      account: { address: opts.stacksAddress, metadata: {} },
-      amount: { value: '10000', currency: { symbol: 'STX', decimals: 6 } },
-    },
-  ];
-
-  // preprocess
-  const preprocessResult = await fetchRosetta<
-    RosettaConstructionPreprocessRequest,
-    RosettaConstructionPreprocessResponse
-  >('/rosetta/v1/construction/preprocess', {
-    network_identifier: rosettaNetwork,
-    operations: stackingOperations,
-    metadata: {},
-    max_fee: [{ value: '12380898', currency: { symbol: 'STX', decimals: 6 }, metadata: {} }],
-    suggested_fee_multiplier: 1,
-  });
-
-  // metadata
-  const metadataResult = await fetchRosetta<
-    RosettaConstructionMetadataRequest,
-    RosettaConstructionMetadataResponse
-  >('/rosetta/v1/construction/metadata', {
-    network_identifier: rosettaNetwork,
-    options: preprocessResult.options!, // using options returned from preprocess
-    public_keys: [{ hex_bytes: opts.pubKey, curve_type: 'secp256k1' }],
-  });
-
-  // payload
-  const payloadsResult = await fetchRosetta<
-    RosettaConstructionPayloadsRequest,
-    RosettaConstructionPayloadResponse
-  >('/rosetta/v1/construction/payloads', {
-    network_identifier: rosettaNetwork,
-    operations: stackingOperations, // using same operations as preprocess request
-    metadata: metadataResult.metadata, // using metadata from metadata response
-    public_keys: [{ hex_bytes: opts.pubKey, curve_type: 'secp256k1' }],
-  });
-
-  // sign tx
-  const stacksTx = deserializeTransaction(payloadsResult.unsigned_transaction);
-  const signer = new TransactionSigner(stacksTx);
-  signer.signOrigin(createStacksPrivateKey(opts.privateKey));
-  const signedSerializedTx = bytesToHex(stacksTx.serialize());
-  const expectedTxId = '0x' + stacksTx.txid();
-
-  // submit
-  const submitResult = await fetchRosetta<
-    RosettaConstructionSubmitRequest,
-    RosettaConstructionSubmitResponse
-  >('/rosetta/v1/construction/submit', {
-    network_identifier: rosettaNetwork,
-    signed_transaction: '0x' + signedSerializedTx,
-  });
-
-  const txStandby = await standByForTxSuccess(expectedTxId);
-
-  return {
-    txId: expectedTxId,
-    tx: txStandby,
-    submitResult,
-    constructionPreprocess: preprocessResult,
-    constructionMetadata: metadataResult,
-  };
-}
-
-/** Client-side nonce tracking */
-export class NonceJar {
-  nonceMap = new Map<string, number>();
-  api: ApiServer;
-  client: StacksCoreRpcClient;
-
-  constructor(api: ApiServer, client: StacksCoreRpcClient) {
-    this.api = api;
-    this.client = client;
-  }
-
-  async getNonce(address: string): Promise<number> {
-    while (true) {
-      const clientNonce = this.nonceMap.get(address) ?? 0;
-      const apiReq = await supertest(this.api.server).get(`/extended/v1/address/${address}/nonces`);
-      const { possible_next_nonce, last_executed_tx_nonce } = apiReq.body;
-      const nodeNonce = await this.client.getAccountNonce(address, false);
-      const nextNonce = Math.max(possible_next_nonce, nodeNonce, clientNonce);
-      const lastExecutedNonce = Math.min(last_executed_tx_nonce, nodeNonce);
-      const chainedCount = nextNonce - lastExecutedNonce;
-      if (chainedCount >= 25) {
-        await timeout(700);
-        continue;
-      }
-      this.nonceMap.set(address, nextNonce + 1);
-      return nextNonce;
-    }
-  }
 }

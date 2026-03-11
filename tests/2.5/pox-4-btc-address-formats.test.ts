@@ -11,7 +11,6 @@ import {
   uintCV,
 } from '@stacks/transactions';
 import bignumber from 'bignumber.js';
-import { testnetKeys } from '../../src/api/routes/debug';
 import { CoreRpcPoxInfo } from '../../src/core-rpc/client';
 import { DbEventTypeId, DbStxLockEvent } from '../../src/datastore/common';
 import { getBitcoinAddressFromKey, privateToPublicKey } from '../../src/ec-helpers';
@@ -31,13 +30,14 @@ import {
   BurnchainRewardSlotHolderListResponse,
 } from '../../src/api/schemas/responses/responses';
 import { BurnchainRewardsTotal } from '../../src/api/schemas/entities/burnchain-rewards';
+import { FAUCET_TESTNET_KEYS } from '../../src/api/routes/faucets';
 
 const BTC_PRIVATE_KEY = '0000000000000000000000000000000000000000000000000000000000000002';
 
 describe.each([P2SH_P2WPKH, P2WPKH, P2WSH, P2TR])(
   'PoX-4 - Stack using bitcoin address %p',
   addressSetup => {
-    const account = testnetKeys[1];
+    const account = FAUCET_TESTNET_KEYS[1];
 
     let poxInfo: CoreRpcPoxInfo;
     let burnBlockHeight: number;

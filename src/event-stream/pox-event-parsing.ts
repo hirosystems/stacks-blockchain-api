@@ -32,8 +32,7 @@ import {
 } from '@hirosystems/stacks-encoding-native-js';
 import { poxAddressToBtcAddress } from '@stacks/stacking';
 import { SyntheticPoxEventName } from '../pox-helpers';
-import { logger } from '../logger';
-import { bufferToHex, coerceToBuffer } from '@stacks/api-toolkit';
+import { bufferToHex, coerceToBuffer, logger } from '@stacks/api-toolkit';
 
 function tryClarityPoxAddressToBtcAddress(
   poxAddr:

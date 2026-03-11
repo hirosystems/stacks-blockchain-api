@@ -32,8 +32,7 @@ import type {
   NftEvent,
 } from 'client/src/types';
 import { getWsMessageTimeoutMs, getWsPingIntervalMs } from '../web-socket-transmitter';
-import { logger } from '../../../../logger';
-import { isProdEnv, resolveOrTimeout } from '@stacks/api-toolkit';
+import { isProdEnv, logger, resolveOrTimeout } from '@stacks/api-toolkit';
 
 import { Transaction, MempoolTransaction } from '../../../schemas/entities/transactions';
 import { Block } from '../../..//schemas/entities/block';

@@ -29,7 +29,7 @@ import {
   DbTxTypeId,
 } from '../../src/datastore/common';
 import { bufferCV, bufferCVFromString, serializeCV, uintCV } from '@stacks/transactions';
-import { createClarityValueArray } from '../../src/stacks-encoding-helpers';
+import { createClarityValueArray } from './test-helpers';
 import { bufferToHex } from '@stacks/api-toolkit';
 
 // Default values when none given. Useful when they are irrelevant for a particular test.
@@ -84,7 +84,7 @@ const ZONEFILE =
   '$ORIGIN test.btc\n$TTL 3600\n_http._tcp IN URI 10 1 "https://blockstack.s3.amazonaws.com/test.btc"\n';
 const ZONEFILE_HASH = 'b100a68235244b012854a95f9114695679002af9';
 
-export interface TestBlockArgs {
+interface TestBlockArgs {
   block_height?: number;
   block_hash?: string;
   block_time?: number;
@@ -169,7 +169,7 @@ function testMicroblock(args?: TestMicroblockArgs): DbMicroblockPartial {
   };
 }
 
-export interface TestTxArgs extends Partial<DbTxRaw> {
+interface TestTxArgs extends Partial<DbTxRaw> {
   block_hash?: string;
   block_height?: number;
   burn_block_time?: number;
@@ -355,7 +355,7 @@ export function testMempoolTx(args?: TestMempoolTxArgs): DbMempoolTxRaw {
   };
 }
 
-export interface TestStxEventArgs {
+interface TestStxEventArgs {
   amount?: bigint;
   block_height?: number;
   event_index?: number;
@@ -515,7 +515,7 @@ function testStxLockEvent(args?: TestStxEventLockArgs): DbStxLockEvent {
   };
 }
 
-export interface TestSmartContractEventArgs {
+interface TestSmartContractEventArgs {
   tx_id?: string;
   block_height?: number;
   clarity_version?: number;

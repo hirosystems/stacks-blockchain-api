@@ -85,7 +85,6 @@ import { MIGRATIONS_DIR, PgStore } from './pg-store';
 import * as zoneFileParser from 'zone-file';
 import { parseResolver, parseZoneFileTxt } from '../event-stream/bns/bns-helpers';
 import { SyntheticPoxEventName } from '../pox-helpers';
-import { logger } from '../logger';
 import {
   PgSqlClient,
   batchIterate,
@@ -93,6 +92,7 @@ import {
   isProdEnv,
   isTestEnv,
   runMigrations,
+  logger,
 } from '@stacks/api-toolkit';
 import { PgServer, getConnectionArgs, getConnectionConfig } from './connection';
 import { BigNumber } from 'bignumber.js';

@@ -6,11 +6,9 @@ import {
 } from './helpers';
 import * as sourceMapSupport from 'source-map-support';
 import { startApiServer } from './api/init';
-import { startProfilerServer } from './inspector-util';
 import { startEventServer } from './event-stream/event-server';
 import { StacksCoreRpcClient } from './core-rpc/client';
 import * as promClient from 'prom-client';
-import { OfflineDummyStore } from './datastore/offline-dummy-store';
 import * as getopts from 'getopts';
 import * as fs from 'fs';
 import { injectC32addressEncodeCache } from './c32-addr-cache';
@@ -18,9 +16,10 @@ import { exportEventsAsTsv, importEventsFromTsv } from './event-replay/event-rep
 import { PgStore } from './datastore/pg-store';
 import { PgWriteStore } from './datastore/pg-write-store';
 import { registerMempoolPromStats } from './datastore/helpers';
-import { logger } from './logger';
 import {
+  buildProfilerServer,
   isProdEnv,
+  logger,
   numberToHex,
   parseBoolean,
   PINO_LOGGER_CONFIG,
@@ -44,10 +43,6 @@ enum StacksApiMode {
    * Runs the Event Server only.
    */
   writeOnly = 'writeonly',
-  /**
-   * Runs without an Event Server or API endpoints. Used for Rosetta only.
-   */
-  offline = 'offline',
 }
 
 /**
@@ -60,17 +55,12 @@ function getApiMode(): StacksApiMode {
       return StacksApiMode.readOnly;
     case 'writeonly':
       return StacksApiMode.writeOnly;
-    case 'offline':
-      return StacksApiMode.offline;
     default:
       break;
   }
   // Make sure we're backwards compatible if `STACKS_API_MODE` is not specified.
   if (parseBoolean(process.env['STACKS_READ_ONLY_MODE'])) {
     return StacksApiMode.readOnly;
-  }
-  if (parseBoolean(process.env['STACKS_API_OFFLINE_MODE'])) {
-    return StacksApiMode.offline;
   }
   return StacksApiMode.default;
 }
@@ -118,22 +108,15 @@ async function init(): Promise<void> {
   promClient.collectDefaultMetrics();
   chainIdConfigurationCheck();
   const apiMode = getApiMode();
-  let dbStore: PgStore;
-  let dbWriteStore: PgWriteStore;
-  if (apiMode === StacksApiMode.offline) {
-    dbStore = OfflineDummyStore;
-    dbWriteStore = OfflineDummyStore;
-  } else {
-    dbStore = await PgStore.connect({
-      usageName: `datastore-${apiMode}`,
-    });
-    dbWriteStore = await PgWriteStore.connect({
-      usageName: `write-datastore-${apiMode}`,
-      skipMigrations: apiMode === StacksApiMode.readOnly,
-      withRedisNotifier: parseBoolean(process.env['REDIS_NOTIFIER_ENABLED']) ?? false,
-    });
-    registerMempoolPromStats(dbWriteStore.eventEmitter);
-  }
+  const dbStore = await PgStore.connect({
+    usageName: `datastore-${apiMode}`,
+  });
+  const dbWriteStore = await PgWriteStore.connect({
+    usageName: `write-datastore-${apiMode}`,
+    skipMigrations: apiMode === StacksApiMode.readOnly,
+    withRedisNotifier: parseBoolean(process.env['REDIS_NOTIFIER_ENABLED']) ?? false,
+  });
+  registerMempoolPromStats(dbWriteStore.eventEmitter);
 
   if (apiMode === StacksApiMode.default || apiMode === StacksApiMode.writeOnly) {
     const configuredChainID = getApiConfiguredChainID();
@@ -181,11 +164,7 @@ async function init(): Promise<void> {
     }
   }
 
-  if (
-    apiMode === StacksApiMode.default ||
-    apiMode === StacksApiMode.readOnly ||
-    apiMode === StacksApiMode.offline
-  ) {
+  if (apiMode === StacksApiMode.default || apiMode === StacksApiMode.readOnly) {
     const apiServer = await startApiServer({
       datastore: dbStore,
       writeDatastore: dbWriteStore,
@@ -202,24 +181,26 @@ async function init(): Promise<void> {
 
   const profilerHttpServerPort = process.env['STACKS_PROFILER_PORT'];
   if (profilerHttpServerPort) {
-    const profilerServer = await startProfilerServer(profilerHttpServerPort);
+    const profilerServer = await buildProfilerServer();
     registerShutdownConfig({
       name: 'Profiler server',
       handler: () => profilerServer.close(),
       forceKillable: true,
     });
-  }
-
-  if (apiMode !== StacksApiMode.offline) {
-    registerShutdownConfig({
-      name: 'DB',
-      handler: async () => {
-        await dbStore.close();
-        await dbWriteStore.close();
-      },
-      forceKillable: true,
+    await profilerServer.listen({
+      host: process.env['STACKS_PROFILER_HOST'] ?? '0.0.0.0',
+      port: parseInt(profilerHttpServerPort),
     });
   }
+
+  registerShutdownConfig({
+    name: 'DB',
+    handler: async () => {
+      await dbStore.close();
+      await dbWriteStore.close();
+    },
+    forceKillable: true,
+  });
 
   if (isProdEnv) {
     const promServer = Fastify({

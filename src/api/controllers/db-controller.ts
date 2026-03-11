@@ -10,13 +10,6 @@ import {
   decodeClarityValueToTypeName,
   decodePostConditions,
 } from '@hirosystems/stacks-encoding-native-js';
-
-import {
-  RosettaBlock,
-  RosettaParentBlockIdentifier,
-  RosettaTransaction,
-} from '../../rosetta/types';
-
 import {
   BlockIdentifier,
   DbAssetEventTypeId,
@@ -30,17 +23,13 @@ import {
   DbTxTypeId,
   DbSearchResultWithMetadata,
   BaseTx,
-  DbMinerReward,
-  StxUnlockEvent,
   DbPoxSyntheticEvent,
 } from '../../datastore/common';
-import { unwrapOptional, FoundOrNot, unixEpochToIso, EMPTY_HASH_256, ChainID } from '../../helpers';
+import { unwrapOptional, FoundOrNot, unixEpochToIso, EMPTY_HASH_256 } from '../../helpers';
 import { serializePostCondition, serializePostConditionMode } from '../serializers/post-conditions';
-import { getOperations, parseTransactionMemo } from '../../rosetta/rosetta-helpers';
 import { PgStore } from '../../datastore/pg-store';
 import { SyntheticPoxEventName } from '../../pox-helpers';
-import { logger } from '../../logger';
-
+import { logger } from '@stacks/api-toolkit';
 import {
   AbstractMempoolTransaction,
   AbstractTransaction,
@@ -146,7 +135,7 @@ function getTxAnchorModeString(anchorMode: number): TransactionAnchorModeType {
   }
 }
 
-export function getTxTenureChangeCauseString(cause: number) {
+function getTxTenureChangeCauseString(cause: number) {
   switch (cause) {
     case 0:
       return 'block_found';
@@ -211,14 +200,6 @@ export function getTxStatusString(
       return 'dropped_stale_garbage_collect';
     default:
       throw new Error(`Unexpected DbTxStatus: ${txStatus}`);
-  }
-}
-
-export function getTxStatus(txStatus: DbTxStatus | string): string {
-  if (txStatus == '') {
-    return '';
-  } else {
-    return getTxStatusString(txStatus as DbTxStatus);
   }
 }
 
@@ -487,90 +468,6 @@ export function parseDbEvent(dbEvent: DbEvent): TransactionEvent {
   }
 }
 
-/**
- * Fetch block from datastore by blockHash or blockHeight (index)
- * If both blockHeight and blockHash are provided, blockHeight is used.
- * If neither argument is present, the most recent block is returned.
- * @param db -- datastore
- * @param fetchTransactions -- return block transactions
- * @param chainId -- chain ID
- * @param blockHash -- hexadecimal hash string
- * @param blockHeight -- number
- */
-export async function getRosettaBlockFromDataStore(
-  db: PgStore,
-  fetchTransactions: boolean,
-  chainId: ChainID,
-  blockHash?: string,
-  blockHeight?: number
-): Promise<FoundOrNot<RosettaBlock>> {
-  return await db.sqlTransaction(async sql => {
-    let blockQuery: FoundOrNot<DbBlock>;
-    if (blockHash) {
-      blockQuery = await db.getBlock({ hash: blockHash });
-    } else if (blockHeight && blockHeight > 0) {
-      blockQuery = await db.getBlock({ height: blockHeight });
-    } else {
-      blockQuery = await db.getCurrentBlock();
-    }
-
-    if (!blockQuery.found) {
-      return { found: false };
-    }
-    const dbBlock = blockQuery.result;
-    let blockTxs = {} as FoundOrNot<RosettaTransaction[]>;
-    blockTxs.found = false;
-    if (fetchTransactions) {
-      blockTxs = await getRosettaBlockTransactionsFromDataStore({
-        blockHash: dbBlock.block_hash,
-        indexBlockHash: dbBlock.index_block_hash,
-        db,
-        chainId,
-      });
-    }
-
-    const parentBlockHash = dbBlock.parent_block_hash;
-    let parent_block_identifier: RosettaParentBlockIdentifier;
-
-    if (dbBlock.block_height <= 1) {
-      // case for genesis block
-      parent_block_identifier = {
-        index: dbBlock.block_height,
-        hash: dbBlock.block_hash,
-      };
-    } else {
-      const parentBlockQuery = await db.getBlock({ hash: parentBlockHash });
-      if (parentBlockQuery.found) {
-        const parentBlock = parentBlockQuery.result;
-        parent_block_identifier = {
-          index: parentBlock.block_height,
-          hash: parentBlock.block_hash,
-        };
-      } else {
-        return { found: false };
-      }
-    }
-
-    // In epoch2.x, only the burn_block_time is consensus-level. Starting in epoch3, Stacks blocks include a consensus-level timestamp.
-    // Use `signer_bitvec` field to determine if the block is from epoch3.
-    let timestamp = dbBlock.burn_block_time * 1000;
-    if (dbBlock.signer_bitvec) {
-      timestamp = dbBlock.block_time * 1000;
-    }
-
-    const apiBlock: RosettaBlock = {
-      block_identifier: { index: dbBlock.block_height, hash: dbBlock.block_hash },
-      parent_block_identifier,
-      timestamp: timestamp,
-      transactions: blockTxs.found ? blockTxs.result : [],
-      metadata: {
-        burn_block_height: dbBlock.burn_block_height,
-      },
-    };
-    return { found: true, result: apiBlock };
-  });
-}
-
 export async function getUnanchoredTxsFromDataStore(db: PgStore): Promise<Transaction[]> {
   const dbTxs = await db.getUnanchoredTxs();
   const parsedTxs = dbTxs.txs.map(dbTx => parseDbTx(dbTx, false));
@@ -716,159 +613,6 @@ function parseDbBlock(
     microblock_tx_count,
   };
   return apiBlock;
-}
-
-async function parseRosettaTxDetail(opts: {
-  block_height: number;
-  indexBlockHash: string;
-  tx: DbTx;
-  db: PgStore;
-  minerRewards: DbMinerReward[];
-  unlockingEvents: StxUnlockEvent[];
-  chainId: ChainID;
-}): Promise<RosettaTransaction> {
-  return await opts.db.sqlTransaction(async sql => {
-    let events: DbEvent[] = [];
-    if (opts.block_height > 1) {
-      // only return events of blocks at height greater than 1
-      const eventsQuery = await opts.db.getTxEvents({
-        txId: opts.tx.tx_id,
-        indexBlockHash: opts.indexBlockHash,
-        limit: 5000,
-        offset: 0,
-      });
-      events = eventsQuery.results;
-    }
-    const operations = await getOperations(
-      opts.tx,
-      opts.db,
-      opts.chainId,
-      opts.minerRewards,
-      events,
-      opts.unlockingEvents
-    );
-    const txMemo = parseTransactionMemo(opts.tx.token_transfer_memo);
-    const rosettaTx: RosettaTransaction = {
-      transaction_identifier: { hash: opts.tx.tx_id },
-      operations: operations,
-    };
-    if (txMemo) {
-      rosettaTx.metadata = {
-        memo: txMemo,
-      };
-    }
-    return rosettaTx;
-  });
-}
-
-async function getRosettaBlockTxFromDataStore(opts: {
-  tx: DbTx;
-  block: DbBlock;
-  db: PgStore;
-  chainId: ChainID;
-}): Promise<FoundOrNot<RosettaTransaction>> {
-  return await opts.db.sqlTransaction(async sql => {
-    let minerRewards: DbMinerReward[] = [],
-      unlockingEvents: StxUnlockEvent[] = [];
-
-    if (
-      opts.tx.type_id === DbTxTypeId.Coinbase ||
-      opts.tx.type_id === DbTxTypeId.CoinbaseToAltRecipient
-    ) {
-      minerRewards = await opts.db.getMinersRewardsAtHeight({
-        blockHeight: opts.block.block_height,
-      });
-      unlockingEvents = await opts.db.getUnlockedAddressesAtBlock(opts.block);
-    }
-
-    const rosettaTx = await parseRosettaTxDetail({
-      block_height: opts.block.block_height,
-      indexBlockHash: opts.tx.index_block_hash,
-      tx: opts.tx,
-      db: opts.db,
-      minerRewards,
-      unlockingEvents,
-      chainId: opts.chainId,
-    });
-    return { found: true, result: rosettaTx };
-  });
-}
-
-async function getRosettaBlockTransactionsFromDataStore(opts: {
-  blockHash: string;
-  indexBlockHash: string;
-  db: PgStore;
-  chainId: ChainID;
-}): Promise<FoundOrNot<RosettaTransaction[]>> {
-  return await opts.db.sqlTransaction(async sql => {
-    const blockQuery = await opts.db.getBlock({ hash: opts.blockHash });
-    if (!blockQuery.found) {
-      return { found: false };
-    }
-
-    const txsQuery = await opts.db.getBlockTxsRows(opts.blockHash);
-    const minerRewards = await opts.db.getMinersRewardsAtHeight({
-      blockHeight: blockQuery.result.block_height,
-    });
-
-    if (!txsQuery.found) {
-      return { found: false };
-    }
-
-    const unlockingEvents = await opts.db.getUnlockedAddressesAtBlock(blockQuery.result);
-
-    const transactions: RosettaTransaction[] = [];
-
-    for (const tx of txsQuery.result) {
-      const rosettaTx = await parseRosettaTxDetail({
-        block_height: blockQuery.result.block_height,
-        indexBlockHash: opts.indexBlockHash,
-        tx,
-        db: opts.db,
-        minerRewards,
-        unlockingEvents,
-        chainId: opts.chainId,
-      });
-      transactions.push(rosettaTx);
-    }
-
-    return { found: true, result: transactions };
-  });
-}
-
-export async function getRosettaTransactionFromDataStore(
-  txId: string,
-  db: PgStore,
-  chainId: ChainID
-): Promise<FoundOrNot<RosettaTransaction>> {
-  return await db.sqlTransaction(async sql => {
-    const txQuery = await db.getTx({ txId, includeUnanchored: false });
-    if (!txQuery.found) {
-      return { found: false };
-    }
-
-    const blockQuery = await db.getBlock({ hash: txQuery.result.block_hash });
-    if (!blockQuery.found) {
-      throw new Error(
-        `Could not find block for tx: ${txId}, block_hash: ${txQuery.result.block_hash}, index_block_hash: ${txQuery.result.index_block_hash}`
-      );
-    }
-
-    const rosettaTx = await getRosettaBlockTxFromDataStore({
-      tx: txQuery.result,
-      block: blockQuery.result,
-      db,
-      chainId,
-    });
-
-    if (!rosettaTx.found) {
-      throw new Error(
-        `Rosetta block missing operations for tx: ${txId}, block_hash: ${txQuery.result.block_hash}, index_block_hash: ${txQuery.result.index_block_hash}`
-      );
-    }
-
-    return rosettaTx;
-  });
 }
 
 interface GetTxArgs {
@@ -1061,7 +805,7 @@ function parseDbTxTypeMetadata(
   }
 }
 
-export function parseContractCallMetadata(
+function parseContractCallMetadata(
   tx: BaseTx,
   excludeFunctionArgs: boolean
 ): ContractCallTransactionMetadata {

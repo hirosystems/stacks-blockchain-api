@@ -1,5 +1,4 @@
 import { CoreRpcPoxInfo } from '../../src/core-rpc/client';
-import { testnetKeys } from '../../src/api/routes/debug';
 import {
   Account,
   accountFromKey,
@@ -30,9 +29,10 @@ import { StackingClient } from '@stacks/stacking';
 import { getPublicKeyFromPrivate } from '@stacks/encryption';
 import { hexToBytes } from '@stacks/common';
 import { AddressStxBalance } from '../../src/api/schemas/entities/addresses';
+import { FAUCET_TESTNET_KEYS } from '../../src/api/routes/faucets';
 
 describe('PoX-4 - Delegate Stacking operations', () => {
-  const seedKey = testnetKeys[4].secretKey;
+  const seedKey = FAUCET_TESTNET_KEYS[4].secretKey;
   const delegatorKey = '72e8e3725324514c38c2931ed337ab9ab8d8abaae83ed2275456790194b1fd3101';
   const delegateeKey = '0d174cf0be276cedcf21727611ef2504aed093d8163f65985c07760fda12a7ea01';
 

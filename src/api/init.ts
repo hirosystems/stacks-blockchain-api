@@ -1,10 +1,7 @@
 import { Server, createServer } from 'http';
 import { Socket } from 'net';
-import * as express from 'express';
-import * as cors from 'cors';
 
 import { TxRoutes } from './routes/tx';
-import { DebugRoutes } from './routes/debug';
 import { InfoRoutes } from './routes/info';
 import { ContractRoutes } from './routes/contract';
 import { CoreNodeRpcProxyRouter } from './routes/core-node-rpc-proxy';
@@ -13,13 +10,7 @@ import { FaucetRoutes } from './routes/faucets';
 import { AddressRoutes } from './routes/address';
 import { SearchRoutes } from './routes/search';
 import { StxSupplyRoutes } from './routes/stx-supply';
-import { createRosettaNetworkRouter } from './routes/rosetta/network';
-import { createRosettaMempoolRouter } from './routes/rosetta/mempool';
-import { createRosettaBlockRouter } from './routes/rosetta/block';
-import { createRosettaAccountRouter } from './routes/rosetta/account';
-import { createRosettaConstructionRouter } from './routes/rosetta/construction';
-import { ChainID, apiDocumentationUrl } from '../helpers';
-import { InvalidRequestError } from '../errors';
+import { ChainID } from '../helpers';
 import { BurnchainRoutes } from './routes/burnchain';
 import { BnsNamespaceRoutes } from './routes/bns/namespaces';
 import { BnsPriceRoutes } from './routes/bns/pricing';
@@ -30,20 +21,17 @@ import { StatusRoutes } from './routes/status';
 import { TokenRoutes } from './routes/tokens';
 import { FeeRateRoutes } from './routes/fee-rate';
 
-import * as path from 'path';
-import * as fs from 'fs';
 import { PgStore } from '../datastore/pg-store';
 import { PgWriteStore } from '../datastore/pg-write-store';
 import { WebSocketTransmitter } from './routes/ws/web-socket-transmitter';
 import { PoxEventRoutes, PoxRoutes } from './routes/pox';
-import { logger, loggerMiddleware } from '../logger';
 import {
   PINO_LOGGER_CONFIG,
   SERVER_VERSION,
   isPgConnectionError,
   isProdEnv,
-  parseBoolean,
   waiter,
+  logger,
 } from '@stacks/api-toolkit';
 import { BlockRoutesV2 } from './routes/v2/blocks';
 import { BurnBlockRoutesV2 } from './routes/v2/burn-blocks';
@@ -92,7 +80,6 @@ export const StacksApiRoutes: FastifyPluginAsync<
       await fastify.register(PoxRoutes, { prefix: '/:pox(pox\\d)' });
       await fastify.register(PoxEventRoutes, { prefix: '/:(pox\\d_events)' });
       await fastify.register(FaucetRoutes, { prefix: '/faucets' });
-      await fastify.register(DebugRoutes, { prefix: '/debug' });
     },
     { prefix: '/extended/v1' }
   );
@@ -119,87 +106,6 @@ export const StacksApiRoutes: FastifyPluginAsync<
   await Promise.resolve();
 };
 
-function createRosettaServer(datastore: PgStore, chainId: ChainID) {
-  const app = express();
-
-  // Add API version to header
-  app.use((_, res, next) => {
-    res.setHeader(
-      'X-API-Version',
-      `${SERVER_VERSION.tag} (${SERVER_VERSION.branch}:${SERVER_VERSION.commit})`
-    );
-    res.append('Access-Control-Expose-Headers', 'X-API-Version');
-    next();
-  });
-
-  // Common logger middleware for the whole API.
-  app.use(loggerMiddleware);
-
-  app.set('json spaces', 2);
-
-  app.use('/doc', (req, res) => {
-    // if env variable for API_DOCS_URL is given
-    if (apiDocumentationUrl) {
-      return res.redirect(apiDocumentationUrl);
-    } else if (!isProdEnv) {
-      // use local documentation if serving locally
-      const apiDocumentationPath = path.join(__dirname + '../../../docs/.tmp/index.html');
-      if (fs.existsSync(apiDocumentationPath)) {
-        return res.sendFile(apiDocumentationPath);
-      }
-
-      const docNotFound = {
-        error: 'Local documentation not found',
-        desc: 'Please run the command: `npm run build:docs` and restart your server',
-      };
-      return res.send(docNotFound).status(404);
-    }
-    // for production and no API_DOCS_URL provided
-    const errObj = {
-      error: 'Documentation is not available',
-      desc: `You can still read documentation from https://docs.hiro.so/api`,
-    };
-    res.send(errObj).status(404);
-  });
-
-  app.use(
-    '/rosetta/v1',
-    (() => {
-      const router = express.Router();
-      router.use(cors());
-      router.use('/network', createRosettaNetworkRouter(datastore, chainId));
-      router.use('/mempool', createRosettaMempoolRouter(datastore, chainId));
-      router.use('/block', createRosettaBlockRouter(datastore, chainId));
-      router.use('/account', createRosettaAccountRouter(datastore, chainId));
-      router.use('/construction', createRosettaConstructionRouter(datastore, chainId));
-      return router;
-    })()
-  );
-
-  //handle invalid request gracefully
-  app.use((req, res) => {
-    res.status(404).json({ message: `${req.method} ${req.path} not found` });
-  });
-
-  // Setup error handler (must be added at the end of the middleware stack)
-  app.use(((error, req, res, next) => {
-    if (error && !res.headersSent) {
-      if (error instanceof InvalidRequestError) {
-        logger.warn(error, error.message);
-        res.status(error.status).json({ error: error.message }).end();
-      } else if (isPgConnectionError(error)) {
-        res.status(503).json({ error: `The database service is unavailable` }).end();
-      } else {
-        res.status(500);
-        res.json({ error: error.toString(), stack: (error as Error).stack }).end();
-      }
-    }
-    next(error);
-  }) as express.ErrorRequestHandler);
-
-  return app;
-}
-
 export async function startApiServer(opts: {
   datastore: PgStore;
   writeDatastore?: PgWriteStore;
@@ -223,12 +129,6 @@ export async function startApiServer(opts: {
     throw new Error(
       `STACKS_BLOCKCHAIN_API_PORT must be specified, e.g. "STACKS_BLOCKCHAIN_API_PORT=3999"`
     );
-  }
-
-  // Rosetta API -- https://www.rosetta-api.org
-  let expressApp: express.Express | undefined;
-  if (parseBoolean(process.env['STACKS_API_ENABLE_ROSETTA'] ?? '1')) {
-    expressApp = createRosettaServer(datastore, chainId);
   }
 
   const fastify = Fastify({
@@ -282,22 +182,9 @@ export async function startApiServer(opts: {
   // Wait for all routes and middleware to be ready before starting the server
   await fastify.ready();
 
-  // The most straightforward way to split between Fastify and Express without
-  // introducing a bunch of problamatic middleware side-effects.
-  const rosettaPath = new RegExp('^/rosetta');
-
+  // TODO: Remove this extra server
   const server = createServer((req, res) => {
-    if (rosettaPath.test(req.url as string)) {
-      // handle with express
-      if (expressApp) {
-        expressApp(req, res);
-      } else {
-        res.writeHead(404).end();
-      }
-    } else {
-      // handle with fastify
-      fastify.server.emit('request', req, res);
-    }
+    fastify.server.emit('request', req, res);
   });
 
   const serverSockets = new Set<Socket>();

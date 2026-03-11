@@ -60,7 +60,6 @@ const AddressTokenOfferingLockedSchema = Type.Object(
   },
   { title: 'AddressTokenOfferingLocked', description: 'Token Offering Locked' }
 );
-export type AddressTokenOfferingLocked = Static<typeof AddressTokenOfferingLockedSchema>;
 
 export const AddressTransactionSchema = Type.Object(
   {

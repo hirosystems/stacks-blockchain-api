@@ -8,26 +8,17 @@ import {
   isValidStacksAddress,
   stacksToBitcoinAddress,
 } from '@hirosystems/stacks-encoding-native-js';
-import * as stream from 'stream';
 import * as ecc from 'tiny-secp256k1';
-import * as util from 'util';
-import { StacksCoreRpcClient } from './core-rpc/client';
+import { getCoreNodeEndpoint, StacksCoreRpcClient } from './core-rpc/client';
 import { DbEventTypeId } from './datastore/common';
-import { logger } from './logger';
-import { has0xPrefix, isDevEnv, numberToHex } from '@stacks/api-toolkit';
+import { has0xPrefix, logger, numberToHex } from '@stacks/api-toolkit';
 import { StacksNetwork, StacksTestnet } from '@stacks/network';
-import { getStacksTestnetNetwork } from './api/routes/debug';
-import { EventEmitter, addAbortListener } from 'node:events';
-
-export const apiDocumentationUrl = process.env.API_DOCS_URL;
 
 export const REPO_DIR = path.dirname(__dirname);
 
 export const I32_MAX = 0x7fffffff;
 
 export const EMPTY_HASH_256 = '0x0000000000000000000000000000000000000000000000000000000000000000';
-
-export const pipelineAsync = util.promisify(stream.pipeline);
 
 export function getIbdBlockHeight(): number | undefined {
   const val = process.env.IBD_MODE_UNTIL_BLOCK;
@@ -51,7 +42,9 @@ export function getStxFaucetNetwork(): StacksNetwork {
     });
     return network;
   }
-  return getStacksTestnetNetwork();
+  return new StacksTestnet({
+    url: `http://${getCoreNodeEndpoint()}`,
+  });
 }
 
 function createEnumChecker<T extends string, TEnumValue extends number>(enumVariable: {
@@ -324,58 +317,6 @@ export function httpPostRequest(
   });
 }
 
-/**
- * A helper function that uses the idiomatic Node.js convention for reading an http response body into memory.
- * Rejects if the http connection is terminated before the http response has been fully received.
- */
-export function readHttpResponse(res: http.IncomingMessage): Promise<Buffer> {
-  return new Promise<Buffer>((resolve, reject) => {
-    const chunks: Buffer[] = [];
-    res.on('data', chunk => chunks.push(chunk));
-    res.on('end', () => {
-      if (!res.complete) {
-        return reject(
-          new Error('The connection was terminated while the message was still being sent')
-        );
-      }
-      const buffer = chunks.length === 1 ? chunks[0] : Buffer.concat(chunks);
-      resolve(buffer);
-    });
-    res.on('close', () => {
-      if (!res.complete) {
-        return reject(
-          new Error('The connection was terminated while the message was still being sent')
-        );
-      }
-    });
-    res.on('error', error => {
-      reject(error);
-    });
-  });
-}
-
-/**
- * Create an http request using Node.js standard `http` lib, providing more fine-grain control over
- * capabilities compared to wrappers like `node-fetch`.
- * @returns The http request and response once http headers are available (the typical behavior of Node.js http requests).
- */
-export async function httpGetRequest(url: string, opts?: http.RequestOptions) {
-  return new Promise<[http.ClientRequest, http.IncomingMessage]>((resolve, reject) => {
-    try {
-      const urlObj = new URL(url);
-      const req = http.request(urlObj, opts ?? {}, res => {
-        resolve([req, res]);
-      });
-      req.on('error', error => {
-        reject(error);
-      });
-      req.end();
-    } catch (error) {
-      reject(error);
-    }
-  });
-}
-
 export function parsePort(portVal: number | string | undefined): number | undefined {
   if (portVal === undefined) {
     return undefined;
@@ -475,12 +416,6 @@ export function assertNotNullish<T>(
   }
 }
 
-export class BigIntMath {
-  static abs(a: bigint): bigint {
-    return a < 0n ? -a : a;
-  }
-}
-
 export function getOrAdd<K, V>(map: Map<K, V>, key: K, create: () => V): V {
   let val = map.get(key);
   if (val === undefined) {
@@ -490,95 +425,7 @@ export function getOrAdd<K, V>(map: Map<K, V>, key: K, create: () => V): V {
   return val;
 }
 
-export async function getOrAddAsync<K, V>(
-  map: Map<K, V>,
-  key: K,
-  create: () => PromiseLike<V>
-): Promise<V> {
-  let val = map.get(key);
-  if (val === undefined) {
-    val = await create();
-    map.set(key, val);
-  }
-  return val;
-}
-
 export type FoundOrNot<T> = { found: true; result: T } | { found: false; result?: T };
-
-/**
- * Escape a string for use as a css selector name.
- * From https://github.com/mathiasbynens/CSS.escape/blob/master/css.escape.js
- */
-export function cssEscape(value: string): string {
-  const string = value;
-  const length = string.length;
-  let index = -1;
-  let codeUnit: number;
-  let result = '';
-  const firstCodeUnit = string.charCodeAt(0);
-  while (++index < length) {
-    codeUnit = string.charCodeAt(index);
-    // Note: there’s no need to special-case astral symbols, surrogate
-    // pairs, or lone surrogates.
-
-    // If the character is NULL (U+0000), then the REPLACEMENT CHARACTER
-    // (U+FFFD).
-    if (codeUnit == 0x0000) {
-      result += '\uFFFD';
-      continue;
-    }
-
-    if (
-      // If the character is in the range [\1-\1F] (U+0001 to U+001F) or is
-      // U+007F, […]
-      (codeUnit >= 0x0001 && codeUnit <= 0x001f) ||
-      codeUnit == 0x007f ||
-      // If the character is the first character and is in the range [0-9]
-      // (U+0030 to U+0039), […]
-      (index == 0 && codeUnit >= 0x0030 && codeUnit <= 0x0039) ||
-      // If the character is the second character and is in the range [0-9]
-      // (U+0030 to U+0039) and the first character is a `-` (U+002D), […]
-      (index == 1 && codeUnit >= 0x0030 && codeUnit <= 0x0039 && firstCodeUnit == 0x002d)
-    ) {
-      // https://drafts.csswg.org/cssom/#escape-a-character-as-code-point
-      result += '\\' + codeUnit.toString(16) + ' ';
-      continue;
-    }
-
-    if (
-      // If the character is the first character and is a `-` (U+002D), and
-      // there is no second character, […]
-      index == 0 &&
-      length == 1 &&
-      codeUnit == 0x002d
-    ) {
-      result += '\\' + string.charAt(index);
-      continue;
-    }
-
-    // If the character is not handled by one of the above rules and is
-    // greater than or equal to U+0080, is `-` (U+002D) or `_` (U+005F), or
-    // is in one of the ranges [0-9] (U+0030 to U+0039), [A-Z] (U+0041 to
-    // U+005A), or [a-z] (U+0061 to U+007A), […]
-    if (
-      codeUnit >= 0x0080 ||
-      codeUnit == 0x002d ||
-      codeUnit == 0x005f ||
-      (codeUnit >= 0x0030 && codeUnit <= 0x0039) ||
-      (codeUnit >= 0x0041 && codeUnit <= 0x005a) ||
-      (codeUnit >= 0x0061 && codeUnit <= 0x007a)
-    ) {
-      // the character itself
-      result += string.charAt(index);
-      continue;
-    }
-
-    // Otherwise, the escaped character.
-    // https://drafts.csswg.org/cssom/#escape-a-character
-    result += '\\' + string.charAt(index);
-  }
-  return result;
-}
 
 /**
  * Check if the input is a valid 32-byte hex string. If valid, returns a
@@ -608,7 +455,7 @@ export function normalizeHashString(input: string): string | false {
  */
 export type ChainID = number;
 
-export const enum NETWORK_CHAIN_ID {
+const enum NETWORK_CHAIN_ID {
   mainnet = 0x00000001,
   testnet = 0x80000000,
 }
@@ -768,15 +615,6 @@ export function parseEventTypeStrings(values: string[]): DbEventTypeId[] {
         throw new Error(`Unexpected event type: ${JSON.stringify(v)}`);
     }
   });
-}
-
-export function doesThrow(fn: () => void) {
-  try {
-    fn();
-    return false;
-  } catch {
-    return true;
-  }
 }
 
 export enum BootContractAddress {

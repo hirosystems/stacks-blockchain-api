@@ -126,10 +126,7 @@ yarn.lock
 # Git info output
 .git-info
 
-#rosetta-cli results
-rosetta-output-construction/rosetta-cli-output-const.json
-rosetta-output/rosetta-cli-output.json
+# docs
+docs/
 
-# doc schema
-docs/openapi.json
-docs/openapi.yaml
+.claude/

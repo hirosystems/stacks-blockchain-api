@@ -32,8 +32,10 @@ describe('Events table', () => {
   });
 
   test('If there is an event request error, then the event will not be recorded in the events_observer_request table', async () => {
-    const getRawEventCount = async () =>
-      await client<Promise<number>[]>`SELECT count(*) from event_observer_requests`;
+    const getRawEventCount = async (): Promise<number> => {
+      const [row] = await client<{ count: string }[]>`SELECT count(*) from event_observer_requests`;
+      return Number(row.count);
+    };
 
     await useWithCleanup(
       () => {
@@ -60,8 +62,7 @@ describe('Events table', () => {
                 rawEvent.payload = JSON.stringify(payloadJson);
               }
             } catch (error) {}
-            const rawEventRequestCountResultBefore = await getRawEventCount();
-            const rawEventRequestCountBefore = rawEventRequestCountResultBefore[0];
+            const rawEventRequestCountBefore = await getRawEventCount();
             const response = await httpPostRequest({
               host: '127.0.0.1',
               port: eventServer.serverAddress.port,
@@ -72,8 +73,7 @@ describe('Events table', () => {
             });
             if (rawEvent.event_path === '/new_block') {
               expect(response.statusCode).toBe(500);
-              const rawEventRequestCountResultAfter = await getRawEventCount();
-              const rawEventRequestCountAfter = rawEventRequestCountResultAfter[0];
+              const rawEventRequestCountAfter = await getRawEventCount();
               expect(rawEventRequestCountBefore).toEqual(rawEventRequestCountAfter);
             }
           }

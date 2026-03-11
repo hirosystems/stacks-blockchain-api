@@ -52,8 +52,7 @@ import { c32ToB58 } from 'c32check';
 import { decodePoxSyntheticPrintEvent } from './pox-event-parsing';
 import { PoxContractIdentifiers, SyntheticPoxEventName } from '../pox-helpers';
 import { principalCV } from '@stacks/transactions/dist/clarity/types/principalCV';
-import { logger } from '../logger';
-import { bufferToHex, hexToBuffer } from '@stacks/api-toolkit';
+import { bufferToHex, hexToBuffer, logger } from '@stacks/api-toolkit';
 import { hexToBytes } from '@stacks/common';
 import {
   BurnchainOpDelegateStx,
