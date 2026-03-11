@@ -185,11 +185,13 @@ const schema = Type.Object({
    */
   MEMPOOL_STATS_DEBOUNCE_MAX_INTERVAL: Type.Integer({ default: 10000, minimum: 0 }),
 
-  BTC_RPC_HOST: Type.Optional(Type.String()),
-  BTC_RPC_PORT: Type.Optional(Type.Integer({ minimum: 0, maximum: 65535 })),
-  BTC_RPC_USER: Type.Optional(Type.String()),
-  BTC_RPC_PW: Type.Optional(Type.String()),
-  BTC_FAUCET_PK: Type.Optional(Type.String()),
+  BTC_RPC_HOST: Type.String({ default: 'http://127.0.0.1' }),
+  BTC_RPC_PORT: Type.Integer({ default: 18443, minimum: 0, maximum: 65535 }),
+  BTC_RPC_USER: Type.String({ default: 'btc' }),
+  BTC_RPC_PW: Type.String({ default: 'btc' }),
+  BTC_FAUCET_PK: Type.String({
+    default: '29c028009a8331358adcc61bb6397377c995d327ac0343ed8e8f1d4d3ef85c27',
+  }),
   /**
    * A comma-separated list of STX private keys which will send faucet transactions to accounts that
    * request them. Attempts will always be made from the first account, only once transaction

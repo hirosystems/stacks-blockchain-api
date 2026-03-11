@@ -333,6 +333,7 @@ describe('BNS integration tests', () => {
   }
 
   beforeAll(async () => {
+    ENV.PG_DATABASE = 'postgres';
     db = await PgWriteStore.connect({ usageName: 'tests', skipMigrations: true });
     api = await startApiServer({ datastore: db, chainId: ChainID.Testnet });
   });

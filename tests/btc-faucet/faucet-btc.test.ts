@@ -193,7 +193,7 @@ describe('btc faucet', () => {
     });
 
     test('faucet not configured', async () => {
-      ENV.BTC_RPC_PORT = undefined;
+      ENV.BTC_RPC_PORT = 0;
       const addr = getKeyAddress(ECPair.makeRandom({ network: regtest }));
       const response = await supertest(apiServer.server).post(
         `/extended/v1/faucets/btc?address=${addr}`
