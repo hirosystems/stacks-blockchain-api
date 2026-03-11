@@ -2,11 +2,11 @@ import { Static, Type } from '@sinclair/typebox';
 import envSchema from 'env-schema';
 
 const schema = Type.Object({
-  PG_HOST: Type.String(),
-  PG_PORT: Type.Integer({ default: 5432, minimum: 0, maximum: 65535 }),
-  PG_USER: Type.String(),
-  PG_PASSWORD: Type.String(),
-  PG_DATABASE: Type.String(),
+  PG_HOST: Type.String({ default: '127.0.0.1' }),
+  PG_PORT: Type.Integer({ default: 5490, minimum: 0, maximum: 65535 }),
+  PG_USER: Type.String({ default: 'postgres' }),
+  PG_PASSWORD: Type.String({ default: 'postgres' }),
+  PG_DATABASE: Type.String({ default: 'stacks_blockchain_api' }),
   PG_SCHEMA: Type.String({ default: 'stacks_blockchain_api' }),
   PG_SSL: Type.Boolean({ default: false }),
   /** Idle connection timeout in seconds, defaults to 30. */
@@ -15,8 +15,8 @@ const schema = Type.Object({
   PG_MAX_LIFETIME: Type.Integer({ default: 60, minimum: 0 }),
   /** Seconds before force-ending running queries on connection close, defaults to 5 */
   PG_CLOSE_TIMEOUT: Type.Integer({ default: 5, minimum: 0 }),
-  /** Statement timeout in seconds, defaults to 60 */
-  PG_STATEMENT_TIMEOUT: Type.Integer({ default: 60, minimum: 0 }),
+  /** Statement timeout in seconds */
+  PG_STATEMENT_TIMEOUT: Type.Optional(Type.Integer()),
   /** Can be any string, use to specify a use case specific to a deployment */
   PG_APPLICATION_NAME: Type.String({ default: 'stacks-blockchain-api' }),
   /**

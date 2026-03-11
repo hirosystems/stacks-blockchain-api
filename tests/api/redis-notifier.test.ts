@@ -17,14 +17,15 @@ jest.mock('ioredis', () => {
 import { migrate } from '../utils/test-helpers';
 import { PgWriteStore } from '../../src/datastore/pg-write-store';
 import { TestBlockBuilder } from '../utils/test-builders';
+import { ENV } from '../../src/env';
 
 describe('redis notifier', () => {
   let db: PgWriteStore;
 
   beforeEach(async () => {
-    process.env.REDIS_NOTIFIER_ENABLED = '1';
-    process.env.REDIS_URL = 'localhost:6379';
-    process.env.REDIS_QUEUE = 'test-queue';
+    ENV.REDIS_NOTIFIER_ENABLED = true;
+    ENV.REDIS_URL = 'localhost:6379';
+    ENV.REDIS_QUEUE = 'test-queue';
     db = await PgWriteStore.connect({
       usageName: 'tests',
       withNotifier: false,

@@ -2,11 +2,11 @@
 import * as c32check from 'c32check';
 import { bitcoinToStacksAddress, stacksToBitcoinAddress } from '@stacks/codec';
 import * as c32AddrCache from '../../src/c32-addr-cache';
-import { ADDR_CACHE_ENV_VAR } from '../../src/c32-addr-cache';
-import { isValidBitcoinAddress, getUintEnvOrDefault, BitVec } from '../../src/helpers';
+import { BitVec, isValidBitcoinAddress } from '../../src/helpers';
 import { ECPair, getBitcoinAddressFromKey } from '../../src/ec-helpers';
 import { decodeBtcAddress, poxAddressToBtcAddress } from '@stacks/stacking';
 import { has0xPrefix } from '@stacks/api-toolkit';
+import { ENV } from '../../src/env';
 
 describe('has0xPrefix()', () => {
   test('falsy case, where there be no 0x', () => {
@@ -20,8 +20,7 @@ describe('has0xPrefix()', () => {
 
 test('c32address lru caching', () => {
   c32AddrCache.restoreC32AddressModule();
-  const origAddrCacheEnvVar = process.env[ADDR_CACHE_ENV_VAR];
-  process.env[ADDR_CACHE_ENV_VAR] = '5';
+  ENV.STACKS_ADDRESS_CACHE_SIZE = 5;
   try {
     // No LRU cache used for c32address fn
     expect(c32AddrCache.getAddressLruCache().itemCount).toBe(0);
@@ -59,7 +58,7 @@ test('c32address lru caching', () => {
     expect(encodeResult4).toBe(stxAddr1);
     expect(c32AddrCache.getAddressLruCache().itemCount).toBe(0);
   } finally {
-    process.env[ADDR_CACHE_ENV_VAR] = origAddrCacheEnvVar;
+    ENV.STACKS_ADDRESS_CACHE_SIZE = 100;
     c32AddrCache.restoreC32AddressModule();
   }
 });
@@ -535,16 +534,6 @@ describe('Bitcoin address encoding formats', () => {
     });
     expect(randP2TRTestnet).toMatch(/^tb1p/);
   });
-});
-
-test('getUintEnvOrDefault tests', () => {
-  const key = 'SOME_UINT_ENV';
-  process.env[key] = '123';
-  expect(getUintEnvOrDefault(key)).toBe(123);
-  process.env[key] = '-123';
-  expect(() => getUintEnvOrDefault(key)).toThrow();
-  process.env[key] = 'ABC';
-  expect(() => getUintEnvOrDefault(key)).toThrow();
 });
 
 test('signer bitvec decoding', () => {

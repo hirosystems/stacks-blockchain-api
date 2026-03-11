@@ -21,6 +21,7 @@ import {
   Transaction,
 } from 'client/src/types';
 import { Socket } from 'node:net';
+import { ENV } from '../../src/env';
 
 describe('socket-io', () => {
   let apiServer: ApiServer;
@@ -655,7 +656,7 @@ describe('socket-io', () => {
       query: { subscriptions: `block` },
     });
 
-    process.env['STACKS_API_WS_MESSAGE_TIMEOUT'] = '0';
+    ENV.STACKS_API_WS_MESSAGE_TIMEOUT = 0;
     const disconnectWaiter = waiter();
     let disconnectReason = '';
 
@@ -680,7 +681,7 @@ describe('socket-io', () => {
       reconnection: false,
     });
 
-    process.env['STACKS_API_WS_PING_TIMEOUT'] = '0';
+    ENV.STACKS_API_WS_PING_TIMEOUT = 0;
     const disconnectWaiter = waiter();
     let disconnectReason = '';
 

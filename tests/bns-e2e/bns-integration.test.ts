@@ -18,6 +18,7 @@ import { PgWriteStore } from '../../src/datastore/pg-write-store';
 import { standByForTx as standByForTxShared } from '../utils/test-helpers';
 import { FAUCET_TESTNET_KEYS } from '../../src/api/routes/faucets';
 import { logger } from '@stacks/api-toolkit';
+import { ENV } from '../../src/env';
 
 function hash160(bfr: Buffer): Buffer {
   const hash160 = createHash('ripemd160')
@@ -27,7 +28,7 @@ function hash160(bfr: Buffer): Buffer {
 }
 
 const network = new StacksMocknet({
-  url: `http://${process.env['STACKS_BLOCKCHAIN_API_HOST']}:${process.env['STACKS_BLOCKCHAIN_API_PORT']}`,
+  url: `http://${ENV.STACKS_BLOCKCHAIN_API_HOST}:${ENV.STACKS_BLOCKCHAIN_API_PORT}`,
 });
 
 const deployedTo = 'ST000000000000000000002AMW42H';

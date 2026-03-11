@@ -8,6 +8,7 @@ import { ApiServer, startApiServer } from '../../src/api/init';
 import { PgWriteStore } from '../../src/datastore/pg-write-store';
 import { startEventServer } from '../../src/event-stream/event-server';
 import { httpPostRequest } from '../../src/helpers';
+import { ENV } from '../../src/env';
 
 describe('transaction parsing', () => {
   test('buggy parsing of contract-call args', () => {
@@ -37,7 +38,7 @@ describe('transaction parsing', () => {
       api = await startApiServer({ datastore: db, chainId: ChainID.Testnet });
 
       // set chainId env, because TSV import reads it manually
-      process.env['STACKS_CHAIN_ID'] = ChainID.Testnet.toString();
+      ENV.STACKS_CHAIN_ID = '0x80000000';
     });
 
     afterEach(async () => {

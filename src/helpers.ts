@@ -1,7 +1,6 @@
 import { BufferCV, bufferCV, cvToHex, hexToCV, TupleCV, tupleCV } from '@stacks/transactions';
 import BigNumber from 'bignumber.js';
 import * as btc from 'bitcoinjs-lib';
-import * as dotenv from 'dotenv-flow';
 import * as http from 'http';
 import * as path from 'path';
 import { isValidStacksAddress, stacksToBitcoinAddress } from '@stacks/codec';
@@ -117,20 +116,6 @@ export function getEnumDescription<T extends string, TEnumValue extends number>(
   const newEnumMap = new Map(enumValues);
   enumMaps.set(enumVariable, newEnumMap);
   return getEnumDescription(enumVariable, value);
-}
-
-let didLoadDotEnv = false;
-
-export function loadDotEnv(): void {
-  if (didLoadDotEnv) {
-    return;
-  }
-  const dotenvConfig = dotenv.config({ silent: true });
-  if (dotenvConfig.error) {
-    logger.error(dotenvConfig.error, 'Error loading .env file');
-    throw dotenvConfig.error;
-  }
-  didLoadDotEnv = true;
 }
 
 export function formatMapToObject<TKey extends string, TValue, TFormatted>(

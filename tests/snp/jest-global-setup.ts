@@ -2,8 +2,8 @@ import * as net from 'node:net';
 import * as Docker from 'dockerode';
 import { connectPostgres, timeout } from '@stacks/api-toolkit';
 import { createClient } from 'redis';
-import { loadDotEnv } from '../../src/helpers';
 import { fetch } from 'undici';
+import { ENV } from '../../src/env';
 
 const testContainerLabel = 'stacks-blockchain-api-tests';
 
@@ -109,11 +109,11 @@ async function waitForPostgres(): Promise<void> {
   const sql = await connectPostgres({
     usageName: testContainerLabel,
     connectionArgs: {
-      host: process.env.PG_HOST,
-      port: parseInt(process.env.PG_PORT as string),
-      user: process.env.PG_USER,
-      password: process.env.PG_PASSWORD,
-      database: process.env.PG_DATABASE,
+      host: ENV.PG_HOST,
+      port: ENV.PG_PORT,
+      user: ENV.PG_USER,
+      password: ENV.PG_PASSWORD,
+      database: ENV.PG_DATABASE,
     },
   });
   await sql`SELECT 1`;
@@ -123,7 +123,7 @@ async function waitForPostgres(): Promise<void> {
 
 async function waitForRedis(): Promise<void> {
   const redisClient = createClient({
-    url: process.env['SNP_REDIS_URL'],
+    url: ENV.SNP_REDIS_URL,
     name: 'stacks-blockchain-api-server-tests',
   });
   redisClient.on('error', (err: Error) => console.error(`Redis not ready: ${err}`));
@@ -164,10 +164,8 @@ async function waitForSNP(): Promise<void> {
 // Jest global setup
 // ts-unused-exports:disable-next-line
 export default async function setup(): Promise<void> {
-  loadDotEnv();
-
   // use a random PGSCHEMA for each test to avoid conflicts
-  process.env.PG_SCHEMA = `test_${crypto.randomUUID()}`;
+  ENV.PG_SCHEMA = `test_${crypto.randomUUID()}`;
 
   const docker = new Docker();
   const prunedCount = await pruneContainers(docker, testContainerLabel);
@@ -184,13 +182,13 @@ export default async function setup(): Promise<void> {
       image: 'postgres:17',
       ports: [{ container: pgPort, host: pgHostPort }],
       env: [
-        `POSTGRES_USER=${process.env.PG_USER}`,
-        `POSTGRES_PASSWORD=${process.env.PG_PASSWORD}`,
-        `POSTGRES_DB=${process.env.PG_DATABASE}`,
+        `POSTGRES_USER=${ENV.PG_USER}`,
+        `POSTGRES_PASSWORD=${ENV.PG_PASSWORD}`,
+        `POSTGRES_DB=${ENV.PG_DATABASE}`,
         `PGPORT=${pgPort}`,
       ],
     });
-    process.env.PG_PORT = pgHostPort.toString();
+    ENV.PG_PORT = pgHostPort;
     process.env['_PG_DOCKER_CONTAINER_ID'] = pgContainer.containerId;
     // Wait for the database to be ready
     await waitForPostgres();
@@ -204,7 +202,7 @@ export default async function setup(): Promise<void> {
       ports: [{ container: redisPort, host: redisHostPort }],
       env: [],
     });
-    process.env['SNP_REDIS_URL'] = `redis://127.0.0.1:${redisHostPort}`;
+    ENV.SNP_REDIS_URL = `redis://127.0.0.1:${redisHostPort}`;
     process.env['_REDIS_DOCKER_CONTAINER_ID'] = redisContainer.containerId;
     // wait for redis to be ready
     await waitForRedis();
@@ -219,8 +217,8 @@ export default async function setup(): Promise<void> {
 
   const startSNP = async () => {
     const snpObserverPort = 3022;
-    process.env.SNP_REDIS_STREAM_KEY_PREFIX = `test_${crypto.randomUUID()}`;
-    console.log(`Using REDIS_STREAM_KEY_PREFIX: ${process.env.SNP_REDIS_STREAM_KEY_PREFIX}`);
+    ENV.SNP_REDIS_STREAM_KEY_PREFIX = `test_${crypto.randomUUID()}`;
+    console.log(`Using REDIS_STREAM_KEY_PREFIX: ${ENV.SNP_REDIS_STREAM_KEY_PREFIX}`);
     const snpContainer = await startContainer({
       docker,
       image: 'ghcr.io/stx-labs/stacks-node-publisher:latest',
@@ -229,12 +227,12 @@ export default async function setup(): Promise<void> {
         `OBSERVER_HOST=0.0.0.0`,
         `OBSERVER_PORT=${snpObserverPort}`,
         `REDIS_URL=redis://host.docker.internal:${redisHostPort}`,
-        `REDIS_STREAM_KEY_PREFIX=${process.env.SNP_REDIS_STREAM_KEY_PREFIX}`,
+        `REDIS_STREAM_KEY_PREFIX=${ENV.SNP_REDIS_STREAM_KEY_PREFIX}`,
         `PGHOST=host.docker.internal`,
-        `PGPORT=${process.env.PG_PORT}`,
-        `PGUSER=${process.env.PG_USER}`,
-        `PGPASSWORD=${process.env.PG_PASSWORD}`,
-        `PGDATABASE=${process.env.PG_DATABASE}`,
+        `PGPORT=${ENV.PG_PORT}`,
+        `PGUSER=${ENV.PG_USER}`,
+        `PGPASSWORD=${ENV.PG_PASSWORD}`,
+        `PGDATABASE=${ENV.PG_DATABASE}`,
         `PGSCHEMA=test_snp_${crypto.randomUUID()}`,
       ],
     });
@@ -244,8 +242,4 @@ export default async function setup(): Promise<void> {
     await waitForSNP();
   };
   await startSNP();
-
-  // Setup misc required env vars
-  process.env.STACKS_NODE_RPC_HOST = '';
-  process.env.STACKS_NODE_RPC_PORT = '1';
 }

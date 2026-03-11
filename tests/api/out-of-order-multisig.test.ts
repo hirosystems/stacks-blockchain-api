@@ -8,6 +8,7 @@ import { migrate } from '../utils/test-helpers';
 import { Transaction } from '../../src/api/schemas/entities/transactions';
 import { TransactionResults } from '../../src/api/schemas/responses/responses';
 import { AddressTransaction } from '../../src/api/schemas/entities/addresses';
+import { ENV } from '../../src/env';
 
 describe('Out-of-order-multisig tx tests', () => {
   let db: PgWriteStore;
@@ -28,7 +29,7 @@ describe('Out-of-order-multisig tx tests', () => {
     api = await startApiServer({ datastore: db, chainId: ChainID.Testnet });
 
     // set chainId env, because TSV import reads it manually
-    process.env['STACKS_CHAIN_ID'] = ChainID.Testnet.toString();
+    ENV.STACKS_CHAIN_ID = '0x80000000';
   });
 
   afterAll(async () => {

@@ -5,6 +5,7 @@ import { ApiServer, startApiServer } from '../../src/api/init';
 import { PgWriteStore } from '../../src/datastore/pg-write-store';
 import { importEventsFromTsv } from '../../src/event-replay/event-replay';
 import { migrate } from '../utils/test-helpers';
+import { ENV } from '../../src/env';
 
 describe('PoX tests', () => {
   let db: PgWriteStore;
@@ -22,7 +23,7 @@ describe('PoX tests', () => {
     api = await startApiServer({ datastore: db, chainId: ChainID.Testnet });
 
     // set chainId env, because TSV import reads it manually
-    process.env['STACKS_CHAIN_ID'] = ChainID.Testnet.toString();
+    ENV.STACKS_CHAIN_ID = '0x80000000';
   });
 
   afterEach(async () => {

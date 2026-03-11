@@ -1,6 +1,6 @@
-import { loadDotEnv } from '../../src/helpers';
 import { getRpcClient } from '../../src/btc-faucet';
 import { timeout } from '@stacks/api-toolkit';
+import { ENV } from '../../src/env';
 
 // ts-unused-exports:disable-next-line
 export default async () => {
@@ -8,8 +8,7 @@ export default async () => {
   if (!process.env.NODE_ENV) {
     process.env.NODE_ENV = 'test';
   }
-  loadDotEnv();
-  process.env.PG_DATABASE = 'postgres';
+  ENV.PG_DATABASE = 'postgres';
   const client = getRpcClient();
   const start = Date.now();
   do {

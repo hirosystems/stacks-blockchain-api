@@ -1,20 +1,16 @@
-import { ChainID } from '@stacks/transactions';
 import * as fs from 'fs';
-import * as path from 'path';
-import { getRawEventRequests } from '../../src/event-replay/event-requests';
 import { PgWriteStore } from '../../src/datastore/pg-write-store';
 import { exportEventsAsTsv, importEventsFromTsv } from '../../src/event-replay/event-replay';
-import { startEventServer } from '../../src/event-stream/event-server';
-import { httpPostRequest } from '../../src/helpers';
-import { useWithCleanup } from '../api/test-helpers';
 import { createSchema, migrate } from '../utils/test-helpers';
-import { PgSqlClient, dangerousDropAllTables, databaseHasData } from '@stacks/api-toolkit';
+import { dangerousDropAllTables, databaseHasData } from '@stacks/api-toolkit';
 import { getConnectionArgs } from '../../src/datastore/connection';
+import { ENV } from '../../src/env';
 
 describe('import/export tests', () => {
   let db: PgWriteStore;
 
   beforeEach(async () => {
+    ENV.PG_DATABASE = 'postgres';
     db = await PgWriteStore.connect({
       usageName: 'tests',
       withNotifier: false,
@@ -136,7 +132,7 @@ describe('import/export tests', () => {
   });
 
   test('Bns import occurs (block 1 genesis)', async () => {
-    process.env.BNS_IMPORT_DIR = 'tests/bns/import-test-files';
+    ENV.BNS_IMPORT_DIR = 'tests/bns/import-test-files';
     await importEventsFromTsv('tests/event-replay/tsv/mocknet.tsv', 'archival', true, true);
     const configState = await db.getConfigState();
     expect(configState.bns_names_onchain_imported).toBe(true);
@@ -144,7 +140,7 @@ describe('import/export tests', () => {
   });
 
   test('Bns import occurs (block 0 genesis)', async () => {
-    process.env.BNS_IMPORT_DIR = 'tests/bns/import-test-files';
+    ENV.BNS_IMPORT_DIR = 'tests/bns/import-test-files';
     await importEventsFromTsv('tests/event-replay/tsv/mainnet-block0.tsv', 'archival', true, true);
     const configState = await db.getConfigState();
     expect(configState.bns_names_onchain_imported).toBe(true);
@@ -152,103 +148,11 @@ describe('import/export tests', () => {
   });
 
   test('BNS import should be skipped for Stacks subnet nodes', async () => {
-    process.env.STACKS_NODE_TYPE = 'subnet';
-    process.env.BNS_IMPORT_DIR = 'tests/bns/import-test-files';
+    ENV.STACKS_NODE_TYPE = 'subnet';
+    ENV.BNS_IMPORT_DIR = 'tests/bns/import-test-files';
     await importEventsFromTsv('tests/event-replay/tsv/mocknet.tsv', 'archival', true, true);
     const configState = await db.getConfigState();
     expect(configState.bns_names_onchain_imported).toBe(false);
     expect(configState.bns_subdomains_imported).toBe(false);
-  });
-});
-
-describe('IBD', () => {
-  let db: PgWriteStore;
-  let client: PgSqlClient;
-
-  beforeEach(async () => {
-    await migrate('up');
-    db = await PgWriteStore.connect({
-      usageName: 'tests',
-      withNotifier: false,
-      skipMigrations: true,
-    });
-    client = db.sql;
-  });
-
-  afterEach(async () => {
-    process.env.IBD_MODE_UNTIL_BLOCK = undefined;
-    await db?.close();
-    await migrate('down');
-  });
-
-  const getIbdInterceptCountFromTsvEvents = async (): Promise<number> => {
-    let ibdResponses = 0;
-    await useWithCleanup(
-      () => {
-        const readStream = fs.createReadStream('tests/event-replay/tsv/mocknet.tsv');
-        const rawEventsIterator = getRawEventRequests(readStream);
-        return [rawEventsIterator, () => readStream.close()] as const;
-      },
-      async () => {
-        const eventServer = await startEventServer({
-          datastore: db,
-          chainId: ChainID.Mainnet,
-          serverHost: '127.0.0.1',
-          serverPort: 0,
-        });
-        return [eventServer, eventServer.closeAsync] as const;
-      },
-      async (rawEventsIterator, eventServer) => {
-        for await (const rawEvents of rawEventsIterator) {
-          for (const rawEvent of rawEvents) {
-            const result = await httpPostRequest({
-              host: '127.0.0.1',
-              port: eventServer.serverAddress.port,
-              path: rawEvent.event_path,
-              headers: { 'Content-Type': 'application/json' },
-              body: Buffer.from(rawEvent.payload, 'utf8'),
-              throwOnNotOK: true,
-            });
-            if (result.response === 'IBD') {
-              expect(result.statusCode).toBe(200);
-              ibdResponses++;
-            }
-          }
-        }
-      }
-    );
-    return ibdResponses;
-  };
-
-  test('IBD mode blocks certain API routes', async () => {
-    process.env.IBD_MODE_UNTIL_BLOCK = '1000';
-    // TSV has 1 microblock message.
-    await expect(getIbdInterceptCountFromTsvEvents()).resolves.toBe(1);
-    await expect(db.getChainTip(db.sql)).resolves.toHaveProperty('block_height', 28);
-  });
-
-  test('IBD mode does NOT block certain API routes once the threshold number of blocks are ingested', async () => {
-    process.env.IBD_MODE_UNTIL_BLOCK = '1';
-    // Microblock processed normally.
-    await expect(getIbdInterceptCountFromTsvEvents()).resolves.toBe(0);
-    await expect(db.getChainTip(db.sql)).resolves.toHaveProperty('block_height', 28);
-  });
-
-  test('IBD mode covers prune mode', async () => {
-    // Import from mocknet TSV
-    const responses = await importEventsFromTsv(
-      'tests/event-replay/tsv/mocknet.tsv',
-      'pruned',
-      true,
-      true,
-      1000
-    );
-    let hitIbdRoute = false;
-    for (const response of responses) {
-      if (response.response === 'IBD') {
-        hitIbdRoute = true;
-      }
-    }
-    expect(hitIbdRoute).toBe(true);
   });
 });

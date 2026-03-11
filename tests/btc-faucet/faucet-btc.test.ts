@@ -13,6 +13,7 @@ import { ChainID } from '@stacks/transactions';
 import { PgStore } from '../../src/datastore/pg-store';
 import { PgWriteStore } from '../../src/datastore/pg-write-store';
 import { migrate } from '../utils/test-helpers';
+import { ENV } from '../../src/env';
 
 async function getBalanceWithWalletImport(address: string): Promise<number> {
   const client = getRpcClient();
@@ -106,7 +107,6 @@ describe('btc faucet', () => {
     let apiServer: ApiServer;
     let db: PgStore;
     let writeDb: PgWriteStore;
-    const OLD_ENV = process.env;
 
     beforeAll(async () => {
       await migrate('up');
@@ -124,7 +124,6 @@ describe('btc faucet', () => {
     });
 
     afterAll(async () => {
-      process.env = OLD_ENV;
       await apiServer.terminate();
       await db?.close();
       await writeDb?.close();
@@ -194,7 +193,7 @@ describe('btc faucet', () => {
     });
 
     test('faucet not configured', async () => {
-      process.env.BTC_RPC_PORT = '';
+      ENV.BTC_RPC_PORT = undefined;
       const addr = getKeyAddress(ECPair.makeRandom({ network: regtest }));
       const response = await supertest(apiServer.server).post(
         `/extended/v1/faucets/btc?address=${addr}`
