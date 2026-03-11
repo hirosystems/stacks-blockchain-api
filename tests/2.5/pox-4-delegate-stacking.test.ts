@@ -23,7 +23,7 @@ import {
   standardPrincipalCV,
   uintCV,
 } from '@stacks/transactions';
-import { ClarityValueTuple, ClarityValueUInt } from '@hirosystems/stacks-encoding-native-js';
+import { ClarityValueTuple, ClarityValueUInt } from '@stacks/codec';
 import * as assert from 'assert';
 import { StackingClient } from '@stacks/stacking';
 import { getPublicKeyFromPrivate } from '@stacks/encryption';

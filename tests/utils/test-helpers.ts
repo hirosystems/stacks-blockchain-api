@@ -15,7 +15,7 @@ import {
   ClarityTypeID,
   ClarityValue as NativeClarityValue,
   decodeClarityValue,
-} from '@hirosystems/stacks-encoding-native-js';
+} from '@stacks/codec';
 import * as supertest from 'supertest';
 import { ApiServer } from '../../src/api/init';
 import { CoreRpcPoxInfo, StacksCoreRpcClient } from '../../src/core-rpc/client';

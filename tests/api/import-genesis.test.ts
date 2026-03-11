@@ -1,5 +1,5 @@
 import { importV1TokenOfferingData } from '../../src/import-v1';
-import { bitcoinToStacksAddress } from '@hirosystems/stacks-encoding-native-js';
+import { bitcoinToStacksAddress } from '@stacks/codec';
 import { PgWriteStore } from '../../src/datastore/pg-write-store';
 import { migrate } from '../utils/test-helpers';
 

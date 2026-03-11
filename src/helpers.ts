@@ -4,10 +4,7 @@ import * as btc from 'bitcoinjs-lib';
 import * as dotenv from 'dotenv-flow';
 import * as http from 'http';
 import * as path from 'path';
-import {
-  isValidStacksAddress,
-  stacksToBitcoinAddress,
-} from '@hirosystems/stacks-encoding-native-js';
+import { isValidStacksAddress, stacksToBitcoinAddress } from '@stacks/codec';
 import * as ecc from 'tiny-secp256k1';
 import { getCoreNodeEndpoint, StacksCoreRpcClient } from './core-rpc/client';
 import { DbEventTypeId } from './datastore/common';

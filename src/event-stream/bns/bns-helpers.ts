@@ -17,7 +17,7 @@ import {
   ClarityValueTuple,
   ClarityValueUInt,
   TxPayloadTypeID,
-} from '@hirosystems/stacks-encoding-native-js';
+} from '@stacks/codec';
 import { DbBnsNamespace, DbBnsName } from '../../datastore/common';
 import { hexToBuffer, hexToUtf8String } from '@stacks/api-toolkit';
 import {

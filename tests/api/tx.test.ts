@@ -21,10 +21,7 @@ import {
   stringAsciiCV,
 } from '@stacks/transactions';
 import { createClarityValueArray } from '../utils/test-helpers';
-import {
-  decodeTransaction,
-  TxPayloadVersionedSmartContract,
-} from '@hirosystems/stacks-encoding-native-js';
+import { decodeTransaction, TxPayloadVersionedSmartContract } from '@stacks/codec';
 import { getTxFromDataStore, TransactionType } from '../../src/api/controllers/db-controller';
 import {
   DbBlock,

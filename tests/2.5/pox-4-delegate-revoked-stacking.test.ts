@@ -8,16 +8,11 @@ import {
   makeRandomPrivKey,
   makeSTXTokenTransfer,
   noneCV,
-  randomBytes,
   someCV,
   standardPrincipalCV,
   uintCV,
 } from '@stacks/transactions';
-import {
-  ClarityValueTuple,
-  ClarityValueUInt,
-  decodeClarityValue,
-} from '@hirosystems/stacks-encoding-native-js';
+import { ClarityValueTuple, ClarityValueUInt, decodeClarityValue } from '@stacks/codec';
 import { CoreRpcPoxInfo } from '../../src/core-rpc/client';
 import { DbTxStatus } from '../../src/datastore/common';
 import { stxToMicroStx } from '../../src/helpers';
