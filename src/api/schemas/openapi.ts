@@ -64,14 +64,6 @@ export const OpenApiSchemaOptions: SwaggerOptions = {
         },
       },
       {
-        name: 'Rosetta',
-        description: 'Endpoints to support the Rosetta API open blockchain standard',
-        externalDocs: {
-          description: 'Hiro Documentation - Rosetta Support',
-          url: 'https://docs.hiro.so/get-started/stacks-blockchain-api#rosetta-support',
-        },
-      },
-      {
         name: 'Search',
         description:
           'Read-only endpoints to search for accounts, blocks, smart contracts, and transactions',
