@@ -92,7 +92,7 @@ export async function* getRawEventRequests(
       yield rows;
     }
   } finally {
-    await reserved.release();
+    reserved.release();
     await sql.end();
   }
 }

@@ -1,5 +1,4 @@
 import {
-  loadDotEnv,
   getApiConfiguredChainID,
   getStacksNodeChainID,
   chainIdConfigurationCheck,
@@ -60,8 +59,6 @@ function getApiMode(): StacksApiMode {
   }
   return StacksApiMode.default;
 }
-
-loadDotEnv();
 
 // ts-node has automatic source map support, avoid clobbering
 if (!process.execArgv.some(r => r.includes('ts-node'))) {

@@ -161,11 +161,10 @@ async function waitForSNP(): Promise<void> {
   }
 }
 
-// Jest global setup
-// ts-unused-exports:disable-next-line
-export default async function setup(): Promise<void> {
+beforeAll(async () => {
   // use a random PGSCHEMA for each test to avoid conflicts
   ENV.PG_SCHEMA = `test_${crypto.randomUUID()}`;
+  ENV.PG_DATABASE = 'postgres';
 
   const docker = new Docker();
   const prunedCount = await pruneContainers(docker, testContainerLabel);
@@ -242,4 +241,16 @@ export default async function setup(): Promise<void> {
     await waitForSNP();
   };
   await startSNP();
-}
+});
+
+afterAll(async () => {
+  const containers: { id: string; image: string }[] =
+    (globalThis as any).__TEST_DOCKER_CONTAINERS ?? [];
+  for (const { id, image } of containers) {
+    console.log(`Stopping and removing container ${image} - ${id}...`);
+    const docker = new Docker();
+    const container = docker.getContainer(id);
+    await container.remove({ v: true, force: true });
+    console.log(`Test docker container ${image} ${id} stopped and removed`);
+  }
+});
