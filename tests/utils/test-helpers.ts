@@ -5,6 +5,7 @@ import {
   bufferCV,
   ClarityValue,
   getAddressFromPrivateKey,
+  serializeCV,
   TransactionVersion,
   TupleCV,
   tupleCV,
@@ -38,6 +39,17 @@ export async function migrate(direction: 'up' | 'down') {
   const connArgs = getConnectionArgs();
   await createSchema(connArgs);
   await runMigrations(MIGRATIONS_DIR, direction, connArgs);
+}
+
+export function createClarityValueArray(...input: ClarityValue[]): Buffer {
+  const buffers = new Array<Buffer>(input.length);
+  for (let i = 0; i < input.length; i++) {
+    buffers[i] = Buffer.from(serializeCV(input[i]));
+  }
+  const valueCountBuffer = Buffer.alloc(4);
+  valueCountBuffer.writeUInt32BE(input.length);
+  buffers.unshift(valueCountBuffer);
+  return Buffer.concat(buffers);
 }
 
 export async function createSchema(connArgs: PgConnectionArgs) {

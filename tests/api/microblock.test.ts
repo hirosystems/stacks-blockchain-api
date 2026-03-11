@@ -38,7 +38,7 @@ import { AddressStxBalance } from '../../src/api/schemas/entities/addresses';
 import { useWithCleanup } from './test-helpers';
 import { startEventServer } from '../../src/event-stream/event-server';
 import * as fs from 'fs';
-import { createClarityValueArray } from '../../src/stacks-encoding-helpers';
+import { createClarityValueArray } from '../utils/test-helpers';
 import { PgWriteStore } from '../../src/datastore/pg-write-store';
 import { getRawEventRequests } from '../../src/event-replay/event-requests';
 import { PgSqlClient, bufferToHex, logger } from '@stacks/api-toolkit';

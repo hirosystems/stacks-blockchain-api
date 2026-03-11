@@ -29,7 +29,7 @@ import {
   DbTxTypeId,
 } from '../../src/datastore/common';
 import { bufferCV, bufferCVFromString, serializeCV, uintCV } from '@stacks/transactions';
-import { createClarityValueArray } from '../../src/stacks-encoding-helpers';
+import { createClarityValueArray } from './test-helpers';
 import { bufferToHex } from '@stacks/api-toolkit';
 
 // Default values when none given. Useful when they are irrelevant for a particular test.

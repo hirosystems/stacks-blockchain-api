@@ -8,9 +8,7 @@ import {
   isValidStacksAddress,
   stacksToBitcoinAddress,
 } from '@hirosystems/stacks-encoding-native-js';
-import * as stream from 'stream';
 import * as ecc from 'tiny-secp256k1';
-import * as util from 'util';
 import { getCoreNodeEndpoint, StacksCoreRpcClient } from './core-rpc/client';
 import { DbEventTypeId } from './datastore/common';
 import { has0xPrefix, logger, numberToHex } from '@stacks/api-toolkit';

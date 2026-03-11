@@ -20,7 +20,7 @@ import {
   bufferCV,
   stringAsciiCV,
 } from '@stacks/transactions';
-import { createClarityValueArray } from '../../src/stacks-encoding-helpers';
+import { createClarityValueArray } from '../utils/test-helpers';
 import {
   decodeTransaction,
   TxPayloadVersionedSmartContract,
