@@ -15,6 +15,8 @@ const schema = Type.Object({
   PG_MAX_LIFETIME: Type.Integer({ default: 60, minimum: 0 }),
   /** Seconds before force-ending running queries on connection close, defaults to 5 */
   PG_CLOSE_TIMEOUT: Type.Integer({ default: 5, minimum: 0 }),
+  /** Statement timeout in seconds, defaults to 60 */
+  PG_STATEMENT_TIMEOUT: Type.Integer({ default: 60, minimum: 0 }),
   /** Can be any string, use to specify a use case specific to a deployment */
   PG_APPLICATION_NAME: Type.String({ default: 'stacks-blockchain-api' }),
   /**
@@ -43,7 +45,9 @@ const schema = Type.Object({
   PG_PRIMARY_IDLE_TIMEOUT: Type.Optional(Type.Integer({ minimum: 0 })),
   PG_PRIMARY_MAX_LIFETIME: Type.Optional(Type.Integer({ minimum: 0 })),
   PG_PRIMARY_CLOSE_TIMEOUT: Type.Optional(Type.Integer({ minimum: 0 })),
+  PG_PRIMARY_STATEMENT_TIMEOUT: Type.Optional(Type.Integer({ minimum: 0 })),
   PG_PRIMARY_CONNECTION_URI: Type.Optional(Type.String()),
+  PG_PRIMARY_CONNECTION_POOL_MAX: Type.Optional(Type.Integer({ minimum: 0 })),
 
   /**
    * If specified, controls the Stacks Blockchain API mode. The possible values are:

@@ -88,15 +88,11 @@ import {
 import { PgNotifier } from './pg-notifier';
 import { SyntheticPoxEventName } from '../pox-helpers';
 import { BasePgStore, PgSqlClient, PgSqlQuery, connectPostgres } from '@stacks/api-toolkit';
-import {
-  PgServer,
-  getConnectionArgs,
-  getConnectionConfig,
-  getPgConnectionEnvValue,
-} from './connection';
+import { getConnectionArgs, getConnectionConfig } from './connection';
 import * as path from 'path';
 import { PgStoreV2 } from './pg-store-v2';
 import { parseBlockParam } from '../api/routes/v2/schemas';
+import { ENV } from '../env';
 
 export const MIGRATIONS_DIR = path.join(REPO_DIR, 'migrations');
 
@@ -139,9 +135,7 @@ export class PgStore extends BasePgStore {
   async close(args?: { timeout?: number }): Promise<void> {
     await this.notifier?.close();
     await super.close({
-      timeout:
-        args?.timeout ??
-        parseInt(getPgConnectionEnvValue('CLOSE_TIMEOUT', PgServer.default) ?? '5'),
+      timeout: args?.timeout ?? ENV.PG_CLOSE_TIMEOUT,
     });
   }
 
