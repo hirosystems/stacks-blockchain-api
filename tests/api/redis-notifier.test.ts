@@ -26,13 +26,13 @@ describe('redis notifier', () => {
     ENV.REDIS_NOTIFIER_ENABLED = true;
     ENV.REDIS_URL = 'localhost:6379';
     ENV.REDIS_QUEUE = 'test-queue';
+    await migrate('up');
     db = await PgWriteStore.connect({
       usageName: 'tests',
       withNotifier: false,
       withRedisNotifier: true,
       skipMigrations: true,
     });
-    await migrate('up');
     messages.length = 0;
   });
 

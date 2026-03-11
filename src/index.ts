@@ -10,7 +10,6 @@ import { StacksCoreRpcClient } from './core-rpc/client';
 import * as promClient from 'prom-client';
 import * as getopts from 'getopts';
 import * as fs from 'fs';
-import { injectC32addressEncodeCache } from './c32-addr-cache';
 import { exportEventsAsTsv, importEventsFromTsv } from './event-replay/event-replay';
 import { PgStore } from './datastore/pg-store';
 import { PgWriteStore } from './datastore/pg-write-store';
@@ -64,8 +63,6 @@ function getApiMode(): StacksApiMode {
 if (!process.execArgv.some(r => r.includes('ts-node'))) {
   sourceMapSupport.install({ handleUncaughtExceptions: false });
 }
-
-injectC32addressEncodeCache();
 
 registerShutdownConfig();
 
