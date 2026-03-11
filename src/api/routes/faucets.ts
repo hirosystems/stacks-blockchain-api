@@ -23,6 +23,7 @@ import { DbFaucetRequestCurrency } from '../../datastore/common';
 import { getChainIDNetwork, getStxFaucetNetwork, stxToMicroStx } from '../../helpers';
 import { StacksCoreRpcClient } from '../../core-rpc/client';
 import { logger } from '@stacks/api-toolkit';
+import { ENV } from '../../env';
 import { FastifyPluginAsync, preHandlerHookHandler } from 'fastify';
 import { Type, TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
 import { fastifyFormbody } from '@fastify/formbody';
@@ -281,9 +282,7 @@ export const FaucetRoutes: FastifyPluginAsync<
   const FAUCET_STACKING_TRIGGER_COUNT = 1;
 
   const STX_FAUCET_NETWORK = () => getStxFaucetNetwork();
-  const STX_FAUCET_KEYS = (
-    process.env.FAUCET_PRIVATE_KEY ?? FAUCET_TESTNET_KEYS[0].secretKey
-  ).split(',');
+  const STX_FAUCET_KEYS = (ENV.FAUCET_PRIVATE_KEY ?? FAUCET_TESTNET_KEYS[0].secretKey).split(',');
 
   async function calculateSTXFaucetAmount(
     network: StacksNetwork,

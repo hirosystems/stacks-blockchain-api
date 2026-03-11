@@ -1,4 +1,5 @@
 import { PgConnectionArgs, PgConnectionOptions } from '@stacks/api-toolkit';
+import { ENV } from '../env';
 
 /**
  * The postgres server being used for a particular connection, transaction or query.
@@ -19,10 +20,9 @@ export function getPgConnectionEnvValue(
   name: string,
   pgServer: PgServer = PgServer.default
 ): string | undefined {
-  const defaultVal = process.env[`PG_${name}`] ?? process.env[`PG${name}`];
-  return pgServer === PgServer.primary
-    ? (process.env[`PG_PRIMARY_${name}`] ?? defaultVal)
-    : defaultVal;
+  const env = ENV as unknown as Record<string, string | undefined>;
+  const defaultVal = env[`PG_${name}`];
+  return pgServer === PgServer.primary ? (env[`PG_PRIMARY_${name}`] ?? defaultVal) : defaultVal;
 }
 
 export function getConnectionArgs(server: PgServer = PgServer.default): PgConnectionArgs {

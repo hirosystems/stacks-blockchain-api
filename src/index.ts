@@ -21,13 +21,13 @@ import {
   isProdEnv,
   logger,
   numberToHex,
-  parseBoolean,
   PINO_LOGGER_CONFIG,
   registerShutdownConfig,
   timeout,
 } from '@stacks/api-toolkit';
 import Fastify from 'fastify';
 import { SnpEventStreamHandler } from './event-stream/snp-event-stream';
+import { ENV } from './env';
 
 enum StacksApiMode {
   /**
@@ -50,17 +50,13 @@ enum StacksApiMode {
  * @returns detected StacksApiMode
  */
 function getApiMode(): StacksApiMode {
-  switch (process.env['STACKS_API_MODE']) {
+  switch (ENV.STACKS_API_MODE) {
     case 'readonly':
       return StacksApiMode.readOnly;
     case 'writeonly':
       return StacksApiMode.writeOnly;
     default:
       break;
-  }
-  // Make sure we're backwards compatible if `STACKS_API_MODE` is not specified.
-  if (parseBoolean(process.env['STACKS_READ_ONLY_MODE'])) {
-    return StacksApiMode.readOnly;
   }
   return StacksApiMode.default;
 }
@@ -114,7 +110,7 @@ async function init(): Promise<void> {
   const dbWriteStore = await PgWriteStore.connect({
     usageName: `write-datastore-${apiMode}`,
     skipMigrations: apiMode === StacksApiMode.readOnly,
-    withRedisNotifier: parseBoolean(process.env['REDIS_NOTIFIER_ENABLED']) ?? false,
+    withRedisNotifier: ENV.REDIS_NOTIFIER_ENABLED,
   });
   registerMempoolPromStats(dbWriteStore.eventEmitter);
 
@@ -130,8 +126,8 @@ async function init(): Promise<void> {
       forceKillable: true,
     });
 
-    const skipChainIdCheck = parseBoolean(process.env['SKIP_STACKS_CHAIN_ID_CHECK']);
-    const snpEnabled = parseBoolean(process.env['SNP_EVENT_STREAMING']);
+    const skipChainIdCheck = ENV.SKIP_STACKS_CHAIN_ID_CHECK;
+    const snpEnabled = ENV.SNP_EVENT_STREAMING;
     if (!skipChainIdCheck && !snpEnabled) {
       const networkChainId = await getStacksNodeChainID();
       if (networkChainId !== configuredChainID) {
@@ -179,8 +175,7 @@ async function init(): Promise<void> {
     });
   }
 
-  const profilerHttpServerPort = process.env['STACKS_PROFILER_PORT'];
-  if (profilerHttpServerPort) {
+  if (ENV.STACKS_PROFILER_PORT) {
     const profilerServer = await buildProfilerServer();
     registerShutdownConfig({
       name: 'Profiler server',
@@ -188,8 +183,8 @@ async function init(): Promise<void> {
       forceKillable: true,
     });
     await profilerServer.listen({
-      host: process.env['STACKS_PROFILER_HOST'] ?? '0.0.0.0',
-      port: parseInt(profilerHttpServerPort),
+      host: ENV.STACKS_PROFILER_HOST ?? '0.0.0.0',
+      port: ENV.STACKS_PROFILER_PORT,
     });
   }
 

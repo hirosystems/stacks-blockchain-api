@@ -10,21 +10,14 @@ and for now this approach is much easier and faster.
 import * as c32check from 'c32check';
 import * as LruCache from 'lru-cache';
 import { stacksAddressFromParts } from '@stacks/codec';
+import { ENV } from './env';
 
 type c32AddressFn = typeof c32check.c32address;
-
-const MAX_ADDR_CACHE_SIZE = 50_000;
-export const ADDR_CACHE_ENV_VAR = 'STACKS_ADDRESS_CACHE_SIZE';
 
 let addressLruCache: LruCache<string, string> | undefined;
 export function getAddressLruCache() {
   if (addressLruCache === undefined) {
-    let cacheSize = MAX_ADDR_CACHE_SIZE;
-    const envAddrCacheVar = process.env[ADDR_CACHE_ENV_VAR];
-    if (envAddrCacheVar) {
-      cacheSize = Number.parseInt(envAddrCacheVar);
-    }
-    addressLruCache = new LruCache<string, string>({ max: cacheSize });
+    addressLruCache = new LruCache<string, string>({ max: ENV.STACKS_ADDRESS_CACHE_SIZE });
   }
   return addressLruCache;
 }

@@ -25,6 +25,7 @@ import { PgStore } from '../datastore/pg-store';
 import { PgWriteStore } from '../datastore/pg-write-store';
 import { WebSocketTransmitter } from './routes/ws/web-socket-transmitter';
 import { PoxEventRoutes, PoxRoutes } from './routes/pox';
+import { ENV } from '../env';
 import {
   PINO_LOGGER_CONFIG,
   SERVER_VERSION,
@@ -110,26 +111,11 @@ export async function startApiServer(opts: {
   datastore: PgStore;
   writeDatastore?: PgWriteStore;
   chainId: ChainID;
-  /** If not specified, this is read from the STACKS_BLOCKCHAIN_API_HOST env var. */
-  serverHost?: string;
-  /** If not specified, this is read from the STACKS_BLOCKCHAIN_API_PORT env var. */
-  serverPort?: number;
 }): Promise<ApiServer> {
-  const { datastore, writeDatastore, chainId, serverHost, serverPort } = opts;
+  const { datastore, writeDatastore, chainId } = opts;
 
-  const apiHost = serverHost ?? process.env['STACKS_BLOCKCHAIN_API_HOST'];
-  const apiPort = serverPort ?? parseInt(process.env['STACKS_BLOCKCHAIN_API_PORT'] ?? '');
-
-  if (!apiHost) {
-    throw new Error(
-      `STACKS_BLOCKCHAIN_API_HOST must be specified, e.g. "STACKS_BLOCKCHAIN_API_HOST=127.0.0.1"`
-    );
-  }
-  if (!apiPort) {
-    throw new Error(
-      `STACKS_BLOCKCHAIN_API_PORT must be specified, e.g. "STACKS_BLOCKCHAIN_API_PORT=3999"`
-    );
-  }
+  const apiHost = ENV.STACKS_BLOCKCHAIN_API_HOST;
+  const apiPort = ENV.STACKS_BLOCKCHAIN_API_PORT;
 
   const fastify = Fastify({
     trustProxy: true,

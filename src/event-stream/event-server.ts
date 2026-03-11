@@ -8,13 +8,7 @@ import Fastify, {
 } from 'fastify';
 import PQueue from 'p-queue';
 import * as prom from 'prom-client';
-import {
-  BitVec,
-  ChainID,
-  assertNotNullish,
-  getChainIDNetwork,
-  getIbdBlockHeight,
-} from '../helpers';
+import { BitVec, ChainID, assertNotNullish, getChainIDNetwork } from '../helpers';
 import {
   DbEventBase,
   DbSmartContractEvent,
@@ -77,6 +71,7 @@ import {
   PINO_LOGGER_CONFIG,
   stopwatch,
 } from '@stacks/api-toolkit';
+import { ENV } from '../env';
 import { POX_2_CONTRACT_NAME, POX_3_CONTRACT_NAME, POX_4_CONTRACT_NAME } from '../pox-helpers';
 import {
   DropMempoolTxMessage,
@@ -89,16 +84,12 @@ import {
 } from '@stacks/node-publisher-client';
 import { CoreNodeParsedTxMessage } from './core-node-message';
 
-const IBD_PRUNABLE_ROUTES = ['/new_mempool_tx', '/drop_mempool_tx', '/new_microblocks'];
-
-const storeRawEvents = parseBoolean(process.env.STACKS_API_STORE_RAW_EVENTS ?? 'true');
-
 async function handleRawEventRequest(
   eventPath: string,
   payload: any,
   db: PgWriteStore
 ): Promise<void> {
-  if (!storeRawEvents) return;
+  if (!ENV.STACKS_API_STORE_RAW_EVENTS) return;
   await db.storeRawEventRequest(eventPath, payload);
 }
 
@@ -797,8 +788,8 @@ export async function startEventServer(opts: {
   const db = opts.datastore;
   const messageHandler = opts.messageHandler ?? createMessageProcessorQueue(db);
 
-  let eventHost = opts.serverHost ?? process.env['STACKS_CORE_EVENT_HOST'];
-  const eventPort = opts.serverPort ?? parseInt(process.env['STACKS_CORE_EVENT_PORT'] ?? '', 10);
+  let eventHost = opts.serverHost ?? ENV.STACKS_CORE_EVENT_HOST;
+  const eventPort = opts.serverPort ?? ENV.STACKS_CORE_EVENT_PORT;
   if (!eventHost) {
     throw new Error(
       `STACKS_CORE_EVENT_HOST must be specified, e.g. "STACKS_CORE_EVENT_HOST=127.0.0.1"`
@@ -839,7 +830,7 @@ export async function startEventServer(opts: {
   };
 
   const app = Fastify({
-    bodyLimit: parseInt(process.env['STACKS_CORE_EVENT_BODY_LIMIT'] ?? '500000000'),
+    bodyLimit: ENV.STACKS_CORE_EVENT_BODY_LIMIT,
     trustProxy: true,
     logger: loggerOpts,
     ignoreTrailingSlash: true,
@@ -869,25 +860,6 @@ export async function startEventServer(opts: {
       logger.debug(`${req.url} ${payload}`, { component: 'stacks-node-event' });
     }
   };
-
-  const ibdHeight = getIbdBlockHeight();
-  if (ibdHeight) {
-    app.addHook('preHandler', async (req, res) => {
-      if (IBD_PRUNABLE_ROUTES.includes(req.url)) {
-        try {
-          const chainTip = await db.getChainTip(db.sql);
-          if (chainTip.block_height <= ibdHeight) {
-            await handleRawEventRequest(req);
-            await res.status(200).send(`IBD`);
-          }
-        } catch (error) {
-          await res
-            .status(500)
-            .send({ message: 'A middleware error occurred processing the request in IBD mode.' });
-        }
-      }
-    });
-  }
 
   app.get('/', async (_req, res) => {
     await res

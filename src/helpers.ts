@@ -10,6 +10,7 @@ import { getCoreNodeEndpoint, StacksCoreRpcClient } from './core-rpc/client';
 import { DbEventTypeId } from './datastore/common';
 import { has0xPrefix, logger, numberToHex } from '@stacks/api-toolkit';
 import { StacksNetwork, StacksTestnet } from '@stacks/network';
+import { ENV } from './env';
 
 export const REPO_DIR = path.dirname(__dirname);
 
@@ -17,18 +18,10 @@ export const I32_MAX = 0x7fffffff;
 
 export const EMPTY_HASH_256 = '0x0000000000000000000000000000000000000000000000000000000000000000';
 
-export function getIbdBlockHeight(): number | undefined {
-  const val = process.env.IBD_MODE_UNTIL_BLOCK;
-  if (val) {
-    const num = Number.parseInt(val);
-    return !Number.isNaN(num) ? num : undefined;
-  }
-}
-
 export function getStxFaucetNetwork(): StacksNetwork {
-  const faucetNodeHostOverride: string | undefined = process.env.STACKS_FAUCET_NODE_HOST;
+  const faucetNodeHostOverride: string | undefined = ENV.STACKS_FAUCET_NODE_HOST;
   if (faucetNodeHostOverride) {
-    const faucetNodePortOverride: string | undefined = process.env.STACKS_FAUCET_NODE_PORT;
+    const faucetNodePortOverride: number | undefined = ENV.STACKS_FAUCET_NODE_PORT;
     if (!faucetNodePortOverride) {
       const error = 'STACKS_FAUCET_NODE_HOST is specified but STACKS_FAUCET_NODE_PORT is missing';
       logger.error(error);
@@ -314,21 +307,6 @@ export function httpPostRequest(
   });
 }
 
-export function parsePort(portVal: number | string | undefined): number | undefined {
-  if (portVal === undefined) {
-    return undefined;
-  }
-  if (/^[-+]?(\d+|Infinity)$/.test(portVal.toString())) {
-    const port = Number(portVal);
-    if (port < 1 || port > 65535) {
-      throw new Error(`Port ${port} is invalid`);
-    }
-    return port;
-  } else {
-    throw new Error(`Port ${portVal} is invalid`);
-  }
-}
-
 /** Converts a unix timestamp (in seconds) to an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) string */
 export function unixEpochToIso(timestamp: number): string {
   try {
@@ -470,7 +448,7 @@ export function getChainIDNetwork(chainID: ChainID): 'mainnet' | 'testnet' {
   }
   const chainIDHex = numberToHex(chainID);
   const customChainIDEnv = 'CUSTOM_CHAIN_IDS';
-  const customChainIDs = process.env[customChainIDEnv];
+  const customChainIDs = ENV.CUSTOM_CHAIN_IDS;
   if (!customChainIDs) {
     throw new Error(
       `Unknown chain_id ${chainIDHex}, use ${customChainIDEnv} to specify custom testnet or mainnet chain_ids (for example for subnets)`
@@ -507,7 +485,7 @@ export function chainIdConfigurationCheck() {
     const mainnetHex = numberToHex(NETWORK_CHAIN_ID.mainnet);
     const testnetHex = numberToHex(NETWORK_CHAIN_ID.testnet);
     logger.error(
-      `Oops! The configuration for STACKS_CHAIN_ID=${chainIdHex} does not match mainnet=${mainnetHex}, testnet=${testnetHex}, or custom chain IDs: CUSTOM_CHAIN_IDS=${process.env.CUSTOM_CHAIN_IDS}`
+      `Oops! The configuration for STACKS_CHAIN_ID=${chainIdHex} does not match mainnet=${mainnetHex}, testnet=${testnetHex}, or custom chain IDs: CUSTOM_CHAIN_IDS=${ENV.CUSTOM_CHAIN_IDS}`
     );
   }
 }
@@ -563,8 +541,8 @@ export const enum SubnetContractIdentifer {
 export function getSendManyContract(chainId: ChainID) {
   const contractId =
     getChainIDNetwork(chainId) === 'mainnet'
-      ? process.env.MAINNET_SEND_MANY_CONTRACT_ID
-      : process.env.TESTNET_SEND_MANY_CONTRACT_ID;
+      ? ENV.MAINNET_SEND_MANY_CONTRACT_ID
+      : ENV.TESTNET_SEND_MANY_CONTRACT_ID;
   return contractId;
 }
 
@@ -585,14 +563,8 @@ export async function getStacksNodeChainID(): Promise<ChainID> {
  * Gets the chain id as configured by the `STACKS_CHAIN_ID` API env variable.
  * @returns `ChainID` Chain id
  */
-export function getApiConfiguredChainID() {
-  if (!('STACKS_CHAIN_ID' in process.env)) {
-    const error = new Error(`Env var STACKS_CHAIN_ID is not set`);
-    logger.error(error, error.message);
-    throw error;
-  }
-  const configuredChainID: ChainID = parseInt(process.env['STACKS_CHAIN_ID'] as string);
-  return configuredChainID;
+export function getApiConfiguredChainID(): ChainID {
+  return parseInt(ENV.STACKS_CHAIN_ID);
 }
 
 export function parseEventTypeStrings(values: string[]): DbEventTypeId[] {
@@ -617,16 +589,6 @@ export function parseEventTypeStrings(values: string[]): DbEventTypeId[] {
 export enum BootContractAddress {
   mainnet = 'SP000000000000000000002Q6VF78',
   testnet = 'ST000000000000000000002AMW42H',
-}
-
-export function getUintEnvOrDefault(envName: string, defaultValue = 0) {
-  const v = BigInt(process.env[envName] ?? defaultValue);
-  if (v < 0n) {
-    throw new Error(
-      `Expecting ENV ${envName} to be non-negative number but it is configured as ${process.env[envName]}`
-    );
-  }
-  return Number(v);
 }
 
 export class BitVec {

@@ -4,7 +4,7 @@
 import { Client, ClientConfig, Pool, PoolClient, PoolConfig } from 'pg';
 import { PgServer } from '../datastore/connection';
 import { isPgConnectionError, parseBoolean, stopwatch, timeout, logger } from '@stacks/api-toolkit';
-import { parsePort } from '../helpers';
+import { ENV } from '../env';
 
 type PgClientConfig = ClientConfig & { schema?: string };
 type PgPoolConfig = PoolConfig & { schema?: string };
@@ -84,10 +84,11 @@ function getPgClientConfig<TGetPoolConfig extends boolean = false>({
   // Retrieve a postgres ENV value depending on the target database server (read-replica/default or primary).
   // We will fall back to read-replica values if a primary value was not given.
   // See the `.env` file for more information on these options.
+  const env = ENV as unknown as Record<string, string | undefined>;
   const pgEnvValue = (name: string): string | undefined =>
     pgServer === PgServer.primary
-      ? (process.env[`PG_PRIMARY_${name}`] ?? process.env[`PG_${name}`])
-      : process.env[`PG_${name}`];
+      ? (env[`PG_PRIMARY_${name}`] ?? env[`PG_${name}`])
+      : env[`PG_${name}`];
   const pgEnvVars = {
     database: pgEnvValue('DATABASE'),
     user: pgEnvValue('USER'),
@@ -132,7 +133,7 @@ function getPgClientConfig<TGetPoolConfig extends boolean = false>({
       user: pgEnvVars.user,
       password: pgEnvVars.password,
       host: pgEnvVars.host,
-      port: parsePort(pgEnvVars.port),
+      port: parseInt(pgEnvVars.port ?? '5432'),
       ssl: parseBoolean(pgEnvVars.ssl),
       schema: pgEnvVars.schema,
       application_name: appName,
@@ -140,10 +141,7 @@ function getPgClientConfig<TGetPoolConfig extends boolean = false>({
   }
   if (getPoolConfig) {
     const poolConfig: PgPoolConfig = { ...clientConfig };
-    const pgConnectionPoolMaxEnv = process.env['PG_CONNECTION_POOL_MAX'];
-    if (pgConnectionPoolMaxEnv) {
-      poolConfig.max = Number.parseInt(pgConnectionPoolMaxEnv);
-    }
+    poolConfig.max = ENV.PG_CONNECTION_POOL_MAX;
     return poolConfig;
   } else {
     return clientConfig;

@@ -1,4 +1,4 @@
-import { getUintEnvOrDefault, parseEnum, unwrapOptionalProp } from '../helpers';
+import { parseEnum, unwrapOptionalProp } from '../helpers';
 import {
   BlockQueryResult,
   ContractTxQueryResult,
@@ -64,6 +64,7 @@ import { SyntheticPoxEventName } from '../pox-helpers';
 import { logger, PgSqlClient } from '@stacks/api-toolkit';
 import PQueue from 'p-queue';
 import { DropMempoolTxReasonType, NewBlockTransactionStatus } from '@stacks/node-publisher-client';
+import { ENV } from '../env';
 
 export const TX_COLUMNS = [
   'tx_id',
@@ -1370,8 +1371,10 @@ export function removeNullBytes(str: string): string {
 export class PgWriteQueue {
   readonly queue: PQueue;
   constructor() {
-    const concurrency = Math.max(1, getUintEnvOrDefault('STACKS_BLOCK_DATA_INSERT_CONCURRENCY', 4));
-    this.queue = new PQueue({ concurrency, autoStart: true });
+    this.queue = new PQueue({
+      concurrency: ENV.STACKS_BLOCK_DATA_INSERT_CONCURRENCY,
+      autoStart: true,
+    });
   }
   enqueue(task: Parameters<PQueue['add']>[0]): void {
     void this.queue.add(task);

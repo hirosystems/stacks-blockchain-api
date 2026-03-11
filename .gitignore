@@ -1,5 +1,6 @@
 .tmp/
 bin/
+.env
 
 # Logs
 logs

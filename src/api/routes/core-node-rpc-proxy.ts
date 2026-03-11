@@ -1,4 +1,4 @@
-import { parsePort, REPO_DIR } from '../../helpers';
+import { REPO_DIR } from '../../helpers';
 import * as fs from 'fs';
 import * as path from 'path';
 import fetch, { RequestInit } from 'node-fetch';
@@ -7,29 +7,17 @@ import { TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
 import { Server, ServerResponse } from 'node:http';
 import { fastifyHttpProxy } from '@fastify/http-proxy';
 import { StacksCoreRpcClient } from '../../core-rpc/client';
-import { parseBoolean, logger } from '@stacks/api-toolkit';
+import { logger } from '@stacks/api-toolkit';
+import { ENV } from '../../env';
 
 function GetStacksNodeProxyEndpoint() {
-  // Use STACKS_CORE_PROXY env vars if available, otherwise fallback to `STACKS_CORE_RPC
-  const proxyHost =
-    process.env['STACKS_CORE_PROXY_HOST'] ?? process.env['STACKS_CORE_RPC_HOST'] ?? '';
-  const proxyPort =
-    parsePort(process.env['STACKS_CORE_PROXY_PORT'] ?? process.env['STACKS_CORE_RPC_PORT']) ?? 0;
+  const proxyHost = ENV.STACKS_CORE_PROXY_HOST;
+  const proxyPort = ENV.STACKS_CORE_PROXY_PORT;
   return `${proxyHost}:${proxyPort}`;
 }
 
 function getReqUrl(req: { url: string; hostname: string }): URL {
   return new URL(req.url, `http://${req.hostname}`);
-}
-
-function parseFloatEnv(env: string) {
-  const envValue = process.env[env];
-  if (envValue) {
-    const parsed = parseFloat(envValue);
-    if (!isNaN(parsed) && parsed > 0) {
-      return parsed;
-    }
-  }
 }
 
 // https://github.com/stacks-network/stacks-core/blob/20d5137438c7d169ea97dd2b6a4d51b8374a4751/stackslib/src/chainstate/stacks/db/blocks.rs#L338
@@ -42,12 +30,6 @@ const DEFAULT_BLOCK_LIMIT_READ_COUNT = 15_000;
 const DEFAULT_BLOCK_LIMIT_RUNTIME = 5_000_000_000;
 // https://github.com/stacks-network/stacks-core/blob/9c8ed7b9df51a0b5d96135cb594843091311b20e/stackslib/src/chainstate/stacks/mod.rs#L1096
 const BLOCK_LIMIT_SIZE = 2 * 1024 * 1024;
-
-const DEFAULT_FEE_ESTIMATION_MODIFIER = 1.0;
-const DEFAULT_FEE_PAST_TENURE_FULLNESS_WINDOW = 5;
-const DEFAULT_FEE_PAST_DIMENSION_FULLNESS_THRESHOLD = 0.9;
-const DEFAULT_FEE_CURRENT_DIMENSION_FULLNESS_THRESHOLD = 0.5;
-const DEFAULT_FEE_CURRENT_BLOCK_COUNT_MINIMUM = 5;
 
 interface FeeEstimation {
   fee: number;
@@ -94,11 +76,11 @@ export const CoreNodeRpcProxyRouter: FastifyPluginAsync<
   let feeEstimatorEnabled = false;
   let didReadTenureCostsFromCore = false;
   const feeOpts: FeeEstimateProxyOptions = {
-    estimationModifier: DEFAULT_FEE_ESTIMATION_MODIFIER,
-    pastTenureFullnessWindow: DEFAULT_FEE_PAST_TENURE_FULLNESS_WINDOW,
-    pastDimensionFullnessThreshold: DEFAULT_FEE_PAST_DIMENSION_FULLNESS_THRESHOLD,
-    currentDimensionFullnessThreshold: DEFAULT_FEE_CURRENT_DIMENSION_FULLNESS_THRESHOLD,
-    currentBlockCountMinimum: DEFAULT_FEE_CURRENT_BLOCK_COUNT_MINIMUM,
+    estimationModifier: ENV.STACKS_CORE_FEE_ESTIMATION_MODIFIER,
+    pastTenureFullnessWindow: ENV.STACKS_CORE_FEE_PAST_TENURE_FULLNESS_WINDOW,
+    pastDimensionFullnessThreshold: ENV.STACKS_CORE_FEE_PAST_DIMENSION_FULLNESS_THRESHOLD,
+    currentDimensionFullnessThreshold: ENV.STACKS_CORE_FEE_CURRENT_DIMENSION_FULLNESS_THRESHOLD,
+    currentBlockCountMinimum: ENV.STACKS_CORE_FEE_CURRENT_BLOCK_COUNT_MINIMUM,
     readCountLimit: DEFAULT_BLOCK_LIMIT_READ_COUNT,
     readLengthLimit: DEFAULT_BLOCK_LIMIT_READ_LENGTH,
     writeCountLimit: DEFAULT_BLOCK_LIMIT_WRITE_COUNT,
@@ -112,8 +94,7 @@ export const CoreNodeRpcProxyRouter: FastifyPluginAsync<
    * Check for any extra endpoints that have been configured for performing a "multicast" for a tx submission.
    */
   async function getExtraTxPostEndpoints(): Promise<string[] | false> {
-    const STACKS_API_EXTRA_TX_ENDPOINTS_FILE_ENV_VAR = 'STACKS_API_EXTRA_TX_ENDPOINTS_FILE';
-    const extraEndpointsEnvVar = process.env[STACKS_API_EXTRA_TX_ENDPOINTS_FILE_ENV_VAR];
+    const extraEndpointsEnvVar = ENV.STACKS_API_EXTRA_TX_ENDPOINTS_FILE;
     if (!extraEndpointsEnvVar) {
       return false;
     }
@@ -122,7 +103,7 @@ export const CoreNodeRpcProxyRouter: FastifyPluginAsync<
     try {
       fileContents = await fs.promises.readFile(filePath, { encoding: 'utf8' });
     } catch (error) {
-      logger.error(error, `Error reading ${STACKS_API_EXTRA_TX_ENDPOINTS_FILE_ENV_VAR}`);
+      logger.error(error, `Error reading ${ENV.STACKS_API_EXTRA_TX_ENDPOINTS_FILE}`);
       return false;
     }
     const endpoints = fileContents
@@ -257,7 +238,7 @@ export const CoreNodeRpcProxyRouter: FastifyPluginAsync<
     'application/octet-stream',
     {
       parseAs: 'buffer',
-      bodyLimit: parseInt(process.env['STACKS_CORE_PROXY_BODY_LIMIT'] ?? '10000000'),
+      bodyLimit: ENV.STACKS_CORE_PROXY_BODY_LIMIT,
     },
     (_req, body, done) => {
       done(null, body);
@@ -265,23 +246,7 @@ export const CoreNodeRpcProxyRouter: FastifyPluginAsync<
   );
 
   fastify.addHook('onReady', () => {
-    feeEstimatorEnabled = parseBoolean(process.env['STACKS_CORE_FEE_ESTIMATOR_ENABLED']);
-    if (!feeEstimatorEnabled) return;
-
-    feeOpts.estimationModifier =
-      parseFloatEnv('STACKS_CORE_FEE_ESTIMATION_MODIFIER') ?? feeOpts.estimationModifier;
-    feeOpts.pastTenureFullnessWindow =
-      parseFloatEnv('STACKS_CORE_FEE_PAST_TENURE_FULLNESS_WINDOW') ??
-      feeOpts.pastTenureFullnessWindow;
-    feeOpts.pastDimensionFullnessThreshold =
-      parseFloatEnv('STACKS_CORE_FEE_PAST_DIMENSION_FULLNESS_THRESHOLD') ??
-      feeOpts.pastDimensionFullnessThreshold;
-    feeOpts.currentDimensionFullnessThreshold =
-      parseFloatEnv('STACKS_CORE_FEE_CURRENT_DIMENSION_FULLNESS_THRESHOLD') ??
-      feeOpts.currentDimensionFullnessThreshold;
-    feeOpts.currentBlockCountMinimum =
-      parseFloatEnv('STACKS_CORE_FEE_CURRENT_BLOCK_COUNT_MINIMUM') ??
-      feeOpts.currentBlockCountMinimum;
+    feeEstimatorEnabled = ENV.STACKS_CORE_FEE_ESTIMATOR_ENABLED;
   });
 
   await fastify.register(fastifyHttpProxy, {

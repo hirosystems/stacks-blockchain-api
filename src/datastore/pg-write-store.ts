@@ -1,6 +1,6 @@
 import * as assert from 'assert';
 import * as prom from 'prom-client';
-import { getOrAdd, I32_MAX, getIbdBlockHeight, getUintEnvOrDefault } from '../helpers';
+import { getOrAdd, I32_MAX } from '../helpers';
 import {
   DbBlock,
   DbTx,
@@ -97,17 +97,10 @@ import {
 import { PgServer, getConnectionArgs, getConnectionConfig } from './connection';
 import { BigNumber } from 'bignumber.js';
 import { RedisNotifier } from './redis-notifier';
+import { ENV } from '../env';
 
 const MIGRATIONS_TABLE = 'pgmigrations';
 const INSERT_BATCH_SIZE = 500;
-const MEMPOOL_STATS_DEBOUNCE_INTERVAL = getUintEnvOrDefault(
-  'MEMPOOL_STATS_DEBOUNCE_INTERVAL',
-  1000
-);
-const MEMPOOL_STATS_DEBOUNCE_MAX_INTERVAL = getUintEnvOrDefault(
-  'MEMPOOL_STATS_DEBOUNCE_MAX_INTERVAL',
-  10000
-);
 
 class MicroblockGapError extends Error {
   constructor(message: string) {
@@ -133,7 +126,6 @@ type TransactionHeader = {
 export class PgWriteStore extends PgStore {
   readonly isEventReplay: boolean;
   protected readonly redisNotifier: RedisNotifier | undefined = undefined;
-  protected isIbdBlockHeightReached = false;
   private metrics:
     | {
         blockHeight: prom.Gauge;
@@ -423,9 +415,6 @@ export class PgWriteStore extends PgStore {
         reorg
       );
     }
-    // Do we have an IBD height defined in ENV? If so, check if this block update reached it.
-    const ibdHeight = getIbdBlockHeight();
-    this.isIbdBlockHeightReached = ibdHeight ? data.block.block_height > ibdHeight : true;
     // Send block updates but don't block current execution unless we're testing.
     if (isTestEnv) await this.sendBlockNotifications({ data, garbageCollectedMempoolTxs });
     else void this.sendBlockNotifications({ data, garbageCollectedMempoolTxs });
@@ -2472,7 +2461,10 @@ export class PgWriteStore extends PgStore {
     const waited = Date.now() - this._debounceMempoolStat.triggeredAt;
     const delay = Math.max(
       0,
-      Math.min(MEMPOOL_STATS_DEBOUNCE_MAX_INTERVAL - waited, MEMPOOL_STATS_DEBOUNCE_INTERVAL)
+      Math.min(
+        ENV.MEMPOOL_STATS_DEBOUNCE_MAX_INTERVAL - waited,
+        ENV.MEMPOOL_STATS_DEBOUNCE_INTERVAL
+      )
     );
     if (this._debounceMempoolStat.debounce != null) {
       clearTimeout(this._debounceMempoolStat.debounce);
@@ -2581,7 +2573,6 @@ export class PgWriteStore extends PgStore {
   }
 
   async updateNames(sql: PgSqlClient, tx: DataStoreBnsBlockTxData, names: DbBnsName[]) {
-    // TODO: Move these to CTE queries for optimization
     for (const bnsName of names) {
       const {
         name,
