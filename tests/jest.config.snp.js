@@ -6,6 +6,9 @@ const config = {
   testMatch: ['<rootDir>/tests/snp/**/*.test.ts'],
   collectCoverageFrom: ['<rootDir>/src/**/*.ts'],
   coverageDirectory: '<rootDir>/coverage',
+  moduleNameMapper: {
+    '^typebox$': '@sinclair/typebox',
+  },
   setupFilesAfterEnv: ['<rootDir>/tests/snp/env-setup.ts'],
   testTimeout: 60_000,
   verbose: true,

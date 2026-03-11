@@ -6,6 +6,9 @@ const config = {
   testMatch: ['<rootDir>/tests/rpc/*.test.ts'],
   collectCoverageFrom: ['<rootDir>/src/**/*.ts'],
   coverageDirectory: '<rootDir>/coverage',
+  moduleNameMapper: {
+    '^typebox$': '@sinclair/typebox',
+  },
   globalSetup: '<rootDir>/tests/rpc/setup.ts',
   globalTeardown: '<rootDir>/tests/rpc/teardown.ts',
   testTimeout: 60_000,

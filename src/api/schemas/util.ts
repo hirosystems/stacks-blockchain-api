@@ -2,10 +2,7 @@ import { TSchema, Type } from 'typebox';
 
 export const Nullable = <T extends TSchema>(schema: T) => Type.Union([schema, Type.Null()]);
 export const OptionalNullable = <T extends TSchema>(schema: T) => Type.Optional(Nullable(schema));
-export const PaginatedResponse = <T extends TSchema>(
-  type: T,
-  options?: Record<string, unknown>
-) =>
+export const PaginatedResponse = <T extends TSchema>(type: T, options?: Record<string, unknown>) =>
   Type.Object(
     {
       limit: Type.Integer({ examples: [20] }),

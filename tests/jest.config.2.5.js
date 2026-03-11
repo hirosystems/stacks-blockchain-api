@@ -6,6 +6,9 @@ const config = {
   testMatch: ['<rootDir>/tests/2.5/**/*.test.ts'],
   collectCoverageFrom: ['<rootDir>/src/**/*.ts'],
   coverageDirectory: '<rootDir>/coverage',
+  moduleNameMapper: {
+    '^typebox$': '@sinclair/typebox',
+  },
   globalSetup: '<rootDir>/tests/2.5/global-setup.ts',
   globalTeardown: '<rootDir>/tests/2.5/global-teardown.ts',
   setupFilesAfterEnv: ['<rootDir>/tests/2.5/env-setup.ts'],

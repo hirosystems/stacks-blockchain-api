@@ -4,6 +4,9 @@ module.exports = {
   testMatch: ['<rootDir>/tests/api/**/*.test.ts'],
   collectCoverageFrom: ['<rootDir>/src/**/*.ts'],
   coverageDirectory: '<rootDir>/coverage',
+  moduleNameMapper: {
+    '^typebox$': '@sinclair/typebox',
+  },
   globalSetup: '<rootDir>/tests/api/setup.ts',
   globalTeardown: '<rootDir>/tests/api/teardown.ts',
   testTimeout: 20000,

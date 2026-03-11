@@ -6,6 +6,9 @@ const config = {
   testMatch: ['<rootDir>/tests/bns-e2e/*.test.ts'],
   collectCoverageFrom: ['<rootDir>/src/**/*.ts'],
   coverageDirectory: '<rootDir>/coverage',
+  moduleNameMapper: {
+    '^typebox$': '@sinclair/typebox',
+  },
   globalSetup: '<rootDir>/tests/bns-e2e/setup.ts',
   globalTeardown: '<rootDir>/tests/bns-e2e/teardown.ts',
   testTimeout: 3600000,
