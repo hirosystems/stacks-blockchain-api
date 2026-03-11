@@ -38,7 +38,7 @@ import { hexToBytes } from '@stacks/common';
 import { StackingClient } from '@stacks/stacking';
 import { getPublicKeyFromPrivate } from '@stacks/encryption';
 import { AddressStxBalance } from '../../src/api/schemas/entities/addresses';
-import { FAUCET_TESTNET_KEYS } from 'src/api/routes/faucets';
+import { FAUCET_TESTNET_KEYS } from '../../src/api/routes/faucets';
 
 describe('PoX-4 - Delegate aggregation increase operations', () => {
   const seedKey = FAUCET_TESTNET_KEYS[4].secretKey;

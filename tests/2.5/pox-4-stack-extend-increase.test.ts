@@ -30,7 +30,7 @@ import {
   BurnchainRewardSlotHolderListResponse,
 } from '../../src/api/schemas/responses/responses';
 import { BurnchainRewardsTotal } from '../../src/api/schemas/entities/burnchain-rewards';
-import { FAUCET_TESTNET_KEYS } from 'src/api/routes/faucets';
+import { FAUCET_TESTNET_KEYS } from '../../src/api/routes/faucets';
 
 describe('PoX-4 - Stack extend and increase operations', () => {
   const account = FAUCET_TESTNET_KEYS[1];

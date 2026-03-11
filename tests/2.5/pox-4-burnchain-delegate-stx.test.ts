@@ -39,7 +39,7 @@ import {
   TransactionEventsResponse,
 } from '../../src/api/schemas/responses/responses';
 import { StxLockTransactionEvent } from '../../src/api/schemas/entities/transaction-events';
-import { FAUCET_TESTNET_KEYS } from 'src/api/routes/faucets';
+import { FAUCET_TESTNET_KEYS } from '../../src/api/routes/faucets';
 
 // Perform Delegate-STX operation on Bitcoin.
 // See https://github.com/stacksgov/sips/blob/a7f2e58ec90c12ee1296145562eec75029b89c48/sips/sip-015/sip-015-network-upgrade.md#new-burnchain-transaction-delegate-stx

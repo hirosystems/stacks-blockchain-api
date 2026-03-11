@@ -1,15 +1,10 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
-import { bytesToHex } from '@stacks/common';
 import { StacksNetwork } from '@stacks/network';
 import { decodeBtcAddress } from '@stacks/stacking';
 import {
   bufferCV,
-  ChainID,
   ClarityValue,
-  createStacksPrivateKey,
-  deserializeTransaction,
   getAddressFromPrivateKey,
-  TransactionSigner,
   TransactionVersion,
   TupleCV,
   tupleCV,
@@ -37,7 +32,7 @@ import { MIGRATIONS_DIR } from '../../src/datastore/pg-store';
 import { getConnectionArgs } from '../../src/datastore/connection';
 import { AddressStxBalance } from '../../src/api/schemas/entities/addresses';
 import { ServerStatusResponse } from '../../src/api/schemas/responses/responses';
-import { FAUCET_TESTNET_KEYS } from 'src/api/routes/faucets';
+import { FAUCET_TESTNET_KEYS } from '../../src/api/routes/faucets';
 
 export async function migrate(direction: 'up' | 'down') {
   const connArgs = getConnectionArgs();

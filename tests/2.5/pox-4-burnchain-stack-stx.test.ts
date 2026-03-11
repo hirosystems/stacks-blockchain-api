@@ -36,7 +36,7 @@ import { AddressStxBalance } from '../../src/api/schemas/entities/addresses';
 import { TransactionEventsResponse } from '../../src/api/schemas/responses/responses';
 import { StxLockTransactionEvent } from '../../src/api/schemas/entities/transaction-events';
 import { ContractCallTransaction } from '../../src/api/schemas/entities/transactions';
-import { FAUCET_TESTNET_KEYS } from 'src/api/routes/faucets';
+import { FAUCET_TESTNET_KEYS } from '../../src/api/routes/faucets';
 
 // Perform Stack-STX operation on Bitcoin.
 // See https://github.com/stacksgov/sips/blob/0da29c6911c49c45e4125dbeaed58069854591eb/sips/sip-007/sip-007-stacking-consensus.md#stx-operations-on-bitcoin

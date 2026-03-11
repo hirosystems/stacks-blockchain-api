@@ -16,7 +16,7 @@ import {
 } from '@stacks/transactions';
 import { PgWriteStore } from '../../src/datastore/pg-write-store';
 import { standByForTx as standByForTxShared } from '../utils/test-helpers';
-import { FAUCET_TESTNET_KEYS } from 'src/api/routes/faucets';
+import { FAUCET_TESTNET_KEYS } from '../../src/api/routes/faucets';
 import { logger } from '@stacks/api-toolkit';
 
 function hash160(bfr: Buffer): Buffer {
