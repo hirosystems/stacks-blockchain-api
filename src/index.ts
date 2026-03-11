@@ -27,38 +27,6 @@ import Fastify from 'fastify';
 import { SnpEventStreamHandler } from './event-stream/snp-event-stream';
 import { ENV } from './env';
 
-enum StacksApiMode {
-  /**
-   * Default mode. Runs both the Event Server and API endpoints. AKA read-write mode.
-   */
-  default = 'default',
-  /**
-   * Runs the API endpoints without an Event Server. A connection to a `default`
-   * or `writeOnly` API's postgres DB is required.
-   */
-  readOnly = 'readonly',
-  /**
-   * Runs the Event Server only.
-   */
-  writeOnly = 'writeonly',
-}
-
-/**
- * Determines the current API execution mode based on .env values.
- * @returns detected StacksApiMode
- */
-function getApiMode(): StacksApiMode {
-  switch (ENV.STACKS_API_MODE) {
-    case 'readonly':
-      return StacksApiMode.readOnly;
-    case 'writeonly':
-      return StacksApiMode.writeOnly;
-    default:
-      break;
-  }
-  return StacksApiMode.default;
-}
-
 // ts-node has automatic source map support, avoid clobbering
 if (!process.execArgv.some(r => r.includes('ts-node'))) {
   sourceMapSupport.install({ handleUncaughtExceptions: false });
@@ -97,18 +65,18 @@ async function init(): Promise<void> {
   }
   promClient.collectDefaultMetrics();
   chainIdConfigurationCheck();
-  const apiMode = getApiMode();
+  const apiMode = ENV.STACKS_API_MODE;
   const dbStore = await PgStore.connect({
     usageName: `datastore-${apiMode}`,
   });
   const dbWriteStore = await PgWriteStore.connect({
     usageName: `write-datastore-${apiMode}`,
-    skipMigrations: apiMode === StacksApiMode.readOnly,
+    skipMigrations: apiMode === 'readonly',
     withRedisNotifier: ENV.REDIS_NOTIFIER_ENABLED,
   });
   registerMempoolPromStats(dbWriteStore.eventEmitter);
 
-  if (apiMode === StacksApiMode.default || apiMode === StacksApiMode.writeOnly) {
+  if (apiMode === 'default' || apiMode === 'writeonly') {
     const configuredChainID = getApiConfiguredChainID();
     const eventServer = await startEventServer({
       datastore: dbWriteStore,
@@ -154,7 +122,7 @@ async function init(): Promise<void> {
     }
   }
 
-  if (apiMode === StacksApiMode.default || apiMode === StacksApiMode.readOnly) {
+  if (apiMode === 'default' || apiMode === 'readonly') {
     const apiServer = await startApiServer({
       datastore: dbStore,
       writeDatastore: dbWriteStore,

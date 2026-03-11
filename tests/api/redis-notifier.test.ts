@@ -54,7 +54,7 @@ describe('redis notifier', () => {
     expect(JSON.parse(messages[0]).payload).toEqual(
       expect.objectContaining({
         chain: 'stacks',
-        network: 'mainnet',
+        network: 'testnet',
         apply_blocks: [{ hash: '0x1234', index: 1, time: 1234 }],
         rollback_blocks: [],
       })
@@ -74,7 +74,7 @@ describe('redis notifier', () => {
     expect(JSON.parse(messages[0]).payload).toEqual(
       expect.objectContaining({
         chain: 'stacks',
-        network: 'mainnet',
+        network: 'testnet',
         apply_blocks: [{ hash: '0x1234', index: 1, time: 1234 }],
         rollback_blocks: [],
       })
@@ -93,7 +93,7 @@ describe('redis notifier', () => {
     expect(JSON.parse(messages[1]).payload).toEqual(
       expect.objectContaining({
         chain: 'stacks',
-        network: 'mainnet',
+        network: 'testnet',
         apply_blocks: [{ hash: '0x1235', index: 2, time: 1234 }],
         rollback_blocks: [],
       })
@@ -125,7 +125,7 @@ describe('redis notifier', () => {
     expect(JSON.parse(messages[2]).payload).toEqual(
       expect.objectContaining({
         chain: 'stacks',
-        network: 'mainnet',
+        network: 'testnet',
         apply_blocks: [
           { hash: '0x1235aa', index: 2, time: 1234 },
           { hash: '0x1236', index: 3, time: 1234 },
