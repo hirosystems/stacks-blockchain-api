@@ -54,7 +54,7 @@ import {
   PostConditionAuthFlag,
   PrincipalTypeID,
   TxPayloadTypeID,
-} from '@hirosystems/stacks-encoding-native-js';
+} from '@stacks/codec';
 import { getTxSenderAddress } from '../event-stream/reader';
 import postgres = require('postgres');
 import * as prom from 'prom-client';

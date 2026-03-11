@@ -9,7 +9,7 @@ import {
   decodeClarityValueToRepr,
   decodeClarityValueToTypeName,
   decodePostConditions,
-} from '@hirosystems/stacks-encoding-native-js';
+} from '@stacks/codec';
 import {
   BlockIdentifier,
   DbAssetEventTypeId,

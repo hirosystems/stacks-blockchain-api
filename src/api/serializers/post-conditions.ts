@@ -3,7 +3,7 @@ import {
   PostConditionAssetInfoID,
   PostConditionPrincipal,
   PostConditionPrincipalTypeID,
-} from '@hirosystems/stacks-encoding-native-js';
+} from '@stacks/codec';
 
 const assetPrincipalTypeMap = {
   [PostConditionPrincipalTypeID.Origin]: 'principal_origin',

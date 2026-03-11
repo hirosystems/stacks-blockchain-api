@@ -29,7 +29,7 @@ import {
   ClarityValueTuple,
   ClarityValueUInt,
   decodeClarityValue,
-} from '@hirosystems/stacks-encoding-native-js';
+} from '@stacks/codec';
 import { poxAddressToBtcAddress } from '@stacks/stacking';
 import { SyntheticPoxEventName } from '../pox-helpers';
 import { bufferToHex, coerceToBuffer, logger } from '@stacks/api-toolkit';
