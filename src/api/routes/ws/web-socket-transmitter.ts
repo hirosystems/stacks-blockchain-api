@@ -17,19 +17,19 @@ import { logger } from '@stacks/api-toolkit';
 import { ENV } from '../../../env';
 
 export function getWsPingIntervalMs(): number {
-  return parseInt(ENV.STACKS_API_WS_PING_INTERVAL ?? '5') * 1000;
+  return ENV.STACKS_API_WS_PING_INTERVAL * 1000;
 }
 
 export function getWsPingTimeoutMs(): number {
-  return parseInt(ENV.STACKS_API_WS_PING_TIMEOUT ?? '5') * 1000;
+  return ENV.STACKS_API_WS_PING_TIMEOUT * 1000;
 }
 
 export function getWsMessageTimeoutMs(): number {
-  return parseInt(ENV.STACKS_API_WS_MESSAGE_TIMEOUT ?? '5') * 1000;
+  return ENV.STACKS_API_WS_MESSAGE_TIMEOUT * 1000;
 }
 
 function getWsUpdateQueueTimeoutMs(): number {
-  return parseInt(ENV.STACKS_API_WS_UPDATE_QUEUE_TIMEOUT ?? '5') * 1000;
+  return ENV.STACKS_API_WS_UPDATE_QUEUE_TIMEOUT * 1000;
 }
 
 /**

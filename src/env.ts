@@ -243,7 +243,7 @@ const schema = Type.Object({
   REDIS_QUEUE_MAXLEN: Type.Integer({ default: 10000, minimum: 0 }),
 });
 
-export type Env = Static<typeof schema>;
+type Env = Static<typeof schema>;
 
 export const ENV = envSchema<Env>({
   schema: schema,
