@@ -1,5 +1,5 @@
 import { Static, Type } from '@sinclair/typebox';
-import { Nullable, OptionalNullable, PaginatedCursorResponse, PaginatedResponse } from '../util';
+import { OptionalNullable, PaginatedCursorResponse, PaginatedResponse } from '../util';
 import { MempoolStatsSchema } from '../entities/mempool-transactions';
 import { MempoolTransactionSchema, TransactionSchema } from '../entities/transactions';
 import { MicroblockSchema } from '../entities/microblock';
@@ -7,7 +7,10 @@ import {
   AddressTransactionWithTransfersSchema,
   InboundStxTransferSchema,
 } from '../entities/addresses';
-import { TransactionEventSchema } from '../entities/transaction-events';
+import {
+  SmartContractLogTransactionEventSchema,
+  TransactionEventSchema,
+} from '../entities/transaction-events';
 import {
   BurnchainRewardSchema,
   BurnchainRewardSlotHolderSchema,
@@ -183,6 +186,10 @@ export type RunFaucetResponse = Static<typeof RunFaucetResponseSchema>;
 
 export const BlockListV2ResponseSchema = PaginatedCursorResponse(NakamotoBlockSchema);
 export type BlockListV2Response = Static<typeof BlockListV2ResponseSchema>;
+
+export const ContractEventListResponseSchema = PaginatedCursorResponse(
+  SmartContractLogTransactionEventSchema
+);
 
 export const BlockSignerSignatureResponseSchema = PaginatedResponse(SignerSignatureSchema);
 export type BlockSignerSignatureResponse = Static<typeof BlockSignerSignatureResponseSchema>;
