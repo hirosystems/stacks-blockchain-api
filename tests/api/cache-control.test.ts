@@ -441,7 +441,6 @@ describe('cache-control tests', () => {
     const etag4 = request6.headers['etag'];
 
     // Garbage collect all txs.
-    process.env.STACKS_MEMPOOL_TX_GARBAGE_COLLECTION_THRESHOLD = '0';
     const block4 = new TestBlockBuilder({
       block_height: 4,
       index_block_hash: '0x04',

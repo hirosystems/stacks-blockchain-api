@@ -1,4 +1,4 @@
-import { loadDotEnv } from '../../src/helpers';
+import { ENV } from '../../src/env';
 
 // ts-unused-exports:disable-next-line
 export default (): void => {
@@ -6,7 +6,6 @@ export default (): void => {
   if (!process.env.NODE_ENV) {
     process.env.NODE_ENV = 'test';
   }
-  loadDotEnv();
-  process.env.PG_DATABASE = 'postgres';
+  ENV.PG_DATABASE = 'postgres';
   console.log('Jest - setup done');
 };

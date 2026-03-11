@@ -34,8 +34,10 @@ import { getConnectionArgs } from '../../src/datastore/connection';
 import { AddressStxBalance } from '../../src/api/schemas/entities/addresses';
 import { ServerStatusResponse } from '../../src/api/schemas/responses/responses';
 import { FAUCET_TESTNET_KEYS } from '../../src/api/routes/faucets';
+import { ENV } from '../../src/env';
 
 export async function migrate(direction: 'up' | 'down') {
+  ENV.PG_DATABASE = 'postgres';
   const connArgs = getConnectionArgs();
   await createSchema(connArgs);
   await runMigrations(MIGRATIONS_DIR, direction, connArgs);

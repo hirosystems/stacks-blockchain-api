@@ -1,10 +1,11 @@
-import { parseBoolean, SERVER_VERSION } from '@stacks/api-toolkit';
+import { SERVER_VERSION } from '@stacks/api-toolkit';
 import { logger as defaultLogger } from '@stacks/api-toolkit';
 import { EventEmitter } from 'node:events';
 import { EventStreamServer } from './event-server';
 import { PgWriteStore } from '../datastore/pg-write-store';
 import { StacksMessageStream } from '@stacks/node-publisher-client';
 import { MessagePath } from '@stacks/node-publisher-client/dist/messages';
+import { ENV } from '../env';
 
 export class SnpEventStreamHandler {
   db: PgWriteStore;
@@ -22,16 +23,10 @@ export class SnpEventStreamHandler {
     this.db = opts.db;
     this.eventServer = opts.eventServer;
 
-    this.redisUrl = process.env.SNP_REDIS_URL as string;
-    if (!this.redisUrl) {
-      throw new Error('SNP_REDIS_URL environment variable is not set');
-    }
+    this.redisUrl = ENV.SNP_REDIS_URL;
+    this.redisStreamPrefix = ENV.SNP_REDIS_STREAM_KEY_PREFIX;
 
-    this.redisStreamPrefix = process.env.SNP_REDIS_STREAM_KEY_PREFIX;
-
-    const blocksOnly = process.env.SNP_BLOCKS_ONLY_STREAMING
-      ? parseBoolean(process.env.SNP_BLOCKS_ONLY_STREAMING)
-      : false;
+    const blocksOnly = ENV.SNP_BLOCKS_ONLY_STREAMING;
     const selectedMessagePaths: MessagePath[] = [MessagePath.NewBlock, MessagePath.NewBurnBlock];
     if (!blocksOnly) {
       selectedMessagePaths.push(MessagePath.NewMempoolTx);

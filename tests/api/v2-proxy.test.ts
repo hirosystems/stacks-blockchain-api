@@ -1,7 +1,7 @@
 import * as supertest from 'supertest';
 import { ChainID } from '@stacks/transactions';
 import { startApiServer } from '../../src/api/init';
-import { useWithCleanup, withEnvVars } from './test-helpers';
+import { useWithCleanup } from './test-helpers';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
@@ -11,6 +11,7 @@ import { PgWriteStore } from '../../src/datastore/pg-write-store';
 import { migrate } from '../utils/test-helpers';
 import { MockAgent, setGlobalDispatcher, getGlobalDispatcher } from 'undici';
 import { TestBlockBuilder } from '../utils/test-builders';
+import { ENV } from '../../src/env';
 
 describe('v2-proxy tests', () => {
   let db: PgWriteStore;
@@ -43,6 +44,14 @@ describe('v2-proxy tests', () => {
           },
         ],
       });
+    ENV.STACKS_CORE_FEE_ESTIMATOR_ENABLED = true;
+    ENV.STACKS_CORE_FEE_ESTIMATION_MODIFIER = 0.5;
+    ENV.STACKS_CORE_PROXY_HOST = 'proxy-stacks-node';
+    ENV.STACKS_CORE_PROXY_PORT = 12345;
+    ENV.STACKS_CORE_FEE_PAST_TENURE_FULLNESS_WINDOW = 5;
+    ENV.STACKS_CORE_FEE_PAST_DIMENSION_FULLNESS_THRESHOLD = 0.9;
+    ENV.STACKS_CORE_FEE_CURRENT_DIMENSION_FULLNESS_THRESHOLD = 0.5;
+    ENV.STACKS_CORE_FEE_CURRENT_BLOCK_COUNT_MINIMUM = 5;
   });
 
   afterEach(async () => {
@@ -56,19 +65,6 @@ describe('v2-proxy tests', () => {
 
     await useWithCleanup(
       () => {
-        const restoreEnvVars = withEnvVars(
-          ['STACKS_CORE_FEE_ESTIMATOR_ENABLED', '1'],
-          ['STACKS_CORE_FEE_ESTIMATION_MODIFIER', feeEstimationModifier.toString()],
-          ['STACKS_CORE_PROXY_HOST', primaryProxyEndpoint.split(':')[0]],
-          ['STACKS_CORE_PROXY_PORT', primaryProxyEndpoint.split(':')[1]],
-          ['STACKS_CORE_FEE_PAST_TENURE_FULLNESS_WINDOW', '5'],
-          ['STACKS_CORE_FEE_PAST_DIMENSION_FULLNESS_THRESHOLD', '0.9'],
-          ['STACKS_CORE_FEE_CURRENT_DIMENSION_FULLNESS_THRESHOLD', '0.5'],
-          ['STACKS_CORE_FEE_CURRENT_BLOCK_COUNT_MINIMUM', '5']
-        );
-        return [, () => restoreEnvVars()] as const;
-      },
-      () => {
         const agent = new MockAgent();
         const originalAgent = getGlobalDispatcher();
         setGlobalDispatcher(agent);
@@ -81,7 +77,7 @@ describe('v2-proxy tests', () => {
         });
         return [apiServer, apiServer.terminate] as const;
       },
-      async (_, mockAgent, api) => {
+      async (mockAgent, api) => {
         // Stub responses.
         const primaryStubbedResponse = {
           cost_scalar_change_by_byte: 0.00476837158203125,
@@ -268,21 +264,14 @@ describe('v2-proxy tests', () => {
     const extraTxEndpoint = 'http://extra-tx-endpoint-a/test';
     await useWithCleanup(
       () => {
-        const restoreEnvVars = withEnvVars(
-          ['STACKS_CORE_PROXY_HOST', primaryProxyEndpoint.split(':')[0]],
-          ['STACKS_CORE_PROXY_PORT', primaryProxyEndpoint.split(':')[1]]
-        );
-        return [, () => restoreEnvVars()] as const;
-      },
-      () => {
         const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'stacks-api-unit-test-'));
         const extraEndpointsFilePath = path.join(tempDir, 'extra-tx-endpoints.txt');
         fs.writeFileSync(extraEndpointsFilePath, extraTxEndpoint, { flag: 'w' });
-        const restoreEnvVars = withEnvVars([
-          'STACKS_API_EXTRA_TX_ENDPOINTS_FILE',
+        ENV.STACKS_API_EXTRA_TX_ENDPOINTS_FILE = extraEndpointsFilePath;
+        return [
           extraEndpointsFilePath,
-        ]);
-        return [, () => restoreEnvVars()] as const;
+          () => (ENV.STACKS_API_EXTRA_TX_ENDPOINTS_FILE = undefined),
+        ] as const;
       },
       async () => {
         const apiServer = await startApiServer({
@@ -291,7 +280,7 @@ describe('v2-proxy tests', () => {
         });
         return [apiServer, apiServer.terminate] as const;
       },
-      async (_, __, api) => {
+      async (__, api) => {
         const block1: DbBlock = {
           block_hash: '0x11',
           index_block_hash: '0xaa',

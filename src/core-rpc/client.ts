@@ -1,8 +1,7 @@
-/* eslint-disable @typescript-eslint/no-non-null-assertion */
 import fetch, { RequestInit } from 'node-fetch';
-import { parsePort } from '../helpers';
 import { ClarityValue, cvToHex } from '@stacks/transactions';
 import { stopwatch, timeout, logger } from '@stacks/api-toolkit';
+import { ENV } from '../env';
 
 interface CoreRpcAccountInfo {
   /** Hex-prefixed uint128. */
@@ -126,14 +125,8 @@ interface CoreRpcNeighbors {
 type RequestOpts = RequestInit & { queryParams?: Record<string, string> };
 
 export function getCoreNodeEndpoint(opts?: { host?: string; port?: number | string }) {
-  const host = opts?.host ?? process.env['STACKS_CORE_RPC_HOST'];
-  if (!host) {
-    throw new Error(`STACKS_CORE_RPC_HOST is not defined`);
-  }
-  const port = parsePort(opts?.port ?? process.env['STACKS_CORE_RPC_PORT']);
-  if (!port) {
-    throw new Error(`STACKS_CORE_RPC_PORT is not defined`);
-  }
+  const host = opts?.host ?? ENV.STACKS_CORE_RPC_HOST;
+  const port = opts?.port ?? ENV.STACKS_CORE_RPC_PORT;
   return `${host}:${port}`;
 }
 

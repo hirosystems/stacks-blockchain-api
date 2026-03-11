@@ -2,9 +2,6 @@ import { pipeline } from 'node:stream/promises';
 import { Readable } from 'stream';
 import { DbRawEventRequest } from '../datastore/common';
 import { getConnectionArgs, getConnectionConfig, PgServer } from '../datastore/connection';
-import { connectPgPool } from './connection-legacy';
-import * as pgCopyStreams from 'pg-copy-streams';
-import * as PgCursor from 'pg-cursor';
 import { connectPostgres } from '@stacks/api-toolkit';
 import { createWriteStream } from 'node:fs';
 
@@ -39,90 +36,63 @@ export async function* getRawEventRequests(
   readStream: Readable,
   onStatusUpdate?: (msg: string) => void
 ): AsyncGenerator<DbRawEventRequest[], void, unknown> {
-  // 1. Pipe input stream into a temp table
-  // 2. Use `pg-cursor` to async read rows from temp table (order by `id` ASC)
-  // 3. Drop temp table
-  // 4. Close db connection
-  const pool = await connectPgPool({
+  const sql = await connectPostgres({
     usageName: 'get-raw-events',
-    pgServer: PgServer.primary,
+    connectionArgs: getConnectionArgs(PgServer.primary),
+    connectionConfig: getConnectionConfig(PgServer.primary),
   });
+  const reserved = await sql.reserve();
   try {
-    const client = await pool.connect();
-    try {
-      await client.query('BEGIN');
-      await client.query(`
-        CREATE TEMPORARY TABLE temp_event_observer_requests(
-          id bigint PRIMARY KEY,
-          receive_timestamp timestamptz NOT NULL,
-          event_path text NOT NULL,
-          payload jsonb NOT NULL
-        ) ON COMMIT DROP
-      `);
-      // Use a `temp_raw_tsv` table first to store the raw TSV data as it might come with duplicate
-      // rows which would trigger the `PRIMARY KEY` constraint in `temp_event_observer_requests`.
-      // We will "upsert" from the former to the latter before event ingestion.
-      await client.query(`
-        CREATE TEMPORARY TABLE temp_raw_tsv
-        (LIKE temp_event_observer_requests)
-        ON COMMIT DROP
-      `);
-      onStatusUpdate?.('Importing raw event requests into temporary table...');
-      const importStream = client.query(pgCopyStreams.from(`COPY temp_raw_tsv FROM STDIN`));
-      await pipeline(readStream, importStream);
-      onStatusUpdate?.('Removing any duplicate raw event requests...');
-      await client.query(`
-        INSERT INTO temp_event_observer_requests
-        SELECT *
-        FROM temp_raw_tsv
-        ON CONFLICT DO NOTHING;
-      `);
-      const totallengthQuery = await client.query<{ count: string }>(
-        `SELECT COUNT(id) count FROM temp_event_observer_requests`
-      );
-      const totallength = parseInt(totallengthQuery.rows[0].count);
-      let lastStatusUpdatePercent = 0;
-      onStatusUpdate?.('Streaming raw event requests from temporary table...');
-      const cursor = new PgCursor<{ id: string; event_path: string; payload: string }>(
-        `
-        SELECT id, event_path, payload::text
-        FROM temp_event_observer_requests
-        ORDER BY id ASC
-        `
-      );
-      const cursorQuery = client.query(cursor);
-      const rowBatchSize = 100;
-      let rowsReadCount = 0;
-      let rows: DbRawEventRequest[] = [];
-      do {
-        rows = await new Promise<DbRawEventRequest[]>((resolve, reject) => {
-          cursorQuery.read(rowBatchSize, (error, rows) => {
-            if (error) {
-              reject(error);
-            } else {
-              rowsReadCount += rows.length;
-              if ((rowsReadCount / totallength) * 100 > lastStatusUpdatePercent + 1) {
-                lastStatusUpdatePercent = Math.floor((rowsReadCount / totallength) * 100);
-                onStatusUpdate?.(
-                  `Raw event requests processed: ${lastStatusUpdatePercent}% (${rowsReadCount} / ${totallength})`
-                );
-              }
-              resolve(rows);
-            }
-          });
-        });
-        if (rows.length > 0) {
-          yield rows;
-        }
-      } while (rows.length > 0);
-      await client.query('COMMIT');
-    } catch (error) {
-      await client.query('ROLLBACK');
-      throw error;
-    } finally {
-      client.release();
+    await reserved`
+      CREATE TEMPORARY TABLE temp_event_observer_requests(
+        id bigint PRIMARY KEY,
+        receive_timestamp timestamptz NOT NULL,
+        event_path text NOT NULL,
+        payload jsonb NOT NULL
+      )
+    `;
+    // Use a `temp_raw_tsv` table first to store the raw TSV data as it might come with duplicate
+    // rows which would trigger the `PRIMARY KEY` constraint in `temp_event_observer_requests`.
+    // We will "upsert" from the former to the latter before event ingestion.
+    await reserved`
+      CREATE TEMPORARY TABLE temp_raw_tsv
+      (LIKE temp_event_observer_requests)
+    `;
+    onStatusUpdate?.('Importing raw event requests into temporary table...');
+    const writable = await reserved`COPY temp_raw_tsv FROM STDIN`.writable();
+    await pipeline(readStream, writable);
+    onStatusUpdate?.('Removing any duplicate raw event requests...');
+    await reserved`
+      INSERT INTO temp_event_observer_requests
+      SELECT *
+      FROM temp_raw_tsv
+      ON CONFLICT DO NOTHING
+    `;
+    const [{ count }] = await reserved<{ count: string }[]>`
+      SELECT COUNT(id) count FROM temp_event_observer_requests
+    `;
+    const totalLength = parseInt(count);
+    let lastStatusUpdatePercent = 0;
+    onStatusUpdate?.('Streaming raw event requests from temporary table...');
+    const rowBatchSize = 100;
+    let rowsReadCount = 0;
+    const cursor = reserved<DbRawEventRequest[]>`
+      SELECT id, event_path, payload::text
+      FROM temp_event_observer_requests
+      ORDER BY id ASC
+    `.cursor(rowBatchSize);
+    for await (const rows of cursor) {
+      rowsReadCount += rows.length;
+      if ((rowsReadCount / totalLength) * 100 > lastStatusUpdatePercent + 1) {
+        lastStatusUpdatePercent = Math.floor((rowsReadCount / totalLength) * 100);
+        onStatusUpdate?.(
+          `Raw event requests processed: ${lastStatusUpdatePercent}% (${rowsReadCount} / ${totalLength})`
+        );
+      }
+      yield rows;
     }
   } finally {
-    await pool.end();
+    reserved.release();
+    await sql.end();
   }
 }

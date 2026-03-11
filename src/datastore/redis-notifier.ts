@@ -3,6 +3,7 @@ import { BlockHeader, ReOrgUpdatedEntities } from './common';
 import { ChainID } from '@stacks/transactions';
 import { getApiConfiguredChainID } from '../helpers';
 import { logger } from '@stacks/api-toolkit';
+import { ENV } from '../env';
 
 /**
  * Notifies Chainhooks of the progress of the Stacks index via a message sent to a Redis queue. This
@@ -17,7 +18,7 @@ export class RedisNotifier {
   constructor() {
     this.redis = this.newRedisConnection();
     this.chainId = getApiConfiguredChainID();
-    this.queue = process.env.REDIS_QUEUE ?? 'chainhooks:stacks:index-progress';
+    this.queue = ENV.REDIS_QUEUE;
     logger.info(`RedisNotifier initialized for queue ${this.queue}`);
   }
 
@@ -55,12 +56,7 @@ export class RedisNotifier {
     };
     logger.info(message, 'RedisNotifier broadcasting index progress message');
     await this.redis.xadd(this.queue, '*', 'data', JSON.stringify(message));
-    await this.redis.xtrim(
-      this.queue,
-      'MAXLEN',
-      '~',
-      parseInt(process.env.REDIS_QUEUE_MAXLEN ?? '10000')
-    );
+    await this.redis.xtrim(this.queue, 'MAXLEN', '~', ENV.REDIS_QUEUE_MAXLEN);
   }
 
   async close() {
@@ -74,52 +70,47 @@ export class RedisNotifier {
   private newRedisConnection(): Redis | Cluster {
     const baseOptions: RedisOptions = {
       retryStrategy: times => Math.min(times * 50, 2000),
-      maxRetriesPerRequest: parseInt(process.env.REDIS_MAX_RETRIES ?? '20'),
-      connectTimeout: parseInt(process.env.REDIS_CONNECTION_TIMEOUT ?? '10000'),
-      commandTimeout: parseInt(process.env.REDIS_COMMAND_TIMEOUT ?? '5000'),
+      maxRetriesPerRequest: ENV.REDIS_MAX_RETRIES,
+      connectTimeout: ENV.REDIS_CONNECTION_TIMEOUT,
+      commandTimeout: ENV.REDIS_COMMAND_TIMEOUT,
       lazyConnect: true,
     };
 
-    // Single Redis instance with URL
-    if (process.env.REDIS_URL) {
-      logger.info(`RedisNotifier connecting to redis at ${process.env.REDIS_URL}`);
-      return new Redis(process.env.REDIS_URL, baseOptions);
+    if (ENV.REDIS_URL) {
+      logger.info(`RedisNotifier connecting to redis at ${ENV.REDIS_URL}`);
+      return new Redis(ENV.REDIS_URL, baseOptions);
     }
 
-    // Redis Cluster configuration
-    if (process.env.REDIS_CLUSTER_NODES && process.env.REDIS_CLUSTER_NODES.length > 0) {
+    if (ENV.REDIS_CLUSTER_NODES && ENV.REDIS_CLUSTER_NODES.length > 0) {
       let isSRVRecord = false;
-      const clusterNodesArray = process.env.REDIS_CLUSTER_NODES.split(',');
+      const clusterNodesArray = ENV.REDIS_CLUSTER_NODES.split(',');
       if (clusterNodesArray.length === 1) {
         isSRVRecord = true;
       }
-      logger.info(
-        `RedisNotifier connecting to redis cluster at ${process.env.REDIS_CLUSTER_NODES}`
-      );
+      logger.info(`RedisNotifier connecting to redis cluster at ${ENV.REDIS_CLUSTER_NODES}`);
       return new Redis.Cluster(clusterNodesArray, {
         ...baseOptions,
         redisOptions: {
           ...baseOptions,
-          password: process.env.REDIS_CLUSTER_PASSWORD,
+          password: ENV.REDIS_CLUSTER_PASSWORD,
         },
         useSRVRecords: isSRVRecord,
         clusterRetryStrategy: times => Math.min(times * 50, 2000),
       });
     }
 
-    // Redis Sentinel configuration
-    if (process.env.REDIS_SENTINELS) {
-      const sentinels = process.env.REDIS_SENTINELS.split(',');
-      logger.info(`RedisNotifier connecting to redis sentinel at ${process.env.REDIS_SENTINELS}`);
+    if (ENV.REDIS_SENTINELS) {
+      const sentinels = ENV.REDIS_SENTINELS.split(',');
+      logger.info(`RedisNotifier connecting to redis sentinel at ${ENV.REDIS_SENTINELS}`);
       return new Redis({
         ...baseOptions,
         sentinels: sentinels.map(sentinel => {
           const [host, port] = sentinel.split(':');
           return { host, port: parseInt(port) };
         }),
-        name: process.env.REDIS_SENTINEL_MASTER,
-        password: process.env.REDIS_SENTINEL_PASSWORD,
-        sentinelPassword: process.env.REDIS_SENTINEL_AUTH_PASSWORD,
+        name: ENV.REDIS_SENTINEL_MASTER,
+        password: ENV.REDIS_SENTINEL_PASSWORD,
+        sentinelPassword: ENV.REDIS_SENTINEL_AUTH_PASSWORD,
         sentinelRetryStrategy: times => Math.min(times * 50, 2000),
       });
     }

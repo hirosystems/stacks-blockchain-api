@@ -35,7 +35,6 @@ describe('ws transmitter', () => {
   let transmitter: WebSocketTransmitter;
 
   beforeEach(async () => {
-    process.env.PG_DATABASE = 'postgres';
     await migrate('up');
     db = await PgWriteStore.connect({ usageName: 'tests', skipMigrations: true });
   });

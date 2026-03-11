@@ -1,5 +1,4 @@
 import { StacksCoreRpcClient } from '../../src/core-rpc/client';
-import { loadDotEnv } from '../../src/helpers';
 import { PgWriteStore } from '../../src/datastore/pg-write-store';
 import {
   DummyEventMessageHandler,
@@ -10,6 +9,7 @@ import { ChainID } from '@stacks/common';
 import * as isCI from 'is-ci';
 import { migrate } from './test-helpers';
 import { timeout } from '@stacks/api-toolkit';
+import { ENV } from '../../src/env';
 
 interface GlobalTestEnv {
   db: PgWriteStore;
@@ -39,9 +39,8 @@ export async function defaultSetupInit(
   if (!process.env.NODE_ENV) {
     process.env.NODE_ENV = 'test';
   }
-  loadDotEnv();
-  process.env.PG_DATABASE = 'postgres';
-  process.env.STACKS_CHAIN_ID = '0x80000000';
+  ENV.PG_DATABASE = 'postgres';
+  ENV.STACKS_CHAIN_ID = '0x80000000';
 
   await migrate('up');
   const db = await PgWriteStore.connect({ usageName: 'tests' });

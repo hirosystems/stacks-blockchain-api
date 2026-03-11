@@ -17,21 +17,22 @@ jest.mock('ioredis', () => {
 import { migrate } from '../utils/test-helpers';
 import { PgWriteStore } from '../../src/datastore/pg-write-store';
 import { TestBlockBuilder } from '../utils/test-builders';
+import { ENV } from '../../src/env';
 
 describe('redis notifier', () => {
   let db: PgWriteStore;
 
   beforeEach(async () => {
-    process.env.REDIS_NOTIFIER_ENABLED = '1';
-    process.env.REDIS_URL = 'localhost:6379';
-    process.env.REDIS_QUEUE = 'test-queue';
+    ENV.REDIS_NOTIFIER_ENABLED = true;
+    ENV.REDIS_URL = 'localhost:6379';
+    ENV.REDIS_QUEUE = 'test-queue';
+    await migrate('up');
     db = await PgWriteStore.connect({
       usageName: 'tests',
       withNotifier: false,
       withRedisNotifier: true,
       skipMigrations: true,
     });
-    await migrate('up');
     messages.length = 0;
   });
 
@@ -53,7 +54,7 @@ describe('redis notifier', () => {
     expect(JSON.parse(messages[0]).payload).toEqual(
       expect.objectContaining({
         chain: 'stacks',
-        network: 'mainnet',
+        network: 'testnet',
         apply_blocks: [{ hash: '0x1234', index: 1, time: 1234 }],
         rollback_blocks: [],
       })
@@ -73,7 +74,7 @@ describe('redis notifier', () => {
     expect(JSON.parse(messages[0]).payload).toEqual(
       expect.objectContaining({
         chain: 'stacks',
-        network: 'mainnet',
+        network: 'testnet',
         apply_blocks: [{ hash: '0x1234', index: 1, time: 1234 }],
         rollback_blocks: [],
       })
@@ -92,7 +93,7 @@ describe('redis notifier', () => {
     expect(JSON.parse(messages[1]).payload).toEqual(
       expect.objectContaining({
         chain: 'stacks',
-        network: 'mainnet',
+        network: 'testnet',
         apply_blocks: [{ hash: '0x1235', index: 2, time: 1234 }],
         rollback_blocks: [],
       })
@@ -124,7 +125,7 @@ describe('redis notifier', () => {
     expect(JSON.parse(messages[2]).payload).toEqual(
       expect.objectContaining({
         chain: 'stacks',
-        network: 'mainnet',
+        network: 'testnet',
         apply_blocks: [
           { hash: '0x1235aa', index: 2, time: 1234 },
           { hash: '0x1236', index: 3, time: 1234 },

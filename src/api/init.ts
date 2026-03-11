@@ -1,4 +1,4 @@
-import { Server, createServer } from 'http';
+import { Server } from 'http';
 import { Socket } from 'net';
 
 import { TxRoutes } from './routes/tx';
@@ -25,6 +25,7 @@ import { PgStore } from '../datastore/pg-store';
 import { PgWriteStore } from '../datastore/pg-write-store';
 import { WebSocketTransmitter } from './routes/ws/web-socket-transmitter';
 import { PoxEventRoutes, PoxRoutes } from './routes/pox';
+import { ENV } from '../env';
 import {
   PINO_LOGGER_CONFIG,
   SERVER_VERSION,
@@ -110,26 +111,11 @@ export async function startApiServer(opts: {
   datastore: PgStore;
   writeDatastore?: PgWriteStore;
   chainId: ChainID;
-  /** If not specified, this is read from the STACKS_BLOCKCHAIN_API_HOST env var. */
-  serverHost?: string;
-  /** If not specified, this is read from the STACKS_BLOCKCHAIN_API_PORT env var. */
-  serverPort?: number;
 }): Promise<ApiServer> {
-  const { datastore, writeDatastore, chainId, serverHost, serverPort } = opts;
+  const { datastore, writeDatastore, chainId } = opts;
 
-  const apiHost = serverHost ?? process.env['STACKS_BLOCKCHAIN_API_HOST'];
-  const apiPort = serverPort ?? parseInt(process.env['STACKS_BLOCKCHAIN_API_PORT'] ?? '');
-
-  if (!apiHost) {
-    throw new Error(
-      `STACKS_BLOCKCHAIN_API_HOST must be specified, e.g. "STACKS_BLOCKCHAIN_API_HOST=127.0.0.1"`
-    );
-  }
-  if (!apiPort) {
-    throw new Error(
-      `STACKS_BLOCKCHAIN_API_PORT must be specified, e.g. "STACKS_BLOCKCHAIN_API_PORT=3999"`
-    );
-  }
+  const apiHost = ENV.STACKS_BLOCKCHAIN_API_HOST;
+  const apiPort = ENV.STACKS_BLOCKCHAIN_API_PORT;
 
   const fastify = Fastify({
     trustProxy: true,
@@ -179,37 +165,18 @@ export async function startApiServer(opts: {
     defaultDeprecatedMessage: 'See https://docs.hiro.so/stacks/api for more information',
   });
 
-  // Wait for all routes and middleware to be ready before starting the server
-  await fastify.ready();
-
-  // TODO: Remove this extra server
-  const server = createServer((req, res) => {
-    fastify.server.emit('request', req, res);
-  });
-
   const serverSockets = new Set<Socket>();
-  server.on('connection', socket => {
+  fastify.server.on('connection', socket => {
     serverSockets.add(socket);
     socket.once('close', () => {
       serverSockets.delete(socket);
     });
   });
 
-  const ws = new WebSocketTransmitter(datastore, server);
+  const ws = new WebSocketTransmitter(datastore, fastify.server);
   ws.connect();
 
-  await new Promise<void>((resolve, reject) => {
-    try {
-      server.once('error', error => {
-        reject(error);
-      });
-      server.listen(apiPort, apiHost, () => {
-        resolve();
-      });
-    } catch (error) {
-      reject(error);
-    }
-  });
+  await fastify.listen({ port: apiPort, host: apiHost });
 
   const terminate = async () => {
     await new Promise<void>((resolve, reject) => {
@@ -227,34 +194,29 @@ export async function startApiServer(opts: {
     for (const socket of serverSockets) {
       socket.destroy();
     }
-    await new Promise<void>(resolve => {
-      logger.info('Closing API http server...');
-      server.close(() => {
-        logger.info('API http server closed.');
-        resolve();
-      });
-    });
+    logger.info('Closing API http server...');
+    await fastify.close();
+    logger.info('API http server closed.');
   };
 
   const forceKill = async () => {
     logger.info('Force closing API server...');
-    const [wsClosePromise, serverClosePromise] = [waiter(), waiter()];
+    const wsClosePromise = waiter();
     ws.close(() => wsClosePromise.finish());
-    server.close(() => serverClosePromise.finish());
     for (const socket of serverSockets) {
       socket.destroy();
     }
-    await Promise.allSettled([wsClosePromise, serverClosePromise]);
+    await Promise.allSettled([wsClosePromise, fastify.close()]);
   };
 
-  const addr = server.address();
+  const addr = fastify.server.address();
   if (addr === null) {
     throw new Error('server missing address');
   }
   const addrStr = typeof addr === 'string' ? addr : `${addr.address}:${addr.port}`;
   return {
     fastifyApp: fastify,
-    server: server,
+    server: fastify.server,
     ws: ws,
     address: addrStr,
     datastore: datastore,

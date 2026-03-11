@@ -14,6 +14,7 @@ import {
 } from '@stacks/api-toolkit';
 import { MIGRATIONS_DIR } from '../datastore/pg-store';
 import { PgServer, getConnectionArgs } from '../datastore/connection';
+import { ENV } from '../env';
 
 enum EventImportMode {
   /**
@@ -121,16 +122,13 @@ export async function importEventsFromTsv(
 
   // Look for the TSV's block height and determine the prunable block window.
   const tsvBlockHeight = await findTsvBlockHeight(resolvedFilePath);
-  const blockWindowSize = parseInt(
-    process.env['STACKS_MEMPOOL_TX_GARBAGE_COLLECTION_THRESHOLD'] ?? '256'
-  );
+  const blockWindowSize = 256;
   const prunedBlockHeight =
     prunedBlockHeightOption ?? Math.max(tsvBlockHeight - blockWindowSize, 0);
   console.log(`Event file's block height: ${tsvBlockHeight}`);
   console.log(`Starting event import and playback in ${eventImportMode} mode`);
   if (eventImportMode === EventImportMode.pruned) {
     console.log(`Ignoring all prunable events before block height: ${prunedBlockHeight}`);
-    process.env.IBD_MODE_UNTIL_BLOCK = `${prunedBlockHeight}`;
   }
 
   const db = await PgWriteStore.connect({

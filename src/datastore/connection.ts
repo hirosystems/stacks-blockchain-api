@@ -1,4 +1,5 @@
 import { PgConnectionArgs, PgConnectionOptions } from '@stacks/api-toolkit';
+import { ENV } from '../env';
 
 /**
  * The postgres server being used for a particular connection, transaction or query.
@@ -11,41 +12,43 @@ export enum PgServer {
 }
 
 /**
- * Retrieve a postgres ENV value depending on the target database server (read-replica/default or
- * primary). We will fall back to read-replica values if a primary value was not given. See the
- * `.env` file for more information on these options.
+ * Get the connection arguments for a particular server.
+ * @param server - The server to get the connection arguments for.
+ * @returns The connection arguments.
  */
-export function getPgConnectionEnvValue(
-  name: string,
-  pgServer: PgServer = PgServer.default
-): string | undefined {
-  const defaultVal = process.env[`PG_${name}`] ?? process.env[`PG${name}`];
-  return pgServer === PgServer.primary
-    ? (process.env[`PG_PRIMARY_${name}`] ?? defaultVal)
-    : defaultVal;
-}
-
 export function getConnectionArgs(server: PgServer = PgServer.default): PgConnectionArgs {
-  return (
-    getPgConnectionEnvValue('CONNECTION_URI', server) ?? {
-      database: getPgConnectionEnvValue('DATABASE', server),
-      user: getPgConnectionEnvValue('USER', server),
-      password: getPgConnectionEnvValue('PASSWORD', server),
-      host: getPgConnectionEnvValue('HOST', server),
-      port: parseInt(getPgConnectionEnvValue('PORT', server) ?? '5432'),
-      ssl: getPgConnectionEnvValue('SSL', server) == 'true',
-      schema: getPgConnectionEnvValue('SCHEMA', server),
-      application_name: getPgConnectionEnvValue('APPLICATION_NAME', server),
-    }
-  );
+  const primary = server === PgServer.primary;
+  return {
+    database: primary ? (ENV.PG_PRIMARY_DATABASE ?? ENV.PG_DATABASE) : ENV.PG_DATABASE,
+    user: primary ? (ENV.PG_PRIMARY_USER ?? ENV.PG_USER) : ENV.PG_USER,
+    password: primary ? (ENV.PG_PRIMARY_PASSWORD ?? ENV.PG_PASSWORD) : ENV.PG_PASSWORD,
+    host: primary ? (ENV.PG_PRIMARY_HOST ?? ENV.PG_HOST) : ENV.PG_HOST,
+    port: primary ? (ENV.PG_PRIMARY_PORT ?? ENV.PG_PORT) : ENV.PG_PORT,
+    ssl: primary ? (ENV.PG_PRIMARY_SSL ?? ENV.PG_SSL) : ENV.PG_SSL,
+    schema: primary ? (ENV.PG_PRIMARY_SCHEMA ?? ENV.PG_SCHEMA) : ENV.PG_SCHEMA,
+    application_name: ENV.PG_APPLICATION_NAME,
+  };
 }
 
+/**
+ * Get the connection config for a particular server.
+ * @param server - The server to get the connection config for.
+ * @returns The connection config.
+ */
 export function getConnectionConfig(server: PgServer = PgServer.default): PgConnectionOptions {
-  const statementTimeout = getPgConnectionEnvValue('STATEMENT_TIMEOUT', server);
+  const primary = server === PgServer.primary;
   return {
-    idleTimeout: parseInt(getPgConnectionEnvValue('IDLE_TIMEOUT', server) ?? '30'),
-    maxLifetime: parseInt(getPgConnectionEnvValue('MAX_LIFETIME', server) ?? '60'),
-    poolMax: parseInt(getPgConnectionEnvValue('CONNECTION_POOL_MAX', server) ?? '10'),
-    statementTimeout: statementTimeout ? parseInt(statementTimeout) : undefined,
+    idleTimeout: primary
+      ? (ENV.PG_PRIMARY_IDLE_TIMEOUT ?? ENV.PG_IDLE_TIMEOUT)
+      : ENV.PG_IDLE_TIMEOUT,
+    maxLifetime: primary
+      ? (ENV.PG_PRIMARY_MAX_LIFETIME ?? ENV.PG_MAX_LIFETIME)
+      : ENV.PG_MAX_LIFETIME,
+    poolMax: primary
+      ? (ENV.PG_PRIMARY_CONNECTION_POOL_MAX ?? ENV.PG_CONNECTION_POOL_MAX)
+      : ENV.PG_CONNECTION_POOL_MAX,
+    statementTimeout: primary
+      ? (ENV.PG_PRIMARY_STATEMENT_TIMEOUT ?? ENV.PG_STATEMENT_TIMEOUT)
+      : ENV.PG_STATEMENT_TIMEOUT,
   };
 }

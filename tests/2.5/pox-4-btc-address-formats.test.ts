@@ -31,6 +31,7 @@ import {
 } from '../../src/api/schemas/responses/responses';
 import { BurnchainRewardsTotal } from '../../src/api/schemas/entities/burnchain-rewards';
 import { FAUCET_TESTNET_KEYS } from '../../src/api/routes/faucets';
+import { ENV } from '../../src/env';
 
 const BTC_PRIVATE_KEY = '0000000000000000000000000000000000000000000000000000000000000002';
 
@@ -55,13 +56,11 @@ describe.each([P2SH_P2WPKH, P2WPKH, P2WSH, P2TR])(
     let bitcoinRpcClient: RPCClient;
 
     test('setup BTC wallet client', async () => {
-      const { BTC_RPC_PORT, BTC_RPC_HOST, BTC_RPC_PW, BTC_RPC_USER } = process.env;
       bitcoinRpcClient = new RPCClient({
-        url: BTC_RPC_HOST,
-        port: Number(BTC_RPC_PORT),
-        user: BTC_RPC_USER,
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-        pass: BTC_RPC_PW!,
+        url: ENV.BTC_RPC_HOST,
+        port: ENV.BTC_RPC_PORT,
+        user: ENV.BTC_RPC_USER,
+        pass: ENV.BTC_RPC_PW ?? '',
         timeout: 120000,
         wallet: btcAddrRegtest,
       });

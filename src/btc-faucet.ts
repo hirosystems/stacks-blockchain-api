@@ -1,14 +1,15 @@
 import { RPCClient } from 'rpc-bitcoin';
 import * as btc from 'bitcoinjs-lib';
 import * as ecc from 'tiny-secp256k1';
-import { mapSeriesAsync, parsePort } from './helpers';
+import { mapSeriesAsync } from './helpers';
 import * as coinselect from 'coinselect';
 import { ECPair, ECPairInterface, validateSigFunction } from './ec-helpers';
 import { BtcFaucetConfigError } from './errors';
 import { time, logger } from '@stacks/api-toolkit';
+import { ENV } from './env';
 
 function getFaucetPk(): string {
-  const { BTC_FAUCET_PK } = process.env;
+  const BTC_FAUCET_PK = ENV.BTC_FAUCET_PK;
   if (!BTC_FAUCET_PK) {
     throw new Error('BTC Faucet not fully configured.');
   }
@@ -33,13 +34,13 @@ export function getKeyAddress(key: ECPairInterface): string {
 }
 
 export function getRpcClient(): RPCClient {
-  const { BTC_RPC_PORT, BTC_RPC_HOST, BTC_RPC_PW, BTC_RPC_USER } = process.env;
+  const { BTC_RPC_PORT, BTC_RPC_HOST, BTC_RPC_PW, BTC_RPC_USER } = ENV;
   if (!BTC_RPC_PORT || !BTC_RPC_HOST || !BTC_RPC_PW || !BTC_RPC_USER) {
     throw new BtcFaucetConfigError('BTC Faucet is not configured.');
   }
   const client = new RPCClient({
     url: BTC_RPC_HOST,
-    port: parsePort(BTC_RPC_PORT),
+    port: BTC_RPC_PORT,
     user: BTC_RPC_USER,
     pass: BTC_RPC_PW,
     timeout: 120000,
