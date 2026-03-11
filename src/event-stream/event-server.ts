@@ -69,7 +69,14 @@ import {
 } from '../datastore/helpers';
 import { handleBnsImport } from '../import-v1';
 import { decodePoxSyntheticPrintEvent } from './pox-event-parsing';
-import { hexToBuffer, isProdEnv, logger, PINO_LOGGER_CONFIG, stopwatch } from '@stacks/api-toolkit';
+import {
+  hexToBuffer,
+  isProdEnv,
+  logger,
+  parseBoolean,
+  PINO_LOGGER_CONFIG,
+  stopwatch,
+} from '@stacks/api-toolkit';
 import { POX_2_CONTRACT_NAME, POX_3_CONTRACT_NAME, POX_4_CONTRACT_NAME } from '../pox-helpers';
 import {
   DropMempoolTxMessage,
@@ -84,11 +91,14 @@ import { CoreNodeParsedTxMessage } from './core-node-message';
 
 const IBD_PRUNABLE_ROUTES = ['/new_mempool_tx', '/drop_mempool_tx', '/new_microblocks'];
 
+const storeRawEvents = parseBoolean(process.env.STACKS_API_STORE_RAW_EVENTS ?? 'true');
+
 async function handleRawEventRequest(
   eventPath: string,
   payload: any,
   db: PgWriteStore
 ): Promise<void> {
+  if (!storeRawEvents) return;
   await db.storeRawEventRequest(eventPath, payload);
 }
 
