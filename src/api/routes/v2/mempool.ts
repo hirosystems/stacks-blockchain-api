@@ -1,7 +1,8 @@
 import { handleMempoolCache } from '../../controllers/cache-controller';
 import { DbMempoolFeePriority, DbTxTypeId } from '../../../datastore/common';
 import { FastifyPluginAsync } from 'fastify';
-import { Static, Type, TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
+import { TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
+import { Static, Type } from 'typebox';
 import { Server } from 'node:http';
 
 const MempoolFeePrioritiySchema = Type.Object({

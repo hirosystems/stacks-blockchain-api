@@ -1,4 +1,4 @@
-import { Static, Type } from '@sinclair/typebox';
+import { Static, Type } from 'typebox';
 import { Nullable } from '../util';
 import { PostConditionModeSchema, PostConditionSchema } from './post-conditions';
 import { TransactionEventSchema } from './transaction-events';

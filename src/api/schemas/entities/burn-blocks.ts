@@ -1,4 +1,4 @@
-import { Static, Type } from '@sinclair/typebox';
+import { Static, Type } from 'typebox';
 
 export const BurnBlockSchema = Type.Object({
   burn_block_time: Type.Integer({

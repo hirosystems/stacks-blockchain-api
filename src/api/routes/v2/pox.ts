@@ -3,7 +3,8 @@ import { parseDbPoxCycle, parseDbPoxSigner, parseDbPoxSignerStacker } from './he
 import { InvalidRequestError, NotFoundError } from '../../../errors';
 import { getChainIDNetwork } from '../../../helpers';
 import { FastifyPluginAsync } from 'fastify';
-import { Type, TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
+import { TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
+import { Type } from 'typebox';
 import { Server } from 'node:http';
 import { LimitParam, OffsetParam } from '../../schemas/params';
 import { getPagingQueryLimit, ResourceType } from '../../pagination';

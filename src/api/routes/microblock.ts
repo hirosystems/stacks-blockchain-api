@@ -7,7 +7,8 @@ import { getPagingQueryLimit, parsePagingQueryInput, ResourceType } from '../pag
 import { validateRequestHexInput } from '../query-helpers';
 import { has0xPrefix } from '@stacks/api-toolkit';
 import { FastifyPluginAsync } from 'fastify';
-import { Type, TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
+import { TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
+import { Type } from 'typebox';
 import { Server } from 'node:http';
 import { handleChainTipCache } from '../controllers/cache-controller';
 import { LimitParam, OffsetParam } from '../schemas/params';

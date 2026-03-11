@@ -2,7 +2,8 @@ import { parsePagingQueryInput } from '../../../api/pagination';
 import { bnsBlockchain, BnsErrors } from '../../../event-stream/bns/bns-constants';
 import { handleChainTipCache } from '../../../api/controllers/cache-controller';
 import { FastifyPluginAsync } from 'fastify';
-import { Type, TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
+import { TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
+import { Type } from 'typebox';
 import { Server } from 'node:http';
 import { UnanchoredParamSchema } from '../../schemas/params';
 
@@ -339,7 +340,7 @@ export const BnsNameRoutes: FastifyPluginAsync<
           if (error instanceof NameRedirectError) {
             await reply.redirect(error.message);
           } else {
-            await reply.status(404).send(error);
+            await reply.status(404 as any).send(error);
           }
         });
     }

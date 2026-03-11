@@ -3,7 +3,8 @@ import { parsePoxSyntheticEvent } from '../controllers/db-controller';
 import { getBlockParams, validatePrincipal, validateRequestHexInput } from '../query-helpers';
 import { handleChainTipCache } from '../controllers/cache-controller';
 import { FastifyPluginAsync } from 'fastify';
-import { Type, TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
+import { TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
+import { Type } from 'typebox';
 import { Server } from 'node:http';
 import { LimitParam, OffsetParam, PrincipalSchema, UnanchoredParamSchema } from '../schemas/params';
 import { NotFoundError } from '../../errors';
@@ -57,7 +58,7 @@ export const PoxRoutes: FastifyPluginAsync<
     async (req, reply) => {
       const limit = getPagingQueryLimit(ResourceType.Pox2Event, req.query.limit);
       const offset = parsePagingQueryInput(req.query.offset ?? 0);
-      const poxTable = poxTables[req.params.pox];
+      const poxTable = poxTables[req.params.pox as keyof typeof poxTables];
 
       const queryResults = await fastify.db.getPoxSyntheticEvents({
         offset,
@@ -91,7 +92,7 @@ export const PoxRoutes: FastifyPluginAsync<
     },
     async (req, reply) => {
       const { tx_id } = req.params;
-      const poxTable = poxTables[req.params.pox];
+      const poxTable = poxTables[req.params.pox as keyof typeof poxTables];
       validateRequestHexInput(tx_id);
       const queryResults = await fastify.db.getPoxSyntheticEventsForTx({
         txId: tx_id,
@@ -125,7 +126,7 @@ export const PoxRoutes: FastifyPluginAsync<
     },
     async (req, reply) => {
       const { principal } = req.params;
-      const poxTable = poxTables[req.params.pox];
+      const poxTable = poxTables[req.params.pox as keyof typeof poxTables];
       validatePrincipal(principal);
       const queryResults = await fastify.db.getPoxSyntheticEventsForStacker({
         principal,
@@ -181,7 +182,7 @@ export const PoxRoutes: FastifyPluginAsync<
       const poolPrincipal = req.params.pool_principal;
       validatePrincipal(poolPrincipal);
 
-      const poxTable = poxTables[req.params.pox];
+      const poxTable = poxTables[req.params.pox as keyof typeof poxTables];
 
       const limit = getPagingQueryLimit(ResourceType.Stacker, req.query.limit);
       const offset = parsePagingQueryInput(req.query.offset ?? 0);

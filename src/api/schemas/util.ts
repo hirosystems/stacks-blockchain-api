@@ -1,8 +1,11 @@
-import { ObjectOptions, TSchema, Type } from '@sinclair/typebox';
+import { TSchema, Type } from 'typebox';
 
 export const Nullable = <T extends TSchema>(schema: T) => Type.Union([schema, Type.Null()]);
 export const OptionalNullable = <T extends TSchema>(schema: T) => Type.Optional(Nullable(schema));
-export const PaginatedResponse = <T extends TSchema>(type: T, options?: ObjectOptions) =>
+export const PaginatedResponse = <T extends TSchema>(
+  type: T,
+  options?: Record<string, unknown>
+) =>
   Type.Object(
     {
       limit: Type.Integer({ examples: [20] }),
@@ -10,10 +13,13 @@ export const PaginatedResponse = <T extends TSchema>(type: T, options?: ObjectOp
       total: Type.Integer({ examples: [1] }),
       results: Type.Array(type),
     },
-    options
+    options as any
   );
 
-export const PaginatedCursorResponse = <T extends TSchema>(type: T, options?: ObjectOptions) =>
+export const PaginatedCursorResponse = <T extends TSchema>(
+  type: T,
+  options?: Record<string, unknown>
+) =>
   Type.Object(
     {
       limit: Type.Integer({ examples: [20] }),
@@ -24,5 +30,5 @@ export const PaginatedCursorResponse = <T extends TSchema>(type: T, options?: Ob
       cursor: Nullable(Type.String({ description: 'Current page cursor' })),
       results: Type.Array(type),
     },
-    options
+    options as any
   );

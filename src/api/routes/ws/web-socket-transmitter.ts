@@ -15,6 +15,7 @@ import { WsRpcChannel } from './channels/ws-rpc-channel';
 import { parseNftEvent } from '../../../datastore/helpers';
 import { logger } from '@stacks/api-toolkit';
 import { ENV } from '../../../env';
+import type { MempoolTransaction, Transaction } from '../../schemas/entities/transactions';
 
 export function getWsPingIntervalMs(): number {
   return ENV.STACKS_API_WS_PING_INTERVAL * 1000;
@@ -156,7 +157,7 @@ export class WebSocketTransmitter {
           excludeFunctionArgs: false,
         });
         if (mempoolTxs.length > 0) {
-          await this.send('mempoolTransaction', mempoolTxs[0]);
+          await this.send('mempoolTransaction', mempoolTxs[0] as MempoolTransaction);
         }
       } catch (error) {
         logger.error(error);
@@ -187,7 +188,7 @@ export class WebSocketTransmitter {
           }
         });
         if (result) {
-          await this.send('transaction', result);
+          await this.send('transaction', result as Transaction | MempoolTransaction);
         }
       } catch (error) {
         logger.error(error);
@@ -232,9 +233,9 @@ export class WebSocketTransmitter {
         }
         const addressTxs = dbTxsQuery.results;
         for (const addressTx of addressTxs) {
-          const parsedTx = parseDbTx(addressTx.tx, false);
+          const parsedTx = parseDbTx(addressTx.tx, false) as Transaction;
           const result: AddressTransactionWithTransfers = {
-            tx: parsedTx,
+            tx: parsedTx as any,
             stx_sent: addressTx.stx_sent.toString(),
             stx_received: addressTx.stx_received.toString(),
             stx_transfers: addressTx.stx_transfers.map(value => {

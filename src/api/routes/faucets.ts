@@ -25,7 +25,8 @@ import { StacksCoreRpcClient } from '../../core-rpc/client';
 import { logger } from '@stacks/api-toolkit';
 import { ENV } from '../../env';
 import { FastifyPluginAsync, preHandlerHookHandler } from 'fastify';
-import { Type, TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
+import { TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
+import { Type } from 'typebox';
 import { fastifyFormbody } from '@fastify/formbody';
 import { Server } from 'node:http';
 import { OptionalNullable } from '../schemas/util';
@@ -204,7 +205,7 @@ export const FaucetRoutes: FastifyPluginAsync<
             success: false,
           });
         }
-        const ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
+        const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
 
         // Guard condition: requests are limited to 5 times per 5 minutes.
         // Only based on address for now, but we're keeping the IP in case
@@ -429,7 +430,7 @@ export const FaucetRoutes: FastifyPluginAsync<
         // Guard condition: requests are limited to x times per y minutes.
         // Only based on address for now, but we're keeping the IP in case
         // we want to escalate and implement a per IP policy
-        const ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
+        const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
         const lastRequests = await fastify.db.getSTXFaucetRequests(recipientAddress);
         const now = Date.now();
         const isStackingReq = req.query.stacking ?? false;

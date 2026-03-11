@@ -1,6 +1,7 @@
 import { handleChainTipCache } from '../../../api/controllers/cache-controller';
 import { FastifyPluginAsync } from 'fastify';
-import { Type, TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
+import { TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
+import { Type } from 'typebox';
 import { Server } from 'node:http';
 import { UnanchoredParamSchema } from '../../schemas/params';
 import { InvalidRequestError, InvalidRequestErrorType } from '../../../errors';

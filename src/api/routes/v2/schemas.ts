@@ -1,4 +1,4 @@
-import { Type, Static, TSchema } from '@sinclair/typebox';
+import { Type, Static, TSchema } from 'typebox';
 import { ResourceType, pagingQueryLimits } from '../../../api/pagination';
 import Ajv from 'ajv';
 import addFormats from 'ajv-formats';

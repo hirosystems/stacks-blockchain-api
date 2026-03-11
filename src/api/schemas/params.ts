@@ -1,4 +1,4 @@
-import { Type } from '@sinclair/typebox';
+import { Type } from 'typebox';
 import { pagingQueryLimits, ResourceType } from '../pagination';
 import { isTestEnv } from '@stacks/api-toolkit';
 

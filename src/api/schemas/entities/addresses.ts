@@ -1,4 +1,4 @@
-import { Static, Type } from '@sinclair/typebox';
+import { Static, Type } from 'typebox';
 import { TransactionSchema } from './transactions';
 import { TransactionEventAssetTypeSchema } from './transaction-events';
 import { Nullable } from '../util';

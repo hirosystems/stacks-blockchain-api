@@ -7,7 +7,8 @@ import { has0xPrefix } from '@stacks/api-toolkit';
 import { InvalidRequestError, InvalidRequestErrorType } from '../../errors';
 
 import { FastifyPluginAsync } from 'fastify';
-import { Type, TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
+import { TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
+import { Type } from 'typebox';
 import { Server } from 'node:http';
 import { LimitParam, OffsetParam, PrincipalSchema, UnanchoredParamSchema } from '../schemas/params';
 import { PaginatedResponse } from '../schemas/util';
@@ -374,7 +375,7 @@ export const TokenRoutes: FastifyPluginAsync<
           offset: OffsetParam('Offset', 'index of first holder to fetch'),
         }),
         response: {
-          200: Type.Composite([
+          200: Type.Intersect([
             Type.Object({
               total_supply: Type.String({
                 description: 'The total supply of the token (the sum of all balances)',

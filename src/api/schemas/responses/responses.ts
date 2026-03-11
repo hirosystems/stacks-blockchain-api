@@ -1,4 +1,4 @@
-import { Static, Type } from '@sinclair/typebox';
+import { Static, Type } from 'typebox';
 import { Nullable, OptionalNullable, PaginatedCursorResponse, PaginatedResponse } from '../util';
 import { MempoolStatsSchema } from '../entities/mempool-transactions';
 import { MempoolTransactionSchema, TransactionSchema } from '../entities/transactions';

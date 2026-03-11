@@ -1,5 +1,6 @@
 import Fastify from 'fastify';
-import { TSchema, TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
+import { TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
+import { TSchema } from 'typebox';
 import FastifySwagger from '@fastify/swagger';
 import { mkdirSync, writeFileSync } from 'fs';
 import { OpenApiSchemaOptions } from './api/schemas/openapi';

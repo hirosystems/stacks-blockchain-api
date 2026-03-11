@@ -1,4 +1,4 @@
-import { Static, Type } from '@sinclair/typebox';
+import { Static, Type } from 'typebox';
 
 export const PostConditionModeSchema = Type.Union([Type.Literal('allow'), Type.Literal('deny')]);
 

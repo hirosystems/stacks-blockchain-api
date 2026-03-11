@@ -14,7 +14,8 @@ import {
 } from '../controllers/db-controller';
 import { has0xPrefix } from '@stacks/api-toolkit';
 import { FastifyPluginAsync } from 'fastify';
-import { Type, TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
+import { TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
+import { Type } from 'typebox';
 import { Server } from 'node:http';
 import { AddressStxBalance } from '../schemas/entities/addresses';
 import { Block } from '../schemas/entities/block';

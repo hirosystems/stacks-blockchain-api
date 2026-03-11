@@ -3,7 +3,8 @@ import { microStxToStx, STACKS_DECIMAL_PLACES, TOTAL_STACKS_YEAR_2050 } from '..
 import { handleChainTipCache } from '../controllers/cache-controller';
 
 import { FastifyPluginAsync } from 'fastify';
-import { Type, TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
+import { TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
+import { Type } from 'typebox';
 import { Server } from 'node:http';
 import { UnanchoredParamSchema } from '../schemas/params';
 

@@ -204,7 +204,7 @@ export class SocketIOChannel extends WebSocketChannel {
         const [tx] = args as ListenerType<WebSocketPayload['transaction']>;
         this.prometheus?.sendEvent('transaction');
         const topic: TransactionTopic = `transaction:${tx.tx_id}`;
-        this.io?.to(topic).emit(topic, tx);
+        this.io?.to(topic).emit(topic, tx as any);
         break;
       }
       case 'nftEvent': {
@@ -235,7 +235,7 @@ export class SocketIOChannel extends WebSocketChannel {
         const [principal, tx] = args as ListenerType<WebSocketPayload['principalTransaction']>;
         const topic: AddressTransactionTopic = `address-transaction:${principal}`;
         this.prometheus?.sendEvent('address-transaction');
-        this.io?.to(topic).emit(topic, principal, tx);
+        this.io?.to(topic).emit(topic, principal, tx as any);
         break;
       }
       case 'principalStxBalance': {

@@ -1,4 +1,4 @@
-import { Static, Type } from '@sinclair/typebox';
+import { Static, Type } from 'typebox';
 
 export const BurnBlockPoxTxSchema = Type.Object({
   burn_block_height: Type.Integer({ description: 'Height of the burn block' }),

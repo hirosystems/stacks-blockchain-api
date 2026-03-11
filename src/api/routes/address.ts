@@ -24,7 +24,8 @@ import { PgStore } from '../../datastore/pg-store';
 import { has0xPrefix, logger } from '@stacks/api-toolkit';
 
 import { FastifyPluginAsync } from 'fastify';
-import { Type, TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
+import { TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
+import { Type } from 'typebox';
 import { Server } from 'node:http';
 import {
   LimitParam,

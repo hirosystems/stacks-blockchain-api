@@ -11,7 +11,8 @@ import { getChainIDNetwork, isValidPrincipal } from './../../../helpers';
 import { getBnsContractID, GetStacksNetwork } from '../../../event-stream/bns/bns-helpers';
 import { logger } from '@stacks/api-toolkit';
 import { FastifyPluginAsync } from 'fastify';
-import { Type, TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
+import { TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
+import { Type } from 'typebox';
 import { Server } from 'node:http';
 import { handleChainTipCache } from '../../controllers/cache-controller';
 

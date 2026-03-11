@@ -168,7 +168,7 @@ export class PgStoreV2 extends BasePgStoreModule {
     offset?: number;
   }): Promise<DbPaginatedResult<DbBlock>> {
     return await this.sqlTransaction(async sql => {
-      const limit = args.limit ?? BlockLimitParamSchema.default;
+      const limit = args.limit ?? (BlockLimitParamSchema as any).default;
       const offset = args.offset ?? 0;
       const filter =
         args.block.type === 'latest'
@@ -220,7 +220,7 @@ export class PgStoreV2 extends BasePgStoreModule {
     offset?: number;
   }): Promise<DbPaginatedResult<DbBurnBlockPoxTx>> {
     return await this.sqlTransaction(async sql => {
-      const limit = args.limit ?? BlockLimitParamSchema.default;
+      const limit = args.limit ?? (BlockLimitParamSchema as any).default;
       const offset = args.offset ?? 0;
       const blockFilter = args.block
         ? args.block.type === 'latest'
@@ -289,7 +289,7 @@ export class PgStoreV2 extends BasePgStoreModule {
     offset?: number;
   }): Promise<DbPaginatedResult<string>> {
     return await this.sqlTransaction(async sql => {
-      const limit = args.limit ?? BlockSignerSignatureLimitParamSchema.default;
+      const limit = args.limit ?? (BlockSignerSignatureLimitParamSchema as any).default;
       const offset = args.offset ?? 0;
       const blockId = args.blockId;
       const filter =
@@ -385,7 +385,7 @@ export class PgStoreV2 extends BasePgStoreModule {
     offset?: number;
   }): Promise<DbPaginatedResult<DbTx>> {
     return await this.sqlTransaction(async sql => {
-      const limit = args.limit ?? TransactionLimitParamSchema.default;
+      const limit = args.limit ?? (TransactionLimitParamSchema as any).default;
       const offset = args.offset ?? 0;
       const txsQuery = await sql<(TxQueryResult & { total: number })[]>`
         WITH block_ptr AS (
@@ -429,7 +429,7 @@ export class PgStoreV2 extends BasePgStoreModule {
 
   async getBurnBlocks(args: BlockPaginationQueryParams): Promise<DbPaginatedResult<DbBurnBlock>> {
     return await this.sqlTransaction(async sql => {
-      const limit = args.limit ?? BlockLimitParamSchema.default;
+      const limit = args.limit ?? (BlockLimitParamSchema as any).default;
       const offset = args.offset ?? 0;
       const blocksQuery = await sql<(DbBurnBlock & { total: number })[]>`
         WITH RelevantBlocks AS (
@@ -580,7 +580,7 @@ export class PgStoreV2 extends BasePgStoreModule {
     args: AddressParams & TransactionPaginationQueryParams & { cursor?: string }
   ): Promise<DbCursorPaginatedResult<DbTxWithAddressTransfers>> {
     return await this.sqlTransaction(async sql => {
-      const limit = args.limit ?? TransactionLimitParamSchema.default;
+      const limit = args.limit ?? (TransactionLimitParamSchema as any).default;
       const offset = args.offset ?? 0;
 
       // Parse cursor if provided (format: "indexBlockHash:microblockSequence:txIndex")
@@ -717,7 +717,7 @@ export class PgStoreV2 extends BasePgStoreModule {
   }): Promise<DbPaginatedResult<DbAddressTransactionEvent>> {
     return await this.sqlTransaction(async sql => {
       await assertTxIdExists(sql, args.tx_id);
-      const limit = args.limit ?? TransactionLimitParamSchema.default;
+      const limit = args.limit ?? (TransactionLimitParamSchema as any).default;
       const offset = args.offset ?? 0;
 
       const eventCond = sql`
@@ -771,7 +771,7 @@ export class PgStoreV2 extends BasePgStoreModule {
 
   async getPoxCycles(args: PoxCyclePaginationQueryParams): Promise<DbPaginatedResult<DbPoxCycle>> {
     return this.sqlTransaction(async sql => {
-      const limit = args.limit ?? PoxCycleLimitParamSchema.default;
+      const limit = args.limit ?? (PoxCycleLimitParamSchema as any).default;
       const offset = args.offset ?? 0;
       const results = await sql<(PoxCycleQueryResult & { total: number })[]>`
         SELECT
@@ -813,7 +813,7 @@ export class PgStoreV2 extends BasePgStoreModule {
     offset: number;
   }): Promise<DbPaginatedResult<DbPoxCycleSigner>> {
     return this.sqlTransaction(async sql => {
-      const limit = args.limit ?? PoxSignerLimitParamSchema.default;
+      const limit = args.limit ?? (PoxSignerLimitParamSchema as any).default;
       const offset = args.offset ?? 0;
       const cycleNumber = args.cycle_number;
       const cycleCheck =
@@ -950,7 +950,7 @@ export class PgStoreV2 extends BasePgStoreModule {
     offset: number;
   }): Promise<DbPaginatedResult<DbPoxCycleSignerStacker>> {
     return this.sqlTransaction(async sql => {
-      const limit = args.limit ?? PoxSignerLimitParamSchema.default;
+      const limit = args.limit ?? (PoxSignerLimitParamSchema as any).default;
       const offset = args.offset ?? 0;
       const signerKey = has0xPrefix(args.signer_key) ? args.signer_key : '0x' + args.signer_key;
       const cycleNumber = args.cycle_number;

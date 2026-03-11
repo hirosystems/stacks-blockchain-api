@@ -3,7 +3,8 @@ import { parseDbBurnBlock, parseDbBurnBlockPoxTx, parseDbNakamotoBlock } from '.
 import { BurnBlockParamsSchema, cleanBlockHeightOrHashParam, parseBlockParam } from './schemas';
 import { InvalidRequestError, NotFoundError } from '../../../errors';
 import { FastifyPluginAsync } from 'fastify';
-import { Type, TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
+import { TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
+import { Type } from 'typebox';
 import { Server } from 'node:http';
 import { LimitParam, OffsetParam } from '../../schemas/params';
 import { ResourceType } from '../../pagination';

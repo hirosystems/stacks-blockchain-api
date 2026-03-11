@@ -19,7 +19,8 @@ import { DbEventTypeId } from '../../datastore/common';
 import { has0xPrefix } from '@stacks/api-toolkit';
 import { FastifyPluginAsync } from 'fastify';
 import { Server } from 'node:http';
-import { Type, TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
+import { TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
+import { Type } from 'typebox';
 import {
   AddressParamSchema,
   BlockHeightSchema,
@@ -188,8 +189,8 @@ export const TxRoutes: FastifyPluginAsync<
         contractId,
         functionName: req.query.function_name,
         nonce: req.query.nonce,
-        order: req.query.order,
-        sortBy: req.query.sort_by,
+        order: req.query.order as 'asc' | 'desc' | undefined,
+        sortBy: req.query.sort_by as 'burn_block_time' | 'block_height' | 'fee' | undefined,
       });
       const results = txResults.map(tx => parseDbTx(tx, excludeFunctionArgs));
       await reply.send({ limit, offset, total, results });
@@ -301,8 +302,8 @@ export const TxRoutes: FastifyPluginAsync<
         );
       }
 
-      const orderBy = req.query.order_by;
-      const order = req.query.order;
+      const orderBy = req.query.order_by as 'age' | 'size' | 'fee' | undefined;
+      const order = req.query.order as 'asc' | 'desc' | undefined;
 
       const { results: txResults, total } = await fastify.db.getMempoolTxList({
         offset,

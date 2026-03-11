@@ -1,4 +1,4 @@
-import { Static, Type } from '@sinclair/typebox';
+import { Static, Type } from 'typebox';
 import envSchema from 'env-schema';
 
 const schema = Type.Object({
