@@ -1,4 +1,4 @@
-import { Server, createServer } from 'http';
+import { Server } from 'http';
 import { Socket } from 'net';
 
 import { TxRoutes } from './routes/tx';
@@ -179,37 +179,18 @@ export async function startApiServer(opts: {
     defaultDeprecatedMessage: 'See https://docs.hiro.so/stacks/api for more information',
   });
 
-  // Wait for all routes and middleware to be ready before starting the server
-  await fastify.ready();
-
-  // TODO: Remove this extra server
-  const server = createServer((req, res) => {
-    fastify.server.emit('request', req, res);
-  });
-
   const serverSockets = new Set<Socket>();
-  server.on('connection', socket => {
+  fastify.server.on('connection', socket => {
     serverSockets.add(socket);
     socket.once('close', () => {
       serverSockets.delete(socket);
     });
   });
 
-  const ws = new WebSocketTransmitter(datastore, server);
+  const ws = new WebSocketTransmitter(datastore, fastify.server);
   ws.connect();
 
-  await new Promise<void>((resolve, reject) => {
-    try {
-      server.once('error', error => {
-        reject(error);
-      });
-      server.listen(apiPort, apiHost, () => {
-        resolve();
-      });
-    } catch (error) {
-      reject(error);
-    }
-  });
+  await fastify.listen({ port: apiPort, host: apiHost });
 
   const terminate = async () => {
     await new Promise<void>((resolve, reject) => {
@@ -227,34 +208,29 @@ export async function startApiServer(opts: {
     for (const socket of serverSockets) {
       socket.destroy();
     }
-    await new Promise<void>(resolve => {
-      logger.info('Closing API http server...');
-      server.close(() => {
-        logger.info('API http server closed.');
-        resolve();
-      });
-    });
+    logger.info('Closing API http server...');
+    await fastify.close();
+    logger.info('API http server closed.');
   };
 
   const forceKill = async () => {
     logger.info('Force closing API server...');
-    const [wsClosePromise, serverClosePromise] = [waiter(), waiter()];
+    const wsClosePromise = waiter();
     ws.close(() => wsClosePromise.finish());
-    server.close(() => serverClosePromise.finish());
     for (const socket of serverSockets) {
       socket.destroy();
     }
-    await Promise.allSettled([wsClosePromise, serverClosePromise]);
+    await Promise.allSettled([wsClosePromise, fastify.close()]);
   };
 
-  const addr = server.address();
+  const addr = fastify.server.address();
   if (addr === null) {
     throw new Error('server missing address');
   }
   const addrStr = typeof addr === 'string' ? addr : `${addr.address}:${addr.port}`;
   return {
     fastifyApp: fastify,
-    server: server,
+    server: fastify.server,
     ws: ws,
     address: addrStr,
     datastore: datastore,
