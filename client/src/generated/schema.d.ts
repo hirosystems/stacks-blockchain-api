@@ -1980,7 +1980,7 @@ export interface operations {
                             /** @description Denotes whether the originating account is the same as the paying account */
                             sponsored: boolean;
                             sponsor_address?: string;
-                            post_condition_mode: "allow" | "deny";
+                            post_condition_mode: "allow" | "deny" | "originator";
                             post_conditions: ({
                                 principal: {
                                     /** @enum {string} */
@@ -2036,7 +2036,7 @@ export interface operations {
                                     address: string;
                                     contract_name: string;
                                 };
-                                condition_code: "sent" | "not_sent";
+                                condition_code: "sent" | "not_sent" | "maybe_sent";
                                 /** @enum {string} */
                                 type: "non_fungible";
                                 asset_value: {
@@ -2195,7 +2195,7 @@ export interface operations {
                             /** @description Denotes whether the originating account is the same as the paying account */
                             sponsored: boolean;
                             sponsor_address?: string;
-                            post_condition_mode: "allow" | "deny";
+                            post_condition_mode: "allow" | "deny" | "originator";
                             post_conditions: ({
                                 principal: {
                                     /** @enum {string} */
@@ -2251,7 +2251,7 @@ export interface operations {
                                     address: string;
                                     contract_name: string;
                                 };
-                                condition_code: "sent" | "not_sent";
+                                condition_code: "sent" | "not_sent" | "maybe_sent";
                                 /** @enum {string} */
                                 type: "non_fungible";
                                 asset_value: {
@@ -2410,7 +2410,7 @@ export interface operations {
                             /** @description Denotes whether the originating account is the same as the paying account */
                             sponsored: boolean;
                             sponsor_address?: string;
-                            post_condition_mode: "allow" | "deny";
+                            post_condition_mode: "allow" | "deny" | "originator";
                             post_conditions: ({
                                 principal: {
                                     /** @enum {string} */
@@ -2466,7 +2466,7 @@ export interface operations {
                                     address: string;
                                     contract_name: string;
                                 };
-                                condition_code: "sent" | "not_sent";
+                                condition_code: "sent" | "not_sent" | "maybe_sent";
                                 /** @enum {string} */
                                 type: "non_fungible";
                                 asset_value: {
@@ -2632,7 +2632,7 @@ export interface operations {
                             /** @description Denotes whether the originating account is the same as the paying account */
                             sponsored: boolean;
                             sponsor_address?: string;
-                            post_condition_mode: "allow" | "deny";
+                            post_condition_mode: "allow" | "deny" | "originator";
                             post_conditions: ({
                                 principal: {
                                     /** @enum {string} */
@@ -2688,7 +2688,7 @@ export interface operations {
                                     address: string;
                                     contract_name: string;
                                 };
-                                condition_code: "sent" | "not_sent";
+                                condition_code: "sent" | "not_sent" | "maybe_sent";
                                 /** @enum {string} */
                                 type: "non_fungible";
                                 asset_value: {
@@ -2846,7 +2846,7 @@ export interface operations {
                             /** @description Denotes whether the originating account is the same as the paying account */
                             sponsored: boolean;
                             sponsor_address?: string;
-                            post_condition_mode: "allow" | "deny";
+                            post_condition_mode: "allow" | "deny" | "originator";
                             post_conditions: ({
                                 principal: {
                                     /** @enum {string} */
@@ -2902,7 +2902,7 @@ export interface operations {
                                     address: string;
                                     contract_name: string;
                                 };
-                                condition_code: "sent" | "not_sent";
+                                condition_code: "sent" | "not_sent" | "maybe_sent";
                                 /** @enum {string} */
                                 type: "non_fungible";
                                 asset_value: {
@@ -3060,7 +3060,7 @@ export interface operations {
                             /** @description Denotes whether the originating account is the same as the paying account */
                             sponsored: boolean;
                             sponsor_address?: string;
-                            post_condition_mode: "allow" | "deny";
+                            post_condition_mode: "allow" | "deny" | "originator";
                             post_conditions: ({
                                 principal: {
                                     /** @enum {string} */
@@ -3116,7 +3116,7 @@ export interface operations {
                                     address: string;
                                     contract_name: string;
                                 };
-                                condition_code: "sent" | "not_sent";
+                                condition_code: "sent" | "not_sent" | "maybe_sent";
                                 /** @enum {string} */
                                 type: "non_fungible";
                                 asset_value: {
@@ -3336,7 +3336,7 @@ export interface operations {
                                 /** @description Denotes whether the originating account is the same as the paying account */
                                 sponsored: boolean;
                                 sponsor_address?: string;
-                                post_condition_mode: "allow" | "deny";
+                                post_condition_mode: "allow" | "deny" | "originator";
                                 post_conditions: ({
                                     principal: {
                                         /** @constant */
@@ -3392,7 +3392,7 @@ export interface operations {
                                         address: string;
                                         contract_name: string;
                                     };
-                                    condition_code: "sent" | "not_sent";
+                                    condition_code: "sent" | "not_sent" | "maybe_sent";
                                     /** @constant */
                                     type: "non_fungible";
                                     asset_value: {
@@ -3551,7 +3551,7 @@ export interface operations {
                                 /** @description Denotes whether the originating account is the same as the paying account */
                                 sponsored: boolean;
                                 sponsor_address?: string;
-                                post_condition_mode: "allow" | "deny";
+                                post_condition_mode: "allow" | "deny" | "originator";
                                 post_conditions: ({
                                     principal: {
                                         /** @constant */
@@ -3607,7 +3607,7 @@ export interface operations {
                                         address: string;
                                         contract_name: string;
                                     };
-                                    condition_code: "sent" | "not_sent";
+                                    condition_code: "sent" | "not_sent" | "maybe_sent";
                                     /** @constant */
                                     type: "non_fungible";
                                     asset_value: {
@@ -3766,7 +3766,7 @@ export interface operations {
                                 /** @description Denotes whether the originating account is the same as the paying account */
                                 sponsored: boolean;
                                 sponsor_address?: string;
-                                post_condition_mode: "allow" | "deny";
+                                post_condition_mode: "allow" | "deny" | "originator";
                                 post_conditions: ({
                                     principal: {
                                         /** @constant */
@@ -3822,7 +3822,7 @@ export interface operations {
                                         address: string;
                                         contract_name: string;
                                     };
-                                    condition_code: "sent" | "not_sent";
+                                    condition_code: "sent" | "not_sent" | "maybe_sent";
                                     /** @constant */
                                     type: "non_fungible";
                                     asset_value: {
@@ -3988,7 +3988,7 @@ export interface operations {
                                 /** @description Denotes whether the originating account is the same as the paying account */
                                 sponsored: boolean;
                                 sponsor_address?: string;
-                                post_condition_mode: "allow" | "deny";
+                                post_condition_mode: "allow" | "deny" | "originator";
                                 post_conditions: ({
                                     principal: {
                                         /** @constant */
@@ -4044,7 +4044,7 @@ export interface operations {
                                         address: string;
                                         contract_name: string;
                                     };
-                                    condition_code: "sent" | "not_sent";
+                                    condition_code: "sent" | "not_sent" | "maybe_sent";
                                     /** @constant */
                                     type: "non_fungible";
                                     asset_value: {
@@ -4202,7 +4202,7 @@ export interface operations {
                                 /** @description Denotes whether the originating account is the same as the paying account */
                                 sponsored: boolean;
                                 sponsor_address?: string;
-                                post_condition_mode: "allow" | "deny";
+                                post_condition_mode: "allow" | "deny" | "originator";
                                 post_conditions: ({
                                     principal: {
                                         /** @constant */
@@ -4258,7 +4258,7 @@ export interface operations {
                                         address: string;
                                         contract_name: string;
                                     };
-                                    condition_code: "sent" | "not_sent";
+                                    condition_code: "sent" | "not_sent" | "maybe_sent";
                                     /** @constant */
                                     type: "non_fungible";
                                     asset_value: {
@@ -4416,7 +4416,7 @@ export interface operations {
                                 /** @description Denotes whether the originating account is the same as the paying account */
                                 sponsored: boolean;
                                 sponsor_address?: string;
-                                post_condition_mode: "allow" | "deny";
+                                post_condition_mode: "allow" | "deny" | "originator";
                                 post_conditions: ({
                                     principal: {
                                         /** @constant */
@@ -4472,7 +4472,7 @@ export interface operations {
                                         address: string;
                                         contract_name: string;
                                     };
-                                    condition_code: "sent" | "not_sent";
+                                    condition_code: "sent" | "not_sent" | "maybe_sent";
                                     /** @constant */
                                     type: "non_fungible";
                                     asset_value: {
@@ -4640,7 +4640,7 @@ export interface operations {
                                 /** @description Denotes whether the originating account is the same as the paying account */
                                 sponsored: boolean;
                                 sponsor_address?: string;
-                                post_condition_mode: "allow" | "deny";
+                                post_condition_mode: "allow" | "deny" | "originator";
                                 post_conditions: ({
                                     principal: {
                                         /** @constant */
@@ -4696,7 +4696,7 @@ export interface operations {
                                         address: string;
                                         contract_name: string;
                                     };
-                                    condition_code: "sent" | "not_sent";
+                                    condition_code: "sent" | "not_sent" | "maybe_sent";
                                     /** @constant */
                                     type: "non_fungible";
                                     asset_value: {
@@ -4740,7 +4740,7 @@ export interface operations {
                                 /** @description Denotes whether the originating account is the same as the paying account */
                                 sponsored: boolean;
                                 sponsor_address?: string;
-                                post_condition_mode: "allow" | "deny";
+                                post_condition_mode: "allow" | "deny" | "originator";
                                 post_conditions: ({
                                     principal: {
                                         /** @constant */
@@ -4796,7 +4796,7 @@ export interface operations {
                                         address: string;
                                         contract_name: string;
                                     };
-                                    condition_code: "sent" | "not_sent";
+                                    condition_code: "sent" | "not_sent" | "maybe_sent";
                                     /** @constant */
                                     type: "non_fungible";
                                     asset_value: {
@@ -4840,7 +4840,7 @@ export interface operations {
                                 /** @description Denotes whether the originating account is the same as the paying account */
                                 sponsored: boolean;
                                 sponsor_address?: string;
-                                post_condition_mode: "allow" | "deny";
+                                post_condition_mode: "allow" | "deny" | "originator";
                                 post_conditions: ({
                                     principal: {
                                         /** @constant */
@@ -4896,7 +4896,7 @@ export interface operations {
                                         address: string;
                                         contract_name: string;
                                     };
-                                    condition_code: "sent" | "not_sent";
+                                    condition_code: "sent" | "not_sent" | "maybe_sent";
                                     /** @constant */
                                     type: "non_fungible";
                                     asset_value: {
@@ -4947,7 +4947,7 @@ export interface operations {
                                 /** @description Denotes whether the originating account is the same as the paying account */
                                 sponsored: boolean;
                                 sponsor_address?: string;
-                                post_condition_mode: "allow" | "deny";
+                                post_condition_mode: "allow" | "deny" | "originator";
                                 post_conditions: ({
                                     principal: {
                                         /** @constant */
@@ -5003,7 +5003,7 @@ export interface operations {
                                         address: string;
                                         contract_name: string;
                                     };
-                                    condition_code: "sent" | "not_sent";
+                                    condition_code: "sent" | "not_sent" | "maybe_sent";
                                     /** @constant */
                                     type: "non_fungible";
                                     asset_value: {
@@ -5046,7 +5046,7 @@ export interface operations {
                                 /** @description Denotes whether the originating account is the same as the paying account */
                                 sponsored: boolean;
                                 sponsor_address?: string;
-                                post_condition_mode: "allow" | "deny";
+                                post_condition_mode: "allow" | "deny" | "originator";
                                 post_conditions: ({
                                     principal: {
                                         /** @constant */
@@ -5102,7 +5102,7 @@ export interface operations {
                                         address: string;
                                         contract_name: string;
                                     };
-                                    condition_code: "sent" | "not_sent";
+                                    condition_code: "sent" | "not_sent" | "maybe_sent";
                                     /** @constant */
                                     type: "non_fungible";
                                     asset_value: {
@@ -5145,7 +5145,7 @@ export interface operations {
                                 /** @description Denotes whether the originating account is the same as the paying account */
                                 sponsored: boolean;
                                 sponsor_address?: string;
-                                post_condition_mode: "allow" | "deny";
+                                post_condition_mode: "allow" | "deny" | "originator";
                                 post_conditions: ({
                                     principal: {
                                         /** @constant */
@@ -5201,7 +5201,7 @@ export interface operations {
                                         address: string;
                                         contract_name: string;
                                     };
-                                    condition_code: "sent" | "not_sent";
+                                    condition_code: "sent" | "not_sent" | "maybe_sent";
                                     /** @constant */
                                     type: "non_fungible";
                                     asset_value: {
@@ -5334,7 +5334,7 @@ export interface operations {
                             /** @description Denotes whether the originating account is the same as the paying account */
                             sponsored: boolean;
                             sponsor_address?: string;
-                            post_condition_mode: "allow" | "deny";
+                            post_condition_mode: "allow" | "deny" | "originator";
                             post_conditions: ({
                                 principal: {
                                     /** @enum {string} */
@@ -5390,7 +5390,7 @@ export interface operations {
                                     address: string;
                                     contract_name: string;
                                 };
-                                condition_code: "sent" | "not_sent";
+                                condition_code: "sent" | "not_sent" | "maybe_sent";
                                 /** @enum {string} */
                                 type: "non_fungible";
                                 asset_value: {
@@ -5434,7 +5434,7 @@ export interface operations {
                             /** @description Denotes whether the originating account is the same as the paying account */
                             sponsored: boolean;
                             sponsor_address?: string;
-                            post_condition_mode: "allow" | "deny";
+                            post_condition_mode: "allow" | "deny" | "originator";
                             post_conditions: ({
                                 principal: {
                                     /** @enum {string} */
@@ -5490,7 +5490,7 @@ export interface operations {
                                     address: string;
                                     contract_name: string;
                                 };
-                                condition_code: "sent" | "not_sent";
+                                condition_code: "sent" | "not_sent" | "maybe_sent";
                                 /** @enum {string} */
                                 type: "non_fungible";
                                 asset_value: {
@@ -5534,7 +5534,7 @@ export interface operations {
                             /** @description Denotes whether the originating account is the same as the paying account */
                             sponsored: boolean;
                             sponsor_address?: string;
-                            post_condition_mode: "allow" | "deny";
+                            post_condition_mode: "allow" | "deny" | "originator";
                             post_conditions: ({
                                 principal: {
                                     /** @enum {string} */
@@ -5590,7 +5590,7 @@ export interface operations {
                                     address: string;
                                     contract_name: string;
                                 };
-                                condition_code: "sent" | "not_sent";
+                                condition_code: "sent" | "not_sent" | "maybe_sent";
                                 /** @enum {string} */
                                 type: "non_fungible";
                                 asset_value: {
@@ -5641,7 +5641,7 @@ export interface operations {
                             /** @description Denotes whether the originating account is the same as the paying account */
                             sponsored: boolean;
                             sponsor_address?: string;
-                            post_condition_mode: "allow" | "deny";
+                            post_condition_mode: "allow" | "deny" | "originator";
                             post_conditions: ({
                                 principal: {
                                     /** @enum {string} */
@@ -5697,7 +5697,7 @@ export interface operations {
                                     address: string;
                                     contract_name: string;
                                 };
-                                condition_code: "sent" | "not_sent";
+                                condition_code: "sent" | "not_sent" | "maybe_sent";
                                 /** @enum {string} */
                                 type: "non_fungible";
                                 asset_value: {
@@ -5740,7 +5740,7 @@ export interface operations {
                             /** @description Denotes whether the originating account is the same as the paying account */
                             sponsored: boolean;
                             sponsor_address?: string;
-                            post_condition_mode: "allow" | "deny";
+                            post_condition_mode: "allow" | "deny" | "originator";
                             post_conditions: ({
                                 principal: {
                                     /** @enum {string} */
@@ -5796,7 +5796,7 @@ export interface operations {
                                     address: string;
                                     contract_name: string;
                                 };
-                                condition_code: "sent" | "not_sent";
+                                condition_code: "sent" | "not_sent" | "maybe_sent";
                                 /** @enum {string} */
                                 type: "non_fungible";
                                 asset_value: {
@@ -5839,7 +5839,7 @@ export interface operations {
                             /** @description Denotes whether the originating account is the same as the paying account */
                             sponsored: boolean;
                             sponsor_address?: string;
-                            post_condition_mode: "allow" | "deny";
+                            post_condition_mode: "allow" | "deny" | "originator";
                             post_conditions: ({
                                 principal: {
                                     /** @enum {string} */
@@ -5895,7 +5895,7 @@ export interface operations {
                                     address: string;
                                     contract_name: string;
                                 };
-                                condition_code: "sent" | "not_sent";
+                                condition_code: "sent" | "not_sent" | "maybe_sent";
                                 /** @enum {string} */
                                 type: "non_fungible";
                                 asset_value: {
@@ -6192,7 +6192,7 @@ export interface operations {
                         /** @description Denotes whether the originating account is the same as the paying account */
                         sponsored: boolean;
                         sponsor_address?: string;
-                        post_condition_mode: "allow" | "deny";
+                        post_condition_mode: "allow" | "deny" | "originator";
                         post_conditions: ({
                             principal: {
                                 /** @enum {string} */
@@ -6248,7 +6248,7 @@ export interface operations {
                                 address: string;
                                 contract_name: string;
                             };
-                            condition_code: "sent" | "not_sent";
+                            condition_code: "sent" | "not_sent" | "maybe_sent";
                             /** @enum {string} */
                             type: "non_fungible";
                             asset_value: {
@@ -6407,7 +6407,7 @@ export interface operations {
                         /** @description Denotes whether the originating account is the same as the paying account */
                         sponsored: boolean;
                         sponsor_address?: string;
-                        post_condition_mode: "allow" | "deny";
+                        post_condition_mode: "allow" | "deny" | "originator";
                         post_conditions: ({
                             principal: {
                                 /** @enum {string} */
@@ -6463,7 +6463,7 @@ export interface operations {
                                 address: string;
                                 contract_name: string;
                             };
-                            condition_code: "sent" | "not_sent";
+                            condition_code: "sent" | "not_sent" | "maybe_sent";
                             /** @enum {string} */
                             type: "non_fungible";
                             asset_value: {
@@ -6622,7 +6622,7 @@ export interface operations {
                         /** @description Denotes whether the originating account is the same as the paying account */
                         sponsored: boolean;
                         sponsor_address?: string;
-                        post_condition_mode: "allow" | "deny";
+                        post_condition_mode: "allow" | "deny" | "originator";
                         post_conditions: ({
                             principal: {
                                 /** @enum {string} */
@@ -6678,7 +6678,7 @@ export interface operations {
                                 address: string;
                                 contract_name: string;
                             };
-                            condition_code: "sent" | "not_sent";
+                            condition_code: "sent" | "not_sent" | "maybe_sent";
                             /** @enum {string} */
                             type: "non_fungible";
                             asset_value: {
@@ -6844,7 +6844,7 @@ export interface operations {
                         /** @description Denotes whether the originating account is the same as the paying account */
                         sponsored: boolean;
                         sponsor_address?: string;
-                        post_condition_mode: "allow" | "deny";
+                        post_condition_mode: "allow" | "deny" | "originator";
                         post_conditions: ({
                             principal: {
                                 /** @enum {string} */
@@ -6900,7 +6900,7 @@ export interface operations {
                                 address: string;
                                 contract_name: string;
                             };
-                            condition_code: "sent" | "not_sent";
+                            condition_code: "sent" | "not_sent" | "maybe_sent";
                             /** @enum {string} */
                             type: "non_fungible";
                             asset_value: {
@@ -7058,7 +7058,7 @@ export interface operations {
                         /** @description Denotes whether the originating account is the same as the paying account */
                         sponsored: boolean;
                         sponsor_address?: string;
-                        post_condition_mode: "allow" | "deny";
+                        post_condition_mode: "allow" | "deny" | "originator";
                         post_conditions: ({
                             principal: {
                                 /** @enum {string} */
@@ -7114,7 +7114,7 @@ export interface operations {
                                 address: string;
                                 contract_name: string;
                             };
-                            condition_code: "sent" | "not_sent";
+                            condition_code: "sent" | "not_sent" | "maybe_sent";
                             /** @enum {string} */
                             type: "non_fungible";
                             asset_value: {
@@ -7272,7 +7272,7 @@ export interface operations {
                         /** @description Denotes whether the originating account is the same as the paying account */
                         sponsored: boolean;
                         sponsor_address?: string;
-                        post_condition_mode: "allow" | "deny";
+                        post_condition_mode: "allow" | "deny" | "originator";
                         post_conditions: ({
                             principal: {
                                 /** @enum {string} */
@@ -7328,7 +7328,7 @@ export interface operations {
                                 address: string;
                                 contract_name: string;
                             };
-                            condition_code: "sent" | "not_sent";
+                            condition_code: "sent" | "not_sent" | "maybe_sent";
                             /** @enum {string} */
                             type: "non_fungible";
                             asset_value: {
@@ -7496,7 +7496,7 @@ export interface operations {
                         /** @description Denotes whether the originating account is the same as the paying account */
                         sponsored: boolean;
                         sponsor_address?: string;
-                        post_condition_mode: "allow" | "deny";
+                        post_condition_mode: "allow" | "deny" | "originator";
                         post_conditions: ({
                             principal: {
                                 /** @enum {string} */
@@ -7552,7 +7552,7 @@ export interface operations {
                                 address: string;
                                 contract_name: string;
                             };
-                            condition_code: "sent" | "not_sent";
+                            condition_code: "sent" | "not_sent" | "maybe_sent";
                             /** @enum {string} */
                             type: "non_fungible";
                             asset_value: {
@@ -7596,7 +7596,7 @@ export interface operations {
                         /** @description Denotes whether the originating account is the same as the paying account */
                         sponsored: boolean;
                         sponsor_address?: string;
-                        post_condition_mode: "allow" | "deny";
+                        post_condition_mode: "allow" | "deny" | "originator";
                         post_conditions: ({
                             principal: {
                                 /** @enum {string} */
@@ -7652,7 +7652,7 @@ export interface operations {
                                 address: string;
                                 contract_name: string;
                             };
-                            condition_code: "sent" | "not_sent";
+                            condition_code: "sent" | "not_sent" | "maybe_sent";
                             /** @enum {string} */
                             type: "non_fungible";
                             asset_value: {
@@ -7696,7 +7696,7 @@ export interface operations {
                         /** @description Denotes whether the originating account is the same as the paying account */
                         sponsored: boolean;
                         sponsor_address?: string;
-                        post_condition_mode: "allow" | "deny";
+                        post_condition_mode: "allow" | "deny" | "originator";
                         post_conditions: ({
                             principal: {
                                 /** @enum {string} */
@@ -7752,7 +7752,7 @@ export interface operations {
                                 address: string;
                                 contract_name: string;
                             };
-                            condition_code: "sent" | "not_sent";
+                            condition_code: "sent" | "not_sent" | "maybe_sent";
                             /** @enum {string} */
                             type: "non_fungible";
                             asset_value: {
@@ -7803,7 +7803,7 @@ export interface operations {
                         /** @description Denotes whether the originating account is the same as the paying account */
                         sponsored: boolean;
                         sponsor_address?: string;
-                        post_condition_mode: "allow" | "deny";
+                        post_condition_mode: "allow" | "deny" | "originator";
                         post_conditions: ({
                             principal: {
                                 /** @enum {string} */
@@ -7859,7 +7859,7 @@ export interface operations {
                                 address: string;
                                 contract_name: string;
                             };
-                            condition_code: "sent" | "not_sent";
+                            condition_code: "sent" | "not_sent" | "maybe_sent";
                             /** @enum {string} */
                             type: "non_fungible";
                             asset_value: {
@@ -7902,7 +7902,7 @@ export interface operations {
                         /** @description Denotes whether the originating account is the same as the paying account */
                         sponsored: boolean;
                         sponsor_address?: string;
-                        post_condition_mode: "allow" | "deny";
+                        post_condition_mode: "allow" | "deny" | "originator";
                         post_conditions: ({
                             principal: {
                                 /** @enum {string} */
@@ -7958,7 +7958,7 @@ export interface operations {
                                 address: string;
                                 contract_name: string;
                             };
-                            condition_code: "sent" | "not_sent";
+                            condition_code: "sent" | "not_sent" | "maybe_sent";
                             /** @enum {string} */
                             type: "non_fungible";
                             asset_value: {
@@ -8001,7 +8001,7 @@ export interface operations {
                         /** @description Denotes whether the originating account is the same as the paying account */
                         sponsored: boolean;
                         sponsor_address?: string;
-                        post_condition_mode: "allow" | "deny";
+                        post_condition_mode: "allow" | "deny" | "originator";
                         post_conditions: ({
                             principal: {
                                 /** @enum {string} */
@@ -8057,7 +8057,7 @@ export interface operations {
                                 address: string;
                                 contract_name: string;
                             };
-                            condition_code: "sent" | "not_sent";
+                            condition_code: "sent" | "not_sent" | "maybe_sent";
                             /** @enum {string} */
                             type: "non_fungible";
                             asset_value: {
@@ -8207,7 +8207,7 @@ export interface operations {
                             /** @description Denotes whether the originating account is the same as the paying account */
                             sponsored: boolean;
                             sponsor_address?: string;
-                            post_condition_mode: "allow" | "deny";
+                            post_condition_mode: "allow" | "deny" | "originator";
                             post_conditions: ({
                                 principal: {
                                     /** @enum {string} */
@@ -8263,7 +8263,7 @@ export interface operations {
                                     address: string;
                                     contract_name: string;
                                 };
-                                condition_code: "sent" | "not_sent";
+                                condition_code: "sent" | "not_sent" | "maybe_sent";
                                 /** @enum {string} */
                                 type: "non_fungible";
                                 asset_value: {
@@ -8422,7 +8422,7 @@ export interface operations {
                             /** @description Denotes whether the originating account is the same as the paying account */
                             sponsored: boolean;
                             sponsor_address?: string;
-                            post_condition_mode: "allow" | "deny";
+                            post_condition_mode: "allow" | "deny" | "originator";
                             post_conditions: ({
                                 principal: {
                                     /** @enum {string} */
@@ -8478,7 +8478,7 @@ export interface operations {
                                     address: string;
                                     contract_name: string;
                                 };
-                                condition_code: "sent" | "not_sent";
+                                condition_code: "sent" | "not_sent" | "maybe_sent";
                                 /** @enum {string} */
                                 type: "non_fungible";
                                 asset_value: {
@@ -8637,7 +8637,7 @@ export interface operations {
                             /** @description Denotes whether the originating account is the same as the paying account */
                             sponsored: boolean;
                             sponsor_address?: string;
-                            post_condition_mode: "allow" | "deny";
+                            post_condition_mode: "allow" | "deny" | "originator";
                             post_conditions: ({
                                 principal: {
                                     /** @enum {string} */
@@ -8693,7 +8693,7 @@ export interface operations {
                                     address: string;
                                     contract_name: string;
                                 };
-                                condition_code: "sent" | "not_sent";
+                                condition_code: "sent" | "not_sent" | "maybe_sent";
                                 /** @enum {string} */
                                 type: "non_fungible";
                                 asset_value: {
@@ -8859,7 +8859,7 @@ export interface operations {
                             /** @description Denotes whether the originating account is the same as the paying account */
                             sponsored: boolean;
                             sponsor_address?: string;
-                            post_condition_mode: "allow" | "deny";
+                            post_condition_mode: "allow" | "deny" | "originator";
                             post_conditions: ({
                                 principal: {
                                     /** @enum {string} */
@@ -8915,7 +8915,7 @@ export interface operations {
                                     address: string;
                                     contract_name: string;
                                 };
-                                condition_code: "sent" | "not_sent";
+                                condition_code: "sent" | "not_sent" | "maybe_sent";
                                 /** @enum {string} */
                                 type: "non_fungible";
                                 asset_value: {
@@ -9073,7 +9073,7 @@ export interface operations {
                             /** @description Denotes whether the originating account is the same as the paying account */
                             sponsored: boolean;
                             sponsor_address?: string;
-                            post_condition_mode: "allow" | "deny";
+                            post_condition_mode: "allow" | "deny" | "originator";
                             post_conditions: ({
                                 principal: {
                                     /** @enum {string} */
@@ -9129,7 +9129,7 @@ export interface operations {
                                     address: string;
                                     contract_name: string;
                                 };
-                                condition_code: "sent" | "not_sent";
+                                condition_code: "sent" | "not_sent" | "maybe_sent";
                                 /** @enum {string} */
                                 type: "non_fungible";
                                 asset_value: {
@@ -9287,7 +9287,7 @@ export interface operations {
                             /** @description Denotes whether the originating account is the same as the paying account */
                             sponsored: boolean;
                             sponsor_address?: string;
-                            post_condition_mode: "allow" | "deny";
+                            post_condition_mode: "allow" | "deny" | "originator";
                             post_conditions: ({
                                 principal: {
                                     /** @enum {string} */
@@ -9343,7 +9343,7 @@ export interface operations {
                                     address: string;
                                     contract_name: string;
                                 };
-                                condition_code: "sent" | "not_sent";
+                                condition_code: "sent" | "not_sent" | "maybe_sent";
                                 /** @enum {string} */
                                 type: "non_fungible";
                                 asset_value: {
@@ -9566,7 +9566,7 @@ export interface operations {
                             /** @description Denotes whether the originating account is the same as the paying account */
                             sponsored: boolean;
                             sponsor_address?: string;
-                            post_condition_mode: "allow" | "deny";
+                            post_condition_mode: "allow" | "deny" | "originator";
                             post_conditions: ({
                                 principal: {
                                     /** @enum {string} */
@@ -9622,7 +9622,7 @@ export interface operations {
                                     address: string;
                                     contract_name: string;
                                 };
-                                condition_code: "sent" | "not_sent";
+                                condition_code: "sent" | "not_sent" | "maybe_sent";
                                 /** @enum {string} */
                                 type: "non_fungible";
                                 asset_value: {
@@ -9781,7 +9781,7 @@ export interface operations {
                             /** @description Denotes whether the originating account is the same as the paying account */
                             sponsored: boolean;
                             sponsor_address?: string;
-                            post_condition_mode: "allow" | "deny";
+                            post_condition_mode: "allow" | "deny" | "originator";
                             post_conditions: ({
                                 principal: {
                                     /** @enum {string} */
@@ -9837,7 +9837,7 @@ export interface operations {
                                     address: string;
                                     contract_name: string;
                                 };
-                                condition_code: "sent" | "not_sent";
+                                condition_code: "sent" | "not_sent" | "maybe_sent";
                                 /** @enum {string} */
                                 type: "non_fungible";
                                 asset_value: {
@@ -9996,7 +9996,7 @@ export interface operations {
                             /** @description Denotes whether the originating account is the same as the paying account */
                             sponsored: boolean;
                             sponsor_address?: string;
-                            post_condition_mode: "allow" | "deny";
+                            post_condition_mode: "allow" | "deny" | "originator";
                             post_conditions: ({
                                 principal: {
                                     /** @enum {string} */
@@ -10052,7 +10052,7 @@ export interface operations {
                                     address: string;
                                     contract_name: string;
                                 };
-                                condition_code: "sent" | "not_sent";
+                                condition_code: "sent" | "not_sent" | "maybe_sent";
                                 /** @enum {string} */
                                 type: "non_fungible";
                                 asset_value: {
@@ -10218,7 +10218,7 @@ export interface operations {
                             /** @description Denotes whether the originating account is the same as the paying account */
                             sponsored: boolean;
                             sponsor_address?: string;
-                            post_condition_mode: "allow" | "deny";
+                            post_condition_mode: "allow" | "deny" | "originator";
                             post_conditions: ({
                                 principal: {
                                     /** @enum {string} */
@@ -10274,7 +10274,7 @@ export interface operations {
                                     address: string;
                                     contract_name: string;
                                 };
-                                condition_code: "sent" | "not_sent";
+                                condition_code: "sent" | "not_sent" | "maybe_sent";
                                 /** @enum {string} */
                                 type: "non_fungible";
                                 asset_value: {
@@ -10432,7 +10432,7 @@ export interface operations {
                             /** @description Denotes whether the originating account is the same as the paying account */
                             sponsored: boolean;
                             sponsor_address?: string;
-                            post_condition_mode: "allow" | "deny";
+                            post_condition_mode: "allow" | "deny" | "originator";
                             post_conditions: ({
                                 principal: {
                                     /** @enum {string} */
@@ -10488,7 +10488,7 @@ export interface operations {
                                     address: string;
                                     contract_name: string;
                                 };
-                                condition_code: "sent" | "not_sent";
+                                condition_code: "sent" | "not_sent" | "maybe_sent";
                                 /** @enum {string} */
                                 type: "non_fungible";
                                 asset_value: {
@@ -10646,7 +10646,7 @@ export interface operations {
                             /** @description Denotes whether the originating account is the same as the paying account */
                             sponsored: boolean;
                             sponsor_address?: string;
-                            post_condition_mode: "allow" | "deny";
+                            post_condition_mode: "allow" | "deny" | "originator";
                             post_conditions: ({
                                 principal: {
                                     /** @enum {string} */
@@ -10702,7 +10702,7 @@ export interface operations {
                                     address: string;
                                     contract_name: string;
                                 };
-                                condition_code: "sent" | "not_sent";
+                                condition_code: "sent" | "not_sent" | "maybe_sent";
                                 /** @enum {string} */
                                 type: "non_fungible";
                                 asset_value: {
@@ -11211,7 +11211,7 @@ export interface operations {
                                 /** @description Denotes whether the originating account is the same as the paying account */
                                 sponsored: boolean;
                                 sponsor_address?: string;
-                                post_condition_mode: "allow" | "deny";
+                                post_condition_mode: "allow" | "deny" | "originator";
                                 post_conditions: ({
                                     principal: {
                                         /** @enum {string} */
@@ -11267,7 +11267,7 @@ export interface operations {
                                         address: string;
                                         contract_name: string;
                                     };
-                                    condition_code: "sent" | "not_sent";
+                                    condition_code: "sent" | "not_sent" | "maybe_sent";
                                     /** @enum {string} */
                                     type: "non_fungible";
                                     asset_value: {
@@ -11426,7 +11426,7 @@ export interface operations {
                                 /** @description Denotes whether the originating account is the same as the paying account */
                                 sponsored: boolean;
                                 sponsor_address?: string;
-                                post_condition_mode: "allow" | "deny";
+                                post_condition_mode: "allow" | "deny" | "originator";
                                 post_conditions: ({
                                     principal: {
                                         /** @enum {string} */
@@ -11482,7 +11482,7 @@ export interface operations {
                                         address: string;
                                         contract_name: string;
                                     };
-                                    condition_code: "sent" | "not_sent";
+                                    condition_code: "sent" | "not_sent" | "maybe_sent";
                                     /** @enum {string} */
                                     type: "non_fungible";
                                     asset_value: {
@@ -11641,7 +11641,7 @@ export interface operations {
                                 /** @description Denotes whether the originating account is the same as the paying account */
                                 sponsored: boolean;
                                 sponsor_address?: string;
-                                post_condition_mode: "allow" | "deny";
+                                post_condition_mode: "allow" | "deny" | "originator";
                                 post_conditions: ({
                                     principal: {
                                         /** @enum {string} */
@@ -11697,7 +11697,7 @@ export interface operations {
                                         address: string;
                                         contract_name: string;
                                     };
-                                    condition_code: "sent" | "not_sent";
+                                    condition_code: "sent" | "not_sent" | "maybe_sent";
                                     /** @enum {string} */
                                     type: "non_fungible";
                                     asset_value: {
@@ -11863,7 +11863,7 @@ export interface operations {
                                 /** @description Denotes whether the originating account is the same as the paying account */
                                 sponsored: boolean;
                                 sponsor_address?: string;
-                                post_condition_mode: "allow" | "deny";
+                                post_condition_mode: "allow" | "deny" | "originator";
                                 post_conditions: ({
                                     principal: {
                                         /** @enum {string} */
@@ -11919,7 +11919,7 @@ export interface operations {
                                         address: string;
                                         contract_name: string;
                                     };
-                                    condition_code: "sent" | "not_sent";
+                                    condition_code: "sent" | "not_sent" | "maybe_sent";
                                     /** @enum {string} */
                                     type: "non_fungible";
                                     asset_value: {
@@ -12077,7 +12077,7 @@ export interface operations {
                                 /** @description Denotes whether the originating account is the same as the paying account */
                                 sponsored: boolean;
                                 sponsor_address?: string;
-                                post_condition_mode: "allow" | "deny";
+                                post_condition_mode: "allow" | "deny" | "originator";
                                 post_conditions: ({
                                     principal: {
                                         /** @enum {string} */
@@ -12133,7 +12133,7 @@ export interface operations {
                                         address: string;
                                         contract_name: string;
                                     };
-                                    condition_code: "sent" | "not_sent";
+                                    condition_code: "sent" | "not_sent" | "maybe_sent";
                                     /** @enum {string} */
                                     type: "non_fungible";
                                     asset_value: {
@@ -12291,7 +12291,7 @@ export interface operations {
                                 /** @description Denotes whether the originating account is the same as the paying account */
                                 sponsored: boolean;
                                 sponsor_address?: string;
-                                post_condition_mode: "allow" | "deny";
+                                post_condition_mode: "allow" | "deny" | "originator";
                                 post_conditions: ({
                                     principal: {
                                         /** @enum {string} */
@@ -12347,7 +12347,7 @@ export interface operations {
                                         address: string;
                                         contract_name: string;
                                     };
-                                    condition_code: "sent" | "not_sent";
+                                    condition_code: "sent" | "not_sent" | "maybe_sent";
                                     /** @enum {string} */
                                     type: "non_fungible";
                                     asset_value: {
@@ -12591,7 +12591,7 @@ export interface operations {
                                 /** @description Denotes whether the originating account is the same as the paying account */
                                 sponsored: boolean;
                                 sponsor_address?: string;
-                                post_condition_mode: "allow" | "deny";
+                                post_condition_mode: "allow" | "deny" | "originator";
                                 post_conditions: ({
                                     principal: {
                                         /** @enum {string} */
@@ -12647,7 +12647,7 @@ export interface operations {
                                         address: string;
                                         contract_name: string;
                                     };
-                                    condition_code: "sent" | "not_sent";
+                                    condition_code: "sent" | "not_sent" | "maybe_sent";
                                     /** @enum {string} */
                                     type: "non_fungible";
                                     asset_value: {
@@ -12806,7 +12806,7 @@ export interface operations {
                                 /** @description Denotes whether the originating account is the same as the paying account */
                                 sponsored: boolean;
                                 sponsor_address?: string;
-                                post_condition_mode: "allow" | "deny";
+                                post_condition_mode: "allow" | "deny" | "originator";
                                 post_conditions: ({
                                     principal: {
                                         /** @enum {string} */
@@ -12862,7 +12862,7 @@ export interface operations {
                                         address: string;
                                         contract_name: string;
                                     };
-                                    condition_code: "sent" | "not_sent";
+                                    condition_code: "sent" | "not_sent" | "maybe_sent";
                                     /** @enum {string} */
                                     type: "non_fungible";
                                     asset_value: {
@@ -13021,7 +13021,7 @@ export interface operations {
                                 /** @description Denotes whether the originating account is the same as the paying account */
                                 sponsored: boolean;
                                 sponsor_address?: string;
-                                post_condition_mode: "allow" | "deny";
+                                post_condition_mode: "allow" | "deny" | "originator";
                                 post_conditions: ({
                                     principal: {
                                         /** @enum {string} */
@@ -13077,7 +13077,7 @@ export interface operations {
                                         address: string;
                                         contract_name: string;
                                     };
-                                    condition_code: "sent" | "not_sent";
+                                    condition_code: "sent" | "not_sent" | "maybe_sent";
                                     /** @enum {string} */
                                     type: "non_fungible";
                                     asset_value: {
@@ -13243,7 +13243,7 @@ export interface operations {
                                 /** @description Denotes whether the originating account is the same as the paying account */
                                 sponsored: boolean;
                                 sponsor_address?: string;
-                                post_condition_mode: "allow" | "deny";
+                                post_condition_mode: "allow" | "deny" | "originator";
                                 post_conditions: ({
                                     principal: {
                                         /** @enum {string} */
@@ -13299,7 +13299,7 @@ export interface operations {
                                         address: string;
                                         contract_name: string;
                                     };
-                                    condition_code: "sent" | "not_sent";
+                                    condition_code: "sent" | "not_sent" | "maybe_sent";
                                     /** @enum {string} */
                                     type: "non_fungible";
                                     asset_value: {
@@ -13457,7 +13457,7 @@ export interface operations {
                                 /** @description Denotes whether the originating account is the same as the paying account */
                                 sponsored: boolean;
                                 sponsor_address?: string;
-                                post_condition_mode: "allow" | "deny";
+                                post_condition_mode: "allow" | "deny" | "originator";
                                 post_conditions: ({
                                     principal: {
                                         /** @enum {string} */
@@ -13513,7 +13513,7 @@ export interface operations {
                                         address: string;
                                         contract_name: string;
                                     };
-                                    condition_code: "sent" | "not_sent";
+                                    condition_code: "sent" | "not_sent" | "maybe_sent";
                                     /** @enum {string} */
                                     type: "non_fungible";
                                     asset_value: {
@@ -13671,7 +13671,7 @@ export interface operations {
                                 /** @description Denotes whether the originating account is the same as the paying account */
                                 sponsored: boolean;
                                 sponsor_address?: string;
-                                post_condition_mode: "allow" | "deny";
+                                post_condition_mode: "allow" | "deny" | "originator";
                                 post_conditions: ({
                                     principal: {
                                         /** @enum {string} */
@@ -13727,7 +13727,7 @@ export interface operations {
                                         address: string;
                                         contract_name: string;
                                     };
-                                    condition_code: "sent" | "not_sent";
+                                    condition_code: "sent" | "not_sent" | "maybe_sent";
                                     /** @enum {string} */
                                     type: "non_fungible";
                                     asset_value: {
@@ -13976,7 +13976,7 @@ export interface operations {
                                 /** @description Denotes whether the originating account is the same as the paying account */
                                 sponsored: boolean;
                                 sponsor_address?: string;
-                                post_condition_mode: "allow" | "deny";
+                                post_condition_mode: "allow" | "deny" | "originator";
                                 post_conditions: ({
                                     principal: {
                                         /** @enum {string} */
@@ -14032,7 +14032,7 @@ export interface operations {
                                         address: string;
                                         contract_name: string;
                                     };
-                                    condition_code: "sent" | "not_sent";
+                                    condition_code: "sent" | "not_sent" | "maybe_sent";
                                     /** @enum {string} */
                                     type: "non_fungible";
                                     asset_value: {
@@ -14191,7 +14191,7 @@ export interface operations {
                                 /** @description Denotes whether the originating account is the same as the paying account */
                                 sponsored: boolean;
                                 sponsor_address?: string;
-                                post_condition_mode: "allow" | "deny";
+                                post_condition_mode: "allow" | "deny" | "originator";
                                 post_conditions: ({
                                     principal: {
                                         /** @enum {string} */
@@ -14247,7 +14247,7 @@ export interface operations {
                                         address: string;
                                         contract_name: string;
                                     };
-                                    condition_code: "sent" | "not_sent";
+                                    condition_code: "sent" | "not_sent" | "maybe_sent";
                                     /** @enum {string} */
                                     type: "non_fungible";
                                     asset_value: {
@@ -14406,7 +14406,7 @@ export interface operations {
                                 /** @description Denotes whether the originating account is the same as the paying account */
                                 sponsored: boolean;
                                 sponsor_address?: string;
-                                post_condition_mode: "allow" | "deny";
+                                post_condition_mode: "allow" | "deny" | "originator";
                                 post_conditions: ({
                                     principal: {
                                         /** @enum {string} */
@@ -14462,7 +14462,7 @@ export interface operations {
                                         address: string;
                                         contract_name: string;
                                     };
-                                    condition_code: "sent" | "not_sent";
+                                    condition_code: "sent" | "not_sent" | "maybe_sent";
                                     /** @enum {string} */
                                     type: "non_fungible";
                                     asset_value: {
@@ -14628,7 +14628,7 @@ export interface operations {
                                 /** @description Denotes whether the originating account is the same as the paying account */
                                 sponsored: boolean;
                                 sponsor_address?: string;
-                                post_condition_mode: "allow" | "deny";
+                                post_condition_mode: "allow" | "deny" | "originator";
                                 post_conditions: ({
                                     principal: {
                                         /** @enum {string} */
@@ -14684,7 +14684,7 @@ export interface operations {
                                         address: string;
                                         contract_name: string;
                                     };
-                                    condition_code: "sent" | "not_sent";
+                                    condition_code: "sent" | "not_sent" | "maybe_sent";
                                     /** @enum {string} */
                                     type: "non_fungible";
                                     asset_value: {
@@ -14842,7 +14842,7 @@ export interface operations {
                                 /** @description Denotes whether the originating account is the same as the paying account */
                                 sponsored: boolean;
                                 sponsor_address?: string;
-                                post_condition_mode: "allow" | "deny";
+                                post_condition_mode: "allow" | "deny" | "originator";
                                 post_conditions: ({
                                     principal: {
                                         /** @enum {string} */
@@ -14898,7 +14898,7 @@ export interface operations {
                                         address: string;
                                         contract_name: string;
                                     };
-                                    condition_code: "sent" | "not_sent";
+                                    condition_code: "sent" | "not_sent" | "maybe_sent";
                                     /** @enum {string} */
                                     type: "non_fungible";
                                     asset_value: {
@@ -15056,7 +15056,7 @@ export interface operations {
                                 /** @description Denotes whether the originating account is the same as the paying account */
                                 sponsored: boolean;
                                 sponsor_address?: string;
-                                post_condition_mode: "allow" | "deny";
+                                post_condition_mode: "allow" | "deny" | "originator";
                                 post_conditions: ({
                                     principal: {
                                         /** @enum {string} */
@@ -15112,7 +15112,7 @@ export interface operations {
                                         address: string;
                                         contract_name: string;
                                     };
-                                    condition_code: "sent" | "not_sent";
+                                    condition_code: "sent" | "not_sent" | "maybe_sent";
                                     /** @enum {string} */
                                     type: "non_fungible";
                                     asset_value: {
@@ -15790,7 +15790,7 @@ export interface operations {
                             /** @description Denotes whether the originating account is the same as the paying account */
                             sponsored: boolean;
                             sponsor_address?: string;
-                            post_condition_mode: "allow" | "deny";
+                            post_condition_mode: "allow" | "deny" | "originator";
                             post_conditions: ({
                                 principal: {
                                     /** @enum {string} */
@@ -15846,7 +15846,7 @@ export interface operations {
                                     address: string;
                                     contract_name: string;
                                 };
-                                condition_code: "sent" | "not_sent";
+                                condition_code: "sent" | "not_sent" | "maybe_sent";
                                 /** @enum {string} */
                                 type: "non_fungible";
                                 asset_value: {
@@ -16005,7 +16005,7 @@ export interface operations {
                             /** @description Denotes whether the originating account is the same as the paying account */
                             sponsored: boolean;
                             sponsor_address?: string;
-                            post_condition_mode: "allow" | "deny";
+                            post_condition_mode: "allow" | "deny" | "originator";
                             post_conditions: ({
                                 principal: {
                                     /** @enum {string} */
@@ -16061,7 +16061,7 @@ export interface operations {
                                     address: string;
                                     contract_name: string;
                                 };
-                                condition_code: "sent" | "not_sent";
+                                condition_code: "sent" | "not_sent" | "maybe_sent";
                                 /** @enum {string} */
                                 type: "non_fungible";
                                 asset_value: {
@@ -16220,7 +16220,7 @@ export interface operations {
                             /** @description Denotes whether the originating account is the same as the paying account */
                             sponsored: boolean;
                             sponsor_address?: string;
-                            post_condition_mode: "allow" | "deny";
+                            post_condition_mode: "allow" | "deny" | "originator";
                             post_conditions: ({
                                 principal: {
                                     /** @enum {string} */
@@ -16276,7 +16276,7 @@ export interface operations {
                                     address: string;
                                     contract_name: string;
                                 };
-                                condition_code: "sent" | "not_sent";
+                                condition_code: "sent" | "not_sent" | "maybe_sent";
                                 /** @enum {string} */
                                 type: "non_fungible";
                                 asset_value: {
@@ -16442,7 +16442,7 @@ export interface operations {
                             /** @description Denotes whether the originating account is the same as the paying account */
                             sponsored: boolean;
                             sponsor_address?: string;
-                            post_condition_mode: "allow" | "deny";
+                            post_condition_mode: "allow" | "deny" | "originator";
                             post_conditions: ({
                                 principal: {
                                     /** @enum {string} */
@@ -16498,7 +16498,7 @@ export interface operations {
                                     address: string;
                                     contract_name: string;
                                 };
-                                condition_code: "sent" | "not_sent";
+                                condition_code: "sent" | "not_sent" | "maybe_sent";
                                 /** @enum {string} */
                                 type: "non_fungible";
                                 asset_value: {
@@ -16656,7 +16656,7 @@ export interface operations {
                             /** @description Denotes whether the originating account is the same as the paying account */
                             sponsored: boolean;
                             sponsor_address?: string;
-                            post_condition_mode: "allow" | "deny";
+                            post_condition_mode: "allow" | "deny" | "originator";
                             post_conditions: ({
                                 principal: {
                                     /** @enum {string} */
@@ -16712,7 +16712,7 @@ export interface operations {
                                     address: string;
                                     contract_name: string;
                                 };
-                                condition_code: "sent" | "not_sent";
+                                condition_code: "sent" | "not_sent" | "maybe_sent";
                                 /** @enum {string} */
                                 type: "non_fungible";
                                 asset_value: {
@@ -16870,7 +16870,7 @@ export interface operations {
                             /** @description Denotes whether the originating account is the same as the paying account */
                             sponsored: boolean;
                             sponsor_address?: string;
-                            post_condition_mode: "allow" | "deny";
+                            post_condition_mode: "allow" | "deny" | "originator";
                             post_conditions: ({
                                 principal: {
                                     /** @enum {string} */
@@ -16926,7 +16926,7 @@ export interface operations {
                                     address: string;
                                     contract_name: string;
                                 };
-                                condition_code: "sent" | "not_sent";
+                                condition_code: "sent" | "not_sent" | "maybe_sent";
                                 /** @enum {string} */
                                 type: "non_fungible";
                                 asset_value: {
@@ -18085,7 +18085,7 @@ export interface operations {
                             /** @description Denotes whether the originating account is the same as the paying account */
                             sponsored: boolean;
                             sponsor_address?: string;
-                            post_condition_mode: "allow" | "deny";
+                            post_condition_mode: "allow" | "deny" | "originator";
                             post_conditions: ({
                                 principal: {
                                     /** @enum {string} */
@@ -18141,7 +18141,7 @@ export interface operations {
                                     address: string;
                                     contract_name: string;
                                 };
-                                condition_code: "sent" | "not_sent";
+                                condition_code: "sent" | "not_sent" | "maybe_sent";
                                 /** @enum {string} */
                                 type: "non_fungible";
                                 asset_value: {
@@ -18300,7 +18300,7 @@ export interface operations {
                             /** @description Denotes whether the originating account is the same as the paying account */
                             sponsored: boolean;
                             sponsor_address?: string;
-                            post_condition_mode: "allow" | "deny";
+                            post_condition_mode: "allow" | "deny" | "originator";
                             post_conditions: ({
                                 principal: {
                                     /** @enum {string} */
@@ -18356,7 +18356,7 @@ export interface operations {
                                     address: string;
                                     contract_name: string;
                                 };
-                                condition_code: "sent" | "not_sent";
+                                condition_code: "sent" | "not_sent" | "maybe_sent";
                                 /** @enum {string} */
                                 type: "non_fungible";
                                 asset_value: {
@@ -18515,7 +18515,7 @@ export interface operations {
                             /** @description Denotes whether the originating account is the same as the paying account */
                             sponsored: boolean;
                             sponsor_address?: string;
-                            post_condition_mode: "allow" | "deny";
+                            post_condition_mode: "allow" | "deny" | "originator";
                             post_conditions: ({
                                 principal: {
                                     /** @enum {string} */
@@ -18571,7 +18571,7 @@ export interface operations {
                                     address: string;
                                     contract_name: string;
                                 };
-                                condition_code: "sent" | "not_sent";
+                                condition_code: "sent" | "not_sent" | "maybe_sent";
                                 /** @enum {string} */
                                 type: "non_fungible";
                                 asset_value: {
@@ -18737,7 +18737,7 @@ export interface operations {
                             /** @description Denotes whether the originating account is the same as the paying account */
                             sponsored: boolean;
                             sponsor_address?: string;
-                            post_condition_mode: "allow" | "deny";
+                            post_condition_mode: "allow" | "deny" | "originator";
                             post_conditions: ({
                                 principal: {
                                     /** @enum {string} */
@@ -18793,7 +18793,7 @@ export interface operations {
                                     address: string;
                                     contract_name: string;
                                 };
-                                condition_code: "sent" | "not_sent";
+                                condition_code: "sent" | "not_sent" | "maybe_sent";
                                 /** @enum {string} */
                                 type: "non_fungible";
                                 asset_value: {
@@ -18951,7 +18951,7 @@ export interface operations {
                             /** @description Denotes whether the originating account is the same as the paying account */
                             sponsored: boolean;
                             sponsor_address?: string;
-                            post_condition_mode: "allow" | "deny";
+                            post_condition_mode: "allow" | "deny" | "originator";
                             post_conditions: ({
                                 principal: {
                                     /** @enum {string} */
@@ -19007,7 +19007,7 @@ export interface operations {
                                     address: string;
                                     contract_name: string;
                                 };
-                                condition_code: "sent" | "not_sent";
+                                condition_code: "sent" | "not_sent" | "maybe_sent";
                                 /** @enum {string} */
                                 type: "non_fungible";
                                 asset_value: {
@@ -19165,7 +19165,7 @@ export interface operations {
                             /** @description Denotes whether the originating account is the same as the paying account */
                             sponsored: boolean;
                             sponsor_address?: string;
-                            post_condition_mode: "allow" | "deny";
+                            post_condition_mode: "allow" | "deny" | "originator";
                             post_conditions: ({
                                 principal: {
                                     /** @enum {string} */
@@ -19221,7 +19221,7 @@ export interface operations {
                                     address: string;
                                     contract_name: string;
                                 };
-                                condition_code: "sent" | "not_sent";
+                                condition_code: "sent" | "not_sent" | "maybe_sent";
                                 /** @enum {string} */
                                 type: "non_fungible";
                                 asset_value: {
@@ -19432,7 +19432,7 @@ export interface operations {
                             /** @description Denotes whether the originating account is the same as the paying account */
                             sponsored: boolean;
                             sponsor_address?: string;
-                            post_condition_mode: "allow" | "deny";
+                            post_condition_mode: "allow" | "deny" | "originator";
                             post_conditions: ({
                                 principal: {
                                     /** @enum {string} */
@@ -19488,7 +19488,7 @@ export interface operations {
                                     address: string;
                                     contract_name: string;
                                 };
-                                condition_code: "sent" | "not_sent";
+                                condition_code: "sent" | "not_sent" | "maybe_sent";
                                 /** @enum {string} */
                                 type: "non_fungible";
                                 asset_value: {
@@ -19647,7 +19647,7 @@ export interface operations {
                             /** @description Denotes whether the originating account is the same as the paying account */
                             sponsored: boolean;
                             sponsor_address?: string;
-                            post_condition_mode: "allow" | "deny";
+                            post_condition_mode: "allow" | "deny" | "originator";
                             post_conditions: ({
                                 principal: {
                                     /** @enum {string} */
@@ -19703,7 +19703,7 @@ export interface operations {
                                     address: string;
                                     contract_name: string;
                                 };
-                                condition_code: "sent" | "not_sent";
+                                condition_code: "sent" | "not_sent" | "maybe_sent";
                                 /** @enum {string} */
                                 type: "non_fungible";
                                 asset_value: {
@@ -19862,7 +19862,7 @@ export interface operations {
                             /** @description Denotes whether the originating account is the same as the paying account */
                             sponsored: boolean;
                             sponsor_address?: string;
-                            post_condition_mode: "allow" | "deny";
+                            post_condition_mode: "allow" | "deny" | "originator";
                             post_conditions: ({
                                 principal: {
                                     /** @enum {string} */
@@ -19918,7 +19918,7 @@ export interface operations {
                                     address: string;
                                     contract_name: string;
                                 };
-                                condition_code: "sent" | "not_sent";
+                                condition_code: "sent" | "not_sent" | "maybe_sent";
                                 /** @enum {string} */
                                 type: "non_fungible";
                                 asset_value: {
@@ -20084,7 +20084,7 @@ export interface operations {
                             /** @description Denotes whether the originating account is the same as the paying account */
                             sponsored: boolean;
                             sponsor_address?: string;
-                            post_condition_mode: "allow" | "deny";
+                            post_condition_mode: "allow" | "deny" | "originator";
                             post_conditions: ({
                                 principal: {
                                     /** @enum {string} */
@@ -20140,7 +20140,7 @@ export interface operations {
                                     address: string;
                                     contract_name: string;
                                 };
-                                condition_code: "sent" | "not_sent";
+                                condition_code: "sent" | "not_sent" | "maybe_sent";
                                 /** @enum {string} */
                                 type: "non_fungible";
                                 asset_value: {
@@ -20298,7 +20298,7 @@ export interface operations {
                             /** @description Denotes whether the originating account is the same as the paying account */
                             sponsored: boolean;
                             sponsor_address?: string;
-                            post_condition_mode: "allow" | "deny";
+                            post_condition_mode: "allow" | "deny" | "originator";
                             post_conditions: ({
                                 principal: {
                                     /** @enum {string} */
@@ -20354,7 +20354,7 @@ export interface operations {
                                     address: string;
                                     contract_name: string;
                                 };
-                                condition_code: "sent" | "not_sent";
+                                condition_code: "sent" | "not_sent" | "maybe_sent";
                                 /** @enum {string} */
                                 type: "non_fungible";
                                 asset_value: {
@@ -20512,7 +20512,7 @@ export interface operations {
                             /** @description Denotes whether the originating account is the same as the paying account */
                             sponsored: boolean;
                             sponsor_address?: string;
-                            post_condition_mode: "allow" | "deny";
+                            post_condition_mode: "allow" | "deny" | "originator";
                             post_conditions: ({
                                 principal: {
                                     /** @enum {string} */
@@ -20568,7 +20568,7 @@ export interface operations {
                                     address: string;
                                     contract_name: string;
                                 };
-                                condition_code: "sent" | "not_sent";
+                                condition_code: "sent" | "not_sent" | "maybe_sent";
                                 /** @enum {string} */
                                 type: "non_fungible";
                                 asset_value: {
@@ -20830,7 +20830,7 @@ export interface operations {
                                 /** @description Denotes whether the originating account is the same as the paying account */
                                 sponsored: boolean;
                                 sponsor_address?: string;
-                                post_condition_mode: "allow" | "deny";
+                                post_condition_mode: "allow" | "deny" | "originator";
                                 post_conditions: ({
                                     principal: {
                                         /** @enum {string} */
@@ -20886,7 +20886,7 @@ export interface operations {
                                         address: string;
                                         contract_name: string;
                                     };
-                                    condition_code: "sent" | "not_sent";
+                                    condition_code: "sent" | "not_sent" | "maybe_sent";
                                     /** @enum {string} */
                                     type: "non_fungible";
                                     asset_value: {
@@ -21045,7 +21045,7 @@ export interface operations {
                                 /** @description Denotes whether the originating account is the same as the paying account */
                                 sponsored: boolean;
                                 sponsor_address?: string;
-                                post_condition_mode: "allow" | "deny";
+                                post_condition_mode: "allow" | "deny" | "originator";
                                 post_conditions: ({
                                     principal: {
                                         /** @enum {string} */
@@ -21101,7 +21101,7 @@ export interface operations {
                                         address: string;
                                         contract_name: string;
                                     };
-                                    condition_code: "sent" | "not_sent";
+                                    condition_code: "sent" | "not_sent" | "maybe_sent";
                                     /** @enum {string} */
                                     type: "non_fungible";
                                     asset_value: {
@@ -21260,7 +21260,7 @@ export interface operations {
                                 /** @description Denotes whether the originating account is the same as the paying account */
                                 sponsored: boolean;
                                 sponsor_address?: string;
-                                post_condition_mode: "allow" | "deny";
+                                post_condition_mode: "allow" | "deny" | "originator";
                                 post_conditions: ({
                                     principal: {
                                         /** @enum {string} */
@@ -21316,7 +21316,7 @@ export interface operations {
                                         address: string;
                                         contract_name: string;
                                     };
-                                    condition_code: "sent" | "not_sent";
+                                    condition_code: "sent" | "not_sent" | "maybe_sent";
                                     /** @enum {string} */
                                     type: "non_fungible";
                                     asset_value: {
@@ -21482,7 +21482,7 @@ export interface operations {
                                 /** @description Denotes whether the originating account is the same as the paying account */
                                 sponsored: boolean;
                                 sponsor_address?: string;
-                                post_condition_mode: "allow" | "deny";
+                                post_condition_mode: "allow" | "deny" | "originator";
                                 post_conditions: ({
                                     principal: {
                                         /** @enum {string} */
@@ -21538,7 +21538,7 @@ export interface operations {
                                         address: string;
                                         contract_name: string;
                                     };
-                                    condition_code: "sent" | "not_sent";
+                                    condition_code: "sent" | "not_sent" | "maybe_sent";
                                     /** @enum {string} */
                                     type: "non_fungible";
                                     asset_value: {
@@ -21696,7 +21696,7 @@ export interface operations {
                                 /** @description Denotes whether the originating account is the same as the paying account */
                                 sponsored: boolean;
                                 sponsor_address?: string;
-                                post_condition_mode: "allow" | "deny";
+                                post_condition_mode: "allow" | "deny" | "originator";
                                 post_conditions: ({
                                     principal: {
                                         /** @enum {string} */
@@ -21752,7 +21752,7 @@ export interface operations {
                                         address: string;
                                         contract_name: string;
                                     };
-                                    condition_code: "sent" | "not_sent";
+                                    condition_code: "sent" | "not_sent" | "maybe_sent";
                                     /** @enum {string} */
                                     type: "non_fungible";
                                     asset_value: {
@@ -21910,7 +21910,7 @@ export interface operations {
                                 /** @description Denotes whether the originating account is the same as the paying account */
                                 sponsored: boolean;
                                 sponsor_address?: string;
-                                post_condition_mode: "allow" | "deny";
+                                post_condition_mode: "allow" | "deny" | "originator";
                                 post_conditions: ({
                                     principal: {
                                         /** @enum {string} */
@@ -21966,7 +21966,7 @@ export interface operations {
                                         address: string;
                                         contract_name: string;
                                     };
-                                    condition_code: "sent" | "not_sent";
+                                    condition_code: "sent" | "not_sent" | "maybe_sent";
                                     /** @enum {string} */
                                     type: "non_fungible";
                                     asset_value: {
@@ -22422,7 +22422,7 @@ export interface operations {
                             /** @description Denotes whether the originating account is the same as the paying account */
                             sponsored: boolean;
                             sponsor_address?: string;
-                            post_condition_mode: "allow" | "deny";
+                            post_condition_mode: "allow" | "deny" | "originator";
                             post_conditions: ({
                                 principal: {
                                     /** @enum {string} */
@@ -22478,7 +22478,7 @@ export interface operations {
                                     address: string;
                                     contract_name: string;
                                 };
-                                condition_code: "sent" | "not_sent";
+                                condition_code: "sent" | "not_sent" | "maybe_sent";
                                 /** @enum {string} */
                                 type: "non_fungible";
                                 asset_value: {
@@ -22522,7 +22522,7 @@ export interface operations {
                             /** @description Denotes whether the originating account is the same as the paying account */
                             sponsored: boolean;
                             sponsor_address?: string;
-                            post_condition_mode: "allow" | "deny";
+                            post_condition_mode: "allow" | "deny" | "originator";
                             post_conditions: ({
                                 principal: {
                                     /** @enum {string} */
@@ -22578,7 +22578,7 @@ export interface operations {
                                     address: string;
                                     contract_name: string;
                                 };
-                                condition_code: "sent" | "not_sent";
+                                condition_code: "sent" | "not_sent" | "maybe_sent";
                                 /** @enum {string} */
                                 type: "non_fungible";
                                 asset_value: {
@@ -22622,7 +22622,7 @@ export interface operations {
                             /** @description Denotes whether the originating account is the same as the paying account */
                             sponsored: boolean;
                             sponsor_address?: string;
-                            post_condition_mode: "allow" | "deny";
+                            post_condition_mode: "allow" | "deny" | "originator";
                             post_conditions: ({
                                 principal: {
                                     /** @enum {string} */
@@ -22678,7 +22678,7 @@ export interface operations {
                                     address: string;
                                     contract_name: string;
                                 };
-                                condition_code: "sent" | "not_sent";
+                                condition_code: "sent" | "not_sent" | "maybe_sent";
                                 /** @enum {string} */
                                 type: "non_fungible";
                                 asset_value: {
@@ -22729,7 +22729,7 @@ export interface operations {
                             /** @description Denotes whether the originating account is the same as the paying account */
                             sponsored: boolean;
                             sponsor_address?: string;
-                            post_condition_mode: "allow" | "deny";
+                            post_condition_mode: "allow" | "deny" | "originator";
                             post_conditions: ({
                                 principal: {
                                     /** @enum {string} */
@@ -22785,7 +22785,7 @@ export interface operations {
                                     address: string;
                                     contract_name: string;
                                 };
-                                condition_code: "sent" | "not_sent";
+                                condition_code: "sent" | "not_sent" | "maybe_sent";
                                 /** @enum {string} */
                                 type: "non_fungible";
                                 asset_value: {
@@ -22828,7 +22828,7 @@ export interface operations {
                             /** @description Denotes whether the originating account is the same as the paying account */
                             sponsored: boolean;
                             sponsor_address?: string;
-                            post_condition_mode: "allow" | "deny";
+                            post_condition_mode: "allow" | "deny" | "originator";
                             post_conditions: ({
                                 principal: {
                                     /** @enum {string} */
@@ -22884,7 +22884,7 @@ export interface operations {
                                     address: string;
                                     contract_name: string;
                                 };
-                                condition_code: "sent" | "not_sent";
+                                condition_code: "sent" | "not_sent" | "maybe_sent";
                                 /** @enum {string} */
                                 type: "non_fungible";
                                 asset_value: {
@@ -22927,7 +22927,7 @@ export interface operations {
                             /** @description Denotes whether the originating account is the same as the paying account */
                             sponsored: boolean;
                             sponsor_address?: string;
-                            post_condition_mode: "allow" | "deny";
+                            post_condition_mode: "allow" | "deny" | "originator";
                             post_conditions: ({
                                 principal: {
                                     /** @enum {string} */
@@ -22983,7 +22983,7 @@ export interface operations {
                                     address: string;
                                     contract_name: string;
                                 };
-                                condition_code: "sent" | "not_sent";
+                                condition_code: "sent" | "not_sent" | "maybe_sent";
                                 /** @enum {string} */
                                 type: "non_fungible";
                                 asset_value: {
@@ -23268,7 +23268,7 @@ export interface operations {
                                 /** @description Denotes whether the originating account is the same as the paying account */
                                 sponsored: boolean;
                                 sponsor_address?: string;
-                                post_condition_mode: "allow" | "deny";
+                                post_condition_mode: "allow" | "deny" | "originator";
                                 post_conditions: ({
                                     principal: {
                                         /** @enum {string} */
@@ -23324,7 +23324,7 @@ export interface operations {
                                         address: string;
                                         contract_name: string;
                                     };
-                                    condition_code: "sent" | "not_sent";
+                                    condition_code: "sent" | "not_sent" | "maybe_sent";
                                     /** @enum {string} */
                                     type: "non_fungible";
                                     asset_value: {
@@ -23483,7 +23483,7 @@ export interface operations {
                                 /** @description Denotes whether the originating account is the same as the paying account */
                                 sponsored: boolean;
                                 sponsor_address?: string;
-                                post_condition_mode: "allow" | "deny";
+                                post_condition_mode: "allow" | "deny" | "originator";
                                 post_conditions: ({
                                     principal: {
                                         /** @enum {string} */
@@ -23539,7 +23539,7 @@ export interface operations {
                                         address: string;
                                         contract_name: string;
                                     };
-                                    condition_code: "sent" | "not_sent";
+                                    condition_code: "sent" | "not_sent" | "maybe_sent";
                                     /** @enum {string} */
                                     type: "non_fungible";
                                     asset_value: {
@@ -23698,7 +23698,7 @@ export interface operations {
                                 /** @description Denotes whether the originating account is the same as the paying account */
                                 sponsored: boolean;
                                 sponsor_address?: string;
-                                post_condition_mode: "allow" | "deny";
+                                post_condition_mode: "allow" | "deny" | "originator";
                                 post_conditions: ({
                                     principal: {
                                         /** @enum {string} */
@@ -23754,7 +23754,7 @@ export interface operations {
                                         address: string;
                                         contract_name: string;
                                     };
-                                    condition_code: "sent" | "not_sent";
+                                    condition_code: "sent" | "not_sent" | "maybe_sent";
                                     /** @enum {string} */
                                     type: "non_fungible";
                                     asset_value: {
@@ -23920,7 +23920,7 @@ export interface operations {
                                 /** @description Denotes whether the originating account is the same as the paying account */
                                 sponsored: boolean;
                                 sponsor_address?: string;
-                                post_condition_mode: "allow" | "deny";
+                                post_condition_mode: "allow" | "deny" | "originator";
                                 post_conditions: ({
                                     principal: {
                                         /** @enum {string} */
@@ -23976,7 +23976,7 @@ export interface operations {
                                         address: string;
                                         contract_name: string;
                                     };
-                                    condition_code: "sent" | "not_sent";
+                                    condition_code: "sent" | "not_sent" | "maybe_sent";
                                     /** @enum {string} */
                                     type: "non_fungible";
                                     asset_value: {
@@ -24134,7 +24134,7 @@ export interface operations {
                                 /** @description Denotes whether the originating account is the same as the paying account */
                                 sponsored: boolean;
                                 sponsor_address?: string;
-                                post_condition_mode: "allow" | "deny";
+                                post_condition_mode: "allow" | "deny" | "originator";
                                 post_conditions: ({
                                     principal: {
                                         /** @enum {string} */
@@ -24190,7 +24190,7 @@ export interface operations {
                                         address: string;
                                         contract_name: string;
                                     };
-                                    condition_code: "sent" | "not_sent";
+                                    condition_code: "sent" | "not_sent" | "maybe_sent";
                                     /** @enum {string} */
                                     type: "non_fungible";
                                     asset_value: {
@@ -24348,7 +24348,7 @@ export interface operations {
                                 /** @description Denotes whether the originating account is the same as the paying account */
                                 sponsored: boolean;
                                 sponsor_address?: string;
-                                post_condition_mode: "allow" | "deny";
+                                post_condition_mode: "allow" | "deny" | "originator";
                                 post_conditions: ({
                                     principal: {
                                         /** @enum {string} */
@@ -24404,7 +24404,7 @@ export interface operations {
                                         address: string;
                                         contract_name: string;
                                     };
-                                    condition_code: "sent" | "not_sent";
+                                    condition_code: "sent" | "not_sent" | "maybe_sent";
                                     /** @enum {string} */
                                     type: "non_fungible";
                                     asset_value: {
@@ -24572,7 +24572,7 @@ export interface operations {
                                 /** @description Denotes whether the originating account is the same as the paying account */
                                 sponsored: boolean;
                                 sponsor_address?: string;
-                                post_condition_mode: "allow" | "deny";
+                                post_condition_mode: "allow" | "deny" | "originator";
                                 post_conditions: ({
                                     principal: {
                                         /** @enum {string} */
@@ -24628,7 +24628,7 @@ export interface operations {
                                         address: string;
                                         contract_name: string;
                                     };
-                                    condition_code: "sent" | "not_sent";
+                                    condition_code: "sent" | "not_sent" | "maybe_sent";
                                     /** @enum {string} */
                                     type: "non_fungible";
                                     asset_value: {
@@ -24672,7 +24672,7 @@ export interface operations {
                                 /** @description Denotes whether the originating account is the same as the paying account */
                                 sponsored: boolean;
                                 sponsor_address?: string;
-                                post_condition_mode: "allow" | "deny";
+                                post_condition_mode: "allow" | "deny" | "originator";
                                 post_conditions: ({
                                     principal: {
                                         /** @enum {string} */
@@ -24728,7 +24728,7 @@ export interface operations {
                                         address: string;
                                         contract_name: string;
                                     };
-                                    condition_code: "sent" | "not_sent";
+                                    condition_code: "sent" | "not_sent" | "maybe_sent";
                                     /** @enum {string} */
                                     type: "non_fungible";
                                     asset_value: {
@@ -24772,7 +24772,7 @@ export interface operations {
                                 /** @description Denotes whether the originating account is the same as the paying account */
                                 sponsored: boolean;
                                 sponsor_address?: string;
-                                post_condition_mode: "allow" | "deny";
+                                post_condition_mode: "allow" | "deny" | "originator";
                                 post_conditions: ({
                                     principal: {
                                         /** @enum {string} */
@@ -24828,7 +24828,7 @@ export interface operations {
                                         address: string;
                                         contract_name: string;
                                     };
-                                    condition_code: "sent" | "not_sent";
+                                    condition_code: "sent" | "not_sent" | "maybe_sent";
                                     /** @enum {string} */
                                     type: "non_fungible";
                                     asset_value: {
@@ -24879,7 +24879,7 @@ export interface operations {
                                 /** @description Denotes whether the originating account is the same as the paying account */
                                 sponsored: boolean;
                                 sponsor_address?: string;
-                                post_condition_mode: "allow" | "deny";
+                                post_condition_mode: "allow" | "deny" | "originator";
                                 post_conditions: ({
                                     principal: {
                                         /** @enum {string} */
@@ -24935,7 +24935,7 @@ export interface operations {
                                         address: string;
                                         contract_name: string;
                                     };
-                                    condition_code: "sent" | "not_sent";
+                                    condition_code: "sent" | "not_sent" | "maybe_sent";
                                     /** @enum {string} */
                                     type: "non_fungible";
                                     asset_value: {
@@ -24978,7 +24978,7 @@ export interface operations {
                                 /** @description Denotes whether the originating account is the same as the paying account */
                                 sponsored: boolean;
                                 sponsor_address?: string;
-                                post_condition_mode: "allow" | "deny";
+                                post_condition_mode: "allow" | "deny" | "originator";
                                 post_conditions: ({
                                     principal: {
                                         /** @enum {string} */
@@ -25034,7 +25034,7 @@ export interface operations {
                                         address: string;
                                         contract_name: string;
                                     };
-                                    condition_code: "sent" | "not_sent";
+                                    condition_code: "sent" | "not_sent" | "maybe_sent";
                                     /** @enum {string} */
                                     type: "non_fungible";
                                     asset_value: {
@@ -25077,7 +25077,7 @@ export interface operations {
                                 /** @description Denotes whether the originating account is the same as the paying account */
                                 sponsored: boolean;
                                 sponsor_address?: string;
-                                post_condition_mode: "allow" | "deny";
+                                post_condition_mode: "allow" | "deny" | "originator";
                                 post_conditions: ({
                                     principal: {
                                         /** @enum {string} */
@@ -25133,7 +25133,7 @@ export interface operations {
                                         address: string;
                                         contract_name: string;
                                     };
-                                    condition_code: "sent" | "not_sent";
+                                    condition_code: "sent" | "not_sent" | "maybe_sent";
                                     /** @enum {string} */
                                     type: "non_fungible";
                                     asset_value: {
@@ -25195,7 +25195,7 @@ export interface operations {
                                 /** @description Denotes whether the originating account is the same as the paying account */
                                 sponsored: boolean;
                                 sponsor_address?: string;
-                                post_condition_mode: "allow" | "deny";
+                                post_condition_mode: "allow" | "deny" | "originator";
                                 post_conditions: ({
                                     principal: {
                                         /** @enum {string} */
@@ -25251,7 +25251,7 @@ export interface operations {
                                         address: string;
                                         contract_name: string;
                                     };
-                                    condition_code: "sent" | "not_sent";
+                                    condition_code: "sent" | "not_sent" | "maybe_sent";
                                     /** @enum {string} */
                                     type: "non_fungible";
                                     asset_value: {
@@ -25295,7 +25295,7 @@ export interface operations {
                                 /** @description Denotes whether the originating account is the same as the paying account */
                                 sponsored: boolean;
                                 sponsor_address?: string;
-                                post_condition_mode: "allow" | "deny";
+                                post_condition_mode: "allow" | "deny" | "originator";
                                 post_conditions: ({
                                     principal: {
                                         /** @enum {string} */
@@ -25351,7 +25351,7 @@ export interface operations {
                                         address: string;
                                         contract_name: string;
                                     };
-                                    condition_code: "sent" | "not_sent";
+                                    condition_code: "sent" | "not_sent" | "maybe_sent";
                                     /** @enum {string} */
                                     type: "non_fungible";
                                     asset_value: {
@@ -25395,7 +25395,7 @@ export interface operations {
                                 /** @description Denotes whether the originating account is the same as the paying account */
                                 sponsored: boolean;
                                 sponsor_address?: string;
-                                post_condition_mode: "allow" | "deny";
+                                post_condition_mode: "allow" | "deny" | "originator";
                                 post_conditions: ({
                                     principal: {
                                         /** @enum {string} */
@@ -25451,7 +25451,7 @@ export interface operations {
                                         address: string;
                                         contract_name: string;
                                     };
-                                    condition_code: "sent" | "not_sent";
+                                    condition_code: "sent" | "not_sent" | "maybe_sent";
                                     /** @enum {string} */
                                     type: "non_fungible";
                                     asset_value: {
@@ -25502,7 +25502,7 @@ export interface operations {
                                 /** @description Denotes whether the originating account is the same as the paying account */
                                 sponsored: boolean;
                                 sponsor_address?: string;
-                                post_condition_mode: "allow" | "deny";
+                                post_condition_mode: "allow" | "deny" | "originator";
                                 post_conditions: ({
                                     principal: {
                                         /** @enum {string} */
@@ -25558,7 +25558,7 @@ export interface operations {
                                         address: string;
                                         contract_name: string;
                                     };
-                                    condition_code: "sent" | "not_sent";
+                                    condition_code: "sent" | "not_sent" | "maybe_sent";
                                     /** @enum {string} */
                                     type: "non_fungible";
                                     asset_value: {
@@ -25601,7 +25601,7 @@ export interface operations {
                                 /** @description Denotes whether the originating account is the same as the paying account */
                                 sponsored: boolean;
                                 sponsor_address?: string;
-                                post_condition_mode: "allow" | "deny";
+                                post_condition_mode: "allow" | "deny" | "originator";
                                 post_conditions: ({
                                     principal: {
                                         /** @enum {string} */
@@ -25657,7 +25657,7 @@ export interface operations {
                                         address: string;
                                         contract_name: string;
                                     };
-                                    condition_code: "sent" | "not_sent";
+                                    condition_code: "sent" | "not_sent" | "maybe_sent";
                                     /** @enum {string} */
                                     type: "non_fungible";
                                     asset_value: {
@@ -25700,7 +25700,7 @@ export interface operations {
                                 /** @description Denotes whether the originating account is the same as the paying account */
                                 sponsored: boolean;
                                 sponsor_address?: string;
-                                post_condition_mode: "allow" | "deny";
+                                post_condition_mode: "allow" | "deny" | "originator";
                                 post_conditions: ({
                                     principal: {
                                         /** @enum {string} */
@@ -25756,7 +25756,7 @@ export interface operations {
                                         address: string;
                                         contract_name: string;
                                     };
-                                    condition_code: "sent" | "not_sent";
+                                    condition_code: "sent" | "not_sent" | "maybe_sent";
                                     /** @enum {string} */
                                     type: "non_fungible";
                                     asset_value: {
@@ -25822,7 +25822,7 @@ export interface operations {
                                 /** @description Denotes whether the originating account is the same as the paying account */
                                 sponsored: boolean;
                                 sponsor_address?: string;
-                                post_condition_mode: "allow" | "deny";
+                                post_condition_mode: "allow" | "deny" | "originator";
                                 post_conditions: ({
                                     principal: {
                                         /** @enum {string} */
@@ -25878,7 +25878,7 @@ export interface operations {
                                         address: string;
                                         contract_name: string;
                                     };
-                                    condition_code: "sent" | "not_sent";
+                                    condition_code: "sent" | "not_sent" | "maybe_sent";
                                     /** @enum {string} */
                                     type: "non_fungible";
                                     asset_value: {
@@ -26037,7 +26037,7 @@ export interface operations {
                                 /** @description Denotes whether the originating account is the same as the paying account */
                                 sponsored: boolean;
                                 sponsor_address?: string;
-                                post_condition_mode: "allow" | "deny";
+                                post_condition_mode: "allow" | "deny" | "originator";
                                 post_conditions: ({
                                     principal: {
                                         /** @enum {string} */
@@ -26093,7 +26093,7 @@ export interface operations {
                                         address: string;
                                         contract_name: string;
                                     };
-                                    condition_code: "sent" | "not_sent";
+                                    condition_code: "sent" | "not_sent" | "maybe_sent";
                                     /** @enum {string} */
                                     type: "non_fungible";
                                     asset_value: {
@@ -26252,7 +26252,7 @@ export interface operations {
                                 /** @description Denotes whether the originating account is the same as the paying account */
                                 sponsored: boolean;
                                 sponsor_address?: string;
-                                post_condition_mode: "allow" | "deny";
+                                post_condition_mode: "allow" | "deny" | "originator";
                                 post_conditions: ({
                                     principal: {
                                         /** @enum {string} */
@@ -26308,7 +26308,7 @@ export interface operations {
                                         address: string;
                                         contract_name: string;
                                     };
-                                    condition_code: "sent" | "not_sent";
+                                    condition_code: "sent" | "not_sent" | "maybe_sent";
                                     /** @enum {string} */
                                     type: "non_fungible";
                                     asset_value: {
@@ -26474,7 +26474,7 @@ export interface operations {
                                 /** @description Denotes whether the originating account is the same as the paying account */
                                 sponsored: boolean;
                                 sponsor_address?: string;
-                                post_condition_mode: "allow" | "deny";
+                                post_condition_mode: "allow" | "deny" | "originator";
                                 post_conditions: ({
                                     principal: {
                                         /** @enum {string} */
@@ -26530,7 +26530,7 @@ export interface operations {
                                         address: string;
                                         contract_name: string;
                                     };
-                                    condition_code: "sent" | "not_sent";
+                                    condition_code: "sent" | "not_sent" | "maybe_sent";
                                     /** @enum {string} */
                                     type: "non_fungible";
                                     asset_value: {
@@ -26688,7 +26688,7 @@ export interface operations {
                                 /** @description Denotes whether the originating account is the same as the paying account */
                                 sponsored: boolean;
                                 sponsor_address?: string;
-                                post_condition_mode: "allow" | "deny";
+                                post_condition_mode: "allow" | "deny" | "originator";
                                 post_conditions: ({
                                     principal: {
                                         /** @enum {string} */
@@ -26744,7 +26744,7 @@ export interface operations {
                                         address: string;
                                         contract_name: string;
                                     };
-                                    condition_code: "sent" | "not_sent";
+                                    condition_code: "sent" | "not_sent" | "maybe_sent";
                                     /** @enum {string} */
                                     type: "non_fungible";
                                     asset_value: {
@@ -26902,7 +26902,7 @@ export interface operations {
                                 /** @description Denotes whether the originating account is the same as the paying account */
                                 sponsored: boolean;
                                 sponsor_address?: string;
-                                post_condition_mode: "allow" | "deny";
+                                post_condition_mode: "allow" | "deny" | "originator";
                                 post_conditions: ({
                                     principal: {
                                         /** @enum {string} */
@@ -26958,7 +26958,7 @@ export interface operations {
                                         address: string;
                                         contract_name: string;
                                     };
-                                    condition_code: "sent" | "not_sent";
+                                    condition_code: "sent" | "not_sent" | "maybe_sent";
                                     /** @enum {string} */
                                     type: "non_fungible";
                                     asset_value: {
@@ -27647,7 +27647,7 @@ export interface operations {
                             /** @description Denotes whether the originating account is the same as the paying account */
                             sponsored: boolean;
                             sponsor_address?: string;
-                            post_condition_mode: "allow" | "deny";
+                            post_condition_mode: "allow" | "deny" | "originator";
                             post_conditions: ({
                                 principal: {
                                     /** @enum {string} */
@@ -27703,7 +27703,7 @@ export interface operations {
                                     address: string;
                                     contract_name: string;
                                 };
-                                condition_code: "sent" | "not_sent";
+                                condition_code: "sent" | "not_sent" | "maybe_sent";
                                 /** @enum {string} */
                                 type: "non_fungible";
                                 asset_value: {
@@ -27862,7 +27862,7 @@ export interface operations {
                             /** @description Denotes whether the originating account is the same as the paying account */
                             sponsored: boolean;
                             sponsor_address?: string;
-                            post_condition_mode: "allow" | "deny";
+                            post_condition_mode: "allow" | "deny" | "originator";
                             post_conditions: ({
                                 principal: {
                                     /** @enum {string} */
@@ -27918,7 +27918,7 @@ export interface operations {
                                     address: string;
                                     contract_name: string;
                                 };
-                                condition_code: "sent" | "not_sent";
+                                condition_code: "sent" | "not_sent" | "maybe_sent";
                                 /** @enum {string} */
                                 type: "non_fungible";
                                 asset_value: {
@@ -28077,7 +28077,7 @@ export interface operations {
                             /** @description Denotes whether the originating account is the same as the paying account */
                             sponsored: boolean;
                             sponsor_address?: string;
-                            post_condition_mode: "allow" | "deny";
+                            post_condition_mode: "allow" | "deny" | "originator";
                             post_conditions: ({
                                 principal: {
                                     /** @enum {string} */
@@ -28133,7 +28133,7 @@ export interface operations {
                                     address: string;
                                     contract_name: string;
                                 };
-                                condition_code: "sent" | "not_sent";
+                                condition_code: "sent" | "not_sent" | "maybe_sent";
                                 /** @enum {string} */
                                 type: "non_fungible";
                                 asset_value: {
@@ -28299,7 +28299,7 @@ export interface operations {
                             /** @description Denotes whether the originating account is the same as the paying account */
                             sponsored: boolean;
                             sponsor_address?: string;
-                            post_condition_mode: "allow" | "deny";
+                            post_condition_mode: "allow" | "deny" | "originator";
                             post_conditions: ({
                                 principal: {
                                     /** @enum {string} */
@@ -28355,7 +28355,7 @@ export interface operations {
                                     address: string;
                                     contract_name: string;
                                 };
-                                condition_code: "sent" | "not_sent";
+                                condition_code: "sent" | "not_sent" | "maybe_sent";
                                 /** @enum {string} */
                                 type: "non_fungible";
                                 asset_value: {
@@ -28513,7 +28513,7 @@ export interface operations {
                             /** @description Denotes whether the originating account is the same as the paying account */
                             sponsored: boolean;
                             sponsor_address?: string;
-                            post_condition_mode: "allow" | "deny";
+                            post_condition_mode: "allow" | "deny" | "originator";
                             post_conditions: ({
                                 principal: {
                                     /** @enum {string} */
@@ -28569,7 +28569,7 @@ export interface operations {
                                     address: string;
                                     contract_name: string;
                                 };
-                                condition_code: "sent" | "not_sent";
+                                condition_code: "sent" | "not_sent" | "maybe_sent";
                                 /** @enum {string} */
                                 type: "non_fungible";
                                 asset_value: {
@@ -28727,7 +28727,7 @@ export interface operations {
                             /** @description Denotes whether the originating account is the same as the paying account */
                             sponsored: boolean;
                             sponsor_address?: string;
-                            post_condition_mode: "allow" | "deny";
+                            post_condition_mode: "allow" | "deny" | "originator";
                             post_conditions: ({
                                 principal: {
                                     /** @enum {string} */
@@ -28783,7 +28783,7 @@ export interface operations {
                                     address: string;
                                     contract_name: string;
                                 };
-                                condition_code: "sent" | "not_sent";
+                                condition_code: "sent" | "not_sent" | "maybe_sent";
                                 /** @enum {string} */
                                 type: "non_fungible";
                                 asset_value: {
@@ -29741,7 +29741,7 @@ export interface operations {
                                 /** @description Denotes whether the originating account is the same as the paying account */
                                 sponsored: boolean;
                                 sponsor_address?: string;
-                                post_condition_mode: "allow" | "deny";
+                                post_condition_mode: "allow" | "deny" | "originator";
                                 post_conditions: ({
                                     principal: {
                                         /** @enum {string} */
@@ -29797,7 +29797,7 @@ export interface operations {
                                         address: string;
                                         contract_name: string;
                                     };
-                                    condition_code: "sent" | "not_sent";
+                                    condition_code: "sent" | "not_sent" | "maybe_sent";
                                     /** @enum {string} */
                                     type: "non_fungible";
                                     asset_value: {
@@ -29956,7 +29956,7 @@ export interface operations {
                                 /** @description Denotes whether the originating account is the same as the paying account */
                                 sponsored: boolean;
                                 sponsor_address?: string;
-                                post_condition_mode: "allow" | "deny";
+                                post_condition_mode: "allow" | "deny" | "originator";
                                 post_conditions: ({
                                     principal: {
                                         /** @enum {string} */
@@ -30012,7 +30012,7 @@ export interface operations {
                                         address: string;
                                         contract_name: string;
                                     };
-                                    condition_code: "sent" | "not_sent";
+                                    condition_code: "sent" | "not_sent" | "maybe_sent";
                                     /** @enum {string} */
                                     type: "non_fungible";
                                     asset_value: {
@@ -30171,7 +30171,7 @@ export interface operations {
                                 /** @description Denotes whether the originating account is the same as the paying account */
                                 sponsored: boolean;
                                 sponsor_address?: string;
-                                post_condition_mode: "allow" | "deny";
+                                post_condition_mode: "allow" | "deny" | "originator";
                                 post_conditions: ({
                                     principal: {
                                         /** @enum {string} */
@@ -30227,7 +30227,7 @@ export interface operations {
                                         address: string;
                                         contract_name: string;
                                     };
-                                    condition_code: "sent" | "not_sent";
+                                    condition_code: "sent" | "not_sent" | "maybe_sent";
                                     /** @enum {string} */
                                     type: "non_fungible";
                                     asset_value: {
@@ -30393,7 +30393,7 @@ export interface operations {
                                 /** @description Denotes whether the originating account is the same as the paying account */
                                 sponsored: boolean;
                                 sponsor_address?: string;
-                                post_condition_mode: "allow" | "deny";
+                                post_condition_mode: "allow" | "deny" | "originator";
                                 post_conditions: ({
                                     principal: {
                                         /** @enum {string} */
@@ -30449,7 +30449,7 @@ export interface operations {
                                         address: string;
                                         contract_name: string;
                                     };
-                                    condition_code: "sent" | "not_sent";
+                                    condition_code: "sent" | "not_sent" | "maybe_sent";
                                     /** @enum {string} */
                                     type: "non_fungible";
                                     asset_value: {
@@ -30607,7 +30607,7 @@ export interface operations {
                                 /** @description Denotes whether the originating account is the same as the paying account */
                                 sponsored: boolean;
                                 sponsor_address?: string;
-                                post_condition_mode: "allow" | "deny";
+                                post_condition_mode: "allow" | "deny" | "originator";
                                 post_conditions: ({
                                     principal: {
                                         /** @enum {string} */
@@ -30663,7 +30663,7 @@ export interface operations {
                                         address: string;
                                         contract_name: string;
                                     };
-                                    condition_code: "sent" | "not_sent";
+                                    condition_code: "sent" | "not_sent" | "maybe_sent";
                                     /** @enum {string} */
                                     type: "non_fungible";
                                     asset_value: {
@@ -30821,7 +30821,7 @@ export interface operations {
                                 /** @description Denotes whether the originating account is the same as the paying account */
                                 sponsored: boolean;
                                 sponsor_address?: string;
-                                post_condition_mode: "allow" | "deny";
+                                post_condition_mode: "allow" | "deny" | "originator";
                                 post_conditions: ({
                                     principal: {
                                         /** @enum {string} */
@@ -30877,7 +30877,7 @@ export interface operations {
                                         address: string;
                                         contract_name: string;
                                     };
-                                    condition_code: "sent" | "not_sent";
+                                    condition_code: "sent" | "not_sent" | "maybe_sent";
                                     /** @enum {string} */
                                     type: "non_fungible";
                                     asset_value: {
@@ -31292,7 +31292,7 @@ export interface operations {
             header?: never;
             path: {
                 principal: string;
-                /** @description fungible token identifier */
+                /** @description fungible token identifier, e.g. `SM3VDXK3WZZSA84XXFKAFAF15NNZX32CTSG82JFQ4.sbtc-token::sbtc-token` */
                 token: string;
             };
             cookie?: never;

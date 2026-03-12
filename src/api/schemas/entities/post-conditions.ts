@@ -1,6 +1,10 @@
 import { Static, Type } from '@sinclair/typebox';
 
-export const PostConditionModeSchema = Type.Union([Type.Literal('allow'), Type.Literal('deny')]);
+export const PostConditionModeSchema = Type.Union([
+  Type.Literal('allow'),
+  Type.Literal('deny'),
+  Type.Literal('originator'),
+]);
 
 const PostConditionPrincipalSchema = Type.Union([
   Type.Object({
@@ -46,7 +50,11 @@ const PostConditionFungibleAssetSchema = Type.Object({
 
 const PostConditionNonFungibleAssetSchema = Type.Object({
   principal: PostConditionPrincipalSchema,
-  condition_code: Type.Union([Type.Literal('sent'), Type.Literal('not_sent')]),
+  condition_code: Type.Union([
+    Type.Literal('sent'),
+    Type.Literal('not_sent'),
+    Type.Literal('maybe_sent'),
+  ]),
   type: Type.Literal('non_fungible'),
   asset_value: Type.Object({
     hex: Type.String(),

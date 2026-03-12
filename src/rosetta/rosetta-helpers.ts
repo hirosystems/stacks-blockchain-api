@@ -65,7 +65,7 @@ import {
   decodeClarityValueList,
   ClarityValue,
   ClarityValueList,
-} from '@hirosystems/stacks-encoding-native-js';
+} from '@stacks/codec';
 import { PgStore } from '../datastore/pg-store';
 import { poxAddressToBtcAddress } from '@stacks/stacking';
 import { parseRecoverableSignatureVrs } from '@stacks/common';
