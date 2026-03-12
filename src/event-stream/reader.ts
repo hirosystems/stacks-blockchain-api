@@ -34,7 +34,7 @@ import {
   TxSpendingConditionSingleSigHashMode,
   decodeClarityValueList,
   ClarityValueBuffer,
-} from '@hirosystems/stacks-encoding-native-js';
+} from '@stacks/codec';
 import {
   DbMicroblockPartial,
   DbPoxSyntheticDelegateStxEvent,

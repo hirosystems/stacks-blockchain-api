@@ -3,7 +3,8 @@ import {
   PostConditionAssetInfoID,
   PostConditionPrincipal,
   PostConditionPrincipalTypeID,
-} from '@hirosystems/stacks-encoding-native-js';
+  PostConditionModeID,
+} from '@stacks/codec';
 
 const assetPrincipalTypeMap = {
   [PostConditionPrincipalTypeID.Origin]: 'principal_origin',
@@ -75,12 +76,13 @@ export function serializePostCondition(pc: TxPostCondition) {
   }
 }
 
-export function serializePostConditionMode(byte: number) {
-  switch (byte) {
-    case 1:
+export function serializePostConditionMode(mode: PostConditionModeID) {
+  switch (mode) {
+    case PostConditionModeID.Allow:
       return 'allow';
-    case 2:
+    case PostConditionModeID.Deny:
       return 'deny';
+    case PostConditionModeID.Originator:
+      return 'originator';
   }
-  throw new Error(`PostConditionMode byte must be either 1 or 2 but was ${byte}`);
 }
