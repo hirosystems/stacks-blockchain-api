@@ -85,7 +85,7 @@
     "@fastify/type-provider-typebox": "4.0.0",
     "@sinclair/typebox": "0.32.35",
     "@stacks/api-toolkit": "1.12.2",
-    "@stacks/codec": "1.5.0",
+    "@stacks/codec": "1.6.0",
     "@stacks/common": "6.10.0",
     "@stacks/encryption": "6.13.1",
     "@stacks/network": "6.11.3",
