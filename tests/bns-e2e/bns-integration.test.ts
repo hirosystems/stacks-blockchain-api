@@ -6,13 +6,17 @@ import { StacksMocknet } from '@stacks/network';
 import {
   broadcastTransaction,
   bufferCV,
+  ClarityAbi,
   FungibleConditionCode,
+  getAddressFromPrivateKey,
   makeContractCall,
   makeStandardSTXPostCondition,
   standardPrincipalCV,
   uintCV,
   SignedContractCallOptions,
   noneCV,
+  StacksTransaction,
+  TransactionVersion,
 } from '@stacks/transactions';
 import { PgWriteStore } from '../../src/datastore/pg-write-store';
 import { standByForTx as standByForTxShared } from '../utils/test-helpers';
@@ -43,8 +47,57 @@ type TestnetKey = {
 describe('BNS integration tests', () => {
   let db: PgWriteStore;
   let api: ApiServer;
+  let bnsContractAbi: ClarityAbi | undefined;
 
   const standByForTx = (expectedTxId: string) => standByForTxShared(expectedTxId, api);
+
+  async function getBnsContractAbi(): Promise<ClarityAbi> {
+    if (bnsContractAbi) return bnsContractAbi;
+    const contractId = `${deployedTo}.${deployedName}`;
+    const contractResp = await supertest(api.server).get(`/extended/v1/contract/${contractId}`);
+    if (contractResp.status === 200 && contractResp.body?.abi) {
+      const apiAbi =
+        typeof contractResp.body.abi === 'string'
+          ? JSON.parse(contractResp.body.abi)
+          : contractResp.body.abi;
+      if (apiAbi?.functions) {
+        bnsContractAbi = apiAbi as ClarityAbi;
+        return bnsContractAbi;
+      }
+    }
+
+    const abiUrl = network.getAbiApiUrl(deployedTo, deployedName);
+    const response = await fetch(abiUrl);
+    if (!response.ok) {
+      throw new Error(
+        `Failed to fetch BNS ABI from API and ${abiUrl}: ${response.status} ${response.statusText}`
+      );
+    }
+    const payload = JSON.parse(await response.text());
+    const abiCandidate = payload?.functions ?? payload?.abi ?? payload?.contract_interface;
+    if (!abiCandidate?.functions) {
+      const debugShape = JSON.stringify(Object.keys(payload ?? {}));
+      throw new Error(
+        `Unexpected ABI response shape from ${abiUrl}. Top-level keys: ${debugShape}`
+      );
+    }
+    bnsContractAbi = abiCandidate as ClarityAbi;
+    return bnsContractAbi;
+  }
+
+  async function makeBnsContractCall(
+    txOptions: SignedContractCallOptions
+  ): Promise<StacksTransaction> {
+    const abi = await getBnsContractAbi();
+    const senderAddress = getAddressFromPrivateKey(txOptions.senderKey, TransactionVersion.Testnet);
+    const nonces = await db.getAddressNonces({ stxAddress: senderAddress });
+    const options = {
+      ...txOptions,
+      validateWithAbi: abi,
+      nonce: txOptions.nonce ?? BigInt(nonces.possibleNextNonce),
+    };
+    return await makeContractCall(options);
+  }
 
   async function standbyBnsName(expectedTxId: string): Promise<string> {
     const broadcastTx = new Promise<string>(resolve => {
@@ -61,7 +114,7 @@ describe('BNS integration tests', () => {
     return txid;
   }
   async function getContractTransaction(txOptions: SignedContractCallOptions, zonefile?: string) {
-    const transaction = await makeContractCall(txOptions);
+    const transaction = await makeBnsContractCall(txOptions);
     const body: { tx: string; attachment?: string } = {
       tx: Buffer.from(transaction.serialize()).toString('hex'),
     };
@@ -95,7 +148,7 @@ describe('BNS integration tests', () => {
       fee: 100000,
     };
 
-    const transaction = await makeContractCall(txOptions);
+    const transaction = await makeBnsContractCall(txOptions);
     await broadcastTransaction(transaction, network);
     const preorder = await standByForTx('0x' + transaction.txid());
     if (preorder.status != 1) logger.error('Namespace preorder error');
@@ -144,7 +197,7 @@ describe('BNS integration tests', () => {
       anchorMode: AnchorMode.Any,
       fee: 100000,
     };
-    const revealTransaction = await makeContractCall(revealTxOptions);
+    const revealTransaction = await makeBnsContractCall(revealTxOptions);
     await broadcastTransaction(revealTransaction, network);
     const reveal = await standByForTx('0x' + revealTransaction.txid());
     if (reveal.status != 1) logger.error('Namespace Reveal Error');
@@ -172,7 +225,7 @@ describe('BNS integration tests', () => {
       anchorMode: AnchorMode.Any,
       fee: 100000,
     };
-    const transaction = await makeContractCall(txOptions);
+    const transaction = await makeBnsContractCall(txOptions);
     await broadcastTransaction(transaction, network);
     const readyResult = await standByForTx('0x' + transaction.txid());
     if (readyResult.status != 1) logger.error('namespace-ready error');
@@ -245,7 +298,7 @@ describe('BNS integration tests', () => {
       fee: 100000,
     };
 
-    const preOrderTransaction = await makeContractCall(preOrderTxOptions);
+    const preOrderTransaction = await makeBnsContractCall(preOrderTxOptions);
     await broadcastTransaction(preOrderTransaction, network);
     const preorderResult = await standByForTx('0x' + preOrderTransaction.txid());
     return preOrderTransaction;

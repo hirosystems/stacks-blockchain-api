@@ -129,7 +129,7 @@ export const StxSupplyRoutes: FastifyPluginAsync<
           200: {
             content: {
               'text/plain': {
-                type: 'string',
+                schema: Type.String(),
               },
             },
           },
@@ -157,7 +157,7 @@ export const StxSupplyRoutes: FastifyPluginAsync<
           200: {
             content: {
               'text/plain': {
-                type: 'string',
+                schema: Type.String(),
               },
             },
           },

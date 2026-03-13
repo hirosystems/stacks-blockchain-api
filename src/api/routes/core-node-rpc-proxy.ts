@@ -4,7 +4,7 @@ import * as path from 'path';
 import fetch, { RequestInit } from 'node-fetch';
 import { FastifyPluginAsync } from 'fastify';
 import { TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
-import { Server, ServerResponse } from 'node:http';
+import { IncomingMessage, Server } from 'node:http';
 import { fastifyHttpProxy } from '@fastify/http-proxy';
 import { StacksCoreRpcClient } from '../../core-rpc/client';
 import { logger } from '@stacks/api-toolkit';
@@ -119,7 +119,7 @@ export const CoreNodeRpcProxyRouter: FastifyPluginAsync<
   /**
    * Reads an http request stream into a Buffer.
    */
-  async function readRequestBody(req: ServerResponse, maxSizeBytes = Infinity): Promise<Buffer> {
+  async function readRequestBody(req: IncomingMessage, maxSizeBytes = Infinity): Promise<Buffer> {
     return new Promise((resolve, reject) => {
       let resultBuffer: Buffer = Buffer.alloc(0);
       req.on('data', chunk => {
@@ -330,7 +330,7 @@ export const CoreNodeRpcProxyRouter: FastifyPluginAsync<
       onResponse: async (req, reply, response) => {
         // Log the transaction id broadcast
         if (getReqUrl(req).pathname === '/v2/transactions' && reply.statusCode === 200) {
-          const responseBuffer = await readRequestBody(response as ServerResponse);
+          const responseBuffer = await readRequestBody(response.stream);
           const txId = responseBuffer.toString();
           await logTxBroadcast(txId);
           await reply.send(responseBuffer);
@@ -353,7 +353,7 @@ export const CoreNodeRpcProxyRouter: FastifyPluginAsync<
             reqBody.transaction_payload.length / 2
           );
           const minFee = txSize * feeOpts.minTxFeeRatePerByte;
-          const responseBuffer = await readRequestBody(response as ServerResponse);
+          const responseBuffer = await readRequestBody(response.stream);
           const responseJson = JSON.parse(responseBuffer.toString()) as FeeEstimateResponse;
 
           if (await shouldUseTransactionMinimumFee()) {
