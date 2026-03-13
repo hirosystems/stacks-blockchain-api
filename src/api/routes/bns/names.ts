@@ -267,6 +267,7 @@ export const BnsNameRoutes: FastifyPluginAsync<
               ],
             }
           ),
+          '4xx': Type.Record(Type.String(), Type.String()),
         },
       },
     },
