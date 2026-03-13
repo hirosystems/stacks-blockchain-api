@@ -1,5 +1,10 @@
 import { ClarityAbi } from '@stacks/transactions';
-import { getTxTypeId, getTxTypeString, TransactionType } from '../api/controllers/db-controller';
+import {
+  getTxTypeId,
+  getTxTypeString,
+  getStatusId,
+  TransactionType,
+} from '../api/controllers/db-controller';
 import {
   unwrapNotNullish,
   FoundOrNot,
@@ -1410,6 +1415,7 @@ export class PgStore extends BasePgStore {
     limit,
     offset,
     txTypeFilter,
+    statusFilter,
     includeUnanchored,
     fromAddress,
     toAddress,
@@ -1424,6 +1430,7 @@ export class PgStore extends BasePgStore {
     limit: number;
     offset: number;
     txTypeFilter: TransactionType[];
+    statusFilter: string[];
     includeUnanchored: boolean;
     fromAddress?: string;
     toAddress?: string;
@@ -1459,6 +1466,12 @@ export class PgStore extends BasePgStore {
         txTypeFilter.length > 0
           ? sql`AND type_id IN ${sql(txTypeFilter.flatMap<number>(t => getTxTypeId(t)))}`
           : sql``;
+
+      const statusFilterSql =
+        statusFilter.length > 0
+          ? sql`AND status IN ${sql(statusFilter.flatMap<number>(s => getStatusId(s)))}`
+          : sql``;
+
       const fromAddressFilterSql = fromAddress ? sql`AND sender_address = ${fromAddress}` : sql``;
       const toAddressFilterSql = toAddress
         ? sql`AND token_transfer_recipient_address = ${toAddress}`
@@ -1474,6 +1487,7 @@ export class PgStore extends BasePgStore {
       const nonceFilterSql = nonce ? sql`AND nonce = ${nonce}` : sql``;
       const noFilters =
         txTypeFilter.length === 0 &&
+        statusFilter.length === 0 &&
         !fromAddress &&
         !toAddress &&
         !startTime &&
@@ -1492,6 +1506,7 @@ export class PgStore extends BasePgStore {
         FROM txs
         WHERE canonical = true AND microblock_canonical = true AND block_height <= ${maxHeight}
         ${txTypeFilterSql}
+        ${statusFilterSql}
         ${fromAddressFilterSql}
         ${toAddressFilterSql}
         ${startTimeFilterSql}
@@ -1506,6 +1521,7 @@ export class PgStore extends BasePgStore {
         FROM txs
         WHERE canonical = true AND microblock_canonical = true AND block_height <= ${maxHeight}
         ${txTypeFilterSql}
+        ${statusFilterSql}
         ${fromAddressFilterSql}
         ${toAddressFilterSql}
         ${startTimeFilterSql}
