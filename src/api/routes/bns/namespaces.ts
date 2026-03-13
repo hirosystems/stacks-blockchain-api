@@ -80,6 +80,7 @@ export const BnsNamespaceRoutes: FastifyPluginAsync<
               ],
             ],
           }),
+          '4xx': Type.Record(Type.String(), Type.String()),
         },
       },
     },
