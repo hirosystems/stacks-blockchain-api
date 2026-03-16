@@ -2,7 +2,7 @@
 
 In this document, we'll go over how to run a [stacks-blockchain-api](https://github.com/hirosystems/stacks-blockchain-api) instance.  
 There are several components involved here to have a working setup, and we'll go over each.  
-Please note that the following guide is targeted for Debian based systems - that in mind, most of the commands will work on other Unix systems with some small adjustments.
+Please note that the following guide is targeted for Debian based systems. With that in mind, most of the commands will work on other Unix systems with some small adjustments.
 
 - [Running a stacks-blockchain API instance from source](#running-a-stacks-blockchain-api-instance-from-source)
   - [Requirements](#requirements)

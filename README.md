@@ -109,7 +109,7 @@ could be run:
 
 This version of the replay process relies on parquet files processing instead of TSV files.
 
-There are some improvements on the replay process and this version is is, around, 10x times faster than the previous (V1) one.
+There are some improvements on the replay process and this version is around 10x times faster than the previous (V1) one.
 
 __Note: the previous event-replay version is still available and can be used as well, for the same purpose.__
 
@@ -189,7 +189,7 @@ Please **do not** use the issue tracker for personal support requests or to ask 
 Development of this product happens in the open on GitHub, and we are grateful to the community for contributing bug fixes and improvements. Read below to learn how you can take part in improving the product.
 
 ### Code of Conduct
-Please read our [Code of Conduct](../../../.github/blob/main/CODE_OF_CONDUCT.md) since we expect project participants to adhere to it.
+Please read our [Code of Conduct](https://github.com/hirosystems/.github/blob/main/CODE_OF_CONDUCT.md) since we expect project participants to adhere to it.
 
 ### Contributing Guide
 
@@ -217,7 +217,7 @@ Join our community and stay connected with the latest updates and discussions:
 
 - [Join our Discord community chat](https://discord.gg/ZQR6cyZC) to engage with other users, ask questions, and participate in discussions.
 
-- [Visit hiro.so](https://www.hiro.so/) for updates and subcribing to the mailing list.
+- [Visit hiro.so](https://www.hiro.so/) for updates and subscribing to the mailing list.
 
 - Follow [Hiro on Twitter.](https://twitter.com/hirosystems)
 
