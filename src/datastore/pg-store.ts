@@ -1409,6 +1409,7 @@ export class PgStore extends BasePgStore {
   async getTxList({
     limit,
     offset,
+    cursor,
     txTypeFilter,
     includeUnanchored,
     fromAddress,
@@ -1423,6 +1424,7 @@ export class PgStore extends BasePgStore {
   }: {
     limit: number;
     offset: number;
+    cursor?: string;
     txTypeFilter: TransactionType[];
     includeUnanchored: boolean;
     fromAddress?: string;
@@ -1434,7 +1436,13 @@ export class PgStore extends BasePgStore {
     nonce?: number;
     order?: 'desc' | 'asc';
     sortBy?: 'block_height' | 'burn_block_time' | 'fee';
-  }): Promise<{ results: DbTx[]; total: number }> {
+  }): Promise<{
+    results: DbTx[];
+    total: number;
+    next_cursor: string | null;
+    prev_cursor: string | null;
+    current_cursor: string | null;
+  }> {
     return await this.sqlTransaction(async sql => {
       const maxHeight = await this.getMaxBlockHeight(sql, { includeUnanchored });
       const orderSql = order === 'asc' ? sql`ASC` : sql`DESC`;
@@ -1453,6 +1461,43 @@ export class PgStore extends BasePgStore {
           break;
         default:
           throw new Error(`Invalid sortBy param: ${sortBy}`);
+      }
+
+      // Parse cursor if provided (format: "indexBlockHash:microblockSequence:txIndex")
+      let cursorFilter = sql``;
+      if (cursor) {
+        const parts = cursor.split(':');
+        if (parts.length !== 3) {
+          throw new Error('Invalid cursor format');
+        }
+        const [indexBlockHash, microblockSequenceStr, txIndexStr] = parts;
+        const microblockSequence = parseInt(microblockSequenceStr, 10);
+        const txIndex = parseInt(txIndexStr, 10);
+        if (!indexBlockHash || isNaN(microblockSequence) || isNaN(txIndex)) {
+          throw new Error('Invalid cursor format');
+        }
+
+        // Look up block_height from index_block_hash for the row-value comparison
+        const blockHeightQuery = await sql<{ block_height: number }[]>`
+          SELECT block_height FROM blocks WHERE index_block_hash = ${indexBlockHash} LIMIT 1
+        `;
+        if (blockHeightQuery.length === 0) {
+          throw new Error('Invalid cursor: block not found');
+        }
+        const blockHeight = blockHeightQuery[0].block_height;
+
+        // Apply cursor filter based on sort direction
+        if (order === 'asc') {
+          cursorFilter = sql`
+            AND (block_height, microblock_sequence, tx_index)
+                >= (${blockHeight}, ${microblockSequence}, ${txIndex})
+          `;
+        } else {
+          cursorFilter = sql`
+            AND (block_height, microblock_sequence, tx_index)
+                <= (${blockHeight}, ${microblockSequence}, ${txIndex})
+          `;
+        }
       }
 
       const txTypeFilterSql =
@@ -1513,13 +1558,90 @@ export class PgStore extends BasePgStore {
         ${contractIdFilterSql}
         ${contractFuncFilterSql}
         ${nonceFilterSql}
+        ${cursorFilter}
         ${orderBySql}
-        LIMIT ${limit}
-        OFFSET ${offset}
+        LIMIT ${limit + 1}
       `;
 
-      const parsed = resultQuery.map(r => parseTxQueryResult(r));
-      return { results: parsed, total: totalQuery[0].count };
+      const hasNextPage = resultQuery.length > limit;
+      const results = hasNextPage ? resultQuery.slice(0, limit) : resultQuery;
+
+      // Generate cursors
+      const lastResult = resultQuery[resultQuery.length - 1];
+      const prevCursor =
+        hasNextPage && lastResult
+          ? `${lastResult.index_block_hash}:${lastResult.microblock_sequence}:${lastResult.tx_index}`
+          : null;
+
+      const firstResult = results[0];
+      const currentCursor = firstResult
+        ? `${firstResult.index_block_hash}:${firstResult.microblock_sequence}:${firstResult.tx_index}`
+        : null;
+
+      // Generate next cursor by looking for the first item of the previous page
+      let nextCursor: string | null = null;
+      if (firstResult && order !== 'asc') {
+        // For DESC order, look for items "before" our current first result (greater in DESC order)
+        const prevQuery = await sql<
+          { index_block_hash: string; microblock_sequence: number; tx_index: number }[]
+        >`
+          SELECT index_block_hash, microblock_sequence, tx_index
+          FROM txs
+          WHERE canonical = true AND microblock_canonical = true AND block_height <= ${maxHeight}
+            ${txTypeFilterSql}
+            ${fromAddressFilterSql}
+            ${toAddressFilterSql}
+            ${startTimeFilterSql}
+            ${endTimeFilterSql}
+            ${contractIdFilterSql}
+            ${contractFuncFilterSql}
+            ${nonceFilterSql}
+            AND (block_height, microblock_sequence, tx_index)
+                > (${firstResult.block_height}, ${firstResult.microblock_sequence}, ${firstResult.tx_index})
+          ORDER BY block_height ASC, microblock_sequence ASC, tx_index ASC
+          OFFSET ${limit - 1}
+          LIMIT 1
+        `;
+        if (prevQuery.length > 0) {
+          const prev = prevQuery[0];
+          nextCursor = `${prev.index_block_hash}:${prev.microblock_sequence}:${prev.tx_index}`;
+        }
+      } else if (firstResult && order === 'asc') {
+        // For ASC order, look for items "before" our current first result (lesser in ASC order)
+        const prevQuery = await sql<
+          { index_block_hash: string; microblock_sequence: number; tx_index: number }[]
+        >`
+          SELECT index_block_hash, microblock_sequence, tx_index
+          FROM txs
+          WHERE canonical = true AND microblock_canonical = true AND block_height <= ${maxHeight}
+            ${txTypeFilterSql}
+            ${fromAddressFilterSql}
+            ${toAddressFilterSql}
+            ${startTimeFilterSql}
+            ${endTimeFilterSql}
+            ${contractIdFilterSql}
+            ${contractFuncFilterSql}
+            ${nonceFilterSql}
+            AND (block_height, microblock_sequence, tx_index)
+                < (${firstResult.block_height}, ${firstResult.microblock_sequence}, ${firstResult.tx_index})
+          ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC
+          OFFSET ${limit - 1}
+          LIMIT 1
+        `;
+        if (prevQuery.length > 0) {
+          const prev = prevQuery[0];
+          nextCursor = `${prev.index_block_hash}:${prev.microblock_sequence}:${prev.tx_index}`;
+        }
+      }
+
+      const parsed = results.map(r => parseTxQueryResult(r));
+      return {
+        results: parsed,
+        total: totalQuery[0].count,
+        next_cursor: nextCursor,
+        prev_cursor: prevCursor,
+        current_cursor: currentCursor,
+      };
     });
   }
 

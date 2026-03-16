@@ -151,9 +151,16 @@ export const BlockRoutesV2: FastifyPluginAsync<
         querystring: Type.Object({
           limit: LimitParam(ResourceType.Tx),
           offset: OffsetParam(),
+          cursor: Type.Optional(
+            Type.String({
+              description:
+                'Cursor for pagination. Use the cursor values returned in the response to navigate between pages.',
+              examples: ['2147483647:10'],
+            })
+          ),
         }),
         response: {
-          200: PaginatedResponse(TransactionSchema),
+          200: PaginatedCursorResponse(TransactionSchema),
         },
       },
     },
@@ -162,7 +169,15 @@ export const BlockRoutesV2: FastifyPluginAsync<
       const query = req.query;
 
       try {
-        const { limit, offset, results, total } = await fastify.db.v2.getBlockTransactions({
+        const {
+          limit,
+          offset,
+          results,
+          total,
+          next_cursor,
+          prev_cursor,
+          current_cursor: cursor,
+        } = await fastify.db.v2.getBlockTransactions({
           block: params,
           ...query,
         });
@@ -170,6 +185,9 @@ export const BlockRoutesV2: FastifyPluginAsync<
           limit,
           offset,
           total,
+          next_cursor,
+          prev_cursor,
+          cursor,
           results: results.map(r => parseDbTx(r, false)),
         };
         await reply.send(response);

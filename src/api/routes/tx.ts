@@ -44,7 +44,7 @@ import {
   TransactionSearchResponseSchema,
   TransactionTypeSchema,
 } from '../schemas/entities/transactions';
-import { PaginatedResponse } from '../schemas/util';
+import { PaginatedResponse, PaginatedCursorResponse } from '../schemas/util';
 import {
   ErrorResponseSchema,
   MempoolStatsResponseSchema,
@@ -78,6 +78,15 @@ export const TxRoutes: FastifyPluginAsync<
         querystring: Type.Object({
           offset: OffsetParam(),
           limit: LimitParam(ResourceType.Tx),
+          cursor: Type.Optional(
+            Type.String({
+              description:
+                'Cursor for pagination. Use the cursor values returned in the response to navigate between pages.',
+              examples: [
+                '0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef:2147483647:10',
+              ],
+            })
+          ),
           type: Type.Optional(Type.Array(TransactionTypeSchema)),
           unanchored: UnanchoredParamSchema,
           order: Type.Optional(Type.Enum({ asc: 'asc', desc: 'desc' })),
@@ -137,7 +146,7 @@ export const TxRoutes: FastifyPluginAsync<
           exclude_function_args: ExcludeFunctionArgsParamSchema,
         }),
         response: {
-          200: TransactionResultsSchema,
+          200: PaginatedCursorResponse(TransactionSchema),
         },
       },
     },
@@ -181,9 +190,16 @@ export const TxRoutes: FastifyPluginAsync<
         contractId = req.query.contract_id;
       }
 
-      const { results: txResults, total } = await fastify.db.getTxList({
+      const {
+        results: txResults,
+        total,
+        next_cursor,
+        prev_cursor,
+        current_cursor: cursor,
+      } = await fastify.db.getTxList({
         offset,
         limit,
+        cursor: req.query.cursor,
         txTypeFilter,
         includeUnanchored: req.query.unanchored ?? false,
         fromAddress,
@@ -197,7 +213,7 @@ export const TxRoutes: FastifyPluginAsync<
         sortBy: req.query.sort_by,
       });
       const results = txResults.map(tx => parseDbTx(tx, excludeFunctionArgs));
-      await reply.send({ limit, offset, total, results });
+      await reply.send({ limit, offset, total, next_cursor, prev_cursor, cursor, results });
     }
   );
 
