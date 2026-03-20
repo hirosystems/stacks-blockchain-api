@@ -1,6 +1,7 @@
 import { handleBlockCache, handleChainTipCache } from '../../../api/controllers/cache-controller';
 import {
   BlockParamsSchema,
+  BlockTimestampParamsSchema,
   cleanBlockHeightOrHashParam,
   BlockCursorParamSchema,
   parseBlockParam,
@@ -102,6 +103,32 @@ export const BlockRoutesV2: FastifyPluginAsync<
         last_30d: parseFloat(query.last_30d.toFixed(2)),
       };
       await reply.send(times);
+    }
+  );
+
+  fastify.get(
+    '/at-time/:timestamp',
+    {
+      preHandler: handleBlockCache,
+      schema: {
+        operationId: 'get_block_at_time',
+        summary: 'Get block at time',
+        description: `Retrieves the most recent block mined at or before a given Unix timestamp (in seconds)`,
+        tags: ['Blocks'],
+        params: BlockTimestampParamsSchema,
+        response: {
+          200: NakamotoBlockSchema,
+        },
+      },
+    },
+    async (req, reply) => {
+      const block = await fastify.db.v2.getBlockAtTimestamp({
+        timestamp: req.params.timestamp,
+      });
+      if (!block) {
+        throw new NotFoundError('No block found at or before the given timestamp');
+      }
+      await reply.send(parseDbNakamotoBlock(block));
     }
   );
 

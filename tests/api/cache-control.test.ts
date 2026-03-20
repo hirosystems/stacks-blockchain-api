@@ -1002,4 +1002,103 @@ describe('cache-control tests', () => {
     expect(request7.status).toBe(304);
     expect(request7.text).toBe('');
   });
+
+  test('block at-time cache control', async () => {
+    const blockTime1 = 1700000000;
+    const blockTime2 = 1700001000;
+
+    await db.update(
+      new TestBlockBuilder({
+        block_height: 1,
+        index_block_hash: '0x01',
+        parent_index_block_hash: '0x00',
+        block_time: blockTime1,
+        burn_block_time: blockTime1,
+      }).build()
+    );
+    await db.update(
+      new TestBlockBuilder({
+        block_height: 2,
+        index_block_hash: '0x02',
+        parent_index_block_hash: '0x01',
+        block_time: blockTime2,
+        burn_block_time: blockTime2,
+      }).build()
+    );
+
+    // Valid ETag for timestamp query.
+    const request1 = await supertest(api.server).get(
+      `/extended/v2/blocks/at-time/${blockTime2}`
+    );
+    expect(request1.status).toBe(200);
+    expect(request1.type).toBe('application/json');
+    expect(request1.body.height).toBe(2);
+    const etag0 = request1.headers['etag'];
+    expect(etag0).toBeTruthy();
+
+    // Cache works with valid ETag.
+    const request2 = await supertest(api.server)
+      .get(`/extended/v2/blocks/at-time/${blockTime2}`)
+      .set('If-None-Match', etag0);
+    expect(request2.status).toBe(304);
+    expect(request2.text).toBe('');
+
+    // Cache miss with wrong ETag.
+    const request3 = await supertest(api.server)
+      .get(`/extended/v2/blocks/at-time/${blockTime2}`)
+      .set('If-None-Match', '"0x12345678"');
+    expect(request3.status).toBe(200);
+    expect(request3.headers['etag']).toEqual(etag0);
+
+    // Timestamp between blocks returns earlier block with different ETag.
+    const request4 = await supertest(api.server).get(
+      `/extended/v2/blocks/at-time/${blockTime1 + 500}`
+    );
+    expect(request4.status).toBe(200);
+    expect(request4.body.height).toBe(1);
+    const etag1 = request4.headers['etag'];
+    expect(etag1).not.toEqual(etag0);
+
+    // Cache works for earlier block timestamp.
+    const request5 = await supertest(api.server)
+      .get(`/extended/v2/blocks/at-time/${blockTime1 + 500}`)
+      .set('If-None-Match', etag1);
+    expect(request5.status).toBe(304);
+    expect(request5.text).toBe('');
+
+    // Re-org: new block 2 replaces old block 2 at same timestamp.
+    await db.update(
+      new TestBlockBuilder({
+        block_height: 2,
+        index_block_hash: '0x02bb',
+        parent_index_block_hash: '0x01',
+        block_time: blockTime2,
+        burn_block_time: blockTime2,
+      }).build()
+    );
+    await db.update(
+      new TestBlockBuilder({
+        block_height: 3,
+        index_block_hash: '0x03bb',
+        parent_index_block_hash: '0x02bb',
+        block_time: blockTime2 + 1000,
+        burn_block_time: blockTime2 + 1000,
+      }).build()
+    );
+
+    // Old ETag is now a miss after re-org.
+    const request6 = await supertest(api.server)
+      .get(`/extended/v2/blocks/at-time/${blockTime2}`)
+      .set('If-None-Match', etag0);
+    expect(request6.status).toBe(200);
+    expect(request6.headers['etag']).not.toEqual(etag0);
+    const etag2 = request6.headers['etag'];
+
+    // Cache works with new ETag.
+    const request7 = await supertest(api.server)
+      .get(`/extended/v2/blocks/at-time/${blockTime2}`)
+      .set('If-None-Match', etag2);
+    expect(request7.status).toBe(304);
+    expect(request7.text).toBe('');
+  });
 });

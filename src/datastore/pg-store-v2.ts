@@ -325,6 +325,18 @@ export class PgStoreV2 extends BasePgStoreModule {
     });
   }
 
+  async getBlockAtTimestamp(args: { timestamp: number }): Promise<DbBlock | null> {
+    const result = await this.sql<BlockQueryResult[]>`
+      SELECT ${this.sql(BLOCK_COLUMNS)}
+      FROM blocks
+      WHERE canonical = true AND block_time <= ${args.timestamp}
+      ORDER BY block_time DESC
+      LIMIT 1
+    `;
+    if (result.count > 0) return parseBlockQueryResult(result[0]);
+    return null;
+  }
+
   async getAverageBlockTimes(): Promise<{
     last_1h: number;
     last_24h: number;

@@ -1,25 +1,6 @@
 import { Type, Static, TSchema } from '@sinclair/typebox';
 import { ResourceType, pagingQueryLimits } from '../../../api/pagination';
-import Ajv from 'ajv';
-import addFormats from 'ajv-formats';
 import { has0xPrefix, isTestEnv } from '@stacks/api-toolkit';
-
-const ajv = addFormats(new Ajv({ coerceTypes: true }), [
-  'date-time',
-  'time',
-  'date',
-  'email',
-  'hostname',
-  'ipv4',
-  'ipv6',
-  'uri',
-  'uri-reference',
-  'uuid',
-  'uri-template',
-  'json-pointer',
-  'relative-json-pointer',
-  'regex',
-]);
 
 // ==========================
 // Parameters
@@ -79,7 +60,8 @@ export const BlockCursorParamSchema = Type.String({
 export type BlockIdParam =
   | { type: 'height'; height: number }
   | { type: 'hash'; hash: string }
-  | { type: 'latest'; latest: true };
+  | { type: 'latest'; latest: true }
+  | { type: 'timestamp'; timestamp: number };
 
 export function parseBlockParam(value: string | number): BlockIdParam {
   if (value === 'latest') {
@@ -234,6 +216,18 @@ export const AddressParamsSchema = Type.Object(
   { additionalProperties: false }
 );
 export type AddressParams = Static<typeof AddressParamsSchema>;
+
+export const BlockTimestampParamsSchema = Type.Object(
+  {
+    timestamp: Type.Integer({
+      minimum: 0,
+      title: 'Block timestamp',
+      description: 'Unix timestamp (in seconds)',
+      examples: [1677731361],
+    }),
+  },
+  { additionalProperties: false }
+);
 
 export const AddressTransactionParamsSchema = Type.Object(
   {

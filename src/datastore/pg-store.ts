@@ -91,7 +91,7 @@ import { BasePgStore, PgSqlClient, PgSqlQuery, connectPostgres } from '@stacks/a
 import { getConnectionArgs, getConnectionConfig } from './connection';
 import * as path from 'path';
 import { PgStoreV2 } from './pg-store-v2';
-import { parseBlockParam } from '../api/routes/v2/schemas';
+import { BlockIdParam } from '../api/routes/v2/schemas';
 import { ENV } from '../env';
 
 export const MIGRATIONS_DIR = path.join(REPO_DIR, 'migrations');
@@ -4476,9 +4476,9 @@ export class PgStore extends BasePgStore {
 
   /** Returns the `index_block_hash` and canonical status of a single block */
   async getBlockCanonicalStatus(
-    height_or_hash: string | number
+    blockId: BlockIdParam
   ): Promise<{ index_block_hash: string; canonical: boolean } | undefined> {
-    const param = parseBlockParam(height_or_hash);
+    const param = blockId;
     const result = await this.sql<{ index_block_hash: string; canonical: boolean }[]>`
       SELECT index_block_hash, canonical
       FROM blocks
@@ -4488,8 +4488,11 @@ export class PgStore extends BasePgStore {
             ? this.sql`index_block_hash = (SELECT index_block_hash FROM chain_tip)`
             : param.type == 'hash'
               ? this.sql`index_block_hash = ${param.hash}`
-              : this.sql`block_height = ${param.height} AND canonical = true`
+              : param.type == 'timestamp'
+                ? this.sql`canonical = true AND block_time <= ${param.timestamp}`
+                : this.sql`block_height = ${param.height} AND canonical = true`
         }
+      ${param.type == 'timestamp' ? this.sql`ORDER BY block_time DESC` : this.sql``}
       LIMIT 1
     `;
     if (result.count) return result[0];
