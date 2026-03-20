@@ -64,5 +64,4 @@ export async function defaultSetupTeardown() {
   await testEnv.eventServer.closeAsync();
   await testEnv.db.close();
   await migrate('down');
-
 }
