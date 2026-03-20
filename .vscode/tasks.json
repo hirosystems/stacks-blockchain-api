@@ -4,58 +4,64 @@
   "version": "2.0.0",
   "tasks": [
     {
-      "label": "stacks-node:deploy-dev",
+      "label": "npm: testenv:run",
       "type": "shell",
-      "command": "npm run devenv:deploy",
+      "command": "npm run testenv:run",
       "isBackground": true,
-      "problemMatcher": {
-        "pattern": { "regexp": ".", "file": 1, "location": 2, "message": 3, },
-        "background": { "activeOnStart": true, "beginsPattern": ".", "endsPattern": "." }
-      },
-      "presentation": { "echo": true, "reveal": "always", "focus": false, "panel": "dedicated", "clear": false }
+      "problemMatcher": [
+        {
+          "pattern": [
+            { "regexp": ".", "file": 1, "location": 2, "message": 3 }
+          ],
+          "background": {
+            "activeOnStart": true,
+            "beginsPattern": ".",
+            "endsPattern": "."
+          }
+        }
+      ]
     },
     {
-      "label": "stacks-node:start-mocknet",
+      "label": "npm: testenv:stop",
       "type": "shell",
-      "command": "docker compose -f docker/docker-compose.dev.stacks-blockchain.yml up --force-recreate -V",
-      "isBackground": true,
-      "problemMatcher": {
-        "pattern": { "regexp": ".", "file": 1, "location": 2, "message": 3, },
-        "background": { "activeOnStart": true, "beginsPattern": ".", "endsPattern": "." }
-      },
-      "presentation": { "echo": true, "reveal": "always", "focus": false, "panel": "dedicated", "clear": false }
-    },
-    {
-      "label": "stacks-node:stop-mocknet",
-      "type": "shell",
-      "command": "docker compose -f docker/docker-compose.dev.stacks-blockchain.yml down -v -t 0",
-      "isBackground": true,
-      "problemMatcher": {
-        "pattern": { "regexp": ".", "file": 1, "location": 2, "message": 3, },
-        "background": { "activeOnStart": true, "beginsPattern": ".", "endsPattern": "." }
-      },
-      "presentation": { "echo": true, "reveal": "always", "focus": false, "panel": "dedicated", "clear": false }
-    },
-    {
-      "label": "deploy:pg",
-      "type": "shell",
-      "command": "docker compose -f docker/docker-compose.dev.postgres.yml up --force-recreate -V",
-      "isBackground": true,
-      "problemMatcher": [{
-        "pattern": [{ "regexp": ".", "file": 1, "location": 2, "message": 3 }],
-        "background": { "activeOnStart": true, "beginsPattern": ".", "endsPattern": "." }
-      }],
-      "presentation": { "echo": true, "reveal": "always", "focus": false, "panel": "dedicated", "clear": false }
-    },
-    {
-      "label": "stop:pg",
-      "type": "shell",
-      "command": "docker compose -f docker/docker-compose.dev.postgres.yml down -v -t 0",
+      "command": "npm run testenv:stop",
       "presentation": {
         "echo": true,
         "reveal": "silent",
         "focus": false,
         "panel": "shared",
+        "showReuseMessage": true,
+        "clear": false
+      }
+    },
+    {
+      "label": "npm: testenv:run:snp",
+      "type": "shell",
+      "command": "npm run testenv:run:snp",
+      "isBackground": true,
+      "problemMatcher": [
+        {
+          "pattern": [
+            { "regexp": ".", "file": 1, "location": 2, "message": 3 }
+          ],
+          "background": {
+            "activeOnStart": true,
+            "beginsPattern": ".",
+            "endsPattern": "."
+          }
+        }
+      ]
+    },
+    {
+      "label": "npm: testenv:stop:snp",
+      "type": "shell",
+      "command": "npm run testenv:stop:snp",
+      "presentation": {
+        "echo": true,
+        "reveal": "silent",
+        "focus": false,
+        "panel": "shared",
+        "showReuseMessage": true,
         "clear": false
       }
     },
@@ -104,40 +110,6 @@
         "panel": "shared",
         "clear": false
       }
-    },
-    {
-      "label": "stacks-node:deploy-follower",
-      "type": "shell",
-      "command": "npm run devenv:follower -- -d && npm run devenv:logs",
-      "isBackground": true,
-      "problemMatcher": [
-        {
-          "pattern": [{ "regexp": ".", "file": 1, "location": 2, "message": 3, }],
-          "background": {
-            "activeOnStart": true,
-            "beginsPattern": ".",
-            "endsPattern": ".",
-          }
-        },
-      ]
-    },
-    {
-      "label": "stacks-node:stop-dev",
-      "type": "shell",
-      "command": "npm run devenv:stop",
-      "presentation": {
-        "echo": true,
-        "reveal": "silent",
-        "focus": false,
-        "panel": "shared",
-        "showReuseMessage": true,
-        "clear": false
-      }
-    },
-    {
-      "label": "stacks-node:build-dev",
-      "type": "shell",
-      "command": "npm run devenv:build && npm run devenv:deploy"
-    },
+    }
   ]
 }

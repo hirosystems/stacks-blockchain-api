@@ -1,7 +1,6 @@
 import * as readline from 'node:readline/promises';
 import * as fs from 'node:fs';
 import * as zlib from 'node:zlib';
-import * as assert from 'node:assert/strict';
 
 import { ChainID } from '@stacks/transactions';
 import { ApiServer, startApiServer } from '../../src/api/init';
@@ -26,7 +25,7 @@ describe('SNP integration tests', () => {
     '0x5705546ec6741f77957bb3e73bf795dcf120c0a869c1d408396e7e30a3b2f94f';
 
   beforeAll(async () => {
-    snpObserverUrl = process.env['SNP_OBSERVER_URL'] as string;
+    snpObserverUrl = `http://127.0.0.1:3022`;
 
     await migrate('up');
 

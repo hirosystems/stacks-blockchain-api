@@ -7,17 +7,7 @@
     {
       "type": "node",
       "request": "launch",
-      "name": "stacks-blockchain dist-tool",
-      "program": "${workspaceFolder}/stacks-blockchain/dist-tool/index.js",
-      "skipFiles": ["<node_internals>/**"],
-      "env": {
-        "STACKS_BLOCKCHAIN_BRANCH": "feature/event-observer-envvar"
-      }
-    },
-    {
-      "type": "node",
-      "request": "launch",
-      "name": "Launch: app",
+      "name": "start: api",
       "runtimeArgs": ["-r", "ts-node/register/transpile-only", "-r", "tsconfig-paths/register"],
       "args": ["${workspaceFolder}/src/index.ts"],
       "outputCapture": "std",
@@ -30,7 +20,7 @@
     {
       "type": "node",
       "request": "launch",
-      "name": "Launch: mocknet",
+      "name": "start: mocknet",
       "skipFiles": [
         "<node_internals>/**"
       ],
@@ -38,29 +28,8 @@
       "args": ["${workspaceFolder}/src/index.ts"],
       "outputCapture": "std",
       "internalConsoleOptions": "openOnSessionStart",
-      "preLaunchTask": "stacks-node:deploy-dev",
-      "postDebugTask": "stacks-node:stop-dev",
-      "env": {
-        "STACKS_CHAIN_ID": "0x80000000",
-        "NODE_ENV": "development",
-        "TS_NODE_SKIP_IGNORE": "true"
-      },
-      "killBehavior": "polite",
-    },
-    {
-      "type": "node",
-      "request": "launch",
-      "name": "Launch: w/ postgres",
-      "skipFiles": [
-        "<node_internals>/**"
-      ],
-      "runtimeVersion": "22",
-      "runtimeArgs": ["-r", "ts-node/register/transpile-only", "-r", "tsconfig-paths/register"],
-      "args": ["${workspaceFolder}/src/index.ts"],
-      "outputCapture": "std",
-      "internalConsoleOptions": "openOnSessionStart",
-      "preLaunchTask": "deploy:pg",
-      "postDebugTask": "stop:pg",
+      "preLaunchTask": "npm: testenv:run",
+      "postDebugTask": "npm: testenv:stop",
       "env": {
         "STACKS_CHAIN_ID": "0x80000000",
         "NODE_ENV": "development",
@@ -111,7 +80,7 @@
     {
       "type": "node",
       "request": "launch",
-      "name": "Launch: mocknet write-only",
+      "name": "start: mocknet write-only",
       "skipFiles": [
         "<node_internals>/**"
       ],
@@ -119,8 +88,8 @@
       "args": ["${workspaceFolder}/src/index.ts"],
       "outputCapture": "std",
       "internalConsoleOptions": "openOnSessionStart",
-      "preLaunchTask": "stacks-node:deploy-dev",
-      "postDebugTask": "stacks-node:stop-dev",
+      "preLaunchTask": "npm: testenv:run",
+      "postDebugTask": "npm: testenv:stop",
       "env": {
         "STACKS_API_MODE": "writeonly",
         "STACKS_CHAIN_ID": "0x80000000",
@@ -132,35 +101,7 @@
     {
       "type": "node",
       "request": "launch",
-      "name": "Launch: mocknet offline-mode",
-      "skipFiles": [
-        "<node_internals>/**"
-      ],
-      "runtimeArgs": [
-        "-r",
-        "ts-node/register/transpile-only",
-        "-r",
-        "tsconfig-paths/register"
-      ],
-      "args": [
-        "${workspaceFolder}/src/index.ts"
-      ],
-      "outputCapture": "std",
-      "internalConsoleOptions": "openOnSessionStart",
-      "preLaunchTask": "stacks-node:start-mocknet",
-      "postDebugTask": "stacks-node:stop-mocknet",
-      "env": {
-        "STACKS_CHAIN_ID": "0x80000000",
-        "NODE_ENV": "development",
-        "STACKS_API_MODE": "offline",
-        "TS_NODE_SKIP_IGNORE": "true"
-      },
-      "killBehavior": "polite",
-    },
-    {
-      "type": "node",
-      "request": "launch",
-      "name": "Launch: read-only",
+      "name": "start: read-only",
       "skipFiles": [
         "<node_internals>/**"
       ],
@@ -183,22 +124,6 @@
         "TS_NODE_SKIP_IGNORE": "true"
       },
       "killBehavior": "polite",
-    },
-    {
-      "type": "node",
-      "request": "launch",
-      "name": "Launch: follower",
-      "runtimeArgs": ["-r", "ts-node/register/transpile-only", "-r", "tsconfig-paths/register"],
-      "args": ["${workspaceFolder}/src/index.ts"],
-      "outputCapture": "std",
-      "internalConsoleOptions": "openOnSessionStart",
-      "preLaunchTask": "stacks-node:deploy-follower",
-      "postDebugTask": "stacks-node:stop-dev",
-      "env": {
-        "STACKS_CHAIN_ID": "0x00000001",
-        "NODE_ENV": "development",
-        "TS_NODE_SKIP_IGNORE": "true"
-      }
     },
     {
       "type": "node",
@@ -229,7 +154,7 @@
     {
       "type": "node",
       "request": "launch",
-      "name": "Jest: API",
+      "name": "test: api",
       "program": "${workspaceFolder}/node_modules/.bin/jest",
       "args": [
         "--testTimeout=3600000",
@@ -240,13 +165,13 @@
       ],
       "outputCapture": "std",
       "console": "integratedTerminal",
-      "preLaunchTask": "stacks-node:deploy-dev",
-      "postDebugTask": "stacks-node:stop-dev"
+      "preLaunchTask": "npm: testenv:run",
+      "postDebugTask": "npm: testenv:stop"
     },
     {
       "type": "node",
       "request": "launch",
-      "name": "Jest: Event Replay",
+      "name": "test: event-replay",
       "program": "${workspaceFolder}/node_modules/.bin/jest",
       "args": [
         "--testTimeout=3600000",
@@ -257,8 +182,8 @@
       ],
       "outputCapture": "std",
       "console": "integratedTerminal",
-      "preLaunchTask": "stacks-node:deploy-dev",
-      "postDebugTask": "stacks-node:stop-dev"
+      "preLaunchTask": "npm: testenv:run",
+      "postDebugTask": "npm: testenv:stop"
     },
     {
       "type": "node",
@@ -316,7 +241,7 @@
     {
       "type": "node",
       "request": "launch",
-      "name": "Jest: RPC",
+      "name": "test: rpc",
       "program": "${workspaceFolder}/node_modules/.bin/jest",
       "args": [
         "--testTimeout=3600000",
@@ -327,15 +252,15 @@
       ],
       "outputCapture": "std",
       "console": "integratedTerminal",
-      "preLaunchTask": "deploy:krypton",
-      "postDebugTask": "stop:krypton",
+      "preLaunchTask": "npm: testenv:run",
+      "postDebugTask": "npm: testenv:stop",
       "smartStep": false,
       "sourceMaps": true,
     },
     {
       "type": "node",
       "request": "launch",
-      "name": "Jest: btc-faucet",
+      "name": "test: btc-faucet",
       "program": "${workspaceFolder}/node_modules/.bin/jest",
       "args": [
         "--testTimeout=3600000",
@@ -346,13 +271,13 @@
       ],
       "outputCapture": "std",
       "console": "integratedTerminal",
-      "preLaunchTask": "stacks-node:deploy-dev",
-      "postDebugTask": "stacks-node:stop-dev"
+      "preLaunchTask": "npm: testenv:run",
+      "postDebugTask": "npm: testenv:stop"
     },
     {
       "type": "node",
       "request": "launch",
-      "name": "Jest: SNP",
+      "name": "test: snp",
       "program": "${workspaceFolder}/node_modules/.bin/jest",
       "args": [
         "--testTimeout=3600000",
@@ -363,8 +288,8 @@
       ],
       "outputCapture": "std",
       "console": "integratedTerminal",
-      "nodeVersionHint": 22,
-      "runtimeVersion": "22"
+      "preLaunchTask": "npm: testenv:run:snp",
+      "postDebugTask": "npm: testenv:stop:snp"
     },
     {
       "type": "node",
@@ -380,34 +305,5 @@
         "TS_NODE_SKIP_IGNORE": "true"
       }
     },
-    {
-      "type": "node",
-      "request": "launch",
-      "name": "docs: openapi-generator",
-      "runtimeArgs": ["-r", "ts-node/register/transpile-only"],
-      "args": ["${workspaceFolder}/src/openapi-generator.ts"]
-    },
-    {
-      "type": "node",
-      "request": "launch",
-      "name": "docs: generate-types",
-      "runtimeArgs": ["-r", "ts-node/register/transpile-only"],
-      "cwd": "${workspaceFolder}/docs",
-      "args": ["${workspaceFolder}/docs/scripts/generate-types.ts"]
-    },
-    {
-      "type": "node",
-      "request": "launch",
-      "name": "utils: chaintip cache-control test",
-      "runtimeArgs": ["-r", "ts-node/register/transpile-only"],
-      "cwd": "${workspaceFolder}/utils",
-      "args": ["${workspaceFolder}/utils/src/chaintip-cache-control-test.ts"]
-    },
   ],
-  "compounds": [
-    {
-      "name": "Launch: mocknet reader-writer",
-      "configurations": ["Launch: mocknet", "Launch: read-only"]
-    }
-  ]
 }
