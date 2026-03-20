@@ -40,46 +40,6 @@
     {
       "type": "node",
       "request": "launch",
-      "name": "Launch: krypton 2.1",
-      "skipFiles": [
-        "<node_internals>/**"
-      ],
-      "runtimeArgs": ["-r", "ts-node/register/transpile-only", "-r", "tsconfig-paths/register"],
-      "args": ["${workspaceFolder}/src/index.ts"],
-      "outputCapture": "std",
-      "internalConsoleOptions": "openOnSessionStart",
-      "preLaunchTask": "deploy:krypton",
-      "postDebugTask": "stop:krypton",
-      "env": {
-        "STACKS_CHAIN_ID": "0x80000000",
-        "NODE_ENV": "development",
-        "TS_NODE_SKIP_IGNORE": "true"
-      },
-      "killBehavior": "polite",
-    },
-    {
-      "type": "node",
-      "request": "launch",
-      "name": "Launch: krypton 2.1-transition",
-      "skipFiles": [
-        "<node_internals>/**"
-      ],
-      "runtimeArgs": ["-r", "ts-node/register/transpile-only", "-r", "tsconfig-paths/register"],
-      "args": ["${workspaceFolder}/src/index.ts"],
-      "outputCapture": "std",
-      "internalConsoleOptions": "openOnSessionStart",
-      "preLaunchTask": "deploy:krypton-2.1-transition",
-      "postDebugTask": "stop:krypton-2.1-transition",
-      "env": {
-        "STACKS_CHAIN_ID": "0x80000000",
-        "NODE_ENV": "development",
-        "TS_NODE_SKIP_IGNORE": "true"
-      },
-      "killBehavior": "polite",
-    },
-    {
-      "type": "node",
-      "request": "launch",
       "name": "start: mocknet write-only",
       "skipFiles": [
         "<node_internals>/**"
@@ -128,32 +88,6 @@
     {
       "type": "node",
       "request": "launch",
-      "name": "Launch: export-events",
-      "runtimeArgs": ["-r", "ts-node/register/transpile-only", "-r", "tsconfig-paths/register"],
-      "args": ["${workspaceFolder}/src/index.ts", "export-events", "--file", "/tmp/test-events-export.csv", "--overwrite-file"],
-      "outputCapture": "std",
-      "internalConsoleOptions": "openOnSessionStart",
-      "env": {
-        "NODE_ENV": "development",
-        "TS_NODE_SKIP_IGNORE": "true"
-      }
-    },
-    {
-      "type": "node",
-      "request": "launch",
-      "name": "Launch: import-events",
-      "runtimeArgs": ["-r", "ts-node/register/transpile-only", "-r", "tsconfig-paths/register"],
-      "args": ["${workspaceFolder}/src/index.ts", "import-events", "--file", "/tmp/test-events-export.csv", "--wipe-db"],
-      "outputCapture": "std",
-      "internalConsoleOptions": "openOnSessionStart",
-      "env": {
-        "NODE_ENV": "development",
-        "TS_NODE_SKIP_IGNORE": "true"
-      }
-    },
-    {
-      "type": "node",
-      "request": "launch",
       "name": "test: api",
       "program": "${workspaceFolder}/node_modules/.bin/jest",
       "args": [
@@ -188,7 +122,7 @@
     {
       "type": "node",
       "request": "launch",
-      "name": "Jest: 2.5",
+      "name": "test: 2.5",
       "program": "${workspaceFolder}/node_modules/.bin/jest",
       "args": [
         "--testTimeout=3600000",
@@ -199,15 +133,15 @@
       ],
       "outputCapture": "std",
       "console": "integratedTerminal",
-      "preLaunchTask": "deploy:krypton",
-      "postDebugTask": "stop:krypton",
+      "preLaunchTask": "npm: testenv:run:krypton",
+      "postDebugTask": "npm: testenv:stop:krypton",
       "smartStep": false,
       "sourceMaps": true,
     },
     {
       "type": "node",
       "request": "launch",
-      "name": "Jest: BNS",
+      "name": "test: bns",
       "program": "${workspaceFolder}/node_modules/.bin/jest",
       "args": [
         "--testTimeout=3600000",
@@ -218,13 +152,13 @@
       ],
       "outputCapture": "std",
       "console": "integratedTerminal",
-      "preLaunchTask": "deploy:krypton",
-      "postDebugTask": "stop:krypton",
+      "preLaunchTask": "npm: testenv:run:krypton",
+      "postDebugTask": "npm: testenv:stop:krypton",
     },
     {
       "type": "node",
       "request": "launch",
-      "name": "Jest: BNS-e2e",
+      "name": "test: bns-e2e",
       "program": "${workspaceFolder}/node_modules/.bin/jest",
       "args": [
         "--testTimeout=3600000",
@@ -235,8 +169,8 @@
       ],
       "outputCapture": "std",
       "console": "integratedTerminal",
-      "preLaunchTask": "deploy:krypton",
-      "postDebugTask": "stop:krypton",
+      "preLaunchTask": "npm: testenv:run:krypton",
+      "postDebugTask": "npm: testenv:stop:krypton",
     },
     {
       "type": "node",
@@ -252,8 +186,8 @@
       ],
       "outputCapture": "std",
       "console": "integratedTerminal",
-      "preLaunchTask": "npm: testenv:run",
-      "postDebugTask": "npm: testenv:stop",
+      "preLaunchTask": "npm: testenv:run:krypton",
+      "postDebugTask": "npm: testenv:stop:krypton",
       "smartStep": false,
       "sourceMaps": true,
     },
@@ -290,20 +224,6 @@
       "console": "integratedTerminal",
       "preLaunchTask": "npm: testenv:run:snp",
       "postDebugTask": "npm: testenv:stop:snp"
-    },
-    {
-      "type": "node",
-      "request": "launch",
-      "name": "client-lib test",
-      "runtimeArgs": ["-r", "ts-node/register/transpile-only", "-r", "tsconfig-paths/register"],
-      "cwd": "${workspaceFolder}/docs/client",
-      "args": ["${workspaceFolder}/docs/client/src/test.ts"],
-      "outputCapture": "std",
-      "internalConsoleOptions": "openOnSessionStart",
-      "env": {
-        "NODE_ENV": "development",
-        "TS_NODE_SKIP_IGNORE": "true"
-      }
     },
   ],
 }

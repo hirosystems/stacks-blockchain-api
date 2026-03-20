@@ -2,7 +2,7 @@ import { ContainerConfig, runUp, runDown } from './docker-container';
 
 const CONTAINER_PREFIX = 'stacks-api-test';
 
-type Profile = 'default' | 'snp';
+type Profile = 'default' | 'snp' | 'krypton';
 
 // ---------------------------------------------------------------------------
 // Default profile — postgres, bitcoind, stacks-blockchain
@@ -136,6 +136,48 @@ function snpContainers(): ContainerConfig[] {
 }
 
 // ---------------------------------------------------------------------------
+// Krypton profile — postgres, bitcoind, stacks-blockchain
+// ---------------------------------------------------------------------------
+
+function kryptonContainers(): ContainerConfig[] {
+  const postgres: ContainerConfig = {
+    image: 'postgres:17',
+    name: `${CONTAINER_PREFIX}-postgres`,
+    ports: [{ host: 5490, container: 5432 }],
+    env: [
+      'POSTGRES_USER=postgres',
+      'POSTGRES_PASSWORD=postgres',
+      'POSTGRES_DB=stacks_blockchain_api',
+      'POSTGRES_PORT=5432',
+    ],
+    entrypoint: [
+      '/bin/bash',
+      '-c',
+      "docker-entrypoint.sh postgres & rm -f /ready.txt || true && until pg_isready -U postgres; do sleep 3; done && psql -U postgres -d stacks_blockchain_api -c 'CREATE SCHEMA IF NOT EXISTS stacks_blockchain_api;' || true && echo 'done' > /ready.txt && wait",
+    ],
+    healthcheck: 'cat /ready.txt && pg_isready -U postgres',
+    volumes: ['tests/event-replay/.tmp/local/:/root/'],
+  };
+
+  const stacksBlockchain: ContainerConfig = {
+    image: 'hirosystems/stacks-api-e2e:stacks3.0-0a2c0e2',
+    name: `${CONTAINER_PREFIX}-stacks-blockchain`,
+    ports: [
+      { host: 20443, container: 20443 },
+      { host: 20444, container: 20444 },
+      { host: 18443, container: 18443 },
+      { host: 18444, container: 18444 },
+    ],
+    waitPort: 20443,
+    env: ['STACKS_EVENT_OBSERVER=host.docker.internal:3700', 'MINE_INTERVAL=0.1s'],
+    extraHosts: ['host.docker.internal:host-gateway'],
+    restartPolicy: 'on-failure',
+  };
+
+  return [postgres, stacksBlockchain];
+}
+
+// ---------------------------------------------------------------------------
 // Public API
 // ---------------------------------------------------------------------------
 
@@ -145,6 +187,8 @@ function resolveContainers(profile: Profile): ContainerConfig[] {
       return defaultContainers();
     case 'snp':
       return snpContainers();
+    case 'krypton':
+      return kryptonContainers();
     default:
       throw new Error(`unknown profile: ${profile}`);
   }
@@ -173,8 +217,8 @@ export async function teardown(profile: Profile = 'default'): Promise<void> {
 async function main(): Promise<void> {
   const [command = 'up', profileArg = 'default'] = process.argv.slice(2);
   const profile = profileArg as Profile;
-  if (profile !== 'default' && profile !== 'snp') {
-    throw new Error(`unknown profile: ${profile} (use "default" or "snp")`);
+  if (profile !== 'default' && profile !== 'snp' && profile !== 'krypton') {
+    throw new Error(`unknown profile: ${profile}`);
   }
   if (command === 'up') {
     await setup(profile);
