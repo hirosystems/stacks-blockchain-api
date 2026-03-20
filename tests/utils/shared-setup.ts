@@ -6,7 +6,6 @@ import {
   startEventServer,
 } from '../../src/event-stream/event-server';
 import { ChainID } from '@stacks/common';
-import * as isCI from 'is-ci';
 import { migrate } from './test-helpers';
 import { timeout } from '@stacks/api-toolkit';
 import { ENV } from '../../src/env';
@@ -66,17 +65,4 @@ export async function defaultSetupTeardown() {
   await testEnv.db.close();
   await migrate('down');
 
-  // If running in CI setup the "why am I still running?" log to detect stuck Jest tests
-  if (isCI) {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const whyIsNodeRunning = require('why-is-node-running');
-    let whyRunInterval = 1000;
-    setInterval(
-      () => {
-        console.log('\n\n\n\n_____WHY IS NODE RUNNING_____');
-        whyIsNodeRunning();
-      },
-      (whyRunInterval *= 2)
-    ).unref();
-  }
 }
