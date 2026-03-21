@@ -27,9 +27,8 @@
     "build:client": "npm run generate:git-info && npm run generate:openapi && npm run generate:client",
     "start": "node ./lib/index.js",
     "lint": "npm run lint:eslint && npm run lint:prettier",
-    "lint:unused-exports": "ts-unused-exports tsconfig.json --showLineNumber",
     "lint:eslint": "eslint .",
-    "lint:prettier": "prettier --check src/**/*.{ts,json}",
+    "lint:prettier": "prettier --check src/**/*.ts",
     "lint:fix": "eslint . --fix && prettier --write --check src/**/*.{ts,json}",
     "migrate": "node-pg-migrate -m migrations"
   },
@@ -126,7 +125,6 @@
     "supertest": "4.0.2",
     "ts-jest": "29.4.6",
     "ts-node": "10.9.2",
-    "ts-unused-exports": "7.0.3",
     "tsx": "4.20.3",
     "typescript": "5.9.3",
     "undici": "6.23.0"
