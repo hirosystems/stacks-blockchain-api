@@ -16,6 +16,7 @@ interface DataStoreEvents {
   configStateUpdate: (configState: DbConfigState) => void;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface PgStoreEventEmitter {
   emit<K extends keyof DataStoreEvents>(event: K, ...args: Parameters<DataStoreEvents[K]>): boolean;
   on<K extends keyof DataStoreEvents>(event: K, listener: DataStoreEvents[K]): this;
@@ -23,4 +24,5 @@ export interface PgStoreEventEmitter {
   removeListener<K extends keyof DataStoreEvents>(event: K, listener: DataStoreEvents[K]): this;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class PgStoreEventEmitter extends EventEmitter {}

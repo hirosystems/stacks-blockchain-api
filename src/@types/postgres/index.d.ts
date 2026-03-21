@@ -8,6 +8,6 @@ import 'postgres';
  * full type compatibility.
  */
 declare module 'postgres' {
-  // eslint-disable-next-line @typescript-eslint/no-empty-interface, @typescript-eslint/ban-types
+  // eslint-disable-next-line @typescript-eslint/no-empty-object-type
   interface TransactionSql<TTypes extends Record<string, unknown> = {}> extends Sql<TTypes> {}
 }

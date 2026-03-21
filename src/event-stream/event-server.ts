@@ -1,11 +1,6 @@
 import { inspect } from 'util';
 import * as net from 'net';
-import Fastify, {
-  FastifyInstance,
-  FastifyReply,
-  FastifyRequest,
-  FastifyServerOptions,
-} from 'fastify';
+import Fastify, { FastifyInstance, FastifyRequest, FastifyServerOptions } from 'fastify';
 import PQueue from 'p-queue';
 import * as prom from 'prom-client';
 import { BitVec, ChainID, assertNotNullish, getChainIDNetwork } from '../helpers.js';
@@ -42,11 +37,7 @@ import {
   newCoreNoreBlockEventCounts,
 } from './reader.js';
 import codec from '@stacks/codec';
-import type {
-  ClarityValueBuffer,
-  ClarityValueStringAscii,
-  ClarityValueTuple,
-} from '@stacks/codec';
+import type { ClarityValueBuffer, ClarityValueStringAscii, ClarityValueTuple } from '@stacks/codec';
 import { BnsContractIdentifier } from './bns/bns-constants.js';
 import {
   parseNameFromContractEvent,
@@ -61,14 +52,7 @@ import {
 } from '../datastore/helpers.js';
 import { handleBnsImport } from '../import-v1/index.js';
 import { decodePoxSyntheticPrintEvent } from './pox-event-parsing.js';
-import {
-  hexToBuffer,
-  isProdEnv,
-  logger,
-  parseBoolean,
-  PINO_LOGGER_CONFIG,
-  stopwatch,
-} from '@stacks/api-toolkit';
+import { hexToBuffer, isProdEnv, logger, PINO_LOGGER_CONFIG, stopwatch } from '@stacks/api-toolkit';
 import { ENV } from '../env.js';
 import { POX_2_CONTRACT_NAME, POX_3_CONTRACT_NAME, POX_4_CONTRACT_NAME } from '../pox-helpers.js';
 import {
@@ -84,6 +68,7 @@ import { CoreNodeParsedTxMessage } from './core-node-message.js';
 
 async function handleRawEventRequest(
   eventPath: string,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   payload: any,
   db: PgWriteStore
 ): Promise<void> {
@@ -292,7 +277,7 @@ function parseDataStoreTxEventData(
     };
     switch (tx.parsed_tx.payload.type_id) {
       case codec.TxPayloadTypeID.VersionedSmartContract:
-      case codec.TxPayloadTypeID.SmartContract:
+      case codec.TxPayloadTypeID.SmartContract: {
         const contractId = `${tx.sender_address}.${tx.parsed_tx.payload.contract_name}`;
         const clarityVersion =
           tx.parsed_tx.payload.type_id == codec.TxPayloadTypeID.VersionedSmartContract
@@ -308,7 +293,8 @@ function parseDataStoreTxEventData(
           canonical: true,
         });
         break;
-      case codec.TxPayloadTypeID.ContractCall:
+      }
+      case codec.TxPayloadTypeID.ContractCall: {
         // Name renewals can happen without a zonefile_hash. In that case, the BNS contract does NOT
         // emit a `name-renewal` contract log, causing us to miss this event. This function catches
         // those cases.
@@ -317,6 +303,7 @@ function parseDataStoreTxEventData(
           dbTx.names.push(name);
         }
         break;
+      }
       default:
         break;
     }
@@ -340,7 +327,7 @@ function parseDataStoreTxEventData(
         let reprStr = '?';
         try {
           reprStr = codec.decodeClarityValue(event.contract_event.raw_value).repr;
-        } catch (e) {
+        } catch (_e) {
           logger.warn(`Failed to decode contract log event: ${event.contract_event.raw_value}`);
         }
         logger.debug(
@@ -629,6 +616,7 @@ export const DummyEventMessageHandler: EventMessageHandler = {
 };
 
 interface EventMessageHandler {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   handleRawEventRequest(eventPath: string, payload: any, db: PgWriteStore): Promise<void> | void;
   handleBlockMessage(
     chainId: ChainID,
@@ -700,6 +688,7 @@ function createMessageProcessorQueue(db: PgWriteStore): EventMessageHandler {
   };
 
   const handler: EventMessageHandler = {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     handleRawEventRequest: (eventPath: string, payload: any, db: PgWriteStore) => {
       const queue =
         eventPath === '/new_block' || eventPath === '/new_burn_block'
@@ -834,7 +823,7 @@ export async function startEventServer(opts: {
     ignoreTrailingSlash: true,
   });
 
-  app.addHook('onRequest', (req, reply, done) => {
+  app.addHook('onRequest', (req, _reply, done) => {
     req.raw.on('close', () => {
       if (req.raw.aborted) {
         logger.warn(
@@ -994,7 +983,7 @@ export async function startEventServer(opts: {
 export function parseNewBlockMessage(
   chainId: ChainID,
   msg: NewBlockMessage,
-  isEventReplay: boolean
+  _isEventReplay: boolean
 ) {
   const counts = newCoreNoreBlockEventCounts();
 

@@ -89,7 +89,7 @@ export const BnsNamespaceRoutes: FastifyPluginAsync<
       const page = parsePagingQueryInput(req.query.page ?? 0);
       const includeUnanchored = req.query.unanchored ?? false;
       await fastify.db
-        .sqlTransaction(async sql => {
+        .sqlTransaction(async _sql => {
           const response = await fastify.db.getNamespace({ namespace: tld, includeUnanchored });
           if (!response.found) {
             throw BnsErrors.NoSuchNamespace;

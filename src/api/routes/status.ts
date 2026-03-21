@@ -1,7 +1,10 @@
 import { FastifyPluginAsync } from 'fastify';
 import { TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
 import { Server } from 'node:http';
-import { ServerStatusResponse, ServerStatusResponseSchema } from '../schemas/responses/responses.js';
+import {
+  ServerStatusResponse,
+  ServerStatusResponseSchema,
+} from '../schemas/responses/responses.js';
 import { handleChainTipCache } from '../controllers/cache-controller.js';
 import { SERVER_VERSION } from '@stacks/api-toolkit';
 
@@ -47,7 +50,7 @@ export const StatusRoutes: FastifyPluginAsync<
             };
           }
         });
-      } catch (error) {
+      } catch (_error) {
         // ignore error
       }
       await reply.send(response);

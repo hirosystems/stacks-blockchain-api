@@ -1,6 +1,9 @@
 import * as http from 'http';
 import PQueue from 'p-queue';
-import type { AddressStxBalanceResponse, AddressTransactionWithTransfers } from '../../../../client/src/types.js';
+import type {
+  AddressStxBalanceResponse,
+  AddressTransactionWithTransfers,
+} from '../../../../client/src/types.js';
 import {
   getBlockFromDataStore,
   getMempoolTxsFromDataStore,
@@ -103,7 +106,7 @@ export class WebSocketTransmitter {
           })
       )
     )
-      .then(_ => callback())
+      .then(_result => callback())
       .catch(error => callback(error));
   }
 
@@ -164,7 +167,7 @@ export class WebSocketTransmitter {
 
     if (this.channels.find(c => c.hasListeners('transaction', txId))) {
       try {
-        const result = await this.db.sqlTransaction(async sql => {
+        const result = await this.db.sqlTransaction(async _sql => {
           // Look at the `txs` table first so we always prefer the confirmed transaction.
           const txQuery = await getTxFromDataStore(this.db, {
             txId: txId,
@@ -253,7 +256,7 @@ export class WebSocketTransmitter {
 
     if (this.channels.find(c => c.hasListeners('principalStxBalance', address))) {
       try {
-        const balance = await this.db.sqlTransaction(async sql => {
+        const balance = await this.db.sqlTransaction(async _sql => {
           const stxBalanceResult = await this.db.getStxBalanceAtBlock(address, blockHeight);
           const tokenOfferingLocked = await this.db.getTokenOfferingLocked(address, blockHeight);
           const balance: AddressStxBalanceResponse = {

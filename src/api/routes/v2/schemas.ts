@@ -159,9 +159,11 @@ const PaginationQueryParamsSchema = <T extends TSchema>(t: T) =>
     { additionalProperties: false }
   );
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const BlockPaginationQueryParamsSchema = PaginationQueryParamsSchema(BlockLimitParamSchema);
 export type BlockPaginationQueryParams = Static<typeof BlockPaginationQueryParamsSchema>;
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const TransactionPaginationQueryParamsSchema = PaginationQueryParamsSchema(
   TransactionLimitParamSchema
 );
@@ -169,6 +171,7 @@ export type TransactionPaginationQueryParams = Static<
   typeof TransactionPaginationQueryParamsSchema
 >;
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const PoxCyclePaginationQueryParamsSchema = PaginationQueryParamsSchema(PoxCycleLimitParamSchema);
 export type PoxCyclePaginationQueryParams = Static<typeof PoxCyclePaginationQueryParamsSchema>;
 

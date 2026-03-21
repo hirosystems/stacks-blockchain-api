@@ -1,5 +1,5 @@
 import { Static, Type } from '@sinclair/typebox';
-import { Nullable, OptionalNullable, PaginatedCursorResponse, PaginatedResponse } from '../util.js';
+import { OptionalNullable, PaginatedCursorResponse, PaginatedResponse } from '../util.js';
 import { MempoolStatsSchema } from '../entities/mempool-transactions.js';
 import { MempoolTransactionSchema, TransactionSchema } from '../entities/transactions.js';
 import { MicroblockSchema } from '../entities/microblock.js';

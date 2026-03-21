@@ -43,6 +43,7 @@ export const BaseTransactionSchemaProperties = {
   ),
 };
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const BaseTransactionSchema = Type.Object(BaseTransactionSchemaProperties, {
   title: 'BaseTransaction',
   description:
@@ -153,6 +154,7 @@ const AbstractTransactionProperties = {
   vm_error: Nullable(Type.String({ description: 'Clarity VM error produced by this transaction' })),
   events: Type.Array(TransactionEventSchema),
 };
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const AbstractTransactionSchema = Type.Object({
   ...AbstractTransactionProperties,
 });
@@ -403,8 +405,8 @@ const TenureChangeTransactionSchema = Type.Object(
   },
   { title: 'TenureChangeTransaction' }
 );
-type TenureChangeTransaction = Static<typeof TenureChangeTransactionSchema>;
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const TransactionMetadataSchema = Type.Union([
   TokenTransferTransactionMetadataSchema,
   SmartContractTransactionMetadataSchema,
@@ -455,6 +457,7 @@ export const AbstractMempoolTransactionProperties = {
   }),
 };
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const AbstractMempoolTransactionSchema = Type.Object({
   ...AbstractMempoolTransactionProperties,
 });

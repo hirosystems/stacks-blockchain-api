@@ -23,7 +23,6 @@ const AbstractTransactionEventSchema = Type.Object(
     title: 'AbstractTransactionEvent',
   }
 );
-type AbstractTransactionEvent = Static<typeof AbstractTransactionEventSchema>;
 
 const SmartContractLogTransactionEventSchema = Type.Intersect(
   [

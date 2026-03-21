@@ -48,7 +48,6 @@ function createEnumChecker<T extends string, TEnumValue extends number>(enumVari
   return (value: number): value is TEnumValue => enumValueSet.has(value);
 }
 
-// eslint-disable-next-line @typescript-eslint/ban-types
 const enumCheckFunctions = new Map<object, (value: number) => boolean>();
 
 /**
@@ -95,7 +94,6 @@ export function parseEnum<T extends string, TEnumValue extends number>(
   }
 }
 
-// eslint-disable-next-line @typescript-eslint/ban-types
 const enumMaps = new Map<object, Map<unknown, unknown>>();
 
 export function getEnumDescription<T extends string, TEnumValue extends number>(
@@ -174,19 +172,19 @@ export function isValidBitcoinAddress(address: string): boolean {
   try {
     btc.address.toOutputScript(address, btc.networks.bitcoin);
     return true;
-  } catch (e) {
+  } catch (_e) {
     // ignore
   }
   try {
     btc.address.toOutputScript(address, btc.networks.testnet);
     return true;
-  } catch (e) {
+  } catch (_e) {
     // ignore
   }
   try {
     btc.address.toOutputScript(address, btc.networks.regtest);
     return true;
-  } catch (e) {
+  } catch (_e) {
     // ignore
   }
   return false;
@@ -196,7 +194,7 @@ export function tryConvertC32ToBtc(address: string): string | false {
   try {
     const result = codec.stacksToBitcoinAddress(address);
     return result;
-  } catch (e) {
+  } catch (_e) {
     return false;
   }
 }
@@ -204,7 +202,7 @@ export function tryConvertC32ToBtc(address: string): string | false {
 export function isValidC32Address(stxAddress: string): boolean {
   try {
     return codec.isValidStacksAddress(stxAddress);
-  } catch (error) {
+  } catch (_error) {
     return false;
   }
 }
@@ -297,13 +295,9 @@ export function httpPostRequest(
 
 /** Converts a unix timestamp (in seconds) to an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) string */
 export function unixEpochToIso(timestamp: number): string {
-  try {
-    const date = new Date(timestamp * 1000);
-    const iso = date.toISOString();
-    return iso;
-  } catch (error) {
-    throw error;
-  }
+  const date = new Date(timestamp * 1000);
+  const iso = date.toISOString();
+  return iso;
 }
 
 export function unwrapOptional<T>(

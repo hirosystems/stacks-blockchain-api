@@ -404,7 +404,7 @@ export const TxRoutes: FastifyPluginAsync<
       if (typeQuery && typeQuery.length > 0) {
         try {
           eventTypeFilter = parseEventTypeStrings(typeQuery);
-        } catch (error) {
+        } catch (_error) {
           throw new InvalidRequestError(
             `invalid 'event type'`,
             InvalidRequestErrorType.bad_request

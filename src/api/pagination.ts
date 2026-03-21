@@ -1,5 +1,6 @@
 import { InvalidRequestError, InvalidRequestErrorType } from '../errors.js';
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function parsePagingQueryInput(val: any) {
   if (typeof val === 'number') {
     return val;
@@ -108,6 +109,7 @@ export const pagingQueryLimits: Record<ResourceType, { defaultLimit: number; max
 
 export function getPagingQueryLimit(
   resourceType: ResourceType,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   limitOverride?: any,
   maxLimitOverride?: number
 ) {

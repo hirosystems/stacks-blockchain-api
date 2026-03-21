@@ -1,4 +1,7 @@
-import { handleBlockCache, handleChainTipCache } from '../../../api/controllers/cache-controller.js';
+import {
+  handleBlockCache,
+  handleChainTipCache,
+} from '../../../api/controllers/cache-controller.js';
 import {
   BlockParamsSchema,
   cleanBlockHeightOrHashParam,

@@ -276,7 +276,7 @@ export const BnsNameRoutes: FastifyPluginAsync<
       const includeUnanchored = req.query.unanchored ?? false;
 
       await fastify.db
-        .sqlTransaction(async sql => {
+        .sqlTransaction(async _sql => {
           // Subdomain case
           if (name.split('.').length == 3) {
             const subdomainQuery = await fastify.db.getSubdomain({

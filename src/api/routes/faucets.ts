@@ -1,4 +1,3 @@
-import * as process from 'process';
 import * as btc from 'bitcoinjs-lib';
 import PQueue from 'p-queue';
 import { BigNumber } from 'bignumber.js';
@@ -302,7 +301,7 @@ export const FaucetRoutes: FastifyPluginAsync<
           .toString();
         stxAmount = stxAmount + BigInt(padAmount);
         return stxAmount;
-      } catch (error) {
+      } catch (_error) {
         // ignore
       }
     }
@@ -339,6 +338,7 @@ export const FaucetRoutes: FastifyPluginAsync<
       network.chainId = await fetchNetworkChainID(network);
 
       return await makeSTXTokenTransfer(options);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       if (
         fee === undefined &&
@@ -479,6 +479,7 @@ export const FaucetRoutes: FastifyPluginAsync<
             logger.info(
               `StxFaucet success. Sent ${stxAmount} uSTX from ${senderAddress} to ${recipientAddress}.`
             );
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
           } catch (error: any) {
             if (
               error.message?.includes('ConflictingNonceInMempool') ||

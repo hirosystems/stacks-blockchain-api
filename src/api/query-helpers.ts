@@ -71,6 +71,7 @@ export function validateRequestHexInput(hash: string) {
     if (buffer.toString('hex') !== hash.substring(2).toLowerCase()) {
       throw new Error('Invalid hash characters');
     }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } catch (error: any) {
     throw new InvalidRequestError(error.message, InvalidRequestErrorType.invalid_hash);
   }

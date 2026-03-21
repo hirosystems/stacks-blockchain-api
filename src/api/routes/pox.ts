@@ -5,7 +5,12 @@ import { handleChainTipCache } from '../controllers/cache-controller.js';
 import { FastifyPluginAsync } from 'fastify';
 import { Type, TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
 import { Server } from 'node:http';
-import { LimitParam, OffsetParam, PrincipalSchema, UnanchoredParamSchema } from '../schemas/params.js';
+import {
+  LimitParam,
+  OffsetParam,
+  PrincipalSchema,
+  UnanchoredParamSchema,
+} from '../schemas/params.js';
 import { NotFoundError } from '../../errors.js';
 import { PaginatedResponse } from '../schemas/util.js';
 import { PoolDelegation, PoolDelegationSchema } from '../schemas/entities/pox.js';

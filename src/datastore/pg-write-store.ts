@@ -99,7 +99,6 @@ import { BigNumber } from 'bignumber.js';
 import { RedisNotifier } from './redis-notifier.js';
 import { ENV } from '../env.js';
 
-const MIGRATIONS_TABLE = 'pgmigrations';
 const INSERT_BATCH_SIZE = 500;
 
 class MicroblockGapError extends Error {
@@ -177,7 +176,7 @@ export class PgWriteStore extends PgStore {
     if (!skipMigrations) {
       await runMigrations(MIGRATIONS_DIR, 'up', getConnectionArgs(PgServer.primary), {
         logger: {
-          debug: _ => {},
+          debug: _msg => {},
           info: msg => {
             if (msg.includes('Migrating files')) {
               logger.info(`Performing SQL migration, this may take a while...`);
@@ -195,6 +194,7 @@ export class PgWriteStore extends PgStore {
     return store;
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   async storeRawEventRequest(eventPath: string, payload: any): Promise<void> {
     if (eventPath === '/new_block' && typeof payload === 'object') {
       for (const tx of payload.transactions) {
@@ -911,6 +911,7 @@ export class PgWriteStore extends PgStore {
   >(sql: PgSqlClient, poxTable: T, entries: Entry[]) {
     const values: PoxSyntheticEventInsertValues[] = [];
     for (const entry of entries) {
+      // eslint-disable-next-line no-useless-assignment
       let events: DbPoxSyntheticEvent[] | null = null;
       switch (poxTable) {
         case 'pox2_events':
@@ -1703,7 +1704,7 @@ export class PgWriteStore extends PgStore {
     sql: PgSqlClient,
     tx: DbTx,
     events: DbNftEvent[],
-    microblock: boolean = false
+    _microblock: boolean = false
   ) {
     for (const batch of batchIterate(events, INSERT_BATCH_SIZE)) {
       const custodyInsertsMap = new Map<string, NftCustodyInsertValues>();
@@ -2747,6 +2748,7 @@ export class PgWriteStore extends PgStore {
         res.count === lockedInfos.length,
         `Expecting ${lockedInfos.length} inserts, got ${res.count}`
       );
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (e: any) {
       logger.error(e, `Locked Info errors ${e.message}`);
       throw e;

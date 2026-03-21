@@ -127,7 +127,9 @@ export function parseNamespaceRawValue(
 
   const launched_atCV = properties.data['launched-at'];
   const launched_at =
-    launched_atCV.type_id === codec.ClarityTypeID.OptionalSome ? parseInt(launched_atCV.value.value) : 0;
+    launched_atCV.type_id === codec.ClarityTypeID.OptionalSome
+      ? parseInt(launched_atCV.value.value)
+      : 0;
   const lifetimeCV = properties.data.lifetime;
   const lifetime = BigInt(lifetimeCV.value);
   const revealed_atCV = properties.data['revealed-at'];
@@ -308,7 +310,7 @@ export function parseNameFromContractEvent(
   let attachment: Attachment;
   try {
     attachment = parseNameRawValue(event.contract_event.raw_value);
-  } catch (error) {
+  } catch (_error) {
     return;
   }
   const fullName = `${attachment.attachment.metadata.name}.${attachment.attachment.metadata.namespace}`;

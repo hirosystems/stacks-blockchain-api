@@ -85,7 +85,7 @@ async function calculateETag(
 ): Promise<ETag | undefined> {
   try {
     switch (etagType) {
-      case ETagType.chainTip:
+      case ETagType.chainTip: {
         const chainTip = await db.getChainTip(db.sql);
         if (chainTip.block_height === 0) {
           // This should never happen unless the API is serving requests before it has synced any
@@ -93,8 +93,9 @@ async function calculateETag(
           return;
         }
         return chainTip.microblock_hash ?? chainTip.index_block_hash;
+      }
 
-      case ETagType.mempool:
+      case ETagType.mempool: {
         const digest = await db.getMempoolTxDigest();
         if (!digest.found) {
           // This should never happen unless the API is serving requests before it has synced any
@@ -106,8 +107,9 @@ async function calculateETag(
           return ETAG_EMPTY;
         }
         return digest.result.digest;
+      }
 
-      case ETagType.transaction:
+      case ETagType.transaction: {
         const tx_id = (req.params as { tx_id: string }).tx_id;
         const normalizedTxId = normalizeHashString(tx_id);
         if (normalizedTxId === false) {
@@ -124,6 +126,7 @@ async function calculateETag(
           status.result.status.toString(),
         ];
         return sha256(elements.join(':'));
+      }
 
       case ETagType.block: {
         const params = req.params as BlockParams;
@@ -133,7 +136,7 @@ async function calculateETag(
       }
 
       case ETagType.principal:
-      case ETagType.principalMempool:
+      case ETagType.principalMempool: {
         const params = req.params as { address?: string; principal?: string };
         const principal = params.address ?? params.principal;
         if (!principal) return ETAG_EMPTY;
@@ -143,6 +146,7 @@ async function calculateETag(
         );
         if (!activity.confirmed && !activity.mempool) return ETAG_EMPTY;
         return sha256(`${activity.confirmed ?? ''}:${activity.mempool ?? ''}`);
+      }
     }
   } catch (error) {
     logger.error(error, `Unable to calculate ${etagType} etag`);

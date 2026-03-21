@@ -70,6 +70,7 @@ export class SnpEventStreamHandler {
     );
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   async handleMsg(messageId: string, _timestamp: string, path: string, body: any) {
     this.logger.debug(`Received SNP stream event ${path}, msgId: ${messageId}`);
     let response;
@@ -83,7 +84,7 @@ export class SnpEventStreamHandler {
     } catch (error) {
       const errorMessage = `Failed to process SNP message ${messageId} at path ${path}: ${error}`;
       this.logger.error(error, errorMessage);
-      throw new Error(errorMessage);
+      throw new Error(errorMessage, { cause: error });
     }
 
     if (response?.statusCode < 200 || response?.statusCode > 299) {

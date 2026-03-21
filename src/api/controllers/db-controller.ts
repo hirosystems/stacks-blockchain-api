@@ -21,7 +21,10 @@ import {
   DbPoxSyntheticEvent,
 } from '../../datastore/common.js';
 import { unwrapOptional, FoundOrNot, unixEpochToIso, EMPTY_HASH_256 } from '../../helpers.js';
-import { serializePostCondition, serializePostConditionMode } from '../serializers/post-conditions.js';
+import {
+  serializePostCondition,
+  serializePostConditionMode,
+} from '../serializers/post-conditions.js';
 import { PgStore } from '../../datastore/pg-store.js';
 import { SyntheticPoxEventName } from '../../pox-helpers.js';
 import { logger } from '@stacks/api-toolkit';
@@ -53,6 +56,7 @@ import {
 import { Microblock } from '../schemas/entities/microblock.js';
 import { Block } from '../schemas/entities/block.js';
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const TransactionTypes = [
   'contract_call',
   'smart_contract',
@@ -63,12 +67,15 @@ const TransactionTypes = [
 ] as const;
 export type TransactionType = (typeof TransactionTypes)[number];
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const TransactionAnchorModeTypes = ['on_chain_only', 'off_chain_only', 'any'] as const;
 type TransactionAnchorModeType = (typeof TransactionAnchorModeTypes)[number];
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const TransactionStatuses = ['success', 'abort_by_response', 'abort_by_post_condition'] as const;
 type TransactionStatus = (typeof TransactionStatuses)[number];
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const MempoolTransactionStatuses = [
   'pending',
   'dropped_replace_by_fee',
@@ -685,6 +692,7 @@ function parseDbTxTypeMetadata(
       const metadata: SmartContractTransactionMetadata = {
         tx_type: 'smart_contract',
         smart_contract: {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           clarity_version: null as any,
           contract_id: unwrapOptional(
             dbTx.smart_contract_contract_id,
@@ -730,6 +738,7 @@ function parseDbTxTypeMetadata(
         tx_type: 'coinbase',
         coinbase_payload: {
           data: unwrapOptional(dbTx.coinbase_payload, () => 'Unexpected nullish coinbase_payload'),
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           alt_recipient: null as any,
         },
       };
@@ -753,6 +762,7 @@ function parseDbTxTypeMetadata(
         tx_type: 'coinbase',
         coinbase_payload: {
           data: unwrapOptional(dbTx.coinbase_payload, () => 'Unexpected nullish coinbase_payload'),
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           alt_recipient: dbTx.coinbase_alt_recipient ?? (null as any),
           vrf_proof: unwrapOptional(dbTx.coinbase_vrf_proof, () => 'Unexpected nullish vrf_proof'),
         },
@@ -841,8 +851,9 @@ function parseContractCallMetadata(
 
   // Only process function_args if not excluded
   if (!excludeFunctionArgs && tx.contract_call_function_args) {
-    contractCall.function_args = codec.decodeClarityValueList(tx.contract_call_function_args).map(
-      (c, idx) => {
+    contractCall.function_args = codec
+      .decodeClarityValueList(tx.contract_call_function_args)
+      .map((c, idx) => {
         const functionArgAbi = functionAbi ? functionAbi.args[idx] : { name: '', type: undefined };
         return {
           hex: c.hex,
@@ -852,8 +863,7 @@ function parseContractCallMetadata(
             ? getTypeString(functionArgAbi.type)
             : codec.decodeClarityValueToTypeName(c.hex),
         };
-      }
-    );
+      });
   }
 
   const metadata: ContractCallTransactionMetadata = {
@@ -967,7 +977,7 @@ async function getTxsFromDataStore(
   db: PgStore,
   args: GetTxsArgs | GetTxsWithEventsArgs
 ): Promise<Transaction[]> {
-  return await db.sqlTransaction(async sql => {
+  return await db.sqlTransaction(async _sql => {
     // fetching all requested transactions from db
     const txQuery = await db.getTxListDetails({
       txIds: args.txIds,
@@ -1015,7 +1025,7 @@ export async function getTxFromDataStore(
   db: PgStore,
   args: GetTxArgs | GetTxWithEventsArgs | GetTxFromDbTxArgs
 ): Promise<FoundOrNot<Transaction>> {
-  return await db.sqlTransaction(async sql => {
+  return await db.sqlTransaction(async _sql => {
     let dbTx: DbTx;
     if ('dbTx' in args) {
       dbTx = args.dbTx;
@@ -1058,7 +1068,7 @@ export async function searchTxs(
   db: PgStore,
   args: GetTxsArgs | GetTxsWithEventsArgs
 ): Promise<TransactionSearchResponse> {
-  return await db.sqlTransaction(async sql => {
+  return await db.sqlTransaction(async _sql => {
     const minedTxs = await getTxsFromDataStore(db, args);
 
     const foundTransactions: TransactionFound[] = [];
@@ -1119,7 +1129,7 @@ export async function searchTx(
   db: PgStore,
   args: GetTxArgs | GetTxWithEventsArgs
 ): Promise<FoundOrNot<Transaction | MempoolTransaction>> {
-  return await db.sqlTransaction(async sql => {
+  return await db.sqlTransaction(async _sql => {
     // First, check the happy path: the tx is mined and in the canonical chain.
     const minedTxs = await getTxsFromDataStore(db, { ...args, txIds: [args.txId] });
     const minedTx = minedTxs[0] ?? undefined;
@@ -1152,7 +1162,7 @@ export async function searchHashWithMetadata(
   hash: string,
   db: PgStore
 ): Promise<FoundOrNot<DbSearchResultWithMetadata>> {
-  return await db.sqlTransaction(async sql => {
+  return await db.sqlTransaction(async _sql => {
     // checking for tx
     const txQuery = await db.getTxListDetails({ txIds: [hash], includeUnanchored: true });
     if (txQuery.length > 0) {

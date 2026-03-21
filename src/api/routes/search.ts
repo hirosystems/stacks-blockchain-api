@@ -61,6 +61,7 @@ export const SearchRoutes: FastifyPluginAsync<
     }
     if (hashBuffer !== undefined && hashBuffer.length === 32) {
       const hash = '0x' + hashBuffer.toString('hex');
+      // eslint-disable-next-line no-useless-assignment
       let queryResult: FoundOrNot<DbSearchResult> | FoundOrNot<DbSearchResultWithMetadata> = {
         found: false,
       };
@@ -293,7 +294,7 @@ export const SearchRoutes: FastifyPluginAsync<
       const { id: rawTerm } = req.params;
       const includeMetadata = req.query.include_metadata ?? false;
       const term = rawTerm.trim();
-      const searchResult = await fastify.db.sqlTransaction(async sql => {
+      const searchResult = await fastify.db.sqlTransaction(async _sql => {
         return await performSearch(term, includeMetadata);
       });
       if (searchResult.found) {

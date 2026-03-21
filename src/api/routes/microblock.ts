@@ -11,7 +11,6 @@ import { Type, TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
 import { Server } from 'node:http';
 import { handleChainTipCache } from '../controllers/cache-controller.js';
 import { LimitParam, OffsetParam } from '../schemas/params.js';
-import { PaginatedResponse } from '../schemas/util.js';
 import { MicroblockSchema } from '../schemas/entities/microblock.js';
 import { NotFoundError } from '../../errors.js';
 import { TransactionSchema } from '../schemas/entities/transactions.js';

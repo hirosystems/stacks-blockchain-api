@@ -76,7 +76,7 @@ export function isValidBtcAddress(network: btc.Network, address: string): boolea
     btc.initEccLib(ecc);
     btc.address.toOutputScript(address, network);
     return true;
-  } catch (error) {
+  } catch (_error) {
     return false;
   }
 }
@@ -97,6 +97,7 @@ async function getTxOutSet(client: RPCClient, address: string): Promise<TxOutSet
   );
   if (!txOutSet.success) {
     logger.error('scantxoutset did not immediately complete -- polling for progress...');
+    // eslint-disable-next-line no-useless-assignment
     let scanProgress = true;
     do {
       scanProgress = await client.scantxoutset({
@@ -133,7 +134,6 @@ interface GetRawTxResult {
 async function getRawTransactions(client: RPCClient, txIds: string[]): Promise<GetRawTxResult[]> {
   const batchRawTxRes: GetRawTxResult[] = await time(
     async () => {
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-return
       return await mapSeriesAsync(txIds, async txId =>
         client.getrawtransaction({ txid: txId, verbose: true })
       );

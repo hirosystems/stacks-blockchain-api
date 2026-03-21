@@ -1,8 +1,5 @@
 import codec from '@stacks/codec';
-import type {
-  TxPostCondition,
-  PostConditionPrincipal,
-} from '@stacks/codec';
+import type { TxPostCondition, PostConditionPrincipal } from '@stacks/codec';
 
 const assetPrincipalTypeMap = {
   [codec.PostConditionPrincipalTypeID.Origin]: 'principal_origin',

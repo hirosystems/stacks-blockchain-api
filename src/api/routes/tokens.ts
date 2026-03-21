@@ -9,7 +9,12 @@ import { InvalidRequestError, InvalidRequestErrorType } from '../../errors.js';
 import { FastifyPluginAsync } from 'fastify';
 import { Type, TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
 import { Server } from 'node:http';
-import { LimitParam, OffsetParam, PrincipalSchema, UnanchoredParamSchema } from '../schemas/params.js';
+import {
+  LimitParam,
+  OffsetParam,
+  PrincipalSchema,
+  UnanchoredParamSchema,
+} from '../schemas/params.js';
 import { PaginatedResponse } from '../schemas/util.js';
 import {
   NonFungibleTokenHistoryEventWithTxIdSchema,
@@ -202,7 +207,7 @@ export const TokenRoutes: FastifyPluginAsync<
       const includeTxMetadata = req.query.tx_metadata ?? false;
 
       await fastify.db
-        .sqlTransaction(async sql => {
+        .sqlTransaction(async _sql => {
           const chainTip = await fastify.db.getCurrentBlockHeight();
           if (!chainTip.found) {
             throw { error: `Unable to find a valid block to query` };
@@ -306,7 +311,7 @@ export const TokenRoutes: FastifyPluginAsync<
       const includeTxMetadata = req.query.tx_metadata ?? false;
 
       await fastify.db
-        .sqlTransaction(async sql => {
+        .sqlTransaction(async _sql => {
           const chainTip = await fastify.db.getCurrentBlockHeight();
           if (!chainTip.found) {
             throw { error: `Unable to find a valid block to query` };

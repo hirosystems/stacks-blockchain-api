@@ -14,7 +14,6 @@ import {
 } from '@stacks/api-toolkit';
 import { MIGRATIONS_DIR } from '../datastore/pg-store.js';
 import { PgServer, getConnectionArgs } from '../datastore/connection.js';
-import { ENV } from '../env.js';
 
 enum EventImportMode {
   /**
@@ -116,7 +115,8 @@ export async function importEventsFromTsv(
   } catch (error) {
     logger.error(error);
     throw new Error(
-      `DB migration cycle failed, possibly due to an incompatible API version upgrade. Add --wipe-db --force or perform a manual DB wipe before importing.`
+      `DB migration cycle failed, possibly due to an incompatible API version upgrade. Add --wipe-db --force or perform a manual DB wipe before importing.`,
+      { cause: error }
     );
   }
 

@@ -46,6 +46,7 @@ export type WebSocketPayload = {
  * Type hack taken from https://github.com/bterlson/strict-event-emitter-types to dynamically set
  * the argument types depending on the selected topic or payload.
  */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type ListenerType<T> = [T] extends [(...args: infer U) => any]
   ? U
   : [T] extends [void]

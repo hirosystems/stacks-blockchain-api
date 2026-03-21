@@ -180,7 +180,7 @@ export class SocketIOChannel extends WebSocketChannel {
     }
     // If a client takes more than this number of ms to respond to an event `emit`, it will be
     // disconnected.
-    const timeout = getWsMessageTimeoutMs();
+    const _timeout = getWsMessageTimeoutMs();
     switch (payload) {
       case 'block': {
         const [block] = args as ListenerType<WebSocketPayload['block']>;

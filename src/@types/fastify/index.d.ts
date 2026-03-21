@@ -1,3 +1,4 @@
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import fastify from 'fastify';
 import { PgStore } from '../../datastore/pg-store.js';
 import { PgWriteStore } from '../../datastore/pg-write-store.js';

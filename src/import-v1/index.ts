@@ -63,9 +63,11 @@ class LineReaderStream extends stream.Duplex {
       }
     }
   }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   _write(chunk: any, encoding: BufferEncoding, callback: (error?: Error | null) => void) {
     this.passthrough.write(chunk, encoding, callback);
   }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   _destroy(error: any, callback: (error: Error | null) => void) {
     this.passthrough.destroy(error);
     this.readlineInstance.close();
@@ -106,7 +108,8 @@ class ChainProcessor extends stream.Writable {
     done();
   }
 
-  async _write(chunk: any, encoding: string, next: (error?: Error) => void) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  async _write(chunk: any, _encoding: string, next: (error?: Error) => void) {
     const line = (chunk as Buffer).toString();
 
     /*
@@ -230,7 +233,7 @@ class SubdomainZonefileParser extends stream.Transform {
 function btcToStxAddress(btcAddress: string) {
   try {
     return codec.bitcoinToStacksAddress(btcAddress);
-  } catch (error) {
+  } catch (_error) {
     return btcAddress;
   }
 }

@@ -1,4 +1,4 @@
-import { Static, Type } from '@sinclair/typebox';
+import { Type } from '@sinclair/typebox';
 import { TransactionSchema } from './transactions.js';
 import { OptionalNullable } from '../util.js';
 
@@ -82,7 +82,6 @@ export const NonFungibleTokenMintWithTxIdSchema = Type.Object(
     description: 'Non-Fungible Token mint event with transaction id',
   }
 );
-type NonFungibleTokenMintWithTxId = Static<typeof NonFungibleTokenMintWithTxIdSchema>;
 
 export const NonFungibleTokenMintWithTxMetadataSchema = Type.Object({
   recipient: Type.Optional(Type.String()),

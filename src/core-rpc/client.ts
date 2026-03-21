@@ -160,6 +160,7 @@ export class StacksCoreRpcClient {
           throw new Error(`stacks_tip_height not >= 1`);
         }
         return;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
       } catch (error: any) {
         lastError = error;
         await timeout(retryInterval);
@@ -172,7 +173,7 @@ export class StacksCoreRpcClient {
     const resultString = await this.fetchText(path, init);
     try {
       const resultJson = JSON.parse(resultString);
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-return
+
       return resultJson;
     } catch (error) {
       logger.error(error, `Error parsing json: "${resultString}"`);
@@ -187,7 +188,7 @@ export class StacksCoreRpcClient {
       let msg = '';
       try {
         msg = await result.text();
-      } catch (error) {
+      } catch (_error) {
         // ignore error
       }
       throw new Error(`Response ${result.status}: ${result.statusText} fetching ${url} - ${msg}`);
