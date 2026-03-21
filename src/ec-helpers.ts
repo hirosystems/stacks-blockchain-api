@@ -1,6 +1,7 @@
 import * as bitcoin from 'bitcoinjs-lib';
 import * as ecc from 'tiny-secp256k1';
-import { ECPairAPI, ECPairFactory, ECPairInterface } from 'ecpair';
+import type { ECPairAPI, ECPairInterface } from 'ecpair';
+import { ECPairFactory } from 'ecpair';
 import { coerceToBuffer } from '@stacks/api-toolkit';
 
 export { ECPairInterface };

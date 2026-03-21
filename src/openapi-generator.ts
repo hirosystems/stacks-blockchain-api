@@ -1,7 +1,7 @@
 import Fastify from 'fastify';
 import { TSchema, TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
 import FastifySwagger from '@fastify/swagger';
-import { mkdirSync, writeFileSync } from 'fs';
+import { writeFileSync } from 'fs';
 import { OpenApiSchemaOptions } from './api/schemas/openapi.js';
 import { StacksApiRoutes } from './api/init.js';
 import { ErrorResponseSchema } from './api/schemas/responses/responses.js';
@@ -28,9 +28,7 @@ async function generateOpenApiFiles() {
   await fastify.register(FastifySwagger, OpenApiSchemaOptions);
   await fastify.register(StacksApiRoutes);
   await fastify.ready();
-  mkdirSync('./docs', { recursive: true });
-  writeFileSync('./docs/openapi.yaml', fastify.swagger({ yaml: true }));
-  writeFileSync('./docs/openapi.json', JSON.stringify(fastify.swagger(), null, 2));
+  writeFileSync('./openapi.yaml', fastify.swagger({ yaml: true }));
   await fastify.close();
 }
 
