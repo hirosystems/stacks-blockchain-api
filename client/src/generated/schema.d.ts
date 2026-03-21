@@ -3336,7 +3336,7 @@ export interface operations {
                 content: {
                     "application/json": {
                         [key: string]: {
-                            /** @constant */
+                            /** @enum {boolean} */
                             found: true;
                             result: ({
                                 /** @description Transaction ID */
@@ -3354,39 +3354,39 @@ export interface operations {
                                 post_condition_mode: "allow" | "deny" | "originator";
                                 post_conditions: ({
                                     principal: {
-                                        /** @constant */
+                                        /** @enum {string} */
                                         type_id: "principal_origin";
                                     } | {
-                                        /** @constant */
+                                        /** @enum {string} */
                                         type_id: "principal_standard";
                                         address: string;
                                     } | {
-                                        /** @constant */
+                                        /** @enum {string} */
                                         type_id: "principal_contract";
                                         address: string;
                                         contract_name: string;
                                     };
                                     condition_code: "sent_equal_to" | "sent_greater_than" | "sent_greater_than_or_equal_to" | "sent_less_than" | "sent_less_than_or_equal_to";
                                     amount: string;
-                                    /** @constant */
+                                    /** @enum {string} */
                                     type: "stx";
                                 } | {
                                     principal: {
-                                        /** @constant */
+                                        /** @enum {string} */
                                         type_id: "principal_origin";
                                     } | {
-                                        /** @constant */
+                                        /** @enum {string} */
                                         type_id: "principal_standard";
                                         address: string;
                                     } | {
-                                        /** @constant */
+                                        /** @enum {string} */
                                         type_id: "principal_contract";
                                         address: string;
                                         contract_name: string;
                                     };
                                     condition_code: "sent_equal_to" | "sent_greater_than" | "sent_greater_than_or_equal_to" | "sent_less_than" | "sent_less_than_or_equal_to";
                                     amount: string;
-                                    /** @constant */
+                                    /** @enum {string} */
                                     type: "fungible";
                                     asset: {
                                         asset_name: string;
@@ -3395,20 +3395,20 @@ export interface operations {
                                     };
                                 } | {
                                     principal: {
-                                        /** @constant */
+                                        /** @enum {string} */
                                         type_id: "principal_origin";
                                     } | {
-                                        /** @constant */
+                                        /** @enum {string} */
                                         type_id: "principal_standard";
                                         address: string;
                                     } | {
-                                        /** @constant */
+                                        /** @enum {string} */
                                         type_id: "principal_contract";
                                         address: string;
                                         contract_name: string;
                                     };
                                     condition_code: "sent" | "not_sent" | "maybe_sent";
-                                    /** @constant */
+                                    /** @enum {string} */
                                     type: "non_fungible";
                                     asset_value: {
                                         hex: string;
@@ -3479,7 +3479,7 @@ export interface operations {
                                 events: (({
                                     event_index: number;
                                 } & {
-                                    /** @constant */
+                                    /** @enum {string} */
                                     event_type: "smart_contract_log";
                                     tx_id: string;
                                     contract_log: {
@@ -3493,7 +3493,7 @@ export interface operations {
                                 }) | ({
                                     event_index: number;
                                 } & {
-                                    /** @constant */
+                                    /** @enum {string} */
                                     event_type: "stx_lock";
                                     tx_id: string;
                                     stx_lock_event: {
@@ -3504,7 +3504,7 @@ export interface operations {
                                 }) | ({
                                     event_index: number;
                                 } & {
-                                    /** @constant */
+                                    /** @enum {string} */
                                     event_type: "stx_asset";
                                     tx_id: string;
                                     asset: {
@@ -3517,7 +3517,7 @@ export interface operations {
                                 }) | ({
                                     event_index: number;
                                 } & {
-                                    /** @constant */
+                                    /** @enum {string} */
                                     event_type: "fungible_token_asset";
                                     tx_id: string;
                                     asset: {
@@ -3530,7 +3530,7 @@ export interface operations {
                                 }) | ({
                                     event_index: number;
                                 } & {
-                                    /** @constant */
+                                    /** @enum {string} */
                                     event_type: "non_fungible_token_asset";
                                     tx_id: string;
                                     asset: {
@@ -3544,7 +3544,7 @@ export interface operations {
                                         };
                                     };
                                 }))[];
-                                /** @constant */
+                                /** @enum {string} */
                                 tx_type: "token_transfer";
                                 token_transfer: {
                                     recipient_address: string;
@@ -3569,39 +3569,39 @@ export interface operations {
                                 post_condition_mode: "allow" | "deny" | "originator";
                                 post_conditions: ({
                                     principal: {
-                                        /** @constant */
+                                        /** @enum {string} */
                                         type_id: "principal_origin";
                                     } | {
-                                        /** @constant */
+                                        /** @enum {string} */
                                         type_id: "principal_standard";
                                         address: string;
                                     } | {
-                                        /** @constant */
+                                        /** @enum {string} */
                                         type_id: "principal_contract";
                                         address: string;
                                         contract_name: string;
                                     };
                                     condition_code: "sent_equal_to" | "sent_greater_than" | "sent_greater_than_or_equal_to" | "sent_less_than" | "sent_less_than_or_equal_to";
                                     amount: string;
-                                    /** @constant */
+                                    /** @enum {string} */
                                     type: "stx";
                                 } | {
                                     principal: {
-                                        /** @constant */
+                                        /** @enum {string} */
                                         type_id: "principal_origin";
                                     } | {
-                                        /** @constant */
+                                        /** @enum {string} */
                                         type_id: "principal_standard";
                                         address: string;
                                     } | {
-                                        /** @constant */
+                                        /** @enum {string} */
                                         type_id: "principal_contract";
                                         address: string;
                                         contract_name: string;
                                     };
                                     condition_code: "sent_equal_to" | "sent_greater_than" | "sent_greater_than_or_equal_to" | "sent_less_than" | "sent_less_than_or_equal_to";
                                     amount: string;
-                                    /** @constant */
+                                    /** @enum {string} */
                                     type: "fungible";
                                     asset: {
                                         asset_name: string;
@@ -3610,20 +3610,20 @@ export interface operations {
                                     };
                                 } | {
                                     principal: {
-                                        /** @constant */
+                                        /** @enum {string} */
                                         type_id: "principal_origin";
                                     } | {
-                                        /** @constant */
+                                        /** @enum {string} */
                                         type_id: "principal_standard";
                                         address: string;
                                     } | {
-                                        /** @constant */
+                                        /** @enum {string} */
                                         type_id: "principal_contract";
                                         address: string;
                                         contract_name: string;
                                     };
                                     condition_code: "sent" | "not_sent" | "maybe_sent";
-                                    /** @constant */
+                                    /** @enum {string} */
                                     type: "non_fungible";
                                     asset_value: {
                                         hex: string;
@@ -3694,7 +3694,7 @@ export interface operations {
                                 events: (({
                                     event_index: number;
                                 } & {
-                                    /** @constant */
+                                    /** @enum {string} */
                                     event_type: "smart_contract_log";
                                     tx_id: string;
                                     contract_log: {
@@ -3708,7 +3708,7 @@ export interface operations {
                                 }) | ({
                                     event_index: number;
                                 } & {
-                                    /** @constant */
+                                    /** @enum {string} */
                                     event_type: "stx_lock";
                                     tx_id: string;
                                     stx_lock_event: {
@@ -3719,7 +3719,7 @@ export interface operations {
                                 }) | ({
                                     event_index: number;
                                 } & {
-                                    /** @constant */
+                                    /** @enum {string} */
                                     event_type: "stx_asset";
                                     tx_id: string;
                                     asset: {
@@ -3732,7 +3732,7 @@ export interface operations {
                                 }) | ({
                                     event_index: number;
                                 } & {
-                                    /** @constant */
+                                    /** @enum {string} */
                                     event_type: "fungible_token_asset";
                                     tx_id: string;
                                     asset: {
@@ -3745,7 +3745,7 @@ export interface operations {
                                 }) | ({
                                     event_index: number;
                                 } & {
-                                    /** @constant */
+                                    /** @enum {string} */
                                     event_type: "non_fungible_token_asset";
                                     tx_id: string;
                                     asset: {
@@ -3759,7 +3759,7 @@ export interface operations {
                                         };
                                     };
                                 }))[];
-                                /** @constant */
+                                /** @enum {string} */
                                 tx_type: "smart_contract";
                                 smart_contract: {
                                     clarity_version: number | null;
@@ -3784,39 +3784,39 @@ export interface operations {
                                 post_condition_mode: "allow" | "deny" | "originator";
                                 post_conditions: ({
                                     principal: {
-                                        /** @constant */
+                                        /** @enum {string} */
                                         type_id: "principal_origin";
                                     } | {
-                                        /** @constant */
+                                        /** @enum {string} */
                                         type_id: "principal_standard";
                                         address: string;
                                     } | {
-                                        /** @constant */
+                                        /** @enum {string} */
                                         type_id: "principal_contract";
                                         address: string;
                                         contract_name: string;
                                     };
                                     condition_code: "sent_equal_to" | "sent_greater_than" | "sent_greater_than_or_equal_to" | "sent_less_than" | "sent_less_than_or_equal_to";
                                     amount: string;
-                                    /** @constant */
+                                    /** @enum {string} */
                                     type: "stx";
                                 } | {
                                     principal: {
-                                        /** @constant */
+                                        /** @enum {string} */
                                         type_id: "principal_origin";
                                     } | {
-                                        /** @constant */
+                                        /** @enum {string} */
                                         type_id: "principal_standard";
                                         address: string;
                                     } | {
-                                        /** @constant */
+                                        /** @enum {string} */
                                         type_id: "principal_contract";
                                         address: string;
                                         contract_name: string;
                                     };
                                     condition_code: "sent_equal_to" | "sent_greater_than" | "sent_greater_than_or_equal_to" | "sent_less_than" | "sent_less_than_or_equal_to";
                                     amount: string;
-                                    /** @constant */
+                                    /** @enum {string} */
                                     type: "fungible";
                                     asset: {
                                         asset_name: string;
@@ -3825,20 +3825,20 @@ export interface operations {
                                     };
                                 } | {
                                     principal: {
-                                        /** @constant */
+                                        /** @enum {string} */
                                         type_id: "principal_origin";
                                     } | {
-                                        /** @constant */
+                                        /** @enum {string} */
                                         type_id: "principal_standard";
                                         address: string;
                                     } | {
-                                        /** @constant */
+                                        /** @enum {string} */
                                         type_id: "principal_contract";
                                         address: string;
                                         contract_name: string;
                                     };
                                     condition_code: "sent" | "not_sent" | "maybe_sent";
-                                    /** @constant */
+                                    /** @enum {string} */
                                     type: "non_fungible";
                                     asset_value: {
                                         hex: string;
@@ -3909,7 +3909,7 @@ export interface operations {
                                 events: (({
                                     event_index: number;
                                 } & {
-                                    /** @constant */
+                                    /** @enum {string} */
                                     event_type: "smart_contract_log";
                                     tx_id: string;
                                     contract_log: {
@@ -3923,7 +3923,7 @@ export interface operations {
                                 }) | ({
                                     event_index: number;
                                 } & {
-                                    /** @constant */
+                                    /** @enum {string} */
                                     event_type: "stx_lock";
                                     tx_id: string;
                                     stx_lock_event: {
@@ -3934,7 +3934,7 @@ export interface operations {
                                 }) | ({
                                     event_index: number;
                                 } & {
-                                    /** @constant */
+                                    /** @enum {string} */
                                     event_type: "stx_asset";
                                     tx_id: string;
                                     asset: {
@@ -3947,7 +3947,7 @@ export interface operations {
                                 }) | ({
                                     event_index: number;
                                 } & {
-                                    /** @constant */
+                                    /** @enum {string} */
                                     event_type: "fungible_token_asset";
                                     tx_id: string;
                                     asset: {
@@ -3960,7 +3960,7 @@ export interface operations {
                                 }) | ({
                                     event_index: number;
                                 } & {
-                                    /** @constant */
+                                    /** @enum {string} */
                                     event_type: "non_fungible_token_asset";
                                     tx_id: string;
                                     asset: {
@@ -3974,7 +3974,7 @@ export interface operations {
                                         };
                                     };
                                 }))[];
-                                /** @constant */
+                                /** @enum {string} */
                                 tx_type: "contract_call";
                                 contract_call: {
                                     /** @description Contract identifier formatted as `<principaladdress>.<contract_name>` */
@@ -4006,39 +4006,39 @@ export interface operations {
                                 post_condition_mode: "allow" | "deny" | "originator";
                                 post_conditions: ({
                                     principal: {
-                                        /** @constant */
+                                        /** @enum {string} */
                                         type_id: "principal_origin";
                                     } | {
-                                        /** @constant */
+                                        /** @enum {string} */
                                         type_id: "principal_standard";
                                         address: string;
                                     } | {
-                                        /** @constant */
+                                        /** @enum {string} */
                                         type_id: "principal_contract";
                                         address: string;
                                         contract_name: string;
                                     };
                                     condition_code: "sent_equal_to" | "sent_greater_than" | "sent_greater_than_or_equal_to" | "sent_less_than" | "sent_less_than_or_equal_to";
                                     amount: string;
-                                    /** @constant */
+                                    /** @enum {string} */
                                     type: "stx";
                                 } | {
                                     principal: {
-                                        /** @constant */
+                                        /** @enum {string} */
                                         type_id: "principal_origin";
                                     } | {
-                                        /** @constant */
+                                        /** @enum {string} */
                                         type_id: "principal_standard";
                                         address: string;
                                     } | {
-                                        /** @constant */
+                                        /** @enum {string} */
                                         type_id: "principal_contract";
                                         address: string;
                                         contract_name: string;
                                     };
                                     condition_code: "sent_equal_to" | "sent_greater_than" | "sent_greater_than_or_equal_to" | "sent_less_than" | "sent_less_than_or_equal_to";
                                     amount: string;
-                                    /** @constant */
+                                    /** @enum {string} */
                                     type: "fungible";
                                     asset: {
                                         asset_name: string;
@@ -4047,20 +4047,20 @@ export interface operations {
                                     };
                                 } | {
                                     principal: {
-                                        /** @constant */
+                                        /** @enum {string} */
                                         type_id: "principal_origin";
                                     } | {
-                                        /** @constant */
+                                        /** @enum {string} */
                                         type_id: "principal_standard";
                                         address: string;
                                     } | {
-                                        /** @constant */
+                                        /** @enum {string} */
                                         type_id: "principal_contract";
                                         address: string;
                                         contract_name: string;
                                     };
                                     condition_code: "sent" | "not_sent" | "maybe_sent";
-                                    /** @constant */
+                                    /** @enum {string} */
                                     type: "non_fungible";
                                     asset_value: {
                                         hex: string;
@@ -4131,7 +4131,7 @@ export interface operations {
                                 events: (({
                                     event_index: number;
                                 } & {
-                                    /** @constant */
+                                    /** @enum {string} */
                                     event_type: "smart_contract_log";
                                     tx_id: string;
                                     contract_log: {
@@ -4145,7 +4145,7 @@ export interface operations {
                                 }) | ({
                                     event_index: number;
                                 } & {
-                                    /** @constant */
+                                    /** @enum {string} */
                                     event_type: "stx_lock";
                                     tx_id: string;
                                     stx_lock_event: {
@@ -4156,7 +4156,7 @@ export interface operations {
                                 }) | ({
                                     event_index: number;
                                 } & {
-                                    /** @constant */
+                                    /** @enum {string} */
                                     event_type: "stx_asset";
                                     tx_id: string;
                                     asset: {
@@ -4169,7 +4169,7 @@ export interface operations {
                                 }) | ({
                                     event_index: number;
                                 } & {
-                                    /** @constant */
+                                    /** @enum {string} */
                                     event_type: "fungible_token_asset";
                                     tx_id: string;
                                     asset: {
@@ -4182,7 +4182,7 @@ export interface operations {
                                 }) | ({
                                     event_index: number;
                                 } & {
-                                    /** @constant */
+                                    /** @enum {string} */
                                     event_type: "non_fungible_token_asset";
                                     tx_id: string;
                                     asset: {
@@ -4196,7 +4196,7 @@ export interface operations {
                                         };
                                     };
                                 }))[];
-                                /** @constant */
+                                /** @enum {string} */
                                 tx_type: "poison_microblock";
                                 poison_microblock: {
                                     /** @description Hex encoded microblock header */
@@ -4220,39 +4220,39 @@ export interface operations {
                                 post_condition_mode: "allow" | "deny" | "originator";
                                 post_conditions: ({
                                     principal: {
-                                        /** @constant */
+                                        /** @enum {string} */
                                         type_id: "principal_origin";
                                     } | {
-                                        /** @constant */
+                                        /** @enum {string} */
                                         type_id: "principal_standard";
                                         address: string;
                                     } | {
-                                        /** @constant */
+                                        /** @enum {string} */
                                         type_id: "principal_contract";
                                         address: string;
                                         contract_name: string;
                                     };
                                     condition_code: "sent_equal_to" | "sent_greater_than" | "sent_greater_than_or_equal_to" | "sent_less_than" | "sent_less_than_or_equal_to";
                                     amount: string;
-                                    /** @constant */
+                                    /** @enum {string} */
                                     type: "stx";
                                 } | {
                                     principal: {
-                                        /** @constant */
+                                        /** @enum {string} */
                                         type_id: "principal_origin";
                                     } | {
-                                        /** @constant */
+                                        /** @enum {string} */
                                         type_id: "principal_standard";
                                         address: string;
                                     } | {
-                                        /** @constant */
+                                        /** @enum {string} */
                                         type_id: "principal_contract";
                                         address: string;
                                         contract_name: string;
                                     };
                                     condition_code: "sent_equal_to" | "sent_greater_than" | "sent_greater_than_or_equal_to" | "sent_less_than" | "sent_less_than_or_equal_to";
                                     amount: string;
-                                    /** @constant */
+                                    /** @enum {string} */
                                     type: "fungible";
                                     asset: {
                                         asset_name: string;
@@ -4261,20 +4261,20 @@ export interface operations {
                                     };
                                 } | {
                                     principal: {
-                                        /** @constant */
+                                        /** @enum {string} */
                                         type_id: "principal_origin";
                                     } | {
-                                        /** @constant */
+                                        /** @enum {string} */
                                         type_id: "principal_standard";
                                         address: string;
                                     } | {
-                                        /** @constant */
+                                        /** @enum {string} */
                                         type_id: "principal_contract";
                                         address: string;
                                         contract_name: string;
                                     };
                                     condition_code: "sent" | "not_sent" | "maybe_sent";
-                                    /** @constant */
+                                    /** @enum {string} */
                                     type: "non_fungible";
                                     asset_value: {
                                         hex: string;
@@ -4345,7 +4345,7 @@ export interface operations {
                                 events: (({
                                     event_index: number;
                                 } & {
-                                    /** @constant */
+                                    /** @enum {string} */
                                     event_type: "smart_contract_log";
                                     tx_id: string;
                                     contract_log: {
@@ -4359,7 +4359,7 @@ export interface operations {
                                 }) | ({
                                     event_index: number;
                                 } & {
-                                    /** @constant */
+                                    /** @enum {string} */
                                     event_type: "stx_lock";
                                     tx_id: string;
                                     stx_lock_event: {
@@ -4370,7 +4370,7 @@ export interface operations {
                                 }) | ({
                                     event_index: number;
                                 } & {
-                                    /** @constant */
+                                    /** @enum {string} */
                                     event_type: "stx_asset";
                                     tx_id: string;
                                     asset: {
@@ -4383,7 +4383,7 @@ export interface operations {
                                 }) | ({
                                     event_index: number;
                                 } & {
-                                    /** @constant */
+                                    /** @enum {string} */
                                     event_type: "fungible_token_asset";
                                     tx_id: string;
                                     asset: {
@@ -4396,7 +4396,7 @@ export interface operations {
                                 }) | ({
                                     event_index: number;
                                 } & {
-                                    /** @constant */
+                                    /** @enum {string} */
                                     event_type: "non_fungible_token_asset";
                                     tx_id: string;
                                     asset: {
@@ -4410,7 +4410,7 @@ export interface operations {
                                         };
                                     };
                                 }))[];
-                                /** @constant */
+                                /** @enum {string} */
                                 tx_type: "coinbase";
                                 coinbase_payload: {
                                     /** @description Hex encoded 32-byte scratch space for block leader's use */
@@ -4434,39 +4434,39 @@ export interface operations {
                                 post_condition_mode: "allow" | "deny" | "originator";
                                 post_conditions: ({
                                     principal: {
-                                        /** @constant */
+                                        /** @enum {string} */
                                         type_id: "principal_origin";
                                     } | {
-                                        /** @constant */
+                                        /** @enum {string} */
                                         type_id: "principal_standard";
                                         address: string;
                                     } | {
-                                        /** @constant */
+                                        /** @enum {string} */
                                         type_id: "principal_contract";
                                         address: string;
                                         contract_name: string;
                                     };
                                     condition_code: "sent_equal_to" | "sent_greater_than" | "sent_greater_than_or_equal_to" | "sent_less_than" | "sent_less_than_or_equal_to";
                                     amount: string;
-                                    /** @constant */
+                                    /** @enum {string} */
                                     type: "stx";
                                 } | {
                                     principal: {
-                                        /** @constant */
+                                        /** @enum {string} */
                                         type_id: "principal_origin";
                                     } | {
-                                        /** @constant */
+                                        /** @enum {string} */
                                         type_id: "principal_standard";
                                         address: string;
                                     } | {
-                                        /** @constant */
+                                        /** @enum {string} */
                                         type_id: "principal_contract";
                                         address: string;
                                         contract_name: string;
                                     };
                                     condition_code: "sent_equal_to" | "sent_greater_than" | "sent_greater_than_or_equal_to" | "sent_less_than" | "sent_less_than_or_equal_to";
                                     amount: string;
-                                    /** @constant */
+                                    /** @enum {string} */
                                     type: "fungible";
                                     asset: {
                                         asset_name: string;
@@ -4475,20 +4475,20 @@ export interface operations {
                                     };
                                 } | {
                                     principal: {
-                                        /** @constant */
+                                        /** @enum {string} */
                                         type_id: "principal_origin";
                                     } | {
-                                        /** @constant */
+                                        /** @enum {string} */
                                         type_id: "principal_standard";
                                         address: string;
                                     } | {
-                                        /** @constant */
+                                        /** @enum {string} */
                                         type_id: "principal_contract";
                                         address: string;
                                         contract_name: string;
                                     };
                                     condition_code: "sent" | "not_sent" | "maybe_sent";
-                                    /** @constant */
+                                    /** @enum {string} */
                                     type: "non_fungible";
                                     asset_value: {
                                         hex: string;
@@ -4559,7 +4559,7 @@ export interface operations {
                                 events: (({
                                     event_index: number;
                                 } & {
-                                    /** @constant */
+                                    /** @enum {string} */
                                     event_type: "smart_contract_log";
                                     tx_id: string;
                                     contract_log: {
@@ -4573,7 +4573,7 @@ export interface operations {
                                 }) | ({
                                     event_index: number;
                                 } & {
-                                    /** @constant */
+                                    /** @enum {string} */
                                     event_type: "stx_lock";
                                     tx_id: string;
                                     stx_lock_event: {
@@ -4584,7 +4584,7 @@ export interface operations {
                                 }) | ({
                                     event_index: number;
                                 } & {
-                                    /** @constant */
+                                    /** @enum {string} */
                                     event_type: "stx_asset";
                                     tx_id: string;
                                     asset: {
@@ -4597,7 +4597,7 @@ export interface operations {
                                 }) | ({
                                     event_index: number;
                                 } & {
-                                    /** @constant */
+                                    /** @enum {string} */
                                     event_type: "fungible_token_asset";
                                     tx_id: string;
                                     asset: {
@@ -4610,7 +4610,7 @@ export interface operations {
                                 }) | ({
                                     event_index: number;
                                 } & {
-                                    /** @constant */
+                                    /** @enum {string} */
                                     event_type: "non_fungible_token_asset";
                                     tx_id: string;
                                     asset: {
@@ -4624,7 +4624,7 @@ export interface operations {
                                         };
                                     };
                                 }))[];
-                                /** @constant */
+                                /** @enum {string} */
                                 tx_type: "tenure_change";
                                 tenure_change_payload: {
                                     /** @description Consensus hash of this tenure. Corresponds to the sortition in which the miner of this block was chosen. */
@@ -4658,39 +4658,39 @@ export interface operations {
                                 post_condition_mode: "allow" | "deny" | "originator";
                                 post_conditions: ({
                                     principal: {
-                                        /** @constant */
+                                        /** @enum {string} */
                                         type_id: "principal_origin";
                                     } | {
-                                        /** @constant */
+                                        /** @enum {string} */
                                         type_id: "principal_standard";
                                         address: string;
                                     } | {
-                                        /** @constant */
+                                        /** @enum {string} */
                                         type_id: "principal_contract";
                                         address: string;
                                         contract_name: string;
                                     };
                                     condition_code: "sent_equal_to" | "sent_greater_than" | "sent_greater_than_or_equal_to" | "sent_less_than" | "sent_less_than_or_equal_to";
                                     amount: string;
-                                    /** @constant */
+                                    /** @enum {string} */
                                     type: "stx";
                                 } | {
                                     principal: {
-                                        /** @constant */
+                                        /** @enum {string} */
                                         type_id: "principal_origin";
                                     } | {
-                                        /** @constant */
+                                        /** @enum {string} */
                                         type_id: "principal_standard";
                                         address: string;
                                     } | {
-                                        /** @constant */
+                                        /** @enum {string} */
                                         type_id: "principal_contract";
                                         address: string;
                                         contract_name: string;
                                     };
                                     condition_code: "sent_equal_to" | "sent_greater_than" | "sent_greater_than_or_equal_to" | "sent_less_than" | "sent_less_than_or_equal_to";
                                     amount: string;
-                                    /** @constant */
+                                    /** @enum {string} */
                                     type: "fungible";
                                     asset: {
                                         asset_name: string;
@@ -4699,20 +4699,20 @@ export interface operations {
                                     };
                                 } | {
                                     principal: {
-                                        /** @constant */
+                                        /** @enum {string} */
                                         type_id: "principal_origin";
                                     } | {
-                                        /** @constant */
+                                        /** @enum {string} */
                                         type_id: "principal_standard";
                                         address: string;
                                     } | {
-                                        /** @constant */
+                                        /** @enum {string} */
                                         type_id: "principal_contract";
                                         address: string;
                                         contract_name: string;
                                     };
                                     condition_code: "sent" | "not_sent" | "maybe_sent";
-                                    /** @constant */
+                                    /** @enum {string} */
                                     type: "non_fungible";
                                     asset_value: {
                                         hex: string;
@@ -4733,7 +4733,7 @@ export interface operations {
                                 receipt_time: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when the transaction broadcast was received by the node. */
                                 receipt_time_iso: string;
-                                /** @constant */
+                                /** @enum {string} */
                                 tx_type: "token_transfer";
                                 token_transfer: {
                                     recipient_address: string;
@@ -4758,39 +4758,39 @@ export interface operations {
                                 post_condition_mode: "allow" | "deny" | "originator";
                                 post_conditions: ({
                                     principal: {
-                                        /** @constant */
+                                        /** @enum {string} */
                                         type_id: "principal_origin";
                                     } | {
-                                        /** @constant */
+                                        /** @enum {string} */
                                         type_id: "principal_standard";
                                         address: string;
                                     } | {
-                                        /** @constant */
+                                        /** @enum {string} */
                                         type_id: "principal_contract";
                                         address: string;
                                         contract_name: string;
                                     };
                                     condition_code: "sent_equal_to" | "sent_greater_than" | "sent_greater_than_or_equal_to" | "sent_less_than" | "sent_less_than_or_equal_to";
                                     amount: string;
-                                    /** @constant */
+                                    /** @enum {string} */
                                     type: "stx";
                                 } | {
                                     principal: {
-                                        /** @constant */
+                                        /** @enum {string} */
                                         type_id: "principal_origin";
                                     } | {
-                                        /** @constant */
+                                        /** @enum {string} */
                                         type_id: "principal_standard";
                                         address: string;
                                     } | {
-                                        /** @constant */
+                                        /** @enum {string} */
                                         type_id: "principal_contract";
                                         address: string;
                                         contract_name: string;
                                     };
                                     condition_code: "sent_equal_to" | "sent_greater_than" | "sent_greater_than_or_equal_to" | "sent_less_than" | "sent_less_than_or_equal_to";
                                     amount: string;
-                                    /** @constant */
+                                    /** @enum {string} */
                                     type: "fungible";
                                     asset: {
                                         asset_name: string;
@@ -4799,20 +4799,20 @@ export interface operations {
                                     };
                                 } | {
                                     principal: {
-                                        /** @constant */
+                                        /** @enum {string} */
                                         type_id: "principal_origin";
                                     } | {
-                                        /** @constant */
+                                        /** @enum {string} */
                                         type_id: "principal_standard";
                                         address: string;
                                     } | {
-                                        /** @constant */
+                                        /** @enum {string} */
                                         type_id: "principal_contract";
                                         address: string;
                                         contract_name: string;
                                     };
                                     condition_code: "sent" | "not_sent" | "maybe_sent";
-                                    /** @constant */
+                                    /** @enum {string} */
                                     type: "non_fungible";
                                     asset_value: {
                                         hex: string;
@@ -4833,7 +4833,7 @@ export interface operations {
                                 receipt_time: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when the transaction broadcast was received by the node. */
                                 receipt_time_iso: string;
-                                /** @constant */
+                                /** @enum {string} */
                                 tx_type: "smart_contract";
                                 smart_contract: {
                                     clarity_version: number | null;
@@ -4858,39 +4858,39 @@ export interface operations {
                                 post_condition_mode: "allow" | "deny" | "originator";
                                 post_conditions: ({
                                     principal: {
-                                        /** @constant */
+                                        /** @enum {string} */
                                         type_id: "principal_origin";
                                     } | {
-                                        /** @constant */
+                                        /** @enum {string} */
                                         type_id: "principal_standard";
                                         address: string;
                                     } | {
-                                        /** @constant */
+                                        /** @enum {string} */
                                         type_id: "principal_contract";
                                         address: string;
                                         contract_name: string;
                                     };
                                     condition_code: "sent_equal_to" | "sent_greater_than" | "sent_greater_than_or_equal_to" | "sent_less_than" | "sent_less_than_or_equal_to";
                                     amount: string;
-                                    /** @constant */
+                                    /** @enum {string} */
                                     type: "stx";
                                 } | {
                                     principal: {
-                                        /** @constant */
+                                        /** @enum {string} */
                                         type_id: "principal_origin";
                                     } | {
-                                        /** @constant */
+                                        /** @enum {string} */
                                         type_id: "principal_standard";
                                         address: string;
                                     } | {
-                                        /** @constant */
+                                        /** @enum {string} */
                                         type_id: "principal_contract";
                                         address: string;
                                         contract_name: string;
                                     };
                                     condition_code: "sent_equal_to" | "sent_greater_than" | "sent_greater_than_or_equal_to" | "sent_less_than" | "sent_less_than_or_equal_to";
                                     amount: string;
-                                    /** @constant */
+                                    /** @enum {string} */
                                     type: "fungible";
                                     asset: {
                                         asset_name: string;
@@ -4899,20 +4899,20 @@ export interface operations {
                                     };
                                 } | {
                                     principal: {
-                                        /** @constant */
+                                        /** @enum {string} */
                                         type_id: "principal_origin";
                                     } | {
-                                        /** @constant */
+                                        /** @enum {string} */
                                         type_id: "principal_standard";
                                         address: string;
                                     } | {
-                                        /** @constant */
+                                        /** @enum {string} */
                                         type_id: "principal_contract";
                                         address: string;
                                         contract_name: string;
                                     };
                                     condition_code: "sent" | "not_sent" | "maybe_sent";
-                                    /** @constant */
+                                    /** @enum {string} */
                                     type: "non_fungible";
                                     asset_value: {
                                         hex: string;
@@ -4933,7 +4933,7 @@ export interface operations {
                                 receipt_time: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when the transaction broadcast was received by the node. */
                                 receipt_time_iso: string;
-                                /** @constant */
+                                /** @enum {string} */
                                 tx_type: "contract_call";
                                 contract_call: {
                                     /** @description Contract identifier formatted as `<principaladdress>.<contract_name>` */
@@ -4965,39 +4965,39 @@ export interface operations {
                                 post_condition_mode: "allow" | "deny" | "originator";
                                 post_conditions: ({
                                     principal: {
-                                        /** @constant */
+                                        /** @enum {string} */
                                         type_id: "principal_origin";
                                     } | {
-                                        /** @constant */
+                                        /** @enum {string} */
                                         type_id: "principal_standard";
                                         address: string;
                                     } | {
-                                        /** @constant */
+                                        /** @enum {string} */
                                         type_id: "principal_contract";
                                         address: string;
                                         contract_name: string;
                                     };
                                     condition_code: "sent_equal_to" | "sent_greater_than" | "sent_greater_than_or_equal_to" | "sent_less_than" | "sent_less_than_or_equal_to";
                                     amount: string;
-                                    /** @constant */
+                                    /** @enum {string} */
                                     type: "stx";
                                 } | {
                                     principal: {
-                                        /** @constant */
+                                        /** @enum {string} */
                                         type_id: "principal_origin";
                                     } | {
-                                        /** @constant */
+                                        /** @enum {string} */
                                         type_id: "principal_standard";
                                         address: string;
                                     } | {
-                                        /** @constant */
+                                        /** @enum {string} */
                                         type_id: "principal_contract";
                                         address: string;
                                         contract_name: string;
                                     };
                                     condition_code: "sent_equal_to" | "sent_greater_than" | "sent_greater_than_or_equal_to" | "sent_less_than" | "sent_less_than_or_equal_to";
                                     amount: string;
-                                    /** @constant */
+                                    /** @enum {string} */
                                     type: "fungible";
                                     asset: {
                                         asset_name: string;
@@ -5006,20 +5006,20 @@ export interface operations {
                                     };
                                 } | {
                                     principal: {
-                                        /** @constant */
+                                        /** @enum {string} */
                                         type_id: "principal_origin";
                                     } | {
-                                        /** @constant */
+                                        /** @enum {string} */
                                         type_id: "principal_standard";
                                         address: string;
                                     } | {
-                                        /** @constant */
+                                        /** @enum {string} */
                                         type_id: "principal_contract";
                                         address: string;
                                         contract_name: string;
                                     };
                                     condition_code: "sent" | "not_sent" | "maybe_sent";
-                                    /** @constant */
+                                    /** @enum {string} */
                                     type: "non_fungible";
                                     asset_value: {
                                         hex: string;
@@ -5040,7 +5040,7 @@ export interface operations {
                                 receipt_time: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when the transaction broadcast was received by the node. */
                                 receipt_time_iso: string;
-                                /** @constant */
+                                /** @enum {string} */
                                 tx_type: "poison_microblock";
                                 poison_microblock: {
                                     /** @description Hex encoded microblock header */
@@ -5064,39 +5064,39 @@ export interface operations {
                                 post_condition_mode: "allow" | "deny" | "originator";
                                 post_conditions: ({
                                     principal: {
-                                        /** @constant */
+                                        /** @enum {string} */
                                         type_id: "principal_origin";
                                     } | {
-                                        /** @constant */
+                                        /** @enum {string} */
                                         type_id: "principal_standard";
                                         address: string;
                                     } | {
-                                        /** @constant */
+                                        /** @enum {string} */
                                         type_id: "principal_contract";
                                         address: string;
                                         contract_name: string;
                                     };
                                     condition_code: "sent_equal_to" | "sent_greater_than" | "sent_greater_than_or_equal_to" | "sent_less_than" | "sent_less_than_or_equal_to";
                                     amount: string;
-                                    /** @constant */
+                                    /** @enum {string} */
                                     type: "stx";
                                 } | {
                                     principal: {
-                                        /** @constant */
+                                        /** @enum {string} */
                                         type_id: "principal_origin";
                                     } | {
-                                        /** @constant */
+                                        /** @enum {string} */
                                         type_id: "principal_standard";
                                         address: string;
                                     } | {
-                                        /** @constant */
+                                        /** @enum {string} */
                                         type_id: "principal_contract";
                                         address: string;
                                         contract_name: string;
                                     };
                                     condition_code: "sent_equal_to" | "sent_greater_than" | "sent_greater_than_or_equal_to" | "sent_less_than" | "sent_less_than_or_equal_to";
                                     amount: string;
-                                    /** @constant */
+                                    /** @enum {string} */
                                     type: "fungible";
                                     asset: {
                                         asset_name: string;
@@ -5105,20 +5105,20 @@ export interface operations {
                                     };
                                 } | {
                                     principal: {
-                                        /** @constant */
+                                        /** @enum {string} */
                                         type_id: "principal_origin";
                                     } | {
-                                        /** @constant */
+                                        /** @enum {string} */
                                         type_id: "principal_standard";
                                         address: string;
                                     } | {
-                                        /** @constant */
+                                        /** @enum {string} */
                                         type_id: "principal_contract";
                                         address: string;
                                         contract_name: string;
                                     };
                                     condition_code: "sent" | "not_sent" | "maybe_sent";
-                                    /** @constant */
+                                    /** @enum {string} */
                                     type: "non_fungible";
                                     asset_value: {
                                         hex: string;
@@ -5139,7 +5139,7 @@ export interface operations {
                                 receipt_time: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when the transaction broadcast was received by the node. */
                                 receipt_time_iso: string;
-                                /** @constant */
+                                /** @enum {string} */
                                 tx_type: "coinbase";
                                 coinbase_payload: {
                                     /** @description Hex encoded 32-byte scratch space for block leader's use */
@@ -5163,39 +5163,39 @@ export interface operations {
                                 post_condition_mode: "allow" | "deny" | "originator";
                                 post_conditions: ({
                                     principal: {
-                                        /** @constant */
+                                        /** @enum {string} */
                                         type_id: "principal_origin";
                                     } | {
-                                        /** @constant */
+                                        /** @enum {string} */
                                         type_id: "principal_standard";
                                         address: string;
                                     } | {
-                                        /** @constant */
+                                        /** @enum {string} */
                                         type_id: "principal_contract";
                                         address: string;
                                         contract_name: string;
                                     };
                                     condition_code: "sent_equal_to" | "sent_greater_than" | "sent_greater_than_or_equal_to" | "sent_less_than" | "sent_less_than_or_equal_to";
                                     amount: string;
-                                    /** @constant */
+                                    /** @enum {string} */
                                     type: "stx";
                                 } | {
                                     principal: {
-                                        /** @constant */
+                                        /** @enum {string} */
                                         type_id: "principal_origin";
                                     } | {
-                                        /** @constant */
+                                        /** @enum {string} */
                                         type_id: "principal_standard";
                                         address: string;
                                     } | {
-                                        /** @constant */
+                                        /** @enum {string} */
                                         type_id: "principal_contract";
                                         address: string;
                                         contract_name: string;
                                     };
                                     condition_code: "sent_equal_to" | "sent_greater_than" | "sent_greater_than_or_equal_to" | "sent_less_than" | "sent_less_than_or_equal_to";
                                     amount: string;
-                                    /** @constant */
+                                    /** @enum {string} */
                                     type: "fungible";
                                     asset: {
                                         asset_name: string;
@@ -5204,20 +5204,20 @@ export interface operations {
                                     };
                                 } | {
                                     principal: {
-                                        /** @constant */
+                                        /** @enum {string} */
                                         type_id: "principal_origin";
                                     } | {
-                                        /** @constant */
+                                        /** @enum {string} */
                                         type_id: "principal_standard";
                                         address: string;
                                     } | {
-                                        /** @constant */
+                                        /** @enum {string} */
                                         type_id: "principal_contract";
                                         address: string;
                                         contract_name: string;
                                     };
                                     condition_code: "sent" | "not_sent" | "maybe_sent";
-                                    /** @constant */
+                                    /** @enum {string} */
                                     type: "non_fungible";
                                     asset_value: {
                                         hex: string;
@@ -5238,7 +5238,7 @@ export interface operations {
                                 receipt_time: number;
                                 /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when the transaction broadcast was received by the node. */
                                 receipt_time_iso: string;
-                                /** @constant */
+                                /** @enum {string} */
                                 tx_type: "tenure_change";
                                 tenure_change_payload: {
                                     /** @description Consensus hash of this tenure. Corresponds to the sortition in which the miner of this block was chosen. */
@@ -5258,7 +5258,7 @@ export interface operations {
                                 };
                             });
                         } | {
-                            /** @constant */
+                            /** @enum {boolean} */
                             found: false;
                             result: {
                                 tx_id: string;
@@ -10963,9 +10963,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        content?: unknown;
-                    };
+                    "text/plain": string;
                 };
             };
             /** @description Default Response */
@@ -10999,9 +10997,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        content?: unknown;
-                    };
+                    "text/plain": string;
                 };
             };
             /** @description Default Response */
@@ -27257,7 +27253,7 @@ export interface operations {
             path?: never;
             cookie?: never;
         };
-        requestBody?: {
+        requestBody: {
             content: {
                 "application/json": {
                     /** @description A valid regtest BTC address */
@@ -27359,7 +27355,7 @@ export interface operations {
             path?: never;
             cookie?: never;
         };
-        requestBody?: {
+        requestBody: {
             content: {
                 "application/json": {
                     /** @description [Deprecated -- use query param rather than POST body] A valid testnet STX address */
@@ -29405,7 +29401,7 @@ export interface operations {
                 content: {
                     "application/json": {
                         [key: string]: {
-                            /** @constant */
+                            /** @enum {boolean} */
                             found: true;
                             result: {
                                 /** @description Smart contract deployment transaction status */
@@ -29418,7 +29414,7 @@ export interface operations {
                                 block_height?: number;
                             };
                         } | {
-                            /** @constant */
+                            /** @enum {boolean} */
                             found: false;
                         };
                     };
@@ -31705,10 +31701,7 @@ export interface operations {
                 };
                 content: {
                     "application/json": {
-                        error: string;
-                        message?: string;
-                    } & {
-                        [key: string]: unknown;
+                        [key: string]: string;
                     };
                 };
             };
@@ -31802,10 +31795,7 @@ export interface operations {
                 };
                 content: {
                     "application/json": {
-                        error: string;
-                        message?: string;
-                    } & {
-                        [key: string]: unknown;
+                        [key: string]: string;
                     };
                 };
             };
