@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 import { strict as assert } from 'node:assert';
 import * as net from 'node:net';
-import * as Docker from 'dockerode';
+import Docker from 'dockerode';
 
 export interface PortMapping {
   host: number;

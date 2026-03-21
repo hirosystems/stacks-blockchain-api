@@ -4,6 +4,8 @@
   "type": "module",
   "main": "./lib/index.js",
   "scripts": {
+    "test:snp": "NODE_ENV=test node --import tsx --test --test-global-setup=./tests/snp/setup.ts --test-concurrency=1 ./tests/snp/**/*.test.ts",
+    "x": "y",
     "test": "cross-env NODE_ENV=test jest --runInBand",
     "test:api": "npm run test -- --config ./tests/jest.config.api.js",
     "test:2.5": "npm run test -- --config ./tests/jest.config.2.5.js",
@@ -12,7 +14,6 @@
     "test:rpc": "npm run testenv:run && npm run test -- --config ./tests/jest.config.rpc.js; EXIT=$?; npm run testenv:stop; exit $EXIT",
     "test:event-replay": "npm run test -- --config ./tests/jest.config.event-replay.js",
     "test:btc-faucet": "npm run test -- --config ./tests/jest.config.btc-faucet.js",
-    "test:snp": "NODE_ENV=test node --test --test-global-setup=./tests/snp/setup.ts --test-concurrency=1 ./tests/snp/**/*.test.ts",
     "testenv:run": "node -r ts-node/register/transpile-only ./tests/setup.ts up",
     "testenv:run:snp": "node -r ts-node/register/transpile-only ./tests/setup.ts up snp",
     "testenv:run:krypton": "node -r ts-node/register/transpile-only ./tests/setup.ts up krypton",

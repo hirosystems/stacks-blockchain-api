@@ -1,4 +1,5 @@
-import { ContainerConfig, runDown, runUp } from '../docker-container.js';
+import type { ContainerConfig } from '../docker-container.ts';
+import { runDown, runUp } from '../docker-container.ts';
 
 function snpContainers(): ContainerConfig[] {
   const postgres: ContainerConfig = {

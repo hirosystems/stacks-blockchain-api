@@ -4,14 +4,14 @@ import * as zlib from 'node:zlib';
 import * as assert from 'node:assert/strict';
 import { after, before, describe, test } from 'node:test';
 import { ChainID } from '@stacks/transactions';
-import { ApiServer, startApiServer } from '../../src/api/init';
-import { EventStreamServer, startEventServer } from '../../src/event-stream/event-server';
-import { PgWriteStore } from '../../src/datastore/pg-write-store';
+import { ApiServer, startApiServer } from '../../src/api/init.js';
+import { EventStreamServer, startEventServer } from '../../src/event-stream/event-server.js';
+import { PgWriteStore } from '../../src/datastore/pg-write-store.js';
 import { onceWhen, PgSqlClient } from '@stacks/api-toolkit';
-import { migrate } from '../utils/test-helpers';
-import { SnpEventStreamHandler } from '../../src/event-stream/snp-event-stream';
+import { migrate } from '../utils/test-helpers.js';
+import { SnpEventStreamHandler } from '../../src/event-stream/snp-event-stream.js';
 import { fetch } from 'undici';
-import * as supertest from 'supertest';
+import supertest from 'supertest';
 
 describe('SNP integration tests', { concurrency: 1 }, () => {
   let snpObserverUrl: string;
