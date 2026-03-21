@@ -5,7 +5,7 @@
   "main": "./lib/index.js",
   "scripts": {
     "test:snp": "NODE_ENV=test node --import tsx --test --test-global-setup=./tests/snp/setup.ts --test-concurrency=1 ./tests/snp/**/*.test.ts",
-    "x": "y",
+    "test:krypton:rpc": "NODE_ENV=test node --import tsx --test --test-global-setup=./tests/krypton/setup.ts --test-concurrency=1 ./tests/krypton/rpc/**/*.test.ts",
     "test": "cross-env NODE_ENV=test jest --runInBand",
     "test:api": "npm run test -- --config ./tests/jest.config.api.js",
     "test:2.5": "npm run test -- --config ./tests/jest.config.2.5.js",

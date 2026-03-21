@@ -15,6 +15,6 @@
     "baseUrl": ".",
     "typeRoots": ["./src/@types", "./node_modules/@types"]
   },
-  "include": ["src/**/*", "tests/**/*"],
+  "include": ["src/**/*"],
   "exclude": ["lib", "node_modules"]
 }

@@ -27,7 +27,7 @@ import {
   DbTxRaw,
   DbTxStatus,
   DbTxTypeId,
-} from '../../src/datastore/common';
+} from '../src/datastore/common.js';
 import { bufferCV, bufferCVFromString, serializeCV, uintCV } from '@stacks/transactions';
 import { createClarityValueArray } from './test-helpers';
 import { bufferToHex } from '@stacks/api-toolkit';

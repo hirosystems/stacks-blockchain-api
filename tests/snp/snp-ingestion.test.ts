@@ -8,7 +8,7 @@ import { ApiServer, startApiServer } from '../../src/api/init.js';
 import { EventStreamServer, startEventServer } from '../../src/event-stream/event-server.js';
 import { PgWriteStore } from '../../src/datastore/pg-write-store.js';
 import { onceWhen, PgSqlClient } from '@stacks/api-toolkit';
-import { migrate } from '../utils/test-helpers.js';
+import { migrate } from '../test-helpers.js';
 import { SnpEventStreamHandler } from '../../src/event-stream/snp-event-stream.js';
 import { fetch } from 'undici';
 import supertest from 'supertest';
