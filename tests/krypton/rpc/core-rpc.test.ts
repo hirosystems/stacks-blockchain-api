@@ -1,16 +1,16 @@
 import * as assert from 'node:assert/strict';
 import { after, before, describe, test } from 'node:test';
-import { getTestEnv, stopTestEnv, TestEnvContext } from '../test-env.js';
+import { getKryptonContext, stopKryptonContext, KryptonContext } from '../krypton-env.ts';
 
 describe('core RPC tests', () => {
-  let testEnv: TestEnvContext;
+  let testEnv: KryptonContext;
 
   before(async () => {
-    testEnv = await getTestEnv();
+    testEnv = await getKryptonContext();
   });
 
   after(async () => {
-    await stopTestEnv(testEnv);
+    await stopKryptonContext(testEnv);
   });
 
   test('get info', async () => {

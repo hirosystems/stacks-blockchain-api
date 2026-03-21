@@ -1,4 +1,4 @@
-import { CoreRpcPoxInfo } from '../../src/core-rpc/client';
+import { CoreRpcPoxInfo } from '../../src/core-rpc/client.ts';
 import {
   Account,
   accountFromKey,
@@ -10,7 +10,7 @@ import {
   standByUntilBurnBlock,
   testEnv,
 } from '../utils/test-helpers';
-import { stxToMicroStx } from '../../src/helpers';
+import { stxToMicroStx } from '../../src/helpers.ts';
 import {
   AnchorMode,
   StacksPrivateKey,
@@ -28,8 +28,8 @@ import * as assert from 'assert';
 import { StackingClient } from '@stacks/stacking';
 import { getPublicKeyFromPrivate } from '@stacks/encryption';
 import { hexToBytes } from '@stacks/common';
-import { AddressStxBalance } from '../../src/api/schemas/entities/addresses';
-import { FAUCET_TESTNET_KEYS } from '../../src/api/routes/faucets';
+import { AddressStxBalance } from '../../src/api/schemas/entities/addresses.ts';
+import { FAUCET_TESTNET_KEYS } from '../../src/api/routes/faucets.ts';
 
 describe('PoX-4 - Delegate Stacking operations', () => {
   const seedKey = FAUCET_TESTNET_KEYS[4].secretKey;

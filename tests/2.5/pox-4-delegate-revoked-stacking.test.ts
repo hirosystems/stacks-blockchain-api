@@ -13,9 +13,9 @@ import {
   uintCV,
 } from '@stacks/transactions';
 import { ClarityValueTuple, ClarityValueUInt, decodeClarityValue } from '@stacks/codec';
-import { CoreRpcPoxInfo } from '../../src/core-rpc/client';
-import { DbTxStatus } from '../../src/datastore/common';
-import { stxToMicroStx } from '../../src/helpers';
+import { CoreRpcPoxInfo } from '../../src/core-rpc/client.ts';
+import { DbTxStatus } from '../../src/datastore/common.ts';
+import { stxToMicroStx } from '../../src/helpers.ts';
 import {
   Account,
   accountFromKey,
@@ -28,8 +28,8 @@ import {
 } from '../utils/test-helpers';
 import { hexToBytes } from '@stacks/common';
 import { getPublicKeyFromPrivate } from '@stacks/encryption';
-import { AddressStxBalance } from '../../src/api/schemas/entities/addresses';
-import { FAUCET_TESTNET_KEYS } from '../../src/api/routes/faucets';
+import { AddressStxBalance } from '../../src/api/schemas/entities/addresses.ts';
+import { FAUCET_TESTNET_KEYS } from '../../src/api/routes/faucets.ts';
 
 describe('PoX-4 - Delegate Revoked Stacking', () => {
   const seedKey = FAUCET_TESTNET_KEYS[4].secretKey;

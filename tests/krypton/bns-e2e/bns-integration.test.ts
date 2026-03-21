@@ -20,7 +20,7 @@ import {
 import { standByForTx as standByForTxShared } from '../../test-helpers.js';
 import { FAUCET_TESTNET_KEYS } from '../../../src/api/routes/faucets.js';
 import { logger } from '@stacks/api-toolkit';
-import { getTestEnv, stopTestEnv, TestEnvContext } from '../test-env.js';
+import { getKryptonContext, stopKryptonContext, KryptonContext } from '../krypton-env.ts';
 import { after, before, describe, test } from 'node:test';
 
 function hash160(bfr: Buffer): Buffer {
@@ -40,7 +40,7 @@ type TestnetKey = {
 };
 
 describe('BNS integration tests', () => {
-  let testEnv: TestEnvContext;
+  let testEnv: KryptonContext;
   let bnsContractAbi: ClarityAbi | undefined;
 
   const standByForTx = (expectedTxId: string) => standByForTxShared(expectedTxId, testEnv.api);
@@ -380,11 +380,11 @@ describe('BNS integration tests', () => {
   }
 
   before(async () => {
-    testEnv = await getTestEnv();
+    testEnv = await getKryptonContext();
   });
 
   after(async () => {
-    await stopTestEnv(testEnv);
+    await stopKryptonContext(testEnv);
   });
 
   test('name-import/ready/update contract call', async () => {
