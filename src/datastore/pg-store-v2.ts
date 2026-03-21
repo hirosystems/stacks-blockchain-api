@@ -11,9 +11,9 @@ import {
   PoxSignerLimitParamSchema,
   BlockIdParam,
   BlockSignerSignatureLimitParamSchema,
-} from '../api/routes/v2/schemas';
-import { InvalidRequestError, InvalidRequestErrorType } from '../errors';
-import { FoundOrNot, normalizeHashString } from '../helpers';
+} from '../api/routes/v2/schemas.js';
+import { InvalidRequestError, InvalidRequestErrorType } from '../errors.js';
+import { FoundOrNot, normalizeHashString } from '../helpers.js';
 import {
   DbPaginatedResult,
   DbBlock,
@@ -34,7 +34,7 @@ import {
   DbCursorPaginatedResult,
   PoxSyntheticEventQueryResult,
   DbBurnBlockPoxTx,
-} from './common';
+} from './common.js';
 import {
   BLOCK_COLUMNS,
   parseBlockQueryResult,
@@ -44,8 +44,8 @@ import {
   POX4_SYNTHETIC_EVENT_COLUMNS,
   parseDbPoxSyntheticEvent,
   prefixedCols,
-} from './helpers';
-import { SyntheticPoxEventName } from '../pox-helpers';
+} from './helpers.js';
+import { SyntheticPoxEventName } from '../pox-helpers.js';
 
 async function assertTxIdExists(sql: PgSqlClient, tx_id: string) {
   const txCheck = await sql`SELECT tx_id FROM txs WHERE tx_id = ${tx_id} LIMIT 1`;

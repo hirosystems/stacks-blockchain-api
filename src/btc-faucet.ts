@@ -1,12 +1,12 @@
 import { RPCClient } from 'rpc-bitcoin';
 import * as btc from 'bitcoinjs-lib';
 import * as ecc from 'tiny-secp256k1';
-import { mapSeriesAsync } from './helpers';
-import * as coinselect from 'coinselect';
-import { ECPair, ECPairInterface, validateSigFunction } from './ec-helpers';
-import { BtcFaucetConfigError } from './errors';
+import { mapSeriesAsync } from './helpers.js';
+import coinselect from 'coinselect';
+import { ECPair, ECPairInterface, validateSigFunction } from './ec-helpers.js';
+import { BtcFaucetConfigError } from './errors.js';
 import { time, logger } from '@stacks/api-toolkit';
-import { ENV } from './env';
+import { ENV } from './env.js';
 
 function getFaucetPk(): string {
   const BTC_FAUCET_PK = ENV.BTC_FAUCET_PK;

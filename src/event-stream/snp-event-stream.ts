@@ -1,11 +1,11 @@
 import { SERVER_VERSION } from '@stacks/api-toolkit';
 import { logger as defaultLogger } from '@stacks/api-toolkit';
 import { EventEmitter } from 'node:events';
-import { EventStreamServer } from './event-server';
-import { PgWriteStore } from '../datastore/pg-write-store';
+import { EventStreamServer } from './event-server.js';
+import { PgWriteStore } from '../datastore/pg-write-store.js';
 import { StacksMessageStream } from '@stacks/node-publisher-client';
-import { MessagePath } from '@stacks/node-publisher-client/dist/messages';
-import { ENV } from '../env';
+import { MessagePath } from '@stacks/node-publisher-client/dist/messages/index.js';
+import { ENV } from '../env.js';
 
 export class SnpEventStreamHandler {
   db: PgWriteStore;

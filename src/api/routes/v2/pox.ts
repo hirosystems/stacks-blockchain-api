@@ -1,13 +1,13 @@
-import { handleChainTipCache } from '../../controllers/cache-controller';
-import { parseDbPoxCycle, parseDbPoxSigner, parseDbPoxSignerStacker } from './helpers';
-import { InvalidRequestError, NotFoundError } from '../../../errors';
-import { getChainIDNetwork } from '../../../helpers';
+import { handleChainTipCache } from '../../controllers/cache-controller.js';
+import { parseDbPoxCycle, parseDbPoxSigner, parseDbPoxSignerStacker } from './helpers.js';
+import { InvalidRequestError, NotFoundError } from '../../../errors.js';
+import { getChainIDNetwork } from '../../../helpers.js';
 import { FastifyPluginAsync } from 'fastify';
 import { Type, TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
 import { Server } from 'node:http';
-import { LimitParam, OffsetParam } from '../../schemas/params';
-import { getPagingQueryLimit, ResourceType } from '../../pagination';
-import { PaginatedResponse } from '../../schemas/util';
+import { LimitParam, OffsetParam } from '../../schemas/params.js';
+import { getPagingQueryLimit, ResourceType } from '../../pagination.js';
+import { PaginatedResponse } from '../../schemas/util.js';
 import {
   PoxCycle,
   PoxCycleSchema,
@@ -15,7 +15,7 @@ import {
   PoxSignerSchema,
   PoxStacker,
   PoxStackerSchema,
-} from '../../schemas/entities/pox';
+} from '../../schemas/entities/pox.js';
 
 export const PoxRoutesV2: FastifyPluginAsync<
   Record<never, never>,

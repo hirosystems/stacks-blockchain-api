@@ -1,11 +1,11 @@
 import BigNumber from 'bignumber.js';
-import { microStxToStx, STACKS_DECIMAL_PLACES, TOTAL_STACKS_YEAR_2050 } from '../../helpers';
-import { handleChainTipCache } from '../controllers/cache-controller';
+import { microStxToStx, STACKS_DECIMAL_PLACES, TOTAL_STACKS_YEAR_2050 } from '../../helpers.js';
+import { handleChainTipCache } from '../controllers/cache-controller.js';
 
 import { FastifyPluginAsync } from 'fastify';
 import { Type, TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
 import { Server } from 'node:http';
-import { UnanchoredParamSchema } from '../schemas/params';
+import { UnanchoredParamSchema } from '../schemas/params.js';
 
 export const StxSupplyRoutes: FastifyPluginAsync<
   Record<never, never>,

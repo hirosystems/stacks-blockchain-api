@@ -1,31 +1,31 @@
 import { Server } from 'http';
 import { Socket } from 'net';
 
-import { TxRoutes } from './routes/tx';
-import { InfoRoutes } from './routes/info';
-import { ContractRoutes } from './routes/contract';
-import { CoreNodeRpcProxyRouter } from './routes/core-node-rpc-proxy';
-import { BlockRoutes } from './routes/block';
-import { FaucetRoutes } from './routes/faucets';
-import { AddressRoutes } from './routes/address';
-import { SearchRoutes } from './routes/search';
-import { StxSupplyRoutes } from './routes/stx-supply';
-import { ChainID } from '../helpers';
-import { BurnchainRoutes } from './routes/burnchain';
-import { BnsNamespaceRoutes } from './routes/bns/namespaces';
-import { BnsPriceRoutes } from './routes/bns/pricing';
-import { BnsNameRoutes } from './routes/bns/names';
-import { BnsAddressRoutes } from './routes/bns/addresses';
-import { MicroblockRoutes } from './routes/microblock';
-import { StatusRoutes } from './routes/status';
-import { TokenRoutes } from './routes/tokens';
-import { FeeRateRoutes } from './routes/fee-rate';
+import { TxRoutes } from './routes/tx.js';
+import { InfoRoutes } from './routes/info.js';
+import { ContractRoutes } from './routes/contract.js';
+import { CoreNodeRpcProxyRouter } from './routes/core-node-rpc-proxy.js';
+import { BlockRoutes } from './routes/block.js';
+import { FaucetRoutes } from './routes/faucets.js';
+import { AddressRoutes } from './routes/address.js';
+import { SearchRoutes } from './routes/search.js';
+import { StxSupplyRoutes } from './routes/stx-supply.js';
+import { ChainID } from '../helpers.js';
+import { BurnchainRoutes } from './routes/burnchain.js';
+import { BnsNamespaceRoutes } from './routes/bns/namespaces.js';
+import { BnsPriceRoutes } from './routes/bns/pricing.js';
+import { BnsNameRoutes } from './routes/bns/names.js';
+import { BnsAddressRoutes } from './routes/bns/addresses.js';
+import { MicroblockRoutes } from './routes/microblock.js';
+import { StatusRoutes } from './routes/status.js';
+import { TokenRoutes } from './routes/tokens.js';
+import { FeeRateRoutes } from './routes/fee-rate.js';
 
-import { PgStore } from '../datastore/pg-store';
-import { PgWriteStore } from '../datastore/pg-write-store';
-import { WebSocketTransmitter } from './routes/ws/web-socket-transmitter';
-import { PoxEventRoutes, PoxRoutes } from './routes/pox';
-import { ENV } from '../env';
+import { PgStore } from '../datastore/pg-store.js';
+import { PgWriteStore } from '../datastore/pg-write-store.js';
+import { WebSocketTransmitter } from './routes/ws/web-socket-transmitter.js';
+import { PoxEventRoutes, PoxRoutes } from './routes/pox.js';
+import { ENV } from '../env.js';
 import {
   PINO_LOGGER_CONFIG,
   SERVER_VERSION,
@@ -34,20 +34,21 @@ import {
   waiter,
   logger,
 } from '@stacks/api-toolkit';
-import { BlockRoutesV2 } from './routes/v2/blocks';
-import { BurnBlockRoutesV2 } from './routes/v2/burn-blocks';
-import { MempoolRoutesV2 } from './routes/v2/mempool';
-import { SmartContractRoutesV2 } from './routes/v2/smart-contracts';
-import { AddressRoutesV2 } from './routes/v2/addresses';
-import { PoxRoutesV2 } from './routes/v2/pox';
+import { BlockRoutesV2 } from './routes/v2/blocks.js';
+import { BurnBlockRoutesV2 } from './routes/v2/burn-blocks.js';
+import { MempoolRoutesV2 } from './routes/v2/mempool.js';
+import { SmartContractRoutesV2 } from './routes/v2/smart-contracts.js';
+import { AddressRoutesV2 } from './routes/v2/addresses.js';
+import { PoxRoutesV2 } from './routes/v2/pox.js';
 
 import Fastify, { FastifyInstance, FastifyPluginAsync } from 'fastify';
-import FastifyMetrics from 'fastify-metrics';
+import FastifyMetricsModule from 'fastify-metrics';
+const FastifyMetrics = FastifyMetricsModule.default;
 import FastifyCors from '@fastify/cors';
 import { TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
 import * as promClient from 'prom-client';
-import DeprecationPlugin from './deprecation-plugin';
-import { BlockTenureRoutes } from './routes/v2/block-tenures';
+import DeprecationPlugin from './deprecation-plugin.js';
+import { BlockTenureRoutes } from './routes/v2/block-tenures.js';
 
 export interface ApiServer {
   fastifyApp: FastifyInstance;

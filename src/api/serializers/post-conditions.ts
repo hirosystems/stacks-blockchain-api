@@ -1,25 +1,23 @@
-import {
+import codec from '@stacks/codec';
+import type {
   TxPostCondition,
-  PostConditionAssetInfoID,
   PostConditionPrincipal,
-  PostConditionPrincipalTypeID,
-  PostConditionModeID,
 } from '@stacks/codec';
 
 const assetPrincipalTypeMap = {
-  [PostConditionPrincipalTypeID.Origin]: 'principal_origin',
-  [PostConditionPrincipalTypeID.Standard]: 'principal_standard',
-  [PostConditionPrincipalTypeID.Contract]: 'principal_contract',
+  [codec.PostConditionPrincipalTypeID.Origin]: 'principal_origin',
+  [codec.PostConditionPrincipalTypeID.Standard]: 'principal_standard',
+  [codec.PostConditionPrincipalTypeID.Contract]: 'principal_contract',
 } as const;
 
 function serializePostConditionPrincipal(principal: PostConditionPrincipal) {
-  if (principal.type_id === PostConditionPrincipalTypeID.Standard) {
+  if (principal.type_id === codec.PostConditionPrincipalTypeID.Standard) {
     return {
       type_id: assetPrincipalTypeMap[principal.type_id],
       address: principal.address,
     };
   }
-  if (principal.type_id === PostConditionPrincipalTypeID.Contract) {
+  if (principal.type_id === codec.PostConditionPrincipalTypeID.Contract) {
     return {
       type_id: assetPrincipalTypeMap[principal.type_id],
       contract_name: principal.contract_name,
@@ -32,21 +30,21 @@ function serializePostConditionPrincipal(principal: PostConditionPrincipal) {
 }
 
 const assetInfoTypeMap = {
-  [PostConditionAssetInfoID.STX]: 'stx',
-  [PostConditionAssetInfoID.FungibleAsset]: 'fungible',
-  [PostConditionAssetInfoID.NonfungibleAsset]: 'non_fungible',
+  [codec.PostConditionAssetInfoID.STX]: 'stx',
+  [codec.PostConditionAssetInfoID.FungibleAsset]: 'fungible',
+  [codec.PostConditionAssetInfoID.NonfungibleAsset]: 'non_fungible',
 } as const;
 
 export function serializePostCondition(pc: TxPostCondition) {
   switch (pc.asset_info_id) {
-    case PostConditionAssetInfoID.STX:
+    case codec.PostConditionAssetInfoID.STX:
       return {
         type: assetInfoTypeMap[pc.asset_info_id],
         condition_code: pc.condition_name,
         amount: pc.amount,
         principal: serializePostConditionPrincipal(pc.principal),
       };
-    case PostConditionAssetInfoID.FungibleAsset:
+    case codec.PostConditionAssetInfoID.FungibleAsset:
       return {
         type: assetInfoTypeMap[pc.asset_info_id],
         condition_code: pc.condition_name,
@@ -58,7 +56,7 @@ export function serializePostCondition(pc: TxPostCondition) {
           contract_address: pc.asset.contract_address,
         },
       };
-    case PostConditionAssetInfoID.NonfungibleAsset:
+    case codec.PostConditionAssetInfoID.NonfungibleAsset:
       return {
         type: assetInfoTypeMap[pc.asset_info_id],
         condition_code: pc.condition_name,
@@ -76,13 +74,13 @@ export function serializePostCondition(pc: TxPostCondition) {
   }
 }
 
-export function serializePostConditionMode(mode: PostConditionModeID) {
+export function serializePostConditionMode(mode: codec.PostConditionModeID) {
   switch (mode) {
-    case PostConditionModeID.Allow:
+    case codec.PostConditionModeID.Allow:
       return 'allow';
-    case PostConditionModeID.Deny:
+    case codec.PostConditionModeID.Deny:
       return 'deny';
-    case PostConditionModeID.Originator:
+    case codec.PostConditionModeID.Originator:
       return 'originator';
   }
 }

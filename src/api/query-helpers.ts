@@ -1,5 +1,5 @@
-import { isValidPrincipal } from './../helpers';
-import { InvalidRequestError, InvalidRequestErrorType } from '../errors';
+import { isValidPrincipal } from './../helpers.js';
+import { InvalidRequestError, InvalidRequestErrorType } from '../errors.js';
 import { has0xPrefix, hexToBuffer } from '@stacks/api-toolkit';
 
 /**

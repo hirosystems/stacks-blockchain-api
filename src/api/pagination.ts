@@ -1,4 +1,4 @@
-import { InvalidRequestError, InvalidRequestErrorType } from '../errors';
+import { InvalidRequestError, InvalidRequestErrorType } from '../errors.js';
 
 export function parsePagingQueryInput(val: any) {
   if (typeof val === 'number') {

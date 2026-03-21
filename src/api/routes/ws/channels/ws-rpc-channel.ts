@@ -1,14 +1,14 @@
 import * as http from 'http';
-import * as WebSocket from 'ws';
+import WebSocket from 'ws';
 import * as net from 'net';
-import { isValidPrincipal, normalizeHashString } from '../../../../helpers';
-import { WebSocketPrometheus } from '../web-socket-prometheus';
+import { isValidPrincipal, normalizeHashString } from '../../../../helpers.js';
+import { WebSocketPrometheus } from '../web-socket-prometheus.js';
 import {
   ListenerType,
   WebSocketChannel,
   WebSocketPayload,
   WebSocketTopics,
-} from '../web-socket-channel';
+} from '../web-socket-channel.js';
 import {
   JsonRpcError,
   JsonRpc,
@@ -30,14 +30,14 @@ import type {
   RpcNftAssetEventSubscriptionParams,
   RpcNftCollectionEventSubscriptionParams,
   NftEvent,
-} from 'client/src/types';
-import { getWsMessageTimeoutMs, getWsPingIntervalMs } from '../web-socket-transmitter';
+} from '../../../../../client/src/types.js';
+import { getWsMessageTimeoutMs, getWsPingIntervalMs } from '../web-socket-transmitter.js';
 import { isProdEnv, logger, resolveOrTimeout } from '@stacks/api-toolkit';
 
-import { Transaction, MempoolTransaction } from '../../../schemas/entities/transactions';
-import { Block } from '../../..//schemas/entities/block';
-import { Microblock } from '../../..//schemas/entities/microblock';
-import { AddressTransactionWithTransfers } from '../../../schemas/entities/addresses';
+import { Transaction, MempoolTransaction } from '../../../schemas/entities/transactions.js';
+import { Block } from '../../..//schemas/entities/block.js';
+import { Microblock } from '../../..//schemas/entities/microblock.js';
+import { AddressTransactionWithTransfers } from '../../../schemas/entities/addresses.js';
 
 type Subscription =
   | RpcTxUpdateSubscriptionParams

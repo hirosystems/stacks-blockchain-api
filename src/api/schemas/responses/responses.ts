@@ -1,18 +1,18 @@
 import { Static, Type } from '@sinclair/typebox';
-import { Nullable, OptionalNullable, PaginatedCursorResponse, PaginatedResponse } from '../util';
-import { MempoolStatsSchema } from '../entities/mempool-transactions';
-import { MempoolTransactionSchema, TransactionSchema } from '../entities/transactions';
-import { MicroblockSchema } from '../entities/microblock';
+import { Nullable, OptionalNullable, PaginatedCursorResponse, PaginatedResponse } from '../util.js';
+import { MempoolStatsSchema } from '../entities/mempool-transactions.js';
+import { MempoolTransactionSchema, TransactionSchema } from '../entities/transactions.js';
+import { MicroblockSchema } from '../entities/microblock.js';
 import {
   AddressTransactionWithTransfersSchema,
   InboundStxTransferSchema,
-} from '../entities/addresses';
-import { TransactionEventSchema } from '../entities/transaction-events';
+} from '../entities/addresses.js';
+import { TransactionEventSchema } from '../entities/transaction-events.js';
 import {
   BurnchainRewardSchema,
   BurnchainRewardSlotHolderSchema,
-} from '../entities/burnchain-rewards';
-import { NakamotoBlockSchema, SignerSignatureSchema } from '../entities/block';
+} from '../entities/burnchain-rewards.js';
+import { NakamotoBlockSchema, SignerSignatureSchema } from '../entities/block.js';
 
 export const ErrorResponseSchema = Type.Object(
   {

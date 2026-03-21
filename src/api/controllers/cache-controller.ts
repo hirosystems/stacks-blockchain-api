@@ -1,6 +1,6 @@
 import * as prom from 'prom-client';
-import { normalizeHashString } from '../../helpers';
-import { PgStore } from '../../datastore/pg-store';
+import { normalizeHashString } from '../../helpers.js';
+import { PgStore } from '../../datastore/pg-store.js';
 import {
   CACHE_CONTROL_MUST_REVALIDATE,
   parseIfNoneMatchHeader,
@@ -8,7 +8,7 @@ import {
   logger,
 } from '@stacks/api-toolkit';
 import { FastifyReply, FastifyRequest } from 'fastify';
-import { BlockParams } from '../routes/v2/schemas';
+import { BlockParams } from '../routes/v2/schemas.js';
 
 /**
  * Describes a key-value to be saved into a request's locals, representing the current

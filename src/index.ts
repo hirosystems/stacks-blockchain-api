@@ -2,18 +2,18 @@ import {
   getApiConfiguredChainID,
   getStacksNodeChainID,
   chainIdConfigurationCheck,
-} from './helpers';
+} from './helpers.js';
 import * as sourceMapSupport from 'source-map-support';
-import { startApiServer } from './api/init';
-import { startEventServer } from './event-stream/event-server';
-import { StacksCoreRpcClient } from './core-rpc/client';
+import { startApiServer } from './api/init.js';
+import { startEventServer } from './event-stream/event-server.js';
+import { StacksCoreRpcClient } from './core-rpc/client.js';
 import * as promClient from 'prom-client';
-import * as getopts from 'getopts';
+import getopts from 'getopts';
 import * as fs from 'fs';
-import { exportEventsAsTsv, importEventsFromTsv } from './event-replay/event-replay';
-import { PgStore } from './datastore/pg-store';
-import { PgWriteStore } from './datastore/pg-write-store';
-import { registerMempoolPromStats } from './datastore/helpers';
+import { exportEventsAsTsv, importEventsFromTsv } from './event-replay/event-replay.js';
+import { PgStore } from './datastore/pg-store.js';
+import { PgWriteStore } from './datastore/pg-write-store.js';
+import { registerMempoolPromStats } from './datastore/helpers.js';
 import {
   buildProfilerServer,
   isProdEnv,
@@ -24,8 +24,8 @@ import {
   timeout,
 } from '@stacks/api-toolkit';
 import Fastify from 'fastify';
-import { SnpEventStreamHandler } from './event-stream/snp-event-stream';
-import { ENV } from './env';
+import { SnpEventStreamHandler } from './event-stream/snp-event-stream.js';
+import { ENV } from './env.js';
 
 // ts-node has automatic source map support, avoid clobbering
 if (!process.execArgv.some(r => r.includes('ts-node'))) {

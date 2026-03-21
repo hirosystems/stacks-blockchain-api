@@ -1,5 +1,5 @@
 import { Static, Type } from '@sinclair/typebox';
-import { Nullable } from '../util';
+import { Nullable } from '../util.js';
 
 export const MicroblockSchema = Type.Object(
   {

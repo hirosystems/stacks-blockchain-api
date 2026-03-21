@@ -3,14 +3,17 @@ import BigNumber from 'bignumber.js';
 import * as btc from 'bitcoinjs-lib';
 import * as http from 'http';
 import * as path from 'path';
-import { isValidStacksAddress, stacksToBitcoinAddress } from '@stacks/codec';
+import { fileURLToPath } from 'node:url';
+import codec from '@stacks/codec';
 import * as ecc from 'tiny-secp256k1';
-import { getCoreNodeEndpoint, StacksCoreRpcClient } from './core-rpc/client';
-import { DbEventTypeId } from './datastore/common';
+import { getCoreNodeEndpoint, StacksCoreRpcClient } from './core-rpc/client.js';
+import { DbEventTypeId } from './datastore/common.js';
 import { has0xPrefix, logger, numberToHex } from '@stacks/api-toolkit';
 import { StacksNetwork, StacksTestnet } from '@stacks/network';
-import { ENV } from './env';
+import { ENV } from './env.js';
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 export const REPO_DIR = path.dirname(__dirname);
 
 export const I32_MAX = 0x7fffffff;
@@ -191,7 +194,7 @@ export function isValidBitcoinAddress(address: string): boolean {
 
 export function tryConvertC32ToBtc(address: string): string | false {
   try {
-    const result = stacksToBitcoinAddress(address);
+    const result = codec.stacksToBitcoinAddress(address);
     return result;
   } catch (e) {
     return false;
@@ -200,7 +203,7 @@ export function tryConvertC32ToBtc(address: string): string | false {
 
 export function isValidC32Address(stxAddress: string): boolean {
   try {
-    return isValidStacksAddress(stxAddress);
+    return codec.isValidStacksAddress(stxAddress);
   } catch (error) {
     return false;
   }

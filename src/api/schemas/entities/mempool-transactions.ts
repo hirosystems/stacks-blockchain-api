@@ -8,8 +8,8 @@ import {
   SmartContractTransactionMetadataProperties,
   TenureChangeTransactionMetadataProperties,
   TokenTransferTransactionMetadataProperties,
-} from './transactions';
-import { Nullable } from '../util';
+} from './transactions.js';
+import { Nullable } from '../util.js';
 
 export const MempoolStatsSchema = Type.Object(
   {

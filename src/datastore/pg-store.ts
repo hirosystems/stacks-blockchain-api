@@ -1,5 +1,5 @@
 import { ClarityAbi } from '@stacks/transactions';
-import { getTxTypeId, getTxTypeString, TransactionType } from '../api/controllers/db-controller';
+import { getTxTypeId, getTxTypeString, TransactionType } from '../api/controllers/db-controller.js';
 import {
   unwrapNotNullish,
   FoundOrNot,
@@ -10,8 +10,8 @@ import {
   bnsNameFromSubdomain,
   ChainID,
   REPO_DIR,
-} from '../helpers';
-import { PgStoreEventEmitter } from './pg-store-event-emitter';
+} from '../helpers.js';
+import { PgStoreEventEmitter } from './pg-store-event-emitter.js';
 import {
   BlockIdentifier,
   BlockQueryResult,
@@ -64,7 +64,7 @@ import {
   PoxSyntheticEventTable,
   DbPoxStacker,
   DbPoxSyntheticEvent,
-} from './common';
+} from './common.js';
 import {
   abiColumn,
   BLOCK_COLUMNS,
@@ -84,15 +84,15 @@ import {
   prefixedCols,
   TX_COLUMNS,
   validateZonefileHash,
-} from './helpers';
-import { PgNotifier } from './pg-notifier';
-import { SyntheticPoxEventName } from '../pox-helpers';
+} from './helpers.js';
+import { PgNotifier } from './pg-notifier.js';
+import { SyntheticPoxEventName } from '../pox-helpers.js';
 import { BasePgStore, PgSqlClient, PgSqlQuery, connectPostgres } from '@stacks/api-toolkit';
-import { getConnectionArgs, getConnectionConfig } from './connection';
+import { getConnectionArgs, getConnectionConfig } from './connection.js';
 import * as path from 'path';
-import { PgStoreV2 } from './pg-store-v2';
-import { parseBlockParam } from '../api/routes/v2/schemas';
-import { ENV } from '../env';
+import { PgStoreV2 } from './pg-store-v2.js';
+import { parseBlockParam } from '../api/routes/v2/schemas.js';
+import { ENV } from '../env.js';
 
 export const MIGRATIONS_DIR = path.join(REPO_DIR, 'migrations');
 

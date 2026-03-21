@@ -4,12 +4,7 @@ import {
   ClarityAbiFunction,
   getTypeString,
 } from '@stacks/transactions';
-import {
-  decodeClarityValueList,
-  decodeClarityValueToRepr,
-  decodeClarityValueToTypeName,
-  decodePostConditions,
-} from '@stacks/codec';
+import codec from '@stacks/codec';
 import {
   BlockIdentifier,
   DbAssetEventTypeId,
@@ -24,11 +19,11 @@ import {
   DbSearchResultWithMetadata,
   BaseTx,
   DbPoxSyntheticEvent,
-} from '../../datastore/common';
-import { unwrapOptional, FoundOrNot, unixEpochToIso, EMPTY_HASH_256 } from '../../helpers';
-import { serializePostCondition, serializePostConditionMode } from '../serializers/post-conditions';
-import { PgStore } from '../../datastore/pg-store';
-import { SyntheticPoxEventName } from '../../pox-helpers';
+} from '../../datastore/common.js';
+import { unwrapOptional, FoundOrNot, unixEpochToIso, EMPTY_HASH_256 } from '../../helpers.js';
+import { serializePostCondition, serializePostConditionMode } from '../serializers/post-conditions.js';
+import { PgStore } from '../../datastore/pg-store.js';
+import { SyntheticPoxEventName } from '../../pox-helpers.js';
 import { logger } from '@stacks/api-toolkit';
 import {
   AbstractMempoolTransaction,
@@ -46,7 +41,7 @@ import {
   TransactionMetadata,
   TransactionNotFound,
   TransactionSearchResponse,
-} from '../schemas/entities/transactions';
+} from '../schemas/entities/transactions.js';
 import {
   FungibleTokenAssetTransactionEvent,
   NonFungibleTokenAssetTransactionEvent,
@@ -54,9 +49,9 @@ import {
   StxAssetTransactionEvent,
   StxLockTransactionEvent,
   TransactionEvent,
-} from '../schemas/entities/transaction-events';
-import { Microblock } from '../schemas/entities/microblock';
-import { Block } from '../schemas/entities/block';
+} from '../schemas/entities/transaction-events.js';
+import { Microblock } from '../schemas/entities/microblock.js';
+import { Block } from '../schemas/entities/block.js';
 
 const TransactionTypes = [
   'contract_call',
@@ -383,7 +378,7 @@ export function parsePoxSyntheticEvent(poxEvent: DbPoxSyntheticEvent) {
 export function parseDbEvent(dbEvent: DbEvent): TransactionEvent {
   switch (dbEvent.event_type) {
     case DbEventTypeId.SmartContractLog: {
-      const parsedClarityValue = decodeClarityValueToRepr(dbEvent.value);
+      const parsedClarityValue = codec.decodeClarityValueToRepr(dbEvent.value);
       const event: SmartContractLogTransactionEvent = {
         event_index: dbEvent.event_index,
         event_type: 'smart_contract_log',
@@ -445,7 +440,7 @@ export function parseDbEvent(dbEvent: DbEvent): TransactionEvent {
       return event;
     }
     case DbEventTypeId.NonFungibleTokenAsset: {
-      const parsedClarityValue = decodeClarityValueToRepr(dbEvent.value);
+      const parsedClarityValue = codec.decodeClarityValueToRepr(dbEvent.value);
       const event: NonFungibleTokenAssetTransactionEvent = {
         event_index: dbEvent.event_index,
         event_type: 'non_fungible_token_asset',
@@ -642,7 +637,7 @@ interface GetTxWithEventsArgs extends GetTxArgs {
 }
 
 function parseDbBaseTx(dbTx: DbTx | DbMempoolTx): BaseTransaction {
-  const decodedPostConditions = decodePostConditions(dbTx.post_conditions);
+  const decodedPostConditions = codec.decodePostConditions(dbTx.post_conditions);
   const normalizedPostConditions = decodedPostConditions.post_conditions.map(pc =>
     serializePostCondition(pc)
   );
@@ -846,7 +841,7 @@ function parseContractCallMetadata(
 
   // Only process function_args if not excluded
   if (!excludeFunctionArgs && tx.contract_call_function_args) {
-    contractCall.function_args = decodeClarityValueList(tx.contract_call_function_args).map(
+    contractCall.function_args = codec.decodeClarityValueList(tx.contract_call_function_args).map(
       (c, idx) => {
         const functionArgAbi = functionAbi ? functionAbi.args[idx] : { name: '', type: undefined };
         return {
@@ -855,7 +850,7 @@ function parseContractCallMetadata(
           name: functionArgAbi?.name || '',
           type: functionArgAbi?.type
             ? getTypeString(functionArgAbi.type)
-            : decodeClarityValueToTypeName(c.hex),
+            : codec.decodeClarityValueToTypeName(c.hex),
         };
       }
     );
@@ -892,7 +887,7 @@ function parseDbAbstractTx(dbTx: DbTx, baseTx: BaseTransaction): AbstractTransac
     tx_status: getTxStatusString(dbTx.status) as TransactionStatus,
     tx_result: {
       hex: dbTx.raw_result,
-      repr: decodeClarityValueToRepr(dbTx.raw_result),
+      repr: codec.decodeClarityValueToRepr(dbTx.raw_result),
     },
     microblock_hash: dbTx.microblock_hash,
     microblock_sequence: dbTx.microblock_sequence,

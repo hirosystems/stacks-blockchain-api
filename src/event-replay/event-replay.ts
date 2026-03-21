@@ -1,20 +1,20 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import { exportRawEventRequests, getRawEventRequests } from './event-requests';
-import { PgWriteStore } from '../datastore/pg-write-store';
-import { startEventServer } from '../event-stream/event-server';
-import { getApiConfiguredChainID, HttpClientResponse, httpPostRequest } from '../helpers';
-import { importV1TokenOfferingData } from '../import-v1';
-import { findTsvBlockHeight, getDbBlockHeight } from './helpers';
+import { exportRawEventRequests, getRawEventRequests } from './event-requests.js';
+import { PgWriteStore } from '../datastore/pg-write-store.js';
+import { startEventServer } from '../event-stream/event-server.js';
+import { getApiConfiguredChainID, HttpClientResponse, httpPostRequest } from '../helpers.js';
+import { importV1TokenOfferingData } from '../import-v1/index.js';
+import { findTsvBlockHeight, getDbBlockHeight } from './helpers.js';
 import {
   cycleMigrations,
   dangerousDropAllTables,
   databaseHasData,
   logger,
 } from '@stacks/api-toolkit';
-import { MIGRATIONS_DIR } from '../datastore/pg-store';
-import { PgServer, getConnectionArgs } from '../datastore/connection';
-import { ENV } from '../env';
+import { MIGRATIONS_DIR } from '../datastore/pg-store.js';
+import { PgServer, getConnectionArgs } from '../datastore/connection.js';
+import { ENV } from '../env.js';
 
 enum EventImportMode {
   /**

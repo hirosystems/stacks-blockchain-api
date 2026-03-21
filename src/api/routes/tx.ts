@@ -5,17 +5,17 @@ import {
   searchTxs,
   parseDbTx,
   parseDbEvent,
-} from '../controllers/db-controller';
-import { isValidC32Address, isValidPrincipal, parseEventTypeStrings } from '../../helpers';
-import { InvalidRequestError, InvalidRequestErrorType, NotFoundError } from '../../errors';
-import { validateRequestHexInput, validatePrincipal } from '../query-helpers';
-import { getPagingQueryLimit, parsePagingQueryInput, ResourceType } from '../pagination';
+} from '../controllers/db-controller.js';
+import { isValidC32Address, isValidPrincipal, parseEventTypeStrings } from '../../helpers.js';
+import { InvalidRequestError, InvalidRequestErrorType, NotFoundError } from '../../errors.js';
+import { validateRequestHexInput, validatePrincipal } from '../query-helpers.js';
+import { getPagingQueryLimit, parsePagingQueryInput, ResourceType } from '../pagination.js';
 import {
   handleChainTipCache,
   handleMempoolCache,
   handleTransactionCache,
-} from '../controllers/cache-controller';
-import { DbEventTypeId } from '../../datastore/common';
+} from '../controllers/cache-controller.js';
+import { DbEventTypeId } from '../../datastore/common.js';
 import { has0xPrefix } from '@stacks/api-toolkit';
 import { FastifyPluginAsync } from 'fastify';
 import { Server } from 'node:http';
@@ -31,7 +31,7 @@ import {
   PrincipalSchema,
   TransactionIdParamSchema,
   UnanchoredParamSchema,
-} from '../schemas/params';
+} from '../schemas/params.js';
 import {
   MempoolTransaction,
   MempoolTransactionSchema,
@@ -39,16 +39,16 @@ import {
   TransactionSchema,
   TransactionSearchResponseSchema,
   TransactionTypeSchema,
-} from '../schemas/entities/transactions';
-import { PaginatedResponse } from '../schemas/util';
+} from '../schemas/entities/transactions.js';
+import { PaginatedResponse } from '../schemas/util.js';
 import {
   MempoolStatsResponseSchema,
   MempoolTransactionListResponse,
   RawTransactionResponseSchema,
   TransactionEventsResponseSchema,
   TransactionResultsSchema,
-} from '../schemas/responses/responses';
-import { TransactionEventTypeSchema } from '../schemas/entities/transaction-events';
+} from '../schemas/responses/responses.js';
+import { TransactionEventTypeSchema } from '../schemas/entities/transaction-events.js';
 
 export const TxRoutes: FastifyPluginAsync<
   Record<never, never>,

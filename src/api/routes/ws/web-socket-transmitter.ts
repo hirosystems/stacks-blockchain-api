@@ -1,20 +1,20 @@
 import * as http from 'http';
 import PQueue from 'p-queue';
-import type { AddressStxBalanceResponse, AddressTransactionWithTransfers } from 'client/src/types';
+import type { AddressStxBalanceResponse, AddressTransactionWithTransfers } from '../../../../client/src/types.js';
 import {
   getBlockFromDataStore,
   getMempoolTxsFromDataStore,
   getMicroblockFromDataStore,
   getTxFromDataStore,
   parseDbTx,
-} from '../../controllers/db-controller';
-import { PgStore } from '../../../datastore/pg-store';
-import { ListenerType, WebSocketChannel, WebSocketPayload } from './web-socket-channel';
-import { SocketIOChannel } from './channels/socket-io-channel';
-import { WsRpcChannel } from './channels/ws-rpc-channel';
-import { parseNftEvent } from '../../../datastore/helpers';
+} from '../../controllers/db-controller.js';
+import { PgStore } from '../../../datastore/pg-store.js';
+import { ListenerType, WebSocketChannel, WebSocketPayload } from './web-socket-channel.js';
+import { SocketIOChannel } from './channels/socket-io-channel.js';
+import { WsRpcChannel } from './channels/ws-rpc-channel.js';
+import { parseNftEvent } from '../../../datastore/helpers.js';
 import { logger } from '@stacks/api-toolkit';
-import { ENV } from '../../../env';
+import { ENV } from '../../../env.js';
 
 export function getWsPingIntervalMs(): number {
   return ENV.STACKS_API_WS_PING_INTERVAL * 1000;
@@ -51,7 +51,6 @@ export class WebSocketTransmitter {
       autoStart: true,
       concurrency: 1,
       timeout: getWsUpdateQueueTimeoutMs(),
-      throwOnTimeout: true,
     });
   }
 

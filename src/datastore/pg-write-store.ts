@@ -1,6 +1,6 @@
-import * as assert from 'assert';
+import assert from 'node:assert';
 import * as prom from 'prom-client';
-import { getOrAdd, I32_MAX } from '../helpers';
+import { getOrAdd, I32_MAX } from '../helpers.js';
 import {
   DbBlock,
   DbTx,
@@ -64,7 +64,7 @@ import {
   PoxCycleInsertValues,
   DbAssetEventTypeId,
   DbBurnBlockPoxTx,
-} from './common';
+} from './common.js';
 import {
   BLOCK_COLUMNS,
   convertTxQueryResultToDbMempoolTx,
@@ -79,12 +79,12 @@ import {
   newReOrgUpdatedEntities,
   PgWriteQueue,
   removeNullBytes,
-} from './helpers';
-import { PgNotifier } from './pg-notifier';
-import { MIGRATIONS_DIR, PgStore } from './pg-store';
+} from './helpers.js';
+import { PgNotifier } from './pg-notifier.js';
+import { MIGRATIONS_DIR, PgStore } from './pg-store.js';
 import * as zoneFileParser from 'zone-file';
-import { parseResolver, parseZoneFileTxt } from '../event-stream/bns/bns-helpers';
-import { SyntheticPoxEventName } from '../pox-helpers';
+import { parseResolver, parseZoneFileTxt } from '../event-stream/bns/bns-helpers.js';
+import { SyntheticPoxEventName } from '../pox-helpers.js';
 import {
   PgSqlClient,
   batchIterate,
@@ -94,10 +94,10 @@ import {
   runMigrations,
   logger,
 } from '@stacks/api-toolkit';
-import { PgServer, getConnectionArgs, getConnectionConfig } from './connection';
+import { PgServer, getConnectionArgs, getConnectionConfig } from './connection.js';
 import { BigNumber } from 'bignumber.js';
-import { RedisNotifier } from './redis-notifier';
-import { ENV } from '../env';
+import { RedisNotifier } from './redis-notifier.js';
+import { ENV } from '../env.js';
 
 const MIGRATIONS_TABLE = 'pgmigrations';
 const INSERT_BATCH_SIZE = 500;

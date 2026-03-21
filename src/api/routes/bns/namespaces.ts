@@ -1,10 +1,10 @@
-import { parsePagingQueryInput } from '../../../api/pagination';
-import { BnsErrors } from '../../../event-stream/bns/bns-constants';
-import { handleChainTipCache } from '../../../api/controllers/cache-controller';
+import { parsePagingQueryInput } from '../../../api/pagination.js';
+import { BnsErrors } from '../../../event-stream/bns/bns-constants.js';
+import { handleChainTipCache } from '../../../api/controllers/cache-controller.js';
 import { FastifyPluginAsync } from 'fastify';
 import { Type, TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
 import { Server } from 'node:http';
-import { UnanchoredParamSchema } from '../../schemas/params';
+import { UnanchoredParamSchema } from '../../schemas/params.js';
 
 export const BnsNamespaceRoutes: FastifyPluginAsync<
   Record<never, never>,

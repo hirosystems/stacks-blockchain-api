@@ -1,25 +1,25 @@
-import { handleBlockCache, handleChainTipCache } from '../../../api/controllers/cache-controller';
+import { handleBlockCache, handleChainTipCache } from '../../../api/controllers/cache-controller.js';
 import {
   BlockParamsSchema,
   cleanBlockHeightOrHashParam,
   BlockCursorParamSchema,
   parseBlockParam,
-} from './schemas';
-import { parseDbNakamotoBlock } from './helpers';
-import { InvalidRequestError, NotFoundError } from '../../../errors';
-import { parseDbTx } from '../../../api/controllers/db-controller';
+} from './schemas.js';
+import { parseDbNakamotoBlock } from './helpers.js';
+import { InvalidRequestError, NotFoundError } from '../../../errors.js';
+import { parseDbTx } from '../../../api/controllers/db-controller.js';
 import { FastifyPluginAsync } from 'fastify';
 import { Type, TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
 import { Server } from 'node:http';
-import { CursorOffsetParam, LimitParam, OffsetParam } from '../../schemas/params';
-import { getPagingQueryLimit, ResourceType } from '../../pagination';
-import { PaginatedResponse } from '../../schemas/util';
-import { NakamotoBlock, NakamotoBlockSchema } from '../../schemas/entities/block';
-import { TransactionSchema } from '../../schemas/entities/transactions';
+import { CursorOffsetParam, LimitParam, OffsetParam } from '../../schemas/params.js';
+import { getPagingQueryLimit, ResourceType } from '../../pagination.js';
+import { PaginatedResponse } from '../../schemas/util.js';
+import { NakamotoBlock, NakamotoBlockSchema } from '../../schemas/entities/block.js';
+import { TransactionSchema } from '../../schemas/entities/transactions.js';
 import {
   BlockListV2ResponseSchema,
   BlockSignerSignatureResponseSchema,
-} from '../../schemas/responses/responses';
+} from '../../schemas/responses/responses.js';
 
 export const BlockRoutesV2: FastifyPluginAsync<
   Record<never, never>,

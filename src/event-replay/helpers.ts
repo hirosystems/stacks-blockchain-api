@@ -1,6 +1,6 @@
-import { PgWriteStore } from '../datastore/pg-write-store';
-import { DataStoreBnsBlockTxData, DbTxTypeId } from '../datastore/common';
-import { readLinesReversed } from './reverse-file-stream';
+import { PgWriteStore } from '../datastore/pg-write-store.js';
+import { DataStoreBnsBlockTxData, DbTxTypeId } from '../datastore/common.js';
+import { readLinesReversed } from './reverse-file-stream.js';
 
 /**
  * Traverse a TSV file in reverse to find the last received `/new_block` node message and return

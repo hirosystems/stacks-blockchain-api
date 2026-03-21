@@ -1,6 +1,6 @@
 import { Static, Type } from '@sinclair/typebox';
-import { TransactionSchema } from './transactions';
-import { OptionalNullable } from '../util';
+import { TransactionSchema } from './transactions.js';
+import { OptionalNullable } from '../util.js';
 
 const NonFungibleTokenValueSchema = Type.Object(
   {

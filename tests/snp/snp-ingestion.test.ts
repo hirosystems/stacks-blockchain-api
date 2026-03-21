@@ -1,7 +1,8 @@
 import * as readline from 'node:readline/promises';
 import * as fs from 'node:fs';
 import * as zlib from 'node:zlib';
-
+import * as assert from 'node:assert/strict';
+import { after, before, describe, test } from 'node:test';
 import { ChainID } from '@stacks/transactions';
 import { ApiServer, startApiServer } from '../../src/api/init';
 import { EventStreamServer, startEventServer } from '../../src/event-stream/event-server';
@@ -12,7 +13,7 @@ import { SnpEventStreamHandler } from '../../src/event-stream/snp-event-stream';
 import { fetch } from 'undici';
 import * as supertest from 'supertest';
 
-describe('SNP integration tests', () => {
+describe('SNP integration tests', { concurrency: 1 }, () => {
   let snpObserverUrl: string;
   let db: PgWriteStore;
   let client: PgSqlClient;
@@ -24,7 +25,7 @@ describe('SNP integration tests', () => {
   const sampleEventsLastBlockHash =
     '0x5705546ec6741f77957bb3e73bf795dcf120c0a869c1d408396e7e30a3b2f94f';
 
-  beforeAll(async () => {
+  before(async () => {
     snpObserverUrl = `http://127.0.0.1:3022`;
 
     await migrate('up');
@@ -48,7 +49,7 @@ describe('SNP integration tests', () => {
     });
   });
 
-  afterAll(async () => {
+  after(async () => {
     await apiServer.terminate();
     await eventServer.closeAsync();
     await db?.close();
@@ -99,24 +100,22 @@ describe('SNP integration tests', () => {
       }
     );
 
-    expect(lastMsgProcessed).toBe(sampleEventsLastMsgId);
+    assert.equal(lastMsgProcessed, sampleEventsLastMsgId);
 
     await snpClient.stop();
   });
 
   test('validate blocks ingested', async () => {
     const chainTip = await db.getChainTip(db.sql);
-    expect(chainTip.block_hash).toBe(sampleEventsLastBlockHash);
-    expect(chainTip.block_height).toBe(sampleEventsLastBlockHeight);
+    assert.equal(chainTip.block_hash, sampleEventsLastBlockHash);
+    assert.equal(chainTip.block_height, sampleEventsLastBlockHeight);
   });
 
   test('test block API fetch', async () => {
     const response = await supertest(apiServer.server)
       .get(`/extended/v1/block/by_height/${sampleEventsLastBlockHeight}`)
       .expect(200);
-    expect(response.body).toMatchObject({
-      hash: sampleEventsLastBlockHash,
-    });
+    assert.equal(response.body.hash, sampleEventsLastBlockHash);
   });
 
   test('handleMsg throws error when inject() fails', async () => {
@@ -130,10 +129,11 @@ describe('SNP integration tests', () => {
       throw new Error('Simulated inject failure');
     };
 
-    await expect(
-      snpClient.handleMsg('test-msg-id', '2024-01-01T00:00:00Z', '/test/path', {})
-    ).rejects.toThrow(
-      'Failed to process SNP message test-msg-id at path /test/path: Error: Simulated inject failure'
+    await assert.rejects(
+      snpClient.handleMsg('test-msg-id', '2024-01-01T00:00:00Z', '/test/path', {}),
+      new Error(
+        'Failed to process SNP message test-msg-id at path /test/path: Error: Simulated inject failure'
+      )
     );
 
     eventServer.fastifyInstance.inject = originalInject;
@@ -153,10 +153,11 @@ describe('SNP integration tests', () => {
       });
     }) as any;
 
-    await expect(
-      snpClient.handleMsg('test-msg-id', '2024-01-01T00:00:00Z', '/test/path', {})
-    ).rejects.toThrow(
-      'Failed to process SNP message test-msg-id at path /test/path, status: 500, body: Internal Server Error'
+    await assert.rejects(
+      snpClient.handleMsg('test-msg-id', '2024-01-01T00:00:00Z', '/test/path', {}),
+      new Error(
+        'Failed to process SNP message test-msg-id at path /test/path, status: 500, body: Internal Server Error'
+      )
     );
 
     eventServer.fastifyInstance.inject = originalInject;

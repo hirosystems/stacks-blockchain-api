@@ -1,9 +1,9 @@
-import { handleChainTipCache } from '../../../api/controllers/cache-controller';
+import { handleChainTipCache } from '../../../api/controllers/cache-controller.js';
 import { FastifyPluginAsync } from 'fastify';
 import { Type, TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
 import { Server } from 'node:http';
-import { UnanchoredParamSchema } from '../../schemas/params';
-import { InvalidRequestError, InvalidRequestErrorType } from '../../../errors';
+import { UnanchoredParamSchema } from '../../schemas/params.js';
+import { InvalidRequestError, InvalidRequestErrorType } from '../../../errors.js';
 
 const SUPPORTED_BLOCKCHAINS = ['stacks'];
 

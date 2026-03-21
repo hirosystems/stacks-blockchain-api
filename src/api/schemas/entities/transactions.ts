@@ -1,7 +1,7 @@
 import { Static, Type } from '@sinclair/typebox';
-import { Nullable } from '../util';
-import { PostConditionModeSchema, PostConditionSchema } from './post-conditions';
-import { TransactionEventSchema } from './transaction-events';
+import { Nullable } from '../util.js';
+import { PostConditionModeSchema, PostConditionSchema } from './post-conditions.js';
+import { TransactionEventSchema } from './transaction-events.js';
 
 const TransactionType = {
   coinbase: 'coinbase',

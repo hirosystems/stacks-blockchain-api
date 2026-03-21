@@ -1,5 +1,5 @@
 import { PgConnectionArgs, PgConnectionOptions } from '@stacks/api-toolkit';
-import { ENV } from '../env';
+import { ENV } from '../env.js';
 
 /**
  * The postgres server being used for a particular connection, transaction or query.

@@ -18,18 +18,18 @@ import {
   getBtcBalance,
   getRpcClient,
   isValidBtcAddress,
-} from '../../btc-faucet';
-import { DbFaucetRequestCurrency } from '../../datastore/common';
-import { getChainIDNetwork, getStxFaucetNetwork, stxToMicroStx } from '../../helpers';
-import { StacksCoreRpcClient } from '../../core-rpc/client';
+} from '../../btc-faucet.js';
+import { DbFaucetRequestCurrency } from '../../datastore/common.js';
+import { getChainIDNetwork, getStxFaucetNetwork, stxToMicroStx } from '../../helpers.js';
+import { StacksCoreRpcClient } from '../../core-rpc/client.js';
 import { logger } from '@stacks/api-toolkit';
-import { ENV } from '../../env';
+import { ENV } from '../../env.js';
 import { FastifyPluginAsync, preHandlerHookHandler } from 'fastify';
 import { Type, TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
 import { fastifyFormbody } from '@fastify/formbody';
 import { Server } from 'node:http';
-import { OptionalNullable } from '../schemas/util';
-import { RunFaucetResponseSchema } from '../schemas/responses/responses';
+import { OptionalNullable } from '../schemas/util.js';
+import { RunFaucetResponseSchema } from '../schemas/responses/responses.js';
 
 const testnetAccounts = [
   {

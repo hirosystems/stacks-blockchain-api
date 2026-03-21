@@ -1,4 +1,4 @@
-import { DecodedTxResult } from '@stacks/codec';
+import type { DecodedTxResult } from '@stacks/codec';
 import { NewBlockTransaction, NewMicroblocksTransaction } from '@stacks/node-publisher-client';
 
 export interface CoreNodeParsedTxMessage {

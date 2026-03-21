@@ -1,7 +1,6 @@
-import fetch, { RequestInit } from 'node-fetch';
 import { ClarityValue, cvToHex } from '@stacks/transactions';
 import { stopwatch, timeout, logger } from '@stacks/api-toolkit';
-import { ENV } from '../env';
+import { ENV } from '../env.js';
 
 interface CoreRpcAccountInfo {
   /** Hex-prefixed uint128. */
@@ -262,7 +261,7 @@ export class StacksCoreRpcClient {
     const result = await this.fetchJson<string>('v2/transactions', {
       method: 'POST',
       headers: { 'Content-Type': 'application/octet-stream' },
-      body: serializedTx,
+      body: new Uint8Array(serializedTx),
     });
     return {
       txId: '0x' + result,

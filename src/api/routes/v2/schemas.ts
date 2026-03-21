@@ -1,5 +1,5 @@
 import { Type, Static, TSchema } from '@sinclair/typebox';
-import { ResourceType, pagingQueryLimits } from '../../../api/pagination';
+import { ResourceType, pagingQueryLimits } from '../../../api/pagination.js';
 import { has0xPrefix, isTestEnv } from '@stacks/api-toolkit';
 
 // ==========================
