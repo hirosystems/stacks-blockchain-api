@@ -47,16 +47,6 @@
     "node": ">=24"
   },
   "engineStrict": true,
-  "commitlint": {
-    "extends": [
-      "@commitlint/config-conventional"
-    ]
-  },
-  "husky": {
-    "hooks": {
-      "commit-msg": "commitlint -E HUSKY_GIT_PARAMS"
-    }
-  },
   "dependencies": {
     "@fastify/cors": "11.2.0",
     "@fastify/formbody": "8.0.2",
@@ -94,8 +84,6 @@
     "zone-file": "2.0.0-beta.3"
   },
   "devDependencies": {
-    "@commitlint/cli": "19.2.2",
-    "@commitlint/config-conventional": "10.0.0",
     "@fastify/swagger": "9.7.0",
     "@stacks/eslint-config": "3.0.0-develop.2",
     "@types/dockerode": "3.3.39",
@@ -113,7 +101,6 @@
     "eslint": "10.1.0",
     "eslint-plugin-prettier": "5.5.5",
     "eslint-plugin-tsdoc": "0.5.2",
-    "husky": "4.3.8",
     "jest": "30.2.0",
     "nock": "13.5.4",
     "node-pg-migrate": "6.2.2",

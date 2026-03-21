@@ -1,4 +1,0 @@
-src/schemas/*
-src/migrations/*
-src/tests-bns/
-src/tests/synthetic-tx-payloads/
