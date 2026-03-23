@@ -6,7 +6,9 @@ import { EventStreamServer, startEventServer } from '../../../src/event-stream/e
 import { getRawEventRequests } from '../../../src/event-replay/event-requests.ts';
 import { useWithCleanup } from '../test-helpers.ts';
 import { PgSqlClient } from '@stacks/api-toolkit';
-import { migrate } from '../utils/test-helpers';
+import { migrate } from '../../test-helpers.ts';
+import assert from 'node:assert/strict';
+import { afterEach, beforeEach, describe, test } from 'node:test';
 
 describe('Events table', () => {
   let db: PgWriteStore;
@@ -39,7 +41,7 @@ describe('Events table', () => {
 
     await useWithCleanup(
       () => {
-        const readStream = fs.createReadStream('tests/event-replay/tsv/mainnet.tsv');
+        const readStream = fs.createReadStream('tests/api/event-replay/tsv/mainnet.tsv');
         const rawEventsIterator = getRawEventRequests(readStream);
         return [rawEventsIterator, () => readStream.close()] as const;
       },
@@ -72,9 +74,9 @@ describe('Events table', () => {
               throwOnNotOK: false,
             });
             if (rawEvent.event_path === '/new_block') {
-              expect(response.statusCode).toBe(500);
+              assert.equal(response.statusCode, 500);
               const rawEventRequestCountAfter = await getRawEventCount();
-              expect(rawEventRequestCountBefore).toEqual(rawEventRequestCountAfter);
+              assert.equal(rawEventRequestCountBefore, rawEventRequestCountAfter);
             }
           }
         }
@@ -101,7 +103,7 @@ describe('Events table', () => {
       async eventServer => {
         // split the tsv file into lines, split each line by tab, find the first line that has a cell value of `/new_block`
         const sampleTsv = fs
-          .readFileSync('tests/event-replay/tsv/mainnet-block0.tsv', 'utf8')
+          .readFileSync('tests/api/event-replay/tsv/mainnet-block0.tsv', 'utf8')
           .split('\n')
           .map(line => line.split('\t'))
           .find(line => line[2] === '/new_block');
@@ -140,9 +142,9 @@ describe('Events table', () => {
           body: Buffer.from(rawEvent.payload, 'utf8'),
           throwOnNotOK: false,
         });
-        expect(response.statusCode).toBe(200);
+        assert.equal(response.statusCode, 200);
         const rawEventRequestCountAfter = await getRawEventCount();
-        expect(rawEventRequestCountAfter).toEqual(rawEventRequestCountBefore + 1);
+        assert.equal(rawEventRequestCountAfter, rawEventRequestCountBefore + 1);
       }
     );
   });

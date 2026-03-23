@@ -1,6 +1,8 @@
 import * as fs from 'fs';
 import { findTsvBlockHeight } from '../../../src/event-replay/helpers.ts';
 import { readLinesReversed } from '../../../src/event-replay/reverse-file-stream.ts';
+import assert from 'node:assert/strict';
+import { describe, test } from 'node:test';
 
 describe('helper tests', () => {
   function writeTmpFile(fileName: string, contents: string): string {
@@ -34,9 +36,9 @@ describe('helper tests', () => {
           break;
         }
       }
-      expect(linesStreamed).toEqual(4);
-      expect(output).toEqual(['line1000', 'line999', 'line998', 'line997']);
-      expect(reverseStream.getBytesRead()).toBeLessThan(reverseStream.getFileSize());
+      assert.equal(linesStreamed, 4);
+      assert.deepEqual(output, ['line1000', 'line999', 'line998', 'line997']);
+      assert.ok(reverseStream.getBytesRead() < reverseStream.getFileSize());
 
       // Read whole file
       const reverseStream2 = readLinesReversed(testFilePath, 300);
@@ -46,10 +48,10 @@ describe('helper tests', () => {
         linesStreamed2++;
         output2.push(data);
       }
-      expect(linesStreamed2).toEqual(1000);
-      expect(output2[0]).toBe('line1000');
-      expect(output2[output2.length - 1]).toBe('line1');
-      expect(reverseStream2.getBytesRead()).toBe(reverseStream2.getFileSize());
+      assert.equal(linesStreamed2, 1000);
+      assert.equal(output2[0], 'line1000');
+      assert.equal(output2[output2.length - 1], 'line1');
+      assert.equal(reverseStream2.getBytesRead(), reverseStream2.getFileSize());
     } finally {
       fs.unlinkSync(testFilePath);
     }
@@ -69,8 +71,8 @@ line4`;
         linesStreamed++;
         output.push(data);
       }
-      expect(linesStreamed).toEqual(4);
-      expect(output).toEqual(['line4', 'line3', 'line2', 'line1']);
+      assert.equal(linesStreamed, 4);
+      assert.deepEqual(output, ['line4', 'line3', 'line2', 'line1']);
     } finally {
       fs.unlinkSync(testFilePath);
     }
@@ -87,8 +89,8 @@ line4`;
         linesStreamed++;
         output.push(data);
       }
-      expect(linesStreamed).toEqual(4);
-      expect(output).toEqual(['line4', 'line3', 'line2', 'line1']);
+      assert.equal(linesStreamed, 4);
+      assert.deepEqual(output, ['line4', 'line3', 'line2', 'line1']);
     } finally {
       fs.unlinkSync(testFilePath);
     }
@@ -102,7 +104,7 @@ line4`;
     const testFilePath = writeTmpFile('test1.tsv', contents);
     try {
       const blockHeight = await findTsvBlockHeight(testFilePath);
-      expect(blockHeight).toEqual(1201);
+      assert.equal(blockHeight, 1201);
     } finally {
       fs.unlinkSync(testFilePath);
     }
@@ -116,7 +118,7 @@ line4`;
     const testFilePath = writeTmpFile('test1.tsv', contents);
     try {
       const blockHeight = await findTsvBlockHeight(testFilePath);
-      expect(blockHeight).toEqual(0);
+      assert.equal(blockHeight, 0);
     } finally {
       fs.unlinkSync(testFilePath);
     }

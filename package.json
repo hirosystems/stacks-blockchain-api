@@ -12,6 +12,7 @@
     "test:api:synthetic-txs": "NODE_ENV=test node --import tsx --test --test-global-setup=./tests/api/setup.ts --test-concurrency=1 ./tests/api/synthetic-txs/**/*.test.ts",
     "test:api:v2-proxy": "NODE_ENV=test node --import tsx --test --test-global-setup=./tests/api/setup.ts --test-concurrency=1 ./tests/api/v2-proxy/**/*.test.ts",
     "test:api:event-server": "NODE_ENV=test node --import tsx --test --test-global-setup=./tests/api/setup.ts --test-concurrency=1 ./tests/api/event-server/**/*.test.ts",
+    "test:api:event-replay": "NODE_ENV=test node --import tsx --test --test-global-setup=./tests/api/setup.ts --test-concurrency=1 ./tests/api/event-replay/**/*.test.ts",
     "test:snp": "NODE_ENV=test node --import tsx --test --test-global-setup=./tests/snp/setup.ts --test-concurrency=1 ./tests/snp/**/*.test.ts",
     "test:krypton:rpc": "NODE_ENV=test node --import tsx --test --test-global-setup=./tests/krypton/setup.ts --test-concurrency=1 ./tests/krypton/rpc/**/*.test.ts",
     "test:krypton:bns-e2e": "NODE_ENV=test node --import tsx --test --test-global-setup=./tests/krypton/setup.ts --test-concurrency=1 ./tests/krypton/bns-e2e/**/*.test.ts",

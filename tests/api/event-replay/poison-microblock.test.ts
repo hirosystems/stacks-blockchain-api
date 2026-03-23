@@ -1,6 +1,8 @@
 import { DbTxTypeId } from '../../../src/datastore/common.ts';
 import { PgWriteStore } from '../../../src/datastore/pg-write-store.ts';
 import { importEventsFromTsv } from '../../../src/event-replay/event-replay.ts';
+import assert from 'node:assert/strict';
+import { afterEach, beforeEach, describe, test } from 'node:test';
 
 describe('poison microblock for height 80743', () => {
   let db: PgWriteStore;
@@ -19,7 +21,7 @@ describe('poison microblock for height 80743', () => {
 
   test('test that it does not give 500 error', async () => {
     await importEventsFromTsv(
-      'tests/event-replay/tsv/poisonmicroblock.tsv',
+      'tests/api/event-replay/tsv/poisonmicroblock.tsv',
       'archival',
       true,
       true
@@ -33,13 +35,15 @@ describe('poison microblock for height 80743', () => {
       entityData = searchResult.result?.entity_data;
     }
     // check the transaction type to be contract call for this poison block
-    expect(entityData.type_id).toBe(DbTxTypeId.ContractCall);
-    expect(searchResult.found).toBe(true);
-    expect(chainTip.block_height).toBe(1);
-    expect(chainTip.index_block_hash).toBe(
+    assert.equal(entityData.type_id, DbTxTypeId.ContractCall);
+    assert.equal(searchResult.found, true);
+    assert.equal(chainTip.block_height, 1);
+    assert.equal(
+      chainTip.index_block_hash,
       '0x05ca75b9949195da435e6e36d731dbaa10bb75fda576a52263e25164990bfdaa'
     );
-    expect(chainTip.block_hash).toBe(
+    assert.equal(
+      chainTip.block_hash,
       '0x6b83b44571365e6e530d679536578c71d6c376b07666f3671786b6fd8fac049c'
     );
   });
