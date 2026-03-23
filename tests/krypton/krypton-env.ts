@@ -430,7 +430,7 @@ export async function getKryptonContext(): Promise<KryptonContext> {
     chainId: ChainID.Testnet,
   });
   const api = await startApiServer({ datastore: db, writeDatastore: db, chainId: ChainID.Testnet });
-  const client = new StacksCoreRpcClient();
+  const client = new StacksCoreRpcClient({ host: 'localhost', port: 20443 });
   await standByForPoxToBeReady(client);
 
   const stacksNetwork = new StacksTestnet({ url: `http://${client.endpoint}` });
