@@ -1,6 +1,6 @@
 import { connectPostgres, timeout } from '@stacks/api-toolkit';
 import type { ContainerConfig } from '../docker-container.ts';
-import { runDown, runUp } from '../docker-container.ts';
+import { runDown, runLogs, runUp } from '../docker-container.ts';
 import { createClient } from 'redis';
 
 function snpContainers(): ContainerConfig[] {
@@ -82,17 +82,28 @@ async function waitForRedis(): Promise<void> {
 
 async function waitForSNP(): Promise<void> {
   const snpUrl = 'http://127.0.0.1:3022';
+  const maxAttempts = 10;
+  let attempt = 0;
+  let lastError: unknown;
   while (true) {
+    attempt += 1;
     try {
       const response = await fetch(snpUrl + '/status');
       if (response.ok) {
         console.log('SNP is ready');
         break;
       } else {
-        console.error(`SNP not ready at ${snpUrl}: ${response.statusText}`);
+        const error = new Error(`SNP not ready at ${snpUrl}: ${response.statusText}`);
+        lastError = error;
+        console.error(error.message);
       }
     } catch (error) {
+      lastError = error;
       console.error(`SNP not ready at ${snpUrl}: ${error}`);
+    }
+    if (attempt >= maxAttempts) {
+      await runLogs(snpContainers()[2], ['--once']);
+      throw lastError ?? new Error(`SNP not ready at ${snpUrl} after ${maxAttempts} attempts`);
     }
     await timeout(100);
   }
