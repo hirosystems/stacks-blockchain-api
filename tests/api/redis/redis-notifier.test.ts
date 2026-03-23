@@ -1,28 +1,30 @@
 const messages: string[] = [];
 
-// Mock Redis to capture messages
-jest.mock('ioredis', () => {
-  const redisMock = jest.fn().mockImplementation(() => ({
-    xadd: jest.fn((queue, id, field, message) => {
-      messages.push(message);
-    }),
-    xtrim: jest.fn().mockResolvedValue(undefined),
-    quit: jest.fn().mockResolvedValue(undefined),
-  }));
-  const mock = redisMock as unknown as { default: typeof redisMock };
-  mock.default = redisMock;
-  return mock;
-});
-
-import { migrate } from '../utils/test-helpers';
+import { migrate } from '../../test-helpers.ts';
 import { PgWriteStore } from '../../../src/datastore/pg-write-store.ts';
-import { TestBlockBuilder } from '../utils/test-builders';
+import { TestBlockBuilder } from '../test-builders.ts';
 import { ENV } from '../../../src/env.ts';
+import { RedisNotifier } from '../../../src/datastore/redis-notifier.ts';
+import { beforeEach, afterEach, describe, test } from 'node:test';
+import assert from 'node:assert/strict';
 
 describe('redis notifier', () => {
   let db: PgWriteStore;
+  let originalNewRedisConnection: unknown;
 
   beforeEach(async () => {
+    // Patch RedisNotifier internals so no real Redis connection is required in node:test.
+    originalNewRedisConnection = (RedisNotifier.prototype as any).newRedisConnection;
+    (RedisNotifier.prototype as any).newRedisConnection = function () {
+      return {
+        xadd: async (_queue: string, _id: string, _field: string, message: string) => {
+          messages.push(message);
+        },
+        xtrim: async () => undefined,
+        quit: async () => undefined,
+      };
+    };
+
     ENV.REDIS_NOTIFIER_ENABLED = true;
     ENV.REDIS_URL = 'localhost:6379';
     ENV.REDIS_QUEUE = 'test-queue';
@@ -38,6 +40,7 @@ describe('redis notifier', () => {
 
   afterEach(async () => {
     await db.close();
+    (RedisNotifier.prototype as any).newRedisConnection = originalNewRedisConnection;
     await migrate('down');
   });
 
@@ -50,15 +53,12 @@ describe('redis notifier', () => {
     }).build();
     await db.update(block1);
 
-    expect(messages.length).toBe(1);
-    expect(JSON.parse(messages[0]).payload).toEqual(
-      expect.objectContaining({
-        chain: 'stacks',
-        network: 'testnet',
-        apply_blocks: [{ hash: '0x1234', index: 1, time: 1234 }],
-        rollback_blocks: [],
-      })
-    );
+    assert.equal(messages.length, 1);
+    const payload = JSON.parse(messages[0]).payload;
+    assert.equal(payload.chain, 'stacks');
+    assert.equal(payload.network, 'testnet');
+    assert.deepEqual(payload.apply_blocks, [{ hash: '0x1234', index: 1, time: 1234 }]);
+    assert.deepEqual(payload.rollback_blocks, []);
   });
 
   test('updates redis with re-orgs', async () => {
@@ -70,15 +70,12 @@ describe('redis notifier', () => {
         block_time: 1234,
       }).build()
     );
-    expect(messages.length).toBe(1);
-    expect(JSON.parse(messages[0]).payload).toEqual(
-      expect.objectContaining({
-        chain: 'stacks',
-        network: 'testnet',
-        apply_blocks: [{ hash: '0x1234', index: 1, time: 1234 }],
-        rollback_blocks: [],
-      })
-    );
+    assert.equal(messages.length, 1);
+    const payload1 = JSON.parse(messages[0]).payload;
+    assert.equal(payload1.chain, 'stacks');
+    assert.equal(payload1.network, 'testnet');
+    assert.deepEqual(payload1.apply_blocks, [{ hash: '0x1234', index: 1, time: 1234 }]);
+    assert.deepEqual(payload1.rollback_blocks, []);
 
     await db.update(
       new TestBlockBuilder({
@@ -89,15 +86,12 @@ describe('redis notifier', () => {
         block_time: 1234,
       }).build()
     );
-    expect(messages.length).toBe(2);
-    expect(JSON.parse(messages[1]).payload).toEqual(
-      expect.objectContaining({
-        chain: 'stacks',
-        network: 'testnet',
-        apply_blocks: [{ hash: '0x1235', index: 2, time: 1234 }],
-        rollback_blocks: [],
-      })
-    );
+    assert.equal(messages.length, 2);
+    const payload2 = JSON.parse(messages[1]).payload;
+    assert.equal(payload2.chain, 'stacks');
+    assert.equal(payload2.network, 'testnet');
+    assert.deepEqual(payload2.apply_blocks, [{ hash: '0x1235', index: 2, time: 1234 }]);
+    assert.deepEqual(payload2.rollback_blocks, []);
 
     // Re-org block 2, should not send a message because this block is not canonical
     await db.update(
@@ -109,7 +103,7 @@ describe('redis notifier', () => {
         block_time: 1234,
       }).build()
     );
-    expect(messages.length).toBe(2);
+    assert.equal(messages.length, 2);
 
     // Advance the non-canoincal chain, original block 2 should be sent as a rollback block
     await db.update(
@@ -121,17 +115,14 @@ describe('redis notifier', () => {
         block_time: 1234,
       }).build()
     );
-    expect(messages.length).toBe(3);
-    expect(JSON.parse(messages[2]).payload).toEqual(
-      expect.objectContaining({
-        chain: 'stacks',
-        network: 'testnet',
-        apply_blocks: [
-          { hash: '0x1235aa', index: 2, time: 1234 },
-          { hash: '0x1236', index: 3, time: 1234 },
-        ],
-        rollback_blocks: [{ hash: '0x1235', index: 2, time: 1234 }],
-      })
-    );
+    assert.equal(messages.length, 3);
+    const payload3 = JSON.parse(messages[2]).payload;
+    assert.equal(payload3.chain, 'stacks');
+    assert.equal(payload3.network, 'testnet');
+    assert.deepEqual(payload3.apply_blocks, [
+      { hash: '0x1235aa', index: 2, time: 1234 },
+      { hash: '0x1236', index: 3, time: 1234 },
+    ]);
+    assert.deepEqual(payload3.rollback_blocks, [{ hash: '0x1235', index: 2, time: 1234 }]);
   });
 });
