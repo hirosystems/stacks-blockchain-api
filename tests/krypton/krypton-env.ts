@@ -436,10 +436,7 @@ export async function getKryptonContext(): Promise<KryptonContext> {
   });
   const api = await startApiServer({ datastore: db, writeDatastore: db, chainId: ChainID.Testnet });
   const client = new StacksCoreRpcClient({ host: 'localhost', port: 20443 });
-  await standByForPoxToBeReady(client);
-
   const stacksNetwork = new StacksTestnet({ url: `http://${client.endpoint}` });
-
   const bitcoinRpcClient = new RPCClient({
     url: ENV.BTC_RPC_HOST,
     port: ENV.BTC_RPC_PORT,
@@ -457,6 +454,13 @@ export async function getKryptonContext(): Promise<KryptonContext> {
     bitcoinRpcClient,
     api,
   };
+
+  try {
+    await standByForPoxToBeReady(client);
+  } catch (error) {
+    await stopKryptonContext(testEnv);
+    throw error;
+  }
 
   return testEnv;
 }
