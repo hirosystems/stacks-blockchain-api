@@ -1,4 +1,4 @@
-import * as supertest from 'supertest';
+import supertest from 'supertest';
 import { bufferCVFromString, ChainID, serializeCV } from '@stacks/transactions';
 import {
   DbBlock,
@@ -12,8 +12,10 @@ import { startApiServer, ApiServer } from '../../../src/api/init.ts';
 import { I32_MAX } from '../../../src/helpers.ts';
 import { PgWriteStore } from '../../../src/datastore/pg-write-store.ts';
 import { bufferToHex, PgSqlClient, waiter } from '@stacks/api-toolkit';
-import { migrate } from '../utils/test-helpers';
-import { TestBlockBuilder, testMempoolTx } from '../utils/test-builders';
+import { migrate } from '../../test-helpers.ts';
+import { TestBlockBuilder, testMempoolTx } from '../test-builders.ts';
+import { beforeEach, afterEach, describe, test } from 'node:test';
+import assert from 'node:assert/strict';
 
 describe('smart contract tests', () => {
   let db: PgWriteStore;
@@ -167,15 +169,15 @@ describe('smart contract tests', () => {
     });
 
     const logEvent = await logEventWaiter;
-    expect(logEvent.txId).toBe('0x421234');
-    expect(logEvent.eventIndex).toBe(4);
+    assert.equal(logEvent.txId, '0x421234');
+    assert.equal(logEvent.eventIndex, 4);
 
     const fetchTx = await supertest(api.server).get(
       '/extended/v1/contract/some-contract-id/events'
     );
-    expect(fetchTx.status).toBe(200);
-    expect(fetchTx.type).toBe('application/json');
-    expect(JSON.parse(fetchTx.text)).toEqual({
+    assert.equal(fetchTx.status, 200);
+    assert.equal(fetchTx.type, 'application/json');
+    assert.deepEqual(JSON.parse(fetchTx.text), {
       limit: 20,
       offset: 0,
       results: [
@@ -297,12 +299,12 @@ describe('smart contract tests', () => {
     });
 
     const reportedId = await contractWaiter;
-    expect(reportedId).toBe('some-contract-id');
+    assert.equal(reportedId, 'some-contract-id');
 
     const fetchTx = await supertest(api.server).get('/extended/v1/contract/some-contract-id');
-    expect(fetchTx.status).toBe(200);
-    expect(fetchTx.type).toBe('application/json');
-    expect(JSON.parse(fetchTx.text)).toEqual({
+    assert.equal(fetchTx.status, 200);
+    assert.equal(fetchTx.type, 'application/json');
+    assert.deepEqual(JSON.parse(fetchTx.text), {
       tx_id: '0x421234',
       canonical: true,
       clarity_version: null,
@@ -416,9 +418,9 @@ describe('smart contract tests', () => {
     const fetchTx = await supertest(api.server).get(
       '/extended/v1/contract/some-versioned-contract-id'
     );
-    expect(fetchTx.status).toBe(200);
-    expect(fetchTx.type).toBe('application/json');
-    expect(JSON.parse(fetchTx.text)).toEqual({
+    assert.equal(fetchTx.status, 200);
+    assert.equal(fetchTx.type, 'application/json');
+    assert.deepEqual(JSON.parse(fetchTx.text), {
       tx_id: '0x421234',
       canonical: true,
       clarity_version: 2,
@@ -1622,8 +1624,8 @@ describe('smart contract tests', () => {
     const query = await supertest(api.server).get(
       `/extended/v1/contract/by_trait?trait_abi=${JSON.stringify(traitJsonAbiRequest)}`
     );
-    expect(query.status).toBe(200);
-    expect(JSON.parse(query.body.results[0].abi)).toStrictEqual(contractJsonAbi);
+    assert.equal(query.status, 200);
+    assert.deepEqual(JSON.parse(query.body.results[0].abi), contractJsonAbi);
 
     const traitJsonAbiRequest1 = {
       maps: [],
@@ -1719,7 +1721,7 @@ describe('smart contract tests', () => {
     const query1 = await supertest(api.server).get(
       `/extended/v1/contract/by_trait?trait_abi=${JSON.stringify(traitJsonAbiRequest1)}`
     );
-    expect(query1.status).toBe(404);
+    assert.equal(query1.status, 404);
   });
 
   test('list contract with given trait: Bad request', async () => {
@@ -1733,10 +1735,10 @@ describe('smart contract tests', () => {
     const query = await supertest(api.server).get(
       `/extended/v1/contract/by_trait?trait_abi=${JSON.stringify(traitJsonAbiRequest)}`
     );
-    expect(query.status).toBe(400);
+    assert.equal(query.status, 400);
 
     const query1 = await supertest(api.server).get('/extended/v1/contract/by_trait');
-    expect(query1.status).toBe(400);
+    assert.equal(query1.status, 400);
   });
 
   test('test large query param', async () => {
@@ -1746,7 +1748,7 @@ describe('smart contract tests', () => {
     const query = await supertest(api.server).get(
       `/extended/v1/contract/by_trait?trait_abi=${randomData}`
     );
-    expect(query.status).toBe(431);
+    assert.equal(query.status, 431);
   });
 
   test('status for multiple contracts', async () => {
@@ -1781,9 +1783,9 @@ describe('smart contract tests', () => {
     let query = await supertest(api.server).get(
       `/extended/v2/smart-contracts/status?contract_id=SP3K8BC0PPEVCV7NZ6QSRWPQ2JE9E5B6N3PA0KBR9.contract-1&contract_id=SP3K8BC0PPEVCV7NZ6QSRWPQ2JE9E5B6N3PA0KBR9.contract-2`
     );
-    expect(query.status).toBe(200);
+    assert.equal(query.status, 200);
     let json = JSON.parse(query.text);
-    expect(json).toStrictEqual({
+    assert.deepEqual(json, {
       'SP3K8BC0PPEVCV7NZ6QSRWPQ2JE9E5B6N3PA0KBR9.contract-1': {
         found: true,
         result: {
@@ -1821,10 +1823,10 @@ describe('smart contract tests', () => {
     query = await supertest(api.server).get(
       `/extended/v2/smart-contracts/status?contract_id=SP3K8BC0PPEVCV7NZ6QSRWPQ2JE9E5B6N3PA0KBR9.contract-3`
     );
-    expect(query.status).toBe(200);
+    assert.equal(query.status, 200);
     json = JSON.parse(query.text);
     // Only the first one is reported.
-    expect(json).toStrictEqual({
+    assert.deepEqual(json, {
       'SP3K8BC0PPEVCV7NZ6QSRWPQ2JE9E5B6N3PA0KBR9.contract-3': {
         found: true,
         result: {
@@ -1839,10 +1841,10 @@ describe('smart contract tests', () => {
     query = await supertest(api.server).get(
       `/extended/v2/smart-contracts/status?contract_id=SP3K8BC0PPEVCV7NZ6QSRWPQ2JE9E5B6N3PA0KBR9.abcde`
     );
-    expect(query.status).toBe(200);
+    assert.equal(query.status, 200);
     json = JSON.parse(query.text);
     // Only the first one is reported.
-    expect(json).toStrictEqual({
+    assert.deepEqual(json, {
       'SP3K8BC0PPEVCV7NZ6QSRWPQ2JE9E5B6N3PA0KBR9.abcde': {
         found: false,
       },

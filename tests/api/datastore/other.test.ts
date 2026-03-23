@@ -1,4 +1,4 @@
-import * as supertest from 'supertest';
+import supertest from 'supertest';
 import { ChainID } from '@stacks/transactions';
 import {
   DbBlock,
@@ -15,7 +15,9 @@ import { FEE_RATE } from '../../../src/api/routes/fee-rate.ts';
 import { PgWriteStore } from '../../../src/datastore/pg-write-store.ts';
 import { getPagingQueryLimit, ResourceType } from '../../../src/api/pagination.ts';
 import { PgSqlClient, bufferToHex } from '@stacks/api-toolkit';
-import { migrate } from '../utils/test-helpers';
+import { migrate } from '../../test-helpers.ts';
+import { beforeEach, afterEach, describe, test } from 'node:test';
+import assert from 'node:assert/strict';
 
 describe('other tests', () => {
   let db: PgWriteStore;
@@ -142,8 +144,8 @@ describe('other tests', () => {
 
     const expectedTotalStx1 = stxMintEvent1.amount + stxMintEvent2.amount;
     const result1 = await supertest(api.server).get(`/extended/v1/stx_supply`);
-    expect(result1.status).toBe(200);
-    expect(result1.type).toBe('application/json');
+    assert.equal(result1.status, 200);
+    assert.equal(result1.type, 'application/json');
     const expectedResp1 = {
       unlocked_percent: '100.00',
       total_stx: '235000000.000000',
@@ -152,7 +154,7 @@ describe('other tests', () => {
       block_height: 1,
     };
 
-    expect(JSON.parse(result1.text)).toEqual(expectedResp1);
+    assert.deepEqual(JSON.parse(result1.text), expectedResp1);
 
     // ensure burned STX reduce the unlocked stx supply
     const stxBurnEvent1: DbStxEvent = {
@@ -169,8 +171,8 @@ describe('other tests', () => {
     await db.updateStxEvents(client, [{ tx, stxEvents: [stxBurnEvent1] }]);
     const expectedTotalStx2 = stxMintEvent1.amount + stxMintEvent2.amount - stxBurnEvent1.amount;
     const result2 = await supertest(api.server).get(`/extended/v1/stx_supply`);
-    expect(result2.status).toBe(200);
-    expect(result2.type).toBe('application/json');
+    assert.equal(result2.status, 200);
+    assert.equal(result2.type, 'application/json');
     const expectedResp2 = {
       unlocked_percent: '100.00',
       total_stx: microStxToStx(expectedTotalStx2),
@@ -178,7 +180,7 @@ describe('other tests', () => {
       total_stx_year_2050: '2318000000.000000',
       block_height: dbBlock1.block_height,
     };
-    expect(JSON.parse(result2.text)).toEqual(expectedResp2);
+    assert.deepEqual(JSON.parse(result2.text), expectedResp2);
 
     // ensure miner coinbase rewards are included
     const minerReward1: DbMinerReward = {
@@ -201,8 +203,8 @@ describe('other tests', () => {
       stxBurnEvent1.amount +
       minerReward1.coinbase_amount;
     const result3 = await supertest(api.server).get(`/extended/v1/stx_supply`);
-    expect(result3.status).toBe(200);
-    expect(result3.type).toBe('application/json');
+    assert.equal(result3.status, 200);
+    assert.equal(result3.type, 'application/json');
     const expectedResp3 = {
       unlocked_percent: '100.00',
       total_stx: microStxToStx(expectedTotalStx3),
@@ -210,22 +212,22 @@ describe('other tests', () => {
       unlocked_stx: microStxToStx(expectedTotalStx3),
       block_height: dbBlock1.block_height,
     };
-    expect(JSON.parse(result3.text)).toEqual(expectedResp3);
+    assert.deepEqual(JSON.parse(result3.text), expectedResp3);
 
     const result4 = await supertest(api.server).get(`/extended/v1/stx_supply/total/plain`);
-    expect(result4.status).toBe(200);
-    expect(result4.type).toBe('text/plain');
-    expect(result4.text).toEqual('240000000.000000');
+    assert.equal(result4.status, 200);
+    assert.equal(result4.type, 'text/plain');
+    assert.deepEqual(result4.text, '240000000.000000');
 
     const result5 = await supertest(api.server).get(`/extended/v1/stx_supply/circulating/plain`);
-    expect(result5.status).toBe(200);
-    expect(result5.type).toBe('text/plain');
-    expect(result5.text).toEqual(microStxToStx(expectedTotalStx3));
+    assert.equal(result5.status, 200);
+    assert.equal(result5.type, 'text/plain');
+    assert.deepEqual(result5.text, microStxToStx(expectedTotalStx3));
 
     // test legacy endpoint response formatting
     const result6 = await supertest(api.server).get(`/extended/v1/stx_supply/legacy_format`);
-    expect(result6.status).toBe(200);
-    expect(result6.type).toBe('application/json');
+    assert.equal(result6.status, 200);
+    assert.equal(result6.type, 'application/json');
     const expectedResp6 = {
       unlockedPercent: '100.00',
       totalStacks: microStxToStx(expectedTotalStx3),
@@ -240,7 +242,7 @@ describe('other tests', () => {
       totalStacksYear2050Formatted: '2,318,000,000.000000',
       blockHeight: dbBlock1.block_height.toString(),
     };
-    expect(JSON.parse(result6.text)).toEqual(expectedResp6);
+    assert.deepEqual(JSON.parse(result6.text), expectedResp6);
   });
 
   test('Get fee rate', async () => {
@@ -248,87 +250,87 @@ describe('other tests', () => {
       transaction: '0x5e9f3933e358df6a73fec0d47ce3e1062c20812c129f5294e6f37a8d27c051d9',
     };
     const result = await supertest(api.server).post('/extended/v1/fee_rate').send(request);
-    expect(result.status).toBe(200);
-    expect(result.type).toBe('application/json');
-    expect(result.body.fee_rate).toBe(FEE_RATE);
+    assert.equal(result.status, 200);
+    assert.equal(result.type, 'application/json');
+    assert.equal(result.body.fee_rate, FEE_RATE);
   });
 
   test('400 response errors', async () => {
     const tx_id = '0x8407751d1a8d11ee986aca32a6459d9cd798283a12e048ebafcd4cc7dadb29a';
     const block_hash = '0xd10ccecfd7ac9e5f8a10de0532fac028559b31a6ff494d82147f6297fb66313';
     const principal_addr = 'S.hello-world';
-    const odd_tx_error = expect.objectContaining({
+    const odd_tx_error = {
       message: `Hex string is an odd number of digits`,
-    });
-    const odd_block_error = expect.objectContaining({
+    };
+    const odd_block_error = {
       message: `Hex string is an odd number of digits`,
-    });
-    const metadata_error = expect.objectContaining({
+    };
+    const metadata_error = {
       message: `querystring/include_metadata must be boolean`,
-    });
-    const principal_error = expect.objectContaining({
+    };
+    const principal_error = {
       message: 'invalid STX address "S.hello-world"',
-    });
-    const pagination_error = expect.objectContaining({
+    };
+    const pagination_error = {
       message: `querystring/limit must be <= ${getPagingQueryLimit(ResourceType.Tx, 50)}`,
-    });
+    };
     // extended/v1/tx
     const searchResult1 = await supertest(api.server).get(`/extended/v1/tx/${tx_id}`);
-    expect(JSON.parse(searchResult1.text)).toEqual(odd_tx_error);
-    expect(searchResult1.status).toBe(400);
+    assert.equal(JSON.parse(searchResult1.text).message, odd_tx_error.message);
+    assert.equal(searchResult1.status, 400);
     const searchResult2 = await supertest(api.server).get(
       `/extended/v1/tx/multiple?tx_id=${tx_id}`
     );
-    expect(JSON.parse(searchResult2.text)).toEqual(odd_tx_error);
-    expect(searchResult2.status).toBe(400);
+    assert.equal(JSON.parse(searchResult2.text).message, odd_tx_error.message);
+    assert.equal(searchResult2.status, 400);
     const searchResult3 = await supertest(api.server).get(`/extended/v1/tx/${tx_id}/raw`);
-    expect(JSON.parse(searchResult3.text)).toEqual(odd_tx_error);
-    expect(searchResult3.status).toBe(400);
+    assert.equal(JSON.parse(searchResult3.text).message, odd_tx_error.message);
+    assert.equal(searchResult3.status, 400);
     const searchResult4 = await supertest(api.server).get(`/extended/v1/tx/block/${block_hash}`);
-    expect(JSON.parse(searchResult4.text)).toEqual(odd_block_error);
-    expect(searchResult4.status).toBe(400);
+    assert.equal(JSON.parse(searchResult4.text).message, odd_block_error.message);
+    assert.equal(searchResult4.status, 400);
 
     // extended/v1/block
     const searchResult5 = await supertest(api.server).get(`/extended/v1/block/${block_hash}`);
-    expect(JSON.parse(searchResult5.text)).toEqual(odd_block_error);
-    expect(searchResult5.status).toBe(400);
+    assert.equal(JSON.parse(searchResult5.text).message, odd_block_error.message);
+    assert.equal(searchResult5.status, 400);
 
     // extended/v1/microblock
     const searchResult6 = await supertest(api.server).get(`/extended/v1/microblock/${block_hash}`);
-    expect(JSON.parse(searchResult6.text)).toEqual(odd_block_error);
-    expect(searchResult6.status).toBe(400);
+    assert.equal(JSON.parse(searchResult6.text).message, odd_block_error.message);
+    assert.equal(searchResult6.status, 400);
 
     // extended/v1/search
     const searchResult7 = await supertest(api.server).get(
       `/extended/v1/search/${block_hash}?include_metadata=bac`
     );
-    expect(JSON.parse(searchResult7.text)).toEqual(metadata_error);
-    expect(searchResult7.status).toBe(400);
+    assert.equal(JSON.parse(searchResult7.text).message, metadata_error.message);
+    assert.equal(searchResult7.status, 400);
 
     // extended/v1/address
     const searchResult8 = await supertest(api.server).get(
       `/extended/v1/address/${principal_addr}/stx`
     );
-    expect(JSON.parse(searchResult8.text)).toEqual(principal_error);
-    expect(searchResult8.status).toBe(400);
+    assert.equal(JSON.parse(searchResult8.text).message, principal_error.message);
+    assert.equal(searchResult8.status, 400);
 
     // pagination queries
     const searchResult9 = await supertest(api.server).get(
       '/extended/v1/tx/mempool?limit=201&offset=2'
     );
-    expect(JSON.parse(searchResult9.text)).toEqual(pagination_error);
-    expect(searchResult9.status).toBe(400);
+    assert.equal(JSON.parse(searchResult9.text).message, pagination_error.message);
+    assert.equal(searchResult9.status, 400);
   });
 
   test('active status', async () => {
     const result = await supertest(api.server).get(`/extended/`);
-    expect(result.body.status).toBe('ready');
+    assert.equal(result.body.status, 'ready');
   });
 
   test('database unavailable responses', async () => {
     // Close connection so we get an error.
     await db.close();
     const result = await supertest(api.server).get(`/extended/v1/block/`);
-    expect(result.body.error).toBe('The database service is unavailable');
+    assert.equal(result.body.error, 'The database service is unavailable');
   });
 });

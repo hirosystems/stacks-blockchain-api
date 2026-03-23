@@ -1,4 +1,4 @@
-import * as supertest from 'supertest';
+import supertest from 'supertest';
 import { ChainID } from '@stacks/transactions';
 import { startApiServer, ApiServer } from '../../../src/api/init.ts';
 import { PgWriteStore } from '../../../src/datastore/pg-write-store.ts';
@@ -8,17 +8,14 @@ import {
   DbTxTypeId,
   DbMempoolTxRaw,
   DbTxStatus,
-  DataStoreBlockUpdateData,
 } from '../../../src/datastore/common.ts';
 import { I32_MAX } from '../../../src/helpers.ts';
-import {
-  TestBlockBuilder,
-  testMempoolTx,
-  TestMicroblockStreamBuilder,
-} from '../utils/test-builders';
+import { TestBlockBuilder, testMempoolTx, TestMicroblockStreamBuilder } from '../test-builders.ts';
 import { getPagingQueryLimit, ResourceType } from '../../../src/api/pagination.ts';
 import { PgSqlClient, bufferToHex } from '@stacks/api-toolkit';
-import { migrate } from '../utils/test-helpers';
+import { migrate } from '../../test-helpers.ts';
+import { beforeEach, afterEach, describe, test } from 'node:test';
+import assert from 'node:assert/strict';
 
 describe('mempool tests', () => {
   let db: PgWriteStore;
@@ -78,7 +75,7 @@ describe('mempool tests', () => {
       offset: 0,
       includeUnanchored: false,
     });
-    expect(mempoolTxResult.total).toEqual(257);
+    assert.deepEqual(mempoolTxResult.total, 257);
   });
 
   test('garbage collection post 3.0', async () => {
@@ -113,7 +110,7 @@ describe('mempool tests', () => {
       offset: 0,
       includeUnanchored: false,
     });
-    expect(mempoolTxResult.total).toEqual(1);
+    assert.deepEqual(mempoolTxResult.total, 1);
   });
 
   test('mempool stats', async () => {
@@ -155,8 +152,8 @@ describe('mempool tests', () => {
     }
 
     const result = await supertest(api.server).get(`/extended/v1/tx/mempool/stats`);
-    expect(result.status).toBe(200);
-    expect(result.type).toBe('application/json');
+    assert.equal(result.status, 200);
+    assert.equal(result.type, 'application/json');
     const expectedResp1 = {
       tx_type_counts: {
         token_transfer: 5,
@@ -183,7 +180,7 @@ describe('mempool tests', () => {
         poison_microblock: { p25: null, p50: null, p75: null, p95: null },
       },
     };
-    expect(JSON.parse(result.text)).toEqual(expectedResp1);
+    assert.deepEqual(JSON.parse(result.text), expectedResp1);
   });
 
   test('fetch mempool-tx', async () => {
@@ -210,8 +207,8 @@ describe('mempool tests', () => {
     await db.updateMempoolTxs({ mempoolTxs: [mempoolTx] });
 
     const searchResult1 = await supertest(api.server).get(`/extended/v1/tx/${mempoolTx.tx_id}`);
-    expect(searchResult1.status).toBe(200);
-    expect(searchResult1.type).toBe('application/json');
+    assert.equal(searchResult1.status, 200);
+    assert.equal(searchResult1.type, 'application/json');
     const expectedResp1 = {
       tx_id: '0x8912000000000000000000000000000000000000000000000000000000000000',
       tx_status: 'pending',
@@ -229,7 +226,7 @@ describe('mempool tests', () => {
       coinbase_payload: { data: '0x636f696e62617365206869', alt_recipient: null },
     };
 
-    expect(JSON.parse(searchResult1.text)).toEqual(expectedResp1);
+    assert.deepEqual(JSON.parse(searchResult1.text), expectedResp1);
   });
 
   test('fetch mempool-tx - versioned smart contract', async () => {
@@ -259,8 +256,8 @@ describe('mempool tests', () => {
     await db.updateMempoolTxs({ mempoolTxs: [mempoolTx] });
 
     const searchResult1 = await supertest(api.server).get(`/extended/v1/tx/${mempoolTx.tx_id}`);
-    expect(searchResult1.status).toBe(200);
-    expect(searchResult1.type).toBe('application/json');
+    assert.equal(searchResult1.status, 200);
+    assert.equal(searchResult1.type, 'application/json');
     const expectedResp1 = {
       tx_id: '0x8912000000000000000000000000000000000000000000000000000000000000',
       tx_status: 'pending',
@@ -282,7 +279,7 @@ describe('mempool tests', () => {
       },
     };
 
-    expect(JSON.parse(searchResult1.text)).toEqual(expectedResp1);
+    assert.deepEqual(JSON.parse(searchResult1.text), expectedResp1);
   });
 
   test('fetch mempool-tx - sponsored', async () => {
@@ -309,8 +306,8 @@ describe('mempool tests', () => {
     await db.updateMempoolTxs({ mempoolTxs: [mempoolTx] });
 
     const searchResult1 = await supertest(api.server).get(`/extended/v1/tx/${mempoolTx.tx_id}`);
-    expect(searchResult1.status).toBe(200);
-    expect(searchResult1.type).toBe('application/json');
+    assert.equal(searchResult1.status, 200);
+    assert.equal(searchResult1.type, 'application/json');
     const expectedResp1 = {
       tx_id: '0x8912000000000000000000000000000000000000000000000000000000000000',
       tx_status: 'pending',
@@ -329,7 +326,7 @@ describe('mempool tests', () => {
       coinbase_payload: { data: '0x636f696e62617365206869', alt_recipient: null },
     };
 
-    expect(JSON.parse(searchResult1.text)).toEqual(expectedResp1);
+    assert.deepEqual(JSON.parse(searchResult1.text), expectedResp1);
   });
 
   test('fetch mempool-tx list', async () => {
@@ -359,8 +356,8 @@ describe('mempool tests', () => {
     const searchResult1 = await supertest(api.server).get(
       '/extended/v1/tx/mempool?limit=3&offset=2'
     );
-    expect(searchResult1.status).toBe(200);
-    expect(searchResult1.type).toBe('application/json');
+    assert.equal(searchResult1.status, 200);
+    assert.equal(searchResult1.type, 'application/json');
     const expectedResp1 = {
       limit: 3,
       offset: 2,
@@ -416,7 +413,7 @@ describe('mempool tests', () => {
         },
       ],
     };
-    expect(JSON.parse(searchResult1.text)).toEqual(expectedResp1);
+    assert.deepEqual(JSON.parse(searchResult1.text), expectedResp1);
   });
 
   test('fetch mempool-tx list filtered', async () => {
@@ -509,8 +506,8 @@ describe('mempool tests', () => {
     const searchResult1 = await supertest(api.server).get(
       `/extended/v1/tx/mempool?sender_address=${sendAddr}`
     );
-    expect(searchResult1.status).toBe(200);
-    expect(searchResult1.type).toBe('application/json');
+    assert.equal(searchResult1.status, 200);
+    assert.equal(searchResult1.type, 'application/json');
     const expectedResp1 = {
       limit: getPagingQueryLimit(ResourceType.Tx),
       offset: 0,
@@ -558,13 +555,13 @@ describe('mempool tests', () => {
         },
       ],
     };
-    expect(JSON.parse(searchResult1.text)).toEqual(expectedResp1);
+    assert.deepEqual(JSON.parse(searchResult1.text), expectedResp1);
 
     const searchResult2 = await supertest(api.server).get(
       `/extended/v1/tx/mempool?recipient_address=${recvAddr}`
     );
-    expect(searchResult2.status).toBe(200);
-    expect(searchResult2.type).toBe('application/json');
+    assert.equal(searchResult2.status, 200);
+    assert.equal(searchResult2.type, 'application/json');
     const expectedResp2 = {
       limit: getPagingQueryLimit(ResourceType.Tx),
       offset: 0,
@@ -612,13 +609,13 @@ describe('mempool tests', () => {
         },
       ],
     };
-    expect(JSON.parse(searchResult2.text)).toEqual(expectedResp2);
+    assert.deepEqual(JSON.parse(searchResult2.text), expectedResp2);
 
     const searchResult3 = await supertest(api.server).get(
       `/extended/v1/tx/mempool?sender_address=${sendAddr}&recipient_address=${recvAddr}&`
     );
-    expect(searchResult3.status).toBe(200);
-    expect(searchResult3.type).toBe('application/json');
+    assert.equal(searchResult3.status, 200);
+    assert.equal(searchResult3.type, 'application/json');
     const expectedResp3 = {
       limit: getPagingQueryLimit(ResourceType.Tx),
       offset: 0,
@@ -646,13 +643,13 @@ describe('mempool tests', () => {
         },
       ],
     };
-    expect(JSON.parse(searchResult3.text)).toEqual(expectedResp3);
+    assert.deepEqual(JSON.parse(searchResult3.text), expectedResp3);
 
     const searchResult4 = await supertest(api.server).get(
       `/extended/v1/tx/mempool?address=${sendAddr}`
     );
-    expect(searchResult4.status).toBe(200);
-    expect(searchResult4.type).toBe('application/json');
+    assert.equal(searchResult4.status, 200);
+    assert.equal(searchResult4.type, 'application/json');
     const expectedResp4 = {
       limit: getPagingQueryLimit(ResourceType.Tx),
       offset: 0,
@@ -700,13 +697,13 @@ describe('mempool tests', () => {
         },
       ],
     };
-    expect(JSON.parse(searchResult4.text)).toEqual(expectedResp4);
+    assert.deepEqual(JSON.parse(searchResult4.text), expectedResp4);
 
     const searchResult5 = await supertest(api.server).get(
       `/extended/v1/tx/mempool?address=${contractCallId}`
     );
-    expect(searchResult5.status).toBe(200);
-    expect(searchResult5.type).toBe('application/json');
+    assert.equal(searchResult5.status, 200);
+    assert.equal(searchResult5.type, 'application/json');
     const expectedResp5 = {
       limit: getPagingQueryLimit(ResourceType.Tx),
       offset: 0,
@@ -754,13 +751,13 @@ describe('mempool tests', () => {
         },
       ],
     };
-    expect(JSON.parse(searchResult5.text)).toEqual(expectedResp5);
+    assert.deepEqual(JSON.parse(searchResult5.text), expectedResp5);
 
     const searchResult5Address = await supertest(api.server).get(
       `/extended/v1/address/${contractCallId}/mempool`
     );
-    expect(searchResult5Address.status).toBe(200);
-    expect(searchResult5Address.type).toBe('application/json');
+    assert.equal(searchResult5Address.status, 200);
+    assert.equal(searchResult5Address.type, 'application/json');
     const expectedResp5Address = {
       limit: getPagingQueryLimit(ResourceType.Tx),
       offset: 0,
@@ -808,13 +805,13 @@ describe('mempool tests', () => {
         },
       ],
     };
-    expect(JSON.parse(searchResult5Address.text)).toEqual(expectedResp5Address);
+    assert.deepEqual(JSON.parse(searchResult5Address.text), expectedResp5Address);
 
     const searchResult6 = await supertest(api.server).get(
       `/extended/v1/tx/mempool?address=${contractAddr}`
     );
-    expect(searchResult6.status).toBe(200);
-    expect(searchResult6.type).toBe('application/json');
+    assert.equal(searchResult6.status, 200);
+    assert.equal(searchResult6.type, 'application/json');
     const expectedResp6 = {
       limit: getPagingQueryLimit(ResourceType.Tx),
       offset: 0,
@@ -842,13 +839,13 @@ describe('mempool tests', () => {
         },
       ],
     };
-    expect(JSON.parse(searchResult6.text)).toEqual(expectedResp6);
+    assert.deepEqual(JSON.parse(searchResult6.text), expectedResp6);
 
     const searchResult7 = await supertest(api.server).get(
       `/extended/v1/tx/mempool?recipient_address=${contractCallId}`
     );
-    expect(searchResult7.status).toBe(200);
-    expect(searchResult7.type).toBe('application/json');
+    assert.equal(searchResult7.status, 200);
+    assert.equal(searchResult7.type, 'application/json');
     const expectedResp7 = {
       limit: getPagingQueryLimit(ResourceType.Tx),
       offset: 0,
@@ -876,7 +873,7 @@ describe('mempool tests', () => {
         },
       ],
     };
-    expect(JSON.parse(searchResult7.text)).toEqual(expectedResp7);
+    assert.deepEqual(JSON.parse(searchResult7.text), expectedResp7);
   });
 
   test('fetch mempool-tx list sorted', async () => {
@@ -914,53 +911,53 @@ describe('mempool tests', () => {
 
     let result = await supertest(api.server).get(`/extended/v1/tx/mempool?order_by=fee&order=desc`);
     let json = JSON.parse(result.text);
-    expect(json.results[0].fee_rate).toBe('500');
-    expect(json.results[1].fee_rate).toBe('400');
-    expect(json.results[2].fee_rate).toBe('300');
-    expect(json.results[3].fee_rate).toBe('200');
-    expect(json.results[4].fee_rate).toBe('100');
+    assert.equal(json.results[0].fee_rate, '500');
+    assert.equal(json.results[1].fee_rate, '400');
+    assert.equal(json.results[2].fee_rate, '300');
+    assert.equal(json.results[3].fee_rate, '200');
+    assert.equal(json.results[4].fee_rate, '100');
 
     result = await supertest(api.server).get(`/extended/v1/tx/mempool?order_by=fee&order=asc`);
     json = JSON.parse(result.text);
-    expect(json.results[0].fee_rate).toBe('100');
-    expect(json.results[1].fee_rate).toBe('200');
-    expect(json.results[2].fee_rate).toBe('300');
-    expect(json.results[3].fee_rate).toBe('400');
-    expect(json.results[4].fee_rate).toBe('500');
+    assert.equal(json.results[0].fee_rate, '100');
+    assert.equal(json.results[1].fee_rate, '200');
+    assert.equal(json.results[2].fee_rate, '300');
+    assert.equal(json.results[3].fee_rate, '400');
+    assert.equal(json.results[4].fee_rate, '500');
 
     // Larger transactions were set with higher fees.
     result = await supertest(api.server).get(`/extended/v1/tx/mempool?order_by=size&order=desc`);
     json = JSON.parse(result.text);
-    expect(json.results[0].fee_rate).toBe('500');
-    expect(json.results[1].fee_rate).toBe('400');
-    expect(json.results[2].fee_rate).toBe('300');
-    expect(json.results[3].fee_rate).toBe('200');
-    expect(json.results[4].fee_rate).toBe('100');
+    assert.equal(json.results[0].fee_rate, '500');
+    assert.equal(json.results[1].fee_rate, '400');
+    assert.equal(json.results[2].fee_rate, '300');
+    assert.equal(json.results[3].fee_rate, '200');
+    assert.equal(json.results[4].fee_rate, '100');
 
     result = await supertest(api.server).get(`/extended/v1/tx/mempool?order_by=size&order=asc`);
     json = JSON.parse(result.text);
-    expect(json.results[0].fee_rate).toBe('100');
-    expect(json.results[1].fee_rate).toBe('200');
-    expect(json.results[2].fee_rate).toBe('300');
-    expect(json.results[3].fee_rate).toBe('400');
-    expect(json.results[4].fee_rate).toBe('500');
+    assert.equal(json.results[0].fee_rate, '100');
+    assert.equal(json.results[1].fee_rate, '200');
+    assert.equal(json.results[2].fee_rate, '300');
+    assert.equal(json.results[3].fee_rate, '400');
+    assert.equal(json.results[4].fee_rate, '500');
 
     // Newer transactions were set with higher fees.
     result = await supertest(api.server).get(`/extended/v1/tx/mempool?order_by=age&order=desc`);
     json = JSON.parse(result.text);
-    expect(json.results[0].fee_rate).toBe('500');
-    expect(json.results[1].fee_rate).toBe('400');
-    expect(json.results[2].fee_rate).toBe('300');
-    expect(json.results[3].fee_rate).toBe('200');
-    expect(json.results[4].fee_rate).toBe('100');
+    assert.equal(json.results[0].fee_rate, '500');
+    assert.equal(json.results[1].fee_rate, '400');
+    assert.equal(json.results[2].fee_rate, '300');
+    assert.equal(json.results[3].fee_rate, '200');
+    assert.equal(json.results[4].fee_rate, '100');
 
     result = await supertest(api.server).get(`/extended/v1/tx/mempool?order_by=age&order=asc`);
     json = JSON.parse(result.text);
-    expect(json.results[0].fee_rate).toBe('100');
-    expect(json.results[1].fee_rate).toBe('200');
-    expect(json.results[2].fee_rate).toBe('300');
-    expect(json.results[3].fee_rate).toBe('400');
-    expect(json.results[4].fee_rate).toBe('500');
+    assert.equal(json.results[0].fee_rate, '100');
+    assert.equal(json.results[1].fee_rate, '200');
+    assert.equal(json.results[2].fee_rate, '300');
+    assert.equal(json.results[3].fee_rate, '400');
+    assert.equal(json.results[4].fee_rate, '500');
   });
 
   test('mempool - contract_call tx abi details are retrieved', async () => {
@@ -994,9 +991,10 @@ describe('mempool tests', () => {
 
     // Mempool txs
     const mempoolResults = await supertest(api.server).get(`/extended/v1/tx/mempool`);
-    expect(mempoolResults.status).toBe(200);
-    expect(mempoolResults.type).toBe('application/json');
-    expect(JSON.parse(mempoolResults.text).results[0].contract_call).toEqual(
+    assert.equal(mempoolResults.status, 200);
+    assert.equal(mempoolResults.type, 'application/json');
+    assert.deepEqual(
+      JSON.parse(mempoolResults.text).results[0].contract_call,
       expectedContractDetails
     );
 
@@ -1004,9 +1002,10 @@ describe('mempool tests', () => {
     const searchResults = await supertest(api.server).get(
       `/extended/v1/search/${mempoolTx1.tx_id}?include_metadata=true`
     );
-    expect(searchResults.status).toBe(200);
-    expect(searchResults.type).toBe('application/json');
-    expect(JSON.parse(searchResults.text).result.metadata.contract_call).toEqual(
+    assert.equal(searchResults.status, 200);
+    assert.equal(searchResults.type, 'application/json');
+    assert.deepEqual(
+      JSON.parse(searchResults.text).result.metadata.contract_call,
       expectedContractDetails
     );
 
@@ -1014,9 +1013,10 @@ describe('mempool tests', () => {
     const searchPrincipalResults = await supertest(api.server).get(
       `/extended/v1/search/${expectedContractDetails.contract_id}?include_metadata=true`
     );
-    expect(searchPrincipalResults.status).toBe(200);
-    expect(searchPrincipalResults.type).toBe('application/json');
-    expect(JSON.parse(searchPrincipalResults.text).result.metadata.contract_call).toEqual(
+    assert.equal(searchPrincipalResults.status, 200);
+    assert.equal(searchPrincipalResults.type, 'application/json');
+    assert.deepEqual(
+      JSON.parse(searchPrincipalResults.text).result.metadata.contract_call,
       expectedContractDetails
     );
   });
@@ -1071,8 +1071,8 @@ describe('mempool tests', () => {
     const result = await supertest(api.server).get(
       `/extended/v1/address/${mempoolTx.sender_address}/mempool`
     );
-    expect(result.status).toBe(200);
-    expect(result.type).toBe('application/json');
+    assert.equal(result.status, 200);
+    assert.equal(result.type, 'application/json');
   });
 
   test('get mempool transactions: address not valid', async () => {
@@ -1097,8 +1097,8 @@ describe('mempool tests', () => {
     };
     await db.updateMempoolTxs({ mempoolTxs: [mempoolTx] });
     const result = await supertest(api.server).get(`/extended/v1/address/${senderAddress}/mempool`);
-    expect(result.status).toBe(400);
-    expect(result.type).toBe('application/json');
+    assert.equal(result.status, 400);
+    assert.equal(result.type, 'application/json');
   });
 
   test('get mempool transactions from address with offset and limit', async () => {
@@ -1177,13 +1177,13 @@ describe('mempool tests', () => {
         },
       ],
     };
-    expect(result.status).toBe(200);
-    expect(result.type).toBe('application/json');
-    expect(result.body.results.length).toBe(1);
-    expect(result.body.total).toBe(1);
-    expect(result.body.limit).toBe(20);
-    expect(result.body.offset).toBe(0);
-    expect(JSON.parse(result.text)).toEqual(expectedResponse);
+    assert.equal(result.status, 200);
+    assert.equal(result.type, 'application/json');
+    assert.equal(result.body.results.length, 1);
+    assert.equal(result.body.total, 1);
+    assert.equal(result.body.limit, 20);
+    assert.equal(result.body.offset, 0);
+    assert.deepEqual(JSON.parse(result.text), expectedResponse);
   });
 
   test('/microblock/:hash duplicate txs', async () => {
@@ -1210,8 +1210,8 @@ describe('mempool tests', () => {
     await db.updateMicroblocks(microblock);
 
     const result = await supertest(api.server).get(`/extended/v1/microblock/${microblock_hash}`);
-    expect(result.body.txs).toHaveLength(1);
-    expect(result.body.txs[0]).toEqual(tx_id);
+    assert.equal(result.body.txs.length, 1);
+    assert.deepEqual(result.body.txs[0], tx_id);
   });
 
   test('/microblock', async () => {
@@ -1235,11 +1235,11 @@ describe('mempool tests', () => {
     const response = microblockResult.body;
     const expectedTxs = ['0xffff'];
 
-    expect(response.total).toEqual(1);
-    expect(response.results).toHaveLength(1);
-    expect(response.results[0].microblock_hash).toEqual(microblock_hash);
-    expect(response.results[0].txs).toHaveLength(1);
-    expect(response.results[0].txs).toEqual(expectedTxs);
+    assert.deepEqual(response.total, 1);
+    assert.equal(response.results.length, 1);
+    assert.deepEqual(response.results[0].microblock_hash, microblock_hash);
+    assert.equal(response.results[0].txs.length, 1);
+    assert.deepEqual(response.results[0].txs, expectedTxs);
   });
 
   test("Re-org'ed txs that weren't previously in the mempool get INSERTED into the mempool AND the other mempool txs get UPDATED", async () => {
@@ -1300,14 +1300,14 @@ describe('mempool tests', () => {
       includeUnanchored: false,
     });
     const mempoolTxs = mempoolTxResult.results;
-    expect(mempoolTxs.length).toEqual(1);
+    assert.deepEqual(mempoolTxs.length, 1);
     const mempoolTxIds = mempoolTxs.map(e => e.tx_id).sort();
-    expect(mempoolTxIds).toEqual(['0x03aa']);
+    assert.deepEqual(mempoolTxIds, ['0x03aa']);
     const mempoolTx3AfterReorg = mempoolTxs[0];
-    expect(mempoolTx3AfterReorg.pruned).toBe(false);
+    assert.equal(mempoolTx3AfterReorg.pruned, false);
 
     // reorg the chain back to A, reorg txs 4 and 5
-    expect(chainA_BlockHeight).toBe(4);
+    assert.equal(chainA_BlockHeight, 4);
     for (; chainA_BlockHeight <= 5; chainA_BlockHeight++) {
       const block = new TestBlockBuilder({
         block_height: chainA_BlockHeight,
@@ -1325,10 +1325,10 @@ describe('mempool tests', () => {
       includeUnanchored: false,
     });
     const mempoolTxsAfterReOrg = mempoolTxResult.results;
-    expect(mempoolTxsAfterReOrg.length).toEqual(2);
+    assert.deepEqual(mempoolTxsAfterReOrg.length, 2);
     const mempoolTxIdsAfterReOrg = mempoolTxsAfterReOrg.map(e => e.tx_id).sort();
     // txs 4 and 5 should be reorged from txs to mempool txs
-    expect(mempoolTxIdsAfterReOrg).toEqual(['0x04bb', '0x05bb']);
+    assert.deepEqual(mempoolTxIdsAfterReOrg, ['0x04bb', '0x05bb']);
   });
 
   test('Reconcile mempool pruned status', async () => {
@@ -1434,17 +1434,17 @@ describe('mempool tests', () => {
     const mempoolResult1 = await supertest(api.server).get(
       `/extended/v1/address/${mempoolTx.sender_address}/mempool`
     );
-    expect(mempoolResult1.body.results[0].tx_id).toBe(txId);
+    assert.equal(mempoolResult1.body.results[0].tx_id, txId);
     const mempoolCount1 = await supertest(api.server).get(`/extended/v1/tx/mempool`);
-    expect(mempoolCount1.body.total).toBe(1);
+    assert.equal(mempoolCount1.body.total, 1);
     const mempoolResult2 = await supertest(api.server).get(
       `/extended/v1/tx/mempool?sender_address=${senderAddress}`
     );
-    expect(mempoolResult2.body.results[0].tx_id).toBe(txId);
+    assert.equal(mempoolResult2.body.results[0].tx_id, txId);
 
     // Verify tx also shows up as confirmed
     const txResult1 = await supertest(api.server).get(`/extended/v1/tx/${txId}`);
-    expect(txResult1.body.tx_status).toBe('pending');
+    assert.equal(txResult1.body.tx_status, 'pending');
 
     // Insert next block using regular update function to trigger the mempool reconcile function
     await db.update({
@@ -1473,17 +1473,17 @@ describe('mempool tests', () => {
     const mempoolResult3 = await supertest(api.server).get(
       `/extended/v1/address/${mempoolTx.sender_address}/mempool`
     );
-    expect(mempoolResult3.body.results).toHaveLength(0);
+    assert.equal(mempoolResult3.body.results.length, 0);
     const mempoolCount2 = await supertest(api.server).get(`/extended/v1/tx/mempool`);
-    expect(mempoolCount2.body.total).toBe(0);
+    assert.equal(mempoolCount2.body.total, 0);
     const mempoolResult4 = await supertest(api.server).get(
       `/extended/v1/tx/mempool?sender_address=${senderAddress}`
     );
-    expect(mempoolResult4.body.results).toHaveLength(0);
+    assert.equal(mempoolResult4.body.results.length, 0);
 
     // Verify tx still shows up as confirmed
     const txResult2 = await supertest(api.server).get(`/extended/v1/tx/${txId}`);
-    expect(txResult2.body.tx_status).toBe('success');
+    assert.equal(txResult2.body.tx_status, 'success');
   });
 
   test('Revive dropped and rebroadcasted mempool tx', async () => {
@@ -1606,15 +1606,15 @@ describe('mempool tests', () => {
     await db.updateMempoolTxs({ mempoolTxs: [mempoolTx] });
 
     let chainTip = await db.getChainTip(db.sql);
-    expect(chainTip.mempool_tx_count).toBe(1);
+    assert.equal(chainTip.mempool_tx_count, 1);
 
     // Verify tx shows up in mempool (non-pruned)
     const mempoolResult1 = await supertest(api.server).get(
       `/extended/v1/address/${mempoolTx.sender_address}/mempool`
     );
-    expect(mempoolResult1.body.results[0].tx_id).toBe(txId);
+    assert.equal(mempoolResult1.body.results[0].tx_id, txId);
     const mempoolCount1 = await supertest(api.server).get(`/extended/v1/tx/mempool`);
-    expect(mempoolCount1.body.total).toBe(1);
+    assert.equal(mempoolCount1.body.total, 1);
 
     // Drop mempool tx
     await db.dropMempoolTxs({
@@ -1627,11 +1627,11 @@ describe('mempool tests', () => {
     const mempoolResult2 = await supertest(api.server).get(
       `/extended/v1/address/${mempoolTx.sender_address}/mempool`
     );
-    expect(mempoolResult2.body.results).toHaveLength(0);
+    assert.equal(mempoolResult2.body.results.length, 0);
     const mempoolCount2 = await supertest(api.server).get(`/extended/v1/tx/mempool`);
-    expect(mempoolCount2.body.total).toBe(0);
+    assert.equal(mempoolCount2.body.total, 0);
     chainTip = await db.getChainTip(db.sql);
-    expect(chainTip.mempool_tx_count).toBe(0);
+    assert.equal(chainTip.mempool_tx_count, 0);
 
     // Re-broadcast mempool tx
     await db.updateMempoolTxs({ mempoolTxs: [mempoolTx] });
@@ -1640,11 +1640,11 @@ describe('mempool tests', () => {
     const mempoolResult3 = await supertest(api.server).get(
       `/extended/v1/address/${mempoolTx.sender_address}/mempool`
     );
-    expect(mempoolResult3.body.results[0].tx_id).toBe(txId);
+    assert.equal(mempoolResult3.body.results[0].tx_id, txId);
     const mempoolCount3 = await supertest(api.server).get(`/extended/v1/tx/mempool`);
-    expect(mempoolCount3.body.total).toBe(1);
+    assert.equal(mempoolCount3.body.total, 1);
     chainTip = await db.getChainTip(db.sql);
-    expect(chainTip.mempool_tx_count).toBe(1);
+    assert.equal(chainTip.mempool_tx_count, 1);
 
     // Mine tx in block to prune from mempool
     await db.update({
@@ -1673,16 +1673,16 @@ describe('mempool tests', () => {
     const mempoolResult4 = await supertest(api.server).get(
       `/extended/v1/address/${mempoolTx.sender_address}/mempool`
     );
-    expect(mempoolResult4.body.results).toHaveLength(0);
+    assert.equal(mempoolResult4.body.results.length, 0);
     const mempoolCount4 = await supertest(api.server).get(`/extended/v1/tx/mempool`);
-    expect(mempoolCount4.body.total).toBe(0);
+    assert.equal(mempoolCount4.body.total, 0);
     chainTip = await db.getChainTip(db.sql);
-    expect(chainTip.mempool_tx_count).toBe(0);
+    assert.equal(chainTip.mempool_tx_count, 0);
 
     // Verify tx is mined
     const txResult1 = await supertest(api.server).get(`/extended/v1/tx/${txId}`);
-    expect(txResult1.body.tx_status).toBe('success');
-    expect(txResult1.body.canonical).toBe(true);
+    assert.equal(txResult1.body.tx_status, 'success');
+    assert.equal(txResult1.body.canonical, true);
 
     // Orphan the block to get the tx orphaned and placed back in the pool
     await db.update({
@@ -1700,17 +1700,17 @@ describe('mempool tests', () => {
 
     // Verify tx is orphaned and back in mempool
     const txResult2 = await supertest(api.server).get(`/extended/v1/tx/${txId}`);
-    expect(txResult2.body.canonical).toBeFalsy();
+    assert.ok(!txResult2.body.canonical);
 
     // Verify tx has been revived and is back in the mempool
     const mempoolResult5 = await supertest(api.server).get(
       `/extended/v1/address/${mempoolTx.sender_address}/mempool`
     );
-    expect(mempoolResult5.body.results[0].tx_id).toBe(txId);
+    assert.equal(mempoolResult5.body.results[0].tx_id, txId);
     const mempoolCount5 = await supertest(api.server).get(`/extended/v1/tx/mempool`);
-    expect(mempoolCount5.body.total).toBe(1);
+    assert.equal(mempoolCount5.body.total, 1);
     chainTip = await db.getChainTip(db.sql);
-    expect(chainTip.mempool_tx_count).toBe(1);
+    assert.equal(chainTip.mempool_tx_count, 1);
 
     // Re-broadcast mempool tx
     await db.updateMempoolTxs({ mempoolTxs: [mempoolTx] });
@@ -1719,9 +1719,9 @@ describe('mempool tests', () => {
     const mempoolResult6 = await supertest(api.server).get(
       `/extended/v1/address/${mempoolTx.sender_address}/mempool`
     );
-    expect(mempoolResult6.body.results[0].tx_id).toBe(txId);
+    assert.equal(mempoolResult6.body.results[0].tx_id, txId);
     const mempoolCount6 = await supertest(api.server).get(`/extended/v1/tx/mempool`);
-    expect(mempoolCount6.body.total).toBe(1);
+    assert.equal(mempoolCount6.body.total, 1);
   });
 
   test('returns fee priorities for mempool transactions', async () => {
@@ -1797,7 +1797,7 @@ describe('mempool tests', () => {
     }
     await db.updateMempoolTxs({ mempoolTxs });
     const result = await supertest(api.server).get(`/extended/v2/mempool/fees`);
-    expect(result.body).toStrictEqual({
+    assert.deepEqual(result.body, {
       all: {
         high_priority: 855000,
         low_priority: 450000,
@@ -1848,8 +1848,8 @@ describe('mempool tests', () => {
       ],
     });
     let request = await supertest(api.server).get(`/extended/v1/tx/mempool`);
-    expect(request.body.total).toBe(1);
-    expect(request.body.results).toHaveLength(1);
+    assert.equal(request.body.total, 1);
+    assert.equal(request.body.results.length, 1);
 
     // Add another tx with nonce = 1 to the mempool with a higher fee. Previous tx is marked as
     // pruned and replaced.
@@ -1865,15 +1865,11 @@ describe('mempool tests', () => {
       ],
     });
     request = await supertest(api.server).get(`/extended/v1/tx/mempool`);
-    expect(request.body.total).toBe(1);
-    expect(request.body.results).toHaveLength(1);
+    assert.equal(request.body.total, 1);
+    assert.equal(request.body.results.length, 1);
     request = await supertest(api.server).get(`/extended/v1/tx/0xff0001`);
-    expect(request.body).toEqual(
-      expect.objectContaining({
-        tx_status: 'dropped_replace_by_fee',
-        replaced_by_tx_id: '0xff0002',
-      })
-    );
+    assert.equal(request.body.tx_status, 'dropped_replace_by_fee');
+    assert.equal(request.body.replaced_by_tx_id, '0xff0002');
 
     // Add yet another conflicting tx but our address is the sponsor. Since it has a lower fee, it
     // will be immediately marked as RBFd by 0xff0002.
@@ -1891,16 +1887,12 @@ describe('mempool tests', () => {
       ],
     });
     request = await supertest(api.server).get(`/extended/v1/tx/mempool`);
-    expect(request.body.total).toBe(1);
-    expect(request.body.results).toHaveLength(1);
-    expect(request.body.results[0].tx_id).toBe('0xff0002');
+    assert.equal(request.body.total, 1);
+    assert.equal(request.body.results.length, 1);
+    assert.equal(request.body.results[0].tx_id, '0xff0002');
     request = await supertest(api.server).get(`/extended/v1/tx/0xff0003`);
-    expect(request.body).toEqual(
-      expect.objectContaining({
-        tx_status: 'dropped_replace_by_fee',
-        replaced_by_tx_id: '0xff0002',
-      })
-    );
+    assert.equal(request.body.tx_status, 'dropped_replace_by_fee');
+    assert.equal(request.body.replaced_by_tx_id, '0xff0002');
 
     // Confirm a block containing a new tx with the same nonce = 1 by the same sender without it
     // ever touching the mempool
@@ -1922,22 +1914,14 @@ describe('mempool tests', () => {
 
     // Old mempool txs are now pruned and both marked as replaced by the confirmed tx.
     request = await supertest(api.server).get(`/extended/v1/tx/mempool`);
-    expect(request.body.total).toBe(0);
-    expect(request.body.results).toHaveLength(0);
+    assert.equal(request.body.total, 0);
+    assert.equal(request.body.results.length, 0);
     request = await supertest(api.server).get(`/extended/v1/tx/0xff0001`);
-    expect(request.body).toEqual(
-      expect.objectContaining({
-        tx_status: 'dropped_replace_by_fee',
-        replaced_by_tx_id: '0xaa0001',
-      })
-    );
+    assert.equal(request.body.tx_status, 'dropped_replace_by_fee');
+    assert.equal(request.body.replaced_by_tx_id, '0xaa0001');
     request = await supertest(api.server).get(`/extended/v1/tx/0xff0002`);
-    expect(request.body).toEqual(
-      expect.objectContaining({
-        tx_status: 'dropped_replace_by_fee',
-        replaced_by_tx_id: '0xaa0001',
-      })
-    );
+    assert.equal(request.body.tx_status, 'dropped_replace_by_fee');
+    assert.equal(request.body.replaced_by_tx_id, '0xaa0001');
 
     // Re-org block 2
     await db.update(
@@ -1958,36 +1942,20 @@ describe('mempool tests', () => {
     // Only the highest fee tx is restored to the mempool, and all others are pruned and marked as
     // RBFd by it.
     request = await supertest(api.server).get(`/extended/v1/tx/mempool`);
-    expect(request.body.total).toBe(1);
-    expect(request.body.results).toHaveLength(1);
+    assert.equal(request.body.total, 1);
+    assert.equal(request.body.results.length, 1);
     request = await supertest(api.server).get(`/extended/v1/tx/0xff0002`); // Winner
-    expect(request.body).toEqual(
-      expect.objectContaining({
-        tx_status: 'pending',
-        replaced_by_tx_id: null,
-      })
-    );
+    assert.equal(request.body.tx_status, 'pending');
+    assert.equal(request.body.replaced_by_tx_id, null);
     request = await supertest(api.server).get(`/extended/v1/tx/0xff0001`);
-    expect(request.body).toEqual(
-      expect.objectContaining({
-        tx_status: 'dropped_replace_by_fee',
-        replaced_by_tx_id: '0xff0002',
-      })
-    );
+    assert.equal(request.body.tx_status, 'dropped_replace_by_fee');
+    assert.equal(request.body.replaced_by_tx_id, '0xff0002');
     request = await supertest(api.server).get(`/extended/v1/tx/0xaa0001`);
-    expect(request.body).toEqual(
-      expect.objectContaining({
-        tx_status: 'dropped_replace_by_fee',
-        replaced_by_tx_id: '0xff0002',
-      })
-    );
+    assert.equal(request.body.tx_status, 'dropped_replace_by_fee');
+    assert.equal(request.body.replaced_by_tx_id, '0xff0002');
     request = await supertest(api.server).get(`/extended/v1/tx/0xff0003`);
-    expect(request.body).toEqual(
-      expect.objectContaining({
-        tx_status: 'dropped_replace_by_fee',
-        replaced_by_tx_id: '0xff0002',
-      })
-    );
+    assert.equal(request.body.tx_status, 'dropped_replace_by_fee');
+    assert.equal(request.body.replaced_by_tx_id, '0xff0002');
   });
 
   test('account estimated balance from mempool activity', async () => {
@@ -2010,10 +1978,10 @@ describe('mempool tests', () => {
 
     // Base balance
     const balance0 = await supertest(api.server).get(url);
-    expect(balance0.body.balance).toEqual('2000');
-    expect(balance0.body.estimated_balance).toEqual('2000');
-    expect(balance0.body.pending_balance_inbound).toEqual('0');
-    expect(balance0.body.pending_balance_outbound).toEqual('0');
+    assert.deepEqual(balance0.body.balance, '2000');
+    assert.deepEqual(balance0.body.estimated_balance, '2000');
+    assert.deepEqual(balance0.body.pending_balance_inbound, '0');
+    assert.deepEqual(balance0.body.pending_balance_outbound, '0');
 
     // STX transfer in mempool
     await db.updateMempoolTxs({
@@ -2028,10 +1996,10 @@ describe('mempool tests', () => {
       ],
     });
     const balance1 = await supertest(api.server).get(url);
-    expect(balance1.body.balance).toEqual('2000');
-    expect(balance1.body.estimated_balance).toEqual('1850'); // Minus amount and fee
-    expect(balance1.body.pending_balance_inbound).toEqual('0');
-    expect(balance1.body.pending_balance_outbound).toEqual('150');
+    assert.deepEqual(balance1.body.balance, '2000');
+    assert.deepEqual(balance1.body.estimated_balance, '1850'); // Minus amount and fee
+    assert.deepEqual(balance1.body.pending_balance_inbound, '0');
+    assert.deepEqual(balance1.body.pending_balance_outbound, '150');
 
     // Contract call in mempool
     await db.updateMempoolTxs({
@@ -2050,10 +2018,10 @@ describe('mempool tests', () => {
       ],
     });
     const balance1b = await supertest(api.server).get(url);
-    expect(balance1b.body.balance).toEqual('2000');
-    expect(balance1b.body.estimated_balance).toEqual('1800'); // Minus fee
-    expect(balance1b.body.pending_balance_inbound).toEqual('0');
-    expect(balance1b.body.pending_balance_outbound).toEqual('200');
+    assert.deepEqual(balance1b.body.balance, '2000');
+    assert.deepEqual(balance1b.body.estimated_balance, '1800'); // Minus fee
+    assert.deepEqual(balance1b.body.pending_balance_inbound, '0');
+    assert.deepEqual(balance1b.body.pending_balance_outbound, '200');
 
     // Sponsored tx in mempool
     await db.updateMempoolTxs({
@@ -2069,10 +2037,10 @@ describe('mempool tests', () => {
       ],
     });
     const balance2 = await supertest(api.server).get(url);
-    expect(balance2.body.balance).toEqual('2000');
-    expect(balance2.body.estimated_balance).toEqual('1750'); // Minus fee
-    expect(balance2.body.pending_balance_inbound).toEqual('0');
-    expect(balance2.body.pending_balance_outbound).toEqual('250');
+    assert.deepEqual(balance2.body.balance, '2000');
+    assert.deepEqual(balance2.body.estimated_balance, '1750'); // Minus fee
+    assert.deepEqual(balance2.body.pending_balance_inbound, '0');
+    assert.deepEqual(balance2.body.pending_balance_outbound, '250');
 
     // STX received in mempool
     await db.updateMempoolTxs({
@@ -2087,18 +2055,18 @@ describe('mempool tests', () => {
       ],
     });
     const balance3 = await supertest(api.server).get(url);
-    expect(balance3.body.balance).toEqual('2000');
-    expect(balance3.body.estimated_balance).toEqual('1850'); // Plus amount
-    expect(balance3.body.pending_balance_inbound).toEqual('100');
-    expect(balance3.body.pending_balance_outbound).toEqual('250');
+    assert.deepEqual(balance3.body.balance, '2000');
+    assert.deepEqual(balance3.body.estimated_balance, '1850'); // Plus amount
+    assert.deepEqual(balance3.body.pending_balance_inbound, '100');
+    assert.deepEqual(balance3.body.pending_balance_outbound, '250');
 
     const balanceV2_1 = await supertest(api.server).get(
       `/extended/v2/addresses/${address}/balances/stx?include_mempool=true`
     );
-    expect(balanceV2_1.body.balance).toEqual('2000');
-    expect(balanceV2_1.body.estimated_balance).toEqual('1850'); // Plus amount
-    expect(balanceV2_1.body.pending_balance_inbound).toEqual('100');
-    expect(balanceV2_1.body.pending_balance_outbound).toEqual('250');
+    assert.deepEqual(balanceV2_1.body.balance, '2000');
+    assert.deepEqual(balanceV2_1.body.estimated_balance, '1850'); // Plus amount
+    assert.deepEqual(balanceV2_1.body.pending_balance_inbound, '100');
+    assert.deepEqual(balanceV2_1.body.pending_balance_outbound, '250');
 
     // Confirm all txs
     await db.update(
@@ -2145,17 +2113,17 @@ describe('mempool tests', () => {
         .build()
     );
     const balance4 = await supertest(api.server).get(url);
-    expect(balance4.body.balance).toEqual('1850');
-    expect(balance4.body.estimated_balance).toEqual('1850');
-    expect(balance4.body.pending_balance_inbound).toEqual('0');
-    expect(balance4.body.pending_balance_outbound).toEqual('0');
+    assert.deepEqual(balance4.body.balance, '1850');
+    assert.deepEqual(balance4.body.estimated_balance, '1850');
+    assert.deepEqual(balance4.body.pending_balance_inbound, '0');
+    assert.deepEqual(balance4.body.pending_balance_outbound, '0');
 
     const balanceV2_2 = await supertest(api.server).get(
       `/extended/v2/addresses/${address}/balances/stx?include_mempool=true`
     );
-    expect(balanceV2_2.body.balance).toEqual('1850');
-    expect(balanceV2_2.body.estimated_balance).toEqual('1850');
-    expect(balanceV2_2.body.pending_balance_inbound).toEqual('0');
-    expect(balanceV2_2.body.pending_balance_outbound).toEqual('0');
+    assert.deepEqual(balanceV2_2.body.balance, '1850');
+    assert.deepEqual(balanceV2_2.body.estimated_balance, '1850');
+    assert.deepEqual(balanceV2_2.body.pending_balance_inbound, '0');
+    assert.deepEqual(balanceV2_2.body.pending_balance_outbound, '0');
   });
 });

@@ -3,10 +3,17 @@ import * as btc from 'bitcoinjs-lib';
 import * as ecc from 'tiny-secp256k1';
 import { mapSeriesAsync } from './helpers.js';
 import coinselect from 'coinselect';
-import { ECPair, ECPairInterface, validateSigFunction } from './ec-helpers.js';
 import { BtcFaucetConfigError } from './errors.js';
 import { time, logger } from '@stacks/api-toolkit';
 import { ENV } from './env.js';
+import type { ECPairAPI, ECPairInterface } from 'ecpair';
+import { ECPairFactory } from 'ecpair';
+
+const ECPair: ECPairAPI = ECPairFactory(ecc);
+
+function validateSigFunction(pubkey: Buffer, msghash: Buffer, signature: Buffer): boolean {
+  return ECPair.fromPublicKey(pubkey).verify(msghash, signature);
+}
 
 function getFaucetPk(): string {
   const BTC_FAUCET_PK = ENV.BTC_FAUCET_PK;

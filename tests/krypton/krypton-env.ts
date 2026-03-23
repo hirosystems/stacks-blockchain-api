@@ -22,7 +22,7 @@ import { FAUCET_TESTNET_KEYS } from '../../src/api/routes/faucets.ts';
 import { AddressStxBalance } from '../../src/api/schemas/entities/addresses.ts';
 import { ServerStatusResponse } from '../../src/api/schemas/responses/responses.ts';
 import { DbBlock, DbTx, DbTxStatus } from '../../src/datastore/common.ts';
-import { BitcoinAddressFormat, ECPair, getBitcoinAddressFromKey } from '../../src/ec-helpers.ts';
+import { BitcoinAddressFormat, ECPair, getBitcoinAddressFromKey } from './ec-helpers.ts';
 import supertest from 'supertest';
 import assert from 'node:assert/strict';
 

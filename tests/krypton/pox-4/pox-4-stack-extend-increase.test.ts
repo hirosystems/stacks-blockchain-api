@@ -1,5 +1,5 @@
 import { CoreRpcPoxInfo } from '../../../src/core-rpc/client.ts';
-import { getBitcoinAddressFromKey, privateToPublicKey } from '../../../src/ec-helpers.ts';
+import { getBitcoinAddressFromKey, privateToPublicKey } from '../ec-helpers.ts';
 import {
   AnchorMode,
   StacksPrivateKey,

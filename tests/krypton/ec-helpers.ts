@@ -4,13 +4,7 @@ import type { ECPairAPI, ECPairInterface } from 'ecpair';
 import { ECPairFactory } from 'ecpair';
 import { coerceToBuffer } from '@stacks/api-toolkit';
 
-export { ECPairInterface };
-
 export const ECPair: ECPairAPI = ECPairFactory(ecc);
-
-export function validateSigFunction(pubkey: Buffer, msghash: Buffer, signature: Buffer): boolean {
-  return ECPair.fromPublicKey(pubkey).verify(msghash, signature);
-}
 
 const BITCOIN_NETWORKS = {
   mainnet: bitcoin.networks.bitcoin,

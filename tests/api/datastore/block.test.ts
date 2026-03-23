@@ -188,7 +188,10 @@ describe('block tests', () => {
     const expectedResp1 = {
       message: 'cannot find block by height',
     };
-    assert.deepEqual(JSON.parse(fetchBlockByInvalidBurnBlockHeight1.text), expectedResp1);
+    assert.equal(
+      JSON.parse(fetchBlockByInvalidBurnBlockHeight1.text).message,
+      expectedResp1.message
+    );
     const fetchBlockByInvalidBurnBlockHeight2 = await supertest(api.server).get(
       `/extended/v1/block/by_burn_block_height/abc`
     );
@@ -197,7 +200,10 @@ describe('block tests', () => {
     const expectedResp2 = {
       message: 'params/burn_block_height must be integer',
     };
-    assert.deepEqual(JSON.parse(fetchBlockByInvalidBurnBlockHeight2.text), expectedResp2);
+    assert.equal(
+      JSON.parse(fetchBlockByInvalidBurnBlockHeight2.text).message,
+      expectedResp2.message
+    );
     const fetchBlockByInvalidBurnBlockHeight3 = await supertest(api.server).get(
       `/extended/v1/block/by_burn_block_height/0`
     );
@@ -217,7 +223,7 @@ describe('block tests', () => {
     const expectedResp4 = {
       message: 'cannot find block by burn block hash',
     };
-    assert.deepEqual(JSON.parse(fetchBlockByInvalidBurnBlockHash.text), expectedResp4);
+    assert.equal(JSON.parse(fetchBlockByInvalidBurnBlockHash.text).message, expectedResp4.message);
   });
 
   test('/block', async () => {

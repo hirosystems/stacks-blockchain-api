@@ -1,6 +1,6 @@
 import supertest from 'supertest';
 import * as bitcoin from 'bitcoinjs-lib';
-import { ECPair } from '../../../src/ec-helpers.ts';
+import { ECPair } from '../ec-helpers.ts';
 import {
   makeBtcFaucetPayment,
   getFaucetAccount,

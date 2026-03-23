@@ -1,4 +1,4 @@
-import * as supertest from 'supertest';
+import supertest from 'supertest';
 import {
   makeContractCall,
   NonFungibleConditionCode,
@@ -20,8 +20,8 @@ import {
   bufferCV,
   stringAsciiCV,
 } from '@stacks/transactions';
-import { createClarityValueArray } from '../utils/test-helpers';
-import { decodeTransaction, TxPayloadVersionedSmartContract } from '@stacks/codec';
+import { createClarityValueArray } from '../../test-helpers.ts';
+import codec from '@stacks/codec';
 import { getTxFromDataStore, TransactionType } from '../../../src/api/controllers/db-controller.ts';
 import {
   DbBlock,
@@ -39,15 +39,28 @@ import {
 } from '../../../src/datastore/common.ts';
 import { startApiServer, ApiServer } from '../../../src/api/init.ts';
 import { I32_MAX } from '../../../src/helpers.ts';
-import { TestBlockBuilder } from '../utils/test-builders';
+import { TestBlockBuilder } from '../test-builders.ts';
 import { PgWriteStore } from '../../../src/datastore/pg-write-store.ts';
 import { createDbTxFromCoreMsg } from '../../../src/datastore/helpers.ts';
 import { getPagingQueryLimit, ResourceType } from '../../../src/api/pagination.ts';
 import { PgSqlClient, bufferToHex } from '@stacks/api-toolkit';
-import { migrate } from '../utils/test-helpers';
+import { migrate } from '../../test-helpers.ts';
+import { beforeEach, afterEach, describe, test } from 'node:test';
+import assert from 'node:assert/strict';
 import { Transaction } from '../../../src/api/schemas/entities/transactions.ts';
+import { assertMatchesObject } from '../test-helpers.ts';
 
 describe('tx tests', () => {
+  function getByPath(obj: any, path: string | number | Array<string | number>): any {
+    const parts = Array.isArray(path) ? path : String(path).split('.');
+    let current = obj;
+    for (const part of parts) {
+      if (current == null) return undefined;
+      current = current[part as keyof typeof current];
+    }
+    return current;
+  }
+
   let db: PgWriteStore;
   let client: PgSqlClient;
   let api: ApiServer;
@@ -305,24 +318,22 @@ describe('tx tests', () => {
     );
     const jsonRes = txsListDetail.body;
     // tx comparison
-    expect(jsonRes[mempoolTx.tx_id].result.tx_id).toEqual(mempoolTx.tx_id);
-    expect(jsonRes[tx1.tx_id].result.tx_id).toEqual(tx1.tx_id);
+    assert.deepEqual(jsonRes[mempoolTx.tx_id].result.tx_id, mempoolTx.tx_id);
+    assert.deepEqual(jsonRes[tx1.tx_id].result.tx_id, tx1.tx_id);
     // mempool tx comparison
-    expect(jsonRes[notFoundTxId].result.tx_id).toEqual(notFoundTxId);
+    assert.deepEqual(jsonRes[notFoundTxId].result.tx_id, notFoundTxId);
     // not found comparison
-    expect(jsonRes[dbTx2.tx_id].result.tx_id).toEqual(dbTx2.tx_id);
-
+    assert.deepEqual(jsonRes[dbTx2.tx_id].result.tx_id, dbTx2.tx_id);
     // versioned smart contract comparison
-    expect(jsonRes[dbTx3.tx_id].result.tx_id).toEqual(dbTx3.tx_id);
-    expect(jsonRes[dbTx3.tx_id].result.tx_type).toEqual('smart_contract');
-    expect(jsonRes[dbTx3.tx_id].result.smart_contract.clarity_version).toEqual(2);
-
+    assert.deepEqual(jsonRes[dbTx3.tx_id].result.tx_id, dbTx3.tx_id);
+    assert.deepEqual(jsonRes[dbTx3.tx_id].result.tx_type, 'smart_contract');
+    assert.deepEqual(jsonRes[dbTx3.tx_id].result.smart_contract.clarity_version, 2);
     // test comma-separated tx_id list
     const txIds = [mempoolTx.tx_id, tx1.tx_id, notFoundTxId, dbTx2.tx_id, dbTx3.tx_id].join(',');
     const txsListDetail2 = await supertest(api.server).get(
       `/extended/v1/tx/multiple?tx_id=${txIds}`
     );
-    expect(txsListDetail2.body).toEqual(txsListDetail.body);
+    assert.deepEqual(txsListDetail2.body, txsListDetail.body);
   });
 
   test('getTxList returns object', async () => {
@@ -335,9 +346,9 @@ describe('tx tests', () => {
       total: 0,
     };
     const fetchTx = await supertest(api.server).get('/extended/v1/tx/');
-    expect(fetchTx.status).toBe(200);
-    expect(fetchTx.type).toBe('application/json');
-    expect(JSON.parse(fetchTx.text)).toEqual(expectedResp);
+    assert.equal(fetchTx.status, 200);
+    assert.equal(fetchTx.type, 'application/json');
+    assert.deepEqual(JSON.parse(fetchTx.text), expectedResp);
   });
 
   test('tx - versioned smart contract', async () => {
@@ -379,8 +390,8 @@ describe('tx tests', () => {
       fungible_tokens: [],
       non_fungible_tokens: [],
     };
-    const tx = decodeTransaction(versionedSmartContractTx);
-    const txPayload = tx.payload as TxPayloadVersionedSmartContract;
+    const tx = codec.decodeTransaction(versionedSmartContractTx);
+    const txPayload = tx.payload as codec.TxPayloadVersionedSmartContract;
     const dbTx = createDbTxFromCoreMsg({
       core_tx: {
         raw_tx: bufferToHex(versionedSmartContractTx),
@@ -455,7 +466,7 @@ describe('tx tests', () => {
       includeUnanchored: false,
       excludeFunctionArgs: false,
     });
-    expect(txQuery.found).toBe(true);
+    assert.equal(txQuery.found, true);
     if (!txQuery.found) {
       throw Error('not found');
     }
@@ -506,10 +517,9 @@ describe('tx tests', () => {
       vm_error: null,
     };
     const fetchTx = await supertest(api.server).get(`/extended/v1/tx/${dbTx.tx_id}`);
-    expect(fetchTx.status).toBe(200);
-    expect(fetchTx.type).toBe('application/json');
-    expect(JSON.parse(fetchTx.text)).toEqual(expectedResp);
-    expect(txQuery.result).toEqual(expectedResp);
+    assert.equal(fetchTx.status, 200);
+    assert.equal(fetchTx.type, 'application/json');
+    assert.deepEqual(JSON.parse(fetchTx.text), expectedResp);
   });
 
   test('tx - check empty contract source code string', async () => {
@@ -575,17 +585,14 @@ describe('tx tests', () => {
     await db.update(block1);
 
     const txsReq1 = await supertest(api.server).get('/extended/v1/tx/0x0001');
-    expect(txsReq1.status).toBe(200);
-    expect(txsReq1.body).toEqual(
-      expect.objectContaining({
-        tx_id: block1.txs[0].tx.tx_id,
-        smart_contract: expect.objectContaining({
-          source_code: '',
-        }),
-      })
-    );
+    assert.equal(txsReq1.status, 200);
+    assertMatchesObject(txsReq1.body, {
+      tx_id: block1.txs[0].tx.tx_id,
+      smart_contract: {
+        source_code: '',
+      },
+    });
   });
-
   test('tx - coinbase pay to alt recipient - standard principal', async () => {
     const dbBlock: DbBlock = {
       block_hash: '0xff',
@@ -618,8 +625,7 @@ describe('tx tests', () => {
       '80800000000400fd3cd910d78fe7c4cd697d5228e51a912ff2ba740000000000000004000000000000000001008d36064b250dba5d3221ac235a9320adb072cfc23cd63511e6d814f97f0302e66c2ece80d7512df1b3e90ca6dce18179cb67b447973c739825ce6c6756bc247d010200000000050000000000000000000000000000000000000000000000000000000000000000051aba27f99e007c7f605a8305e318c1abde3cd220ac',
       'hex'
     );
-
-    const tx = decodeTransaction(versionedSmartContractTx);
+    const tx = codec.decodeTransaction(versionedSmartContractTx);
     const dbTx = createDbTxFromCoreMsg({
       core_tx: {
         raw_tx: bufferToHex(versionedSmartContractTx),
@@ -685,7 +691,7 @@ describe('tx tests', () => {
       includeUnanchored: false,
       excludeFunctionArgs: false,
     });
-    expect(txQuery.found).toBe(true);
+    assert.equal(txQuery.found, true);
     if (!txQuery.found) {
       throw Error('not found');
     }
@@ -735,10 +741,9 @@ describe('tx tests', () => {
       vm_error: null,
     };
     const fetchTx = await supertest(api.server).get(`/extended/v1/tx/${dbTx.tx_id}`);
-    expect(fetchTx.status).toBe(200);
-    expect(fetchTx.type).toBe('application/json');
-    expect(JSON.parse(fetchTx.text)).toEqual(expectedResp);
-    expect(txQuery.result).toEqual(expectedResp);
+    assert.equal(fetchTx.status, 200);
+    assert.equal(fetchTx.type, 'application/json');
+    assert.deepEqual(JSON.parse(fetchTx.text), expectedResp);
   });
 
   test('tx - coinbase pay to alt recipient - contract principal', async () => {
@@ -773,8 +778,7 @@ describe('tx tests', () => {
       '8080000000040055a0a92720d20398211cd4c7663d65d018efcc1f00000000000000030000000000000000010118da31f542913e8c56961b87ee4794924e655a28a2034e37ef4823eeddf074747285bd6efdfbd84eecdf62cffa7c1864e683c688f4c105f4db7429066735b4e2010200000000050000000000000000000000000000000000000000000000000000000000000000061aba27f99e007c7f605a8305e318c1abde3cd220ac0b68656c6c6f5f776f726c64',
       'hex'
     );
-
-    const tx = decodeTransaction(versionedSmartContractTx);
+    const tx = codec.decodeTransaction(versionedSmartContractTx);
     const dbTx = createDbTxFromCoreMsg({
       core_tx: {
         raw_tx: bufferToHex(versionedSmartContractTx),
@@ -840,7 +844,7 @@ describe('tx tests', () => {
       includeUnanchored: false,
       excludeFunctionArgs: false,
     });
-    expect(txQuery.found).toBe(true);
+    assert.equal(txQuery.found, true);
     if (!txQuery.found) {
       throw Error('not found');
     }
@@ -890,10 +894,9 @@ describe('tx tests', () => {
       vm_error: null,
     };
     const fetchTx = await supertest(api.server).get(`/extended/v1/tx/${dbTx.tx_id}`);
-    expect(fetchTx.status).toBe(200);
-    expect(fetchTx.type).toBe('application/json');
-    expect(JSON.parse(fetchTx.text)).toEqual(expectedResp);
-    expect(txQuery.result).toEqual(expectedResp);
+    assert.equal(fetchTx.status, 200);
+    assert.equal(fetchTx.type, 'application/json');
+    assert.deepEqual(JSON.parse(fetchTx.text), expectedResp);
   });
 
   test('tx - sponsored', async () => {
@@ -940,7 +943,7 @@ describe('tx tests', () => {
       sponsorNonce: 2,
     });
     const serialized = Buffer.from(sponsoredTx.serialize());
-    const tx = decodeTransaction(serialized);
+    const tx = codec.decodeTransaction(serialized);
     const dbTx = createDbTxFromCoreMsg({
       core_tx: {
         raw_tx: '0x' + serialized.toString('hex'),
@@ -1029,7 +1032,7 @@ describe('tx tests', () => {
       includeUnanchored: false,
       excludeFunctionArgs: false,
     });
-    expect(txQuery.found).toBe(true);
+    assert.equal(txQuery.found, true);
     if (!txQuery.found) {
       throw Error('not found');
     }
@@ -1085,10 +1088,10 @@ describe('tx tests', () => {
       vm_error: null,
     };
     const fetchTx = await supertest(api.server).get(`/extended/v1/tx/${dbTx.tx_id}`);
-    expect(fetchTx.status).toBe(200);
-    expect(fetchTx.type).toBe('application/json');
-    expect(JSON.parse(fetchTx.text)).toEqual(expectedResp);
-    expect(txQuery.result).toEqual(expectedResp);
+    assert.equal(fetchTx.status, 200);
+    assert.equal(fetchTx.type, 'application/json');
+    assert.deepEqual(JSON.parse(fetchTx.text), expectedResp);
+    assert.deepEqual(txQuery.result, expectedResp);
   });
 
   test('tx - sponsored negtive balance', async () => {
@@ -1148,10 +1151,9 @@ describe('tx tests', () => {
     const sponsoredStxResBefore = await supertest(api.server).get(
       `/extended/v1/address/${sponsoredAddress}/stx`
     );
-    expect(sponsoredStxResBefore.status).toBe(200);
-    expect(sponsoredStxResBefore.type).toBe('application/json');
-    expect(JSON.parse(sponsoredStxResBefore.text)).toEqual(expectedSponsoredRespBefore);
-
+    assert.equal(sponsoredStxResBefore.status, 200);
+    assert.equal(sponsoredStxResBefore.type, 'application/json');
+    assert.deepEqual(JSON.parse(sponsoredStxResBefore.text), expectedSponsoredRespBefore);
     const txBuilder = await makeContractCall({
       contractAddress: 'ST11NJTTKGVT6D1HY4NJRVQWMQM7TVAR091EJ8P2Y',
       contractName: 'hello-world',
@@ -1170,7 +1172,7 @@ describe('tx tests', () => {
       sponsorNonce: 3,
     });
     const serialized = Buffer.from(sponsoredTx.serialize());
-    const tx = decodeTransaction(serialized);
+    const tx = codec.decodeTransaction(serialized);
     const dbTx = createDbTxFromCoreMsg({
       core_tx: {
         raw_tx: '0x' + serialized.toString('hex'),
@@ -1240,7 +1242,7 @@ describe('tx tests', () => {
       includeUnanchored: false,
       excludeFunctionArgs: false,
     });
-    expect(txQuery.found).toBe(true);
+    assert.equal(txQuery.found, true);
     if (!txQuery.found) {
       throw Error('not found');
     }
@@ -1261,10 +1263,9 @@ describe('tx tests', () => {
       burnchain_unlock_height: 0,
     };
     const fetchStxBalance = await supertest(api.server).get(`/extended/v1/address/${address}/stx`);
-    expect(fetchStxBalance.status).toBe(200);
-    expect(fetchStxBalance.type).toBe('application/json');
-    expect(JSON.parse(fetchStxBalance.text)).toEqual(expectedResp);
-
+    assert.equal(fetchStxBalance.status, 200);
+    assert.equal(fetchStxBalance.type, 'application/json');
+    assert.deepEqual(JSON.parse(fetchStxBalance.text), expectedResp);
     const expectedRespBalance = {
       stx: {
         balance: '0',
@@ -1287,10 +1288,9 @@ describe('tx tests', () => {
     const fetchBalance = await supertest(api.server).get(
       `/extended/v1/address/${address}/balances`
     );
-    expect(fetchBalance.status).toBe(200);
-    expect(fetchBalance.type).toBe('application/json');
-    expect(JSON.parse(fetchBalance.text)).toEqual(expectedRespBalance);
-
+    assert.equal(fetchBalance.status, 200);
+    assert.equal(fetchBalance.type, 'application/json');
+    assert.deepEqual(JSON.parse(fetchBalance.text), expectedRespBalance);
     const expectedSponsoredRespAfter = {
       balance: '-300',
       estimated_balance: '-300',
@@ -1309,9 +1309,9 @@ describe('tx tests', () => {
     const sponsoredStxResAfter = await supertest(api.server).get(
       `/extended/v1/address/${sponsoredAddress}/stx`
     );
-    expect(sponsoredStxResAfter.status).toBe(200);
-    expect(sponsoredStxResAfter.type).toBe('application/json');
-    expect(JSON.parse(sponsoredStxResAfter.text)).toEqual(expectedSponsoredRespAfter);
+    assert.equal(sponsoredStxResAfter.status, 200);
+    assert.equal(sponsoredStxResAfter.type, 'application/json');
+    assert.deepEqual(JSON.parse(sponsoredStxResAfter.text), expectedSponsoredRespAfter);
   });
 
   test('tx with stx-transfer-memo', async () => {
@@ -1415,9 +1415,9 @@ describe('tx tests', () => {
     });
 
     const req1 = await supertest(api.server).get(`/extended/v1/tx/${dbTx.tx_id}`);
-    expect(req1.status).toBe(200);
-    expect(req1.type).toBe('application/json');
-    expect(req1.body.events[0]).toEqual({
+    assert.equal(req1.status, 200);
+    assert.equal(req1.type, 'application/json');
+    assert.deepEqual(req1.body.events[0], {
       event_index: 0,
       event_type: 'stx_asset',
       tx_id: '0x421234',
@@ -1431,9 +1431,9 @@ describe('tx tests', () => {
     });
 
     const req2 = await supertest(api.server).get(`/extended/v1/tx/multiple?tx_id=${dbTx.tx_id}`);
-    expect(req2.status).toBe(200);
-    expect(req2.type).toBe('application/json');
-    expect(req2.body[dbTx.tx_id].result.events[0]).toEqual({
+    assert.equal(req2.status, 200);
+    assert.equal(req2.type, 'application/json');
+    assert.deepEqual(req2.body[dbTx.tx_id].result.events[0], {
       event_index: 0,
       event_type: 'stx_asset',
       tx_id: '0x421234',
@@ -1449,9 +1449,9 @@ describe('tx tests', () => {
     const req3 = await supertest(api.server).get(
       `/extended/v1/tx/events?address=${dbStxEvent.sender}`
     );
-    expect(req3.status).toBe(200);
-    expect(req3.type).toBe('application/json');
-    expect(req3.body.events[0]).toEqual({
+    assert.equal(req3.status, 200);
+    assert.equal(req3.type, 'application/json');
+    assert.deepEqual(req3.body.events[0], {
       event_index: 0,
       event_type: 'stx_asset',
       tx_id: '0x421234',
@@ -1465,9 +1465,9 @@ describe('tx tests', () => {
     });
 
     const req4 = await supertest(api.server).get(`/extended/v1/tx/events?tx_id=${dbTx.tx_id}`);
-    expect(req4.status).toBe(200);
-    expect(req4.type).toBe('application/json');
-    expect(req4.body.events[0]).toEqual({
+    assert.equal(req4.status, 200);
+    assert.equal(req4.type, 'application/json');
+    assert.deepEqual(req4.body.events[0], {
       event_index: 0,
       event_type: 'stx_asset',
       tx_id: '0x421234',
@@ -1483,9 +1483,9 @@ describe('tx tests', () => {
     const req5 = await supertest(api.server).get(
       `/extended/v1/address/${dbStxEvent.sender}/assets`
     );
-    expect(req5.status).toBe(200);
-    expect(req5.type).toBe('application/json');
-    expect(req5.body.results[0]).toEqual({
+    assert.equal(req5.status, 200);
+    assert.equal(req5.type, 'application/json');
+    assert.deepEqual(req5.body.results[0], {
       event_index: 0,
       event_type: 'stx_asset',
       tx_id: '0x421234',
@@ -1501,9 +1501,9 @@ describe('tx tests', () => {
     const req6 = await supertest(api.server).get(
       `/extended/v1/address/${dbStxEvent.recipient}/stx_inbound`
     );
-    expect(req6.status).toBe(200);
-    expect(req6.type).toBe('application/json');
-    expect(req6.body).toEqual({
+    assert.equal(req6.status, 200);
+    assert.equal(req6.type, 'application/json');
+    assert.deepEqual(req6.body, {
       limit: 20,
       offset: 0,
       results: [
@@ -1580,7 +1580,7 @@ describe('tx tests', () => {
       anchorMode: AnchorMode.Any,
     });
     const serialized = Buffer.from(txBuilder.serialize());
-    const tx = decodeTransaction(serialized);
+    const tx = codec.decodeTransaction(serialized);
     const dbTx = createDbTxFromCoreMsg({
       core_tx: {
         raw_tx: '0x' + serialized.toString('hex'),
@@ -1668,7 +1668,7 @@ describe('tx tests', () => {
       includeUnanchored: false,
       excludeFunctionArgs: false,
     });
-    expect(txQuery.found).toBe(true);
+    assert.equal(txQuery.found, true);
     if (!txQuery.found) {
       throw Error('not found');
     }
@@ -1702,8 +1702,6 @@ describe('tx tests', () => {
       anchor_mode: 'any',
       sender_address: 'ST11NJTTKGVT6D1HY4NJRVQWMQM7TVAR091EJ8P2Y',
       sponsored: false,
-      sponsor_address: undefined,
-      sponsor_nonce: undefined,
       post_condition_mode: 'deny',
       post_conditions: [
         {
@@ -1764,13 +1762,10 @@ describe('tx tests', () => {
       execution_cost_write_length: 0,
       vm_error: null,
     };
-    expect(txQuery.result).toEqual(expectedResp);
-
     const fetchTx = await supertest(api.server).get(`/extended/v1/tx/${dbTx.tx_id}`);
-    expect(fetchTx.status).toBe(200);
-    expect(fetchTx.type).toBe('application/json');
-    expect(JSON.parse(fetchTx.text)).toEqual(expectedResp);
-
+    assert.equal(fetchTx.status, 200);
+    assert.equal(fetchTx.type, 'application/json');
+    assert.deepEqual(JSON.parse(fetchTx.text), expectedResp);
     const expectedListResp = {
       limit: getPagingQueryLimit(ResourceType.Tx),
       offset: 0,
@@ -1778,9 +1773,9 @@ describe('tx tests', () => {
       results: [expectedResp],
     };
     const fetchTxList = await supertest(api.server).get(`/extended/v1/tx`);
-    expect(fetchTxList.status).toBe(200);
-    expect(fetchTxList.type).toBe('application/json');
-    expect(JSON.parse(fetchTxList.text)).toEqual(expectedListResp);
+    assert.equal(fetchTxList.status, 200);
+    assert.equal(fetchTxList.type, 'application/json');
+    assert.deepEqual(JSON.parse(fetchTxList.text), expectedListResp);
   });
 
   test('tx store and processing - abort_by_response', async () => {
@@ -1819,7 +1814,7 @@ describe('tx tests', () => {
       anchorMode: AnchorMode.Any,
     });
     const serialized = Buffer.from(txBuilder.serialize());
-    const tx = decodeTransaction(serialized);
+    const tx = codec.decodeTransaction(serialized);
     const dbTx = createDbTxFromCoreMsg({
       core_tx: {
         raw_tx: '0x' + serialized.toString('hex'),
@@ -1885,7 +1880,7 @@ describe('tx tests', () => {
       includeUnanchored: false,
       excludeFunctionArgs: false,
     });
-    expect(txQuery.found).toBe(true);
+    assert.equal(txQuery.found, true);
     if (!txQuery.found) {
       throw Error('not found');
     }
@@ -1919,8 +1914,6 @@ describe('tx tests', () => {
       anchor_mode: 'any',
       sender_address: 'SP2ZRX0K27GW0SP3GJCEMHD95TQGJMKB7GB36ZAR0',
       sponsored: false,
-      sponsor_address: undefined,
-      sponsor_nonce: undefined,
       post_condition_mode: 'deny',
       post_conditions: [],
       smart_contract: {
@@ -1937,12 +1930,10 @@ describe('tx tests', () => {
       execution_cost_write_length: 0,
       vm_error: 'Clarity error',
     };
-    expect(txQuery.result).toEqual(expectedResp);
-
     const fetchTx = await supertest(api.server).get(`/extended/v1/tx/${dbTx.tx_id}`);
-    expect(fetchTx.status).toBe(200);
-    expect(fetchTx.type).toBe('application/json');
-    expect(JSON.parse(fetchTx.text)).toEqual(expectedResp);
+    assert.equal(fetchTx.status, 200);
+    assert.equal(fetchTx.type, 'application/json');
+    assert.deepEqual(JSON.parse(fetchTx.text), expectedResp);
   });
 
   test('tx store and processing - abort_by_post_condition', async () => {
@@ -1981,7 +1972,7 @@ describe('tx tests', () => {
       anchorMode: AnchorMode.Any,
     });
     const serialized = Buffer.from(txBuilder.serialize());
-    const tx = decodeTransaction(serialized);
+    const tx = codec.decodeTransaction(serialized);
     const dbTx = createDbTxFromCoreMsg({
       core_tx: {
         raw_tx: '0x' + serialized.toString('hex'),
@@ -2047,7 +2038,7 @@ describe('tx tests', () => {
       includeUnanchored: false,
       excludeFunctionArgs: false,
     });
-    expect(txQuery.found).toBe(true);
+    assert.equal(txQuery.found, true);
     if (!txQuery.found) {
       throw Error('not found');
     }
@@ -2081,8 +2072,6 @@ describe('tx tests', () => {
       anchor_mode: 'any',
       sender_address: 'SP2ZRX0K27GW0SP3GJCEMHD95TQGJMKB7GB36ZAR0',
       sponsored: false,
-      sponsor_address: undefined,
-      sponsor_nonce: undefined,
       post_condition_mode: 'deny',
       post_conditions: [],
       smart_contract: {
@@ -2099,12 +2088,10 @@ describe('tx tests', () => {
       execution_cost_write_length: 0,
       vm_error: 'post condition error',
     };
-    expect(txQuery.result).toEqual(expectedResp);
-
     const fetchTx = await supertest(api.server).get(`/extended/v1/tx/${dbTx.tx_id}`);
-    expect(fetchTx.status).toBe(200);
-    expect(fetchTx.type).toBe('application/json');
-    expect(JSON.parse(fetchTx.text)).toEqual(expectedResp);
+    assert.equal(fetchTx.status, 200);
+    assert.equal(fetchTx.type, 'application/json');
+    assert.deepEqual(JSON.parse(fetchTx.text), expectedResp);
   });
 
   test('tx list - order by', async () => {
@@ -2147,118 +2134,100 @@ describe('tx tests', () => {
     await db.update(block3);
 
     const txsReqAsc = await supertest(api.server).get(`/extended/v1/tx?order=asc`);
-    expect(txsReqAsc.status).toBe(200);
-    expect(txsReqAsc.body).toEqual(
-      expect.objectContaining({
-        results: [
-          expect.objectContaining({
-            tx_id: block1.txs[0].tx.tx_id,
-          }),
-          expect.objectContaining({
-            tx_id: block2.txs[0].tx.tx_id,
-          }),
-          expect.objectContaining({
-            tx_id: block3.txs[0].tx.tx_id,
-          }),
-        ],
-      })
-    );
-
+    assert.equal(txsReqAsc.status, 200);
+    assertMatchesObject(txsReqAsc.body, {
+      results: [
+        {
+          tx_id: block1.txs[0].tx.tx_id,
+        },
+        {
+          tx_id: block2.txs[0].tx.tx_id,
+        },
+        {
+          tx_id: block3.txs[0].tx.tx_id,
+        },
+      ],
+    });
     const txsReqDesc = await supertest(api.server).get(`/extended/v1/tx?order=desc`);
-    expect(txsReqDesc.status).toBe(200);
-    expect(txsReqDesc.body).toEqual(
-      expect.objectContaining({
-        results: [
-          expect.objectContaining({
-            tx_id: block3.txs[0].tx.tx_id,
-          }),
-          expect.objectContaining({
-            tx_id: block2.txs[0].tx.tx_id,
-          }),
-          expect.objectContaining({
-            tx_id: block1.txs[0].tx.tx_id,
-          }),
-        ],
-      })
-    );
-
+    assert.equal(txsReqDesc.status, 200);
+    assertMatchesObject(txsReqDesc.body, {
+      results: [
+        {
+          tx_id: block3.txs[0].tx.tx_id,
+        },
+        {
+          tx_id: block2.txs[0].tx.tx_id,
+        },
+        {
+          tx_id: block1.txs[0].tx.tx_id,
+        },
+      ],
+    });
     const txsReqTimeDesc = await supertest(api.server).get(
       `/extended/v1/tx?sort_by=burn_block_time&order=desc`
     );
-    expect(txsReqTimeDesc.status).toBe(200);
-    expect(txsReqTimeDesc.body).toEqual(
-      expect.objectContaining({
-        results: [
-          expect.objectContaining({
-            tx_id: block3.txs[0].tx.tx_id,
-          }),
-          expect.objectContaining({
-            tx_id: block1.txs[0].tx.tx_id,
-          }),
-          expect.objectContaining({
-            tx_id: block2.txs[0].tx.tx_id,
-          }),
-        ],
-      })
-    );
-
+    assert.equal(txsReqTimeDesc.status, 200);
+    assertMatchesObject(txsReqTimeDesc.body, {
+      results: [
+        {
+          tx_id: block3.txs[0].tx.tx_id,
+        },
+        {
+          tx_id: block1.txs[0].tx.tx_id,
+        },
+        {
+          tx_id: block2.txs[0].tx.tx_id,
+        },
+      ],
+    });
     const txsReqTimeAsc = await supertest(api.server).get(
       `/extended/v1/tx?sort_by=burn_block_time&order=asc`
     );
-    expect(txsReqTimeAsc.status).toBe(200);
-    expect(txsReqTimeAsc.body).toEqual(
-      expect.objectContaining({
-        results: [
-          expect.objectContaining({
-            tx_id: block2.txs[0].tx.tx_id,
-          }),
-          expect.objectContaining({
-            tx_id: block1.txs[0].tx.tx_id,
-          }),
-          expect.objectContaining({
-            tx_id: block3.txs[0].tx.tx_id,
-          }),
-        ],
-      })
-    );
-
+    assert.equal(txsReqTimeAsc.status, 200);
+    assertMatchesObject(txsReqTimeAsc.body, {
+      results: [
+        {
+          tx_id: block2.txs[0].tx.tx_id,
+        },
+        {
+          tx_id: block1.txs[0].tx.tx_id,
+        },
+        {
+          tx_id: block3.txs[0].tx.tx_id,
+        },
+      ],
+    });
     const txsReqFeeDesc = await supertest(api.server).get(`/extended/v1/tx?sort_by=fee&order=desc`);
-    expect(txsReqFeeDesc.status).toBe(200);
-    expect(txsReqFeeDesc.body).toEqual(
-      expect.objectContaining({
-        results: [
-          expect.objectContaining({
-            tx_id: block2.txs[0].tx.tx_id,
-          }),
-          expect.objectContaining({
-            tx_id: block3.txs[0].tx.tx_id,
-          }),
-          expect.objectContaining({
-            tx_id: block1.txs[0].tx.tx_id,
-          }),
-        ],
-      })
-    );
-
+    assert.equal(txsReqFeeDesc.status, 200);
+    assertMatchesObject(txsReqFeeDesc.body, {
+      results: [
+        {
+          tx_id: block2.txs[0].tx.tx_id,
+        },
+        {
+          tx_id: block3.txs[0].tx.tx_id,
+        },
+        {
+          tx_id: block1.txs[0].tx.tx_id,
+        },
+      ],
+    });
     const txsReqFeeAsc = await supertest(api.server).get(`/extended/v1/tx?sort_by=fee&order=asc`);
-    expect(txsReqFeeAsc.status).toBe(200);
-    expect(txsReqFeeAsc.body).toEqual(
-      expect.objectContaining({
-        results: [
-          expect.objectContaining({
-            tx_id: block1.txs[0].tx.tx_id,
-          }),
-          expect.objectContaining({
-            tx_id: block3.txs[0].tx.tx_id,
-          }),
-          expect.objectContaining({
-            tx_id: block2.txs[0].tx.tx_id,
-          }),
-        ],
-      })
-    );
+    assert.equal(txsReqFeeAsc.status, 200);
+    assertMatchesObject(txsReqFeeAsc.body, {
+      results: [
+        {
+          tx_id: block1.txs[0].tx.tx_id,
+        },
+        {
+          tx_id: block3.txs[0].tx.tx_id,
+        },
+        {
+          tx_id: block2.txs[0].tx.tx_id,
+        },
+      ],
+    });
   });
-
   test('tx list - filter by to/from address', async () => {
     const fromAddress = 'ST1HB1T8WRNBYB0Y3T7WXZS38NKKPTBR3EG9EPJKR';
     const toAddress = 'STRYYQQ9M8KAF4NS7WNZQYY59X93XEKR31JP64CP';
@@ -2305,66 +2274,58 @@ describe('tx tests', () => {
     const txsReqFrom = await supertest(api.server).get(
       `/extended/v1/tx?from_address=${fromAddress}`
     );
-    expect(txsReqFrom.status).toBe(200);
-    expect(txsReqFrom.body).toEqual(
-      expect.objectContaining({
-        results: [
-          expect.objectContaining({
-            tx_id: block2.txs[2].tx.tx_id,
-          }),
-          expect.objectContaining({
-            tx_id: block2.txs[1].tx.tx_id,
-          }),
-          expect.objectContaining({
-            tx_id: block2.txs[0].tx.tx_id,
-          }),
-          expect.objectContaining({
-            tx_id: block1.txs[0].tx.tx_id,
-          }),
-        ],
-      })
-    );
-
+    assert.equal(txsReqFrom.status, 200);
+    assertMatchesObject(txsReqFrom.body, {
+      results: [
+        {
+          tx_id: block2.txs[2].tx.tx_id,
+        },
+        {
+          tx_id: block2.txs[1].tx.tx_id,
+        },
+        {
+          tx_id: block2.txs[0].tx.tx_id,
+        },
+        {
+          tx_id: block1.txs[0].tx.tx_id,
+        },
+      ],
+    });
     const txsReqTo = await supertest(api.server).get(`/extended/v1/tx?to_address=${toAddress}`);
-    expect(txsReqTo.status).toBe(200);
-    expect(txsReqTo.body).toEqual(
-      expect.objectContaining({
-        results: [
-          expect.objectContaining({
-            tx_id: block2.txs[3].tx.tx_id,
-          }),
-          expect.objectContaining({
-            tx_id: block2.txs[1].tx.tx_id,
-          }),
-          expect.objectContaining({
-            tx_id: block2.txs[0].tx.tx_id,
-          }),
-          expect.objectContaining({
-            tx_id: block1.txs[0].tx.tx_id,
-          }),
-        ],
-      })
-    );
-
+    assert.equal(txsReqTo.status, 200);
+    assertMatchesObject(txsReqTo.body, {
+      results: [
+        {
+          tx_id: block2.txs[3].tx.tx_id,
+        },
+        {
+          tx_id: block2.txs[1].tx.tx_id,
+        },
+        {
+          tx_id: block2.txs[0].tx.tx_id,
+        },
+        {
+          tx_id: block1.txs[0].tx.tx_id,
+        },
+      ],
+    });
     const txsReqFromTo = await supertest(api.server).get(
       `/extended/v1/tx?from_address=${fromAddress}&to_address=${toAddress}`
     );
-    expect(txsReqFromTo.status).toBe(200);
-    expect(txsReqFromTo.body).toEqual(
-      expect.objectContaining({
-        results: [
-          expect.objectContaining({
-            tx_id: block2.txs[1].tx.tx_id,
-          }),
-          expect.objectContaining({
-            tx_id: block2.txs[0].tx.tx_id,
-          }),
-          expect.objectContaining({
-            tx_id: block1.txs[0].tx.tx_id,
-          }),
-        ],
-      })
-    );
+    assert.equal(txsReqFromTo.status, 200);
+    assertMatchesObject(txsReqFromTo.body, {
+      results: [
+        {
+          tx_id: block2.txs[1].tx.tx_id,
+        },
+        {
+          tx_id: block2.txs[0].tx.tx_id,
+        },
+        {
+          tx_id: block1.txs[0].tx.tx_id,
+        },
+      ],
+    });
   });
 
   test('tx list - filter by timestamp', async () => {
@@ -2412,84 +2373,67 @@ describe('tx tests', () => {
     const txsReq1 = await supertest(api.server).get(
       `/extended/v1/tx?start_time=${block1.block.burn_block_time}&end_time=${block3.block.burn_block_time}`
     );
-    expect(txsReq1.status).toBe(200);
-    expect(txsReq1.body).toEqual(
-      expect.objectContaining({
-        results: [
-          expect.objectContaining({
-            tx_id: block3.txs[0].tx.tx_id,
-          }),
-          expect.objectContaining({
-            tx_id: block2.txs[0].tx.tx_id,
-          }),
-          expect.objectContaining({
-            tx_id: block1.txs[0].tx.tx_id,
-          }),
-        ],
-      })
-    );
-
+    assert.equal(txsReq1.status, 200);
+    assertMatchesObject(txsReq1.body, {
+      results: [
+        {
+          tx_id: block3.txs[0].tx.tx_id,
+        },
+        {
+          tx_id: block2.txs[0].tx.tx_id,
+        },
+        {
+          tx_id: block1.txs[0].tx.tx_id,
+        },
+      ],
+    });
     const txsReq2 = await supertest(api.server).get(
-      `/extended/v1/tx?start_time=${block2.block.burn_block_time}&end_time=${
-        block3.block.burn_block_time - 1
-      }`
+      `/extended/v1/tx?start_time=${block2.block.burn_block_time}&end_time=${block3.block.burn_block_time - 1}`
     );
-    expect(txsReq2.status).toBe(200);
-    expect(txsReq2.body).toEqual(
-      expect.objectContaining({
-        results: [
-          expect.objectContaining({
-            tx_id: block2.txs[0].tx.tx_id,
-          }),
-        ],
-      })
-    );
-
+    assert.equal(txsReq2.status, 200);
+    assertMatchesObject(txsReq2.body, {
+      results: [
+        {
+          tx_id: block2.txs[0].tx.tx_id,
+        },
+      ],
+    });
     const txsReq3 = await supertest(api.server).get(
       `/extended/v1/tx?start_time=${block1.block.burn_block_time + 1}`
     );
-    expect(txsReq3.status).toBe(200);
-    expect(txsReq3.body).toEqual(
-      expect.objectContaining({
-        results: [
-          expect.objectContaining({
-            tx_id: block3.txs[0].tx.tx_id,
-          }),
-          expect.objectContaining({
-            tx_id: block2.txs[0].tx.tx_id,
-          }),
-        ],
-      })
-    );
-
+    assert.equal(txsReq3.status, 200);
+    assertMatchesObject(txsReq3.body, {
+      results: [
+        {
+          tx_id: block3.txs[0].tx.tx_id,
+        },
+        {
+          tx_id: block2.txs[0].tx.tx_id,
+        },
+      ],
+    });
     const txsReq4 = await supertest(api.server).get(
       `/extended/v1/tx?end_time=${block3.block.burn_block_time - 1}`
     );
-    expect(txsReq4.status).toBe(200);
-    expect(txsReq4.body).toEqual(
-      expect.objectContaining({
-        results: [
-          expect.objectContaining({
-            tx_id: block2.txs[0].tx.tx_id,
-          }),
-          expect.objectContaining({
-            tx_id: block1.txs[0].tx.tx_id,
-          }),
-        ],
-      })
-    );
-
+    assert.equal(txsReq4.status, 200);
+    assertMatchesObject(txsReq4.body, {
+      results: [
+        {
+          tx_id: block2.txs[0].tx.tx_id,
+        },
+        {
+          tx_id: block1.txs[0].tx.tx_id,
+        },
+      ],
+    });
     const txsReq5 = await supertest(api.server).get(
       `/extended/v1/tx?start_time=${block3.block.burn_block_time + 1}`
     );
-    expect(txsReq5.status).toBe(200);
-    expect(txsReq5.body).toEqual(
-      expect.objectContaining({
-        results: [],
-      })
-    );
+    assert.equal(txsReq5.status, 200);
+    assertMatchesObject(txsReq5.body, {
+      results: [],
+    });
   });
-
   test('tx list - filter by contract id/name', async () => {
     const testContractAddr = 'ST27W5M8BRKA7C5MZE2R1S1F4XTPHFWFRNHA9M04Y.hello-world';
     const testContractFnName = 'test-contract-fn';
@@ -2594,49 +2538,40 @@ describe('tx tests', () => {
     const txsReq1 = await supertest(api.server).get(
       `/extended/v1/tx?contract_id=${testContractAddr}&function_name=${testContractFnName}`
     );
-    expect(txsReq1.status).toBe(200);
-    expect(txsReq1.body).toEqual(
-      expect.objectContaining({
-        results: [
-          expect.objectContaining({
-            tx_id: block2.txs[0].tx.tx_id,
-          }),
-        ],
-      })
-    );
-
+    assert.equal(txsReq1.status, 200);
+    assertMatchesObject(txsReq1.body, {
+      results: [
+        {
+          tx_id: block2.txs[0].tx.tx_id,
+        },
+      ],
+    });
     const txsReq2 = await supertest(api.server).get(
       `/extended/v1/tx?contract_id=${testContractAddr}`
     );
-    expect(txsReq2.status).toBe(200);
-    expect(txsReq2.body).toEqual(
-      expect.objectContaining({
-        results: [
-          expect.objectContaining({
-            tx_id: block3.txs[0].tx.tx_id,
-          }),
-          expect.objectContaining({
-            tx_id: block2.txs[0].tx.tx_id,
-          }),
-        ],
-      })
-    );
-
+    assert.equal(txsReq2.status, 200);
+    assertMatchesObject(txsReq2.body, {
+      results: [
+        {
+          tx_id: block3.txs[0].tx.tx_id,
+        },
+        {
+          tx_id: block2.txs[0].tx.tx_id,
+        },
+      ],
+    });
     const txsReq3 = await supertest(api.server).get(
       `/extended/v1/tx?function_name=${testContractFnName2}`
     );
-    expect(txsReq3.status).toBe(200);
-    expect(txsReq3.body).toEqual(
-      expect.objectContaining({
-        results: [
-          expect.objectContaining({
-            tx_id: block3.txs[0].tx.tx_id,
-          }),
-        ],
-      })
-    );
+    assert.equal(txsReq3.status, 200);
+    assertMatchesObject(txsReq3.body, {
+      results: [
+        {
+          tx_id: block3.txs[0].tx.tx_id,
+        },
+      ],
+    });
   });
-
   test('tx list - filter by nonce', async () => {
     const testSendertAddr = 'ST27W5M8BRKA7C5MZE2R1S1F4XTPHFWFRNHA9M04Y';
     const block1 = new TestBlockBuilder({
@@ -2689,32 +2624,26 @@ describe('tx tests', () => {
     const txsReq1 = await supertest(api.server).get(
       `/extended/v1/tx?from_address=${testSendertAddr}&nonce=${1}`
     );
-    expect(txsReq1.status).toBe(200);
-    expect(txsReq1.body).toEqual(
-      expect.objectContaining({
-        results: [
-          expect.objectContaining({
-            tx_id: block1.txs[0].tx.tx_id,
-          }),
-        ],
-      })
-    );
-
+    assert.equal(txsReq1.status, 200);
+    assertMatchesObject(txsReq1.body, {
+      results: [
+        {
+          tx_id: block1.txs[0].tx.tx_id,
+        },
+      ],
+    });
     const txsReq2 = await supertest(api.server).get(
       `/extended/v1/tx?from_address=${testSendertAddr}&nonce=${2}`
     );
-    expect(txsReq2.status).toBe(200);
-    expect(txsReq2.body).toEqual(
-      expect.objectContaining({
-        results: [
-          expect.objectContaining({
-            tx_id: block2.txs[0].tx.tx_id,
-          }),
-        ],
-      })
-    );
+    assert.equal(txsReq2.status, 200);
+    assertMatchesObject(txsReq2.body, {
+      results: [
+        {
+          tx_id: block2.txs[0].tx.tx_id,
+        },
+      ],
+    });
   });
-
   test('tx list - filter by tx-type', async () => {
     const testSendertAddr = 'ST27W5M8BRKA7C5MZE2R1S1F4XTPHFWFRNHA9M04Y';
     const block1 = new TestBlockBuilder({
@@ -2794,25 +2723,23 @@ describe('tx tests', () => {
     const txsReq1 = await supertest(api.server).get(
       `/extended/v1/tx?type=${filterTypes.join(',')}`
     );
-    expect(txsReq1.status).toBe(200);
-    expect(txsReq1.body).toEqual(
-      expect.objectContaining({
-        results: [
-          expect.objectContaining({
-            tx_id: block4.txs[0].tx.tx_id,
-          }),
-          expect.objectContaining({
-            tx_id: block3.txs[0].tx.tx_id,
-          }),
-          expect.objectContaining({
-            tx_id: block2.txs[0].tx.tx_id,
-          }),
-          expect.objectContaining({
-            tx_id: block1.txs[0].tx.tx_id,
-          }),
-        ],
-      })
-    );
+    assert.equal(txsReq1.status, 200);
+    assertMatchesObject(txsReq1.body, {
+      results: [
+        {
+          tx_id: block4.txs[0].tx.tx_id,
+        },
+        {
+          tx_id: block3.txs[0].tx.tx_id,
+        },
+        {
+          tx_id: block2.txs[0].tx.tx_id,
+        },
+        {
+          tx_id: block1.txs[0].tx.tx_id,
+        },
+      ],
+    });
   });
 
   test('fetch raw tx', async () => {
@@ -2922,22 +2849,21 @@ describe('tx tests', () => {
     await db.updateMempoolTxs({ mempoolTxs: [mempoolTx] });
 
     const searchResult1 = await supertest(api.server).get(`/extended/v1/tx/${tx.tx_id}/raw`);
-    expect(searchResult1.status).toBe(200);
-    expect(searchResult1.type).toBe('application/json');
-    expect(searchResult1.body.raw_tx).toEqual(bufferToHex(Buffer.from('test-raw-tx')));
+    assert.equal(searchResult1.status, 200);
+    assert.equal(searchResult1.type, 'application/json');
+    assert.deepEqual(searchResult1.body.raw_tx, bufferToHex(Buffer.from('test-raw-tx')));
     const expectedResponse1 = {
       raw_tx: bufferToHex(Buffer.from('test-raw-tx')),
     };
-    expect(JSON.parse(searchResult1.text)).toEqual(expectedResponse1);
-
+    assert.deepEqual(JSON.parse(searchResult1.text), expectedResponse1);
     const searchResult2 = await supertest(api.server).get(`/extended/v1/tx/${mempoolTx.tx_id}/raw`);
-    expect(searchResult2.status).toBe(200);
-    expect(searchResult2.type).toBe('application/json');
-    expect(searchResult2.body.raw_tx).toEqual('0x746573742d7261772d6d656d706f6f6c2d7478');
+    assert.equal(searchResult2.status, 200);
+    assert.equal(searchResult2.type, 'application/json');
+    assert.deepEqual(searchResult2.body.raw_tx, '0x746573742d7261772d6d656d706f6f6c2d7478');
     const expectedResponse2 = {
       raw_tx: '0x746573742d7261772d6d656d706f6f6c2d7478',
     };
-    expect(JSON.parse(searchResult2.text)).toEqual(expectedResponse2);
+    assert.deepEqual(JSON.parse(searchResult2.text), expectedResponse2);
   });
 
   test('fetch raw tx: transaction not found', async () => {
@@ -3027,7 +2953,7 @@ describe('tx tests', () => {
       ],
     });
     const searchResult = await supertest(api.server).get(`/extended/v1/tx/0x1234/raw`);
-    expect(searchResult.status).toBe(404);
+    assert.equal(searchResult.status, 404);
   });
 
   test('/tx/events address filter', async () => {
@@ -3108,9 +3034,8 @@ describe('tx tests', () => {
         },
       ],
     };
-
-    expect(addressEvents.status).toBe(200);
-    expect(addressEvents.body).toEqual(expectedResponse);
+    assert.equal(addressEvents.status, 200);
+    assert.deepEqual(addressEvents.body, expectedResponse);
   });
 
   test('/tx/events address filter -empty events returned', async () => {
@@ -3123,9 +3048,8 @@ describe('tx tests', () => {
       offset: 0,
       events: [],
     };
-
-    expect(addressEvents.status).toBe(200);
-    expect(addressEvents.body).toEqual(expectedResponse);
+    assert.equal(addressEvents.status, 200);
+    assert.deepEqual(addressEvents.body, expectedResponse);
   });
 
   test('/tx/events address filter -no filter applied', async () => {
@@ -3207,9 +3131,8 @@ describe('tx tests', () => {
         },
       ],
     };
-
-    expect(addressEvents.status).toBe(200);
-    expect(addressEvents.body).toEqual(expectedResponse);
+    assert.equal(addressEvents.status, 200);
+    assert.deepEqual(addressEvents.body, expectedResponse);
   });
 
   test('/tx/events address filter -limit and offset', async () => {
@@ -3258,10 +3181,8 @@ describe('tx tests', () => {
         },
       ],
     };
-
-    expect(addressEvents.status).toBe(200);
-    expect(addressEvents.body).toEqual(expectedResponse);
-
+    assert.equal(addressEvents.status, 200);
+    assert.deepEqual(addressEvents.body, expectedResponse);
     const addressEvents2 = await supertest(api.server).get(
       `/extended/v1/tx/events?address=${address}&limit=2&offset=2`
     );
@@ -3294,9 +3215,8 @@ describe('tx tests', () => {
         },
       ],
     };
-
-    expect(addressEvents2.status).toBe(200);
-    expect(addressEvents2.body).toEqual(expectedResponse2);
+    assert.equal(addressEvents2.status, 200);
+    assert.deepEqual(addressEvents2.body, expectedResponse2);
   });
 
   test('/tx/events address filter -invalid address', async () => {
@@ -3304,8 +3224,7 @@ describe('tx tests', () => {
     const addressEvents = await supertest(api.server).get(
       `/extended/v1/tx/events?address=${address}`
     );
-
-    expect(addressEvents.status).toBe(400);
+    assert.equal(addressEvents.status, 400);
   });
 
   test('/tx/events tx_id filter', async () => {
@@ -3387,9 +3306,8 @@ describe('tx tests', () => {
         },
       ],
     };
-
-    expect(events.status).toBe(200);
-    expect(events.body).toEqual(expectedResponse);
+    assert.equal(events.status, 200);
+    assert.deepEqual(events.body, expectedResponse);
   });
 
   test('/tx/events tx_id filter -no filter applied', async () => {
@@ -3469,9 +3387,8 @@ describe('tx tests', () => {
         },
       ],
     };
-
-    expect(events.status).toBe(200);
-    expect(events.body).toEqual(expectedResponse);
+    assert.equal(events.status, 200);
+    assert.deepEqual(events.body, expectedResponse);
   });
 
   test('/tx/events tx_id filter -empty events returned', async () => {
@@ -3482,9 +3399,8 @@ describe('tx tests', () => {
       offset: 0,
       events: [],
     };
-
-    expect(events.status).toBe(200);
-    expect(events.body).toEqual(expectedResponse);
+    assert.equal(events.status, 200);
+    assert.deepEqual(events.body, expectedResponse);
   });
 
   test('/tx/events tx_id filter -invalid type', async () => {
@@ -3492,8 +3408,7 @@ describe('tx tests', () => {
     const events = await supertest(api.server).get(
       `/extended/v1/tx/events?tx_id=${txId}&type=invalid`
     );
-
-    expect(events.status).toBe(400);
+    assert.equal(events.status, 400);
   });
 
   test('/tx/events tx_id filter -limit and offset', async () => {
@@ -3541,10 +3456,8 @@ describe('tx tests', () => {
         },
       ],
     };
-
-    expect(events.status).toBe(200);
-    expect(events.body).toEqual(expectedResponse);
-
+    assert.equal(events.status, 200);
+    assert.deepEqual(events.body, expectedResponse);
     const addressEvents2 = await supertest(api.server).get(
       `/extended/v1/tx/events?tx_id=${txId}&limit=2&offset=2`
     );
@@ -3577,15 +3490,14 @@ describe('tx tests', () => {
         },
       ],
     };
-
-    expect(addressEvents2.status).toBe(200);
-    expect(addressEvents2.body).toEqual(expectedResponse2);
+    assert.equal(addressEvents2.status, 200);
+    assert.deepEqual(addressEvents2.body, expectedResponse2);
   });
 
   test('/tx/events tx_id filter -invalid txId', async () => {
     const txId = 'invalid id';
     const events = await supertest(api.server).get(`/extended/v1/tx/events?tx_id=${txId}`);
-    expect(events.status).toBe(400);
+    assert.equal(events.status, 400);
   });
 
   test('/tx/events -mutually exclusive query params', async () => {
@@ -3594,8 +3506,7 @@ describe('tx tests', () => {
     const addressEvents = await supertest(api.server).get(
       `/extended/v1/tx/events?tx_id=${txId}&address=${address}&type=invalid`
     );
-
-    expect(addressEvents.status).toBe(400);
+    assert.equal(addressEvents.status, 400);
   });
 
   test('event count value', async () => {
@@ -3757,9 +3668,9 @@ describe('tx tests', () => {
     };
 
     const fetchTx = await supertest(api.server).get(`/extended/v1/tx/${tx.tx_id}`);
-    expect(fetchTx.status).toBe(200);
-    expect(fetchTx.type).toBe('application/json');
-    expect(JSON.parse(fetchTx.text)).toEqual(expectedResponse);
+    assert.equal(fetchTx.status, 200);
+    assert.equal(fetchTx.type, 'application/json');
+    assert.deepEqual(JSON.parse(fetchTx.text), expectedResponse);
   });
 
   test('empty abi', async () => {
@@ -3990,8 +3901,7 @@ describe('tx tests', () => {
     await db.update(dataStoreUpdate);
 
     const searchResult1 = await supertest(api.server).get(`/extended/v1/tx/${tx1.tx_id}`);
-    expect(JSON.parse(searchResult1.text)).toEqual(expected);
-
+    assert.deepEqual(JSON.parse(searchResult1.text), expected);
     const expected2 = {
       tx_id: '0x1513739d6a3f86d4597f5296cc536f6890e2affff9aece285e37399be697b43f',
       nonce: 1,
@@ -4049,9 +3959,8 @@ describe('tx tests', () => {
       events: [],
     };
     const searchResult2 = await supertest(api.server).get(`/extended/v1/tx/${tx2.tx_id}`);
-    expect(searchResult2.status).toBe(200);
-    expect(JSON.parse(searchResult2.text)).toEqual(expected2);
-
+    assert.equal(searchResult2.status, 200);
+    assert.deepEqual(JSON.parse(searchResult2.text), expected2);
     const expected3 = {
       abi: null,
       block_height: 1,
@@ -4064,9 +3973,8 @@ describe('tx tests', () => {
     const contractResult1 = await supertest(api.server).get(
       `/extended/v1/contract/${contractCall2.contract_id}`
     );
-    expect(contractResult1.status).toBe(200);
-    expect(contractResult1.body).toEqual(expected3);
-
+    assert.equal(contractResult1.status, 200);
+    assert.deepEqual(contractResult1.body, expected3);
     const expected4 = {
       abi: contractCall.abi,
       block_height: 1,
@@ -4079,12 +3987,14 @@ describe('tx tests', () => {
     const contractResult2 = await supertest(api.server).get(
       `/extended/v1/contract/${contractCall.contract_id}`
     );
-    expect(contractResult2.status).toBe(200);
-    expect({ ...contractResult2.body, abi: JSON.parse(contractResult2.body.abi) }).toEqual({
-      ...expected4,
-      abi: JSON.parse(expected4.abi as string),
-    });
-
+    assert.equal(contractResult2.status, 200);
+    assert.deepEqual(
+      { ...contractResult2.body, abi: JSON.parse(contractResult2.body.abi) },
+      {
+        ...expected4,
+        abi: JSON.parse(expected4.abi as string),
+      }
+    );
     const mempoolTx1: DbMempoolTxRaw = {
       type_id: DbTxTypeId.ContractCall,
       tx_id: '0x4413739d6a3f86d4597f5296cc536f6890e2affff9aece285e37399be697b43f',
@@ -4144,9 +4054,8 @@ describe('tx tests', () => {
       tx_type: 'contract_call',
     };
     const mempoolTxResult1 = await supertest(api.server).get(`/extended/v1/tx/${mempoolTx1.tx_id}`);
-    expect(mempoolTxResult1.status).toBe(200);
-    expect(mempoolTxResult1.body).toEqual(expectedMempoolResult1);
-
+    assert.equal(mempoolTxResult1.status, 200);
+    assert.deepEqual(mempoolTxResult1.body, expectedMempoolResult1);
     const mempoolTx2: DbMempoolTxRaw = {
       type_id: DbTxTypeId.ContractCall,
       tx_id: '0x5513739d6a3f86d4597f5296cc536f6890e2affff9aece285e37399be697b43f',
@@ -4207,8 +4116,8 @@ describe('tx tests', () => {
       tx_type: 'contract_call',
     };
     const mempoolTxResult2 = await supertest(api.server).get(`/extended/v1/tx/${mempoolTx2.tx_id}`);
-    expect(mempoolTxResult2.status).toBe(200);
-    expect(mempoolTxResult2.body).toEqual(expectedMempoolResult2);
+    assert.equal(mempoolTxResult2.status, 200);
+    assert.deepEqual(mempoolTxResult2.body, expectedMempoolResult2);
   });
 
   test('fetch transactions from block', async () => {
@@ -4298,14 +4207,13 @@ describe('tx tests', () => {
     const result = await supertest(api.server).get(
       `/extended/v1/tx/block/${block.block_hash}?limit=20&offset=0`
     );
-    expect(result.status).toBe(200);
-    expect(result.type).toBe('application/json');
-
+    assert.equal(result.status, 200);
+    assert.equal(result.type, 'application/json');
     // fetch all blocks
     const result1 = await supertest(api.server).get(`/extended/v1/block`);
-    expect(result1.body.total).toBe(1);
-    expect(result1.body.results[0].hash).toBe('0x1234');
-    expect(result1.body.results[0].index_block_hash).toBe('0xdeadbeef');
+    assert.equal(result1.body.total, 1);
+    assert.equal(result1.body.results[0].hash, '0x1234');
+    assert.equal(result1.body.results[0].index_block_hash, '0xdeadbeef');
   });
 
   test('fetch transactions from v2 block', async () => {
@@ -4357,11 +4265,11 @@ describe('tx tests', () => {
     let result = await supertest(api.server).get(
       `/extended/v2/blocks/0x00000000000000000001e2ee7f0c6bd5361b5e7afd76156ca7d6f524ee5ca3d8/transactions?limit=20&offset=0`
     );
-    expect(result.status).toBe(200);
-    expect(result.type).toBe('application/json');
+    assert.equal(result.status, 200);
+    assert.equal(result.type, 'application/json');
     let json = JSON.parse(result.text);
-    expect(json.total).toBe(2);
-    expect(json.results[0]).toStrictEqual({
+    assert.equal(json.total, 2);
+    assert.deepEqual(json.results[0], {
       anchor_mode: 'any',
       block_hash: '0x00000000000000000001e2ee7f0c6bd5361b5e7afd76156ca7d6f524ee5ca3d8',
       block_height: 1,
@@ -4407,30 +4315,28 @@ describe('tx tests', () => {
     });
 
     result = await supertest(api.server).get(`/extended/v2/blocks/latest/transactions`);
-    expect(result.status).toBe(200);
-    expect(result.type).toBe('application/json');
+    assert.equal(result.status, 200);
+    assert.equal(result.type, 'application/json');
     json = JSON.parse(result.text);
-    expect(json.total).toBe(2);
-
+    assert.equal(json.total, 2);
     result = await supertest(api.server).get(`/extended/v2/blocks/1/transactions`);
-    expect(result.status).toBe(200);
-    expect(result.type).toBe('application/json');
+    assert.equal(result.status, 200);
+    assert.equal(result.type, 'application/json');
     json = JSON.parse(result.text);
-    expect(json.total).toBe(2);
-
+    assert.equal(json.total, 2);
     // Try a non-existent block
     result = await supertest(api.server).get(
       `/extended/v2/blocks/0x00000000000000000001e2ee7f0c6bd5361b5e7afd76156ca7d6f524ee999999/transactions?limit=20&offset=0`
     );
-    expect(result.status).toBe(404);
-    expect(result.type).toBe('application/json');
+    assert.equal(result.status, 404);
+    assert.equal(result.type, 'application/json');
   });
 
   test('fetch transactions from block', async () => {
     const not_updated_tx_id = '0x1111';
-    const tx_not_found = expect.objectContaining({
+    const tx_not_found = {
       message: `could not find transaction by ID`,
-    });
+    };
     const block: DbBlock = {
       block_hash: '0x1234',
       index_block_hash: '0xdeadbeef',
@@ -4496,42 +4402,38 @@ describe('tx tests', () => {
     };
     await db.updateTx(client, tx);
     const result1 = await supertest(api.server).get(`/extended/v1/tx/block/${block.block_hash}`);
-    expect(result1.status).toBe(200);
-    expect(result1.type).toBe('application/json');
-    expect(result1.body.limit).toBe(getPagingQueryLimit(ResourceType.Tx));
-    expect(result1.body.offset).toBe(0);
-    expect(result1.body.total).toBe(1);
-    expect(result1.body.results.length).toBe(1);
-
+    assert.equal(result1.status, 200);
+    assert.equal(result1.type, 'application/json');
+    assert.equal(result1.body.limit, getPagingQueryLimit(ResourceType.Tx));
+    assert.equal(result1.body.offset, 0);
+    assert.equal(result1.body.total, 1);
+    assert.equal(result1.body.results.length, 1);
     const result2 = await supertest(api.server).get(
       `/extended/v1/tx/block/${block.block_hash}?limit=20&offset=15`
     );
-    expect(result2.body.limit).toBe(20);
-    expect(result2.body.offset).toBe(15);
-    expect(result2.body.total).toBe(1);
-    expect(result2.body.results.length).toBe(0);
-
+    assert.equal(result2.body.limit, 20);
+    assert.equal(result2.body.offset, 15);
+    assert.equal(result2.body.total, 1);
+    assert.equal(result2.body.results.length, 0);
     const result3 = await supertest(api.server).get(
       `/extended/v1/tx/block_height/${block.block_height}`
     );
-    expect(result3.status).toBe(200);
-    expect(result3.type).toBe('application/json');
-    expect(result3.body.limit).toBe(getPagingQueryLimit(ResourceType.Tx));
-    expect(result3.body.offset).toBe(0);
-    expect(result3.body.total).toBe(1);
-    expect(result3.body.results.length).toBe(1);
-
+    assert.equal(result3.status, 200);
+    assert.equal(result3.type, 'application/json');
+    assert.equal(result3.body.limit, getPagingQueryLimit(ResourceType.Tx));
+    assert.equal(result3.body.offset, 0);
+    assert.equal(result3.body.total, 1);
+    assert.equal(result3.body.results.length, 1);
     const result4 = await supertest(api.server).get(
       `/extended/v1/tx/block_height/${block.block_height}?limit=20&offset=15`
     );
-    expect(result4.body.limit).toBe(20);
-    expect(result4.body.offset).toBe(15);
-    expect(result4.body.total).toBe(1);
-    expect(result4.body.results.length).toBe(0);
-
+    assert.equal(result4.body.limit, 20);
+    assert.equal(result4.body.offset, 15);
+    assert.equal(result4.body.total, 1);
+    assert.equal(result4.body.results.length, 0);
     // not available tx
     const result5 = await supertest(api.server).get(`/extended/v1/tx/${not_updated_tx_id}`);
-    expect(JSON.parse(result5.text)).toEqual(tx_not_found);
+    assert.equal(JSON.parse(result5.text).message, tx_not_found.message);
   });
 
   test('paginate transactions by block', async () => {
@@ -4568,95 +4470,87 @@ describe('tx tests', () => {
     const result1 = await supertest(api.server).get(
       `/extended/v1/tx/block_height/${block1.block.block_height}?limit=4&offset=0`
     );
-    expect(result1.status).toBe(200);
-    expect(result1.type).toBe('application/json');
-    expect(result1.body).toEqual(
-      expect.objectContaining({
-        total: 12,
-        limit: 4,
-        offset: 0,
-        results: expect.arrayContaining([
-          expect.objectContaining({
-            tx_id: '0x0011',
-            tx_index: 11,
-          }),
-          expect.objectContaining({
-            tx_id: '0x0010',
-            tx_index: 10,
-          }),
-          expect.objectContaining({
-            tx_id: '0x0009',
-            tx_index: 9,
-          }),
-          expect.objectContaining({
-            tx_id: '0x0008',
-            tx_index: 8,
-          }),
-        ]),
-      })
-    );
-
+    assert.equal(result1.status, 200);
+    assert.equal(result1.type, 'application/json');
+    assertMatchesObject(result1.body, {
+      total: 12,
+      limit: 4,
+      offset: 0,
+      results: [
+        {
+          tx_id: '0x0011',
+          tx_index: 11,
+        },
+        {
+          tx_id: '0x0010',
+          tx_index: 10,
+        },
+        {
+          tx_id: '0x0009',
+          tx_index: 9,
+        },
+        {
+          tx_id: '0x0008',
+          tx_index: 8,
+        },
+      ],
+    });
     const result2 = await supertest(api.server).get(
       `/extended/v1/tx/block_height/${block1.block.block_height}?limit=4&offset=4`
     );
-    expect(result2.status).toBe(200);
-    expect(result2.type).toBe('application/json');
-    expect(result2.body).toEqual(
-      expect.objectContaining({
-        total: 12,
-        limit: 4,
-        offset: 4,
-        results: expect.arrayContaining([
-          expect.objectContaining({
-            tx_id: '0x0007',
-            tx_index: 7,
-          }),
-          expect.objectContaining({
-            tx_id: '0x0006',
-            tx_index: 6,
-          }),
-          expect.objectContaining({
-            tx_id: '0x0005',
-            tx_index: 5,
-          }),
-          expect.objectContaining({
-            tx_id: '0x0004',
-            tx_index: 4,
-          }),
-        ]),
-      })
-    );
-
+    assert.equal(result2.status, 200);
+    assert.equal(result2.type, 'application/json');
+    assertMatchesObject(result2.body, {
+      total: 12,
+      limit: 4,
+      offset: 4,
+      results: [
+        {
+          tx_id: '0x0007',
+          tx_index: 7,
+        },
+        {
+          tx_id: '0x0006',
+          tx_index: 6,
+        },
+        {
+          tx_id: '0x0005',
+          tx_index: 5,
+        },
+        {
+          tx_id: '0x0004',
+          tx_index: 4,
+        },
+      ],
+    });
     const result3 = await supertest(api.server).get(
       `/extended/v1/tx/block_height/${block1.block.block_height}?limit=4&offset=8`
     );
-    expect(result3.status).toBe(200);
-    expect(result3.type).toBe('application/json');
-    expect(result3.body).toEqual(
-      expect.objectContaining({
-        total: 12,
-        limit: 4,
-        offset: 8,
-        results: expect.arrayContaining([
-          expect.objectContaining({
-            tx_id: '0x0003',
-            tx_index: 3,
-          }),
-          expect.objectContaining({
-            tx_id: '0x0002',
-            tx_index: 2,
-          }),
-          expect.objectContaining({
-            tx_id: '0x0001',
-            tx_index: 1,
-          }),
-          expect.objectContaining({
-            tx_id: '0x0000',
-            tx_index: 0,
-          }),
-        ]),
-      })
-    );
+    assert.equal(result3.status, 200);
+    assert.equal(result3.type, 'application/json');
+    assertMatchesObject(result3.body, {
+      total: 12,
+      limit: 4,
+      offset: 8,
+      results: [
+        {
+          tx_id: '0x0003',
+          tx_index: 3,
+        },
+        {
+          tx_id: '0x0002',
+          tx_index: 2,
+        },
+        {
+          tx_id: '0x0001',
+          tx_index: 1,
+        },
+        {
+          tx_id: '0x0000',
+          tx_index: 0,
+        },
+      ],
+    });
   });
 
   test('exclude_function_args works for single contract-call tx', async () => {
@@ -4687,11 +4581,10 @@ describe('tx tests', () => {
         '/extended/v1/tx/0x1234000000000000000000000000000000000000000000000000000000000000?exclude_function_args=true'
       )
       .expect(200);
-
-    expect(resExcluded.body.tx_type).toBe('contract_call');
-    expect(resExcluded.body.contract_call.function_args).toBeUndefined();
-    expect(resExcluded.body.contract_call.function_name).toBe('delegate-stx');
-    expect(resExcluded.body.contract_call.contract_id).toBe('SP000000000000000000002Q6VF78.pox-4');
+    assert.equal(resExcluded.body.tx_type, 'contract_call');
+    assert.equal(resExcluded.body.contract_call.function_args, undefined);
+    assert.equal(resExcluded.body.contract_call.function_name, 'delegate-stx');
+    assert.equal(resExcluded.body.contract_call.contract_id, 'SP000000000000000000002Q6VF78.pox-4');
   });
 
   test('default behavior still returns function_args', async () => {
@@ -4720,26 +4613,23 @@ describe('tx tests', () => {
     const resDefault = await supertest(api.server)
       .get('/extended/v1/tx/0x2345000000000000000000000000000000000000000000000000000000000000')
       .expect(200);
-
-    expect(resDefault.body.tx_type).toBe('contract_call');
-    expect(Array.isArray(resDefault.body.contract_call.function_args)).toBe(true);
-    expect(resDefault.body.contract_call.function_args.length).toBe(2);
+    assert.equal(resDefault.body.tx_type, 'contract_call');
+    assert.equal(Array.isArray(resDefault.body.contract_call.function_args), true);
+    assert.equal(resDefault.body.contract_call.function_args.length, 2);
     // Note: argument names may be empty if ABI is not available, but that's ok for this test
-    expect(resDefault.body.contract_call.function_args[0]).toHaveProperty('hex');
-    expect(resDefault.body.contract_call.function_args[0]).toHaveProperty('repr');
-
+    assert.notEqual(getByPath(resDefault.body.contract_call.function_args[0], 'hex'), undefined);
+    assert.notEqual(getByPath(resDefault.body.contract_call.function_args[0], 'repr'), undefined);
     // Test with exclude_function_args=false (explicit false)
     const resFalse = await supertest(api.server)
       .get(
         '/extended/v1/tx/0x2345000000000000000000000000000000000000000000000000000000000000?exclude_function_args=false'
       )
       .expect(200);
-
-    expect(resFalse.body.tx_type).toBe('contract_call');
-    expect(Array.isArray(resFalse.body.contract_call.function_args)).toBe(true);
-    expect(resFalse.body.contract_call.function_args.length).toBe(2);
-    expect(resFalse.body.contract_call.function_args[0]).toHaveProperty('hex');
-    expect(resFalse.body.contract_call.function_args[0]).toHaveProperty('repr');
+    assert.equal(resFalse.body.tx_type, 'contract_call');
+    assert.equal(Array.isArray(resFalse.body.contract_call.function_args), true);
+    assert.equal(resFalse.body.contract_call.function_args.length, 2);
+    assert.notEqual(getByPath(resFalse.body.contract_call.function_args[0], 'hex'), undefined);
+    assert.notEqual(getByPath(resFalse.body.contract_call.function_args[0], 'repr'), undefined);
   });
 
   test('transaction list endpoint respects exclude_function_args flag', async () => {
@@ -4768,26 +4658,23 @@ describe('tx tests', () => {
     const resExcluded = await supertest(api.server)
       .get('/extended/v1/tx?exclude_function_args=true&limit=1')
       .expect(200);
-
-    expect(resExcluded.body.results).toHaveLength(1);
+    assert.equal(resExcluded.body.results.length, 1);
     const contractCallTx = resExcluded.body.results.find(
       (tx: any) => tx.tx_type === 'contract_call'
     );
-    expect(contractCallTx).toBeDefined();
-    expect(contractCallTx.contract_call.function_args).toBeUndefined();
-
+    assert.notEqual(contractCallTx, undefined);
+    assert.equal(contractCallTx.contract_call.function_args, undefined);
     // Test transaction list with exclude_function_args=false
     const resIncluded = await supertest(api.server)
       .get('/extended/v1/tx?exclude_function_args=false&limit=1')
       .expect(200);
-
-    expect(resIncluded.body.results).toHaveLength(1);
+    assert.equal(resIncluded.body.results.length, 1);
     const contractCallTxIncluded = resIncluded.body.results.find(
       (tx: any) => tx.tx_type === 'contract_call'
     );
-    expect(contractCallTxIncluded).toBeDefined();
-    expect(Array.isArray(contractCallTxIncluded.contract_call.function_args)).toBe(true);
-    expect(contractCallTxIncluded.contract_call.function_args.length).toBe(2);
+    assert.notEqual(contractCallTxIncluded, undefined);
+    assert.equal(Array.isArray(contractCallTxIncluded.contract_call.function_args), true);
+    assert.equal(contractCallTxIncluded.contract_call.function_args.length, 2);
   });
 
   test('multiple transactions endpoint respects exclude_function_args flag', async () => {
@@ -4820,23 +4707,21 @@ describe('tx tests', () => {
       .expect(200);
 
     const txId = '0x4567000000000000000000000000000000000000000000000000000000000000';
-    expect(resExcluded.body[txId]).toBeDefined();
-    expect(resExcluded.body[txId].found).toBe(true);
-    expect(resExcluded.body[txId].result.tx_type).toBe('contract_call');
-    expect(resExcluded.body[txId].result.contract_call.function_args).toBeUndefined();
-
+    assert.notEqual(resExcluded.body[txId], undefined);
+    assert.equal(resExcluded.body[txId].found, true);
+    assert.equal(resExcluded.body[txId].result.tx_type, 'contract_call');
+    assert.equal(resExcluded.body[txId].result.contract_call.function_args, undefined);
     // Test multiple transactions with exclude_function_args=false
     const resIncluded = await supertest(api.server)
       .get(
         '/extended/v1/tx/multiple?tx_id=0x4567000000000000000000000000000000000000000000000000000000000000&exclude_function_args=false'
       )
       .expect(200);
-
-    expect(resIncluded.body[txId]).toBeDefined();
-    expect(resIncluded.body[txId].found).toBe(true);
-    expect(resIncluded.body[txId].result.tx_type).toBe('contract_call');
-    expect(Array.isArray(resIncluded.body[txId].result.contract_call.function_args)).toBe(true);
-    expect(resIncluded.body[txId].result.contract_call.function_args.length).toBe(2);
+    assert.notEqual(resIncluded.body[txId], undefined);
+    assert.equal(resIncluded.body[txId].found, true);
+    assert.equal(resIncluded.body[txId].result.tx_type, 'contract_call');
+    assert.equal(Array.isArray(resIncluded.body[txId].result.contract_call.function_args), true);
+    assert.equal(resIncluded.body[txId].result.contract_call.function_args.length, 2);
   });
 
   // New indirect regression test: ensure contract-call transactions inside a block still
@@ -4875,14 +4760,12 @@ describe('tx tests', () => {
       .expect(200);
 
     const contractCallTxId = blockRes.body.txs.find((id: string) => id === block.txs[0].tx.tx_id);
-    expect(contractCallTxId).toBe(block.txs[0].tx.tx_id);
-
+    assert.equal(contractCallTxId, block.txs[0].tx.tx_id);
     // 2. Fetch that tx with exclude_function_args=true and assert omission
     const txRes = await supertest(api.server)
       .get(`/extended/v1/tx/${contractCallTxId}?exclude_function_args=true`)
       .expect(200);
-
-    expect(txRes.body.tx_type).toBe('contract_call');
-    expect(txRes.body.contract_call.function_args).toBeUndefined();
+    assert.equal(txRes.body.tx_type, 'contract_call');
+    assert.equal(txRes.body.contract_call.function_args, undefined);
   });
 });

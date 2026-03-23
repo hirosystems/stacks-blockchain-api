@@ -12,7 +12,7 @@ import {
   serializeCV,
 } from '@stacks/transactions';
 import { createClarityValueArray } from '../../test-helpers.ts';
-import { decodeTransaction } from '@stacks/codec';
+import codec from '@stacks/codec';
 import {
   DbBlock,
   DbTxTypeId,
@@ -2568,7 +2568,7 @@ describe('address tests', () => {
       sponsorNonce: 2,
     });
     const serialized = Buffer.from(sponsoredTx.serialize());
-    const tx = decodeTransaction(serialized);
+    const tx = codec.decodeTransaction(serialized);
     const DbTxRaw = createDbTxFromCoreMsg({
       core_tx: {
         raw_tx: '0x' + serialized.toString('hex'),

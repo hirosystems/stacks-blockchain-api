@@ -1,10 +1,12 @@
-import * as supertest from 'supertest';
+import supertest from 'supertest';
 import { ChainID } from '@stacks/transactions';
 import { ApiServer, startApiServer } from '../../../src/api/init.ts';
-import { TestBlockBuilder, TestMicroblockStreamBuilder } from '../utils/test-builders';
+import { TestBlockBuilder, TestMicroblockStreamBuilder } from '../test-builders.ts';
 import { DbAssetEventTypeId } from '../../../src/datastore/common.ts';
 import { PgWriteStore } from '../../../src/datastore/pg-write-store.ts';
-import { migrate } from '../utils/test-helpers';
+import { migrate } from '../../test-helpers.ts';
+import { beforeEach, afterEach, describe, test } from 'node:test';
+import assert from 'node:assert/strict';
 
 describe('/extended/v1/tokens tests', () => {
   let db: PgWriteStore;
@@ -51,25 +53,25 @@ describe('/extended/v1/tokens tests', () => {
     const request1 = await supertest(api.server).get(
       `/extended/v1/tokens/nft/holdings?principal=${addr1}`
     );
-    expect(request1.status).toBe(200);
-    expect(request1.type).toBe('application/json');
+    assert.equal(request1.status, 200);
+    assert.equal(request1.type, 'application/json');
     const result1 = JSON.parse(request1.text);
-    expect(result1.total).toEqual(1);
-    expect(result1.results[0].asset_identifier).toEqual(assetId1);
-    expect(result1.results[0].tx_id).toEqual('0x5454');
-    expect(result1.results[0].block_height).toEqual(block1.block.block_height);
+    assert.deepEqual(result1.total, 1);
+    assert.deepEqual(result1.results[0].asset_identifier, assetId1);
+    assert.deepEqual(result1.results[0].tx_id, '0x5454');
+    assert.deepEqual(result1.results[0].block_height, block1.block.block_height);
 
     // Request: with metadata
     const request2 = await supertest(api.server).get(
       `/extended/v1/tokens/nft/holdings?principal=${addr1}&tx_metadata=true`
     );
-    expect(request2.status).toBe(200);
-    expect(request2.type).toBe('application/json');
+    assert.equal(request2.status, 200);
+    assert.equal(request2.type, 'application/json');
     const result2 = JSON.parse(request2.text);
-    expect(result2.total).toEqual(1);
-    expect(result2.results[0].asset_identifier).toEqual(assetId1);
-    expect(result2.results[0].tx.tx_id).toEqual('0x5454');
-    expect(result2.results[0].block_height).toEqual(block1.block.block_height);
+    assert.deepEqual(result2.total, 1);
+    assert.deepEqual(result2.results[0].asset_identifier, assetId1);
+    assert.deepEqual(result2.results[0].tx.tx_id, '0x5454');
+    assert.deepEqual(result2.results[0].block_height, block1.block.block_height);
 
     // Mint another NFT
     const block2 = new TestBlockBuilder({
@@ -91,25 +93,25 @@ describe('/extended/v1/tokens tests', () => {
     const request3 = await supertest(api.server).get(
       `/extended/v1/tokens/nft/holdings?principal=${addr1}`
     );
-    expect(request3.status).toBe(200);
-    expect(request3.type).toBe('application/json');
+    assert.equal(request3.status, 200);
+    assert.equal(request3.type, 'application/json');
     const result3 = JSON.parse(request3.text);
-    expect(result3.total).toEqual(2);
-    expect(result3.results[0].asset_identifier).toEqual(assetId2);
-    expect(result3.results[0].tx_id).toEqual('0x5464');
-    expect(result3.results[0].block_height).toEqual(block2.block.block_height);
+    assert.deepEqual(result3.total, 2);
+    assert.deepEqual(result3.results[0].asset_identifier, assetId2);
+    assert.deepEqual(result3.results[0].tx_id, '0x5464');
+    assert.deepEqual(result3.results[0].block_height, block2.block.block_height);
 
     // Request: filtered by asset id
     const request4 = await supertest(api.server).get(
       `/extended/v1/tokens/nft/holdings?principal=${addr1}&asset_identifiers=${assetId2}`
     );
-    expect(request4.status).toBe(200);
-    expect(request4.type).toBe('application/json');
+    assert.equal(request4.status, 200);
+    assert.equal(request4.type, 'application/json');
     const result4 = JSON.parse(request4.text);
-    expect(result4.total).toEqual(1); // 1 result only
-    expect(result4.results[0].asset_identifier).toEqual(assetId2);
-    expect(result4.results[0].tx_id).toEqual('0x5464');
-    expect(result4.results[0].block_height).toEqual(block2.block.block_height);
+    assert.deepEqual(result4.total, 1); // 1 result only
+    assert.deepEqual(result4.results[0].asset_identifier, assetId2);
+    assert.deepEqual(result4.results[0].tx_id, '0x5464');
+    assert.deepEqual(result4.results[0].block_height, block2.block.block_height);
 
     // Transfer one NFT from addr1 to addr2
     const block3 = new TestBlockBuilder({
@@ -131,25 +133,25 @@ describe('/extended/v1/tokens tests', () => {
     const request5 = await supertest(api.server).get(
       `/extended/v1/tokens/nft/holdings?principal=${addr1}`
     );
-    expect(request5.status).toBe(200);
-    expect(request5.type).toBe('application/json');
+    assert.equal(request5.status, 200);
+    assert.equal(request5.type, 'application/json');
     const result5 = JSON.parse(request5.text);
-    expect(result5.total).toEqual(1);
-    expect(result5.results[0].asset_identifier).toEqual(assetId1);
-    expect(result5.results[0].tx_id).toEqual('0x5454');
-    expect(result5.results[0].block_height).toEqual(block1.block.block_height);
+    assert.deepEqual(result5.total, 1);
+    assert.deepEqual(result5.results[0].asset_identifier, assetId1);
+    assert.deepEqual(result5.results[0].tx_id, '0x5454');
+    assert.deepEqual(result5.results[0].block_height, block1.block.block_height);
 
     // Request: addr2 has the other
     const request6 = await supertest(api.server).get(
       `/extended/v1/tokens/nft/holdings?principal=${addr2}`
     );
-    expect(request6.status).toBe(200);
-    expect(request6.type).toBe('application/json');
+    assert.equal(request6.status, 200);
+    assert.equal(request6.type, 'application/json');
     const result6 = JSON.parse(request6.text);
-    expect(result6.total).toEqual(1);
-    expect(result6.results[0].asset_identifier).toEqual(assetId2);
-    expect(result6.results[0].tx_id).toEqual('0x5484');
-    expect(result6.results[0].block_height).toEqual(block3.block.block_height);
+    assert.deepEqual(result6.total, 1);
+    assert.deepEqual(result6.results[0].asset_identifier, assetId2);
+    assert.deepEqual(result6.results[0].tx_id, '0x5484');
+    assert.deepEqual(result6.results[0].block_height, block3.block.block_height);
 
     // Transfer NFT from addr2 to addr3 in microblock
     const microblock1 = new TestMicroblockStreamBuilder()
@@ -185,10 +187,10 @@ describe('/extended/v1/tokens tests', () => {
     const request10 = await supertest(api.server).get(
       `/extended/v1/tokens/nft/holdings?principal=${addr2}`
     );
-    expect(request10.status).toBe(200);
-    expect(request10.type).toBe('application/json');
+    assert.equal(request10.status, 200);
+    assert.equal(request10.type, 'application/json');
     const result10 = JSON.parse(request10.text);
-    expect(result10.total).toEqual(0);
+    assert.deepEqual(result10.total, 0);
 
     // Transfer NFT from addr3 back to addr2 in a re-orged tx
     const block5 = new TestBlockBuilder({
@@ -210,10 +212,10 @@ describe('/extended/v1/tokens tests', () => {
     const request11 = await supertest(api.server).get(
       `/extended/v1/tokens/nft/holdings?principal=${addr2}`
     );
-    expect(request11.status).toBe(200);
-    expect(request11.type).toBe('application/json');
+    assert.equal(request11.status, 200);
+    assert.equal(request11.type, 'application/json');
     const result11 = JSON.parse(request11.text);
-    expect(result11.total).toEqual(0);
+    assert.deepEqual(result11.total, 0);
 
     // Transfer NFT from addr3 back to addr2 again in a micro re-orged tx
     const microblock2 = new TestMicroblockStreamBuilder()
@@ -305,10 +307,10 @@ describe('/extended/v1/tokens tests', () => {
     const request14 = await supertest(api.server).get(
       `/extended/v1/tokens/nft/holdings?principal=${addr2}`
     );
-    expect(request14.status).toBe(200);
-    expect(request14.type).toBe('application/json');
+    assert.equal(request14.status, 200);
+    assert.equal(request14.type, 'application/json');
     const result14 = JSON.parse(request14.text);
-    expect(result14.total).toEqual(0);
+    assert.deepEqual(result14.total, 0);
 
     // Transfer NFT from addr3 to addr2 and back in the same tx
     const block8 = new TestBlockBuilder({
@@ -339,10 +341,10 @@ describe('/extended/v1/tokens tests', () => {
     const request15 = await supertest(api.server).get(
       `/extended/v1/tokens/nft/holdings?principal=${addr2}`
     );
-    expect(request15.status).toBe(200);
-    expect(request15.type).toBe('application/json');
+    assert.equal(request15.status, 200);
+    assert.equal(request15.type, 'application/json');
     const result15 = JSON.parse(request15.text);
-    expect(result15.total).toEqual(0);
+    assert.deepEqual(result15.total, 0);
   });
 
   test('/nft/history', async () => {
@@ -371,25 +373,25 @@ describe('/extended/v1/tokens tests', () => {
     const request1 = await supertest(api.server).get(
       `/extended/v1/tokens/nft/history?asset_identifier=${assetId}&value=${valueHex}`
     );
-    expect(request1.status).toBe(200);
-    expect(request1.type).toBe('application/json');
+    assert.equal(request1.status, 200);
+    assert.equal(request1.type, 'application/json');
     const result1 = JSON.parse(request1.text);
-    expect(result1.total).toEqual(1);
-    expect(result1.results[0].sender).toEqual(null);
-    expect(result1.results[0].recipient).toEqual(addr1);
-    expect(result1.results[0].tx_id).toEqual('0x1001');
+    assert.deepEqual(result1.total, 1);
+    assert.deepEqual(result1.results[0].sender, null);
+    assert.deepEqual(result1.results[0].recipient, addr1);
+    assert.deepEqual(result1.results[0].tx_id, '0x1001');
 
     // Request: with metadata
     const request2 = await supertest(api.server).get(
       `/extended/v1/tokens/nft/history?asset_identifier=${assetId}&value=${valueHex}&tx_metadata=true`
     );
-    expect(request2.status).toBe(200);
-    expect(request2.type).toBe('application/json');
+    assert.equal(request2.status, 200);
+    assert.equal(request2.type, 'application/json');
     const result2 = JSON.parse(request2.text);
-    expect(result2.total).toEqual(1);
-    expect(result2.results[0].sender).toEqual(null);
-    expect(result2.results[0].recipient).toEqual(addr1);
-    expect(result2.results[0].tx.tx_id).toEqual('0x1001');
+    assert.deepEqual(result2.total, 1);
+    assert.deepEqual(result2.results[0].sender, null);
+    assert.deepEqual(result2.results[0].recipient, addr1);
+    assert.deepEqual(result2.results[0].tx.tx_id, '0x1001');
 
     // Transfer NFT to addr2
     const block2 = new TestBlockBuilder({
@@ -412,14 +414,14 @@ describe('/extended/v1/tokens tests', () => {
     const request3 = await supertest(api.server).get(
       `/extended/v1/tokens/nft/history?asset_identifier=${assetId}&value=${valueHex}`
     );
-    expect(request3.status).toBe(200);
-    expect(request3.type).toBe('application/json');
+    assert.equal(request3.status, 200);
+    assert.equal(request3.type, 'application/json');
     const result3 = JSON.parse(request3.text);
-    expect(result3.total).toEqual(2);
-    expect(result3.results[0].sender).toEqual(addr1);
-    expect(result3.results[0].recipient).toEqual(addr2);
-    expect(result3.results[0].tx_id).toEqual('0x1002');
-    expect(result3.results[1].tx_id).toEqual('0x1001');
+    assert.deepEqual(result3.total, 2);
+    assert.deepEqual(result3.results[0].sender, addr1);
+    assert.deepEqual(result3.results[0].recipient, addr2);
+    assert.deepEqual(result3.results[0].tx_id, '0x1002');
+    assert.deepEqual(result3.results[1].tx_id, '0x1001');
 
     // Transfer NFT from addr2 to addr3 in microblock
     const microblock1 = new TestMicroblockStreamBuilder()
@@ -439,25 +441,25 @@ describe('/extended/v1/tokens tests', () => {
     const request4 = await supertest(api.server).get(
       `/extended/v1/tokens/nft/history?asset_identifier=${assetId}&value=${valueHex}&unanchored=true`
     );
-    expect(request4.status).toBe(200);
-    expect(request4.type).toBe('application/json');
+    assert.equal(request4.status, 200);
+    assert.equal(request4.type, 'application/json');
     const result4 = JSON.parse(request4.text);
-    expect(result4.total).toEqual(3);
-    expect(result4.results[0].sender).toEqual(addr2);
-    expect(result4.results[0].recipient).toEqual(addr3);
-    expect(result4.results[0].tx_id).toEqual('0x1003');
+    assert.deepEqual(result4.total, 3);
+    assert.deepEqual(result4.results[0].sender, addr2);
+    assert.deepEqual(result4.results[0].recipient, addr3);
+    assert.deepEqual(result4.results[0].tx_id, '0x1003');
 
     // Request: new event does not appear in anchored history
     const request5 = await supertest(api.server).get(
       `/extended/v1/tokens/nft/history?asset_identifier=${assetId}&value=${valueHex}`
     );
-    expect(request5.status).toBe(200);
-    expect(request5.type).toBe('application/json');
+    assert.equal(request5.status, 200);
+    assert.equal(request5.type, 'application/json');
     const result5 = JSON.parse(request5.text);
-    expect(result5.total).toEqual(2);
-    expect(result5.results[0].sender).toEqual(addr1);
-    expect(result5.results[0].recipient).toEqual(addr2);
-    expect(result5.results[0].tx_id).toEqual('0x1002');
+    assert.deepEqual(result5.total, 2);
+    assert.deepEqual(result5.results[0].sender, addr1);
+    assert.deepEqual(result5.results[0].recipient, addr2);
+    assert.deepEqual(result5.results[0].tx_id, '0x1002');
 
     // Confirm unanchored txs
     const block3 = new TestBlockBuilder({
@@ -474,13 +476,13 @@ describe('/extended/v1/tokens tests', () => {
     const request6 = await supertest(api.server).get(
       `/extended/v1/tokens/nft/history?asset_identifier=${assetId}&value=${valueHex}`
     );
-    expect(request6.status).toBe(200);
-    expect(request6.type).toBe('application/json');
+    assert.equal(request6.status, 200);
+    assert.equal(request6.type, 'application/json');
     const result6 = JSON.parse(request6.text);
-    expect(result6.total).toEqual(3);
-    expect(result6.results[0].sender).toEqual(addr2);
-    expect(result6.results[0].recipient).toEqual(addr3);
-    expect(result6.results[0].tx_id).toEqual('0x1003');
+    assert.deepEqual(result6.total, 3);
+    assert.deepEqual(result6.results[0].sender, addr2);
+    assert.deepEqual(result6.results[0].recipient, addr3);
+    assert.deepEqual(result6.results[0].tx_id, '0x1003');
 
     // Transfer NFT back to addr2 in a re-org tx
     const block4 = new TestBlockBuilder({
@@ -503,13 +505,13 @@ describe('/extended/v1/tokens tests', () => {
     const request7 = await supertest(api.server).get(
       `/extended/v1/tokens/nft/history?asset_identifier=${assetId}&value=${valueHex}`
     );
-    expect(request7.status).toBe(200);
-    expect(request7.type).toBe('application/json');
+    assert.equal(request7.status, 200);
+    assert.equal(request7.type, 'application/json');
     const result7 = JSON.parse(request7.text);
-    expect(result7.total).toEqual(3);
-    expect(result7.results[0].sender).toEqual(addr2);
-    expect(result7.results[0].recipient).toEqual(addr3);
-    expect(result7.results[0].tx_id).toEqual('0x1003');
+    assert.deepEqual(result7.total, 3);
+    assert.deepEqual(result7.results[0].sender, addr2);
+    assert.deepEqual(result7.results[0].recipient, addr3);
+    assert.deepEqual(result7.results[0].tx_id, '0x1003');
 
     // Transfer NFT back to addr2 in a microblock re-org tx
     const microblock2 = new TestMicroblockStreamBuilder()
@@ -529,13 +531,13 @@ describe('/extended/v1/tokens tests', () => {
     const request8 = await supertest(api.server).get(
       `/extended/v1/tokens/nft/history?asset_identifier=${assetId}&value=${valueHex}&unanchored=true`
     );
-    expect(request8.status).toBe(200);
-    expect(request8.type).toBe('application/json');
+    assert.equal(request8.status, 200);
+    assert.equal(request8.type, 'application/json');
     const result8 = JSON.parse(request8.text);
-    expect(result8.total).toEqual(3);
-    expect(result8.results[0].sender).toEqual(addr2);
-    expect(result8.results[0].recipient).toEqual(addr3);
-    expect(result8.results[0].tx_id).toEqual('0x1003');
+    assert.deepEqual(result8.total, 3);
+    assert.deepEqual(result8.results[0].sender, addr2);
+    assert.deepEqual(result8.results[0].recipient, addr3);
+    assert.deepEqual(result8.results[0].tx_id, '0x1003');
 
     // Confirm unanchored txs
     const block5 = new TestBlockBuilder({
@@ -569,13 +571,13 @@ describe('/extended/v1/tokens tests', () => {
     const request9 = await supertest(api.server).get(
       `/extended/v1/tokens/nft/history?asset_identifier=${assetId}&value=${valueHex}`
     );
-    expect(request9.status).toBe(200);
-    expect(request9.type).toBe('application/json');
+    assert.equal(request9.status, 200);
+    assert.equal(request9.type, 'application/json');
     const result9 = JSON.parse(request9.text);
-    expect(result9.total).toEqual(3);
-    expect(result9.results[0].sender).toEqual(addr2);
-    expect(result9.results[0].recipient).toEqual(addr3);
-    expect(result9.results[0].tx_id).toEqual('0x1003');
+    assert.deepEqual(result9.total, 3);
+    assert.deepEqual(result9.results[0].sender, addr2);
+    assert.deepEqual(result9.results[0].recipient, addr3);
+    assert.deepEqual(result9.results[0].tx_id, '0x1003');
 
     // List NFT to marketplace and purchase in the same block
     const microblock3 = new TestMicroblockStreamBuilder()
@@ -627,16 +629,16 @@ describe('/extended/v1/tokens tests', () => {
     const request10 = await supertest(api.server).get(
       `/extended/v1/tokens/nft/history?asset_identifier=${assetId}&value=${valueHex}`
     );
-    expect(request10.status).toBe(200);
-    expect(request10.type).toBe('application/json');
+    assert.equal(request10.status, 200);
+    assert.equal(request10.type, 'application/json');
     const result10 = JSON.parse(request10.text);
-    expect(result10.total).toEqual(5);
-    expect(result10.results[0].sender).toEqual(marketplace);
-    expect(result10.results[0].recipient).toEqual(addr2);
-    expect(result10.results[0].tx_id).toEqual('0x100a');
-    expect(result10.results[1].sender).toEqual(addr3);
-    expect(result10.results[1].recipient).toEqual(marketplace);
-    expect(result10.results[1].tx_id).toEqual('0x1009');
+    assert.deepEqual(result10.total, 5);
+    assert.deepEqual(result10.results[0].sender, marketplace);
+    assert.deepEqual(result10.results[0].recipient, addr2);
+    assert.deepEqual(result10.results[0].tx_id, '0x100a');
+    assert.deepEqual(result10.results[1].sender, addr3);
+    assert.deepEqual(result10.results[1].recipient, marketplace);
+    assert.deepEqual(result10.results[1].tx_id, '0x1009');
 
     // Mint and transfer NFT in the same tx
     const newValueHex = '0x01000000000000000000000000000009c6';
@@ -668,12 +670,12 @@ describe('/extended/v1/tokens tests', () => {
     const request11 = await supertest(api.server).get(
       `/extended/v1/tokens/nft/history?asset_identifier=${assetId}&value=${newValueHex}`
     );
-    expect(request11.status).toBe(200);
-    expect(request11.type).toBe('application/json');
+    assert.equal(request11.status, 200);
+    assert.equal(request11.type, 'application/json');
     const result11 = JSON.parse(request11.text);
-    expect(result11.total).toEqual(2);
-    expect(result11.results[0].asset_event_type).toEqual('transfer');
-    expect(result11.results[1].asset_event_type).toEqual('mint');
+    assert.deepEqual(result11.total, 2);
+    assert.deepEqual(result11.results[0].asset_event_type, 'transfer');
+    assert.deepEqual(result11.results[1].asset_event_type, 'mint');
   });
 
   test('/nft/mints', async () => {
@@ -700,25 +702,25 @@ describe('/extended/v1/tokens tests', () => {
     const request1 = await supertest(api.server).get(
       `/extended/v1/tokens/nft/mints?asset_identifier=${assetId}`
     );
-    expect(request1.status).toBe(200);
-    expect(request1.type).toBe('application/json');
+    assert.equal(request1.status, 200);
+    assert.equal(request1.type, 'application/json');
     const result1 = JSON.parse(request1.text);
-    expect(result1.total).toEqual(1);
-    expect(result1.results[0].recipient).toEqual(addr1);
-    expect(result1.results[0].value.hex).toEqual('0x01000000000000000000000000000009c5');
-    expect(result1.results[0].tx_id).toEqual('0x1001');
+    assert.deepEqual(result1.total, 1);
+    assert.deepEqual(result1.results[0].recipient, addr1);
+    assert.deepEqual(result1.results[0].value.hex, '0x01000000000000000000000000000009c5');
+    assert.deepEqual(result1.results[0].tx_id, '0x1001');
 
     // Request: with metadata
     const request2 = await supertest(api.server).get(
       `/extended/v1/tokens/nft/mints?asset_identifier=${assetId}&tx_metadata=true`
     );
-    expect(request2.status).toBe(200);
-    expect(request2.type).toBe('application/json');
+    assert.equal(request2.status, 200);
+    assert.equal(request2.type, 'application/json');
     const result2 = JSON.parse(request2.text);
-    expect(result2.total).toEqual(1);
-    expect(result2.results[0].recipient).toEqual(addr1);
-    expect(result2.results[0].value.hex).toEqual('0x01000000000000000000000000000009c5');
-    expect(result2.results[0].tx.tx_id).toEqual('0x1001');
+    assert.deepEqual(result2.total, 1);
+    assert.deepEqual(result2.results[0].recipient, addr1);
+    assert.deepEqual(result2.results[0].value.hex, '0x01000000000000000000000000000009c5');
+    assert.deepEqual(result2.results[0].tx.tx_id, '0x1001');
 
     // Mint another NFT
     const block2 = new TestBlockBuilder({
@@ -741,13 +743,13 @@ describe('/extended/v1/tokens tests', () => {
     const request3 = await supertest(api.server).get(
       `/extended/v1/tokens/nft/mints?asset_identifier=${assetId}`
     );
-    expect(request3.status).toBe(200);
-    expect(request3.type).toBe('application/json');
+    assert.equal(request3.status, 200);
+    assert.equal(request3.type, 'application/json');
     const result3 = JSON.parse(request3.text);
-    expect(result3.total).toEqual(2);
-    expect(result3.results[0].recipient).toEqual(addr2);
-    expect(result3.results[0].value.hex).toEqual('0x01000000000000000000000000000009c6');
-    expect(result3.results[0].tx_id).toEqual('0x1002');
+    assert.deepEqual(result3.total, 2);
+    assert.deepEqual(result3.results[0].recipient, addr2);
+    assert.deepEqual(result3.results[0].value.hex, '0x01000000000000000000000000000009c6');
+    assert.deepEqual(result3.results[0].tx_id, '0x1002');
 
     // Mint NFT in microblock
     const microblock1 = new TestMicroblockStreamBuilder()
@@ -766,25 +768,25 @@ describe('/extended/v1/tokens tests', () => {
     const request4 = await supertest(api.server).get(
       `/extended/v1/tokens/nft/mints?asset_identifier=${assetId}&unanchored=true`
     );
-    expect(request4.status).toBe(200);
-    expect(request4.type).toBe('application/json');
+    assert.equal(request4.status, 200);
+    assert.equal(request4.type, 'application/json');
     const result4 = JSON.parse(request4.text);
-    expect(result4.total).toEqual(3);
-    expect(result4.results[0].recipient).toEqual(addr3);
-    expect(result4.results[0].value.hex).toEqual('0x01000000000000000000000000000009c7');
-    expect(result4.results[0].tx_id).toEqual('0x1003');
+    assert.deepEqual(result4.total, 3);
+    assert.deepEqual(result4.results[0].recipient, addr3);
+    assert.deepEqual(result4.results[0].value.hex, '0x01000000000000000000000000000009c7');
+    assert.deepEqual(result4.results[0].tx_id, '0x1003');
 
     // Request: new mint does not appear in anchored history
     const request5 = await supertest(api.server).get(
       `/extended/v1/tokens/nft/mints?asset_identifier=${assetId}`
     );
-    expect(request5.status).toBe(200);
-    expect(request5.type).toBe('application/json');
+    assert.equal(request5.status, 200);
+    assert.equal(request5.type, 'application/json');
     const result5 = JSON.parse(request5.text);
-    expect(result5.total).toEqual(2);
-    expect(result5.results[0].recipient).toEqual(addr2);
-    expect(result5.results[0].value.hex).toEqual('0x01000000000000000000000000000009c6');
-    expect(result5.results[0].tx_id).toEqual('0x1002');
+    assert.deepEqual(result5.total, 2);
+    assert.deepEqual(result5.results[0].recipient, addr2);
+    assert.deepEqual(result5.results[0].value.hex, '0x01000000000000000000000000000009c6');
+    assert.deepEqual(result5.results[0].tx_id, '0x1002');
 
     // Confirm unanchored txs
     const block3 = new TestBlockBuilder({
@@ -801,13 +803,13 @@ describe('/extended/v1/tokens tests', () => {
     const request6 = await supertest(api.server).get(
       `/extended/v1/tokens/nft/mints?asset_identifier=${assetId}`
     );
-    expect(request6.status).toBe(200);
-    expect(request6.type).toBe('application/json');
+    assert.equal(request6.status, 200);
+    assert.equal(request6.type, 'application/json');
     const result6 = JSON.parse(request6.text);
-    expect(result6.total).toEqual(3);
-    expect(result6.results[0].recipient).toEqual(addr3);
-    expect(result6.results[0].value.hex).toEqual('0x01000000000000000000000000000009c7');
-    expect(result6.results[0].tx_id).toEqual('0x1003');
+    assert.deepEqual(result6.total, 3);
+    assert.deepEqual(result6.results[0].recipient, addr3);
+    assert.deepEqual(result6.results[0].value.hex, '0x01000000000000000000000000000009c7');
+    assert.deepEqual(result6.results[0].tx_id, '0x1003');
 
     // Mint NFT in a re-org tx
     const block4 = new TestBlockBuilder({
@@ -829,13 +831,13 @@ describe('/extended/v1/tokens tests', () => {
     const request7 = await supertest(api.server).get(
       `/extended/v1/tokens/nft/mints?asset_identifier=${assetId}`
     );
-    expect(request7.status).toBe(200);
-    expect(request7.type).toBe('application/json');
+    assert.equal(request7.status, 200);
+    assert.equal(request7.type, 'application/json');
     const result7 = JSON.parse(request7.text);
-    expect(result7.total).toEqual(3);
-    expect(result7.results[0].recipient).toEqual(addr3);
-    expect(result7.results[0].value.hex).toEqual('0x01000000000000000000000000000009c7');
-    expect(result7.results[0].tx_id).toEqual('0x1003');
+    assert.deepEqual(result7.total, 3);
+    assert.deepEqual(result7.results[0].recipient, addr3);
+    assert.deepEqual(result7.results[0].value.hex, '0x01000000000000000000000000000009c7');
+    assert.deepEqual(result7.results[0].tx_id, '0x1003');
 
     // Mint NFT in a microblock re-org tx
     const microblock2 = new TestMicroblockStreamBuilder()
@@ -854,13 +856,13 @@ describe('/extended/v1/tokens tests', () => {
     const request8 = await supertest(api.server).get(
       `/extended/v1/tokens/nft/mints?asset_identifier=${assetId}&unanchored=true`
     );
-    expect(request8.status).toBe(200);
-    expect(request8.type).toBe('application/json');
+    assert.equal(request8.status, 200);
+    assert.equal(request8.type, 'application/json');
     const result8 = JSON.parse(request8.text);
-    expect(result8.total).toEqual(3);
-    expect(result8.results[0].recipient).toEqual(addr3);
-    expect(result8.results[0].value.hex).toEqual('0x01000000000000000000000000000009c7');
-    expect(result8.results[0].tx_id).toEqual('0x1003');
+    assert.deepEqual(result8.total, 3);
+    assert.deepEqual(result8.results[0].recipient, addr3);
+    assert.deepEqual(result8.results[0].value.hex, '0x01000000000000000000000000000009c7');
+    assert.deepEqual(result8.results[0].tx_id, '0x1003');
 
     // Confirm unanchored txs
     const block5 = new TestBlockBuilder({
@@ -893,13 +895,13 @@ describe('/extended/v1/tokens tests', () => {
     const request9 = await supertest(api.server).get(
       `/extended/v1/tokens/nft/mints?asset_identifier=${assetId}`
     );
-    expect(request9.status).toBe(200);
-    expect(request9.type).toBe('application/json');
+    assert.equal(request9.status, 200);
+    assert.equal(request9.type, 'application/json');
     const result9 = JSON.parse(request9.text);
-    expect(result9.total).toEqual(3);
-    expect(result9.results[0].recipient).toEqual(addr3);
-    expect(result9.results[0].value.hex).toEqual('0x01000000000000000000000000000009c7');
-    expect(result9.results[0].tx_id).toEqual('0x1003');
+    assert.deepEqual(result9.total, 3);
+    assert.deepEqual(result9.results[0].recipient, addr3);
+    assert.deepEqual(result9.results[0].value.hex, '0x01000000000000000000000000000009c7');
+    assert.deepEqual(result9.results[0].tx_id, '0x1003');
 
     // Mint two NFTs in the same block
     const microblock3 = new TestMicroblockStreamBuilder()
@@ -949,14 +951,14 @@ describe('/extended/v1/tokens tests', () => {
     const request10 = await supertest(api.server).get(
       `/extended/v1/tokens/nft/mints?asset_identifier=${assetId}`
     );
-    expect(request10.status).toBe(200);
-    expect(request10.type).toBe('application/json');
+    assert.equal(request10.status, 200);
+    assert.equal(request10.type, 'application/json');
     const result10 = JSON.parse(request10.text);
-    expect(result10.total).toEqual(5);
-    expect(result10.results[0].value.hex).toEqual('0x01000000000000000000000000000009c9');
-    expect(result10.results[0].tx_id).toEqual('0x100a');
-    expect(result10.results[1].value.hex).toEqual('0x01000000000000000000000000000009c8');
-    expect(result10.results[1].tx_id).toEqual('0x1009');
+    assert.deepEqual(result10.total, 5);
+    assert.deepEqual(result10.results[0].value.hex, '0x01000000000000000000000000000009c9');
+    assert.deepEqual(result10.results[0].tx_id, '0x100a');
+    assert.deepEqual(result10.results[1].value.hex, '0x01000000000000000000000000000009c8');
+    assert.deepEqual(result10.results[1].tx_id, '0x1009');
 
     // Mint two NFTs in the same tx
     const block8 = new TestBlockBuilder({
@@ -987,12 +989,12 @@ describe('/extended/v1/tokens tests', () => {
     const request11 = await supertest(api.server).get(
       `/extended/v1/tokens/nft/mints?asset_identifier=${assetId}`
     );
-    expect(request11.status).toBe(200);
-    expect(request11.type).toBe('application/json');
+    assert.equal(request11.status, 200);
+    assert.equal(request11.type, 'application/json');
     const result11 = JSON.parse(request11.text);
-    expect(result11.total).toEqual(7);
-    expect(result11.results[0].value.hex).toEqual('0x01000000000000000000000000000009cb');
-    expect(result11.results[1].value.hex).toEqual('0x01000000000000000000000000000009ca');
+    assert.deepEqual(result11.total, 7);
+    assert.deepEqual(result11.results[0].value.hex, '0x01000000000000000000000000000009cb');
+    assert.deepEqual(result11.results[1].value.hex, '0x01000000000000000000000000000009ca');
   });
 
   test('/ft/holders - stx', async () => {
@@ -1006,12 +1008,12 @@ describe('/extended/v1/tokens tests', () => {
     await db.update(block1);
 
     const request1 = await supertest(api.server).get(`/extended/v1/tokens/ft/stx/holders`);
-    expect(request1.status).toBe(200);
-    expect(request1.type).toBe('application/json');
+    assert.equal(request1.status, 200);
+    assert.equal(request1.type, 'application/json');
 
     const request1Body = request1.body as { results: any[] };
     const balance1 = request1Body.results.find(b => b.address === addr1)?.balance;
-    expect(balance1).toBe('1000');
+    assert.equal(balance1, '1000');
   });
 
   test('/ft/holders - ft', async () => {
@@ -1030,11 +1032,11 @@ describe('/extended/v1/tokens tests', () => {
     await db.update(block1);
 
     const request1 = await supertest(api.server).get(`/extended/v1/tokens/ft/${ftID}/holders`);
-    expect(request1.status).toBe(200);
-    expect(request1.type).toBe('application/json');
+    assert.equal(request1.status, 200);
+    assert.equal(request1.type, 'application/json');
 
     const request1Body = request1.body as { results: any[] };
     const balance1 = request1Body.results.find(b => b.address === addr1)?.balance;
-    expect(balance1).toBe('1000');
+    assert.equal(balance1, '1000');
   });
 });

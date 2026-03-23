@@ -2088,6 +2088,8 @@ describe('postgres datastore', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
       vm_error: null,
+      abi: undefined,
+      sponsor_nonce: undefined,
     };
     await db.update({
       block: dbBlock,
@@ -2175,11 +2177,13 @@ describe('postgres datastore', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
       vm_error: null,
+      abi: undefined,
+      sponsor_nonce: undefined,
     };
     await assert.rejects(db.updateTx(client, { ...tx, raw_tx: '0x' }), error => {
-      assert.deepEqual(
-        error,
-        new Error('new row for relation "txs" violates check constraint "valid_token_transfer"')
+      assert.equal(
+        (error as Error).message,
+        'new row for relation "txs" violates check constraint "valid_token_transfer"'
       );
       return true;
     });
@@ -2272,11 +2276,13 @@ describe('postgres datastore', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
       vm_error: null,
+      abi: undefined,
+      sponsor_nonce: undefined,
     };
     await assert.rejects(db.updateTx(client, { ...tx, raw_tx: '0x' }), error => {
-      assert.deepEqual(
-        error,
-        new Error('new row for relation "txs" violates check constraint "valid_smart_contract"')
+      assert.equal(
+        (error as Error).message,
+        'new row for relation "txs" violates check constraint "valid_smart_contract"'
       );
       return true;
     });
@@ -2378,13 +2384,13 @@ describe('postgres datastore', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
       vm_error: null,
+      abi: undefined,
+      sponsor_nonce: undefined,
     };
     await assert.rejects(db.updateTx(client, tx), error => {
-      assert.deepEqual(
-        error,
-        new Error(
-          'new row for relation "txs" violates check constraint "valid_versioned_smart_contract"'
-        )
+      assert.equal(
+        (error as Error).message,
+        'new row for relation "txs" violates check constraint "valid_versioned_smart_contract"'
       );
       return true;
     });
@@ -2527,11 +2533,13 @@ describe('postgres datastore', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
       vm_error: null,
+      abi: undefined,
+      sponsor_nonce: undefined,
     };
     await assert.rejects(db.updateTx(client, { ...tx, raw_tx: '0x' }), error => {
-      assert.deepEqual(
-        error,
-        new Error('new row for relation "txs" violates check constraint "valid_contract_call"')
+      assert.equal(
+        (error as Error).message,
+        'new row for relation "txs" violates check constraint "valid_contract_call"'
       );
       return true;
     });
@@ -2624,11 +2632,13 @@ describe('postgres datastore', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
       vm_error: null,
+      abi: undefined,
+      sponsor_nonce: undefined,
     };
     await assert.rejects(db.updateTx(client, { ...tx, raw_tx: '0x' }), error => {
-      assert.deepEqual(
-        error,
-        new Error('new row for relation "txs" violates check constraint "valid_poison_microblock"')
+      assert.equal(
+        (error as Error).message,
+        'new row for relation "txs" violates check constraint "valid_poison_microblock"'
       );
       return true;
     });
@@ -2720,11 +2730,13 @@ describe('postgres datastore', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
       vm_error: null,
+      abi: undefined,
+      sponsor_nonce: undefined,
     };
     await assert.rejects(db.updateTx(client, { ...tx, raw_tx: '0x' }), error => {
-      assert.deepEqual(
-        error,
-        new Error('new row for relation "txs" violates check constraint "valid_coinbase"')
+      assert.equal(
+        (error as Error).message,
+        'new row for relation "txs" violates check constraint "valid_coinbase"'
       );
       return true;
     });
@@ -2819,6 +2831,8 @@ describe('postgres datastore', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
       vm_error: null,
+      abi: undefined,
+      sponsor_nonce: undefined,
     };
     const updatedRows = await db.updateTx(client, tx);
     assert.equal(updatedRows, 1);

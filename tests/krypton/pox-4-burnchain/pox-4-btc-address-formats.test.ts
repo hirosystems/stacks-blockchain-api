@@ -13,7 +13,7 @@ import {
 import bignumber from 'bignumber.js';
 import { CoreRpcPoxInfo } from '../../../src/core-rpc/client.ts';
 import { DbEventTypeId, DbStxLockEvent } from '../../../src/datastore/common.ts';
-import { getBitcoinAddressFromKey, privateToPublicKey } from '../../../src/ec-helpers.ts';
+import { getBitcoinAddressFromKey, privateToPublicKey } from '../ec-helpers.ts';
 import { RPCClient } from 'rpc-bitcoin';
 import { hexToBytes } from '@stacks/common';
 import { getPublicKeyFromPrivate } from '@stacks/encryption';

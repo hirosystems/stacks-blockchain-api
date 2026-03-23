@@ -59,12 +59,21 @@ jobs:
       matrix:
         suite:
           [
-            api,
-            bns,
-            bns-e2e,
-            btc-faucet,
-            event-replay,
-            rpc,
+            api:bns,
+            api:cache,
+            api:datastore,
+            api:event-replay,
+            api:event-server,
+            api:microblocks,
+            api:redis,
+            api:sockets,
+            api:synthetic-txs,
+            api:v2-proxy,
+            krypton:bns-e2e,
+            krypton:pox-4,
+            krypton:pox-4-burnchain,
+            krypton:rpc,
+            snp,
           ]
     runs-on: ubuntu-latest
     steps:
@@ -97,140 +106,15 @@ jobs:
         working-directory: client
         run: npm ci --audit=false
 
-      - name: Setup env vars
-        run: echo "STACKS_CORE_EVENT_HOST=http://0.0.0.0" >> $GITHUB_ENV
-
       - name: Setup replay directories
-        if: matrix.suite == 'event-replay'
+        if: matrix.suite == 'api:event-replay'
         run: |
           mkdir -p tests/event-replay/.tmp/local/
           sudo chown 999:999 tests/event-replay/.tmp/local/
           sudo chmod -R 777 tests/event-replay/.tmp/local/
 
-      - name: Setup integration environment
-        run: |
-          sudo ufw disable
-          npm run devenv:deploy -- -d
-          npm run devenv:logs -- --no-color &> docker-compose-logs.txt &
-
       - name: Run tests
-        run: npm run test:${{ matrix.suite }} -- --coverage
-
-      - name: Print integration environment logs
-        run: cat docker-compose-logs.txt
-        if: failure()
-
-      - name: Teardown integration environment
-        run: npm run devenv:stop
-        if: always()
-
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v4
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}
-        if: always()
-
-  test-snp:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-
-      - name: Use Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version-file: ".nvmrc"
-
-      # https://github.com/actions/cache/blob/main/examples.md#node---npm
-      - name: Get npm cache directory
-        id: npm-cache-dir
-        shell: bash
-        run: echo "dir=$(npm config get cache)" >> ${GITHUB_OUTPUT}
-
-      - name: Cache node modules
-        uses: actions/cache@v4
-        id: npm-cache # use this to check for `cache-hit` ==> if: steps.npm-cache.outputs.cache-hit != 'true'
-        with:
-          path: ${{ steps.npm-cache-dir.outputs.dir }}
-          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-node-
-
-      - name: Install deps
-        run: npm ci --audit=false
-
-      - name: Install client deps
-        working-directory: client
-        run: npm ci --audit=false
-      - name: Run tests
-        run: npm run test:snp -- --coverage
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v4
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}
-        if: always()
-
-  test-2_5:
-    strategy:
-      fail-fast: false
-      matrix:
-        suite:
-          [
-            block-zero-handling,
-            faucet-stx,
-            pox-4-btc-address-formats,
-            pox-4-delegate-aggregation,
-            pox-4-delegate-stacking,
-            pox-4-delegate-revoked-stacking,
-            pox-4-stack-extend-increase,
-            pox-4-burnchain-stack-stx,
-            pox-4-burnchain-delegate-stx,
-          ]
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-
-      - name: Use Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version-file: ".nvmrc"
-
-      # https://github.com/actions/cache/blob/main/examples.md#node---npm
-      - name: Get npm cache directory
-        id: npm-cache-dir
-        shell: bash
-        run: echo "dir=$(npm config get cache)" >> ${GITHUB_OUTPUT}
-
-      - name: Cache node modules
-        uses: actions/cache@v4
-        id: npm-cache # use this to check for `cache-hit` ==> if: steps.npm-cache.outputs.cache-hit != 'true'
-        with:
-          path: ${{ steps.npm-cache-dir.outputs.dir }}
-          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-node-
-
-      - name: Install deps
-        run: npm ci --audit=false
-
-      - name: Setup env vars
-        run: echo "STACKS_CORE_EVENT_HOST=http://0.0.0.0" >> $GITHUB_ENV
-
-      - name: Setup integration environment
-        run: |
-          sudo ufw disable
-          npm run devenv:deploy-krypton -- -d
-          npm run devenv:logs-krypton -- --no-color &> docker-compose-logs.txt &
-
-      - name: Run tests
-        run: npm run test:2.5 -- --testPathPatterns "${{ matrix.suite }}" --coverage
-
-      - name: Print integration environment logs
-        run: cat docker-compose-logs.txt
-        if: failure()
-
-      - name: Teardown integration environment
-        run: npm run devenv:stop-krypton
-        if: always()
+        run: npx c8 --reporter=lcov npm run test:${{ matrix.suite }}
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4
@@ -248,7 +132,6 @@ jobs:
     needs:
       - lint
       - test
-      - test-2_5
     outputs:
       new_release_version: ${{ steps.semantic.outputs.new_release_version }}
       new_release_published: ${{ steps.semantic.outputs.new_release_published }}

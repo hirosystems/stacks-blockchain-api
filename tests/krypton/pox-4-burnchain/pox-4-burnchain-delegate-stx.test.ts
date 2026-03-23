@@ -8,7 +8,7 @@ import {
   standardPrincipalCV,
   uintCV,
 } from '@stacks/transactions';
-import { ECPair } from '../../../src/ec-helpers.ts';
+import { ECPair } from '../ec-helpers.ts';
 import { BootContractAddress } from '../../../src/helpers.ts';
 import * as btc from 'bitcoinjs-lib';
 import { b58ToC32, c32ToB58 } from 'c32check';

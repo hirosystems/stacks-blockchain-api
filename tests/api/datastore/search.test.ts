@@ -1,4 +1,4 @@
-import * as supertest from 'supertest';
+import supertest from 'supertest';
 import { ChainID } from '@stacks/transactions';
 import {
   DbBlock,
@@ -18,7 +18,10 @@ import { startApiServer, ApiServer } from '../../../src/api/init.ts';
 import { I32_MAX } from '../../../src/helpers.ts';
 import { PgWriteStore } from '../../../src/datastore/pg-write-store.ts';
 import { PgSqlClient, bufferToHex } from '@stacks/api-toolkit';
-import { migrate } from '../utils/test-helpers';
+import { migrate } from '../../test-helpers.ts';
+import { beforeEach, afterEach, describe, test } from 'node:test';
+import assert from 'node:assert/strict';
+import { assertMatchesObject } from '../test-helpers.ts';
 
 describe('search tests', () => {
   let db: PgWriteStore;
@@ -131,8 +134,8 @@ describe('search tests', () => {
     const searchResult1 = await supertest(api.server).get(
       `/extended/v1/search/0x1234000000000000000000000000000000000000000000000000000000000000`
     );
-    expect(searchResult1.status).toBe(200);
-    expect(searchResult1.type).toBe('application/json');
+    assert.equal(searchResult1.status, 200);
+    assert.equal(searchResult1.type, 'application/json');
     const expectedResp1 = {
       found: true,
       result: {
@@ -147,14 +150,14 @@ describe('search tests', () => {
         },
       },
     };
-    expect(JSON.parse(searchResult1.text)).toEqual(expectedResp1);
+    assert.deepEqual(JSON.parse(searchResult1.text), expectedResp1);
 
     // test without 0x-prefix
     const searchResult2 = await supertest(api.server).get(
       `/extended/v1/search/1234000000000000000000000000000000000000000000000000000000000000`
     );
-    expect(searchResult2.status).toBe(200);
-    expect(searchResult2.type).toBe('application/json');
+    assert.equal(searchResult2.status, 200);
+    assert.equal(searchResult2.type, 'application/json');
     const expectedResp2 = {
       found: true,
       result: {
@@ -169,14 +172,14 @@ describe('search tests', () => {
         },
       },
     };
-    expect(JSON.parse(searchResult2.text)).toEqual(expectedResp2);
+    assert.deepEqual(JSON.parse(searchResult2.text), expectedResp2);
 
     // test whitespace
     const searchResult3 = await supertest(api.server).get(
       `/extended/v1/search/ 1234000000000000000000000000000000000000000000000000000000000000`
     );
-    expect(searchResult3.status).toBe(200);
-    expect(searchResult3.type).toBe('application/json');
+    assert.equal(searchResult3.status, 200);
+    assert.equal(searchResult3.type, 'application/json');
     const expectedResp3 = {
       found: true,
       result: {
@@ -191,14 +194,14 @@ describe('search tests', () => {
         },
       },
     };
-    expect(JSON.parse(searchResult3.text)).toEqual(expectedResp3);
+    assert.deepEqual(JSON.parse(searchResult3.text), expectedResp3);
 
     // test tx search
     const searchResult4 = await supertest(api.server).get(
       `/extended/v1/search/0x4567000000000000000000000000000000000000000000000000000000000000`
     );
-    expect(searchResult4.status).toBe(200);
-    expect(searchResult4.type).toBe('application/json');
+    assert.equal(searchResult4.status, 200);
+    assert.equal(searchResult4.type, 'application/json');
     const expectedResp4 = {
       found: true,
       result: {
@@ -213,14 +216,14 @@ describe('search tests', () => {
         },
       },
     };
-    expect(JSON.parse(searchResult4.text)).toEqual(expectedResp4);
+    assert.deepEqual(JSON.parse(searchResult4.text), expectedResp4);
 
     // test mempool tx search
     const searchResult5 = await supertest(api.server).get(
       `/extended/v1/search/0x8912000000000000000000000000000000000000000000000000000000000000`
     );
-    expect(searchResult5.status).toBe(200);
-    expect(searchResult5.type).toBe('application/json');
+    assert.equal(searchResult5.status, 200);
+    assert.equal(searchResult5.type, 'application/json');
     const expectedResp5 = {
       found: true,
       result: {
@@ -229,34 +232,34 @@ describe('search tests', () => {
         tx_data: { tx_type: 'coinbase' },
       },
     };
-    expect(JSON.parse(searchResult5.text)).toEqual(expectedResp5);
+    assert.deepEqual(JSON.parse(searchResult5.text), expectedResp5);
 
     // test hash not found
     const searchResult6 = await supertest(api.server).get(
       `/extended/v1/search/0x1111000000000000000000000000000000000000000000000000000000000000`
     );
-    expect(searchResult6.status).toBe(404);
-    expect(searchResult6.type).toBe('application/json');
+    assert.equal(searchResult6.status, 404);
+    assert.equal(searchResult6.type, 'application/json');
     const expectedResp6 = {
       found: false,
       result: { entity_type: 'unknown_hash' },
       error:
         'No block or transaction found with hash "0x1111000000000000000000000000000000000000000000000000000000000000"',
     };
-    expect(JSON.parse(searchResult6.text)).toEqual(expectedResp6);
+    assert.deepEqual(JSON.parse(searchResult6.text), expectedResp6);
 
     // test invalid hash hex
     const invalidHex = '0x1111w00000000000000000000000000000000000000000000000000000000000';
     const searchResult7 = await supertest(api.server).get(`/extended/v1/search/${invalidHex}`);
-    expect(searchResult7.status).toBe(404);
-    expect(searchResult7.type).toBe('application/json');
+    assert.equal(searchResult7.status, 404);
+    assert.equal(searchResult7.type, 'application/json');
     const expectedResp7 = {
       found: false,
       result: { entity_type: 'invalid_term' },
       error:
         'The term "0x1111w00000000000000000000000000000000000000000000000000000000000" is not a valid block hash, transaction ID, contract principal, or account address principal',
     };
-    expect(JSON.parse(searchResult7.text)).toEqual(expectedResp7);
+    assert.deepEqual(JSON.parse(searchResult7.text), expectedResp7);
   });
 
   test('search term - hash with metadata', async () => {
@@ -396,8 +399,8 @@ describe('search tests', () => {
     const searchResult1 = await supertest(api.server).get(
       `/extended/v1/search/0x1234000000000000000000000000000000000000000000000000000000000000?include_metadata=true`
     );
-    expect(searchResult1.status).toBe(200);
-    expect(searchResult1.type).toBe('application/json');
+    assert.equal(searchResult1.status, 200);
+    assert.equal(searchResult1.type, 'application/json');
     const expectedResp1 = {
       found: true,
       result: {
@@ -413,14 +416,14 @@ describe('search tests', () => {
         metadata: blockMetadata,
       },
     };
-    expect(JSON.parse(searchResult1.text)).toMatchObject(expectedResp1);
+    assertMatchesObject(JSON.parse(searchResult1.text), expectedResp1);
 
     // test without 0x-prefix
     const searchResult2 = await supertest(api.server).get(
       `/extended/v1/search/1234000000000000000000000000000000000000000000000000000000000000?include_metadata=true`
     );
-    expect(searchResult2.status).toBe(200);
-    expect(searchResult2.type).toBe('application/json');
+    assert.equal(searchResult2.status, 200);
+    assert.equal(searchResult2.type, 'application/json');
     const expectedResp2 = {
       found: true,
       result: {
@@ -436,14 +439,14 @@ describe('search tests', () => {
         metadata: blockMetadata,
       },
     };
-    expect(JSON.parse(searchResult2.text)).toMatchObject(expectedResp2);
+    assertMatchesObject(JSON.parse(searchResult2.text), expectedResp2);
 
     // test whitespace
     const searchResult3 = await supertest(api.server).get(
       `/extended/v1/search/ 1234000000000000000000000000000000000000000000000000000000000000?include_metadata=true`
     );
-    expect(searchResult3.status).toBe(200);
-    expect(searchResult3.type).toBe('application/json');
+    assert.equal(searchResult3.status, 200);
+    assert.equal(searchResult3.type, 'application/json');
     const expectedResp3 = {
       found: true,
       result: {
@@ -459,14 +462,14 @@ describe('search tests', () => {
         metadata: blockMetadata,
       },
     };
-    expect(JSON.parse(searchResult3.text)).toMatchObject(expectedResp3);
+    assertMatchesObject(JSON.parse(searchResult3.text), expectedResp3);
 
     // test mempool tx search
     const searchResult4 = await supertest(api.server).get(
       `/extended/v1/search/0x8912000000000000000000000000000000000000000000000000000000000000?include_metadata=true`
     );
-    expect(searchResult4.status).toBe(200);
-    expect(searchResult4.type).toBe('application/json');
+    assert.equal(searchResult4.status, 200);
+    assert.equal(searchResult4.type, 'application/json');
     const expectedResp4 = {
       found: true,
       result: {
@@ -494,43 +497,43 @@ describe('search tests', () => {
         },
       },
     };
-    expect(JSON.parse(searchResult4.text)).toEqual(expectedResp4);
+    assert.deepEqual(JSON.parse(searchResult4.text), expectedResp4);
 
     // test hash not found
     const searchResult5 = await supertest(api.server).get(
       `/extended/v1/search/0x1111000000000000000000000000000000000000000000000000000000000000?include_metadata=true`
     );
-    expect(searchResult5.status).toBe(404);
-    expect(searchResult5.type).toBe('application/json');
+    assert.equal(searchResult5.status, 404);
+    assert.equal(searchResult5.type, 'application/json');
     const expectedResp6 = {
       found: false,
       result: { entity_type: 'unknown_hash' },
       error:
         'No block or transaction found with hash "0x1111000000000000000000000000000000000000000000000000000000000000"',
     };
-    expect(JSON.parse(searchResult5.text)).toEqual(expectedResp6);
+    assert.deepEqual(JSON.parse(searchResult5.text), expectedResp6);
 
     // test invalid hash hex
     const invalidHex = '0x1111w00000000000000000000000000000000000000000000000000000000000';
     const searchResult6 = await supertest(api.server).get(
       `/extended/v1/search/${invalidHex}?include_metadata=true`
     );
-    expect(searchResult6.status).toBe(404);
-    expect(searchResult6.type).toBe('application/json');
+    assert.equal(searchResult6.status, 404);
+    assert.equal(searchResult6.type, 'application/json');
     const expectedResp7 = {
       found: false,
       result: { entity_type: 'invalid_term' },
       error:
         'The term "0x1111w00000000000000000000000000000000000000000000000000000000000" is not a valid block hash, transaction ID, contract principal, or account address principal',
     };
-    expect(JSON.parse(searchResult6.text)).toEqual(expectedResp7);
+    assert.deepEqual(JSON.parse(searchResult6.text), expectedResp7);
 
     // test tx search
     const searchResult8 = await supertest(api.server).get(
       `/extended/v1/search/0x4567000000000000000000000000000000000000000000000000000000000000?include_metadata=true`
     );
-    expect(searchResult8.status).toBe(200);
-    expect(searchResult8.type).toBe('application/json');
+    assert.equal(searchResult8.status, 200);
+    assert.equal(searchResult8.type, 'application/json');
 
     const expectedResp8 = {
       found: true,
@@ -590,7 +593,7 @@ describe('search tests', () => {
         },
       },
     };
-    expect(JSON.parse(searchResult8.text)).toEqual(expectedResp8);
+    assert.deepEqual(JSON.parse(searchResult8.text), expectedResp8);
   });
 
   test('search term - principal', async () => {
@@ -677,8 +680,8 @@ describe('search tests', () => {
 
     // test address as a tx sender
     const searchResult1 = await supertest(api.server).get(`/extended/v1/search/${addr1}`);
-    expect(searchResult1.status).toBe(200);
-    expect(searchResult1.type).toBe('application/json');
+    assert.equal(searchResult1.status, 200);
+    assert.equal(searchResult1.type, 'application/json');
     const expectedResp1 = {
       found: true,
       result: {
@@ -686,7 +689,7 @@ describe('search tests', () => {
         entity_id: addr1,
       },
     };
-    expect(JSON.parse(searchResult1.text)).toEqual(expectedResp1);
+    assert.deepEqual(JSON.parse(searchResult1.text), expectedResp1);
 
     const stxTx2: DbTxRaw = {
       tx_id: '0x2222000000000000000000000000000000000000000000000000000000000000',
@@ -731,8 +734,8 @@ describe('search tests', () => {
 
     // test address as a stx tx recipient
     const searchResult2 = await supertest(api.server).get(`/extended/v1/search/${addr2}`);
-    expect(searchResult2.status).toBe(200);
-    expect(searchResult2.type).toBe('application/json');
+    assert.equal(searchResult2.status, 200);
+    assert.equal(searchResult2.type, 'application/json');
     const expectedResp2 = {
       found: true,
       result: {
@@ -740,7 +743,7 @@ describe('search tests', () => {
         entity_id: addr2,
       },
     };
-    expect(JSON.parse(searchResult2.text)).toEqual(expectedResp2);
+    assert.deepEqual(JSON.parse(searchResult2.text), expectedResp2);
 
     const stxEvent1: DbStxEvent = {
       canonical: true,
@@ -758,8 +761,8 @@ describe('search tests', () => {
 
     // test address as a stx event recipient
     const searchResult3 = await supertest(api.server).get(`/extended/v1/search/${addr3}`);
-    expect(searchResult3.status).toBe(200);
-    expect(searchResult3.type).toBe('application/json');
+    assert.equal(searchResult3.status, 200);
+    assert.equal(searchResult3.type, 'application/json');
     const expectedResp3 = {
       found: true,
       result: {
@@ -767,7 +770,7 @@ describe('search tests', () => {
         entity_id: addr3,
       },
     };
-    expect(JSON.parse(searchResult3.text)).toEqual(expectedResp3);
+    assert.deepEqual(JSON.parse(searchResult3.text), expectedResp3);
 
     const stxEvent2: DbStxEvent = {
       canonical: true,
@@ -786,8 +789,8 @@ describe('search tests', () => {
 
     // test address as a stx event sender
     const searchResult4 = await supertest(api.server).get(`/extended/v1/search/${addr4}`);
-    expect(searchResult4.status).toBe(200);
-    expect(searchResult4.type).toBe('application/json');
+    assert.equal(searchResult4.status, 200);
+    assert.equal(searchResult4.type, 'application/json');
     const expectedResp4 = {
       found: true,
       result: {
@@ -795,7 +798,7 @@ describe('search tests', () => {
         entity_id: addr4,
       },
     };
-    expect(JSON.parse(searchResult4.text)).toEqual(expectedResp4);
+    assert.deepEqual(JSON.parse(searchResult4.text), expectedResp4);
 
     const ftEvent1: DbFtEvent = {
       canonical: true,
@@ -814,8 +817,8 @@ describe('search tests', () => {
 
     // test address as a ft event recipient
     const searchResult5 = await supertest(api.server).get(`/extended/v1/search/${addr5}`);
-    expect(searchResult5.status).toBe(200);
-    expect(searchResult5.type).toBe('application/json');
+    assert.equal(searchResult5.status, 200);
+    assert.equal(searchResult5.type, 'application/json');
     const expectedResp5 = {
       found: true,
       result: {
@@ -823,7 +826,7 @@ describe('search tests', () => {
         entity_id: addr5,
       },
     };
-    expect(JSON.parse(searchResult5.text)).toEqual(expectedResp5);
+    assert.deepEqual(JSON.parse(searchResult5.text), expectedResp5);
 
     const ftEvent2: DbFtEvent = {
       canonical: true,
@@ -842,8 +845,8 @@ describe('search tests', () => {
 
     // test address as a ft event sender
     const searchResult6 = await supertest(api.server).get(`/extended/v1/search/${addr6}`);
-    expect(searchResult6.status).toBe(200);
-    expect(searchResult6.type).toBe('application/json');
+    assert.equal(searchResult6.status, 200);
+    assert.equal(searchResult6.type, 'application/json');
     const expectedResp6 = {
       found: true,
       result: {
@@ -851,7 +854,7 @@ describe('search tests', () => {
         entity_id: addr6,
       },
     };
-    expect(JSON.parse(searchResult6.text)).toEqual(expectedResp6);
+    assert.deepEqual(JSON.parse(searchResult6.text), expectedResp6);
 
     const nftEvent1: DbNftEvent = {
       canonical: true,
@@ -870,8 +873,8 @@ describe('search tests', () => {
 
     // test address as a nft event recipient
     const searchResult7 = await supertest(api.server).get(`/extended/v1/search/${addr7}`);
-    expect(searchResult7.status).toBe(200);
-    expect(searchResult7.type).toBe('application/json');
+    assert.equal(searchResult7.status, 200);
+    assert.equal(searchResult7.type, 'application/json');
     const expectedResp7 = {
       found: true,
       result: {
@@ -879,7 +882,7 @@ describe('search tests', () => {
         entity_id: addr7,
       },
     };
-    expect(JSON.parse(searchResult7.text)).toEqual(expectedResp7);
+    assert.deepEqual(JSON.parse(searchResult7.text), expectedResp7);
 
     const nftEvent2: DbNftEvent = {
       canonical: true,
@@ -898,8 +901,8 @@ describe('search tests', () => {
 
     // test address as a nft event sender
     const searchResult8 = await supertest(api.server).get(`/extended/v1/search/${addr8}`);
-    expect(searchResult8.status).toBe(200);
-    expect(searchResult8.type).toBe('application/json');
+    assert.equal(searchResult8.status, 200);
+    assert.equal(searchResult8.type, 'application/json');
     const expectedResp8 = {
       found: true,
       result: {
@@ -907,7 +910,7 @@ describe('search tests', () => {
         entity_id: addr8,
       },
     };
-    expect(JSON.parse(searchResult8.text)).toEqual(expectedResp8);
+    assert.deepEqual(JSON.parse(searchResult8.text), expectedResp8);
 
     const smartContract: DbTxRaw = {
       type_id: DbTxTypeId.SmartContract,
@@ -951,8 +954,8 @@ describe('search tests', () => {
 
     // test contract address
     const searchResult9 = await supertest(api.server).get(`/extended/v1/search/${contractAddr1}`);
-    expect(searchResult9.status).toBe(200);
-    expect(searchResult9.type).toBe('application/json');
+    assert.equal(searchResult9.status, 200);
+    assert.equal(searchResult9.type, 'application/json');
     const expectedResp9 = {
       found: true,
       result: {
@@ -968,7 +971,7 @@ describe('search tests', () => {
         },
       },
     };
-    expect(JSON.parse(searchResult9.text)).toEqual(expectedResp9);
+    assert.deepEqual(JSON.parse(searchResult9.text), expectedResp9);
 
     const smartContractMempoolTx: DbMempoolTxRaw = {
       pruned: false,
@@ -993,8 +996,8 @@ describe('search tests', () => {
 
     // test contract address associated with mempool tx
     const searchResult10 = await supertest(api.server).get(`/extended/v1/search/${contractAddr2}`);
-    expect(searchResult10.status).toBe(200);
-    expect(searchResult10.type).toBe('application/json');
+    assert.equal(searchResult10.status, 200);
+    assert.equal(searchResult10.type, 'application/json');
     const expectedResp10 = {
       found: true,
       result: {
@@ -1006,43 +1009,43 @@ describe('search tests', () => {
         },
       },
     };
-    expect(JSON.parse(searchResult10.text)).toEqual(expectedResp10);
+    assert.deepEqual(JSON.parse(searchResult10.text), expectedResp10);
 
     // test contract address not found
     const searchResult11 = await supertest(api.server).get(`/extended/v1/search/${contractAddr3}`);
-    expect(searchResult11.status).toBe(404);
-    expect(searchResult11.type).toBe('application/json');
+    assert.equal(searchResult11.status, 404);
+    assert.equal(searchResult11.type, 'application/json');
     const expectedResp11 = {
       found: false,
       result: { entity_type: 'contract_address' },
       error:
         'No principal found with address "STSPS4JYDEYCPPCSHE3MM2NCEGR07KPBETNEZCBQ.test-contract"',
     };
-    expect(JSON.parse(searchResult11.text)).toEqual(expectedResp11);
+    assert.deepEqual(JSON.parse(searchResult11.text), expectedResp11);
 
     // test standard address not found
     const searchResult12 = await supertest(api.server).get(`/extended/v1/search/${addr9}`);
-    expect(searchResult12.status).toBe(404);
-    expect(searchResult12.type).toBe('application/json');
+    assert.equal(searchResult12.status, 404);
+    assert.equal(searchResult12.type, 'application/json');
     const expectedResp12 = {
       found: false,
       result: { entity_type: 'standard_address' },
       error: 'No principal found with address "STAR26VJ4BC24SMNKRY533MAM0K3JA5ZJDVBD45A"',
     };
-    expect(JSON.parse(searchResult12.text)).toEqual(expectedResp12);
+    assert.deepEqual(JSON.parse(searchResult12.text), expectedResp12);
 
     // test invalid term
     const invalidTerm = 'bogus123';
     const searchResult13 = await supertest(api.server).get(`/extended/v1/search/${invalidTerm}`);
-    expect(searchResult13.status).toBe(404);
-    expect(searchResult13.type).toBe('application/json');
+    assert.equal(searchResult13.status, 404);
+    assert.equal(searchResult13.type, 'application/json');
     const expectedResp13 = {
       found: false,
       result: { entity_type: 'invalid_term' },
       error:
         'The term "bogus123" is not a valid block hash, transaction ID, contract principal, or account address principal',
     };
-    expect(JSON.parse(searchResult13.text)).toEqual(expectedResp13);
+    assert.deepEqual(JSON.parse(searchResult13.text), expectedResp13);
   });
 
   test('search term - principal with metadata', async () => {
@@ -1351,8 +1354,8 @@ describe('search tests', () => {
     const searchResult1 = await supertest(api.server).get(
       `/extended/v1/search/${addr1}?include_metadata=true`
     );
-    expect(searchResult1.status).toBe(200);
-    expect(searchResult1.type).toBe('application/json');
+    assert.equal(searchResult1.status, 200);
+    assert.equal(searchResult1.type, 'application/json');
     const expectedResp1 = {
       found: true,
       result: {
@@ -1372,14 +1375,14 @@ describe('search tests', () => {
         },
       },
     };
-    expect(JSON.parse(searchResult1.text)).toEqual(expectedResp1);
+    assert.deepEqual(JSON.parse(searchResult1.text), expectedResp1);
 
     // test address as a stx tx recipient
     const searchResult2 = await supertest(api.server).get(
       `/extended/v1/search/${addr2}?include_metadata=true`
     );
-    expect(searchResult2.status).toBe(200);
-    expect(searchResult2.type).toBe('application/json');
+    assert.equal(searchResult2.status, 200);
+    assert.equal(searchResult2.type, 'application/json');
     const expectedResp2 = {
       found: true,
       result: {
@@ -1399,14 +1402,14 @@ describe('search tests', () => {
         },
       },
     };
-    expect(JSON.parse(searchResult2.text)).toEqual(expectedResp2);
+    assert.deepEqual(JSON.parse(searchResult2.text), expectedResp2);
 
     // test address as a stx event recipient
     const searchResult3 = await supertest(api.server).get(
       `/extended/v1/search/${addr3}?include_metadata=true`
     );
-    expect(searchResult3.status).toBe(200);
-    expect(searchResult3.type).toBe('application/json');
+    assert.equal(searchResult3.status, 200);
+    assert.equal(searchResult3.type, 'application/json');
     const expectedResp3 = {
       found: true,
       result: {
@@ -1426,14 +1429,14 @@ describe('search tests', () => {
         },
       },
     };
-    expect(JSON.parse(searchResult3.text)).toEqual(expectedResp3);
+    assert.deepEqual(JSON.parse(searchResult3.text), expectedResp3);
 
     // test address as a stx event sender
     const searchResult4 = await supertest(api.server).get(
       `/extended/v1/search/${addr4}?include_metadata=true`
     );
-    expect(searchResult4.status).toBe(200);
-    expect(searchResult4.type).toBe('application/json');
+    assert.equal(searchResult4.status, 200);
+    assert.equal(searchResult4.type, 'application/json');
     const expectedResp4 = {
       found: true,
       result: {
@@ -1453,14 +1456,14 @@ describe('search tests', () => {
         },
       },
     };
-    expect(JSON.parse(searchResult4.text)).toEqual(expectedResp4);
+    assert.deepEqual(JSON.parse(searchResult4.text), expectedResp4);
 
     // test address as a ft event recipient
     const searchResult5 = await supertest(api.server).get(
       `/extended/v1/search/${addr5}?include_metadata=true`
     );
-    expect(searchResult5.status).toBe(200);
-    expect(searchResult5.type).toBe('application/json');
+    assert.equal(searchResult5.status, 200);
+    assert.equal(searchResult5.type, 'application/json');
     const emptyStandardAddressMetadata = {
       balance: '0',
       burnchain_lock_height: 0,
@@ -1481,14 +1484,14 @@ describe('search tests', () => {
         metadata: emptyStandardAddressMetadata,
       },
     };
-    expect(JSON.parse(searchResult5.text)).toEqual(expectedResp5);
+    assert.deepEqual(JSON.parse(searchResult5.text), expectedResp5);
 
     // test address as a ft event sender
     const searchResult6 = await supertest(api.server).get(
       `/extended/v1/search/${addr6}?include_metadata=true`
     );
-    expect(searchResult6.status).toBe(200);
-    expect(searchResult6.type).toBe('application/json');
+    assert.equal(searchResult6.status, 200);
+    assert.equal(searchResult6.type, 'application/json');
     const expectedResp6 = {
       found: true,
       result: {
@@ -1497,14 +1500,14 @@ describe('search tests', () => {
         metadata: emptyStandardAddressMetadata,
       },
     };
-    expect(JSON.parse(searchResult6.text)).toEqual(expectedResp6);
+    assert.deepEqual(JSON.parse(searchResult6.text), expectedResp6);
 
     // test address as a nft event recipient
     const searchResult7 = await supertest(api.server).get(
       `/extended/v1/search/${addr7}?include_metadata=true`
     );
-    expect(searchResult7.status).toBe(200);
-    expect(searchResult7.type).toBe('application/json');
+    assert.equal(searchResult7.status, 200);
+    assert.equal(searchResult7.type, 'application/json');
     const expectedResp7 = {
       found: true,
       result: {
@@ -1513,14 +1516,14 @@ describe('search tests', () => {
         metadata: emptyStandardAddressMetadata,
       },
     };
-    expect(JSON.parse(searchResult7.text)).toEqual(expectedResp7);
+    assert.deepEqual(JSON.parse(searchResult7.text), expectedResp7);
 
     // test address as a nft event sender
     const searchResult8 = await supertest(api.server).get(
       `/extended/v1/search/${addr8}?include_metadata=true`
     );
-    expect(searchResult8.status).toBe(200);
-    expect(searchResult8.type).toBe('application/json');
+    assert.equal(searchResult8.status, 200);
+    assert.equal(searchResult8.type, 'application/json');
     const expectedResp8 = {
       found: true,
       result: {
@@ -1529,14 +1532,14 @@ describe('search tests', () => {
         metadata: emptyStandardAddressMetadata,
       },
     };
-    expect(JSON.parse(searchResult8.text)).toEqual(expectedResp8);
+    assert.deepEqual(JSON.parse(searchResult8.text), expectedResp8);
 
     // test contract address
     const searchResult9 = await supertest(api.server).get(
       `/extended/v1/search/${contractAddr1}?include_metadata=true`
     );
-    expect(searchResult9.status).toBe(200);
-    expect(searchResult9.type).toBe('application/json');
+    assert.equal(searchResult9.status, 200);
+    assert.equal(searchResult9.type, 'application/json');
     const expectedResp9 = {
       found: true,
       result: {
@@ -1597,7 +1600,7 @@ describe('search tests', () => {
         },
       },
     };
-    expect(JSON.parse(searchResult9.text)).toEqual(expectedResp9);
+    assert.deepEqual(JSON.parse(searchResult9.text), expectedResp9);
 
     const smartContractMempoolTx: DbMempoolTxRaw = {
       pruned: false,
@@ -1624,8 +1627,8 @@ describe('search tests', () => {
     const searchResult10 = await supertest(api.server).get(
       `/extended/v1/search/${contractAddr2}?include_metadata=true`
     );
-    expect(searchResult10.status).toBe(200);
-    expect(searchResult10.type).toBe('application/json');
+    assert.equal(searchResult10.status, 200);
+    assert.equal(searchResult10.type, 'application/json');
     const expectedResp10 = {
       found: true,
       result: {
@@ -1657,48 +1660,48 @@ describe('search tests', () => {
         },
       },
     };
-    expect(JSON.parse(searchResult10.text)).toEqual(expectedResp10);
+    assert.deepEqual(JSON.parse(searchResult10.text), expectedResp10);
 
     // test contract address not found
     const searchResult11 = await supertest(api.server).get(
       `/extended/v1/search/${contractAddr3}?include_metadata=true`
     );
-    expect(searchResult11.status).toBe(404);
-    expect(searchResult11.type).toBe('application/json');
+    assert.equal(searchResult11.status, 404);
+    assert.equal(searchResult11.type, 'application/json');
     const expectedResp11 = {
       found: false,
       result: { entity_type: 'contract_address' },
       error:
         'No principal found with address "STSPS4JYDEYCPPCSHE3MM2NCEGR07KPBETNEZCBQ.test-contract"',
     };
-    expect(JSON.parse(searchResult11.text)).toEqual(expectedResp11);
+    assert.deepEqual(JSON.parse(searchResult11.text), expectedResp11);
 
     // test standard address not found
     const searchResult12 = await supertest(api.server).get(
       `/extended/v1/search/${addr9}?include_metadata=true`
     );
-    expect(searchResult12.status).toBe(404);
-    expect(searchResult12.type).toBe('application/json');
+    assert.equal(searchResult12.status, 404);
+    assert.equal(searchResult12.type, 'application/json');
     const expectedResp12 = {
       found: false,
       result: { entity_type: 'standard_address' },
       error: 'No principal found with address "STAR26VJ4BC24SMNKRY533MAM0K3JA5ZJDVBD45A"',
     };
-    expect(JSON.parse(searchResult12.text)).toEqual(expectedResp12);
+    assert.deepEqual(JSON.parse(searchResult12.text), expectedResp12);
 
     // test invalid term
     const invalidTerm = 'bogus123';
     const searchResult13 = await supertest(api.server).get(
       `/extended/v1/search/${invalidTerm}?include_metadata=true`
     );
-    expect(searchResult13.status).toBe(404);
-    expect(searchResult13.type).toBe('application/json');
+    assert.equal(searchResult13.status, 404);
+    assert.equal(searchResult13.type, 'application/json');
     const expectedResp13 = {
       found: false,
       result: { entity_type: 'invalid_term' },
       error:
         'The term "bogus123" is not a valid block hash, transaction ID, contract principal, or account address principal',
     };
-    expect(JSON.parse(searchResult13.text)).toEqual(expectedResp13);
+    assert.deepEqual(JSON.parse(searchResult13.text), expectedResp13);
   });
 });
