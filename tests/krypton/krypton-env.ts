@@ -36,6 +36,8 @@ export interface KryptonContext {
 }
 
 async function standByForPoxToBeReady(client: StacksCoreRpcClient): Promise<void> {
+  const maxFailures = 10;
+  let failures = 0;
   while (true) {
     try {
       const poxInfo = await client.getPox();
@@ -44,6 +46,10 @@ async function standByForPoxToBeReady(client: StacksCoreRpcClient): Promise<void
       }
       break;
     } catch (error) {
+      failures += 1;
+      if (failures >= maxFailures) {
+        throw error;
+      }
       console.log(`Waiting on PoX-4 to be ready, retrying after ${error}`);
       await timeout(500);
     }
