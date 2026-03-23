@@ -1,5 +1,5 @@
 import type { ContainerConfig } from '../docker-container.ts';
-import { runDown, runUp } from '../docker-container.ts';
+import { runDown, runLogs, runUp } from '../docker-container.ts';
 
 function kryptonContainers(): ContainerConfig[] {
   const postgres: ContainerConfig = {
@@ -31,12 +31,7 @@ function kryptonContainers(): ContainerConfig[] {
     ],
     waitPort: 20443,
     env: ['STACKS_EVENT_OBSERVER=host.docker.internal:3700', 'MINE_INTERVAL=0.1s'],
-    volumes: [
-      'stacks-blockchain/:/app/config',
-      'stacks-blockchain/.chaindata:/tmp/stacks-blockchain-data',
-    ],
     extraHosts: ['host.docker.internal:host-gateway'],
-    restartPolicy: 'on-failure',
   };
 
   return [postgres, stacksBlockchain];
@@ -53,6 +48,12 @@ export async function globalSetup() {
 export async function globalTeardown() {
   const containers = kryptonContainers();
   for (const config of [...containers].reverse()) {
+    try {
+      process.stdout.write(`\n[testenv:krypton] logs for ${config.name}\n`);
+      await runLogs(config, ['--once']); // tail last logs
+    } catch (error) {
+      process.stdout.write(`[testenv:krypton] could not read logs for ${config.name}: ${error}\n`);
+    }
     await runDown(config);
   }
   process.stdout.write(`[testenv:krypton] all containers removed\n`);

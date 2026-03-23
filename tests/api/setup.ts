@@ -73,10 +73,10 @@ function defaultContainers(): ContainerConfig[] {
       'BLOCKSTACK_USE_TEST_GENESIS_CHAINSTATE=1',
       'NOP_BLOCKSTACK_DEBUG=1',
     ],
-    volumes: [
-      'stacks-blockchain/:/app/config',
-      'stacks-blockchain/.chaindata:/tmp/stacks-blockchain-data',
-    ],
+    // volumes: [
+    //   'stacks-blockchain/:/app/config',
+    //   'stacks-blockchain/.chaindata:/tmp/stacks-blockchain-data',
+    // ],
     extraHosts: ['host.docker.internal:host-gateway'],
     restartPolicy: 'on-failure',
   };
