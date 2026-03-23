@@ -1,5 +1,5 @@
 import type { ContainerConfig } from '../docker-container.ts';
-import { runDown, runLogs, runUp } from '../docker-container.ts';
+import { runDown, runUp } from '../docker-container.ts';
 
 function kryptonContainers(): ContainerConfig[] {
   const postgres: ContainerConfig = {

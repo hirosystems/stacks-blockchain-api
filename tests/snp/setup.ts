@@ -1,5 +1,7 @@
+import { connectPostgres, timeout } from '@stacks/api-toolkit';
 import type { ContainerConfig } from '../docker-container.ts';
 import { runDown, runUp } from '../docker-container.ts';
+import { createClient } from 'redis';
 
 function snpContainers(): ContainerConfig[] {
   const postgres: ContainerConfig = {
@@ -31,7 +33,7 @@ function snpContainers(): ContainerConfig[] {
       `OBSERVER_PORT=3022`,
       `REDIS_URL=redis://host.docker.internal:6379`,
       'PGHOST=host.docker.internal',
-      `PGPORT=5432`,
+      `PGPORT=5490`,
       'PGUSER=postgres',
       'PGPASSWORD=postgres',
       'PGDATABASE=postgres',
@@ -43,11 +45,67 @@ function snpContainers(): ContainerConfig[] {
   return [postgres, redis, snp];
 }
 
+async function waitForPostgres(): Promise<void> {
+  const sql = await connectPostgres({
+    usageName: 'test-snp',
+    connectionArgs: {
+      host: '127.0.0.1',
+      port: 5490,
+      user: 'postgres',
+      password: 'postgres',
+      database: 'postgres',
+    },
+  });
+  await sql`SELECT 1`;
+  await sql.end();
+  console.log('Postgres is ready');
+}
+
+async function waitForRedis(): Promise<void> {
+  const redisClient = createClient({
+    url: 'redis://127.0.0.1:6379',
+    name: 'stacks-blockchain-api-server-tests',
+  });
+  redisClient.on('error', (err: Error) => console.error(`Redis not ready: ${err}`));
+  redisClient.once('ready', () => console.log('Connected to Redis successfully!'));
+  while (true) {
+    try {
+      await redisClient.connect();
+      break;
+    } catch (error) {
+      console.error(`Failed to connect to Redis:`, error);
+      await timeout(100);
+    }
+  }
+  await redisClient.disconnect();
+}
+
+async function waitForSNP(): Promise<void> {
+  const snpUrl = 'http://127.0.0.1:3022';
+  while (true) {
+    try {
+      const response = await fetch(snpUrl + '/status');
+      if (response.ok) {
+        console.log('SNP is ready');
+        break;
+      } else {
+        console.error(`SNP not ready at ${snpUrl}: ${response.statusText}`);
+      }
+    } catch (error) {
+      console.error(`SNP not ready at ${snpUrl}: ${error}`);
+    }
+    await timeout(100);
+  }
+}
+
 export async function globalSetup() {
   const containers = snpContainers();
   for (const config of containers) {
     await runUp(config);
   }
+  await waitForPostgres();
+  await waitForRedis();
+  await waitForSNP();
   process.stdout.write(`[testenv:snp] all containers ready\n`);
 }
 
