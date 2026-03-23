@@ -18,7 +18,6 @@ function kryptonContainers(): ContainerConfig[] {
       "docker-entrypoint.sh postgres & rm -f /ready.txt || true && until pg_isready -U postgres; do sleep 3; done && psql -U postgres -d stacks_blockchain_api -c 'CREATE SCHEMA IF NOT EXISTS stacks_blockchain_api;' || true && echo 'done' > /ready.txt && wait",
     ],
     healthcheck: 'cat /ready.txt && pg_isready -U postgres',
-    volumes: ['tests/event-replay/.tmp/local/:/root/'],
   };
 
   const stacksBlockchain: ContainerConfig = {

@@ -419,6 +419,7 @@ export async function readOnlyFnCall<T extends codec.ClarityValue>(
 }
 
 export async function getKryptonContext(): Promise<KryptonContext> {
+  process.env.PG_DATABASE = 'postgres';
   ENV.PG_DATABASE = 'postgres';
   ENV.STACKS_CHAIN_ID = '0x80000000';
 

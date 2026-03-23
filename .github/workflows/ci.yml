@@ -104,12 +104,12 @@ jobs:
         working-directory: client
         run: npm ci --audit=false
 
-      - name: Setup replay directories
+      - name: Setup replay directory permissions
         if: matrix.suite == 'api:event-replay'
         run: |
-          mkdir -p tests/event-replay/.tmp/local/
-          sudo chown 999:999 tests/event-replay/.tmp/local/
-          sudo chmod -R 777 tests/event-replay/.tmp/local/
+          mkdir -p tests/api/event-replay/.tmp/local/
+          sudo chown 999:999 tests/api/event-replay/.tmp/local/
+          sudo chmod -R 777 tests/api/event-replay/.tmp/local/
 
       - name: Run tests
         run: npx c8 --reporter=lcov npm run test:${{ matrix.suite }}

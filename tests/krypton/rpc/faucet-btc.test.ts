@@ -10,7 +10,7 @@ import {
 import { ENV } from '../../../src/env.ts';
 import { getKryptonContext, KryptonContext, stopKryptonContext } from '../krypton-env.ts';
 import assert from 'node:assert/strict';
-import { before, after, test } from 'node:test';
+import { before, after, test, describe } from 'node:test';
 
 async function getBalanceWithWalletImport(ctx: KryptonContext, address: string): Promise<number> {
   const client = ctx.bitcoinRpcClient;
