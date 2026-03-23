@@ -7,6 +7,7 @@ function snpContainers(): ContainerConfig[] {
   const postgres: ContainerConfig = {
     image: 'postgres:17',
     name: `stacks-api-test-snp-postgres`,
+    host: '0.0.0.0',
     ports: [{ host: 5490, container: 5432 }],
     env: [
       'POSTGRES_USER=postgres',
@@ -20,6 +21,7 @@ function snpContainers(): ContainerConfig[] {
   const redis: ContainerConfig = {
     image: 'redis:7',
     name: `stacks-api-test-snp-redis`,
+    host: '0.0.0.0',
     ports: [{ host: 6379, container: 6379 }],
     waitPort: 6379,
   };
@@ -116,17 +118,6 @@ export async function globalSetup() {
   await waitForPostgres();
   await waitForRedis();
   await waitForSNP();
-  for (const config of containers) {
-    if (config.name != 'stacks-api-test-snp') {
-      continue;
-    }
-    try {
-      process.stdout.write(`\n[testenv:snp] logs for ${config.name}\n`);
-      await runLogs(config, ['--follow']);
-    } catch (error) {
-      process.stdout.write(`[testenv:snp] could not read logs for ${config.name}: ${error}\n`);
-    }
-  }
   process.stdout.write(`[testenv:snp] all containers ready\n`);
 }
 
