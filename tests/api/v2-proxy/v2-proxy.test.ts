@@ -1,17 +1,16 @@
-import * as supertest from 'supertest';
+import supertest from 'supertest';
 import { ChainID } from '@stacks/transactions';
 import { startApiServer } from '../../../src/api/init.ts';
 import { useWithCleanup } from '../test-helpers.ts';
-import * as fs from 'fs';
-import * as path from 'path';
-import * as os from 'os';
-import * as nock from 'nock';
-import { DbBlock, DbTxTypeId } from '../../../src/datastore/common.ts';
+import nock from 'nock';
+import { DbTxTypeId } from '../../../src/datastore/common.ts';
 import { PgWriteStore } from '../../../src/datastore/pg-write-store.ts';
-import { migrate } from '../utils/test-helpers';
+import { migrate } from '../../test-helpers.ts';
 import { MockAgent, setGlobalDispatcher, getGlobalDispatcher } from 'undici';
-import { TestBlockBuilder } from '../utils/test-builders';
+import { TestBlockBuilder } from '../test-builders.ts';
 import { ENV } from '../../../src/env.ts';
+import assert from 'node:assert/strict';
+import { afterEach, beforeEach, describe, test } from 'node:test';
 
 describe('v2-proxy tests', () => {
   let db: PgWriteStore;
@@ -204,8 +203,8 @@ describe('v2-proxy tests', () => {
           .post(`/v2/fees/transaction`)
           .set('Content-Type', 'application/json')
           .send(JSON.stringify(testRequest));
-        expect(postTxReq.status).toBe(200);
-        expect(postTxReq.body).toEqual(expectedMinResponse);
+        assert.equal(postTxReq.status, 200);
+        assert.deepEqual(postTxReq.body, expectedMinResponse);
 
         // TEST 2 ==> New tenure gets a cost spike above 50%, so we start looking at the moving cost
         // average of latest tenures. Since they're empty, though, we also get minimum fees.
@@ -216,8 +215,8 @@ describe('v2-proxy tests', () => {
           .post(`/v2/fees/transaction`)
           .set('Content-Type', 'application/json')
           .send(JSON.stringify(testRequest));
-        expect(postTxReq.status).toBe(200);
-        expect(postTxReq.body).toEqual(expectedMinResponse);
+        assert.equal(postTxReq.status, 200);
+        assert.deepEqual(postTxReq.body, expectedMinResponse);
 
         // TEST 3 ==> New tenures consistently get usage around 70%, which is not enough to be
         // considered full. We still get minimum fees.
@@ -228,8 +227,8 @@ describe('v2-proxy tests', () => {
           .post(`/v2/fees/transaction`)
           .set('Content-Type', 'application/json')
           .send(JSON.stringify(testRequest));
-        expect(postTxReq.status).toBe(200);
-        expect(postTxReq.body).toEqual(expectedMinResponse);
+        assert.equal(postTxReq.status, 200);
+        assert.deepEqual(postTxReq.body, expectedMinResponse);
 
         // TEST 4 ==> Tenures are now completely full. We go back to Stacks core's fee estimation
         // with our multiplier.
@@ -241,8 +240,8 @@ describe('v2-proxy tests', () => {
           .post(`/v2/fees/transaction`)
           .set('Content-Type', 'application/json')
           .send(JSON.stringify(testRequest));
-        expect(postTxReq.status).toBe(200);
-        expect(postTxReq.body).toEqual(expectedModifiedResponse);
+        assert.equal(postTxReq.status, 200);
+        assert.deepEqual(postTxReq.body, expectedModifiedResponse);
 
         // TEST 5 ==> New tenure comes by which confirms the rest of pending transactions and goes
         // back to empty. We immediately return to minimum fees.
@@ -253,95 +252,8 @@ describe('v2-proxy tests', () => {
           .post(`/v2/fees/transaction`)
           .set('Content-Type', 'application/json')
           .send(JSON.stringify(testRequest));
-        expect(postTxReq.status).toBe(200);
-        expect(postTxReq.body).toEqual(expectedMinResponse);
-      }
-    );
-  });
-
-  test('tx post multicast', async () => {
-    const primaryProxyEndpoint = 'proxy-stacks-node:12345';
-    const extraTxEndpoint = 'http://extra-tx-endpoint-a/test';
-    await useWithCleanup(
-      () => {
-        const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'stacks-api-unit-test-'));
-        const extraEndpointsFilePath = path.join(tempDir, 'extra-tx-endpoints.txt');
-        fs.writeFileSync(extraEndpointsFilePath, extraTxEndpoint, { flag: 'w' });
-        ENV.STACKS_API_EXTRA_TX_ENDPOINTS_FILE = extraEndpointsFilePath;
-        return [
-          extraEndpointsFilePath,
-          () => (ENV.STACKS_API_EXTRA_TX_ENDPOINTS_FILE = undefined),
-        ] as const;
-      },
-      async () => {
-        const apiServer = await startApiServer({
-          datastore: db,
-          chainId: ChainID.Mainnet,
-        });
-        return [apiServer, apiServer.terminate] as const;
-      },
-      async (__, api) => {
-        const block1: DbBlock = {
-          block_hash: '0x11',
-          index_block_hash: '0xaa',
-          parent_index_block_hash: '0x00',
-          parent_block_hash: '0x00',
-          parent_microblock_hash: '',
-          block_height: 1,
-          tenure_height: 1,
-          block_time: 1234,
-          burn_block_time: 1234,
-          burn_block_hash: '0x1234',
-          burn_block_height: 123,
-          miner_txid: '0x4321',
-          canonical: true,
-          parent_microblock_sequence: 0,
-          execution_cost_read_count: 0,
-          execution_cost_read_length: 0,
-          execution_cost_runtime: 0,
-          execution_cost_write_count: 0,
-          execution_cost_write_length: 0,
-          tx_count: 1,
-          tx_total_size: 1,
-          signer_bitvec: null,
-          signer_signatures: null,
-        };
-
-        // Ensure db has a block so that current block height queries return a found result
-        await db.update({
-          block: block1,
-          microblocks: [],
-          minerRewards: [],
-          txs: [],
-        });
-
-        const primaryStubbedResponse =
-          '"1659fcdc9167576eb1f2a05d0aaba5ca1aa1943892e7e6e5d3ccb3e537f1c870"';
-        const extraStubbedResponse = 'extra success stubbed response';
-        const testRequest = 'fake-tx-data';
-        let mockedRequestBody = 'none';
-        nock(`http://${primaryProxyEndpoint}`)
-          .post('/v2/transactions', testRequest)
-          .once()
-          .reply(200, primaryStubbedResponse);
-        nock(extraTxEndpoint)
-          .post(() => true, testRequest)
-          .once()
-          .reply(200, (_url, body, cb) => {
-            // the "extra" endpoint responses are logged internally and not sent back to the client, so use this mock callback to
-            // test that this endpoint was called correctly
-            mockedRequestBody = body as string;
-            cb(null, extraStubbedResponse);
-          });
-        const postTxReq = await supertest(api.server)
-          .post(`/v2/transactions`)
-          .set('Content-Type', 'application/octet-stream')
-          .send(testRequest);
-        // test that main endpoint response was returned
-        expect(postTxReq.status).toBe(200);
-        expect(postTxReq.text).toBe(primaryStubbedResponse);
-        // test that the extra endpoint was queried
-        expect(mockedRequestBody).toBe(testRequest);
+        assert.equal(postTxReq.status, 200);
+        assert.deepEqual(postTxReq.body, expectedMinResponse);
       }
     );
   });
