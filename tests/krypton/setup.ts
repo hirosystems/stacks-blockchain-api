@@ -31,6 +31,10 @@ function kryptonContainers(): ContainerConfig[] {
     ],
     waitPort: 20443,
     env: ['STACKS_EVENT_OBSERVER=host.docker.internal:3700', 'MINE_INTERVAL=0.1s'],
+    volumes: [
+      'stacks-blockchain/:/app/config',
+      'stacks-blockchain/.chaindata:/tmp/stacks-blockchain-data',
+    ],
     extraHosts: ['host.docker.internal:host-gateway'],
     restartPolicy: 'on-failure',
   };
