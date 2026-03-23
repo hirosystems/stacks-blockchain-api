@@ -1,4 +1,4 @@
-import * as supertest from 'supertest';
+import supertest from 'supertest';
 import {
   bufferCVFromString,
   ChainID,
@@ -38,11 +38,12 @@ import { AddressStxBalance } from '../../../src/api/schemas/entities/addresses.t
 import { useWithCleanup } from '../test-helpers.ts';
 import { startEventServer } from '../../../src/event-stream/event-server.ts';
 import * as fs from 'fs';
-import { createClarityValueArray } from '../utils/test-helpers';
 import { PgWriteStore } from '../../../src/datastore/pg-write-store.ts';
 import { getRawEventRequests } from '../../../src/event-replay/event-requests.ts';
 import { PgSqlClient, bufferToHex, logger } from '@stacks/api-toolkit';
-import { migrate } from '../utils/test-helpers';
+import { createClarityValueArray, migrate } from '../../test-helpers.ts';
+import assert from 'node:assert/strict';
+import { describe, test, beforeEach, afterEach } from 'node:test';
 
 describe('microblock tests', () => {
   let db: PgWriteStore;
@@ -73,7 +74,7 @@ describe('microblock tests', () => {
       },
       () => {
         const readStream = fs.createReadStream(
-          'tests/api/event-replay-logs/mainnet-out-of-order-microblock.tsv'
+          'tests/api/microblocks/event-replay-logs/mainnet-out-of-order-microblock.tsv'
         );
         const rawEventsIterator = getRawEventRequests(readStream);
         return [rawEventsIterator, () => readStream.close()] as const;
@@ -110,10 +111,10 @@ describe('microblock tests', () => {
         // test that the out-of-order microblocks were not stored
         const mbHash1 = '0xb714e75a7dae26fee0e77788317a0c84e513d1d8647a376b21b1c864e55c135a';
         const mbResult1 = await supertest(api.server).get(`/extended/v1/microblock/${mbHash1}`);
-        expect(mbResult1.status).toBe(404);
+        assert.equal(mbResult1.status, 404);
         const mbHash2 = '0xab9112694f13f7b04996d4b4554af5b5890271fa4e0c9099e67353b42dcf9989';
         const mbResult2 = await supertest(api.server).get(`/extended/v1/microblock/${mbHash2}`);
-        expect(mbResult2.status).toBe(404);
+        assert.equal(mbResult2.status, 404);
       }
     );
   });
@@ -133,7 +134,7 @@ describe('microblock tests', () => {
       },
       () => {
         const readStream = fs.createReadStream(
-          'tests/api/event-replay-logs/mainnet-reorg-scenario1.tsv'
+          'tests/api/microblocks/event-replay-logs/mainnet-reorg-scenario1.tsv'
         );
         const rawEventsIterator = getRawEventRequests(readStream);
         return [rawEventsIterator, () => readStream.close()] as const;
@@ -169,15 +170,15 @@ describe('microblock tests', () => {
         }
         const txResult2 = await supertest(api.server).get(`/extended/v1/tx/${lostTx}`);
         const { body: txBody }: { body: Transaction } = txResult2;
-        expect(txBody.canonical).toBe(true);
-        expect(txBody.microblock_canonical).toBe(true);
-        expect(txBody.tx_id).toBe(lostTx);
-        expect(txBody.tx_status).toBe('success');
-        expect(txBody.events).toHaveLength(1);
-        expect(txBody.block_hash).toBe(canonicalBlockHash);
-        expect(txBody.block_height).toBe(canonicalBlockHeight);
-        expect(txBody.microblock_hash).toBe(canonicalMicroblockHash);
-        expect(txBody.microblock_sequence).toBe(canonicalMicroblockSequence);
+        assert.equal(txBody.canonical, true);
+        assert.equal(txBody.microblock_canonical, true);
+        assert.equal(txBody.tx_id, lostTx);
+        assert.equal(txBody.tx_status, 'success');
+        assert.equal(txBody.events.length, 1);
+        assert.equal(txBody.block_hash, canonicalBlockHash);
+        assert.equal(txBody.block_height, canonicalBlockHeight);
+        assert.equal(txBody.microblock_hash, canonicalMicroblockHash);
+        assert.equal(txBody.microblock_sequence, canonicalMicroblockSequence);
       }
     );
   });
@@ -197,7 +198,7 @@ describe('microblock tests', () => {
       },
       () => {
         const readStream = fs.createReadStream(
-          'tests/api/event-replay-logs/mainnet-reorg-scenario2.tsv'
+          'tests/api/microblocks/event-replay-logs/mainnet-reorg-scenario2.tsv'
         );
         const rawEventsIterator = getRawEventRequests(readStream);
         return [rawEventsIterator, () => readStream.close()] as const;
@@ -233,15 +234,15 @@ describe('microblock tests', () => {
         }
         const txResult2 = await supertest(api.server).get(`/extended/v1/tx/${lostTx}`);
         const { body: txBody }: { body: Transaction } = txResult2;
-        expect(txBody.canonical).toBe(true);
-        expect(txBody.microblock_canonical).toBe(true);
-        expect(txBody.tx_id).toBe(lostTx);
-        expect(txBody.tx_status).toBe('success');
-        expect(txBody.events).toHaveLength(1);
-        expect(txBody.block_hash).toBe(canonicalBlockHash);
-        expect(txBody.block_height).toBe(canonicalBlockHeight);
-        expect(txBody.microblock_hash).toBe(canonicalMicroblockHash);
-        expect(txBody.microblock_sequence).toBe(canonicalMicroblockSequence);
+        assert.equal(txBody.canonical, true);
+        assert.equal(txBody.microblock_canonical, true);
+        assert.equal(txBody.tx_id, lostTx);
+        assert.equal(txBody.tx_status, 'success');
+        assert.equal(txBody.events.length, 1);
+        assert.equal(txBody.block_hash, canonicalBlockHash);
+        assert.equal(txBody.block_height, canonicalBlockHeight);
+        assert.equal(txBody.microblock_hash, canonicalMicroblockHash);
+        assert.equal(txBody.microblock_sequence, canonicalMicroblockSequence);
       }
     );
   });
@@ -396,11 +397,11 @@ describe('microblock tests', () => {
         });
 
         const chainTip1 = await db.getChainTip(db.sql);
-        expect(chainTip1.block_hash).toBe(block1.block_hash);
-        expect(chainTip1.block_height).toBe(block1.block_height);
-        expect(chainTip1.index_block_hash).toBe(block1.index_block_hash);
-        expect(chainTip1.microblock_hash).toBeUndefined();
-        expect(chainTip1.microblock_sequence).toBeUndefined();
+        assert.equal(chainTip1.block_hash, block1.block_hash);
+        assert.equal(chainTip1.block_height, block1.block_height);
+        assert.equal(chainTip1.index_block_hash, block1.index_block_hash);
+        assert.equal(chainTip1.microblock_hash, undefined);
+        assert.equal(chainTip1.microblock_sequence, undefined);
 
         const mb1: DbMicroblockPartial = {
           microblock_hash: '0xff01',
@@ -567,29 +568,29 @@ describe('microblock tests', () => {
         });
 
         const chainTip2 = await db.getChainTip(db.sql);
-        expect(chainTip2.block_hash).toBe(block1.block_hash);
-        expect(chainTip2.block_height).toBe(block1.block_height);
-        expect(chainTip2.index_block_hash).toBe(block1.index_block_hash);
-        expect(chainTip2.microblock_hash).toBe(mb1.microblock_hash);
-        expect(chainTip2.microblock_sequence).toBe(mb1.microblock_sequence);
+        assert.equal(chainTip2.block_hash, block1.block_hash);
+        assert.equal(chainTip2.block_height, block1.block_height);
+        assert.equal(chainTip2.index_block_hash, block1.index_block_hash);
+        assert.equal(chainTip2.microblock_hash, mb1.microblock_hash);
+        assert.equal(chainTip2.microblock_sequence, mb1.microblock_sequence);
 
         const txListResult1 = await supertest(api.server).get(`/extended/v1/tx`);
         const { body: txListBody1 }: { body: TransactionResults } = txListResult1;
-        expect(txListBody1.results).toHaveLength(1);
-        expect(txListBody1.results[0].tx_id).toBe(tx1.tx_id);
+        assert.equal(txListBody1.results.length, 1);
+        assert.equal(txListBody1.results[0].tx_id, tx1.tx_id);
 
         const txListResult2 = await supertest(api.server).get(`/extended/v1/tx?unanchored=true`);
         const { body: txListBody2 }: { body: TransactionResults } = txListResult2;
-        expect(txListBody2.results).toHaveLength(3);
-        expect(txListBody2.results[0].tx_id).toBe(mbTx2.tx_id);
-        expect(txListBody2.results[0].is_unanchored).toBe(true);
+        assert.equal(txListBody2.results.length, 3);
+        assert.equal(txListBody2.results[0].tx_id, mbTx2.tx_id);
+        assert.equal(txListBody2.results[0].is_unanchored, true);
 
         const txListResult3 = await supertest(api.server).get(
           `/extended/v1/microblock/unanchored/txs`
         );
         const { body: txListBody3 }: { body: TransactionResults } = txListResult3;
-        expect(txListBody3.results).toHaveLength(2);
-        expect(txListBody3.results[0].tx_id).toBe(mbTx2.tx_id);
+        assert.equal(txListBody3.results.length, 2);
+        assert.equal(txListBody3.results[0].tx_id, mbTx2.tx_id);
         const expectedContractCallResp = {
           contract_id: 'ST27W5M8BRKA7C5MZE2R1S1F4XTPHFWFRNHA9M04Y.hello-world',
           function_args: [
@@ -611,53 +612,53 @@ describe('microblock tests', () => {
             '(define-public (test-contract-fn (amount uint) (desc string-ascii)))',
         };
         const contractCallResults = txListBody3.results[0] as ContractCallTransaction;
-        expect(contractCallResults.contract_call).toEqual(expectedContractCallResp);
+        assert.deepEqual(contractCallResults.contract_call, expectedContractCallResp);
 
         const mempoolResult1 = await supertest(api.server).get(`/extended/v1/tx/mempool`);
         const { body: mempoolBody1 }: { body: MempoolTransactionListResponse } = mempoolResult1;
-        expect(mempoolBody1.results).toHaveLength(2);
-        expect(mempoolBody1.results[0].tx_id).toBe(mempoolTx1.tx_id);
-        expect(mempoolBody1.results[0].tx_status).toBe('pending');
+        assert.equal(mempoolBody1.results.length, 2);
+        assert.equal(mempoolBody1.results[0].tx_id, mempoolTx1.tx_id);
+        assert.equal(mempoolBody1.results[0].tx_status, 'pending');
 
         const mempoolResult2 = await supertest(api.server).get(
           `/extended/v1/tx/mempool?unanchored=true`
         );
         const { body: mempoolBody2 }: { body: MempoolTransactionListResponse } = mempoolResult2;
-        expect(mempoolBody2.results).toHaveLength(0);
+        assert.equal(mempoolBody2.results.length, 0);
 
         const txResult1 = await supertest(api.server).get(`/extended/v1/tx/${mbTx1.tx_id}`);
         const { body: txBody1 }: { body: MempoolTransaction } = txResult1;
-        expect(txBody1.tx_id).toBe(mbTx1.tx_id);
-        expect(txBody1.tx_status).toBe('pending');
+        assert.equal(txBody1.tx_id, mbTx1.tx_id);
+        assert.equal(txBody1.tx_status, 'pending');
 
         const txResult2 = await supertest(api.server).get(
           `/extended/v1/tx/${mbTx1.tx_id}?unanchored=true`
         );
         const { body: txBody2 }: { body: Transaction } = txResult2;
-        expect(txBody2.tx_id).toBe(mbTx1.tx_id);
-        expect(txBody2.tx_status).toBe('success');
-        expect(txBody2.events).toHaveLength(1);
-        expect(txBody2.block_height).toBe(block1.block_height + 1);
-        expect(txBody2.parent_block_hash).toBe(block1.block_hash);
-        expect(txBody2.microblock_hash).toBe(mb1.microblock_hash);
-        expect(txBody2.microblock_sequence).toBe(mb1.microblock_sequence);
-        expect(txBody2.block_hash).toBe('0x');
-        expect(txBody2.is_unanchored).toBe(true);
+        assert.equal(txBody2.tx_id, mbTx1.tx_id);
+        assert.equal(txBody2.tx_status, 'success');
+        assert.equal(txBody2.events.length, 1);
+        assert.equal(txBody2.block_height, block1.block_height + 1);
+        assert.equal(txBody2.parent_block_hash, block1.block_hash);
+        assert.equal(txBody2.microblock_hash, mb1.microblock_hash);
+        assert.equal(txBody2.microblock_sequence, mb1.microblock_sequence);
+        assert.equal(txBody2.block_hash, '0x');
+        assert.equal(txBody2.is_unanchored, true);
 
         const mbListResult1 = await supertest(api.server).get(`/extended/v1/microblock`);
         const { body: mbListBody1 }: { body: MicroblockListResponse } = mbListResult1;
-        expect(mbListBody1.results).toHaveLength(1);
-        expect(mbListBody1.results[0].microblock_hash).toBe(mb1.microblock_hash);
-        expect(mbListBody1.results[0].txs).toHaveLength(2);
-        expect(mbListBody1.results[0].txs[0]).toBe(mbTx2.tx_id);
+        assert.equal(mbListBody1.results.length, 1);
+        assert.equal(mbListBody1.results[0].microblock_hash, mb1.microblock_hash);
+        assert.equal(mbListBody1.results[0].txs.length, 2);
+        assert.equal(mbListBody1.results[0].txs[0], mbTx2.tx_id);
 
         const mbResult1 = await supertest(api.server).get(
           `/extended/v1/microblock/${mb1.microblock_hash}`
         );
         const { body: mbBody1 }: { body: Microblock } = mbResult1;
-        expect(mbBody1.microblock_hash).toBe(mb1.microblock_hash);
-        expect(mbBody1.txs).toHaveLength(2);
-        expect(mbBody1.txs[0]).toBe(mbTx2.tx_id);
+        assert.equal(mbBody1.microblock_hash, mb1.microblock_hash);
+        assert.equal(mbBody1.txs.length, 2);
+        assert.equal(mbBody1.txs[0], mbTx2.tx_id);
 
         const addrTxsTransfers1 = await supertest(api.server).get(
           `/extended/v1/address/${addr2}/transactions_with_transfers`
@@ -665,7 +666,7 @@ describe('microblock tests', () => {
         const {
           body: addrTxsTransfersBody1,
         }: { body: AddressTransactionsWithTransfersListResponse } = addrTxsTransfers1;
-        expect(addrTxsTransfersBody1.results).toHaveLength(0);
+        assert.equal(addrTxsTransfersBody1.results.length, 0);
 
         const addrTxsTransfers2 = await supertest(api.server).get(
           `/extended/v1/address/${addr2}/transactions_with_transfers?unanchored=true`
@@ -673,50 +674,50 @@ describe('microblock tests', () => {
         const {
           body: addrTxsTransfersBody2,
         }: { body: AddressTransactionsWithTransfersListResponse } = addrTxsTransfers2;
-        expect(addrTxsTransfersBody2.results).toHaveLength(2);
-        expect(addrTxsTransfersBody2.results[1].tx.tx_id).toBe(mbTx1.tx_id);
-        expect(addrTxsTransfersBody2.results[1].stx_received).toBe(mbTxStxEvent1.amount.toString());
+        assert.equal(addrTxsTransfersBody2.results.length, 2);
+        assert.equal(addrTxsTransfersBody2.results[1].tx.tx_id, mbTx1.tx_id);
+        assert.equal(addrTxsTransfersBody2.results[1].stx_received, mbTxStxEvent1.amount.toString());
 
         const addrTxs1 = await supertest(api.server).get(
           `/extended/v1/address/${addr2}/transactions`
         );
         const { body: addrTxsBody1 }: { body: AddressTransactionsListResponse } = addrTxs1;
-        expect(addrTxsBody1.results).toHaveLength(0);
+        assert.equal(addrTxsBody1.results.length, 0);
 
         const addrTxs2 = await supertest(api.server).get(
           `/extended/v1/address/${addr2}/transactions?unanchored=true`
         );
         const { body: addrTxsBody2 }: { body: AddressTransactionsListResponse } = addrTxs2;
-        expect(addrTxsBody2.results).toHaveLength(2);
-        expect(addrTxsBody2.results[0].tx_id).toBe(mbTx2.tx_id);
+        assert.equal(addrTxsBody2.results.length, 2);
+        assert.equal(addrTxsBody2.results[0].tx_id, mbTx2.tx_id);
 
         const addrBalance1 = await supertest(api.server).get(`/extended/v1/address/${addr2}/stx`);
         const { body: addrBalanceBody1 }: { body: AddressStxBalance } = addrBalance1;
-        expect(addrBalanceBody1.balance).toBe('0');
-        expect(addrBalanceBody1.total_received).toBe('0');
+        assert.equal(addrBalanceBody1.balance, '0');
+        assert.equal(addrBalanceBody1.total_received, '0');
 
         const addrBalance2 = await supertest(api.server).get(
           `/extended/v1/address/${addr2}/stx?unanchored=true`
         );
         const { body: addrBalanceBody2 }: { body: AddressStxBalance } = addrBalance2;
-        expect(addrBalanceBody2.balance).toBe(mbTxStxEvent1.amount.toString());
-        expect(addrBalanceBody2.total_received).toBe(mbTxStxEvent1.amount.toString());
+        assert.equal(addrBalanceBody2.balance, mbTxStxEvent1.amount.toString());
+        assert.equal(addrBalanceBody2.total_received, mbTxStxEvent1.amount.toString());
 
         const addrStxInbound1 = await supertest(api.server).get(
           `/extended/v1/address/${addr2}/stx_inbound`
         );
         const { body: addrStxInboundBody1 }: { body: AddressStxInboundListResponse } =
           addrStxInbound1;
-        expect(addrStxInboundBody1.results).toHaveLength(0);
+        assert.equal(addrStxInboundBody1.results.length, 0);
 
         const addrStxInbound2 = await supertest(api.server).get(
           `/extended/v1/address/${addr2}/stx_inbound?unanchored=true`
         );
         const { body: addrStxInboundBody2 }: { body: AddressStxInboundListResponse } =
           addrStxInbound2;
-        expect(addrStxInboundBody2.results).toHaveLength(1);
-        expect(addrStxInboundBody2.results[0].tx_id).toBe(mbTx1.tx_id);
-        expect(addrStxInboundBody2.results[0].amount).toBe(mbTxStxEvent1.amount.toString());
+        assert.equal(addrStxInboundBody2.results.length, 1);
+        assert.equal(addrStxInboundBody2.results[0].tx_id, mbTx1.tx_id);
+        assert.equal(addrStxInboundBody2.results[0].amount, mbTxStxEvent1.amount.toString());
       }
     );
   });

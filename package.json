@@ -4,12 +4,12 @@
   "type": "module",
   "main": "./lib/index.js",
   "scripts": {
+    "test:api:microblocks": "NODE_ENV=test node --import tsx --test --test-global-setup=./tests/api/setup.ts --test-concurrency=1 ./tests/api/microblocks/**/*.test.ts",
     "test:snp": "NODE_ENV=test node --import tsx --test --test-global-setup=./tests/snp/setup.ts --test-concurrency=1 ./tests/snp/**/*.test.ts",
     "test:krypton:rpc": "NODE_ENV=test node --import tsx --test --test-global-setup=./tests/krypton/setup.ts --test-concurrency=1 ./tests/krypton/rpc/**/*.test.ts",
     "test:krypton:bns-e2e": "NODE_ENV=test node --import tsx --test --test-global-setup=./tests/krypton/setup.ts --test-concurrency=1 ./tests/krypton/bns-e2e/**/*.test.ts",
     "test:krypton:pox-4": "NODE_ENV=test node --import tsx --test --test-global-setup=./tests/krypton/setup.ts --test-concurrency=1 ./tests/krypton/pox-4/**/*.test.ts",
     "test:krypton:pox-4-burnchain": "NODE_ENV=test node --import tsx --test --test-global-setup=./tests/krypton/setup.ts --test-concurrency=1 ./tests/krypton/pox-4-burnchain/**/*.test.ts",
-    "test": "cross-env NODE_ENV=test jest --runInBand",
     "testenv:run": "node -r ts-node/register/transpile-only ./tests/setup.ts up",
     "testenv:run:snp": "node -r ts-node/register/transpile-only ./tests/setup.ts up snp",
     "testenv:run:krypton": "node -r ts-node/register/transpile-only ./tests/setup.ts up krypton",
