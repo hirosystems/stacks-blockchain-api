@@ -1,12 +1,13 @@
 import { ApiServer, startApiServer } from '../../../src/api/init.ts';
-import * as supertest from 'supertest';
+import supertest from 'supertest';
 import { ChainID } from '@stacks/transactions';
 import { importV1BnsNames, importV1BnsSubdomains } from '../../../src/import-v1/index.ts';
-import * as assert from 'assert';
-import { TestBlockBuilder } from '../utils/test-builders';
+import { TestBlockBuilder } from '../test-builders.ts';
 import { DataStoreBlockUpdateData, DataStoreBnsBlockTxData } from '../../../src/datastore/common.ts';
 import { PgWriteStore } from '../../../src/datastore/pg-write-store.ts';
-import { migrate } from '../utils/test-helpers';
+import { migrate } from '../../test-helpers.ts';
+import { beforeEach, afterEach, describe, test } from 'node:test';
+import assert from 'node:assert/strict';
 
 describe('BNS V1 import', () => {
   let db: PgWriteStore;
@@ -38,14 +39,14 @@ describe('BNS V1 import', () => {
       tx_id: block.txs[0].tx.tx_id,
       tx_index: block.txs[0].tx.tx_index,
     };
-    await importV1BnsNames(db, 'tests/bns/import-test-files', genesis);
-    await importV1BnsSubdomains(db, 'tests/bns/import-test-files', genesis);
+    await importV1BnsNames(db, 'tests/api/bns/import-test-files', genesis);
+    await importV1BnsSubdomains(db, 'tests/api/bns/import-test-files', genesis);
 
     // Names
     const query1 = await supertest(api.server).get(`/v1/names/zumrai.id`);
-    expect(query1.status).toBe(200);
-    expect(query1.type).toBe('application/json');
-    expect(query1.body).toEqual({
+    assert.equal(query1.status, 200);
+    assert.equal(query1.type, 'application/json');
+    assert.deepEqual(query1.body, {
       address: 'SP29EJ0SVM2TRZ3XGVTZPVTKF4SV1VMD8C0GA5SK5',
       blockchain: 'stacks',
       expire_block: 52596,
@@ -59,26 +60,25 @@ describe('BNS V1 import', () => {
     const query2 = await supertest(api.server).get(
       `/v1/names/zumrai.id/zonefile/853cd126478237bc7392e65091f7ffa5a1556a33`
     );
-    expect(query2.status).toBe(200);
-    expect(query2.type).toBe('application/json');
-    expect(query2.body).toEqual({
+    assert.equal(query2.status, 200);
+    assert.equal(query2.type, 'application/json');
+    assert.deepEqual(query2.body, {
       zonefile:
         '$ORIGIN zumrai.id\n$TTL 3600\n_http._tcp	IN	URI	10	1	"https://gaia.blockstack.org/hub/1EPno1VcdGx89ukN2we4iVpnFtkHzw8i5d/profile.json"\n\n',
     });
 
     const query3 = await supertest(api.server).get(`/v1/names/zumrai.id/zonefile`);
-    expect(query3.status).toBe(200);
-    expect(query3.type).toBe('application/json');
-    expect(query3.body).toEqual({
+    assert.equal(query3.status, 200);
+    assert.equal(query3.type, 'application/json');
+    assert.deepEqual(query3.body, {
       zonefile:
         '$ORIGIN zumrai.id\n$TTL 3600\n_http._tcp	IN	URI	10	1	"https://gaia.blockstack.org/hub/1EPno1VcdGx89ukN2we4iVpnFtkHzw8i5d/profile.json"\n\n',
     });
 
     const query4 = await supertest(api.server).get(`/v1/names/id.blockstack/subdomains`);
-    expect(query4.status).toBe(200);
-    expect(query4.type).toBe('application/json');
-    expect(query4.body.sort()).toStrictEqual(
-      [
+    assert.equal(query4.status, 200);
+    assert.equal(query4.type, 'application/json');
+    assert.deepEqual(query4.body.sort(), [
         '12312313231.id.blockstack',
         'aichamez.id.blockstack',
         'ale082308as.id.blockstack',
@@ -129,14 +129,12 @@ describe('BNS V1 import', () => {
         'yanadda9.id.blockstack',
         'yoemmx00.id.blockstack',
         'zachgaming.id.blockstack',
-      ].sort()
-    );
+      ].sort());
 
     const query5 = await supertest(api.server).get(`/v1/names/`);
-    expect(query5.status).toBe(200);
-    expect(query5.type).toBe('application/json');
-    expect(query5.body.sort()).toStrictEqual(
-      [
+    assert.equal(query5.status, 200);
+    assert.equal(query5.type, 'application/json');
+    assert.deepEqual(query5.body.sort(), [
         'id.blockstack',
         '1.id',
         '10.id',
@@ -149,22 +147,20 @@ describe('BNS V1 import', () => {
         'zumminer_crux.id',
         'zumminer_dev_crux.id',
         'zumrai.id',
-      ].sort()
-    );
+      ].sort());
 
     // Namespaces
     const query6 = await supertest(api.server).get(`/v1/namespaces/`);
-    expect(query6.status).toBe(200);
-    expect(query6.type).toBe('application/json');
-    expect(query6.body).toEqual({
+    assert.equal(query6.status, 200);
+    assert.equal(query6.type, 'application/json');
+    assert.deepEqual(query6.body, {
       namespaces: ['blockstack', 'graphite', 'helloworld', 'id', 'podcast'],
     });
 
     const query7 = await supertest(api.server).get(`/v1/namespaces/id/names`);
-    expect(query7.status).toBe(200);
-    expect(query7.type).toBe('application/json');
-    expect(query7.body.sort()).toStrictEqual(
-      [
+    assert.equal(query7.status, 200);
+    assert.equal(query7.type, 'application/json');
+    assert.deepEqual(query7.body.sort(), [
         '1.id',
         '10.id',
         '10x.id',
@@ -176,24 +172,23 @@ describe('BNS V1 import', () => {
         'zumminer_crux.id',
         'zumminer_dev_crux.id',
         'zumrai.id',
-      ].sort()
-    );
+      ].sort());
 
     // Addresses
     const query8 = await supertest(api.server).get(
       `/v1/addresses/stacks/SP1HPCXTGV31W5659M3WTBEFP5AN55HV4B1Q9T31F`
     );
-    expect(query8.status).toBe(200);
-    expect(query8.type).toBe('application/json');
-    expect(query8.body).toEqual({
+    assert.equal(query8.status, 200);
+    assert.equal(query8.type, 'application/json');
+    assert.deepEqual(query8.body, {
       names: ['id.blockstack'],
     });
 
     // Subdomains
     const query9 = await supertest(api.server).get(`/v1/names/flushreset.id.blockstack`);
-    expect(query9.status).toBe(200);
-    expect(query9.type).toBe('application/json');
-    expect(query9.body).toEqual({
+    assert.equal(query9.status, 200);
+    assert.equal(query9.type, 'application/json');
+    assert.deepEqual(query9.body, {
       address: 'SP2S2F9TCAT43KEJT02YTG2NXVCPZXS1426T63D9H',
       blockchain: 'stacks',
       last_txid: '0x1234',
@@ -207,17 +202,17 @@ describe('BNS V1 import', () => {
     const query10 = await supertest(api.server).get(
       `/v1/names/flushreset.id.blockstack/zonefile/14dc091ebce8ea117e1276d802ee903cc0fdde81`
     );
-    expect(query10.status).toBe(200);
-    expect(query10.type).toBe('application/json');
-    expect(query10.body).toEqual({
+    assert.equal(query10.status, 200);
+    assert.equal(query10.type, 'application/json');
+    assert.deepEqual(query10.body, {
       zonefile:
         '$ORIGIN flushreset.id.blockstack\n$TTL 3600\n_http._tcp	IN	URI	10	1	"https://gaia.blockstack.org/hub/1HEznKZ7mK5fmibweM7eAk8SwRgJ1bWY92/profile.json"\n\n',
     });
 
     const query11 = await supertest(api.server).get(`/v1/names/flushreset.id.blockstack/zonefile`);
-    expect(query11.status).toBe(200);
-    expect(query11.type).toBe('application/json');
-    expect(query11.body).toEqual({
+    assert.equal(query11.status, 200);
+    assert.equal(query11.type, 'application/json');
+    assert.deepEqual(query11.body, {
       zonefile:
         '$ORIGIN flushreset.id.blockstack\n$TTL 3600\n_http._tcp	IN	URI	10	1	"https://gaia.blockstack.org/hub/1HEznKZ7mK5fmibweM7eAk8SwRgJ1bWY92/profile.json"\n\n',
     });
@@ -229,7 +224,7 @@ describe('BNS V1 import', () => {
     });
     assert(dbquery.found);
     if (dbquery.result) {
-      expect(dbquery.result.name).toBe('id.blockstack');
+      assert.equal(dbquery.result.name, 'id.blockstack');
     }
   });
 });

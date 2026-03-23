@@ -4,6 +4,8 @@ import {
   parseZoneFileTxt,
 } from '../../../src/event-stream/bns/bns-helpers.ts';
 import * as zoneFileParser from 'zone-file';
+import { describe, test } from 'node:test';
+import assert from 'node:assert/strict';
 
 describe('BNS helper tests', () => {
   test('Success: namespace parsed', () => {
@@ -30,19 +32,19 @@ describe('BNS helper tests', () => {
       '0x2114c8cda9e829f8b5d3c4163724ae9c4d9142d2bae4a35bffb006408d21c0ab',
       0
     );
-    expect(namespace?.address).toEqual(expectedNamespace.address);
-    expect(namespace?.namespace_id).toEqual(expectedNamespace.namespace_id);
-    expect(namespace?.base).toEqual(expectedNamespace.base);
-    expect(namespace?.coeff).toEqual(expectedNamespace.coeff);
-    expect(namespace?.launched_at).toEqual(expectedNamespace.launched_at);
-    expect(namespace?.lifetime).toEqual(expectedNamespace.lifetime);
-    expect(namespace?.no_vowel_discount).toEqual(expectedNamespace.no_vowel_discount);
-    expect(namespace?.nonalpha_discount).toEqual(expectedNamespace.nonalpha_discount);
-    expect(namespace?.ready_block).toEqual(expectedNamespace.ready_block);
-    expect(namespace?.reveal_block).toEqual(expectedNamespace.reveal_block);
-    expect(namespace?.status).toEqual(expectedNamespace.status);
-    expect(namespace?.buckets).toEqual(expectedNamespace.buckets);
-    expect(namespace?.tx_id).toEqual(expectedNamespace.tx_id);
+    assert.equal(namespace?.address, expectedNamespace.address);
+    assert.equal(namespace?.namespace_id, expectedNamespace.namespace_id);
+    assert.equal(namespace?.base, expectedNamespace.base);
+    assert.equal(namespace?.coeff, expectedNamespace.coeff);
+    assert.equal(namespace?.launched_at, expectedNamespace.launched_at);
+    assert.equal(namespace?.lifetime, expectedNamespace.lifetime);
+    assert.equal(namespace?.no_vowel_discount, expectedNamespace.no_vowel_discount);
+    assert.equal(namespace?.nonalpha_discount, expectedNamespace.nonalpha_discount);
+    assert.equal(namespace?.ready_block, expectedNamespace.ready_block);
+    assert.equal(namespace?.reveal_block, expectedNamespace.reveal_block);
+    assert.equal(namespace?.status, expectedNamespace.status);
+    assert.equal(namespace?.buckets, expectedNamespace.buckets);
+    assert.equal(namespace?.tx_id, expectedNamespace.tx_id);
   });
 
   test('Success: parse name raw value', () => {
@@ -67,14 +69,16 @@ describe('BNS helper tests', () => {
       '0x0c000000010a6174746163686d656e740c00000003106174746163686d656e742d696e646578010000000000000000000000000000000004686173680200000014c5217bcb3e52612ff7c835f9bb46a5f86aa73b8d086d657461646174610c00000004046e616d650200000006616263646566096e616d657370616365020000000378797a026f700d0000000b6e616d652d696d706f72740974782d73656e646572051abf8e82623c380cd870931d48b525d5e12a4d6782'
     );
     const attachment = name.attachment;
-    expect(attachment.hash).toEqual(expectedAttachment.hash);
-    expect(attachment.metadata.name).toEqual(expectedAttachment.metadata.name);
-    expect(attachment.metadata.namespace).toEqual(expectedAttachment.metadata.namespace);
-    expect(attachment.metadata.op).toEqual(expectedAttachment.metadata.op);
-    expect(attachment.metadata.tx_sender.version).toEqual(
+    assert.equal(attachment.hash, expectedAttachment.hash);
+    assert.equal(attachment.metadata.name, expectedAttachment.metadata.name);
+    assert.equal(attachment.metadata.namespace, expectedAttachment.metadata.namespace);
+    assert.equal(attachment.metadata.op, expectedAttachment.metadata.op);
+    assert.equal(
+      attachment.metadata.tx_sender.version,
       expectedAttachment.metadata.tx_sender.version
     );
-    expect(attachment.metadata.tx_sender.hash160).toEqual(
+    assert.equal(
+      attachment.metadata.tx_sender.hash160,
       expectedAttachment.metadata.tx_sender.hash160
     );
   });
@@ -88,8 +92,8 @@ describe('BNS helper tests', () => {
       `;
     const parsedZoneFile = zoneFileParser.parseZoneFile(subdomain);
     const zoneFileTxt = parseZoneFileTxt(parsedZoneFile.txt?.[0].txt as string[]);
-    expect(zoneFileTxt.owner).toBe('ST2ZRX0K27GW0SP3GJCEMHD95TQGJMKB7G9Y0X1MH');
-    expect(zoneFileTxt.parts).toBe('1');
-    expect(zoneFileTxt.seqn).toBe('0');
+    assert.equal(zoneFileTxt.owner, 'ST2ZRX0K27GW0SP3GJCEMHD95TQGJMKB7G9Y0X1MH');
+    assert.equal(zoneFileTxt.parts, '1');
+    assert.equal(zoneFileTxt.seqn, '0');
   });
 });

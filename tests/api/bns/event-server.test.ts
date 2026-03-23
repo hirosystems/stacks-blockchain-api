@@ -1,11 +1,13 @@
 import { ChainID } from '@stacks/transactions';
 import { bnsNameCV, httpPostRequest } from '../../../src/helpers.ts';
 import { EventStreamServer, startEventServer } from '../../../src/event-stream/event-server.ts';
-import { TestBlockBuilder, TestMicroblockStreamBuilder } from '../utils/test-builders';
+import { TestBlockBuilder, TestMicroblockStreamBuilder } from '../test-builders.ts';
 import { DbAssetEventTypeId, DbBnsZoneFile } from '../../../src/datastore/common.ts';
 import { PgWriteStore } from '../../../src/datastore/pg-write-store.ts';
 import { PgSqlClient } from '@stacks/api-toolkit';
-import { migrate } from '../utils/test-helpers';
+import { migrate } from '../../test-helpers.ts';
+import { beforeEach, afterEach, describe, test } from 'node:test';
+import assert from 'node:assert/strict';
 
 describe('BNS event server tests', () => {
   let db: PgWriteStore;
@@ -128,14 +130,14 @@ describe('BNS event server tests', () => {
     });
 
     const namespaces = await db.getNamespaceList({ includeUnanchored: true });
-    expect(namespaces.results).toStrictEqual(['fren']);
+    assert.deepEqual(namespaces.results, ['fren']);
 
     const namespace = await db.getNamespace({ namespace: 'fren', includeUnanchored: true });
-    expect(namespace.found).toBe(true);
-    expect(namespace.result?.namespace_id).toBe('fren');
-    expect(namespace.result?.lifetime).toBe(52560);
-    expect(namespace.result?.status).toBe('ready');
-    expect(namespace.result?.ready_block).toBe(2);
+    assert.equal(namespace.found, true);
+    assert.equal(namespace.result?.namespace_id, 'fren');
+    assert.equal(namespace.result?.lifetime, 52560);
+    assert.equal(namespace.result?.status, 'ready');
+    assert.equal(namespace.result?.ready_block, 2);
   });
 
   test('name-transfer called by a contract other than BNS', async () => {
@@ -183,12 +185,12 @@ describe('BNS event server tests', () => {
       name: 'dayslikewater.btc',
       includeUnanchored: true,
     });
-    expect(name1.found).toBe(true);
-    expect(name1.result?.namespace_id).toBe('btc');
-    expect(name1.result?.tx_id).toBe('0x1234');
-    expect(name1.result?.status).toBe('name-register');
-    expect(name1.result?.expire_block).toBe(1001);
-    expect(name1.result?.address).toBe('SPP117ENNNDQVQ1G3E0N1AP178GXBTC2YNQ3H7J');
+    assert.equal(name1.found, true);
+    assert.equal(name1.result?.namespace_id, 'btc');
+    assert.equal(name1.result?.tx_id, '0x1234');
+    assert.equal(name1.result?.status, 'name-register');
+    assert.equal(name1.result?.expire_block, 1001);
+    assert.equal(name1.result?.address, 'SPP117ENNNDQVQ1G3E0N1AP178GXBTC2YNQ3H7J');
 
     const payload = {
       events: [
@@ -294,14 +296,12 @@ describe('BNS event server tests', () => {
       name: 'dayslikewater.btc',
       includeUnanchored: true,
     });
-    expect(name2.found).toBe(true);
-    expect(name2.result?.namespace_id).toBe('btc');
-    expect(name2.result?.tx_id).toBe(
-      '0xa75ebee2c824c4943bf8494b101ea7ee7d44191b4a8f761582ce99ef28befb19'
-    );
-    expect(name2.result?.status).toBe('name-transfer');
-    expect(name2.result?.expire_block).toBe(1001); // Unchanged as it was not renewed
-    expect(name2.result?.address).toBe('SP1TY00PDWJVNVEX7H7KJGS2K2YXHTQMY8C0G1NVP');
+    assert.equal(name2.found, true);
+    assert.equal(name2.result?.namespace_id, 'btc');
+    assert.equal(name2.result?.tx_id, '0xa75ebee2c824c4943bf8494b101ea7ee7d44191b4a8f761582ce99ef28befb19');
+    assert.equal(name2.result?.status, 'name-transfer');
+    assert.equal(name2.result?.expire_block, 1001); // Unchanged as it was not renewed
+    assert.equal(name2.result?.address, 'SP1TY00PDWJVNVEX7H7KJGS2K2YXHTQMY8C0G1NVP');
   });
 
   test('name-renewal called with no zonefile_hash', async () => {
@@ -349,12 +349,12 @@ describe('BNS event server tests', () => {
       name: 'friedger.id',
       includeUnanchored: true,
     });
-    expect(name1.found).toBe(true);
-    expect(name1.result?.namespace_id).toBe('id');
-    expect(name1.result?.tx_id).toBe('0x1234');
-    expect(name1.result?.status).toBe('name-register');
-    expect(name1.result?.expire_block).toBe(1001);
-    expect(name1.result?.address).toBe('SP3GWTV1SMF9HDS4VY5NMM833CHH266W4YBASVYMZ');
+    assert.equal(name1.found, true);
+    assert.equal(name1.result?.namespace_id, 'id');
+    assert.equal(name1.result?.tx_id, '0x1234');
+    assert.equal(name1.result?.status, 'name-register');
+    assert.equal(name1.result?.expire_block, 1001);
+    assert.equal(name1.result?.address, 'SP3GWTV1SMF9HDS4VY5NMM833CHH266W4YBASVYMZ');
 
     const payload = {
       events: [],
@@ -423,14 +423,12 @@ describe('BNS event server tests', () => {
       name: 'friedger.id',
       includeUnanchored: true,
     });
-    expect(name2.found).toBe(true);
-    expect(name2.result?.namespace_id).toBe('id');
-    expect(name2.result?.tx_id).toBe(
-      '0xf037c8da8210e2a348bbecd3bc44901de875d3774c5fce49cb75d95f2dc2ca4d'
-    );
-    expect(name2.result?.status).toBe('name-renewal');
-    expect(name2.result?.expire_block).toBe(1002); // Updated correctly
-    expect(name2.result?.address).toBe('SP3GWTV1SMF9HDS4VY5NMM833CHH266W4YBASVYMZ');
+    assert.equal(name2.found, true);
+    assert.equal(name2.result?.namespace_id, 'id');
+    assert.equal(name2.result?.tx_id, '0xf037c8da8210e2a348bbecd3bc44901de875d3774c5fce49cb75d95f2dc2ca4d');
+    assert.equal(name2.result?.status, 'name-renewal');
+    assert.equal(name2.result?.expire_block, 1002); // Updated correctly
+    assert.equal(name2.result?.address, 'SP3GWTV1SMF9HDS4VY5NMM833CHH266W4YBASVYMZ');
   });
 
   test('/attachments/new with re-orged zonefiles', async () => {
@@ -527,10 +525,10 @@ describe('BNS event server tests', () => {
     });
 
     const name = await db.getName({ name: 'jnj.btc', includeUnanchored: true });
-    expect(name.found).toBe(true);
-    expect(name.result?.zonefile_hash).toBe('9198e0b61a029671e53bd59aa229e7ae05af35a3');
-    expect(name.result?.tx_id).toBe('0x1212');
-    expect(name.result?.status).toBe('name-update');
+    assert.equal(name.found, true);
+    assert.equal(name.result?.zonefile_hash, '9198e0b61a029671e53bd59aa229e7ae05af35a3');
+    assert.equal(name.result?.tx_id, '0x1212');
+    assert.equal(name.result?.status, 'name-update');
   });
 
   test('/attachments/new with duplicate zonefiles for the same tx', async () => {
@@ -603,10 +601,8 @@ describe('BNS event server tests', () => {
 
     // To validate table data we'll query it directly. There should only be one zonefile.
     const result = await client<DbBnsZoneFile[]>`SELECT * FROM zonefiles`;
-    expect(result.count).toBe(1);
-    expect(result[0].zonefile).toBe(
-      '$ORIGIN jnj.btc.\n$TTL 3600\n_http._tcp\tIN\tURI\t10\t1\t"https://gaia.blockstack.org/hub/1z8AzyhC42n8TvoFaUL2nscaCGHqQQWUr/profile.json"\n\n'
-    );
+    assert.equal(result.count, 1);
+    assert.equal(result[0].zonefile, '$ORIGIN jnj.btc.\n$TTL 3600\n_http._tcp\tIN\tURI\t10\t1\t"https://gaia.blockstack.org/hub/1z8AzyhC42n8TvoFaUL2nscaCGHqQQWUr/profile.json"\n\n');
   });
 
   test('name-register and name-transfer for several names in one block', async () => {
@@ -862,13 +858,11 @@ describe('BNS event server tests', () => {
       name: 'cricketwireless.btc',
       includeUnanchored: true,
     });
-    expect(name.found).toBe(true);
-    expect(name.result?.namespace_id).toBe('btc');
-    expect(name.result?.tx_id).toBe(
-      '0x28715dc6e09e75cec4d26d6a52426c8cc13c6e5a16d5252886c33ffc6bcceef7'
-    );
-    expect(name.result?.status).toBe('name-transfer');
-    expect(name.result?.address).toBe('SP1QFKSVQP3J2PF45KFFCVBR4Q24Y09G0PJDECHS7');
+    assert.equal(name.found, true);
+    assert.equal(name.result?.namespace_id, 'btc');
+    assert.equal(name.result?.tx_id, '0x28715dc6e09e75cec4d26d6a52426c8cc13c6e5a16d5252886c33ffc6bcceef7');
+    assert.equal(name.result?.status, 'name-transfer');
+    assert.equal(name.result?.address, 'SP1QFKSVQP3J2PF45KFFCVBR4Q24Y09G0PJDECHS7');
   });
 
   test('name-register and name-transfer in same tx from non-BNS contract', async () => {
@@ -1049,25 +1043,23 @@ describe('BNS event server tests', () => {
       name: 'ape.mega',
       includeUnanchored: true,
     });
-    expect(name.found).toBe(true);
-    expect(name.result?.namespace_id).toBe('mega');
-    expect(name.result?.tx_id).toBe(
-      '0xf9f9144793f6d4da9aba92a54ab601eb23bfe7f44c1edb29c2920bf5e7d2ac16'
-    );
-    expect(name.result?.status).toBe('name-transfer');
-    expect(name.result?.expire_block).toBe(1002);
-    expect(name.result?.address).toBe('SPV48Q8E5WP4TCQ63E9TV6KF9R4HP01Z8WS3FBTG');
+    assert.equal(name.found, true);
+    assert.equal(name.result?.namespace_id, 'mega');
+    assert.equal(name.result?.tx_id, '0xf9f9144793f6d4da9aba92a54ab601eb23bfe7f44c1edb29c2920bf5e7d2ac16');
+    assert.equal(name.result?.status, 'name-transfer');
+    assert.equal(name.result?.expire_block, 1002);
+    assert.equal(name.result?.address, 'SPV48Q8E5WP4TCQ63E9TV6KF9R4HP01Z8WS3FBTG');
 
     const list = await db.getNamesList({ page: 0, includeUnanchored: true });
-    expect(list.results.length).toBe(1);
-    expect(list.results).toStrictEqual(['ape.mega']);
+    assert.equal(list.results.length, 1);
+    assert.deepEqual(list.results, ['ape.mega']);
 
     const namespaceList = await db.getNamespaceNamesList({
       namespace: 'mega',
       page: 0,
       includeUnanchored: true,
     });
-    expect(namespaceList.results.length).toBe(1);
-    expect(namespaceList.results).toStrictEqual(['ape.mega']);
+    assert.equal(namespaceList.results.length, 1);
+    assert.deepEqual(namespaceList.results, ['ape.mega']);
   });
 });
