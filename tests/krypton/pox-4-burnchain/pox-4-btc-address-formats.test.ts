@@ -11,34 +11,38 @@ import {
   uintCV,
 } from '@stacks/transactions';
 import bignumber from 'bignumber.js';
-import { CoreRpcPoxInfo } from '../../src/core-rpc/client';
-import { DbEventTypeId, DbStxLockEvent } from '../../src/datastore/common';
-import { getBitcoinAddressFromKey, privateToPublicKey } from '../../src/ec-helpers';
-import {
-  fetchGet,
-  standByForPoxCycle,
-  standByForTxSuccess,
-  standByUntilBurnBlock,
-  testEnv,
-} from '../utils/test-helpers';
+import { CoreRpcPoxInfo } from '../../../src/core-rpc/client.ts';
+import { DbEventTypeId, DbStxLockEvent } from '../../../src/datastore/common.ts';
+import { getBitcoinAddressFromKey, privateToPublicKey } from '../../../src/ec-helpers.ts';
 import { RPCClient } from 'rpc-bitcoin';
 import { hexToBytes } from '@stacks/common';
 import { getPublicKeyFromPrivate } from '@stacks/encryption';
-import { AddressStxBalance } from '../../src/api/schemas/entities/addresses';
+import { AddressStxBalance } from '../../../src/api/schemas/entities/addresses.ts';
 import {
   BurnchainRewardListResponse,
   BurnchainRewardSlotHolderListResponse,
-} from '../../src/api/schemas/responses/responses';
-import { BurnchainRewardsTotal } from '../../src/api/schemas/entities/burnchain-rewards';
-import { FAUCET_TESTNET_KEYS } from '../../src/api/routes/faucets';
-import { ENV } from '../../src/env';
+} from '../../../src/api/schemas/responses/responses.ts';
+import { BurnchainRewardsTotal } from '../../../src/api/schemas/entities/burnchain-rewards.ts';
+import { FAUCET_TESTNET_KEYS } from '../../../src/api/routes/faucets.ts';
+import { ENV } from '../../../src/env.ts';
+import assert from 'node:assert/strict';
+import { after, before, describe, test } from 'node:test';
+import {
+  fetchGet,
+  getKryptonContext,
+  KryptonContext,
+  standByForPoxCycle,
+  standByForTxSuccess,
+  stopKryptonContext,
+} from '../krypton-env.ts';
 
 const BTC_PRIVATE_KEY = '0000000000000000000000000000000000000000000000000000000000000002';
+const ADDRESS_SETUPS = [P2SH_P2WPKH, P2WPKH, P2WSH, P2TR];
 
-describe.each([P2SH_P2WPKH, P2WPKH, P2WSH, P2TR])(
-  'PoX-4 - Stack using bitcoin address %p',
-  addressSetup => {
+for (const addressSetup of ADDRESS_SETUPS) {
+  describe(`PoX-4 - Stack using bitcoin address ${addressSetup.name}`, () => {
     const account = FAUCET_TESTNET_KEYS[1];
+    let ctx: KryptonContext;
 
     let poxInfo: CoreRpcPoxInfo;
     let burnBlockHeight: number;
@@ -54,6 +58,10 @@ describe.each([P2SH_P2WPKH, P2WPKH, P2WSH, P2TR])(
     const { btcAddr, btcAddrDecoded, btcAddrRegtest, btcDescriptor } = addressSetup();
 
     let bitcoinRpcClient: RPCClient;
+
+    before(async () => {
+      ctx = await getKryptonContext();
+    });
 
     test('setup BTC wallet client', async () => {
       bitcoinRpcClient = new RPCClient({
@@ -71,8 +79,8 @@ describe.each([P2SH_P2WPKH, P2WPKH, P2WSH, P2TR])(
         descriptors: true,
         load_on_startup: false,
       } as any);
-      expect(createWalletResult.name).toBe(btcAddrRegtest);
-      expect(createWalletResult.warning).toBeFalsy();
+      assert.equal(createWalletResult.name, btcAddrRegtest);
+      assert.ok(!createWalletResult.warning);
 
       // descriptor wallets, if legacy wallet import fails
       const info = await bitcoinRpcClient.getdescriptorinfo({
@@ -84,28 +92,28 @@ describe.each([P2SH_P2WPKH, P2WPKH, P2WSH, P2TR])(
         { requests: [request] },
         btcAddrRegtest
       );
-      expect(importDescriptorRes[0].success).toBe(true);
+      assert.equal(importDescriptorRes[0].success, true);
       const btcWalletAddrs = await bitcoinRpcClient.getaddressesbylabel({
         label: btcAddrRegtest,
       });
-      expect(Object.keys(btcWalletAddrs)).toEqual([btcAddrRegtest]);
+      assert.deepEqual(Object.keys(btcWalletAddrs), [btcAddrRegtest]);
     });
 
     test('prepare', async () => {
-      await standByForPoxCycle();
+      await standByForPoxCycle(ctx);
 
-      poxInfo = await testEnv.client.getPox();
+      poxInfo = await ctx.client.getPox();
 
       burnBlockHeight = poxInfo.current_burnchain_block_height as number;
       ustxAmount = BigInt(Math.round(Number(poxInfo.min_amount_ustx) * 1.1).toString());
       cycleBlockLength = cycleCount * poxInfo.reward_cycle_length;
       [contractAddress, contractName] = poxInfo.contract_id.split('.');
 
-      stackingClient = new StackingClient(account.stacksAddress, testEnv.stacksNetwork);
+      stackingClient = new StackingClient(account.stacksAddress, ctx.stacksNetwork);
       signerPrivKey = makeRandomPrivKey();
       signerPubKey = getPublicKeyFromPrivate(signerPrivKey.data);
 
-      expect(contractName).toBe('pox-4');
+      assert.equal(contractName, 'pox-4');
     });
 
     test('stack-stx tx', async () => {
@@ -139,69 +147,71 @@ describe.each([P2SH_P2WPKH, P2WPKH, P2WSH, P2TR])(
           uintCV(ustxAmount.toString()), // max-amount
           uintCV(0), // auth-id
         ],
-        network: testEnv.stacksNetwork,
+        network: ctx.stacksNetwork,
         anchorMode: AnchorMode.OnChainOnly,
         fee: 10000,
         validateWithAbi: false,
       });
       const expectedTxId = '0x' + tx.txid();
-      const sendResult = await testEnv.client.sendTransaction(Buffer.from(tx.serialize()));
-      expect(sendResult.txId).toBe(expectedTxId);
+      const sendResult = await ctx.client.sendTransaction(Buffer.from(tx.serialize()));
+      assert.equal(sendResult.txId, expectedTxId);
 
       // Wait for API to receive and ingest tx
-      const dbTx = await standByForTxSuccess(expectedTxId);
+      const dbTx = await standByForTxSuccess(expectedTxId, ctx);
 
-      const txEvents = await testEnv.api.datastore.getTxEvents({
+      const txEvents = await ctx.api.datastore.getTxEvents({
         txId: expectedTxId,
         indexBlockHash: dbTx.index_block_hash,
         limit: 99999,
         offset: 0,
       });
-      expect(txEvents.results).toBeTruthy();
+      assert.ok(!!txEvents.results);
       const lockEvent = txEvents.results.find(
-        r => r.event_type === DbEventTypeId.StxLock
+        (r: { event_type: DbEventTypeId }) => r.event_type === DbEventTypeId.StxLock
       ) as DbStxLockEvent;
-      expect(lockEvent).toBeDefined();
-      expect(lockEvent.locked_address).toBe(account.stacksAddress);
-      expect(lockEvent.locked_amount).toBe(ustxAmount);
+      assert.ok(lockEvent !== undefined);
+      assert.equal(lockEvent.locked_address, account.stacksAddress);
+      assert.equal(lockEvent.locked_amount, ustxAmount);
 
       // Test that the unlock height event data in the API db matches the expected height from the
       // calculated values from the /v2/pox data and the cycle count specified in the `stack-stx` tx.
       const expectedUnlockHeight =
         cycleBlockLength + poxInfo.next_cycle.reward_phase_start_block_height;
-      expect(lockEvent.unlock_height).toBe(expectedUnlockHeight);
+      assert.equal(lockEvent.unlock_height, expectedUnlockHeight);
 
       // Test the API address balance data after a `stack-stx` operation
       const balance = await fetchGet<AddressStxBalance>(
-        `/extended/v1/address/${account.stacksAddress}/stx`
+        `/extended/v1/address/${account.stacksAddress}/stx`,
+        ctx
       );
-      expect(balance.locked).toBe(ustxAmount.toString());
-      expect(balance.burnchain_unlock_height).toBe(expectedUnlockHeight);
-      expect(balance.lock_height).toBe(dbTx.block_height);
-      expect(balance.lock_tx_id).toBe(dbTx.tx_id);
+      assert.equal(balance.locked, ustxAmount.toString());
+      assert.equal(balance.burnchain_unlock_height, expectedUnlockHeight);
+      assert.equal(balance.lock_height, dbTx.block_height);
+      assert.equal(balance.lock_tx_id, dbTx.tx_id);
     });
 
     test('stx unlocked - RPC balance', async () => {
       // Wait until account has unlocked (finished Stacking cycles)
-      await standByForPoxCycle();
-      await standByForPoxCycle();
+      await standByForPoxCycle(ctx);
+      await standByForPoxCycle(ctx);
 
       // Check that STX are no longer reported as locked by the RPC endpoints:
       await timeout(200); // make sure unlock was processed
-      const rpcAccountAfter = await testEnv.client.getAccount(account.stacksAddress);
-      expect(BigInt(rpcAccountAfter.locked)).toBe(0n);
-      expect(rpcAccountAfter.unlock_height).toBe(0);
+      const rpcAccountAfter = await ctx.client.getAccount(account.stacksAddress);
+      assert.equal(BigInt(rpcAccountAfter.locked), 0n);
+      assert.equal(rpcAccountAfter.unlock_height, 0);
     });
 
     test('stx unlocked - API balance', async () => {
       // Check that STX are no longer reported as locked by the API endpoints:
       const balance = await fetchGet<AddressStxBalance>(
-        `/extended/v1/address/${account.stacksAddress}/stx`
+        `/extended/v1/address/${account.stacksAddress}/stx`,
+        ctx
       );
-      expect(BigInt(balance.locked)).toBe(0n);
-      expect(balance.burnchain_unlock_height).toBe(0);
-      expect(balance.lock_height).toBe(0);
-      expect(balance.lock_tx_id).toBe('');
+      assert.equal(BigInt(balance.locked), 0n);
+      assert.equal(balance.burnchain_unlock_height, 0);
+      assert.equal(balance.lock_height, 0);
+      assert.equal(balance.lock_tx_id, '');
     });
 
     test('stacking rewards - API', async () => {
@@ -209,39 +219,45 @@ describe.each([P2SH_P2WPKH, P2WPKH, P2WSH, P2TR])(
       const slotEnd = slotStart + 6; // early in the reward phase for the next-next cycle
 
       const rewards = await fetchGet<BurnchainRewardListResponse>(
-        `/extended/v1/burnchain/rewards/${btcAddr}`
+        `/extended/v1/burnchain/rewards/${btcAddr}`,
+        ctx
       );
-      expect(rewards.results.length).toBeGreaterThan(0);
+      assert.ok(rewards.results.length > 0);
 
       const firstReward = rewards.results.sort(
-        (a, b) => a.burn_block_height - b.burn_block_height
+        (a: BurnchainRewardListResponse['results'][number], b: BurnchainRewardListResponse['results'][number]) =>
+          a.burn_block_height - b.burn_block_height
       )[0];
 
-      expect(firstReward.reward_recipient).toBe(btcAddr);
-      expect(Number(firstReward.burn_amount)).toBeGreaterThan(0);
-      expect(firstReward.burn_block_height).toBeGreaterThanOrEqual(slotStart);
-      expect(firstReward.burn_block_height).toBeLessThanOrEqual(slotEnd);
+      assert.equal(firstReward.reward_recipient, btcAddr);
+      assert.ok(Number(firstReward.burn_amount) > 0);
+      assert.ok(firstReward.burn_block_height >= slotStart);
+      assert.ok(firstReward.burn_block_height <= slotEnd);
 
       const rewardsTotal = await fetchGet<BurnchainRewardsTotal>(
-        `/extended/v1/burnchain/rewards/${btcAddr}/total`
+        `/extended/v1/burnchain/rewards/${btcAddr}/total`,
+        ctx
       );
-      expect(rewardsTotal.reward_recipient).toBe(btcAddr);
-      expect(rewardsTotal.reward_amount).toBe(firstReward.burn_amount);
+      assert.equal(rewardsTotal.reward_recipient, btcAddr);
+      assert.equal(rewardsTotal.reward_amount, firstReward.burn_amount);
 
       const rewardSlotHolders = await fetchGet<BurnchainRewardSlotHolderListResponse>(
-        `/extended/v1/burnchain/reward_slot_holders/${btcAddr}`
+        `/extended/v1/burnchain/reward_slot_holders/${btcAddr}`,
+        ctx
       );
-      expect(rewardSlotHolders.total).toBe(1);
-      expect(rewardSlotHolders.results[0].address).toBe(btcAddr);
-      expect(rewardSlotHolders.results[0].burn_block_height).toBe(firstReward.burn_block_height);
+      assert.equal(rewardSlotHolders.total, 1);
+      assert.equal(rewardSlotHolders.results[0].address, btcAddr);
+      assert.equal(rewardSlotHolders.results[0].burn_block_height, firstReward.burn_block_height);
     });
 
     test('stacking rewards - BTC JSON-RPC - getblock', async () => {
       const rewards = await fetchGet<BurnchainRewardListResponse>(
-        `/extended/v1/burnchain/rewards/${btcAddr}`
+        `/extended/v1/burnchain/rewards/${btcAddr}`,
+        ctx
       );
       const firstReward = rewards.results.sort(
-        (a, b) => a.burn_block_height - b.burn_block_height
+        (a: BurnchainRewardListResponse['results'][number], b: BurnchainRewardListResponse['results'][number]) =>
+          a.burn_block_height - b.burn_block_height
       )[0];
 
       const blockResult: {
@@ -259,15 +275,17 @@ describe.each([P2SH_P2WPKH, P2WPKH, P2WSH, P2TR])(
         );
       }
       const sats = new bignumber(vout.value).shiftedBy(8).toString();
-      expect(sats).toBe(firstReward.reward_amount);
+      assert.equal(sats, firstReward.reward_amount);
     });
 
     test('stacking rewards - BTC JSON-RPC - listtransactions', async () => {
       const rewards = await fetchGet<BurnchainRewardListResponse>(
-        `/extended/v1/burnchain/rewards/${btcAddr}`
+        `/extended/v1/burnchain/rewards/${btcAddr}`,
+        ctx
       );
       const firstReward = rewards.results.sort(
-        (a, b) => a.burn_block_height - b.burn_block_height
+        (a: BurnchainRewardListResponse['results'][number], b: BurnchainRewardListResponse['results'][number]) =>
+          a.burn_block_height - b.burn_block_height
       )[0];
 
       let txs: {
@@ -285,13 +303,13 @@ describe.each([P2SH_P2WPKH, P2WPKH, P2WSH, P2TR])(
       );
       txs = txs.filter(r => r.address === btcAddrRegtest);
 
-      expect(txs.length).toBeGreaterThan(0);
+      assert.ok(txs.length > 0);
 
       const firstTx = txs.sort((a, b) => a.blockheight - b.blockheight)[0];
-      expect(firstTx.category).toBe('receive');
-      expect(firstTx.blockhash).toBe(hexToBuffer(firstReward.burn_block_hash).toString('hex'));
+      assert.equal(firstTx.category, 'receive');
+      assert.equal(firstTx.blockhash, hexToBuffer(firstReward.burn_block_hash).toString('hex'));
       const sats = new bignumber(firstTx.amount).shiftedBy(8).toString();
-      expect(sats).toBe(firstReward.reward_amount);
+      assert.equal(sats, firstReward.reward_amount);
     });
 
     test('BTC stacking reward received', async () => {
@@ -302,15 +320,16 @@ describe.each([P2SH_P2WPKH, P2WPKH, P2WSH, P2TR])(
         },
         btcAddrRegtest
       );
-      expect(received).toBeGreaterThan(0);
+      assert.ok(received > 0);
     });
 
-    afterAll(async () => {
+    after(async () => {
       // after: unload descriptor wallet
       await bitcoinRpcClient.unloadwallet({ wallet_name: btcAddrRegtest });
+      await stopKryptonContext(ctx);
     });
-  }
-);
+  });
+}
 
 function P2SH_P2WPKH() {
   const btcAddr = getBitcoinAddressFromKey({
@@ -318,15 +337,21 @@ function P2SH_P2WPKH() {
     network: 'testnet',
     addressFormat: 'p2sh-p2wpkh',
   });
-  expect(btcAddr).toBe('2N74VLxyT79VGHiBK2zEg3a9HJG7rEc5F3o');
+  assert.equal(btcAddr, '2N74VLxyT79VGHiBK2zEg3a9HJG7rEc5F3o');
   const btcPubKey = privateToPublicKey(BTC_PRIVATE_KEY).toString('hex');
-  expect(btcPubKey).toBe('02c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5');
+  assert.equal(
+    btcPubKey,
+    '02c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5'
+  );
 
   const btcAddrDecoded = decodeBtcAddress(btcAddr);
-  expect({
+  assert.deepEqual(
+    {
     data: Buffer.from(btcAddrDecoded.data).toString('hex'),
     version: btcAddrDecoded.version,
-  }).toEqual({ data: '978a0121f9a24de65a13bab0c43c3a48be074eae', version: 1 });
+    },
+    { data: '978a0121f9a24de65a13bab0c43c3a48be074eae', version: 1 }
+  );
 
   // Create a regtest address to use with bitcoind json-rpc since the krypton-stacks-node uses testnet addresses
   const btcAddrRegtest = getBitcoinAddressFromKey({
@@ -334,7 +359,7 @@ function P2SH_P2WPKH() {
     network: 'regtest',
     addressFormat: 'p2sh-p2wpkh',
   });
-  expect(btcAddrRegtest).toBe('2N74VLxyT79VGHiBK2zEg3a9HJG7rEc5F3o');
+  assert.equal(btcAddrRegtest, '2N74VLxyT79VGHiBK2zEg3a9HJG7rEc5F3o');
 
   return {
     btcAddr,
@@ -351,18 +376,24 @@ function P2WSH() {
     network: 'testnet',
     addressFormat: 'p2wsh',
   });
-  expect(btcAddr).toBe('tb1q4qp0380kg75cqv25k4zruwa87wefwz0uefv78jekagm2j8568rwqvz7llf');
+  assert.equal(btcAddr, 'tb1q4qp0380kg75cqv25k4zruwa87wefwz0uefv78jekagm2j8568rwqvz7llf');
   const btcPubKey = privateToPublicKey(BTC_PRIVATE_KEY).toString('hex');
-  expect(btcPubKey).toBe('02c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5');
+  assert.equal(
+    btcPubKey,
+    '02c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5'
+  );
 
   const btcAddrDecoded = decodeBtcAddress(btcAddr);
-  expect({
+  assert.deepEqual(
+    {
     data: Buffer.from(btcAddrDecoded.data).toString('hex'),
     version: btcAddrDecoded.version,
-  }).toEqual({
-    data: 'a802f89df647a9803154b5443e3ba7f3b29709fcca59e3cb36ea36a91e9a38dc',
-    version: 5,
-  });
+    },
+    {
+      data: 'a802f89df647a9803154b5443e3ba7f3b29709fcca59e3cb36ea36a91e9a38dc',
+      version: 5,
+    }
+  );
 
   // Create a regtest address to use with bitcoind json-rpc since the krypton-stacks-node uses testnet addresses
   const btcAddrRegtest = getBitcoinAddressFromKey({
@@ -370,7 +401,7 @@ function P2WSH() {
     network: 'regtest',
     addressFormat: 'p2wsh',
   });
-  expect(btcAddrRegtest).toBe('bcrt1q4qp0380kg75cqv25k4zruwa87wefwz0uefv78jekagm2j8568rwqpm5e2n');
+  assert.equal(btcAddrRegtest, 'bcrt1q4qp0380kg75cqv25k4zruwa87wefwz0uefv78jekagm2j8568rwqpm5e2n');
 
   return {
     btcAddr,
@@ -387,15 +418,21 @@ function P2WPKH() {
     network: 'testnet',
     addressFormat: 'p2wpkh',
   });
-  expect(btcAddr).toBe('tb1qq6hag67dl53wl99vzg42z8eyzfz2xlkvvlryfj');
+  assert.equal(btcAddr, 'tb1qq6hag67dl53wl99vzg42z8eyzfz2xlkvvlryfj');
   const btcPubKey = privateToPublicKey(BTC_PRIVATE_KEY).toString('hex');
-  expect(btcPubKey).toBe('02c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5');
+  assert.equal(
+    btcPubKey,
+    '02c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5'
+  );
 
   const btcAddrDecoded = decodeBtcAddress(btcAddr);
-  expect({
+  assert.deepEqual(
+    {
     data: Buffer.from(btcAddrDecoded.data).toString('hex'),
     version: btcAddrDecoded.version,
-  }).toEqual({ data: '06afd46bcdfd22ef94ac122aa11f241244a37ecc', version: 4 });
+    },
+    { data: '06afd46bcdfd22ef94ac122aa11f241244a37ecc', version: 4 }
+  );
 
   // Create a regtest address to use with bitcoind json-rpc since the krypton-stacks-node uses testnet addresses
   const btcAddrRegtest = getBitcoinAddressFromKey({
@@ -403,7 +440,7 @@ function P2WPKH() {
     network: 'regtest',
     addressFormat: 'p2wpkh',
   });
-  expect(btcAddrRegtest).toBe('bcrt1qq6hag67dl53wl99vzg42z8eyzfz2xlkvwk6f7m');
+  assert.equal(btcAddrRegtest, 'bcrt1qq6hag67dl53wl99vzg42z8eyzfz2xlkvwk6f7m');
 
   return {
     btcAddr,
@@ -420,18 +457,24 @@ function P2TR() {
     network: 'testnet',
     addressFormat: 'p2tr',
   });
-  expect(btcAddr).toBe('tb1pet7ep3czdu9k4wvdlz2fp5p8x2yp7t6ttyqg2c6cmh0lgeuu9lasvfnc28');
+  assert.equal(btcAddr, 'tb1pet7ep3czdu9k4wvdlz2fp5p8x2yp7t6ttyqg2c6cmh0lgeuu9lasvfnc28');
   const btcPubKey = privateToPublicKey(BTC_PRIVATE_KEY).toString('hex');
-  expect(btcPubKey).toBe('02c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5');
+  assert.equal(
+    btcPubKey,
+    '02c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5'
+  );
 
   const btcAddrDecoded = decodeBtcAddress(btcAddr);
-  expect({
+  assert.deepEqual(
+    {
     data: Buffer.from(btcAddrDecoded.data).toString('hex'),
     version: btcAddrDecoded.version,
-  }).toEqual({
-    data: 'cafd90c7026f0b6ab98df89490d02732881f2f4b5900856358dddff4679c2ffb',
-    version: 6,
-  });
+    },
+    {
+      data: 'cafd90c7026f0b6ab98df89490d02732881f2f4b5900856358dddff4679c2ffb',
+      version: 6,
+    }
+  );
 
   // Create a regtest address to use with bitcoind json-rpc since the krypton-stacks-node uses testnet addresses
   const btcAddrRegtest = getBitcoinAddressFromKey({
@@ -439,7 +482,7 @@ function P2TR() {
     network: 'regtest',
     addressFormat: 'p2tr',
   });
-  expect(btcAddrRegtest).toBe('bcrt1pet7ep3czdu9k4wvdlz2fp5p8x2yp7t6ttyqg2c6cmh0lgeuu9laspse7la');
+  assert.equal(btcAddrRegtest, 'bcrt1pet7ep3czdu9k4wvdlz2fp5p8x2yp7t6ttyqg2c6cmh0lgeuu9laspse7la');
 
   return {
     btcAddr,

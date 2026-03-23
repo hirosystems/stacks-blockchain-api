@@ -8,48 +8,49 @@ import {
   stringAsciiCV,
   uintCV,
 } from '@stacks/transactions';
-import { StacksCoreRpcClient } from '../../src/core-rpc/client';
-import { ECPair } from '../../src/ec-helpers';
-import { BootContractAddress } from '../../src/helpers';
+import { ECPair } from '../../../src/ec-helpers.ts';
+import { BootContractAddress } from '../../../src/helpers.ts';
+import * as btc from 'bitcoinjs-lib';
+import { b58ToC32, c32ToB58 } from 'c32check';
+import supertest from 'supertest';
+import codec from '@stacks/codec';
+import { decodeBtcAddress, poxAddressToTuple } from '@stacks/stacking';
+import { timeout } from '@stacks/api-toolkit';
+import { hexToBytes } from '@stacks/common';
+import { AddressStxBalance } from '../../../src/api/schemas/entities/addresses.ts';
+import { TransactionEventsResponse } from '../../../src/api/schemas/responses/responses.ts';
+import { StxLockTransactionEvent } from '../../../src/api/schemas/entities/transaction-events.ts';
+import { ContractCallTransaction } from '../../../src/api/schemas/entities/transactions.ts';
+import { FAUCET_TESTNET_KEYS } from '../../../src/api/routes/faucets.ts';
 import {
   Account,
   accountFromKey,
   fetchGet,
+  getKryptonContext,
+  KryptonContext,
   standByForTxSuccess,
   standByUntilBlock,
   standByUntilBurnBlock,
-  testEnv,
-  TestEnvContext,
-} from '../utils/test-helpers';
-import * as btc from 'bitcoinjs-lib';
-import { b58ToC32, c32ToB58 } from 'c32check';
-import { PgWriteStore } from '../../src/datastore/pg-write-store';
-import { ApiServer } from '../../src/api/init';
-import { StacksNetwork } from '@stacks/network';
-import { RPCClient } from 'rpc-bitcoin';
-import * as supertest from 'supertest';
-import { ClarityValueUInt, decodeClarityValue } from '@stacks/codec';
-import { decodeBtcAddress, poxAddressToTuple } from '@stacks/stacking';
-import { timeout } from '@stacks/api-toolkit';
-import { hexToBytes } from '@stacks/common';
-import { AddressStxBalance } from '../../src/api/schemas/entities/addresses';
-import { TransactionEventsResponse } from '../../src/api/schemas/responses/responses';
-import { StxLockTransactionEvent } from '../../src/api/schemas/entities/transaction-events';
-import { ContractCallTransaction } from '../../src/api/schemas/entities/transactions';
-import { FAUCET_TESTNET_KEYS } from '../../src/api/routes/faucets';
+  stopKryptonContext,
+} from '../krypton-env.ts';
+import assert from 'node:assert/strict';
+import { after, before, describe, test } from 'node:test';
 
 // Perform Stack-STX operation on Bitcoin.
 // See https://github.com/stacksgov/sips/blob/0da29c6911c49c45e4125dbeaed58069854591eb/sips/sip-007/sip-007-stacking-consensus.md#stx-operations-on-bitcoin
-async function createPox4StackStx(args: {
-  stxAmount: bigint;
-  cycleCount: number;
-  stackerAddress: string;
-  bitcoinWif: string;
-  poxAddrPayout: string;
-  signerKey: string;
-  maxAmount: bigint;
-  authID: number;
-}) {
+async function createPox4StackStx(
+  ctx: KryptonContext,
+  args: {
+    stxAmount: bigint;
+    cycleCount: number;
+    stackerAddress: string;
+    bitcoinWif: string;
+    poxAddrPayout: string;
+    signerKey: string;
+    maxAmount: bigint;
+    authID: number;
+  }
+) {
   const btcAccount = ECPair.fromWIF(args.bitcoinWif, btc.networks.regtest);
   const feeAmount = 0.0001;
   const sats = 100000000;
@@ -59,17 +60,17 @@ async function createPox4StackStx(args: {
     network: btc.networks.regtest,
   }).address!;
   const derivedStacksAddr = b58ToC32(btcAddr);
-  expect(derivedStacksAddr).toBe(args.stackerAddress);
+  assert.equal(derivedStacksAddr, args.stackerAddress);
 
-  const utxos: any[] = await testEnv.bitcoinRpcClient.listunspent({
+  const utxos: any[] = await ctx.bitcoinRpcClient.listunspent({
     addresses: [btcAddr],
     include_unsafe: false,
   });
   const utxo = utxos[0];
-  expect(utxo.spendable).toBe(true);
-  expect(utxo.safe).toBe(true);
-  expect(utxo.confirmations).toBeGreaterThan(0);
-  const utxoRawTx = await testEnv.bitcoinRpcClient.getrawtransaction({ txid: utxo.txid });
+  assert.equal(utxo.spendable, true);
+  assert.equal(utxo.safe, true);
+  assert.ok(utxo.confirmations > 0);
+  const utxoRawTx = await ctx.bitcoinRpcClient.getrawtransaction({ txid: utxo.txid });
 
   // PreStxOp: this operation prepares the Stacks blockchain node to validate the subsequent StackStxOp or TransferStxOp.
   // 0      2  3
@@ -101,7 +102,7 @@ async function createPox4StackStx(args: {
     .finalizeAllInputs()
     .extractTransaction(false)
     .toHex();
-  const preStxOpTxId: string = await testEnv.bitcoinRpcClient.sendrawtransaction({
+  const preStxOpTxId: string = await ctx.bitcoinRpcClient.sendrawtransaction({
     hexstring: preStxOpTxHex,
   });
 
@@ -136,7 +137,7 @@ async function createPox4StackStx(args: {
     .finalizeAllInputs()
     .extractTransaction(false)
     .toHex();
-  const stackStxOpTxId: string = await testEnv.bitcoinRpcClient.sendrawtransaction({
+  const stackStxOpTxId: string = await ctx.bitcoinRpcClient.sendrawtransaction({
     hexstring: stackStxOpTxHex,
   });
 
@@ -147,13 +148,8 @@ async function createPox4StackStx(args: {
 }
 
 describe('PoX-4 - Stack using Bitcoin-chain stack ops', () => {
+  let ctx: KryptonContext;
   const seedAccount = FAUCET_TESTNET_KEYS[0];
-
-  let db: PgWriteStore;
-  let api: ApiServer;
-  let client: StacksCoreRpcClient;
-  let stacksNetwork: StacksNetwork;
-  let bitcoinRpcClient: RPCClient;
 
   const accountKey = '72e8e3725324514c38c2931ed337ab9ab8d8abaae83ed2275456790194b1fd3101';
   let account: Account;
@@ -174,68 +170,74 @@ describe('PoX-4 - Stack using Bitcoin-chain stack ops', () => {
     stackStxOpTxId: string;
   };
 
-  beforeAll(async () => {
-    const testEnv: TestEnvContext = (global as any).testEnv;
-    ({ db, api, client, stacksNetwork, bitcoinRpcClient } = testEnv);
+  before(async () => {
+    ctx = await getKryptonContext();
 
     account = accountFromKey(accountKey);
     poxAddrPayoutAccount = accountFromKey(poxAddrPayoutKey, 'p2tr');
 
-    const poxInfo = await client.getPox();
+    const poxInfo = await ctx.client.getPox();
     const [contractAddress, contractName] = poxInfo.contract_id.split('.');
-    expect(contractName).toBe('pox-4');
+    assert.equal(contractName, 'pox-4');
+  });
+
+  after(async () => {
+    await stopKryptonContext(ctx);
   });
 
   test('Fund STX to new account for testing', async () => {
-    await bitcoinRpcClient.importaddress({
+    await ctx.bitcoinRpcClient.importaddress({
       address: account.btcAddr,
       label: account.btcAddr,
       rescan: false,
     });
-    await bitcoinRpcClient.importprivkey({
+    await ctx.bitcoinRpcClient.importprivkey({
       privkey: account.wif,
       label: account.btcAddr,
       rescan: false,
     });
 
     // transfer pox "min_amount_ustx" from seed to test account
-    const poxInfo = await client.getPox();
+    const poxInfo = await ctx.client.getPox();
     testAccountBalance = BigInt(poxInfo.min_amount_ustx) * 2n;
     const stxXfer1 = await makeSTXTokenTransfer({
       senderKey: seedAccount.secretKey,
       recipient: account.stxAddr,
       amount: testAccountBalance,
-      network: stacksNetwork,
+      network: ctx.stacksNetwork,
       anchorMode: AnchorMode.OnChainOnly,
       fee: 200,
     });
-    const { txId: stxXferId1 } = await client.sendTransaction(Buffer.from(stxXfer1.serialize()));
+    const { txId: stxXferId1 } = await ctx.client.sendTransaction(
+      Buffer.from(stxXfer1.serialize())
+    );
 
-    const stxXferTx1 = await standByForTxSuccess(stxXferId1);
-    expect(stxXferTx1.token_transfer_recipient_address).toBe(account.stxAddr);
+    const stxXferTx1 = await standByForTxSuccess(stxXferId1, ctx);
+    assert.equal(stxXferTx1.token_transfer_recipient_address, account.stxAddr);
   });
 
   test('Verify expected amount of STX are funded', async () => {
     // test stacks-node account RPC balance
-    const coreNodeBalance = await client.getAccount(account.stxAddr);
-    expect(BigInt(coreNodeBalance.balance)).toBe(testAccountBalance);
-    expect(BigInt(coreNodeBalance.locked)).toBe(0n);
+    const coreNodeBalance = await ctx.client.getAccount(account.stxAddr);
+    assert.equal(BigInt(coreNodeBalance.balance), testAccountBalance);
+    assert.equal(BigInt(coreNodeBalance.locked), 0n);
 
     // test API address endpoint balance
     const apiBalance = await fetchGet<AddressStxBalance>(
-      `/extended/v1/address/${account.stxAddr}/stx`
+      `/extended/v1/address/${account.stxAddr}/stx`,
+      ctx
     );
-    expect(BigInt(apiBalance.balance)).toBe(testAccountBalance);
-    expect(BigInt(apiBalance.locked)).toBe(0n);
+    assert.equal(BigInt(apiBalance.balance), testAccountBalance);
+    assert.equal(BigInt(apiBalance.locked), 0n);
   });
 
   test('Fund BTC to new account for testing', async () => {
-    const fundTxId: string = await bitcoinRpcClient.sendtoaddress({
+    const fundTxId: string = await ctx.bitcoinRpcClient.sendtoaddress({
       address: account.btcAddr,
       amount: testAccountBtcBalance,
     });
     while (true) {
-      const txResp = await bitcoinRpcClient.gettransaction({
+      const txResp = await ctx.bitcoinRpcClient.gettransaction({
         txid: fundTxId,
         verbose: true,
       });
@@ -247,17 +249,19 @@ describe('PoX-4 - Stack using Bitcoin-chain stack ops', () => {
   });
 
   test('Verify expected amount of BTC is funded', async () => {
-    const receivedAmount = await bitcoinRpcClient.getreceivedbylabel({ label: account.btcAddr });
-    expect(receivedAmount).toBe(testAccountBtcBalance);
+    const receivedAmount = await ctx.bitcoinRpcClient.getreceivedbylabel({
+      label: account.btcAddr,
+    });
+    assert.equal(receivedAmount, testAccountBtcBalance);
   });
 
   test('Standby for next cycle', async () => {
-    const poxInfo = await client.getPox();
-    await standByUntilBurnBlock(poxInfo.next_cycle.reward_phase_start_block_height); // a good time to stack
+    const poxInfo = await ctx.client.getPox();
+    await standByUntilBurnBlock(poxInfo.next_cycle.reward_phase_start_block_height, ctx); // a good time to stack
   });
 
   test('Submit set-signer-key-authorization transaction', async () => {
-    const poxInfo = await client.getPox();
+    const poxInfo = await ctx.client.getPox();
     testStackAmount = BigInt(poxInfo.min_amount_ustx * 1.2);
     const [contractAddress, contractName] = poxInfo.contract_id.split('.');
     const tx = await makeContractCall({
@@ -275,22 +279,22 @@ describe('PoX-4 - Stack using Bitcoin-chain stack ops', () => {
         uintCV(testStackAmount), // (max-amount uint)
         uintCV(testStackAuthID), // (auth-id uint)
       ],
-      network: testEnv.stacksNetwork,
+      network: ctx.stacksNetwork,
       anchorMode: AnchorMode.OnChainOnly,
       fee: 10000,
       validateWithAbi: false,
     });
     const expectedTxId = '0x' + tx.txid();
-    const sendResult = await testEnv.client.sendTransaction(Buffer.from(tx.serialize()));
-    expect(sendResult.txId).toBe(expectedTxId);
+    const sendResult = await ctx.client.sendTransaction(Buffer.from(tx.serialize()));
+    assert.equal(sendResult.txId, expectedTxId);
 
     // Wait for API to receive and ingest tx
-    await standByForTxSuccess(expectedTxId);
+    await standByForTxSuccess(expectedTxId, ctx);
   });
 
   test('Stack via Bitcoin tx', async () => {
-    const poxInfo = await client.getPox();
-    stxOpBtcTxs = await createPox4StackStx({
+    const poxInfo = await ctx.client.getPox();
+    stxOpBtcTxs = await createPox4StackStx(ctx, {
       bitcoinWif: account.wif,
       stackerAddress: account.stxAddr,
       poxAddrPayout: poxAddrPayoutAccount.btcAddr,
@@ -304,11 +308,11 @@ describe('PoX-4 - Stack using Bitcoin-chain stack ops', () => {
 
   test('Wait for Stack Bitcoin txs to confirm', async () => {
     while (true) {
-      const preOpTxResult = await bitcoinRpcClient.gettransaction({
+      const preOpTxResult = await ctx.bitcoinRpcClient.gettransaction({
         txid: stxOpBtcTxs.preStxOpTxId,
         verbose: true,
       });
-      const stackOpTxResult = await bitcoinRpcClient.gettransaction({
+      const stackOpTxResult = await ctx.bitcoinRpcClient.gettransaction({
         txid: stxOpBtcTxs.stackStxOpTxId,
         verbose: true,
       });
@@ -320,34 +324,39 @@ describe('PoX-4 - Stack using Bitcoin-chain stack ops', () => {
   });
 
   test('Wait for 1 Stacks block', async () => {
-    const curInfo = await client.getInfo();
-    await standByUntilBlock(curInfo.stacks_tip_height + 1);
+    const curInfo = await ctx.client.getInfo();
+    await standByUntilBlock(curInfo.stacks_tip_height + 1, ctx);
   });
 
   test('Test synthetic STX tx', async () => {
-    const coreNodeBalance = await client.getAccount(account.stxAddr);
-    const addressEventsResp = await supertest(api.server)
+    const coreNodeBalance = await ctx.client.getAccount(account.stxAddr);
+    const addressEventsResp = await supertest(ctx.api.server)
       .get(`/extended/v1/tx/events?address=${account.stxAddr}`)
       .expect(200);
     const addressEvents = addressEventsResp.body.events as TransactionEventsResponse['events'];
     const event1 = addressEvents[0] as StxLockTransactionEvent;
-    expect(event1.event_type).toBe('stx_lock');
-    expect(event1.stx_lock_event.locked_address).toBe(account.stxAddr);
-    expect(event1.stx_lock_event.unlock_height).toBeGreaterThan(0);
-    expect(BigInt(event1.stx_lock_event.locked_amount)).toBe(testStackAmount);
-    expect(BigInt(event1.stx_lock_event.locked_amount)).toBe(BigInt(coreNodeBalance.locked));
+    assert.equal(event1.event_type, 'stx_lock');
+    assert.equal(event1.stx_lock_event.locked_address, account.stxAddr);
+    assert.ok(event1.stx_lock_event.unlock_height > 0);
+    assert.equal(BigInt(event1.stx_lock_event.locked_amount), testStackAmount);
+    assert.equal(BigInt(event1.stx_lock_event.locked_amount), BigInt(coreNodeBalance.locked));
 
-    const txResp = await supertest(api.server).get(`/extended/v1/tx/${event1.tx_id}`).expect(200);
+    const txResp = await supertest(ctx.api.server)
+      .get(`/extended/v1/tx/${event1.tx_id}`)
+      .expect(200);
     const txObj = txResp.body as ContractCallTransaction;
-    expect(txObj.tx_type).toBe('contract_call');
-    expect(txObj.tx_status).toBe('success');
-    expect(txObj.sender_address).toBe(account.stxAddr);
-    expect(txObj.contract_call.contract_id).toBe(`${BootContractAddress.testnet}.pox-4`);
-    expect(txObj.contract_call.function_name).toBe('stack-stx');
+    assert.equal(txObj.tx_type, 'contract_call');
+    assert.equal(txObj.tx_status, 'success');
+    assert.equal(txObj.sender_address, account.stxAddr);
+    assert.equal(txObj.contract_call.contract_id, `${BootContractAddress.testnet}.pox-4`);
+    assert.equal(txObj.contract_call.function_name, 'stack-stx');
 
     const callArg1 = txObj.contract_call.function_args![0];
-    expect(callArg1.name).toBe('amount-ustx');
-    expect(BigInt(decodeClarityValue<ClarityValueUInt>(callArg1.hex).value)).toBe(testStackAmount);
+    assert.equal(callArg1.name, 'amount-ustx');
+    assert.equal(
+      BigInt(codec.decodeClarityValue<codec.ClarityValueUInt>(callArg1.hex).value),
+      testStackAmount
+    );
 
     const expectedPoxPayoutAddr = decodeBtcAddress(poxAddrPayoutAccount.btcTestnetAddr);
     const expectedPoxPayoutAddrRepr = `(tuple (hashbytes 0x${Buffer.from(
@@ -356,23 +365,24 @@ describe('PoX-4 - Stack using Bitcoin-chain stack ops', () => {
       'hex'
     )}))`;
     const callArg2 = txObj.contract_call.function_args![1];
-    expect(callArg2.name).toBe('pox-addr');
-    expect(callArg2.type).toBe('(tuple (hashbytes (buff 32)) (version (buff 1)))');
-    expect(callArg2.repr).toBe(expectedPoxPayoutAddrRepr);
+    assert.equal(callArg2.name, 'pox-addr');
+    assert.equal(callArg2.type, '(tuple (hashbytes (buff 32)) (version (buff 1)))');
+    assert.equal(callArg2.repr, expectedPoxPayoutAddrRepr);
   });
 
   // TODO: this is very flaky
   test.skip('Verify expected amount of STX are locked', async () => {
     // test stacks-node account RPC balance
-    const coreNodeBalance = await client.getAccount(account.stxAddr);
-    expect(BigInt(coreNodeBalance.balance)).toBeLessThan(testAccountBalance);
-    expect(BigInt(coreNodeBalance.locked)).toBe(testStackAmount);
+    const coreNodeBalance = await ctx.client.getAccount(account.stxAddr);
+    assert.ok(BigInt(coreNodeBalance.balance) < testAccountBalance);
+    assert.equal(BigInt(coreNodeBalance.locked), testStackAmount);
 
     // test API address endpoint balance
     const apiBalance = await fetchGet<AddressStxBalance>(
-      `/extended/v1/address/${account.stxAddr}/stx`
+      `/extended/v1/address/${account.stxAddr}/stx`,
+      ctx
     );
-    expect(BigInt(apiBalance.balance)).toBeLessThan(testAccountBalance);
-    expect(BigInt(apiBalance.locked)).toBe(testStackAmount);
+    assert.ok(BigInt(apiBalance.balance) < testAccountBalance);
+    assert.equal(BigInt(apiBalance.locked), testStackAmount);
   });
 });

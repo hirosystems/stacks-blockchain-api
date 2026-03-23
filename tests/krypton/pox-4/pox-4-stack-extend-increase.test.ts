@@ -1,5 +1,5 @@
-import { CoreRpcPoxInfo } from '../../../src/core-rpc/client.js';
-import { getBitcoinAddressFromKey, privateToPublicKey } from '../../../src/ec-helpers.js';
+import { CoreRpcPoxInfo } from '../../../src/core-rpc/client.ts';
+import { getBitcoinAddressFromKey, privateToPublicKey } from '../../../src/ec-helpers.ts';
 import {
   AnchorMode,
   StacksPrivateKey,
@@ -11,19 +11,19 @@ import {
   uintCV,
 } from '@stacks/transactions';
 import bignumber from 'bignumber.js';
-import { DbEventTypeId, DbStxLockEvent } from '../../../src/datastore/common.js';
+import { DbEventTypeId, DbStxLockEvent } from '../../../src/datastore/common.ts';
 import { decodeBtcAddress, StackingClient } from '@stacks/stacking';
 import { hexToBuffer } from '@stacks/api-toolkit';
 import assert from 'node:assert/strict';
 import { hexToBytes } from '@stacks/common';
 import { getPublicKeyFromPrivate } from '@stacks/encryption';
-import { AddressStxBalance } from '../../../src/api/schemas/entities/addresses.js';
+import { AddressStxBalance } from '../../../src/api/schemas/entities/addresses.ts';
 import {
   BurnchainRewardListResponse,
   BurnchainRewardSlotHolderListResponse,
-} from '../../../src/api/schemas/responses/responses.js';
-import { BurnchainRewardsTotal } from '../../../src/api/schemas/entities/burnchain-rewards.js';
-import { FAUCET_TESTNET_KEYS } from '../../../src/api/routes/faucets.js';
+} from '../../../src/api/schemas/responses/responses.ts';
+import { BurnchainRewardsTotal } from '../../../src/api/schemas/entities/burnchain-rewards.ts';
+import { FAUCET_TESTNET_KEYS } from '../../../src/api/routes/faucets.ts';
 import {
   fetchGet,
   getKryptonContext,
@@ -32,7 +32,7 @@ import {
   standByForTxSuccess,
   standByUntilBurnBlock,
   stopKryptonContext,
-} from '../krypton-env.js';
+} from '../krypton-env.ts';
 import { after, before, test, describe } from 'node:test';
 
 describe('PoX-4 - Stack extend and increase operations', () => {

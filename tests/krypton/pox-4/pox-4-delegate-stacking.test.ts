@@ -1,5 +1,5 @@
-import { CoreRpcPoxInfo } from '../../../src/core-rpc/client.js';
-import { stxToMicroStx } from '../../../src/helpers.js';
+import { CoreRpcPoxInfo } from '../../../src/core-rpc/client.ts';
+import { stxToMicroStx } from '../../../src/helpers.ts';
 import {
   AnchorMode,
   StacksPrivateKey,
@@ -17,8 +17,8 @@ import assert from 'node:assert/strict';
 import { StackingClient } from '@stacks/stacking';
 import { getPublicKeyFromPrivate } from '@stacks/encryption';
 import { hexToBytes } from '@stacks/common';
-import { AddressStxBalance } from '../../../src/api/schemas/entities/addresses.js';
-import { FAUCET_TESTNET_KEYS } from '../../../src/api/routes/faucets.js';
+import { AddressStxBalance } from '../../../src/api/schemas/entities/addresses.ts';
+import { FAUCET_TESTNET_KEYS } from '../../../src/api/routes/faucets.ts';
 import {
   Account,
   accountFromKey,
@@ -31,7 +31,7 @@ import {
   standByForTxSuccess,
   standByUntilBurnBlock,
   stopKryptonContext,
-} from '../krypton-env.js';
+} from '../krypton-env.ts';
 import { before, after, describe, test } from 'node:test';
 
 describe('PoX-4 - Delegate Stacking operations', () => {

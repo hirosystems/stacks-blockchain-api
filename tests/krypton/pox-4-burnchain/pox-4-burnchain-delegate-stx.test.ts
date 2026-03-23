@@ -8,50 +8,51 @@ import {
   standardPrincipalCV,
   uintCV,
 } from '@stacks/transactions';
-import { StacksCoreRpcClient } from '../../src/core-rpc/client';
-import { ECPair } from '../../src/ec-helpers';
-import { BootContractAddress } from '../../src/helpers';
+import { ECPair } from '../../../src/ec-helpers.ts';
+import { BootContractAddress } from '../../../src/helpers.ts';
+import * as btc from 'bitcoinjs-lib';
+import { b58ToC32, c32ToB58 } from 'c32check';
+import supertest from 'supertest';
+import { PoxContractIdentifier } from '../../../src/pox-helpers.ts';
+import codec from '@stacks/codec';
+import { decodeBtcAddress, poxAddressToBtcAddress } from '@stacks/stacking';
+import { timeout } from '@stacks/api-toolkit';
+import { AddressStxBalance } from '../../../src/api/schemas/entities/addresses.ts';
+import { ContractCallTransaction } from '../../../src/api/schemas/entities/transactions.ts';
+import {
+  AddressTransactionsListResponse,
+  TransactionEventsResponse,
+} from '../../../src/api/schemas/responses/responses.ts';
+import { StxLockTransactionEvent } from '../../../src/api/schemas/entities/transaction-events.ts';
+import { FAUCET_TESTNET_KEYS } from '../../../src/api/routes/faucets.ts';
 import {
   Account,
   accountFromKey,
   fetchGet,
+  getKryptonContext,
+  KryptonContext,
   standByForTxSuccess,
   standByUntilBlock,
   standByUntilBurnBlock,
-  testEnv,
-  TestEnvContext,
-} from '../utils/test-helpers';
-import * as btc from 'bitcoinjs-lib';
-import { b58ToC32, c32ToB58 } from 'c32check';
-import { PgWriteStore } from '../../src/datastore/pg-write-store';
-import { ApiServer } from '../../src/api/init';
-import { StacksNetwork } from '@stacks/network';
-import { RPCClient } from 'rpc-bitcoin';
-import * as supertest from 'supertest';
-import { PoxContractIdentifier } from '../../src/pox-helpers';
-import { ClarityValueUInt, decodeClarityValue } from '@stacks/codec';
-import { decodeBtcAddress, poxAddressToBtcAddress } from '@stacks/stacking';
-import { timeout } from '@stacks/api-toolkit';
-import { AddressStxBalance } from '../../src/api/schemas/entities/addresses';
-import { ContractCallTransaction } from '../../src/api/schemas/entities/transactions';
-import {
-  AddressTransactionsListResponse,
-  TransactionEventsResponse,
-} from '../../src/api/schemas/responses/responses';
-import { StxLockTransactionEvent } from '../../src/api/schemas/entities/transaction-events';
-import { FAUCET_TESTNET_KEYS } from '../../src/api/routes/faucets';
+  stopKryptonContext,
+} from '../krypton-env.ts';
+import assert from 'node:assert/strict';
+import { after, before, describe, test } from 'node:test';
 
 // Perform Delegate-STX operation on Bitcoin.
 // See https://github.com/stacksgov/sips/blob/a7f2e58ec90c12ee1296145562eec75029b89c48/sips/sip-015/sip-015-network-upgrade.md#new-burnchain-transaction-delegate-stx
-async function createPox2DelegateStx(args: {
-  stxAmount: bigint;
-  cycleCount: number;
-  stackerAddress: string;
-  delegatorStacksAddress: string;
-  untilBurnHt: number;
-  poxAddrPayout: string;
-  bitcoinWif: string;
-}) {
+async function createPox2DelegateStx(
+  ctx: KryptonContext,
+  args: {
+    stxAmount: bigint;
+    cycleCount: number;
+    stackerAddress: string;
+    delegatorStacksAddress: string;
+    untilBurnHt: number;
+    poxAddrPayout: string;
+    bitcoinWif: string;
+  }
+) {
   const btcAccount = ECPair.fromWIF(args.bitcoinWif, btc.networks.regtest);
   const feeAmount = 0.0001;
   const sats = 100000000;
@@ -61,17 +62,17 @@ async function createPox2DelegateStx(args: {
     network: btc.networks.regtest,
   }).address!;
   const derivedStacksAddr = b58ToC32(btcAddr);
-  expect(derivedStacksAddr).toBe(args.stackerAddress);
+  assert.equal(derivedStacksAddr, args.stackerAddress);
 
-  const utxos: any[] = await testEnv.bitcoinRpcClient.listunspent({
+  const utxos: any[] = await ctx.bitcoinRpcClient.listunspent({
     addresses: [btcAddr],
     include_unsafe: false,
   });
   const utxo = utxos[0];
-  expect(utxo.spendable).toBe(true);
-  expect(utxo.safe).toBe(true);
-  expect(utxo.confirmations).toBeGreaterThan(0);
-  const utxoRawTx = await testEnv.bitcoinRpcClient.getrawtransaction({ txid: utxo.txid });
+  assert.equal(utxo.spendable, true);
+  assert.equal(utxo.safe, true);
+  assert.ok(utxo.confirmations > 0);
+  const utxoRawTx = await ctx.bitcoinRpcClient.getrawtransaction({ txid: utxo.txid });
 
   // PreStxOp: this operation prepares the Stacks blockchain node to validate the subsequent StackStxOp or TransferStxOp.
   // 0      2  3
@@ -105,7 +106,7 @@ async function createPox2DelegateStx(args: {
     .finalizeAllInputs()
     .extractTransaction(false)
     .toHex();
-  const preStxOpTxId: string = await testEnv.bitcoinRpcClient.sendrawtransaction({
+  const preStxOpTxId: string = await ctx.bitcoinRpcClient.sendrawtransaction({
     hexstring: preStxOpTxHex,
   });
 
@@ -163,7 +164,7 @@ async function createPox2DelegateStx(args: {
     .finalizeAllInputs()
     .extractTransaction(false)
     .toHex();
-  const delegateStxOpTxId: string = await testEnv.bitcoinRpcClient.sendrawtransaction({
+  const delegateStxOpTxId: string = await ctx.bitcoinRpcClient.sendrawtransaction({
     hexstring: delegateStxOpTxHex,
   });
 
@@ -174,13 +175,8 @@ async function createPox2DelegateStx(args: {
 }
 
 describe('PoX-4 - Stack using Bitcoin-chain delegate ops', () => {
+  let ctx: KryptonContext;
   const seedAccount = FAUCET_TESTNET_KEYS[0];
-
-  let db: PgWriteStore;
-  let api: ApiServer;
-  let client: StacksCoreRpcClient;
-  let stacksNetwork: StacksNetwork;
-  let bitcoinRpcClient: RPCClient;
 
   // ST1Z7V02CJRY3G5R2RDG7SFAZA8VGH0Y44NC2NAJN
   const accountKey = '72e8e3725324514c38c2931ed337ab9ab8d8abaae83ed2275456790194b1fd3101';
@@ -207,69 +203,75 @@ describe('PoX-4 - Stack using Bitcoin-chain delegate ops', () => {
     delegateStxOpTxId: string;
   };
 
-  beforeAll(async () => {
-    const testEnv: TestEnvContext = (global as any).testEnv;
-    ({ db, api, client, stacksNetwork, bitcoinRpcClient } = testEnv);
+  before(async () => {
+    ctx = await getKryptonContext();
 
     account = accountFromKey(accountKey);
     delegatorAccount = accountFromKey(delegatorKey);
     poxAddrPayoutAccount = accountFromKey(poxAddrPayoutKey, 'p2tr');
 
-    const poxInfo = await client.getPox();
+    const poxInfo = await ctx.client.getPox();
     const [contractAddress, contractName] = poxInfo.contract_id.split('.');
-    expect(contractName).toBe('pox-4');
+    assert.equal(contractName, 'pox-4');
+  });
+
+  after(async () => {
+    await stopKryptonContext(ctx);
   });
 
   test('Fund STX to new account for testing', async () => {
-    await bitcoinRpcClient.importaddress({
+    await ctx.bitcoinRpcClient.importaddress({
       address: account.btcAddr,
       label: account.btcAddr,
       rescan: false,
     });
-    await bitcoinRpcClient.importprivkey({
+    await ctx.bitcoinRpcClient.importprivkey({
       privkey: account.wif,
       label: account.btcAddr,
       rescan: false,
     });
 
     // transfer pox "min_amount_ustx" from seed to test account
-    const poxInfo = await client.getPox();
+    const poxInfo = await ctx.client.getPox();
     testAccountBalance = BigInt(Math.round(Number(poxInfo.min_amount_ustx) * 2.1).toString());
     const stxXfer1 = await makeSTXTokenTransfer({
       senderKey: seedAccount.secretKey,
       recipient: account.stxAddr,
       amount: testAccountBalance,
-      network: stacksNetwork,
+      network: ctx.stacksNetwork,
       anchorMode: AnchorMode.OnChainOnly,
       fee: 200,
     });
-    const { txId: stxXferId1 } = await client.sendTransaction(Buffer.from(stxXfer1.serialize()));
+    const { txId: stxXferId1 } = await ctx.client.sendTransaction(
+      Buffer.from(stxXfer1.serialize())
+    );
 
-    const stxXferTx1 = await standByForTxSuccess(stxXferId1);
-    expect(stxXferTx1.token_transfer_recipient_address).toBe(account.stxAddr);
+    const stxXferTx1 = await standByForTxSuccess(stxXferId1, ctx);
+    assert.equal(stxXferTx1.token_transfer_recipient_address, account.stxAddr);
   });
 
   test('Verify expected amount of STX are funded', async () => {
     // test stacks-node account RPC balance
-    const coreNodeBalance = await client.getAccount(account.stxAddr);
-    expect(BigInt(coreNodeBalance.balance)).toBe(testAccountBalance);
-    expect(BigInt(coreNodeBalance.locked)).toBe(0n);
+    const coreNodeBalance = await ctx.client.getAccount(account.stxAddr);
+    assert.equal(BigInt(coreNodeBalance.balance), testAccountBalance);
+    assert.equal(BigInt(coreNodeBalance.locked), 0n);
 
     // test API address endpoint balance
     const apiBalance = await fetchGet<AddressStxBalance>(
-      `/extended/v1/address/${account.stxAddr}/stx`
+      `/extended/v1/address/${account.stxAddr}/stx`,
+      ctx
     );
-    expect(BigInt(apiBalance.balance)).toBe(testAccountBalance);
-    expect(BigInt(apiBalance.locked)).toBe(0n);
+    assert.equal(BigInt(apiBalance.balance), testAccountBalance);
+    assert.equal(BigInt(apiBalance.locked), 0n);
   });
 
   test('Fund BTC to new account for testing', async () => {
-    const fundTxId: string = await bitcoinRpcClient.sendtoaddress({
+    const fundTxId: string = await ctx.bitcoinRpcClient.sendtoaddress({
       address: account.btcAddr,
       amount: testAccountBtcBalance,
     });
     while (true) {
-      const txResp = await bitcoinRpcClient.gettransaction({
+      const txResp = await ctx.bitcoinRpcClient.gettransaction({
         txid: fundTxId,
         verbose: true,
       });
@@ -281,19 +283,21 @@ describe('PoX-4 - Stack using Bitcoin-chain delegate ops', () => {
   });
 
   test('Verify expected amount of BTC is funded', async () => {
-    const receivedAmount = await bitcoinRpcClient.getreceivedbylabel({ label: account.btcAddr });
-    expect(receivedAmount).toBe(testAccountBtcBalance);
+    const receivedAmount = await ctx.bitcoinRpcClient.getreceivedbylabel({
+      label: account.btcAddr,
+    });
+    assert.equal(receivedAmount, testAccountBtcBalance);
   });
 
   test('Standby for next cycle', async () => {
-    const poxInfo = await client.getPox();
-    await standByUntilBurnBlock(poxInfo.next_cycle.reward_phase_start_block_height); // a good time to stack
+    const poxInfo = await ctx.client.getPox();
+    await standByUntilBurnBlock(poxInfo.next_cycle.reward_phase_start_block_height, ctx); // a good time to stack
   });
 
   test('Delegate-stx via Bitcoin tx', async () => {
-    const poxInfo = await client.getPox();
+    const poxInfo = await ctx.client.getPox();
     testStackAmount = BigInt(poxInfo.min_amount_ustx * 1.2);
-    stxOpBtcTxs = await createPox2DelegateStx({
+    stxOpBtcTxs = await createPox2DelegateStx(ctx, {
       bitcoinWif: account.wif,
       stackerAddress: account.stxAddr,
       delegatorStacksAddress: delegatorAccount.stxAddr,
@@ -306,11 +310,11 @@ describe('PoX-4 - Stack using Bitcoin-chain delegate ops', () => {
 
   test('Wait for Stack Bitcoin txs to confirm', async () => {
     while (true) {
-      const preOpTxResult = await bitcoinRpcClient.gettransaction({
+      const preOpTxResult = await ctx.bitcoinRpcClient.gettransaction({
         txid: stxOpBtcTxs.preStxOpTxId,
         verbose: true,
       });
-      const delegateStxOpTxResult = await bitcoinRpcClient.gettransaction({
+      const delegateStxOpTxResult = await ctx.bitcoinRpcClient.gettransaction({
         txid: stxOpBtcTxs.delegateStxOpTxId,
         verbose: true,
       });
@@ -322,22 +326,22 @@ describe('PoX-4 - Stack using Bitcoin-chain delegate ops', () => {
   });
 
   test('Wait for 1 Stacks block', async () => {
-    const curInfo = await client.getInfo();
-    await standByUntilBlock(curInfo.stacks_tip_height + 1);
+    const curInfo = await ctx.client.getInfo();
+    await standByUntilBlock(curInfo.stacks_tip_height + 1, ctx);
   });
 
   test('Ensure delegate-stx BitcoinOp parsed', async () => {
-    const pox2Txs = await supertest(api.server)
+    const pox2Txs = await supertest(ctx.api.server)
       .get(`/extended/v1/address/${BootContractAddress.testnet}.pox-4/transactions`)
       .expect(200);
-    const delegateStxTxResp = await supertest(api.server)
+    const delegateStxTxResp = await supertest(ctx.api.server)
       .get(`/extended/v1/tx/${pox2Txs.body.results[0].tx_id}`)
       .expect(200);
     const delegateStxTx = delegateStxTxResp.body as ContractCallTransaction;
-    expect(delegateStxTx.tx_status).toBe('success');
-    expect(delegateStxTx.tx_type).toBe('contract_call');
-    expect(delegateStxTx.sender_address).toBe(account.stxAddr);
-    expect(delegateStxTx.tx_result).toEqual({ hex: '0x0703', repr: '(ok true)' });
+    assert.equal(delegateStxTx.tx_status, 'success');
+    assert.equal(delegateStxTx.tx_type, 'contract_call');
+    assert.equal(delegateStxTx.sender_address, account.stxAddr);
+    assert.deepEqual(delegateStxTx.tx_result, { hex: '0x0703', repr: '(ok true)' });
 
     const expectedPoxPayoutAddr = decodeBtcAddress(poxAddrPayoutAccount.btcTestnetAddr);
     const expectedPoxPayoutAddrRepr = `(some (tuple (hashbytes 0x${Buffer.from(
@@ -346,7 +350,7 @@ describe('PoX-4 - Stack using Bitcoin-chain delegate ops', () => {
       'hex'
     )})))`;
 
-    expect(delegateStxTx.contract_call).toEqual({
+    assert.deepEqual(delegateStxTx.contract_call, {
       contract_id: 'ST000000000000000000002AMW42H.pox-4',
       function_name: 'delegate-stx',
       function_signature:
@@ -381,7 +385,7 @@ describe('PoX-4 - Stack using Bitcoin-chain delegate ops', () => {
   });
 
   test('Perform delegate-stack-stx', async () => {
-    const poxInfo = await testEnv.client.getPox();
+    const poxInfo = await ctx.client.getPox();
     const [contractAddress, contractName] = poxInfo.contract_id.split('.');
     const startBurnHt = poxInfo.current_burnchain_block_height as number;
 
@@ -398,92 +402,87 @@ describe('PoX-4 - Stack using Bitcoin-chain delegate ops', () => {
         uintCV(startBurnHt), // start-burn-ht
         uintCV(1), // lock-period
       ],
-      network: testEnv.stacksNetwork,
+      network: ctx.stacksNetwork,
       anchorMode: AnchorMode.OnChainOnly,
       fee: txFee,
       validateWithAbi: false,
     });
-    const { txId: delegateStackStxTxId } = await testEnv.client.sendTransaction(
+    const { txId: delegateStackStxTxId } = await ctx.client.sendTransaction(
       Buffer.from(delegateStackStxTx.serialize())
     );
-    const delegateStackStxDbTx = await standByForTxSuccess(delegateStackStxTxId);
+    const delegateStackStxDbTx = await standByForTxSuccess(delegateStackStxTxId, ctx);
 
     // validate stacks-node balance
-    const coreBalanceInfo = await testEnv.client.getAccount(account.stxAddr);
-    expect(BigInt(coreBalanceInfo.locked)).toBe(testStackAmount);
-    expect(coreBalanceInfo.unlock_height).toBeGreaterThan(0);
+    const coreBalanceInfo = await ctx.client.getAccount(account.stxAddr);
+    assert.equal(BigInt(coreBalanceInfo.locked), testStackAmount);
+    assert.ok(coreBalanceInfo.unlock_height > 0);
 
     // validate delegate-stack-stx pox2 event for this tx
-    const res: any = await fetchGet(`/extended/v1/pox4_events/tx/${delegateStackStxTxId}`);
-    expect(res).toBeDefined();
-    expect(res.results).toHaveLength(1);
-    expect(res.results[0]).toEqual(
-      expect.objectContaining({
-        name: 'delegate-stack-stx',
-        pox_addr: poxAddrPayoutAccount.btcTestnetAddr,
-        stacker: account.stxAddr,
-        balance: BigInt(coreBalanceInfo.balance).toString(),
-        locked: testStackAmount.toString(),
-        burnchain_unlock_height: coreBalanceInfo.unlock_height.toString(),
-      })
-    );
-    expect(res.results[0].data).toEqual(
-      expect.objectContaining({
-        lock_period: '1',
-        lock_amount: testStackAmount.toString(),
-      })
-    );
+    const res: any = await fetchGet(`/extended/v1/pox4_events/tx/${delegateStackStxTxId}`, ctx);
+    assert.ok(res !== undefined);
+    assert.equal(res.results.length, 1);
+    assert.equal(res.results[0].name, 'delegate-stack-stx');
+    assert.equal(res.results[0].pox_addr, poxAddrPayoutAccount.btcTestnetAddr);
+    assert.equal(res.results[0].stacker, account.stxAddr);
+    assert.equal(res.results[0].balance, BigInt(coreBalanceInfo.balance).toString());
+    assert.equal(res.results[0].locked, testStackAmount.toString());
+    assert.equal(res.results[0].burnchain_unlock_height, coreBalanceInfo.unlock_height.toString());
+    assert.equal(res.results[0].data.lock_period, '1');
+    assert.equal(res.results[0].data.lock_amount, testStackAmount.toString());
   });
 
   test('Test synthetic STX tx', async () => {
-    const coreNodeBalance = await client.getAccount(account.stxAddr);
-    const addressEventsResp = await supertest(api.server)
+    const coreNodeBalance = await ctx.client.getAccount(account.stxAddr);
+    const addressEventsResp = await supertest(ctx.api.server)
       .get(`/extended/v1/tx/events?address=${account.stxAddr}`)
       .expect(200);
-    const delegatorAddressEventsResp = await supertest(api.server)
+    const delegatorAddressEventsResp = await supertest(ctx.api.server)
       .get(`/extended/v1/tx/events?address=${delegatorAccount.stxAddr}`)
       .expect(200);
     const addressEvents = addressEventsResp.body.events as TransactionEventsResponse['events'];
     const event1 = addressEvents[0] as StxLockTransactionEvent;
-    expect(event1.event_type).toBe('stx_lock');
-    expect(event1.stx_lock_event.locked_address).toBe(account.stxAddr);
-    expect(event1.stx_lock_event.unlock_height).toBeGreaterThan(0);
-    expect(BigInt(event1.stx_lock_event.locked_amount)).toBe(testStackAmount);
-    expect(BigInt(event1.stx_lock_event.locked_amount)).toBe(BigInt(coreNodeBalance.locked));
+    assert.equal(event1.event_type, 'stx_lock');
+    assert.equal(event1.stx_lock_event.locked_address, account.stxAddr);
+    assert.ok(event1.stx_lock_event.unlock_height > 0);
+    assert.equal(BigInt(event1.stx_lock_event.locked_amount), testStackAmount);
+    assert.equal(BigInt(event1.stx_lock_event.locked_amount), BigInt(coreNodeBalance.locked));
 
-    const addrTxsReq = await supertest(api.server)
+    const addrTxsReq = await supertest(ctx.api.server)
       .get(`/extended/v1/address/${account.stxAddr}/transactions`)
       .expect(200);
     const addrTxs = addrTxsReq.body as AddressTransactionsListResponse;
     const txObj = addrTxs.results.find(
       tx => tx.sender_address === account.stxAddr
     ) as ContractCallTransaction;
-    expect(txObj).toBeDefined();
+    assert.ok(txObj !== undefined);
 
-    expect(txObj.tx_type).toBe('contract_call');
-    expect(txObj.tx_status).toBe('success');
-    expect(txObj.sender_address).toBe(account.stxAddr);
-    expect(txObj.contract_call.contract_id).toBe(PoxContractIdentifier.pox4.testnet);
-    expect(txObj.contract_call.function_name).toBe('delegate-stx');
+    assert.equal(txObj.tx_type, 'contract_call');
+    assert.equal(txObj.tx_status, 'success');
+    assert.equal(txObj.sender_address, account.stxAddr);
+    assert.equal(txObj.contract_call.contract_id, PoxContractIdentifier.pox4.testnet);
+    assert.equal(txObj.contract_call.function_name, 'delegate-stx');
 
     const callArg1 = txObj.contract_call.function_args![0];
-    expect(callArg1.name).toBe('amount-ustx');
-    expect(BigInt(decodeClarityValue<ClarityValueUInt>(callArg1.hex).value)).toBe(testStackAmount);
+    assert.equal(callArg1.name, 'amount-ustx');
+    assert.equal(
+      BigInt(codec.decodeClarityValue<codec.ClarityValueUInt>(callArg1.hex).value),
+      testStackAmount
+    );
 
     const callArg2 = txObj.contract_call.function_args![1];
-    expect(callArg2.name).toBe('delegate-to');
-    expect(callArg2.repr).toBe(`'${delegatorAccount.stxAddr}`);
+    assert.equal(callArg2.name, 'delegate-to');
+    assert.equal(callArg2.repr, `'${delegatorAccount.stxAddr}`);
 
     const callArg3 = txObj.contract_call.function_args![2];
-    expect(callArg3.name).toBe('until-burn-ht');
-    expect(callArg3.repr).toBe(`(some u${untilBurnHeight})`);
+    assert.equal(callArg3.name, 'until-burn-ht');
+    assert.equal(callArg3.repr, `(some u${untilBurnHeight})`);
 
     const callArg4 = txObj.contract_call.function_args![3];
-    expect(callArg4.name).toBe('pox-addr');
+    assert.equal(callArg4.name, 'pox-addr');
     const callArg2Addr = poxAddressToBtcAddress(
       Cl.deserialize<SomeCV>(callArg4.hex).value,
       'testnet'
     );
-    expect(callArg2Addr).toBe(poxAddrPayoutAccount.btcTestnetAddr);
+    assert.equal(callArg2Addr, poxAddrPayoutAccount.btcTestnetAddr);
   });
 });
