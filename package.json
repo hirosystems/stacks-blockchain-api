@@ -112,9 +112,5 @@
   "overrides": {
     "form-data": "4.0.5",
     "postgres": "3.4.8"
-  },
-  "optionalDependencies": {
-    "bufferutil": "4.0.5",
-    "utf-8-validate": "5.0.7"
   }
 }
