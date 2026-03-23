@@ -1,11 +1,13 @@
-import * as supertest from 'supertest';
+import supertest from 'supertest';
+import assert from 'node:assert/strict';
 import { ChainID } from '@stacks/transactions';
 import { DbTxTypeId } from '../../../src/datastore/common.ts';
 import { startApiServer, ApiServer } from '../../../src/api/init.ts';
-import { TestBlockBuilder, TestMicroblockStreamBuilder } from '../utils/test-builders';
+import { TestBlockBuilder, TestMicroblockStreamBuilder } from '../test-builders.ts';
 import { PgWriteStore } from '../../../src/datastore/pg-write-store.ts';
 import { PgSqlClient } from '@stacks/api-toolkit';
-import { migrate } from '../utils/test-helpers';
+import { migrate } from '../../test-helpers.ts';
+import { beforeEach, afterEach, describe, test } from 'node:test';
 
 describe('balance tests', () => {
   let db: PgWriteStore;
@@ -113,24 +115,24 @@ describe('balance tests', () => {
 
     // Check that v1 balance matches v2 balance for both accounts.
     let result = await supertest(api.server).get(`/extended/v1/address/${addr1}/stx`);
-    expect(result.status).toBe(200);
-    expect(result.type).toBe('application/json');
+    assert.equal(result.status, 200);
+    assert.equal(result.type, 'application/json');
     let v1balance = JSON.parse(result.text).balance;
-    expect(v1balance).toBe('17900');
+    assert.equal(v1balance, '17900');
     result = await supertest(api.server).get(`/extended/v2/addresses/${addr1}/balances/stx`);
-    expect(result.status).toBe(200);
-    expect(result.type).toBe('application/json');
-    expect(JSON.parse(result.text).balance).toBe(v1balance);
+    assert.equal(result.status, 200);
+    assert.equal(result.type, 'application/json');
+    assert.equal(JSON.parse(result.text).balance, v1balance);
 
     result = await supertest(api.server).get(`/extended/v1/address/${addr2}/stx`);
-    expect(result.status).toBe(200);
-    expect(result.type).toBe('application/json');
+    assert.equal(result.status, 200);
+    assert.equal(result.type, 'application/json');
     v1balance = JSON.parse(result.text).balance;
-    expect(v1balance).toBe('2000');
+    assert.equal(v1balance, '2000');
     result = await supertest(api.server).get(`/extended/v2/addresses/${addr2}/balances/stx`);
-    expect(result.status).toBe(200);
-    expect(result.type).toBe('application/json');
-    expect(JSON.parse(result.text).balance).toBe(v1balance);
+    assert.equal(result.status, 200);
+    assert.equal(result.type, 'application/json');
+    assert.equal(JSON.parse(result.text).balance, v1balance);
   });
 
   test('balance calculation after block re-orgs', async () => {
@@ -233,17 +235,17 @@ describe('balance tests', () => {
 
     // Check that v1 balance matches v2 balance.
     let result = await supertest(api.server).get(`/extended/v1/address/${addr2}/stx`);
-    expect(result.status).toBe(200);
-    expect(result.type).toBe('application/json');
+    assert.equal(result.status, 200);
+    assert.equal(result.type, 'application/json');
     let json = JSON.parse(result.text);
     const v1balance = json.balance;
-    expect(v1balance).toBe('2000');
+    assert.equal(v1balance, '2000');
 
     result = await supertest(api.server).get(`/extended/v2/addresses/${addr2}/balances/stx`);
-    expect(result.status).toBe(200);
-    expect(result.type).toBe('application/json');
+    assert.equal(result.status, 200);
+    assert.equal(result.type, 'application/json');
     json = JSON.parse(result.text);
-    expect(json.balance).toBe(v1balance);
+    assert.equal(json.balance, v1balance);
   });
 
   test('balance calculation after block re-org orphans microblock txs', async () => {
@@ -397,17 +399,17 @@ describe('balance tests', () => {
 
     // Check that v1 balance matches v2 balance.
     let result = await supertest(api.server).get(`/extended/v1/address/${addr2}/stx`);
-    expect(result.status).toBe(200);
-    expect(result.type).toBe('application/json');
+    assert.equal(result.status, 200);
+    assert.equal(result.type, 'application/json');
     let json = JSON.parse(result.text);
     const v1balance = json.balance;
-    expect(v1balance).toBe('2000');
+    assert.equal(v1balance, '2000');
 
     result = await supertest(api.server).get(`/extended/v2/addresses/${addr2}/balances/stx`);
-    expect(result.status).toBe(200);
-    expect(result.type).toBe('application/json');
+    assert.equal(result.status, 200);
+    assert.equal(result.type, 'application/json');
     json = JSON.parse(result.text);
-    expect(json.balance).toBe(v1balance);
+    assert.equal(json.balance, v1balance);
   });
 
   test('balance calculation after micro-re-orgs', async () => {
@@ -525,17 +527,17 @@ describe('balance tests', () => {
 
     // Check that v1 balance matches v2 balance.
     let result = await supertest(api.server).get(`/extended/v1/address/${addr2}/stx`);
-    expect(result.status).toBe(200);
-    expect(result.type).toBe('application/json');
+    assert.equal(result.status, 200);
+    assert.equal(result.type, 'application/json');
     let json = JSON.parse(result.text);
     const v1balance = json.balance;
-    expect(v1balance).toBe('0');
+    assert.equal(v1balance, '0');
 
     result = await supertest(api.server).get(`/extended/v2/addresses/${addr2}/balances/stx`);
-    expect(result.status).toBe(200);
-    expect(result.type).toBe('application/json');
+    assert.equal(result.status, 200);
+    assert.equal(result.type, 'application/json');
     json = JSON.parse(result.text);
-    expect(json.balance).toBe(v1balance);
+    assert.equal(json.balance, v1balance);
   });
 
   test('balance calculation after miner rewards', async () => {
@@ -583,17 +585,17 @@ describe('balance tests', () => {
 
     // Check that v1 balance matches v2 balance.
     let result = await supertest(api.server).get(`/extended/v1/address/${addr1}/stx`);
-    expect(result.status).toBe(200);
-    expect(result.type).toBe('application/json');
+    assert.equal(result.status, 200);
+    assert.equal(result.type, 'application/json');
     let json = JSON.parse(result.text);
     const v1balance = json.balance;
     const v1Rewards = json.total_miner_rewards_received;
-    expect(v1balance).toBe('22000');
+    assert.equal(v1balance, '22000');
     result = await supertest(api.server).get(`/extended/v2/addresses/${addr1}/balances/stx`);
-    expect(result.status).toBe(200);
-    expect(result.type).toBe('application/json');
+    assert.equal(result.status, 200);
+    assert.equal(result.type, 'application/json');
     json = JSON.parse(result.text);
-    expect(json.balance).toBe(v1balance);
-    expect(json.total_miner_rewards_received).toBe(v1Rewards);
+    assert.equal(json.balance, v1balance);
+    assert.equal(json.total_miner_rewards_received, v1Rewards);
   });
 });

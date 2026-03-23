@@ -1,23 +1,25 @@
-import * as supertest from 'supertest';
+import supertest from 'supertest';
 import { ChainID } from '@stacks/transactions';
 import { getBlockFromDataStore } from '../../../src/api/controllers/db-controller.ts';
 import {
   DbBlock,
   DbTxRaw,
   DbTxTypeId,
-  DbTxStatus,
   DataStoreBlockUpdateData,
 } from '../../../src/datastore/common.ts';
 import { startApiServer, ApiServer } from '../../../src/api/init.ts';
 import { I32_MAX, unixEpochToIso } from '../../../src/helpers.ts';
-import { TestBlockBuilder, TestMicroblockStreamBuilder } from '../utils/test-builders';
+import { TestBlockBuilder, TestMicroblockStreamBuilder } from '../test-builders.ts';
 import { PgWriteStore } from '../../../src/datastore/pg-write-store.ts';
 import { PgSqlClient, bufferToHex } from '@stacks/api-toolkit';
-import { migrate } from '../utils/test-helpers';
+import { migrate } from '../../test-helpers.ts';
 import {
   BlockListV2Response,
   BlockSignerSignatureResponse,
 } from '../../../src/api/schemas/responses/responses.ts';
+import { beforeEach, afterEach, describe, test } from 'node:test';
+import assert from 'node:assert/strict';
+import { assertMatchesObject } from '../test-helpers.ts';
 
 describe('block tests', () => {
   let db: PgWriteStore;
@@ -43,26 +45,23 @@ describe('block tests', () => {
 
   test('info block time', async () => {
     const query1 = await supertest(api.server).get(`/extended/v1/info/network_block_times`);
-    expect(query1.status).toBe(200);
-    expect(query1.type).toBe('application/json');
-    expect(JSON.parse(query1.text)).toEqual({
+    assert.equal(query1.status, 200);
+    assert.equal(query1.type, 'application/json');
+    assert.deepEqual(JSON.parse(query1.text), {
       testnet: { target_block_time: 120 },
       mainnet: { target_block_time: 600 },
     });
-
     const query2 = await supertest(api.server).get(`/extended/v1/info/network_block_time/mainnet`);
-    expect(query2.status).toBe(200);
-    expect(query2.type).toBe('application/json');
-    expect(JSON.parse(query2.text)).toEqual({ target_block_time: 600 });
-
+    assert.equal(query2.status, 200);
+    assert.equal(query2.type, 'application/json');
+    assert.deepEqual(JSON.parse(query2.text), { target_block_time: 600 });
     const query3 = await supertest(api.server).get(`/extended/v1/info/network_block_time/testnet`);
-    expect(query3.status).toBe(200);
-    expect(query3.type).toBe('application/json');
-    expect(JSON.parse(query3.text)).toEqual({ target_block_time: 120 });
-
+    assert.equal(query3.status, 200);
+    assert.equal(query3.type, 'application/json');
+    assert.deepEqual(JSON.parse(query3.text), { target_block_time: 120 });
     const query4 = await supertest(api.server).get(`/extended/v1/info/network_block_time/badnet`);
-    expect(query4.status).toBe(400);
-    expect(query4.type).toBe('application/json');
+    assert.equal(query4.status, 400);
+    assert.equal(query4.type, 'application/json');
   });
 
   test('block store and process', async () => {
@@ -130,7 +129,6 @@ describe('block tests', () => {
       vm_error: null,
     };
     await db.updateTx(client, tx);
-
     const blockQuery = await getBlockFromDataStore({
       blockIdentifer: { hash: block.block_hash },
       db,
@@ -138,7 +136,6 @@ describe('block tests', () => {
     if (!blockQuery.found) {
       throw new Error('block not found');
     }
-
     const expectedResp = {
       burn_block_time: 1594647996,
       burn_block_time_iso: '2020-07-13T13:46:36.000Z',
@@ -164,79 +161,69 @@ describe('block tests', () => {
       execution_cost_write_length: 0,
       microblock_tx_count: {},
     };
-
-    expect(blockQuery.result).toMatchObject(expectedResp);
-
+    assertMatchesObject(blockQuery.result, expectedResp);
     const fetchBlockByHash = await supertest(api.server).get(
       `/extended/v1/block/${block.block_hash}`
     );
-    expect(fetchBlockByHash.status).toBe(200);
-    expect(fetchBlockByHash.type).toBe('application/json');
-    expect(JSON.parse(fetchBlockByHash.text)).toMatchObject(expectedResp);
-
+    assert.equal(fetchBlockByHash.status, 200);
+    assert.equal(fetchBlockByHash.type, 'application/json');
+    assertMatchesObject(JSON.parse(fetchBlockByHash.text), expectedResp);
     const fetchBlockByHeight = await supertest(api.server).get(
       `/extended/v1/block/by_height/${block.block_height}`
     );
-    expect(fetchBlockByHeight.status).toBe(200);
-    expect(fetchBlockByHeight.type).toBe('application/json');
-    expect(JSON.parse(fetchBlockByHeight.text)).toMatchObject(expectedResp);
-
+    assert.equal(fetchBlockByHeight.status, 200);
+    assert.equal(fetchBlockByHeight.type, 'application/json');
+    assertMatchesObject(JSON.parse(fetchBlockByHeight.text), expectedResp);
     const fetchBlockByBurnBlockHeight = await supertest(api.server).get(
       `/extended/v1/block/by_burn_block_height/${block.burn_block_height}`
     );
-    expect(fetchBlockByBurnBlockHeight.status).toBe(200);
-    expect(fetchBlockByBurnBlockHeight.type).toBe('application/json');
-    expect(JSON.parse(fetchBlockByBurnBlockHeight.text)).toMatchObject(expectedResp);
-
+    assert.equal(fetchBlockByBurnBlockHeight.status, 200);
+    assert.equal(fetchBlockByBurnBlockHeight.type, 'application/json');
+    assertMatchesObject(JSON.parse(fetchBlockByBurnBlockHeight.text), expectedResp);
     const fetchBlockByInvalidBurnBlockHeight1 = await supertest(api.server).get(
       `/extended/v1/block/by_burn_block_height/999`
     );
-    expect(fetchBlockByInvalidBurnBlockHeight1.status).toBe(404);
-    expect(fetchBlockByInvalidBurnBlockHeight1.type).toBe('application/json');
-    const expectedResp1 = expect.objectContaining({
+    assert.equal(fetchBlockByInvalidBurnBlockHeight1.status, 404);
+    assert.equal(fetchBlockByInvalidBurnBlockHeight1.type, 'application/json');
+    const expectedResp1 = {
       message: 'cannot find block by height',
-    });
-    expect(JSON.parse(fetchBlockByInvalidBurnBlockHeight1.text)).toEqual(expectedResp1);
-
+    };
+    assert.deepEqual(JSON.parse(fetchBlockByInvalidBurnBlockHeight1.text), expectedResp1);
     const fetchBlockByInvalidBurnBlockHeight2 = await supertest(api.server).get(
       `/extended/v1/block/by_burn_block_height/abc`
     );
-    expect(fetchBlockByInvalidBurnBlockHeight2.status).toBe(400);
-    expect(fetchBlockByInvalidBurnBlockHeight2.type).toBe('application/json');
-    const expectedResp2 = expect.objectContaining({
+    assert.equal(fetchBlockByInvalidBurnBlockHeight2.status, 400);
+    assert.equal(fetchBlockByInvalidBurnBlockHeight2.type, 'application/json');
+    const expectedResp2 = {
       message: 'params/burn_block_height must be integer',
-    });
-    expect(JSON.parse(fetchBlockByInvalidBurnBlockHeight2.text)).toEqual(expectedResp2);
-
+    };
+    assert.deepEqual(JSON.parse(fetchBlockByInvalidBurnBlockHeight2.text), expectedResp2);
     const fetchBlockByInvalidBurnBlockHeight3 = await supertest(api.server).get(
       `/extended/v1/block/by_burn_block_height/0`
     );
-    expect(fetchBlockByInvalidBurnBlockHeight3.status).not.toBe(200);
-    expect(fetchBlockByInvalidBurnBlockHeight3.type).toBe('application/json');
-
+    assert.notEqual(fetchBlockByInvalidBurnBlockHeight3.status, 200);
+    assert.equal(fetchBlockByInvalidBurnBlockHeight3.type, 'application/json');
     const fetchBlockByBurnBlockHash = await supertest(api.server).get(
       `/extended/v1/block/by_burn_block_hash/${block.burn_block_hash}`
     );
-    expect(fetchBlockByBurnBlockHash.status).toBe(200);
-    expect(fetchBlockByBurnBlockHash.type).toBe('application/json');
-    expect(JSON.parse(fetchBlockByBurnBlockHash.text)).toMatchObject(expectedResp);
-
+    assert.equal(fetchBlockByBurnBlockHash.status, 200);
+    assert.equal(fetchBlockByBurnBlockHash.type, 'application/json');
+    assertMatchesObject(JSON.parse(fetchBlockByBurnBlockHash.text), expectedResp);
     const fetchBlockByInvalidBurnBlockHash = await supertest(api.server).get(
       `/extended/v1/block/by_burn_block_hash/0x000000`
     );
-    expect(fetchBlockByInvalidBurnBlockHash.status).toBe(404);
-    expect(fetchBlockByInvalidBurnBlockHash.type).toBe('application/json');
-    const expectedResp4 = expect.objectContaining({
+    assert.equal(fetchBlockByInvalidBurnBlockHash.status, 404);
+    assert.equal(fetchBlockByInvalidBurnBlockHash.type, 'application/json');
+    const expectedResp4 = {
       message: 'cannot find block by burn block hash',
-    });
-    expect(JSON.parse(fetchBlockByInvalidBurnBlockHash.text)).toEqual(expectedResp4);
+    };
+    assert.deepEqual(JSON.parse(fetchBlockByInvalidBurnBlockHash.text), expectedResp4);
   });
 
   test('/block', async () => {
     const block_hash = '0x1234',
       index_block_hash = '0xabcd',
       tx_id = '0x12ff';
-
     const block1 = new TestBlockBuilder({
       block_hash,
       index_block_hash,
@@ -283,7 +270,7 @@ describe('block tests', () => {
       ],
     };
     const result = await supertest(api.server).get(`/extended/v1/block/`);
-    expect(result.body).toMatchObject(expectedResp);
+    assertMatchesObject(result.body, expectedResp);
   });
 
   test('block tenure-change', async () => {
@@ -344,7 +331,7 @@ describe('block tests', () => {
     const result1 = await supertest(api.server).get(
       `/extended/v1/block/${block1.block.block_hash}`
     );
-    expect(result1.body).toMatchObject({
+    assertMatchesObject(result1.body, {
       canonical: true,
       height: block1.block.block_height,
       hash: block1.block.block_hash,
@@ -354,7 +341,7 @@ describe('block tests', () => {
     const result2 = await supertest(api.server).get(
       `/extended/v1/block/${block2.block.block_hash}`
     );
-    expect(result2.body).toMatchObject({
+    assertMatchesObject(result2.body, {
       canonical: true,
       height: block2.block.block_height,
       hash: block2.block.block_hash,
@@ -364,7 +351,7 @@ describe('block tests', () => {
     const result3 = await supertest(api.server).get(
       `/extended/v1/block/${block3.block.block_hash}`
     );
-    expect(result3.body).toMatchObject({
+    assertMatchesObject(result3.body, {
       canonical: true,
       height: block3.block.block_height,
       hash: block3.block.block_hash,
@@ -374,7 +361,7 @@ describe('block tests', () => {
     const result4 = await supertest(api.server).get(
       `/extended/v1/block/${block4.block.block_hash}`
     );
-    expect(result4.body).toMatchObject({
+    assertMatchesObject(result4.body, {
       canonical: true,
       height: block4.block.block_height,
       hash: block4.block.block_hash,
@@ -434,13 +421,12 @@ describe('block tests', () => {
       ],
     };
     const result = await supertest(api.server).get(`/extended/v1/block/`);
-    expect(result.body).toMatchObject(expectedResp);
-
+    assertMatchesObject(result.body, expectedResp);
     const sigReq = await supertest(api.server).get(
       `/extended/v2/blocks/${block1.block.block_height}/signer-signatures?limit=3&offset=70`
     );
     const sigResult: BlockSignerSignatureResponse = sigReq.body;
-    expect(sigResult).toEqual({
+    assert.deepEqual(sigResult, {
       limit: 3,
       offset: 70,
       total: 4000,
@@ -523,7 +509,7 @@ describe('block tests', () => {
     }
 
     const result = await supertest(api.server).get(`/extended/v2/burn-blocks`);
-    expect(result.body.results).toEqual([
+    assert.deepEqual(result.body.results, [
       {
         avg_block_time: tenMinutes,
         burn_block_hash: burnBlock2.burn_block_hash,
@@ -546,7 +532,7 @@ describe('block tests', () => {
 
     // test 'latest' filter
     const result2 = await supertest(api.server).get(`/extended/v2/burn-blocks/latest`);
-    expect(result2.body).toEqual({
+    assert.deepEqual(result2.body, {
       avg_block_time: tenMinutes,
       burn_block_hash: stacksBlocks.at(-1)?.burn_block_hash,
       burn_block_height: stacksBlocks.at(-1)?.burn_block_height,
@@ -560,7 +546,7 @@ describe('block tests', () => {
     const result3 = await supertest(api.server).get(
       `/extended/v2/burn-blocks/${stacksBlock1.burn_block_hash}`
     );
-    expect(result3.body).toEqual({
+    assert.deepEqual(result3.body, {
       avg_block_time: 0,
       burn_block_hash: stacksBlock1.burn_block_hash,
       burn_block_height: stacksBlock1.burn_block_height,
@@ -574,7 +560,7 @@ describe('block tests', () => {
     const result4 = await supertest(api.server).get(
       `/extended/v2/burn-blocks/${stacksBlock1.burn_block_height}`
     );
-    expect(result4.body).toEqual({
+    assert.deepEqual(result4.body, {
       avg_block_time: 0,
       burn_block_hash: stacksBlock1.burn_block_hash,
       burn_block_height: stacksBlock1.burn_block_height,
@@ -612,9 +598,9 @@ describe('block tests', () => {
     await db.updateMicroblocks(microblock2);
     const expectedResp1 = {
       burn_block_hash: '0xf44f44',
-      burn_block_height: expect.any(Number),
-      burn_block_time: expect.any(Number),
-      burn_block_time_iso: expect.any(String),
+      burn_block_height: Number,
+      burn_block_time: Number,
+      burn_block_time_iso: String,
       canonical: true,
       execution_cost_read_count: 0,
       execution_cost_read_length: 0,
@@ -641,10 +627,9 @@ describe('block tests', () => {
     const fetch1 = await supertest(api.server).get(
       `/extended/v1/block/by_height/${block1.block.block_height}`
     );
-    expect(fetch1.status).toBe(200);
-    expect(fetch1.type).toBe('application/json');
-    expect(JSON.parse(fetch1.text)).toMatchObject(expectedResp1);
-
+    assert.equal(fetch1.status, 200);
+    assert.equal(fetch1.type, 'application/json');
+    assertMatchesObject(JSON.parse(fetch1.text), expectedResp1);
     // Confirm the first microblock, but orphan the second
     const block2 = new TestBlockBuilder({
       block_height: block1.block.block_height + 1,
@@ -664,9 +649,9 @@ describe('block tests', () => {
     );
     const expectedResp2 = {
       burn_block_hash: '0xf44f44',
-      burn_block_height: expect.any(Number),
-      burn_block_time: expect.any(Number),
-      burn_block_time_iso: expect.any(String),
+      burn_block_height: Number,
+      burn_block_time: Number,
+      burn_block_time_iso: String,
       canonical: true,
       execution_cost_read_count: 0,
       execution_cost_read_length: 0,
@@ -690,10 +675,9 @@ describe('block tests', () => {
         '0xff01': microblock1.txs.length,
       },
     };
-
-    expect(fetch2.status).toBe(200);
-    expect(fetch2.type).toBe('application/json');
-    expect(JSON.parse(fetch2.text)).toMatchObject(expectedResp2);
+    assert.equal(fetch2.status, 200);
+    assert.equal(fetch2.type, 'application/json');
+    assertMatchesObject(JSON.parse(fetch2.text), expectedResp2);
   });
 
   test('blocks v2 filtered by burn block', async () => {
@@ -752,17 +736,15 @@ describe('block tests', () => {
       `/extended/v2/burn-blocks/00000000000000000001e2ee7f0c6bd5361b5e7afd76156ca7d6f524ee5ca3d8/blocks`
     );
     let json = JSON.parse(fetch.text);
-    expect(fetch.status).toBe(200);
-    expect(json.total).toEqual(5);
-    expect(json.results[0]).toMatchObject(block5);
-
+    assert.equal(fetch.status, 200);
+    assert.deepEqual(json.total, 5);
+    assertMatchesObject(json.results[0], block5);
     // Filter by burn height
     fetch = await supertest(api.server).get(`/extended/v2/burn-blocks/700000/blocks`);
     json = JSON.parse(fetch.text);
-    expect(fetch.status).toBe(200);
-    expect(json.total).toEqual(5);
-    expect(json.results[0]).toMatchObject(block5);
-
+    assert.equal(fetch.status, 200);
+    assert.deepEqual(json.total, 5);
+    assertMatchesObject(json.results[0], block5);
     // Get latest block
     const block8 = {
       block_time: 94869287,
@@ -787,13 +769,12 @@ describe('block tests', () => {
     };
     fetch = await supertest(api.server).get(`/extended/v2/burn-blocks/latest/blocks`);
     json = JSON.parse(fetch.text);
-    expect(fetch.status).toBe(200);
-    expect(json.total).toEqual(3);
-    expect(json.results[0]).toMatchObject(block8);
-
+    assert.equal(fetch.status, 200);
+    assert.deepEqual(json.total, 3);
+    assertMatchesObject(json.results[0], block8);
     // Block hashes are validated
     fetch = await supertest(api.server).get(`/extended/v2/burn-blocks/testvalue/blocks`);
-    expect(fetch.status).not.toBe(200);
+    assert.notEqual(fetch.status, 200);
   });
 
   test('blocks v2 cursor pagination', async () => {
@@ -816,142 +797,97 @@ describe('block tests', () => {
 
     // Fetch latest page
     ({ body } = await supertest(api.server).get(`/extended/v2/blocks?limit=3`));
-    expect(body).toEqual(
-      expect.objectContaining({
-        limit: 3,
-        offset: 0,
-        total: 14,
-        cursor: '0x0000000000000000000000000000000000000000000000000000000000000014',
-        next_cursor: null,
-        prev_cursor: '0x0000000000000000000000000000000000000000000000000000000000000011',
-        results: [
-          expect.objectContaining({ height: 14 }),
-          expect.objectContaining({ height: 13 }),
-          expect.objectContaining({ height: 12 }),
-        ],
-      })
-    );
+    assertMatchesObject(body, {
+      limit: 3,
+      offset: 0,
+      total: 14,
+      cursor: '0x0000000000000000000000000000000000000000000000000000000000000014',
+      next_cursor: null,
+      prev_cursor: '0x0000000000000000000000000000000000000000000000000000000000000011',
+      results: [{ height: 14 }, { height: 13 }, { height: 12 }],
+    });
     const latestPageCursor = body.cursor;
     const latestBlock = body.results[0];
 
     // Cursor fetch is rejected if it's not a valid block hash
     const req2 = await supertest(api.server).get(`/extended/v2/blocks?limit=3&cursor=testvalue`);
-    expect(req2.statusCode).toBe(400);
-
+    assert.equal(req2.statusCode, 400);
     // Can fetch same page using cursor
     ({ body } = await supertest(api.server).get(
       `/extended/v2/blocks?limit=3&cursor=${body.cursor}`
     ));
-    expect(body).toEqual(
-      expect.objectContaining({
-        limit: 3,
-        offset: 0,
-        total: 14,
-        cursor: '0x0000000000000000000000000000000000000000000000000000000000000014',
-        next_cursor: null,
-        prev_cursor: '0x0000000000000000000000000000000000000000000000000000000000000011',
-        results: [
-          expect.objectContaining({ height: 14 }),
-          expect.objectContaining({ height: 13 }),
-          expect.objectContaining({ height: 12 }),
-        ],
-      })
-    );
-
+    assertMatchesObject(body, {
+      limit: 3,
+      offset: 0,
+      total: 14,
+      cursor: '0x0000000000000000000000000000000000000000000000000000000000000014',
+      next_cursor: null,
+      prev_cursor: '0x0000000000000000000000000000000000000000000000000000000000000011',
+      results: [{ height: 14 }, { height: 13 }, { height: 12 }],
+    });
     // Fetch previous page
     ({ body } = await supertest(api.server).get(
       `/extended/v2/blocks?limit=3&cursor=${body.prev_cursor}`
     ));
-    expect(body).toEqual(
-      expect.objectContaining({
-        limit: 3,
-        offset: 0,
-        total: 14,
-        cursor: '0x0000000000000000000000000000000000000000000000000000000000000011',
-        next_cursor: '0x0000000000000000000000000000000000000000000000000000000000000014',
-        prev_cursor: '0x0000000000000000000000000000000000000000000000000000000000000008',
-        results: [
-          expect.objectContaining({ height: 11 }),
-          expect.objectContaining({ height: 10 }),
-          expect.objectContaining({ height: 9 }),
-        ],
-      })
-    );
-
+    assertMatchesObject(body, {
+      limit: 3,
+      offset: 0,
+      total: 14,
+      cursor: '0x0000000000000000000000000000000000000000000000000000000000000011',
+      next_cursor: '0x0000000000000000000000000000000000000000000000000000000000000014',
+      prev_cursor: '0x0000000000000000000000000000000000000000000000000000000000000008',
+      results: [{ height: 11 }, { height: 10 }, { height: 9 }],
+    });
     // Oldest page has no prev_cursor
     ({ body } = await supertest(api.server).get(
       `/extended/v2/blocks?limit=3&cursor=0x0000000000000000000000000000000000000000000000000000000000000002`
     ));
-    expect(body).toEqual(
-      expect.objectContaining({
-        limit: 3,
-        offset: 0,
-        total: 14,
-        cursor: '0x0000000000000000000000000000000000000000000000000000000000000002',
-        next_cursor: '0x0000000000000000000000000000000000000000000000000000000000000005',
-        prev_cursor: null,
-        results: [expect.objectContaining({ height: 2 }), expect.objectContaining({ height: 1 })],
-      })
-    );
-
+    assertMatchesObject(body, {
+      limit: 3,
+      offset: 0,
+      total: 14,
+      cursor: '0x0000000000000000000000000000000000000000000000000000000000000002',
+      next_cursor: '0x0000000000000000000000000000000000000000000000000000000000000005',
+      prev_cursor: null,
+      results: [{ height: 2 }, { height: 1 }],
+    });
     // Offset + cursor works
     ({ body } = await supertest(api.server).get(
       `/extended/v2/blocks?limit=3&cursor=0x0000000000000000000000000000000000000000000000000000000000000011&offset=2`
     ));
-    expect(body).toEqual(
-      expect.objectContaining({
-        limit: 3,
-        offset: 2,
-        total: 14,
-        cursor: '0x0000000000000000000000000000000000000000000000000000000000000009',
-        next_cursor: '0x0000000000000000000000000000000000000000000000000000000000000012',
-        prev_cursor: '0x0000000000000000000000000000000000000000000000000000000000000006',
-        results: [
-          expect.objectContaining({ height: 9 }),
-          expect.objectContaining({ height: 8 }),
-          expect.objectContaining({ height: 7 }),
-        ],
-      })
-    );
-
+    assertMatchesObject(body, {
+      limit: 3,
+      offset: 2,
+      total: 14,
+      cursor: '0x0000000000000000000000000000000000000000000000000000000000000009',
+      next_cursor: '0x0000000000000000000000000000000000000000000000000000000000000012',
+      prev_cursor: '0x0000000000000000000000000000000000000000000000000000000000000006',
+      results: [{ height: 9 }, { height: 8 }, { height: 7 }],
+    });
     // Negative offset + cursor
     ({ body } = await supertest(api.server).get(
       `/extended/v2/blocks?limit=3&cursor=0x0000000000000000000000000000000000000000000000000000000000000008&offset=-2`
     ));
-    expect(body).toEqual(
-      expect.objectContaining({
-        limit: 3,
-        offset: -2,
-        total: 14,
-        cursor: '0x0000000000000000000000000000000000000000000000000000000000000010',
-        next_cursor: '0x0000000000000000000000000000000000000000000000000000000000000013',
-        prev_cursor: '0x0000000000000000000000000000000000000000000000000000000000000007',
-        results: [
-          expect.objectContaining({ height: 10 }),
-          expect.objectContaining({ height: 9 }),
-          expect.objectContaining({ height: 8 }),
-        ],
-      })
-    );
-
+    assertMatchesObject(body, {
+      limit: 3,
+      offset: -2,
+      total: 14,
+      cursor: '0x0000000000000000000000000000000000000000000000000000000000000010',
+      next_cursor: '0x0000000000000000000000000000000000000000000000000000000000000013',
+      prev_cursor: '0x0000000000000000000000000000000000000000000000000000000000000007',
+      results: [{ height: 10 }, { height: 9 }, { height: 8 }],
+    });
     // Offset (no cursor) works, has original behavior
     ({ body } = await supertest(api.server).get(`/extended/v2/blocks?limit=3&offset=5`));
-    expect(body).toEqual(
-      expect.objectContaining({
-        limit: 3,
-        offset: 5,
-        total: 14,
-        cursor: '0x0000000000000000000000000000000000000000000000000000000000000009',
-        next_cursor: '0x0000000000000000000000000000000000000000000000000000000000000012',
-        prev_cursor: '0x0000000000000000000000000000000000000000000000000000000000000006',
-        results: [
-          expect.objectContaining({ height: 9 }),
-          expect.objectContaining({ height: 8 }),
-          expect.objectContaining({ height: 7 }),
-        ],
-      })
-    );
-
+    assertMatchesObject(body, {
+      limit: 3,
+      offset: 5,
+      total: 14,
+      cursor: '0x0000000000000000000000000000000000000000000000000000000000000009',
+      next_cursor: '0x0000000000000000000000000000000000000000000000000000000000000012',
+      prev_cursor: '0x0000000000000000000000000000000000000000000000000000000000000006',
+      results: [{ height: 9 }, { height: 8 }, { height: 7 }],
+    });
     // Re-org the the cursor for the latest block, should get a 404 on use
     const blockB1 = new TestBlockBuilder({
       block_height: latestBlock.height,
@@ -982,25 +918,18 @@ describe('block tests', () => {
     const req = await supertest(api.server).get(
       `/extended/v2/blocks?limit=3&cursor=${latestPageCursor}`
     );
-    expect(req.statusCode).toBe(404);
-
+    assert.equal(req.statusCode, 404);
     // Latest page should have the re-org blocks
     ({ body } = await supertest(api.server).get(`/extended/v2/blocks?limit=3`));
-    expect(body).toEqual(
-      expect.objectContaining({
-        limit: 3,
-        offset: 0,
-        total: 15,
-        cursor: '0xbb00000000000000000000000000000000000000000000000000000000000015',
-        next_cursor: null,
-        prev_cursor: '0x0000000000000000000000000000000000000000000000000000000000000012',
-        results: [
-          expect.objectContaining({ height: 15 }),
-          expect.objectContaining({ height: 14 }),
-          expect.objectContaining({ height: 13 }),
-        ],
-      })
-    );
+    assertMatchesObject(body, {
+      limit: 3,
+      offset: 0,
+      total: 15,
+      cursor: '0xbb00000000000000000000000000000000000000000000000000000000000015',
+      next_cursor: null,
+      prev_cursor: '0x0000000000000000000000000000000000000000000000000000000000000012',
+      results: [{ height: 15 }, { height: 14 }, { height: 13 }],
+    });
   });
 
   test('blocks by tenure with cursor pagination', async () => {
@@ -1025,21 +954,15 @@ describe('block tests', () => {
 
     // Fetch latest page
     ({ body } = await supertest(api.server).get(`/extended/v2/block-tenures/2/blocks?limit=3`));
-    expect(body).toEqual(
-      expect.objectContaining({
-        limit: 3,
-        offset: 0,
-        total: 9,
-        cursor: '0x0000000000000000000000000000000000000000000000000000000000000014',
-        next_cursor: null,
-        prev_cursor: '0x0000000000000000000000000000000000000000000000000000000000000011',
-        results: [
-          expect.objectContaining({ height: 14 }),
-          expect.objectContaining({ height: 13 }),
-          expect.objectContaining({ height: 12 }),
-        ],
-      })
-    );
+    assertMatchesObject(body, {
+      limit: 3,
+      offset: 0,
+      total: 9,
+      cursor: '0x0000000000000000000000000000000000000000000000000000000000000014',
+      next_cursor: null,
+      prev_cursor: '0x0000000000000000000000000000000000000000000000000000000000000011',
+      results: [{ height: 14 }, { height: 13 }, { height: 12 }],
+    });
     const latestPageCursor = body.cursor;
     const latestBlock = body.results[0];
 
@@ -1047,121 +970,80 @@ describe('block tests', () => {
     ({ body } = await supertest(api.server).get(
       `/extended/v2/block-tenures/2/blocks?limit=3&cursor=${body.cursor}`
     ));
-    expect(body).toEqual(
-      expect.objectContaining({
-        limit: 3,
-        offset: 0,
-        total: 9,
-        cursor: '0x0000000000000000000000000000000000000000000000000000000000000014',
-        next_cursor: null,
-        prev_cursor: '0x0000000000000000000000000000000000000000000000000000000000000011',
-        results: [
-          expect.objectContaining({ height: 14 }),
-          expect.objectContaining({ height: 13 }),
-          expect.objectContaining({ height: 12 }),
-        ],
-      })
-    );
-
+    assertMatchesObject(body, {
+      limit: 3,
+      offset: 0,
+      total: 9,
+      cursor: '0x0000000000000000000000000000000000000000000000000000000000000014',
+      next_cursor: null,
+      prev_cursor: '0x0000000000000000000000000000000000000000000000000000000000000011',
+      results: [{ height: 14 }, { height: 13 }, { height: 12 }],
+    });
     // Fetch previous page
     ({ body } = await supertest(api.server).get(
       `/extended/v2/block-tenures/2/blocks?limit=3&cursor=${body.prev_cursor}`
     ));
-    expect(body).toEqual(
-      expect.objectContaining({
-        limit: 3,
-        offset: 0,
-        total: 9,
-        cursor: '0x0000000000000000000000000000000000000000000000000000000000000011',
-        next_cursor: '0x0000000000000000000000000000000000000000000000000000000000000014',
-        prev_cursor: '0x0000000000000000000000000000000000000000000000000000000000000008',
-        results: [
-          expect.objectContaining({ height: 11 }),
-          expect.objectContaining({ height: 10 }),
-          expect.objectContaining({ height: 9 }),
-        ],
-      })
-    );
-
+    assertMatchesObject(body, {
+      limit: 3,
+      offset: 0,
+      total: 9,
+      cursor: '0x0000000000000000000000000000000000000000000000000000000000000011',
+      next_cursor: '0x0000000000000000000000000000000000000000000000000000000000000014',
+      prev_cursor: '0x0000000000000000000000000000000000000000000000000000000000000008',
+      results: [{ height: 11 }, { height: 10 }, { height: 9 }],
+    });
     // Oldest page has no prev_cursor
     ({ body } = await supertest(api.server).get(
       `/extended/v2/block-tenures/2/blocks?limit=3&cursor=0x0000000000000000000000000000000000000000000000000000000000000008`
     ));
-    expect(body).toEqual(
-      expect.objectContaining({
-        limit: 3,
-        offset: 0,
-        total: 9,
-        cursor: '0x0000000000000000000000000000000000000000000000000000000000000008',
-        next_cursor: '0x0000000000000000000000000000000000000000000000000000000000000011',
-        prev_cursor: null,
-        results: [
-          expect.objectContaining({ height: 8 }),
-          expect.objectContaining({ height: 7 }),
-          expect.objectContaining({ height: 6 }),
-        ],
-      })
-    );
-
+    assertMatchesObject(body, {
+      limit: 3,
+      offset: 0,
+      total: 9,
+      cursor: '0x0000000000000000000000000000000000000000000000000000000000000008',
+      next_cursor: '0x0000000000000000000000000000000000000000000000000000000000000011',
+      prev_cursor: null,
+      results: [{ height: 8 }, { height: 7 }, { height: 6 }],
+    });
     // Offset + cursor works
     ({ body } = await supertest(api.server).get(
       `/extended/v2/block-tenures/2/blocks?limit=3&cursor=0x0000000000000000000000000000000000000000000000000000000000000011&offset=2`
     ));
-    expect(body).toEqual(
-      expect.objectContaining({
-        limit: 3,
-        offset: 2,
-        total: 9,
-        cursor: '0x0000000000000000000000000000000000000000000000000000000000000009',
-        next_cursor: '0x0000000000000000000000000000000000000000000000000000000000000012',
-        prev_cursor: '0x0000000000000000000000000000000000000000000000000000000000000006',
-        results: [
-          expect.objectContaining({ height: 9 }),
-          expect.objectContaining({ height: 8 }),
-          expect.objectContaining({ height: 7 }),
-        ],
-      })
-    );
-
+    assertMatchesObject(body, {
+      limit: 3,
+      offset: 2,
+      total: 9,
+      cursor: '0x0000000000000000000000000000000000000000000000000000000000000009',
+      next_cursor: '0x0000000000000000000000000000000000000000000000000000000000000012',
+      prev_cursor: '0x0000000000000000000000000000000000000000000000000000000000000006',
+      results: [{ height: 9 }, { height: 8 }, { height: 7 }],
+    });
     // Negative offset + cursor
     ({ body } = await supertest(api.server).get(
       `/extended/v2/block-tenures/2/blocks?limit=3&cursor=0x0000000000000000000000000000000000000000000000000000000000000008&offset=-2`
     ));
-    expect(body).toEqual(
-      expect.objectContaining({
-        limit: 3,
-        offset: -2,
-        total: 9,
-        cursor: '0x0000000000000000000000000000000000000000000000000000000000000010',
-        next_cursor: '0x0000000000000000000000000000000000000000000000000000000000000013',
-        prev_cursor: '0x0000000000000000000000000000000000000000000000000000000000000007',
-        results: [
-          expect.objectContaining({ height: 10 }),
-          expect.objectContaining({ height: 9 }),
-          expect.objectContaining({ height: 8 }),
-        ],
-      })
-    );
-
+    assertMatchesObject(body, {
+      limit: 3,
+      offset: -2,
+      total: 9,
+      cursor: '0x0000000000000000000000000000000000000000000000000000000000000010',
+      next_cursor: '0x0000000000000000000000000000000000000000000000000000000000000013',
+      prev_cursor: '0x0000000000000000000000000000000000000000000000000000000000000007',
+      results: [{ height: 10 }, { height: 9 }, { height: 8 }],
+    });
     // Offset (no cursor) works, has original behavior
     ({ body } = await supertest(api.server).get(
       `/extended/v2/block-tenures/2/blocks?limit=3&offset=5`
     ));
-    expect(body).toEqual(
-      expect.objectContaining({
-        limit: 3,
-        offset: 5,
-        total: 9,
-        cursor: '0x0000000000000000000000000000000000000000000000000000000000000009',
-        next_cursor: '0x0000000000000000000000000000000000000000000000000000000000000012',
-        prev_cursor: '0x0000000000000000000000000000000000000000000000000000000000000006',
-        results: [
-          expect.objectContaining({ height: 9 }),
-          expect.objectContaining({ height: 8 }),
-          expect.objectContaining({ height: 7 }),
-        ],
-      })
-    );
+    assertMatchesObject(body, {
+      limit: 3,
+      offset: 5,
+      total: 9,
+      cursor: '0x0000000000000000000000000000000000000000000000000000000000000009',
+      next_cursor: '0x0000000000000000000000000000000000000000000000000000000000000012',
+      prev_cursor: '0x0000000000000000000000000000000000000000000000000000000000000006',
+      results: [{ height: 9 }, { height: 8 }, { height: 7 }],
+    });
   });
 
   test('blocks v2 retrieved by hash or height', async () => {
@@ -1171,12 +1053,8 @@ describe('block tests', () => {
         block_height: i,
         block_hash: `0x000000000000000000000000000000000000000000000000000000000000000${i}`,
         index_block_hash: `0x000000000000000000000000000000000000000000000000000000000000011${i}`,
-        parent_index_block_hash: `0x000000000000000000000000000000000000000000000000000000000000011${
-          i - 1
-        }`,
-        parent_block_hash: `0x000000000000000000000000000000000000000000000000000000000000000${
-          i - 1
-        }`,
+        parent_index_block_hash: `0x000000000000000000000000000000000000000000000000000000000000011${i - 1}`,
+        parent_block_hash: `0x000000000000000000000000000000000000000000000000000000000000000${i - 1}`,
         burn_block_height: 700000,
         burn_block_hash: '0x00000000000000000001e2ee7f0c6bd5361b5e7afd76156ca7d6f524ee5ca3d8',
       })
@@ -1218,30 +1096,27 @@ describe('block tests', () => {
     };
     let fetch = await supertest(api.server).get(`/extended/v2/blocks/latest`);
     let json = JSON.parse(fetch.text);
-    expect(fetch.status).toBe(200);
-    expect(json).toMatchObject(block5);
-
+    assert.equal(fetch.status, 200);
+    assertMatchesObject(json, block5);
     // Get by height
     fetch = await supertest(api.server).get(`/extended/v2/blocks/5`);
     json = JSON.parse(fetch.text);
-    expect(fetch.status).toBe(200);
-    expect(json).toMatchObject(block5);
-
+    assert.equal(fetch.status, 200);
+    assertMatchesObject(json, block5);
     // Get by hash
     fetch = await supertest(api.server).get(
       `/extended/v2/blocks/0x0000000000000000000000000000000000000000000000000000000000000005`
     );
     json = JSON.parse(fetch.text);
-    expect(fetch.status).toBe(200);
-    expect(json).toMatchObject(block5);
-
+    assert.equal(fetch.status, 200);
+    assertMatchesObject(json, block5);
     // Get by index block hash
     fetch = await supertest(api.server).get(
       `/extended/v2/blocks/0x0000000000000000000000000000000000000000000000000000000000000115`
     );
     json = JSON.parse(fetch.text);
-    expect(fetch.status).toBe(200);
-    expect(json).toMatchObject(block5);
+    assert.equal(fetch.status, 200);
+    assertMatchesObject(json, block5);
   });
 
   test('blocks v2 retrieved by digit-only hash', async () => {
@@ -1261,8 +1136,8 @@ describe('block tests', () => {
       `/extended/v2/blocks/1111111111111111111111111111111111111111111111111111111111111111`
     );
     const json = JSON.parse(fetch.text);
-    expect(fetch.status).toBe(200);
-    expect(json.height).toStrictEqual(block.block.block_height);
+    assert.equal(fetch.status, 200);
+    assert.deepEqual(json.height, block.block.block_height);
   });
 
   test('blocks average time', async () => {
@@ -1292,14 +1167,13 @@ describe('block tests', () => {
 
     const fetch = await supertest(api.server).get(`/extended/v2/blocks/average-times`);
     const response = fetch.body;
-    expect(fetch.status).toBe(200);
-
+    assert.equal(fetch.status, 200);
     // All block time averages should be about 30 minutes
     const getRatio = (time: number) =>
       Math.min(thirtyMinutes, time) / Math.max(thirtyMinutes, time);
-    expect(getRatio(response.last_1h)).toBeGreaterThanOrEqual(0.9);
-    expect(getRatio(response.last_24h)).toBeGreaterThanOrEqual(0.9);
-    expect(getRatio(response.last_7d)).toBeGreaterThanOrEqual(0.9);
-    expect(getRatio(response.last_30d)).toBeGreaterThanOrEqual(0.9);
+    assert.ok(getRatio(response.last_1h) >= 0.9);
+    assert.ok(getRatio(response.last_24h) >= 0.9);
+    assert.ok(getRatio(response.last_7d) >= 0.9);
+    assert.ok(getRatio(response.last_30d) >= 0.9);
   });
 });

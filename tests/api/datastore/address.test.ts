@@ -1,5 +1,5 @@
-import * as supertest from 'supertest';
-import * as assert from 'assert';
+import supertest from 'supertest';
+import assert from 'node:assert/strict';
 import {
   makeContractCall,
   ClarityAbi,
@@ -11,7 +11,7 @@ import {
   stringAsciiCV,
   serializeCV,
 } from '@stacks/transactions';
-import { createClarityValueArray } from '../utils/test-helpers';
+import { createClarityValueArray } from '../../test-helpers.ts';
 import { decodeTransaction } from '@stacks/codec';
 import {
   DbBlock,
@@ -36,11 +36,12 @@ import {
   TestBlockBuilder,
   testMempoolTx,
   TestMicroblockStreamBuilder,
-} from '../utils/test-builders';
+} from '../test-builders.ts';
 import { PgWriteStore } from '../../../src/datastore/pg-write-store.ts';
 import { createDbTxFromCoreMsg } from '../../../src/datastore/helpers.ts';
 import { PgSqlClient, bufferToHex } from '@stacks/api-toolkit';
-import { migrate } from '../utils/test-helpers';
+import { migrate } from '../../test-helpers.ts';
+import { beforeEach, afterEach, describe, test } from 'node:test';
 
 describe('address tests', () => {
   let db: PgWriteStore;
@@ -252,8 +253,8 @@ describe('address tests', () => {
     const fetch1 = await supertest(api.server).get(
       `/extended/v1/address/${testAddr2}/transactions_with_transfers?limit=3&offset=0`
     );
-    expect(fetch1.status).toBe(200);
-    expect(fetch1.type).toBe('application/json');
+    assert.equal(fetch1.status, 200);
+    assert.equal(fetch1.type, 'application/json');
     const expected1 = {
       limit: 3,
       offset: 0,
@@ -496,117 +497,117 @@ describe('address tests', () => {
       ],
     };
     const fetch1Json = JSON.parse(fetch1.text);
-    expect(fetch1Json).toEqual(expected1);
+    assert.deepEqual(fetch1Json, expected1);
 
     // Test v2 endpoints
     const v2Fetch1 = await supertest(api.server).get(
       `/extended/v2/addresses/${testAddr2}/transactions`
     );
-    expect(v2Fetch1.status).toBe(200);
-    expect(v2Fetch1.type).toBe('application/json');
+    assert.equal(v2Fetch1.status, 200);
+    assert.equal(v2Fetch1.type, 'application/json');
     const v2Fetch1Json = JSON.parse(v2Fetch1.text);
-    expect(v2Fetch1Json.total).toBe(7);
-    expect(v2Fetch1Json.results[0].tx).toStrictEqual(expected1.results[0].tx);
-    expect(v2Fetch1Json.results[0].stx_sent).toBe('1339');
-    expect(v2Fetch1Json.results[0].stx_received).toBe('0');
-    expect(v2Fetch1Json.results[0].events.stx).toStrictEqual({
+    assert.equal(v2Fetch1Json.total, 7);
+    assert.deepEqual(v2Fetch1Json.results[0].tx, expected1.results[0].tx);
+    assert.equal(v2Fetch1Json.results[0].stx_sent, '1339');
+    assert.equal(v2Fetch1Json.results[0].stx_received, '0');
+    assert.deepEqual(v2Fetch1Json.results[0].events.stx, {
       transfer: 3,
       mint: 0,
       burn: 0,
     });
-    expect(v2Fetch1Json.results[0].events.ft).toStrictEqual({
+    assert.deepEqual(v2Fetch1Json.results[0].events.ft, {
       transfer: 1,
       mint: 0,
       burn: 0,
     });
-    expect(v2Fetch1Json.results[0].events.nft).toStrictEqual({
+    assert.deepEqual(v2Fetch1Json.results[0].events.nft, {
       transfer: 2,
       mint: 0,
       burn: 0,
     });
-    expect(v2Fetch1Json.results[1].tx).toStrictEqual(expected1.results[1].tx);
-    expect(v2Fetch1Json.results[1].stx_sent).toBe('1484');
-    expect(v2Fetch1Json.results[1].stx_received).toBe('0');
-    expect(v2Fetch1Json.results[1].events.stx).toStrictEqual({
+    assert.deepEqual(v2Fetch1Json.results[1].tx, expected1.results[1].tx);
+    assert.equal(v2Fetch1Json.results[1].stx_sent, '1484');
+    assert.equal(v2Fetch1Json.results[1].stx_received, '0');
+    assert.deepEqual(v2Fetch1Json.results[1].events.stx, {
       transfer: 1,
       mint: 0,
       burn: 0,
     });
-    expect(v2Fetch1Json.results[1].events.ft).toStrictEqual({
+    assert.deepEqual(v2Fetch1Json.results[1].events.ft, {
       transfer: 0,
       mint: 0,
       burn: 0,
     });
-    expect(v2Fetch1Json.results[1].events.nft).toStrictEqual({
+    assert.deepEqual(v2Fetch1Json.results[1].events.nft, {
       transfer: 1,
       mint: 0,
       burn: 0,
     });
-    expect(v2Fetch1Json.results[2].tx).toStrictEqual(expected1.results[2].tx);
-    expect(v2Fetch1Json.results[2].stx_sent).toBe('1334');
-    expect(v2Fetch1Json.results[2].stx_received).toBe('0');
-    expect(v2Fetch1Json.results[2].events.stx).toStrictEqual({
+    assert.deepEqual(v2Fetch1Json.results[2].tx, expected1.results[2].tx);
+    assert.equal(v2Fetch1Json.results[2].stx_sent, '1334');
+    assert.equal(v2Fetch1Json.results[2].stx_received, '0');
+    assert.deepEqual(v2Fetch1Json.results[2].events.stx, {
       transfer: 1,
       mint: 0,
       burn: 0,
     });
-    expect(v2Fetch1Json.results[2].events.ft).toStrictEqual({
+    assert.deepEqual(v2Fetch1Json.results[2].events.ft, {
       transfer: 2,
       mint: 0,
       burn: 0,
     });
-    expect(v2Fetch1Json.results[2].events.nft).toStrictEqual({
+    assert.deepEqual(v2Fetch1Json.results[2].events.nft, {
       transfer: 1,
       mint: 0,
       burn: 0,
     });
-    expect(v2Fetch1Json.results[4].stx_sent).toBe('0');
-    expect(v2Fetch1Json.results[4].stx_received).toBe('0');
-    expect(v2Fetch1Json.results[4].events.stx).toStrictEqual({
+    assert.equal(v2Fetch1Json.results[4].stx_sent, '0');
+    assert.equal(v2Fetch1Json.results[4].stx_received, '0');
+    assert.deepEqual(v2Fetch1Json.results[4].events.stx, {
       transfer: 0,
       mint: 0,
       burn: 0,
     });
-    expect(v2Fetch1Json.results[4].events.ft).toStrictEqual({
+    assert.deepEqual(v2Fetch1Json.results[4].events.ft, {
       transfer: 0,
       mint: 0,
       burn: 0,
     });
-    expect(v2Fetch1Json.results[4].events.nft).toStrictEqual({
+    assert.deepEqual(v2Fetch1Json.results[4].events.nft, {
       transfer: 1,
       mint: 0,
       burn: 0,
     });
-    expect(v2Fetch1Json.results[5].stx_sent).toBe('0');
-    expect(v2Fetch1Json.results[5].stx_received).toBe('0');
-    expect(v2Fetch1Json.results[5].events.stx).toStrictEqual({
+    assert.equal(v2Fetch1Json.results[5].stx_sent, '0');
+    assert.equal(v2Fetch1Json.results[5].stx_received, '0');
+    assert.deepEqual(v2Fetch1Json.results[5].events.stx, {
       transfer: 0,
       mint: 0,
       burn: 0,
     });
-    expect(v2Fetch1Json.results[5].events.ft).toStrictEqual({
+    assert.deepEqual(v2Fetch1Json.results[5].events.ft, {
       transfer: 1,
       mint: 0,
       burn: 0,
     });
-    expect(v2Fetch1Json.results[5].events.nft).toStrictEqual({
+    assert.deepEqual(v2Fetch1Json.results[5].events.nft, {
       transfer: 0,
       mint: 0,
       burn: 0,
     });
-    expect(v2Fetch1Json.results[6].stx_sent).toBe('0');
-    expect(v2Fetch1Json.results[6].stx_received).toBe('0');
-    expect(v2Fetch1Json.results[6].events.stx).toStrictEqual({
+    assert.equal(v2Fetch1Json.results[6].stx_sent, '0');
+    assert.equal(v2Fetch1Json.results[6].stx_received, '0');
+    assert.deepEqual(v2Fetch1Json.results[6].events.stx, {
       transfer: 1,
       mint: 0,
       burn: 0,
     });
-    expect(v2Fetch1Json.results[6].events.ft).toStrictEqual({
+    assert.deepEqual(v2Fetch1Json.results[6].events.ft, {
       transfer: 0,
       mint: 0,
       burn: 0,
     });
-    expect(v2Fetch1Json.results[6].events.nft).toStrictEqual({
+    assert.deepEqual(v2Fetch1Json.results[6].events.nft, {
       transfer: 0,
       mint: 0,
       burn: 0,
@@ -616,20 +617,20 @@ describe('address tests', () => {
     const v2Fetch1offset = await supertest(api.server).get(
       `/extended/v2/addresses/${testAddr2}/transactions?offset=1`
     );
-    expect(v2Fetch1offset.status).toBe(200);
-    expect(v2Fetch1offset.type).toBe('application/json');
+    assert.equal(v2Fetch1offset.status, 200);
+    assert.equal(v2Fetch1offset.type, 'application/json');
     const v2Fetch1offsetJson = JSON.parse(v2Fetch1offset.text);
-    expect(v2Fetch1offsetJson.total).toBe(7);
+    assert.equal(v2Fetch1offsetJson.total, 7);
     // Verify offset actually skips the first result
-    expect(v2Fetch1offsetJson.results.length).toBe(6);
-    expect(v2Fetch1offsetJson.results[0].tx.tx_id).toBe(v2Fetch1Json.results[1].tx.tx_id);
+    assert.equal(v2Fetch1offsetJson.results.length, 6);
+    assert.equal(v2Fetch1offsetJson.results[0].tx.tx_id, v2Fetch1Json.results[1].tx.tx_id);
 
     const v2Fetch2 = await supertest(api.server).get(
       `/extended/v2/addresses/${testAddr2}/transactions/${v2Fetch1Json.results[0].tx.tx_id}/events?limit=3`
     );
-    expect(v2Fetch2.status).toBe(200);
-    expect(v2Fetch2.type).toBe('application/json');
-    expect(JSON.parse(v2Fetch2.text)).toStrictEqual({
+    assert.equal(v2Fetch2.status, 200);
+    assert.equal(v2Fetch2.type, 'application/json');
+    assert.deepEqual(JSON.parse(v2Fetch2.text), {
       limit: 3,
       offset: 0,
       results: [
@@ -669,9 +670,9 @@ describe('address tests', () => {
     const v2Fetch3 = await supertest(api.server).get(
       `/extended/v2/addresses/${testAddr2}/transactions/${v2Fetch1Json.results[0].tx.tx_id}/events?offset=3&limit=3`
     );
-    expect(v2Fetch3.status).toBe(200);
-    expect(v2Fetch3.type).toBe('application/json');
-    expect(JSON.parse(v2Fetch3.text)).toStrictEqual({
+    assert.equal(v2Fetch3.status, 200);
+    assert.equal(v2Fetch3.type, 'application/json');
+    assert.deepEqual(JSON.parse(v2Fetch3.text), {
       limit: 3,
       offset: 3,
       results: [
@@ -722,24 +723,24 @@ describe('address tests', () => {
     const v2Fetch4 = await supertest(api.server).get(
       `/extended/v2/addresses/${testAddr5}/transactions`
     );
-    expect(v2Fetch4.status).toBe(200);
-    expect(v2Fetch4.type).toBe('application/json');
-    expect(v2Fetch4.body.total).toBe(1);
-    expect(v2Fetch4.body.results[0].events.ft).toStrictEqual({
+    assert.equal(v2Fetch4.status, 200);
+    assert.equal(v2Fetch4.type, 'application/json');
+    assert.equal(v2Fetch4.body.total, 1);
+    assert.deepEqual(v2Fetch4.body.results[0].events.ft, {
       transfer: 1,
       mint: 0,
       burn: 0,
     });
-    expect(v2Fetch4.body.results[0].stx_sent).toBe('0');
-    expect(v2Fetch4.body.results[0].stx_received).toBe('0');
+    assert.equal(v2Fetch4.body.results[0].stx_sent, '0');
+    assert.equal(v2Fetch4.body.results[0].stx_received, '0');
 
     const v2Fetch4Events = await supertest(api.server).get(
       `/extended/v2/addresses/${testAddr5}/transactions/${addr3FtEvent.tx_id}/events`
     );
-    expect(v2Fetch4Events.status).toBe(200);
-    expect(v2Fetch4Events.type).toBe('application/json');
-    expect(v2Fetch4Events.body.total).toBe(1);
-    expect(v2Fetch4Events.body.results[0]).toStrictEqual({
+    assert.equal(v2Fetch4Events.status, 200);
+    assert.equal(v2Fetch4Events.type, 'application/json');
+    assert.equal(v2Fetch4Events.body.total, 1);
+    assert.deepEqual(v2Fetch4Events.body.results[0], {
       type: 'ft',
       event_index: addr3FtEvent.event_index,
       data: {
@@ -755,8 +756,8 @@ describe('address tests', () => {
     const fetchSingleTxInformation = await supertest(api.server).get(
       `/extended/v1/address/${testAddr4}/${testTxId}/with_transfers`
     );
-    expect(fetchSingleTxInformation.status).toBe(200);
-    expect(fetchSingleTxInformation.type).toBe('application/json');
+    assert.equal(fetchSingleTxInformation.status, 200);
+    assert.equal(fetchSingleTxInformation.type, 'application/json');
     const expectedSingleTxInformation = {
       tx: {
         tx_id: '0x03807fdb726b3cb843e0330c564a4974037be8f9ea58ec7f8ebe03c34b890009',
@@ -820,14 +821,14 @@ describe('address tests', () => {
         },
       ],
     };
-    expect(JSON.parse(fetchSingleTxInformation.text)).toEqual(expectedSingleTxInformation);
+    assert.deepEqual(JSON.parse(fetchSingleTxInformation.text), expectedSingleTxInformation);
 
     // testing for multiple tx_ids given a single stx addr
     const fetch2 = await supertest(api.server).get(
       `/extended/v1/address/${testAddr4}/transactions_with_transfers?limit=2`
     );
-    expect(fetch2.status).toBe(200);
-    expect(fetch2.type).toBe('application/json');
+    assert.equal(fetch2.status, 200);
+    assert.equal(fetch2.type, 'application/json');
     const expected2 = {
       limit: 2,
       offset: 0,
@@ -988,52 +989,52 @@ describe('address tests', () => {
         },
       ],
     };
-    expect(JSON.parse(fetch2.text)).toEqual(expected2);
+    assert.deepEqual(JSON.parse(fetch2.text), expected2);
 
     // Cursor fetch
     const cursorFetch1 = await supertest(api.server).get(
       `/extended/v2/addresses/${testAddr2}/transactions?limit=2`
     );
     const cursorFetch1Json = JSON.parse(cursorFetch1.text);
-    expect(cursorFetch1Json.cursor).toBeDefined();
-    expect(cursorFetch1Json.limit).toBe(2);
-    expect(cursorFetch1Json.offset).toBe(0);
-    expect(cursorFetch1Json.total).toBe(7);
-    expect(cursorFetch1Json.results).toHaveLength(2);
-    expect(cursorFetch1Json.results[0].tx).toEqual(v2Fetch1Json.results[0].tx);
-    expect(cursorFetch1Json.results[1].tx).toEqual(v2Fetch1Json.results[1].tx);
-    expect(cursorFetch1Json.next_cursor).toBeNull();
-    expect(cursorFetch1Json.prev_cursor).toBeDefined();
+    assert.notEqual(cursorFetch1Json.cursor, undefined);
+    assert.equal(cursorFetch1Json.limit, 2);
+    assert.equal(cursorFetch1Json.offset, 0);
+    assert.equal(cursorFetch1Json.total, 7);
+    assert.equal(cursorFetch1Json.results.length, 2);
+    assert.deepEqual(cursorFetch1Json.results[0].tx, v2Fetch1Json.results[0].tx);
+    assert.deepEqual(cursorFetch1Json.results[1].tx, v2Fetch1Json.results[1].tx);
+    assert.equal(cursorFetch1Json.next_cursor, null);
+    assert.notEqual(cursorFetch1Json.prev_cursor, undefined);
 
     // First cursor should be equivalent to the original fetch
     const cursorFetch2 = await supertest(api.server).get(
       `/extended/v2/addresses/${testAddr2}/transactions?cursor=${cursorFetch1Json.cursor}&limit=2`
     );
     const cursorFetch2Json = JSON.parse(cursorFetch2.text);
-    expect(cursorFetch2Json.cursor).toBe(cursorFetch1Json.cursor);
-    expect(cursorFetch2Json.limit).toBe(2);
-    expect(cursorFetch2Json.offset).toBe(0);
-    expect(cursorFetch2Json.total).toBe(7);
-    expect(cursorFetch2Json.results).toHaveLength(2);
-    expect(cursorFetch2Json.results[0].tx).toEqual(v2Fetch1Json.results[0].tx);
-    expect(cursorFetch2Json.results[1].tx).toEqual(v2Fetch1Json.results[1].tx);
-    expect(cursorFetch2Json.next_cursor).toBeNull();
-    expect(cursorFetch2Json.prev_cursor).not.toBeNull();
+    assert.equal(cursorFetch2Json.cursor, cursorFetch1Json.cursor);
+    assert.equal(cursorFetch2Json.limit, 2);
+    assert.equal(cursorFetch2Json.offset, 0);
+    assert.equal(cursorFetch2Json.total, 7);
+    assert.equal(cursorFetch2Json.results.length, 2);
+    assert.deepEqual(cursorFetch2Json.results[0].tx, v2Fetch1Json.results[0].tx);
+    assert.deepEqual(cursorFetch2Json.results[1].tx, v2Fetch1Json.results[1].tx);
+    assert.equal(cursorFetch2Json.next_cursor, null);
+    assert.notEqual(cursorFetch2Json.prev_cursor, null);
 
     // Go back one page
     const cursorFetch3 = await supertest(api.server).get(
       `/extended/v2/addresses/${testAddr2}/transactions?cursor=${cursorFetch2Json.prev_cursor}&limit=2`
     );
     const cursorFetch3Json = JSON.parse(cursorFetch3.text);
-    expect(cursorFetch3Json.cursor).toBe(cursorFetch2Json.prev_cursor);
-    expect(cursorFetch3Json.limit).toBe(2);
-    expect(cursorFetch3Json.offset).toBe(0);
-    expect(cursorFetch3Json.total).toBe(7);
-    expect(cursorFetch3Json.results).toHaveLength(2);
-    expect(cursorFetch3Json.results[0].tx).toEqual(v2Fetch1Json.results[2].tx);
-    expect(cursorFetch3Json.results[1].tx).toEqual(v2Fetch1Json.results[3].tx);
-    expect(cursorFetch3Json.next_cursor).toBe(cursorFetch2Json.cursor);
-    expect(cursorFetch3Json.prev_cursor).not.toBeNull();
+    assert.equal(cursorFetch3Json.cursor, cursorFetch2Json.prev_cursor);
+    assert.equal(cursorFetch3Json.limit, 2);
+    assert.equal(cursorFetch3Json.offset, 0);
+    assert.equal(cursorFetch3Json.total, 7);
+    assert.equal(cursorFetch3Json.results.length, 2);
+    assert.deepEqual(cursorFetch3Json.results[0].tx, v2Fetch1Json.results[2].tx);
+    assert.deepEqual(cursorFetch3Json.results[1].tx, v2Fetch1Json.results[3].tx);
+    assert.equal(cursorFetch3Json.next_cursor, cursorFetch2Json.cursor);
+    assert.notEqual(cursorFetch3Json.prev_cursor, null);
   });
 
   test('address nonce', async () => {
@@ -1088,9 +1089,9 @@ describe('address tests', () => {
     const nonceResults1 = await supertest(api.server).get(
       `/extended/v1/address/${testAddr1}/nonces`
     );
-    expect(nonceResults1.status).toBe(200);
-    expect(nonceResults1.type).toBe('application/json');
-    expect(nonceResults1.body).toEqual(expectedNonceResults1);
+    assert.equal(nonceResults1.status, 200);
+    assert.equal(nonceResults1.type, 'application/json');
+    assert.deepEqual(nonceResults1.body, expectedNonceResults1);
 
     // Detect missing nonce
     const mempoolTx2 = testMempoolTx({
@@ -1110,9 +1111,9 @@ describe('address tests', () => {
     const nonceResults2 = await supertest(api.server).get(
       `/extended/v1/address/${testAddr1}/nonces`
     );
-    expect(nonceResults2.status).toBe(200);
-    expect(nonceResults2.type).toBe('application/json');
-    expect(nonceResults2.body).toEqual(expectedNonceResults2);
+    assert.equal(nonceResults2.status, 200);
+    assert.equal(nonceResults2.type, 'application/json');
+    assert.deepEqual(nonceResults2.body, expectedNonceResults2);
 
     // Get nonce at block height
     const expectedNonceResults3 = {
@@ -1125,9 +1126,9 @@ describe('address tests', () => {
     const nonceResults3 = await supertest(api.server).get(
       `/extended/v1/address/${testAddr1}/nonces?block_height=${block2.block.block_height}`
     );
-    expect(nonceResults3.status).toBe(200);
-    expect(nonceResults3.type).toBe('application/json');
-    expect(nonceResults3.body).toEqual(expectedNonceResults3);
+    assert.equal(nonceResults3.status, 200);
+    assert.equal(nonceResults3.type, 'application/json');
+    assert.deepEqual(nonceResults3.body, expectedNonceResults3);
 
     // Get nonce at block hash
     const expectedNonceResults4 = {
@@ -1140,9 +1141,9 @@ describe('address tests', () => {
     const nonceResults4 = await supertest(api.server).get(
       `/extended/v1/address/${testAddr1}/nonces?block_hash=${block2.block.block_hash}`
     );
-    expect(nonceResults4.status).toBe(200);
-    expect(nonceResults4.type).toBe('application/json');
-    expect(nonceResults4.body).toEqual(expectedNonceResults4);
+    assert.equal(nonceResults4.status, 200);
+    assert.equal(nonceResults4.type, 'application/json');
+    assert.deepEqual(nonceResults4.body, expectedNonceResults4);
 
     // Get nonce for account with no transactions
     const expectedNonceResultsNoTxs1 = {
@@ -1155,9 +1156,9 @@ describe('address tests', () => {
     const nonceResultsNoTxs1 = await supertest(api.server).get(
       `/extended/v1/address/${testAddr2}/nonces`
     );
-    expect(nonceResultsNoTxs1.status).toBe(200);
-    expect(nonceResultsNoTxs1.type).toBe('application/json');
-    expect(nonceResultsNoTxs1.body).toEqual(expectedNonceResultsNoTxs1);
+    assert.equal(nonceResultsNoTxs1.status, 200);
+    assert.equal(nonceResultsNoTxs1.type, 'application/json');
+    assert.deepEqual(nonceResultsNoTxs1.body, expectedNonceResultsNoTxs1);
 
     // Get nonce for account with no transactions
     const expectedNonceResultsNoTxs2 = {
@@ -1170,30 +1171,30 @@ describe('address tests', () => {
     const nonceResultsNoTxs2 = await supertest(api.server).get(
       `/extended/v1/address/${testAddr2}/nonces?block_height=${block2.block.block_height}`
     );
-    expect(nonceResultsNoTxs2.status).toBe(200);
-    expect(nonceResultsNoTxs2.type).toBe('application/json');
-    expect(nonceResultsNoTxs2.body).toEqual(expectedNonceResultsNoTxs2);
+    assert.equal(nonceResultsNoTxs2.status, 200);
+    assert.equal(nonceResultsNoTxs2.type, 'application/json');
+    assert.deepEqual(nonceResultsNoTxs2.body, expectedNonceResultsNoTxs2);
 
     // Bad requests
     const nonceResults5 = await supertest(api.server).get(
       `/extended/v1/address/${testAddr1}/nonces?block_hash=xcvbnmn`
     );
-    expect(nonceResults5.status).toBe(400);
+    assert.equal(nonceResults5.status, 400);
 
     const nonceResults6 = await supertest(api.server).get(
       `/extended/v1/address/${testAddr1}/nonces?block_height=xcvbnmn`
     );
-    expect(nonceResults6.status).toBe(400);
+    assert.equal(nonceResults6.status, 400);
 
     const nonceResults7 = await supertest(api.server).get(
       `/extended/v1/address/${testAddr1}/nonces?block_height=xcvbnmn&block_hash=xcvbnmn`
     );
-    expect(nonceResults7.status).toBe(400);
+    assert.equal(nonceResults7.status, 400);
 
     const nonceResults8 = await supertest(api.server).get(
       `/extended/v1/address/${testAddr1}/nonces?block_height=999999999`
     );
-    expect(nonceResults8.status).toBe(404);
+    assert.equal(nonceResults8.status, 404);
   });
 
   test('address info', async () => {
@@ -1599,11 +1600,9 @@ describe('address tests', () => {
     const fetchAddrBalance1 = await supertest(api.server).get(
       `/extended/v1/address/${testAddr2}/balances`
     );
-    expect(fetchAddrBalance1.status).toBe(200);
-    expect(fetchAddrBalance1.type).toBe('application/json');
-    expect(fetchAddrBalance1.headers['warning']).toBe(
-      '299 - "Deprecated: See https://docs.hiro.so/stacks/api for more information"'
-    );
+    assert.equal(fetchAddrBalance1.status, 200);
+    assert.equal(fetchAddrBalance1.type, 'application/json');
+    assert.equal(fetchAddrBalance1.headers['warning'], '299 - "Deprecated: See https://docs.hiro.so/stacks/api for more information"');
     const expectedResp1 = {
       stx: {
         balance: '88679',
@@ -1643,19 +1642,19 @@ describe('address tests', () => {
         ],
       },
     };
-    expect(JSON.parse(fetchAddrBalance1.text)).toEqual(expectedResp1);
+    assert.deepEqual(JSON.parse(fetchAddrBalance1.text), expectedResp1);
 
     const fetchAddrBalance1AtBlock = await supertest(api.server).get(
       `/extended/v1/address/${testAddr2}/balances?until_block=1`
     );
-    expect(fetchAddrBalance1AtBlock.status).toBe(200);
-    expect(fetchAddrBalance1AtBlock.type).toBe('application/json');
+    assert.equal(fetchAddrBalance1AtBlock.status, 200);
+    assert.equal(fetchAddrBalance1AtBlock.type, 'application/json');
 
     const fetchAddrBalance2 = await supertest(api.server).get(
       `/extended/v1/address/${testContractAddr}/balances`
     );
-    expect(fetchAddrBalance2.status).toBe(200);
-    expect(fetchAddrBalance2.type).toBe('application/json');
+    assert.equal(fetchAddrBalance2.status, 200);
+    assert.equal(fetchAddrBalance2.type, 'application/json');
     const expectedResp2 = {
       stx: {
         balance: '91',
@@ -1681,14 +1680,14 @@ describe('address tests', () => {
         gox: { count: '53', total_sent: '2', total_received: '55' },
       },
     };
-    expect(JSON.parse(fetchAddrBalance2.text)).toEqual(expectedResp2);
+    assert.deepEqual(JSON.parse(fetchAddrBalance2.text), expectedResp2);
 
     const fetchAddrV2BalanceStx = await supertest(api.server).get(
       `/extended/v2/addresses/${testContractAddr}/balances/stx`
     );
-    expect(fetchAddrV2BalanceStx.status).toBe(200);
-    expect(fetchAddrV2BalanceStx.type).toBe('application/json');
-    expect(fetchAddrV2BalanceStx.body).toEqual({
+    assert.equal(fetchAddrV2BalanceStx.status, 200);
+    assert.equal(fetchAddrV2BalanceStx.type, 'application/json');
+    assert.deepEqual(fetchAddrV2BalanceStx.body, {
       balance: '131',
       total_miner_rewards_received: '0',
       lock_tx_id: '',
@@ -1701,9 +1700,9 @@ describe('address tests', () => {
     const fetchAddrV2BalanceStxWithMempool = await supertest(api.server).get(
       `/extended/v2/addresses/${testContractAddr}/balances/stx?include_mempool=true`
     );
-    expect(fetchAddrV2BalanceStxWithMempool.status).toBe(200);
-    expect(fetchAddrV2BalanceStxWithMempool.type).toBe('application/json');
-    expect(fetchAddrV2BalanceStxWithMempool.body).toEqual({
+    assert.equal(fetchAddrV2BalanceStxWithMempool.status, 200);
+    assert.equal(fetchAddrV2BalanceStxWithMempool.type, 'application/json');
+    assert.deepEqual(fetchAddrV2BalanceStxWithMempool.body, {
       balance: '131',
       estimated_balance: '131',
       pending_balance_inbound: '0',
@@ -1719,9 +1718,9 @@ describe('address tests', () => {
     const fetchAddrV2BalanceFts = await supertest(api.server).get(
       `/extended/v2/addresses/${testContractAddr}/balances/ft`
     );
-    expect(fetchAddrV2BalanceFts.status).toBe(200);
-    expect(fetchAddrV2BalanceFts.type).toBe('application/json');
-    expect(fetchAddrV2BalanceFts.body).toEqual({
+    assert.equal(fetchAddrV2BalanceFts.status, 200);
+    assert.equal(fetchAddrV2BalanceFts.type, 'application/json');
+    assert.deepEqual(fetchAddrV2BalanceFts.body, {
       limit: 100,
       offset: 0,
       total: 2,
@@ -1734,9 +1733,9 @@ describe('address tests', () => {
     const fetchAddrV2BalanceFtsPaginated = await supertest(api.server).get(
       `/extended/v2/addresses/${testContractAddr}/balances/ft?limit=1&offset=1`
     );
-    expect(fetchAddrV2BalanceFtsPaginated.status).toBe(200);
-    expect(fetchAddrV2BalanceFtsPaginated.type).toBe('application/json');
-    expect(fetchAddrV2BalanceFtsPaginated.body).toEqual({
+    assert.equal(fetchAddrV2BalanceFtsPaginated.status, 200);
+    assert.equal(fetchAddrV2BalanceFtsPaginated.type, 'application/json');
+    assert.deepEqual(fetchAddrV2BalanceFtsPaginated.body, {
       limit: 1,
       offset: 1,
       total: 2,
@@ -1746,23 +1745,23 @@ describe('address tests', () => {
     const fetchAddrV2BalanceFt1 = await supertest(api.server).get(
       `/extended/v2/addresses/${testContractAddr}/balances/ft/bux`
     );
-    expect(fetchAddrV2BalanceFt1.status).toBe(200);
-    expect(fetchAddrV2BalanceFt1.type).toBe('application/json');
-    expect(fetchAddrV2BalanceFt1.body).toEqual({ balance: '375' });
+    assert.equal(fetchAddrV2BalanceFt1.status, 200);
+    assert.equal(fetchAddrV2BalanceFt1.type, 'application/json');
+    assert.deepEqual(fetchAddrV2BalanceFt1.body, { balance: '375' });
 
     const fetchAddrV2BalanceFt2 = await supertest(api.server).get(
       `/extended/v2/addresses/${testContractAddr}/balances/ft/gox`
     );
-    expect(fetchAddrV2BalanceFt2.status).toBe(200);
-    expect(fetchAddrV2BalanceFt2.type).toBe('application/json');
-    expect(fetchAddrV2BalanceFt2.body).toEqual({ balance: '585' });
+    assert.equal(fetchAddrV2BalanceFt2.status, 200);
+    assert.equal(fetchAddrV2BalanceFt2.type, 'application/json');
+    assert.deepEqual(fetchAddrV2BalanceFt2.body, { balance: '585' });
 
     const fetchAddrV2BalanceFt3 = await supertest(api.server).get(
       `/extended/v2/addresses/${testContractAddr}/balances/ft/none`
     );
-    expect(fetchAddrV2BalanceFt3.status).toBe(200);
-    expect(fetchAddrV2BalanceFt3.type).toBe('application/json');
-    expect(fetchAddrV2BalanceFt3.body).toEqual({ balance: '0' });
+    assert.equal(fetchAddrV2BalanceFt3.status, 200);
+    assert.equal(fetchAddrV2BalanceFt3.type, 'application/json');
+    assert.deepEqual(fetchAddrV2BalanceFt3.body, { balance: '0' });
 
     const tokenLocked: DbTokenOfferingLocked = {
       address: testContractAddr,
@@ -1774,8 +1773,8 @@ describe('address tests', () => {
     const fetchAddrStxBalance1 = await supertest(api.server).get(
       `/extended/v1/address/${testContractAddr}/stx`
     );
-    expect(fetchAddrStxBalance1.status).toBe(200);
-    expect(fetchAddrStxBalance1.type).toBe('application/json');
+    assert.equal(fetchAddrStxBalance1.status, 200);
+    assert.equal(fetchAddrStxBalance1.type, 'application/json');
     const expectedStxResp1 = {
       balance: '91',
       estimated_balance: '91',
@@ -1801,14 +1800,14 @@ describe('address tests', () => {
         ],
       },
     };
-    expect(JSON.parse(fetchAddrStxBalance1.text)).toEqual(expectedStxResp1);
+    assert.deepEqual(JSON.parse(fetchAddrStxBalance1.text), expectedStxResp1);
 
     //test for sponsored transaction
     const fetchAddrStxBalanceSponsored = await supertest(api.server).get(
       `/extended/v1/address/${testAddr7}/stx`
     );
-    expect(fetchAddrStxBalance1.status).toBe(200);
-    expect(fetchAddrStxBalance1.type).toBe('application/json');
+    assert.equal(fetchAddrStxBalance1.status, 200);
+    assert.equal(fetchAddrStxBalance1.type, 'application/json');
     const expectedStxResp1Sponsored = {
       balance: '3766',
       estimated_balance: '3766',
@@ -1824,13 +1823,13 @@ describe('address tests', () => {
       lock_tx_id: '',
       locked: '0',
     };
-    expect(JSON.parse(fetchAddrStxBalanceSponsored.text)).toEqual(expectedStxResp1Sponsored);
+    assert.deepEqual(JSON.parse(fetchAddrStxBalanceSponsored.text), expectedStxResp1Sponsored);
 
     const fetchAddrAssets1 = await supertest(api.server).get(
       `/extended/v1/address/${testContractAddr}/assets?limit=8&offset=2`
     );
-    expect(fetchAddrAssets1.status).toBe(200);
-    expect(fetchAddrAssets1.type).toBe('application/json');
+    assert.equal(fetchAddrAssets1.status, 200);
+    assert.equal(fetchAddrAssets1.type, 'application/json');
     const expectedResp3 = {
       limit: 8,
       offset: 2,
@@ -1933,13 +1932,13 @@ describe('address tests', () => {
         },
       ],
     };
-    expect(JSON.parse(fetchAddrAssets1.text)).toEqual(expectedResp3);
+    assert.deepEqual(JSON.parse(fetchAddrAssets1.text), expectedResp3);
 
     const fetchAddrTx1 = await supertest(api.server).get(
       `/extended/v1/address/${testContractAddr}/transactions`
     );
-    expect(fetchAddrTx1.status).toBe(200);
-    expect(fetchAddrTx1.type).toBe('application/json');
+    assert.equal(fetchAddrTx1.status, 200);
+    assert.equal(fetchAddrTx1.type, 'application/json');
     const expectedResp4 = {
       limit: 20,
       offset: 0,
@@ -2187,13 +2186,13 @@ describe('address tests', () => {
         },
       ],
     };
-    expect(JSON.parse(fetchAddrTx1.text)).toEqual(expectedResp4);
+    assert.deepEqual(JSON.parse(fetchAddrTx1.text), expectedResp4);
 
     const fetchAddrTx2 = await supertest(api.server).get(
       `/extended/v1/address/${testAddr5}/transactions`
     );
-    expect(fetchAddrTx2.status).toBe(200);
-    expect(fetchAddrTx2.type).toBe('application/json');
+    assert.equal(fetchAddrTx2.status, 200);
+    assert.equal(fetchAddrTx2.type, 'application/json');
     const expectedResp5 = {
       limit: 20,
       offset: 0,
@@ -2262,13 +2261,13 @@ describe('address tests', () => {
         },
       ],
     };
-    expect(JSON.parse(fetchAddrTx2.text)).toEqual(expectedResp5);
+    assert.deepEqual(JSON.parse(fetchAddrTx2.text), expectedResp5);
 
     const fetchAddrTx3 = await supertest(api.server).get(
       `/extended/v1/address/${testAddr5}/transactions_with_transfers`
     );
-    expect(fetchAddrTx3.status).toBe(200);
-    expect(fetchAddrTx3.type).toBe('application/json');
+    assert.equal(fetchAddrTx3.status, 200);
+    assert.equal(fetchAddrTx3.type, 'application/json');
     const expectedResp6 = {
       limit: 20,
       offset: 0,
@@ -2350,13 +2349,13 @@ describe('address tests', () => {
         },
       ],
     };
-    expect(JSON.parse(fetchAddrTx3.text)).toEqual(expectedResp6);
+    assert.deepEqual(JSON.parse(fetchAddrTx3.text), expectedResp6);
 
     const fetchAddrTx4 = await supertest(api.server).get(
       `/extended/v1/address/${testAddr5}/0x1232000000000000000000000000000000000000000000000000000000000000/with_transfers`
     );
-    expect(fetchAddrTx4.status).toBe(200);
-    expect(fetchAddrTx4.type).toBe('application/json');
+    assert.equal(fetchAddrTx4.status, 200);
+    assert.equal(fetchAddrTx4.type, 'application/json');
     const expectedResp7 = {
       stx_received: '0',
       stx_sent: '4321',
@@ -2429,7 +2428,7 @@ describe('address tests', () => {
         tx_type: 'contract_call',
       },
     };
-    expect(JSON.parse(fetchAddrTx4.text)).toEqual(expectedResp7);
+    assert.deepEqual(JSON.parse(fetchAddrTx4.text), expectedResp7);
 
     const contractCallExpectedResults = {
       tx_id: '0x1232000000000000000000000000000000000000000000000000000000000000',
@@ -2493,13 +2492,13 @@ describe('address tests', () => {
     };
 
     const blockTxsRows = await api.datastore.getBlockTxsRows(block.block_hash);
-    expect(blockTxsRows.found).toBe(true);
+    assert.equal(blockTxsRows.found, true);
     const blockTxsRowsResult = blockTxsRows.result as DbTxRaw[];
     const contractCallResult1 = blockTxsRowsResult.find(tx => tx.tx_id === contractCall.tx_id);
-    expect({
+    assert.deepEqual({
       ...contractCallResult1,
       abi: JSON.parse(contractCallResult1?.abi ?? ''),
-    }).toEqual({
+    }, {
       ...contractCall,
       ...{ abi: contractJsonAbi, vm_error: null },
     });
@@ -2507,19 +2506,19 @@ describe('address tests', () => {
     const searchResult8 = await supertest(api.server).get(
       `/extended/v1/search/0x1232000000000000000000000000000000000000000000000000000000000000?include_metadata=true`
     );
-    expect(searchResult8.status).toBe(200);
-    expect(searchResult8.type).toBe('application/json');
-    expect(JSON.parse(searchResult8.text).result.metadata).toEqual(contractCallExpectedResults);
+    assert.equal(searchResult8.status, 200);
+    assert.equal(searchResult8.type, 'application/json');
+    assert.deepEqual(JSON.parse(searchResult8.text).result.metadata, contractCallExpectedResults);
 
     const blockTxResult = await db.getTxsFromBlock({ hash: '0x1234' }, 20, 0);
     assert(blockTxResult.found);
     const contractCallResult2 = blockTxResult.result.results.find(
       tx => tx.tx_id === contractCall.tx_id
     );
-    expect({
+    assert.deepEqual({
       ...contractCallResult2,
       abi: JSON.parse(contractCallResult2?.abi ?? ''),
-    }).toEqual({
+    }, {
       ...contractCall,
       ...{ abi: contractJsonAbi, vm_error: null },
     });
@@ -2667,9 +2666,9 @@ describe('address tests', () => {
     const sender_nonces = await supertest(api.server).get(
       `/extended/v1/address/${senderAddress}/nonces`
     );
-    expect(sender_nonces.status).toBe(200);
-    expect(sender_nonces.type).toBe('application/json');
-    expect(JSON.parse(sender_nonces.text)).toEqual(expectedResp);
+    assert.equal(sender_nonces.status, 200);
+    assert.equal(sender_nonces.type, 'application/json');
+    assert.deepEqual(JSON.parse(sender_nonces.text), expectedResp);
 
     //sponsor_nonce
     const expectedResp2 = {
@@ -2682,9 +2681,9 @@ describe('address tests', () => {
     const sponsor_nonces = await supertest(api.server).get(
       `/extended/v1/address/${sponsor_address}/nonces`
     );
-    expect(sponsor_nonces.status).toBe(200);
-    expect(sponsor_nonces.type).toBe('application/json');
-    expect(JSON.parse(sponsor_nonces.text)).toEqual(expectedResp2);
+    assert.equal(sponsor_nonces.status, 200);
+    assert.equal(sponsor_nonces.type, 'application/json');
+    assert.deepEqual(JSON.parse(sponsor_nonces.text), expectedResp2);
 
     const mempoolTx: DbMempoolTxRaw = {
       tx_id: '0x521234',
@@ -2718,9 +2717,9 @@ describe('address tests', () => {
     const mempool_sender_nonces = await supertest(api.server).get(
       `/extended/v1/address/${senderAddress}/nonces`
     );
-    expect(mempool_sender_nonces.status).toBe(200);
-    expect(mempool_sender_nonces.type).toBe('application/json');
-    expect(JSON.parse(mempool_sender_nonces.text)).toEqual(expectedResp3);
+    assert.equal(mempool_sender_nonces.status, 200);
+    assert.equal(mempool_sender_nonces.type, 'application/json');
+    assert.deepEqual(JSON.parse(mempool_sender_nonces.text), expectedResp3);
 
     //mempool sponsor_nonce
     const expectedResp4 = {
@@ -2733,9 +2732,9 @@ describe('address tests', () => {
     const mempool_sponsor_nonces = await supertest(api.server).get(
       `/extended/v1/address/${sponsor_address}/nonces`
     );
-    expect(mempool_sponsor_nonces.status).toBe(200);
-    expect(mempool_sponsor_nonces.type).toBe('application/json');
-    expect(JSON.parse(mempool_sponsor_nonces.text)).toEqual(expectedResp4);
+    assert.equal(mempool_sponsor_nonces.status, 200);
+    assert.equal(mempool_sponsor_nonces.type, 'application/json');
+    assert.deepEqual(JSON.parse(mempool_sponsor_nonces.text), expectedResp4);
 
     /**
      * Sponsor detected missing nonce
@@ -2772,9 +2771,9 @@ describe('address tests', () => {
     const detected_missing_nonce = await supertest(api.server).get(
       `/extended/v1/address/${sponsor_address}/nonces`
     );
-    expect(detected_missing_nonce.status).toBe(200);
-    expect(detected_missing_nonce.type).toBe('application/json');
-    expect(JSON.parse(detected_missing_nonce.text)).toEqual(expectedResp5);
+    assert.equal(detected_missing_nonce.status, 200);
+    assert.equal(detected_missing_nonce.type, 'application/json');
+    assert.deepEqual(JSON.parse(detected_missing_nonce.text), expectedResp5);
   });
 
   test('exclusive address endpoints params', async () => {
@@ -2792,7 +2791,7 @@ describe('address tests', () => {
       const response = await supertest(api.server).get(
         `/extended/v1/address/STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6${path}?until_block=5&unanchored=true`
       );
-      expect(response.status).toBe(400);
+      assert.equal(response.status, 400);
     }
   });
 
@@ -2904,19 +2903,19 @@ describe('address tests', () => {
     const anchoredResult = await supertest(api.server).get(
       `/extended/v1/address/${contractId}/transactions?limit=50&unanchored=false`
     );
-    expect(anchoredResult.status).toBe(200);
-    expect(anchoredResult.type).toBe('application/json');
-    expect(JSON.parse(anchoredResult.text).total).toEqual(50); // 50 txs up to block_height=2
-    expect(JSON.parse(anchoredResult.text).results.length).toEqual(50);
+    assert.equal(anchoredResult.status, 200);
+    assert.equal(anchoredResult.type, 'application/json');
+    assert.deepEqual(JSON.parse(anchoredResult.text).total, 50); // 50 txs up to block_height=2
+    assert.deepEqual(JSON.parse(anchoredResult.text).results.length, 50);
 
     // Unanchored results first page should also be 50 (40 at block_height=2, 10 at unanchored block_height=3)
     const unanchoredResult = await supertest(api.server).get(
       `/extended/v1/address/${contractId}/transactions?limit=50&unanchored=true`
     );
-    expect(unanchoredResult.status).toBe(200);
-    expect(unanchoredResult.type).toBe('application/json');
-    expect(JSON.parse(unanchoredResult.text).total).toEqual(60); // 60 txs up to unanchored block_height=3
-    expect(JSON.parse(unanchoredResult.text).results.length).toEqual(50);
+    assert.equal(unanchoredResult.status, 200);
+    assert.equal(unanchoredResult.type, 'application/json');
+    assert.deepEqual(JSON.parse(unanchoredResult.text).total, 60); // 60 txs up to unanchored block_height=3
+    assert.deepEqual(JSON.parse(unanchoredResult.text).results.length, 50);
   });
 
   test('/transactions endpoint handles re-orgs correctly', async () => {
@@ -2969,13 +2968,13 @@ describe('address tests', () => {
     const result1 = await supertest(api.server).get(
       `/extended/v1/address/${contractId}/transactions`
     );
-    expect(result1.status).toBe(200);
-    expect(result1.type).toBe('application/json');
+    assert.equal(result1.status, 200);
+    assert.equal(result1.type, 'application/json');
     const json1 = JSON.parse(result1.text);
-    expect(json1.total).toEqual(1);
-    expect(json1.results.length).toEqual(1);
-    expect(json1.results[0].tx_id).toEqual('0x123123');
-    expect(json1.results[0].block_height).toEqual(3);
+    assert.deepEqual(json1.total, 1);
+    assert.deepEqual(json1.results.length, 1);
+    assert.deepEqual(json1.results[0].tx_id, '0x123123');
+    assert.deepEqual(json1.results[0].block_height, 3);
 
     // Non-canonical block with tx
     const block4 = new TestBlockBuilder({
@@ -2994,11 +2993,11 @@ describe('address tests', () => {
     const result2 = await supertest(api.server).get(
       `/extended/v1/address/${contractId}/transactions`
     );
-    expect(result2.status).toBe(200);
-    expect(result2.type).toBe('application/json');
+    assert.equal(result2.status, 200);
+    assert.equal(result2.type, 'application/json');
     const json2 = JSON.parse(result2.text);
-    expect(json2.total).toEqual(1);
-    expect(json2.results.length).toEqual(1);
+    assert.deepEqual(json2.total, 1);
+    assert.deepEqual(json2.results.length, 1);
 
     // New canonical block restores previous non-canonical block
     const block5 = new TestBlockBuilder({
@@ -3016,12 +3015,12 @@ describe('address tests', () => {
     const result3 = await supertest(api.server).get(
       `/extended/v1/address/${contractId}/transactions`
     );
-    expect(result3.status).toBe(200);
-    expect(result3.type).toBe('application/json');
+    assert.equal(result3.status, 200);
+    assert.equal(result3.type, 'application/json');
     const json3 = JSON.parse(result3.text);
-    expect(json3.total).toEqual(2);
-    expect(json3.results.length).toEqual(2);
-    expect(json3.results[0].tx_id).toEqual('0x11a1');
+    assert.deepEqual(json3.total, 2);
+    assert.deepEqual(json3.results.length, 2);
+    assert.deepEqual(json3.results[0].tx_id, '0x11a1');
 
     // Microblock with non-canonical tx
     const microblock1 = new TestMicroblockStreamBuilder()
@@ -3045,11 +3044,11 @@ describe('address tests', () => {
     const result4 = await supertest(api.server).get(
       `/extended/v1/address/${contractId}/transactions?unanchored=true`
     );
-    expect(result4.status).toBe(200);
-    expect(result4.type).toBe('application/json');
+    assert.equal(result4.status, 200);
+    assert.equal(result4.type, 'application/json');
     const json4 = JSON.parse(result4.text);
-    expect(json4.total).toEqual(2);
-    expect(json4.results.length).toEqual(2);
+    assert.deepEqual(json4.total, 2);
+    assert.deepEqual(json4.results.length, 2);
     */
 
     // Confirm with anchor block
@@ -3070,12 +3069,12 @@ describe('address tests', () => {
     const result5 = await supertest(api.server).get(
       `/extended/v1/address/${contractId}/transactions`
     );
-    expect(result5.status).toBe(200);
-    expect(result5.type).toBe('application/json');
+    assert.equal(result5.status, 200);
+    assert.equal(result5.type, 'application/json');
     const json5 = JSON.parse(result5.text);
-    expect(json5.total).toEqual(3);
-    expect(json5.results.length).toEqual(3);
-    expect(json5.results[0].tx_id).toEqual('0x11a2');
+    assert.deepEqual(json5.total, 3);
+    assert.deepEqual(json5.results.length, 3);
+    assert.deepEqual(json5.results[0].tx_id, '0x11a2');
 
     // New anchor block with included tx.
     const block7 = new TestBlockBuilder({
@@ -3116,11 +3115,11 @@ describe('address tests', () => {
     const result6 = await supertest(api.server).get(
       `/extended/v1/address/${contractId}/transactions`
     );
-    expect(result6.status).toBe(200);
-    expect(result6.type).toBe('application/json');
+    assert.equal(result6.status, 200);
+    assert.equal(result6.type, 'application/json');
     const json6 = JSON.parse(result6.text);
-    expect(json6.total).toEqual(4);
-    expect(json6.results.length).toEqual(4);
-    expect(json6.results[0].tx_id).toEqual('0xffa1');
+    assert.deepEqual(json6.total, 4);
+    assert.deepEqual(json6.results.length, 4);
+    assert.deepEqual(json6.results[0].tx_id, '0xffa1');
   });
 });

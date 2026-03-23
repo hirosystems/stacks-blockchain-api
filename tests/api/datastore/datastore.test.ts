@@ -23,13 +23,14 @@ import {
   ReOrgUpdatedEntities,
 } from '../../../src/datastore/common.ts';
 import { getBlocksWithMetadata, parseDbEvent } from '../../../src/api/controllers/db-controller.ts';
-import * as assert from 'assert';
+import assert from 'node:assert/strict';
 import { PgWriteStore } from '../../../src/datastore/pg-write-store.ts';
 import { bnsNameCV, I32_MAX } from '../../../src/helpers.ts';
 import { ChainID } from '@stacks/transactions';
-import { TestBlockBuilder } from '../utils/test-builders';
+import { TestBlockBuilder } from '../test-builders.ts';
 import { PgSqlClient, bufferToHex } from '@stacks/api-toolkit';
-import { migrate } from '../utils/test-helpers';
+import { migrate } from '../../test-helpers.ts';
+import { beforeEach, afterEach, describe, test } from 'node:test';
 
 describe('postgres datastore', () => {
   let db: PgWriteStore;
@@ -208,7 +209,7 @@ describe('postgres datastore', () => {
     const addrCResult = await db.getStxBalance({ stxAddress: 'addrC', includeUnanchored: false });
     const addrDResult = await db.getStxBalance({ stxAddress: 'addrD', includeUnanchored: false });
 
-    expect(addrAResult).toEqual({
+    assert.deepEqual(addrAResult, {
       balance: 198291n,
       totalReceived: 100000n,
       totalSent: 385n,
@@ -220,7 +221,7 @@ describe('postgres datastore', () => {
       lockTxId: '0x1234',
       locked: 400n,
     });
-    expect(addrBResult).toEqual({
+    assert.deepEqual(addrBResult, {
       balance: 552n,
       totalReceived: 350n,
       totalSent: 15n,
@@ -232,7 +233,7 @@ describe('postgres datastore', () => {
       lockTxId: '',
       locked: 0n,
     });
-    expect(addrCResult).toEqual({
+    assert.deepEqual(addrCResult, {
       balance: 50n,
       totalReceived: 50n,
       totalSent: 0n,
@@ -244,7 +245,7 @@ describe('postgres datastore', () => {
       lockTxId: '',
       locked: 0n,
     });
-    expect(addrDResult).toEqual({
+    assert.deepEqual(addrDResult, {
       balance: 0n,
       totalReceived: 0n,
       totalSent: 0n,
@@ -413,21 +414,30 @@ describe('postgres datastore', () => {
       untilBlock: blockHeight,
     });
 
-    expect([...addrAResult]).toEqual([
-      ['bux', { balance: 99605n, totalReceived: 100000n, totalSent: 395n }],
-      ['cash', { balance: 500000n, totalReceived: 500000n, totalSent: 0n }],
-      ['gox', { balance: 199375n, totalReceived: 200000n, totalSent: 625n }],
-      ['tendies', { balance: -1000000n, totalReceived: 0n, totalSent: 1000000n }],
-    ]);
-    expect([...addrBResult]).toEqual([
-      ['bux', { balance: 335n, totalReceived: 350n, totalSent: 15n }],
-      ['gox', { balance: 525n, totalReceived: 550n, totalSent: 25n }],
-    ]);
-    expect([...addrCResult]).toEqual([
-      ['bux', { balance: 50n, totalReceived: 50n, totalSent: 0n }],
-      ['gox', { balance: 100n, totalReceived: 100n, totalSent: 0n }],
-    ]);
-    expect([...addrDResult]).toEqual([]);
+    assert.deepEqual(
+      [...addrAResult],
+      [
+        ['bux', { balance: 99605n, totalReceived: 100000n, totalSent: 395n }],
+        ['cash', { balance: 500000n, totalReceived: 500000n, totalSent: 0n }],
+        ['gox', { balance: 199375n, totalReceived: 200000n, totalSent: 625n }],
+        ['tendies', { balance: -1000000n, totalReceived: 0n, totalSent: 1000000n }],
+      ]
+    );
+    assert.deepEqual(
+      [...addrBResult],
+      [
+        ['bux', { balance: 335n, totalReceived: 350n, totalSent: 15n }],
+        ['gox', { balance: 525n, totalReceived: 550n, totalSent: 25n }],
+      ]
+    );
+    assert.deepEqual(
+      [...addrCResult],
+      [
+        ['bux', { balance: 50n, totalReceived: 50n, totalSent: 0n }],
+        ['gox', { balance: 100n, totalReceived: 100n, totalSent: 0n }],
+      ]
+    );
+    assert.deepEqual([...addrDResult], []);
   });
 
   test('pg address NFT counts', async () => {
@@ -591,21 +601,30 @@ describe('postgres datastore', () => {
       untilBlock: blockHeight,
     });
 
-    expect([...addrAResult]).toEqual([
-      ['bux', { count: 262n, totalReceived: 300n, totalSent: 38n }],
-      ['cash', { count: 499n, totalReceived: 500n, totalSent: 1n }],
-      ['gox', { count: 138n, totalReceived: 200n, totalSent: 62n }],
-      ['tendies', { count: -100n, totalReceived: 0n, totalSent: 100n }],
-    ]);
-    expect([...addrBResult]).toEqual([
-      ['bux', { count: 34n, totalReceived: 35n, totalSent: 1n }],
-      ['gox', { count: 53n, totalReceived: 55n, totalSent: 2n }],
-    ]);
-    expect([...addrCResult]).toEqual([
-      ['bux', { count: 4n, totalReceived: 4n, totalSent: 0n }],
-      ['gox', { count: 9n, totalReceived: 9n, totalSent: 0n }],
-    ]);
-    expect([...addrDResult]).toEqual([]);
+    assert.deepEqual(
+      [...addrAResult],
+      [
+        ['bux', { count: 262n, totalReceived: 300n, totalSent: 38n }],
+        ['cash', { count: 499n, totalReceived: 500n, totalSent: 1n }],
+        ['gox', { count: 138n, totalReceived: 200n, totalSent: 62n }],
+        ['tendies', { count: -100n, totalReceived: 0n, totalSent: 100n }],
+      ]
+    );
+    assert.deepEqual(
+      [...addrBResult],
+      [
+        ['bux', { count: 34n, totalReceived: 35n, totalSent: 1n }],
+        ['gox', { count: 53n, totalReceived: 55n, totalSent: 2n }],
+      ]
+    );
+    assert.deepEqual(
+      [...addrCResult],
+      [
+        ['bux', { count: 4n, totalReceived: 4n, totalSent: 0n }],
+        ['gox', { count: 9n, totalReceived: 9n, totalSent: 0n }],
+      ]
+    );
+    assert.deepEqual([...addrDResult], []);
   });
 
   test('pg block store and retrieve', async () => {
@@ -637,7 +656,7 @@ describe('postgres datastore', () => {
     await db.updateBlock(client, block);
     const blockQuery = await db.getBlock({ hash: block.block_hash });
     assert(blockQuery.found);
-    expect(blockQuery.result).toEqual(block);
+    assert.deepEqual(blockQuery.result, block);
 
     const tx: DbTxRaw = {
       tx_id: '0x1234',
@@ -678,8 +697,8 @@ describe('postgres datastore', () => {
     };
     await db.updateTx(client, tx);
     const blockTxs = await db.getBlockTxs(block.index_block_hash);
-    expect(blockTxs.results).toHaveLength(1);
-    expect(blockTxs.results[0]).toBe('0x1234');
+    assert.equal(blockTxs.results.length, 1);
+    assert.equal(blockTxs.results[0], '0x1234');
   });
 
   test('pg address transactions', async () => {
@@ -849,7 +868,7 @@ describe('postgres datastore', () => {
       atSingleBlock: false,
     });
 
-    expect(addrEResult.total).toBe(5);
+    assert.equal(addrEResult.total, 5);
 
     const mapAddrTxResults = (txs: DbTx[]) => {
       return txs.map(tx => ({
@@ -860,7 +879,7 @@ describe('postgres datastore', () => {
       }));
     };
 
-    expect(mapAddrTxResults(addrAResult.results)).toEqual([
+    assert.deepEqual(mapAddrTxResults(addrAResult.results), [
       {
         sender_address: 'addrA',
         token_transfer_recipient_address: 'addrC',
@@ -880,7 +899,7 @@ describe('postgres datastore', () => {
         tx_index: 2,
       },
     ]);
-    expect(mapAddrTxResults(addrBResult.results)).toEqual([
+    assert.deepEqual(mapAddrTxResults(addrBResult.results), [
       {
         sender_address: 'addrB',
         token_transfer_recipient_address: 'addrC',
@@ -900,7 +919,7 @@ describe('postgres datastore', () => {
         tx_index: 2,
       },
     ]);
-    expect(mapAddrTxResults(addrCResult.results)).toEqual([
+    assert.deepEqual(mapAddrTxResults(addrCResult.results), [
       {
         sender_address: 'addrA',
         token_transfer_recipient_address: 'addrC',
@@ -914,7 +933,7 @@ describe('postgres datastore', () => {
         tx_index: 5,
       },
     ]);
-    expect(mapAddrTxResults(addrEResult.results)).toEqual([
+    assert.deepEqual(mapAddrTxResults(addrEResult.results), [
       {
         sender_address: 'addrE',
         token_transfer_recipient_address: 'addrF',
@@ -934,7 +953,7 @@ describe('postgres datastore', () => {
         tx_index: 9,
       },
     ]);
-    expect(mapAddrTxResults(addrEResultP2.results)).toEqual([
+    assert.deepEqual(mapAddrTxResults(addrEResultP2.results), [
       {
         sender_address: 'addrE',
         token_transfer_recipient_address: 'addrF',
@@ -948,7 +967,7 @@ describe('postgres datastore', () => {
         tx_index: 7,
       },
     ]);
-    expect(mapAddrTxResults(addrDResult.results)).toEqual([]);
+    assert.deepEqual(mapAddrTxResults(addrDResult.results), []);
 
     //test for atBlock query
     const dbBlock1: DbBlock = {
@@ -1024,8 +1043,8 @@ describe('postgres datastore', () => {
       atSingleBlock: false,
     });
 
-    expect(addrAAtBlockResult.total).toBe(3);
-    expect(addrAAllBlockResult.total).toBe(7);
+    assert.equal(addrAAtBlockResult.total, 3);
+    assert.equal(addrAAllBlockResult.total, 7);
   });
 
   test('pg get address asset events', async () => {
@@ -1339,7 +1358,7 @@ describe('postgres datastore', () => {
       blockHeight: blockHeight,
     });
     const assetEvents = assetDbEvents.results.map(event => parseDbEvent(event));
-    expect(assetEvents).toEqual([
+    assert.deepEqual(assetEvents, [
       {
         event_index: 0,
         event_type: 'stx_asset',
@@ -2093,7 +2112,7 @@ describe('postgres datastore', () => {
     });
     const txQuery = await db.getTx({ txId: tx.tx_id, includeUnanchored: false });
     assert(txQuery.found);
-    expect(txQuery.result).toEqual(tx);
+    assert.deepEqual(txQuery.result, tx);
   });
 
   test('pg `token-transfer` tx type constraint', async () => {
@@ -2157,9 +2176,13 @@ describe('postgres datastore', () => {
       execution_cost_write_length: 0,
       vm_error: null,
     };
-    await expect(db.updateTx(client, { ...tx, raw_tx: '0x' })).rejects.toEqual(
-      new Error('new row for relation "txs" violates check constraint "valid_token_transfer"')
-    );
+    await assert.rejects(db.updateTx(client, { ...tx, raw_tx: '0x' }), error => {
+      assert.deepEqual(
+        error,
+        new Error('new row for relation "txs" violates check constraint "valid_token_transfer"')
+      );
+      return true;
+    });
     tx.token_transfer_amount = 34n;
     tx.token_transfer_memo = '0x746878';
     tx.token_transfer_recipient_address = 'recipient-addr';
@@ -2186,7 +2209,7 @@ describe('postgres datastore', () => {
     });
     const txQuery = await db.getTx({ txId: tx.tx_id, includeUnanchored: false });
     assert(txQuery.found);
-    expect(txQuery.result).toEqual(tx);
+    assert.deepEqual(txQuery.result, tx);
   });
 
   test('pg `smart-contract` tx type constraint', async () => {
@@ -2250,9 +2273,13 @@ describe('postgres datastore', () => {
       execution_cost_write_length: 0,
       vm_error: null,
     };
-    await expect(db.updateTx(client, { ...tx, raw_tx: '0x' })).rejects.toEqual(
-      new Error('new row for relation "txs" violates check constraint "valid_smart_contract"')
-    );
+    await assert.rejects(db.updateTx(client, { ...tx, raw_tx: '0x' }), error => {
+      assert.deepEqual(
+        error,
+        new Error('new row for relation "txs" violates check constraint "valid_smart_contract"')
+      );
+      return true;
+    });
     tx.smart_contract_contract_id = 'my-contract';
     tx.smart_contract_source_code = '(src)';
     const contract: DbSmartContract = {
@@ -2287,7 +2314,7 @@ describe('postgres datastore', () => {
     });
     const txQuery = await db.getTx({ txId: tx.tx_id, includeUnanchored: false });
     assert(txQuery.found);
-    expect(txQuery.result).toEqual(tx);
+    assert.deepEqual(txQuery.result, tx);
   });
 
   test('pg `versioned-smart-contract` tx type constraint', async () => {
@@ -2352,11 +2379,15 @@ describe('postgres datastore', () => {
       execution_cost_write_length: 0,
       vm_error: null,
     };
-    await expect(db.updateTx(client, tx)).rejects.toEqual(
-      new Error(
-        'new row for relation "txs" violates check constraint "valid_versioned_smart_contract"'
-      )
-    );
+    await assert.rejects(db.updateTx(client, tx), error => {
+      assert.deepEqual(
+        error,
+        new Error(
+          'new row for relation "txs" violates check constraint "valid_versioned_smart_contract"'
+        )
+      );
+      return true;
+    });
     tx.smart_contract_clarity_version = 2;
     tx.smart_contract_contract_id = 'my-contract';
     tx.smart_contract_source_code = '(src)';
@@ -2433,7 +2464,7 @@ describe('postgres datastore', () => {
       sponsor_nonce: undefined,
       vm_error: null,
     };
-    expect(txQuery.result).toEqual(txRes);
+    assert.deepEqual(txQuery.result, txRes);
   });
 
   test('pg `contract-call` tx type constraint', async () => {
@@ -2497,9 +2528,13 @@ describe('postgres datastore', () => {
       execution_cost_write_length: 0,
       vm_error: null,
     };
-    await expect(db.updateTx(client, { ...tx, raw_tx: '0x' })).rejects.toEqual(
-      new Error('new row for relation "txs" violates check constraint "valid_contract_call"')
-    );
+    await assert.rejects(db.updateTx(client, { ...tx, raw_tx: '0x' }), error => {
+      assert.deepEqual(
+        error,
+        new Error('new row for relation "txs" violates check constraint "valid_contract_call"')
+      );
+      return true;
+    });
     tx.contract_call_contract_id = 'my-contract';
     tx.contract_call_function_name = 'my-fn';
     tx.contract_call_function_args = '0x74657374';
@@ -2526,7 +2561,7 @@ describe('postgres datastore', () => {
     });
     const txQuery = await db.getTx({ txId: tx.tx_id, includeUnanchored: false });
     assert(txQuery.found);
-    expect(txQuery.result).toEqual(tx);
+    assert.deepEqual(txQuery.result, tx);
   });
 
   test('pg `poison-microblock` tx type constraint', async () => {
@@ -2590,9 +2625,13 @@ describe('postgres datastore', () => {
       execution_cost_write_length: 0,
       vm_error: null,
     };
-    await expect(db.updateTx(client, { ...tx, raw_tx: '0x' })).rejects.toEqual(
-      new Error('new row for relation "txs" violates check constraint "valid_poison_microblock"')
-    );
+    await assert.rejects(db.updateTx(client, { ...tx, raw_tx: '0x' }), error => {
+      assert.deepEqual(
+        error,
+        new Error('new row for relation "txs" violates check constraint "valid_poison_microblock"')
+      );
+      return true;
+    });
     tx.poison_microblock_header_1 = '0x706f69736f6e2041';
     tx.poison_microblock_header_2 = '0x706f69736f6e2042';
     await db.update({
@@ -2618,7 +2657,7 @@ describe('postgres datastore', () => {
     });
     const txQuery = await db.getTx({ txId: tx.tx_id, includeUnanchored: false });
     assert(txQuery.found);
-    expect(txQuery.result).toEqual(tx);
+    assert.deepEqual(txQuery.result, tx);
   });
 
   test('pg `coinbase` tx type constraint', async () => {
@@ -2682,9 +2721,13 @@ describe('postgres datastore', () => {
       execution_cost_write_length: 0,
       vm_error: null,
     };
-    await expect(db.updateTx(client, { ...tx, raw_tx: '0x' })).rejects.toEqual(
-      new Error('new row for relation "txs" violates check constraint "valid_coinbase"')
-    );
+    await assert.rejects(db.updateTx(client, { ...tx, raw_tx: '0x' }), error => {
+      assert.deepEqual(
+        error,
+        new Error('new row for relation "txs" violates check constraint "valid_coinbase"')
+      );
+      return true;
+    });
     tx.coinbase_payload = '0x636f696e62617365206869';
     await db.update({
       block: dbBlock,
@@ -2709,7 +2752,7 @@ describe('postgres datastore', () => {
     });
     const txQuery = await db.getTx({ txId: tx.tx_id, includeUnanchored: false });
     assert(txQuery.found);
-    expect(txQuery.result).toEqual(tx);
+    assert.deepEqual(txQuery.result, tx);
   });
 
   test.skip('pg tx store duplicate block index hash data', async () => {
@@ -2778,15 +2821,15 @@ describe('postgres datastore', () => {
       vm_error: null,
     };
     const updatedRows = await db.updateTx(client, tx);
-    expect(updatedRows).toBe(1);
+    assert.equal(updatedRows, 1);
     const txQuery = await db.getTx({ txId: tx.tx_id, includeUnanchored: false });
     assert(txQuery.found);
-    expect(txQuery.result).toEqual(tx);
+    assert.deepEqual(txQuery.result, tx);
     try {
       const dupeUpdateRows = await db.updateTx(client, tx);
-      expect(dupeUpdateRows).toBe(0);
+      assert.equal(dupeUpdateRows, 0);
     } catch (error: any) {
-      expect(error.toString()).toContain('duplicate key value violates unique constraint');
+      assert.ok(error.toString().includes('duplicate key value violates unique constraint'));
     }
   });
 
@@ -2986,19 +3029,19 @@ describe('postgres datastore', () => {
 
     const fetchTx1 = await db.getTx({ txId: tx1.tx_id, includeUnanchored: false });
     assert(fetchTx1.found);
-    expect(fetchTx1.result).toEqual(tx1);
+    assert.deepEqual(fetchTx1.result, tx1);
 
     const fetchTx2 = await db.getTx({ txId: tx2.tx_id, includeUnanchored: false });
     assert(fetchTx2.found);
-    expect(fetchTx2.result).toEqual(tx2);
+    assert.deepEqual(fetchTx2.result, tx2);
 
     const fetchBlock1 = await db.getBlock({ hash: block1.block_hash });
     assert(fetchBlock1.found);
-    expect(fetchBlock1.result).toEqual(block1);
+    assert.deepEqual(fetchBlock1.result, block1);
 
     const fetchContract1 = await db.getSmartContract(smartContract1.contract_id);
     assert(fetchContract1.found);
-    expect(fetchContract1.result).toEqual(smartContract1);
+    assert.deepEqual(fetchContract1.result, smartContract1);
 
     const fetchTx1Events = await db.getTxEvents({
       txId: tx1.tx_id,
@@ -3006,11 +3049,23 @@ describe('postgres datastore', () => {
       limit: 100,
       offset: 0,
     });
-    expect(fetchTx1Events.results).toHaveLength(4);
-    expect(fetchTx1Events.results.find(e => e.event_index === 1)).toEqual(stxEvent1);
-    expect(fetchTx1Events.results.find(e => e.event_index === 2)).toEqual(ftEvent1);
-    expect(fetchTx1Events.results.find(e => e.event_index === 3)).toEqual(nftEvent1);
-    expect(fetchTx1Events.results.find(e => e.event_index === 4)).toEqual(contractLogEvent1);
+    assert.equal(fetchTx1Events.results.length, 4);
+    assert.deepEqual(
+      fetchTx1Events.results.find(e => e.event_index === 1),
+      stxEvent1
+    );
+    assert.deepEqual(
+      fetchTx1Events.results.find(e => e.event_index === 2),
+      ftEvent1
+    );
+    assert.deepEqual(
+      fetchTx1Events.results.find(e => e.event_index === 3),
+      nftEvent1
+    );
+    assert.deepEqual(
+      fetchTx1Events.results.find(e => e.event_index === 4),
+      contractLogEvent1
+    );
   });
 
   test('pg burnchain reward insert and read', async () => {
@@ -3053,7 +3108,7 @@ describe('postgres datastore', () => {
       limit: 100,
       offset: 0,
     });
-    expect(rewardQuery).toEqual([
+    assert.deepEqual(rewardQuery, [
       {
         canonical: true,
         burn_block_hash: '0x2345',
@@ -3171,15 +3226,11 @@ describe('postgres datastore', () => {
       limit: 100,
       offset: 0,
     });
-    expect(rewards).toHaveLength(6);
-    expect(rewards.map(r => r.burn_block_hash)).toEqual([
-      '0x1113',
-      '0x1113',
-      '0x1112',
-      '0x1112',
-      '0x1111',
-      '0x1111',
-    ]);
+    assert.equal(rewards.length, 6);
+    assert.deepEqual(
+      rewards.map(r => r.burn_block_hash),
+      ['0x1113', '0x1113', '0x1112', '0x1112', '0x1111', '0x1111']
+    );
 
     // Create re-org after burn block 201, check rewards again
     await mineTenure({
@@ -3216,17 +3267,11 @@ describe('postgres datastore', () => {
       limit: 100,
       offset: 0,
     });
-    expect(rewards2).toHaveLength(8);
-    expect(rewards2.map(r => r.burn_block_hash)).toEqual([
-      '0x1114',
-      '0x1114',
-      '0x1113bb',
-      '0x1113bb',
-      '0x1112bb',
-      '0x1112bb',
-      '0x1111',
-      '0x1111',
-    ]);
+    assert.equal(rewards2.length, 8);
+    assert.deepEqual(
+      rewards2.map(r => r.burn_block_hash),
+      ['0x1114', '0x1114', '0x1113bb', '0x1113bb', '0x1112bb', '0x1112bb', '0x1111', '0x1111']
+    );
   });
 
   test('pg mempool tx lifecycle', async () => {
@@ -3473,8 +3518,8 @@ describe('postgres datastore', () => {
 
     await db.updateMempoolTxs({ mempoolTxs: [tx1Mempool] });
     const txQuery1 = await db.getMempoolTx({ txId: tx1Mempool.tx_id, includeUnanchored: false });
-    expect(txQuery1.found).toBe(true);
-    expect(txQuery1?.result?.status).toBe(DbTxStatus.Pending);
+    assert.equal(txQuery1.found, true);
+    assert.equal(txQuery1?.result?.status, DbTxStatus.Pending);
 
     for (const block of [block1, block2, block3]) {
       await db.update({
@@ -3507,8 +3552,8 @@ describe('postgres datastore', () => {
     });
     // tx should still be in mempool since it was included in a non-canonical chain-tip
     const txQuery2 = await db.getMempoolTx({ txId: tx1Mempool.tx_id, includeUnanchored: false });
-    expect(txQuery2.found).toBe(true);
-    expect(txQuery2?.result?.status).toBe(DbTxStatus.Pending);
+    assert.equal(txQuery2.found, true);
+    assert.equal(txQuery2?.result?.status, DbTxStatus.Pending);
 
     await db.update({
       block: block4B,
@@ -3518,13 +3563,13 @@ describe('postgres datastore', () => {
     });
     // the fork containing this tx was made canonical, it should no longer be in the mempool
     const txQuery3 = await db.getMempoolTx({ txId: tx1Mempool.tx_id, includeUnanchored: false });
-    expect(txQuery3.found).toBe(false);
+    assert.equal(txQuery3.found, false);
 
     // the tx should be in the mined tx table, marked as canonical and success status
     const txQuery4 = await db.getTx({ txId: tx1.tx_id, includeUnanchored: false });
-    expect(txQuery4.found).toBe(true);
-    expect(txQuery4?.result?.status).toBe(DbTxStatus.Success);
-    expect(txQuery4?.result?.canonical).toBe(true);
+    assert.equal(txQuery4.found, true);
+    assert.equal(txQuery4?.result?.status, DbTxStatus.Success);
+    assert.equal(txQuery4?.result?.canonical, true);
 
     // reorg the chain to make the tx no longer canonical
     for (const block of [block4, block5]) {
@@ -3538,14 +3583,14 @@ describe('postgres datastore', () => {
 
     // the tx should be in the mined tx table, marked as non-canonical
     const txQuery5 = await db.getTx({ txId: tx1.tx_id, includeUnanchored: false });
-    expect(txQuery5.found).toBe(true);
-    expect(txQuery5?.result?.status).toBe(DbTxStatus.Success);
-    expect(txQuery5?.result?.canonical).toBe(false);
+    assert.equal(txQuery5.found, true);
+    assert.equal(txQuery5?.result?.status, DbTxStatus.Success);
+    assert.equal(txQuery5?.result?.canonical, false);
 
     // the fork containing this tx was made canonical again, it should now in the mempool
     const txQuery6 = await db.getMempoolTx({ txId: tx1Mempool.tx_id, includeUnanchored: false });
-    expect(txQuery6.found).toBe(true);
-    expect(txQuery6?.result?.status).toBe(DbTxStatus.Pending);
+    assert.equal(txQuery6.found, true);
+    assert.equal(txQuery6?.result?.status, DbTxStatus.Pending);
 
     // mine the same tx in the latest canonical block
     await db.update({
@@ -3572,14 +3617,14 @@ describe('postgres datastore', () => {
 
     // tx should no longer be in the mempool after being mined
     const txQuery7 = await db.getMempoolTx({ txId: tx1b.tx_id, includeUnanchored: false });
-    expect(txQuery7.found).toBe(false);
+    assert.equal(txQuery7.found, false);
 
     // tx should be back in the mined tx table and associated with the new block
     const txQuery8 = await db.getTx({ txId: tx1b.tx_id, includeUnanchored: false });
-    expect(txQuery8.found).toBe(true);
-    expect(txQuery8.result?.index_block_hash).toBe(block6.index_block_hash);
-    expect(txQuery8.result?.canonical).toBe(true);
-    expect(txQuery8.result?.status).toBe(DbTxStatus.Success);
+    assert.equal(txQuery8.found, true);
+    assert.equal(txQuery8.result?.index_block_hash, block6.index_block_hash);
+    assert.equal(txQuery8.result?.canonical, true);
+    assert.equal(txQuery8.result?.status, DbTxStatus.Success);
   });
 
   test('pg reorg orphan restoration', async () => {
@@ -3884,16 +3929,16 @@ describe('postgres datastore', () => {
       prunedMempoolTxs: 0,
       restoredMempoolTxs: 0,
     };
-    expect(reorgResult).toEqual(expectedReorgResult);
+    assert.deepEqual(reorgResult, expectedReorgResult);
 
     const blockQuery1 = await db.getBlock({ hash: block1.block_hash });
-    expect(blockQuery1.result?.canonical).toBe(true);
+    assert.equal(blockQuery1.result?.canonical, true);
 
     const blockQuery2 = await db.getBlock({ hash: block2.block_hash });
-    expect(blockQuery2.result?.canonical).toBe(true);
+    assert.equal(blockQuery2.result?.canonical, true);
 
     const blockQuery3B = await db.getBlock({ hash: block3B.block_hash });
-    expect(blockQuery3B.result?.canonical).toBe(false);
+    assert.equal(blockQuery3B.result?.canonical, false);
   });
 
   test('pg reorg handling', async () => {
@@ -4191,12 +4236,12 @@ describe('postgres datastore', () => {
       includeUnanchored: false,
     });
     assert(name.found);
-    expect(name.result.canonical).toBe(true);
+    assert.equal(name.result.canonical, true);
 
     let namespace = await db.getNamespace({ namespace: 'abc', includeUnanchored: false });
     assert(namespace.found);
-    expect(namespace.result.canonical).toBe(true);
-    expect(namespace.result.index_block_hash).toBe(block2.index_block_hash);
+    assert.equal(namespace.result.canonical, true);
+    assert.equal(namespace.result.index_block_hash, block2.index_block_hash);
 
     let subdomain = await db.getSubdomain({
       subdomain: 'def.xyz.abc',
@@ -4204,8 +4249,8 @@ describe('postgres datastore', () => {
       chainId: ChainID.Mainnet,
     });
     assert(subdomain.found);
-    expect(subdomain.result.canonical).toBe(true);
-    expect(subdomain.result.index_block_hash).toBe(block2.index_block_hash);
+    assert.equal(subdomain.result.canonical, true);
+    assert.equal(subdomain.result.index_block_hash, block2.index_block_hash);
 
     const block3: DbBlock = {
       block_hash: '0x33',
@@ -4404,9 +4449,9 @@ describe('postgres datastore', () => {
     );
 
     const blockQuery1 = await db.getBlock({ hash: block2b.block_hash });
-    expect(blockQuery1.result?.canonical).toBe(false);
+    assert.equal(blockQuery1.result?.canonical, false);
     const chainTip1 = await db.getChainTip(db.sql);
-    expect(chainTip1).toEqual({
+    assert.deepEqual(chainTip1, {
       block_hash: '0x33',
       block_height: 3,
       index_block_hash: '0xcc',
@@ -4420,25 +4465,25 @@ describe('postgres datastore', () => {
       tx_count_unanchored: 2,
     });
     const namespaces = await db.getNamespaceList({ includeUnanchored: false });
-    expect(namespaces.results.length).toBe(1);
+    assert.equal(namespaces.results.length, 1);
     const names = await db.getNamespaceNamesList({
       namespace: 'abc',
       page: 0,
       includeUnanchored: false,
     });
-    expect(names.results.length).toBe(1);
+    assert.equal(names.results.length, 1);
 
     name = await db.getName({
       name: 'xyz.abc',
       includeUnanchored: false,
     });
     assert(name.found);
-    expect(name.result.canonical).toBe(true);
+    assert.equal(name.result.canonical, true);
 
     namespace = await db.getNamespace({ namespace: 'abc', includeUnanchored: false });
     assert(namespace.found);
-    expect(namespace.result.canonical).toBe(true);
-    expect(namespace.result.index_block_hash).toBe(block2.index_block_hash);
+    assert.equal(namespace.result.canonical, true);
+    assert.equal(namespace.result.index_block_hash, block2.index_block_hash);
 
     subdomain = await db.getSubdomain({
       subdomain: 'def.xyz.abc',
@@ -4446,8 +4491,8 @@ describe('postgres datastore', () => {
       chainId: ChainID.Mainnet,
     });
     assert(subdomain.found);
-    expect(subdomain.result.canonical).toBe(true);
-    expect(subdomain.result.index_block_hash).toBe(block2.index_block_hash);
+    assert.equal(subdomain.result.canonical, true);
+    assert.equal(subdomain.result.index_block_hash, block2.index_block_hash);
 
     const block3b: DbBlock = {
       block_hash: '0x33bb',
@@ -4476,10 +4521,10 @@ describe('postgres datastore', () => {
     };
     await db.update({ block: block3b, microblocks: [], minerRewards: [], txs: [] });
     const blockQuery2 = await db.getBlock({ hash: block3b.block_hash });
-    expect(blockQuery2.result?.canonical).toBe(false);
+    assert.equal(blockQuery2.result?.canonical, false);
     // Chain tip doesn't change yet.
     const chainTip2 = await db.getChainTip(db.sql);
-    expect(chainTip2).toEqual({
+    assert.deepEqual(chainTip2, {
       block_hash: '0x33',
       block_height: 3,
       index_block_hash: '0xcc',
@@ -4525,17 +4570,17 @@ describe('postgres datastore', () => {
       includeUnanchored: false,
     });
     assert(name.found);
-    expect(name.result.canonical).toBe(true);
+    assert.equal(name.result.canonical, true);
 
     namespace = await db.getNamespace({ namespace: 'abc', includeUnanchored: false });
     assert(namespace.found);
-    expect(namespace.result.canonical).toBe(true);
-    expect(namespace.result.index_block_hash).toBe(block2b.index_block_hash);
+    assert.equal(namespace.result.canonical, true);
+    assert.equal(namespace.result.index_block_hash, block2b.index_block_hash);
 
     const blockQuery3 = await db.getBlock({ hash: block3b.block_hash });
-    expect(blockQuery3.result?.canonical).toBe(true);
+    assert.equal(blockQuery3.result?.canonical, true);
     const chainTip3 = await db.getChainTip(db.sql);
-    expect(chainTip3).toEqual({
+    assert.deepEqual(chainTip3, {
       block_count: 4,
       block_hash: '0x44bb',
       block_height: 4,
@@ -4555,12 +4600,12 @@ describe('postgres datastore', () => {
     const b3 = await db.getBlock({ hash: block3.block_hash });
     const b3b = await db.getBlock({ hash: block3b.block_hash });
     const b4 = await db.getBlock({ hash: block4b.block_hash });
-    expect(b1.result?.canonical).toBe(true);
-    expect(b2.result?.canonical).toBe(false);
-    expect(b2b.result?.canonical).toBe(true);
-    expect(b3.result?.canonical).toBe(false);
-    expect(b3b.result?.canonical).toBe(true);
-    expect(b4.result?.canonical).toBe(true);
+    assert.equal(b1.result?.canonical, true);
+    assert.equal(b2.result?.canonical, false);
+    assert.equal(b2b.result?.canonical, true);
+    assert.equal(b3.result?.canonical, false);
+    assert.equal(b3b.result?.canonical, true);
+    assert.equal(b4.result?.canonical, true);
 
     const r1 = await db.getStxBalance({
       stxAddress: minerReward1.recipient,
@@ -4570,8 +4615,8 @@ describe('postgres datastore', () => {
       stxAddress: minerReward2.recipient,
       includeUnanchored: false,
     });
-    expect(r1.totalMinerRewardsReceived).toBe(1014n);
-    expect(r2.totalMinerRewardsReceived).toBe(0n);
+    assert.equal(r1.totalMinerRewardsReceived, 1014n);
+    assert.equal(r2.totalMinerRewardsReceived, 0n);
 
     const lock1 = await db.getStxBalance({
       stxAddress: stxLockEvent1.locked_address,
@@ -4581,18 +4626,18 @@ describe('postgres datastore', () => {
       stxAddress: stxLockEvent2.locked_address,
       includeUnanchored: false,
     });
-    expect(lock1.locked).toBe(1234n);
-    expect(lock2.locked).toBe(0n);
+    assert.equal(lock1.locked, 1234n);
+    assert.equal(lock2.locked, 0n);
 
     const t1 = await db.getTx({ txId: tx1.tx_id, includeUnanchored: false });
     const t2 = await db.getTx({ txId: tx2.tx_id, includeUnanchored: false });
     const t3 = await db.getTx({ txId: tx3.tx_id, includeUnanchored: false });
-    expect(t1.result?.canonical).toBe(true);
-    expect(t2.result?.canonical).toBe(false);
-    expect(t3.result?.canonical).toBe(true);
+    assert.equal(t1.result?.canonical, true);
+    assert.equal(t2.result?.canonical, false);
+    assert.equal(t3.result?.canonical, true);
 
     const sc1 = await db.getSmartContract(contract1.contract_id);
-    expect(sc1.found && sc1.result?.canonical).toBe(true);
+    assert.equal(sc1.found && sc1.result?.canonical, true);
 
     // Ensure STX holder balances have tracked correctly through the reorgs
     const holders1 = await db.getTokenHolders({ token: 'stx', limit: 100, offset: 0 });
@@ -4601,7 +4646,7 @@ describe('postgres datastore', () => {
         stxAddress: holder.address,
         includeUnanchored: false,
       });
-      expect(holder.balance).toBe(holderBalance.balance.toString());
+      assert.equal(holder.balance, holderBalance.balance.toString());
     }
   });
 
@@ -5126,7 +5171,8 @@ describe('postgres datastore', () => {
     });
 
     const holdersBlock2 = await db.getTokenHolders({ token: 'stx', limit: 100, offset: 0 });
-    expect(holdersBlock2.results.find(b => b.address === 'addr1')?.balance).toBe(
+    assert.equal(
+      holdersBlock2.results.find(b => b.address === 'addr1')?.balance,
       (
         minerReward1.coinbase_amount +
         minerReward1.tx_fees_anchored +
@@ -5147,12 +5193,14 @@ describe('postgres datastore', () => {
     );
 
     const holdersFtABlock2 = await db.getTokenHolders({ token: 'my-ft-a', limit: 100, offset: 0 });
-    expect(holdersFtABlock2.results.find(b => b.address === 'addr1')?.balance).toBe(
+    assert.equal(
+      holdersFtABlock2.results.find(b => b.address === 'addr1')?.balance,
       (ftAEvent1.amount + ftAEvent2.amount - ftAEvent3.amount + ftAEvent4.amount).toString()
     );
 
     const holdersFtBBlock2 = await db.getTokenHolders({ token: 'my-ft-b', limit: 100, offset: 0 });
-    expect(holdersFtBBlock2.results.find(b => b.address === 'addr1')?.balance).toBe(
+    assert.equal(
+      holdersFtBBlock2.results.find(b => b.address === 'addr1')?.balance,
       ftBEvent1.amount.toString()
     );
 
@@ -5189,24 +5237,25 @@ describe('postgres datastore', () => {
     const b3 = await db.getBlock({ hash: block3.block_hash });
     const b3b = await db.getBlock({ hash: block3b.block_hash });
     const b4 = await db.getBlock({ hash: block4b.block_hash });
-    expect(b1.result?.canonical).toBe(true);
-    expect(b2.result?.canonical).toBe(false);
-    expect(b2b.result?.canonical).toBe(true);
-    expect(b3.result?.canonical).toBe(false);
-    expect(b3b.result?.canonical).toBe(true);
-    expect(b4.result?.canonical).toBe(true);
+    assert.equal(b1.result?.canonical, true);
+    assert.equal(b2.result?.canonical, false);
+    assert.equal(b2b.result?.canonical, true);
+    assert.equal(b3.result?.canonical, false);
+    assert.equal(b3b.result?.canonical, true);
+    assert.equal(b4.result?.canonical, true);
 
     const t1 = await db.getTx({ txId: tx1.tx_id, includeUnanchored: false });
     const t2 = await db.getTx({ txId: tx2.tx_id, includeUnanchored: false });
     const t3 = await db.getTx({ txId: tx3.tx_id, includeUnanchored: false });
     const t4 = await db.getTx({ txId: tx4.tx_id, includeUnanchored: false });
-    expect(t1.result?.canonical).toBe(true);
-    expect(t2.result?.canonical).toBe(false);
-    expect(t3.result?.canonical).toBe(false);
-    expect(t4.result?.canonical).toBe(true);
+    assert.equal(t1.result?.canonical, true);
+    assert.equal(t2.result?.canonical, false);
+    assert.equal(t3.result?.canonical, false);
+    assert.equal(t4.result?.canonical, true);
 
     const holders1 = await db.getTokenHolders({ token: 'stx', limit: 100, offset: 0 });
-    expect(holders1.results.find(b => b.address === 'addr1')?.balance).toBe(
+    assert.equal(
+      holders1.results.find(b => b.address === 'addr1')?.balance,
       (
         minerReward1.coinbase_amount +
         minerReward1.tx_fees_anchored +
@@ -5224,18 +5273,20 @@ describe('postgres datastore', () => {
         stxAddress: holder.address,
         includeUnanchored: false,
       });
-      expect(holder.balance).toBe(holderBalance.balance.toString());
+      assert.equal(holder.balance, holderBalance.balance.toString());
     }
 
     // Ensure FT (token-a) holder balance have tracked correctly through the reorgs
     const holdersFtTokenA = await db.getTokenHolders({ token: 'my-ft-a', limit: 100, offset: 0 });
-    expect(holdersFtTokenA.results.find(b => b.address === 'addr1')?.balance).toBe(
+    assert.equal(
+      holdersFtTokenA.results.find(b => b.address === 'addr1')?.balance,
       ftAEvent1.amount.toString()
     );
 
     // Ensure FT (token-a) holder balance have tracked correctly through the reorgs
     const holdersFtTokenB = await db.getTokenHolders({ token: 'my-ft-b', limit: 100, offset: 0 });
-    expect(holdersFtTokenB.results.find(b => b.address === 'addr1')?.balance).toBe(
+    assert.equal(
+      holdersFtTokenB.results.find(b => b.address === 'addr1')?.balance,
       ftBEvent1.amount.toString()
     );
   });
@@ -5328,7 +5379,7 @@ describe('postgres datastore', () => {
 
     const fetchTx1 = await db.getRawTx(tx1.tx_id);
     assert(fetchTx1.found);
-    expect(fetchTx1.result.raw_tx).toEqual('0x616263');
+    assert.deepEqual(fetchTx1.result.raw_tx, '0x616263');
   });
 
   test('pg get raw tx: tx not found', async () => {
@@ -5418,7 +5469,7 @@ describe('postgres datastore', () => {
     });
 
     const fetchTx1 = await db.getRawTx('0x12');
-    expect(fetchTx1.found).toEqual(false);
+    assert.deepEqual(fetchTx1.found, false);
   });
 
   test('pg transaction event count', async () => {
@@ -5577,9 +5628,9 @@ describe('postgres datastore', () => {
     });
 
     const fetchTx1 = await db.getTx({ txId: tx1.tx_id, includeUnanchored: false });
-    expect(fetchTx1.result?.event_count).toBe(4);
+    assert.equal(fetchTx1.result?.event_count, 4);
     const fetchTx2 = await db.getTx({ txId: tx2.tx_id, includeUnanchored: false });
-    expect(fetchTx2.result?.event_count).toBe(0);
+    assert.equal(fetchTx2.result?.event_count, 0);
   });
 
   test('pg data insert in namespace', async () => {
@@ -5643,8 +5694,8 @@ describe('postgres datastore', () => {
       [namespace]
     );
     const { results } = await db.getNamespaceList({ includeUnanchored: false });
-    expect(results.length).toBe(1);
-    expect(results[0]).toBe('abc');
+    assert.equal(results.length, 1);
+    assert.equal(results[0], 'abc');
   });
 
   test('pg insert data in names', async () => {
@@ -5709,8 +5760,8 @@ describe('postgres datastore', () => {
       page: 0,
       includeUnanchored: false,
     });
-    expect(results.length).toBe(1);
-    expect(results[0]).toBe('xyz');
+    assert.equal(results.length, 1);
+    assert.equal(results[0], 'xyz');
   });
 
   test('pg subdomain insert and retrieve', async () => {
@@ -5775,8 +5826,8 @@ describe('postgres datastore', () => {
       subdomains
     );
     const { results } = await db.getSubdomainsList({ page: 0, includeUnanchored: false });
-    expect(results.length).toBe(1);
-    expect(results[0]).toBe('test.nametest.namespacetest');
+    assert.equal(results.length, 1);
+    assert.equal(results[0], 'test.nametest.namespacetest');
   });
 
   test('pg get transactions in a block', async () => {
@@ -5808,7 +5859,7 @@ describe('postgres datastore', () => {
     await db.updateBlock(client, block);
     const blockQuery = await db.getBlock({ hash: block.block_hash });
     assert(blockQuery.found);
-    expect(blockQuery.result).toEqual(block);
+    assert.deepEqual(blockQuery.result, block);
 
     const tx: DbTxRaw = {
       tx_id: '0x1234',
@@ -5890,8 +5941,8 @@ describe('postgres datastore', () => {
     await db.updateTx(client, tx2);
     const blockTxs = await db.getTxsFromBlock({ hash: block.block_hash }, 20, 0);
     assert(blockTxs.found);
-    expect(blockTxs.result.results.length).toBe(2);
-    expect(blockTxs.result.total).toBe(2);
+    assert.equal(blockTxs.result.results.length, 2);
+    assert.equal(blockTxs.result.total, 2);
   });
 
   test('pg get transactions in a block: with limit and offset', async () => {
@@ -5923,7 +5974,7 @@ describe('postgres datastore', () => {
     await db.updateBlock(client, block);
     const blockQuery = await db.getBlock({ hash: block.block_hash });
     assert(blockQuery.found);
-    expect(blockQuery.result).toEqual(block);
+    assert.deepEqual(blockQuery.result, block);
 
     const tx: DbTxRaw = {
       tx_id: '0x1234',
@@ -5965,8 +6016,8 @@ describe('postgres datastore', () => {
     await db.updateTx(client, tx);
     const blockTxs = await db.getTxsFromBlock({ hash: block.block_hash }, 20, 6);
     assert(blockTxs.found);
-    expect(blockTxs.result.results.length).toBe(0);
-    expect(blockTxs.result.total).toBe(1);
+    assert.equal(blockTxs.result.results.length, 0);
+    assert.equal(blockTxs.result.total, 1);
   });
 
   test('pg token offering locked inserted: success', async () => {
@@ -5987,12 +6038,13 @@ describe('postgres datastore', () => {
     };
     await db.updateBatchTokenOfferingLocked(client, [lockedInfo, lockedInfo2, lockedInfo3]);
     const results = await db.getTokenOfferingLocked(lockedInfo.address, 29157);
-    expect(results.found).toBe(true);
+    assert.equal(results.found, true);
     const total = lockedInfo.value + lockedInfo2.value + lockedInfo3.value;
-    expect(
-      BigInt(results.result?.total_locked ?? 0) + BigInt(results.result?.total_unlocked ?? 0)
-    ).toBe(total);
-    expect(results.result).toEqual({
+    assert.equal(
+      BigInt(results.result?.total_locked ?? 0) + BigInt(results.result?.total_unlocked ?? 0),
+      total
+    );
+    assert.deepEqual(results.result, {
       total_locked: '4139394444',
       total_unlocked: '8278788888',
       unlock_schedule: [
@@ -6017,7 +6069,7 @@ describe('postgres datastore', () => {
       'SM1ZH700J7CEDSEHM5AJ4C4MKKWNESTS35DD3SZM5',
       100
     );
-    expect(results.found).toBe(false);
+    assert.equal(results.found, false);
   });
 
   test('empty parameter lists are handled correctly', async () => {
@@ -6025,11 +6077,11 @@ describe('postgres datastore', () => {
     await db.update(block);
 
     // Blocks with limit=0
-    await expect(getBlocksWithMetadata({ limit: 0, offset: 0, db: db })).resolves.not.toThrow();
+    await assert.doesNotReject(getBlocksWithMetadata({ limit: 0, offset: 0, db: db }));
     // Mempool search with empty txIds
-    await expect(db.getMempoolTxs({ txIds: [], includeUnanchored: true })).resolves.not.toThrow();
+    await assert.doesNotReject(db.getMempoolTxs({ txIds: [], includeUnanchored: true }));
     // NFT holdings with empty asset identifier list
-    await expect(
+    await assert.doesNotReject(
       db.getNftHoldings({
         principal: 'S',
         assetIdentifiers: [],
@@ -6037,10 +6089,8 @@ describe('postgres datastore', () => {
         offset: 0,
         includeTxMetadata: false,
       })
-    ).resolves.not.toThrow();
+    );
     // Tx list details with empty txIds
-    await expect(
-      db.getTxListDetails({ txIds: [], includeUnanchored: true })
-    ).resolves.not.toThrow();
+    await assert.doesNotReject(db.getTxListDetails({ txIds: [], includeUnanchored: true }));
   });
 });

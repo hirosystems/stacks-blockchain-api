@@ -1,4 +1,4 @@
-import * as supertest from 'supertest';
+import supertest from 'supertest';
 import { ChainID } from '@stacks/transactions';
 import {
   DbBurnBlockPoxTx,
@@ -8,7 +8,9 @@ import {
 import { startApiServer, ApiServer } from '../../../src/api/init.ts';
 import { PgWriteStore } from '../../../src/datastore/pg-write-store.ts';
 import { PgSqlClient } from '@stacks/api-toolkit';
-import { migrate } from '../utils/test-helpers';
+import { migrate } from '../../test-helpers.ts';
+import { beforeEach, afterEach, describe, test } from 'node:test';
+import assert from 'node:assert/strict';
 
 describe('burnchain tests', () => {
   let db: PgWriteStore;
@@ -53,8 +55,8 @@ describe('burnchain tests', () => {
       slotHolders: [slotHolder1, slotHolder2],
     });
     const result = await supertest(api.server).get(`/extended/v1/burnchain/reward_slot_holders`);
-    expect(result.status).toBe(200);
-    expect(result.type).toBe('application/json');
+    assert.equal(result.status, 200);
+    assert.equal(result.type, 'application/json');
     const expectedResp1 = {
       limit: 96,
       offset: 0,
@@ -76,7 +78,7 @@ describe('burnchain tests', () => {
         },
       ],
     };
-    expect(JSON.parse(result.text)).toEqual(expectedResp1);
+    assert.deepEqual(JSON.parse(result.text), expectedResp1);
   });
 
   test('fetch reward slot holder entries for BTC address', async () => {
@@ -102,8 +104,8 @@ describe('burnchain tests', () => {
     const result = await supertest(api.server).get(
       `/extended/v1/burnchain/reward_slot_holders/${slotHolder1.address}`
     );
-    expect(result.status).toBe(200);
-    expect(result.type).toBe('application/json');
+    assert.equal(result.status, 200);
+    assert.equal(result.type, 'application/json');
     const expectedResp1 = {
       limit: 96,
       offset: 0,
@@ -118,7 +120,7 @@ describe('burnchain tests', () => {
         },
       ],
     };
-    expect(JSON.parse(result.text)).toEqual(expectedResp1);
+    assert.deepEqual(JSON.parse(result.text), expectedResp1);
   });
 
   test('fetch reward slot holder entries for mainnet STX address', async () => {
@@ -147,8 +149,8 @@ describe('burnchain tests', () => {
     const result = await supertest(api.server).get(
       `/extended/v1/burnchain/reward_slot_holders/${mainnetStxAddr}`
     );
-    expect(result.status).toBe(200);
-    expect(result.type).toBe('application/json');
+    assert.equal(result.status, 200);
+    assert.equal(result.type, 'application/json');
     const expectedResp1 = {
       limit: 96,
       offset: 0,
@@ -163,7 +165,7 @@ describe('burnchain tests', () => {
         },
       ],
     };
-    expect(JSON.parse(result.text)).toEqual(expectedResp1);
+    assert.deepEqual(JSON.parse(result.text), expectedResp1);
   });
 
   test('fetch burnchain rewards', async () => {
@@ -214,8 +216,8 @@ describe('burnchain tests', () => {
     const rewardResult = await supertest(api.server).get(
       `/extended/v1/burnchain/rewards?limit=3&offset=0`
     );
-    expect(rewardResult.status).toBe(200);
-    expect(rewardResult.type).toBe('application/json');
+    assert.equal(rewardResult.status, 200);
+    assert.equal(rewardResult.type, 'application/json');
     const expectedResp1 = {
       limit: 3,
       offset: 0,
@@ -249,7 +251,7 @@ describe('burnchain tests', () => {
         },
       ],
     };
-    expect(JSON.parse(rewardResult.text)).toEqual(expectedResp1);
+    assert.deepEqual(JSON.parse(rewardResult.text), expectedResp1);
   });
 
   test('fetch burnchain total rewards for BTC address', async () => {
@@ -293,13 +295,13 @@ describe('burnchain tests', () => {
     const rewardResult = await supertest(api.server).get(
       `/extended/v1/burnchain/rewards/${addr}/total`
     );
-    expect(rewardResult.status).toBe(200);
-    expect(rewardResult.type).toBe('application/json');
+    assert.equal(rewardResult.status, 200);
+    assert.equal(rewardResult.type, 'application/json');
     const expectedResp1 = {
       reward_recipient: '1G4ayBXJvxZMoZpaNdZG6VyWwWq2mHpMjQ',
       reward_amount: '3003',
     };
-    expect(JSON.parse(rewardResult.text)).toEqual(expectedResp1);
+    assert.deepEqual(JSON.parse(rewardResult.text), expectedResp1);
   });
 
   test('fetch burnchain rewards for BTC address', async () => {
@@ -317,8 +319,8 @@ describe('burnchain tests', () => {
       rewards: [reward1],
     });
     const rewardResult = await supertest(api.server).get(`/extended/v1/burnchain/rewards/${addr1}`);
-    expect(rewardResult.status).toBe(200);
-    expect(rewardResult.type).toBe('application/json');
+    assert.equal(rewardResult.status, 200);
+    assert.equal(rewardResult.type, 'application/json');
     const expectedResp1 = {
       limit: 96,
       offset: 0,
@@ -335,7 +337,7 @@ describe('burnchain tests', () => {
       ],
     };
 
-    expect(JSON.parse(rewardResult.text)).toEqual(expectedResp1);
+    assert.deepEqual(JSON.parse(rewardResult.text), expectedResp1);
   });
 
   test('fetch burnchain rewards for mainnet STX address', async () => {
@@ -357,8 +359,8 @@ describe('burnchain tests', () => {
     const rewardResult = await supertest(api.server).get(
       `/extended/v1/burnchain/rewards/${mainnetStxAddr}`
     );
-    expect(rewardResult.status).toBe(200);
-    expect(rewardResult.type).toBe('application/json');
+    assert.equal(rewardResult.status, 200);
+    assert.equal(rewardResult.type, 'application/json');
     const expectedResp1 = {
       limit: 96,
       offset: 0,
@@ -375,7 +377,7 @@ describe('burnchain tests', () => {
       ],
     };
 
-    expect(JSON.parse(rewardResult.text)).toEqual(expectedResp1);
+    assert.deepEqual(JSON.parse(rewardResult.text), expectedResp1);
   });
 
   test('fetch burnchain rewards for testnet STX address', async () => {
@@ -397,8 +399,8 @@ describe('burnchain tests', () => {
     const rewardResult = await supertest(api.server).get(
       `/extended/v1/burnchain/rewards/${testnetStxAddr}`
     );
-    expect(rewardResult.status).toBe(200);
-    expect(rewardResult.type).toBe('application/json');
+    assert.equal(rewardResult.status, 200);
+    assert.equal(rewardResult.type, 'application/json');
     const expectedResp1 = {
       limit: 96,
       offset: 0,
@@ -415,7 +417,7 @@ describe('burnchain tests', () => {
       ],
     };
 
-    expect(JSON.parse(rewardResult.text)).toEqual(expectedResp1);
+    assert.deepEqual(JSON.parse(rewardResult.text), expectedResp1);
   });
 
   test('fetch burnchain rewards for testnet STX address', async () => {
@@ -437,8 +439,8 @@ describe('burnchain tests', () => {
     const rewardResult = await supertest(api.server).get(
       `/extended/v1/burnchain/rewards/${testnetStxAddr}`
     );
-    expect(rewardResult.status).toBe(200);
-    expect(rewardResult.type).toBe('application/json');
+    assert.equal(rewardResult.status, 200);
+    assert.equal(rewardResult.type, 'application/json');
     const expectedResp1 = {
       limit: 96,
       offset: 0,
@@ -455,7 +457,7 @@ describe('burnchain tests', () => {
       ],
     };
 
-    expect(JSON.parse(rewardResult.text)).toEqual(expectedResp1);
+    assert.deepEqual(JSON.parse(rewardResult.text), expectedResp1);
   });
 
   describe('pox transactions', () => {
@@ -495,14 +497,14 @@ describe('burnchain tests', () => {
       let result = await supertest(api.server).get(
         `/extended/v2/burn-blocks/${burnBlocks[0].hash}/pox-transactions?limit=5`
       );
-      expect(result.status).toBe(200);
-      expect(result.type).toBe('application/json');
+      assert.equal(result.status, 200);
+      assert.equal(result.type, 'application/json');
       let jsonResult = JSON.parse(result.text);
-      expect(jsonResult.limit).toBe(5);
-      expect(jsonResult.offset).toBe(0);
-      expect(jsonResult.total).toBe(7);
-      expect(jsonResult.results.length).toBe(5);
-      expect(jsonResult.results[0]).toStrictEqual({
+      assert.equal(jsonResult.limit, 5);
+      assert.equal(jsonResult.offset, 0);
+      assert.equal(jsonResult.total, 7);
+      assert.equal(jsonResult.results.length, 5);
+      assert.deepEqual(jsonResult.results[0], {
         amount: '1000',
         burn_block_hash: burnBlocks[0].hash,
         burn_block_height: burnBlocks[0].height,
@@ -515,14 +517,14 @@ describe('burnchain tests', () => {
       result = await supertest(api.server).get(
         `/extended/v2/burn-blocks/${burnBlocks[1].height}/pox-transactions?offset=1`
       );
-      expect(result.status).toBe(200);
-      expect(result.type).toBe('application/json');
+      assert.equal(result.status, 200);
+      assert.equal(result.type, 'application/json');
       jsonResult = JSON.parse(result.text);
-      expect(jsonResult.limit).toBe(20);
-      expect(jsonResult.offset).toBe(1);
-      expect(jsonResult.total).toBe(7);
-      expect(jsonResult.results.length).toBe(6);
-      expect(jsonResult.results[0]).toStrictEqual({
+      assert.equal(jsonResult.limit, 20);
+      assert.equal(jsonResult.offset, 1);
+      assert.equal(jsonResult.total, 7);
+      assert.equal(jsonResult.results.length, 6);
+      assert.deepEqual(jsonResult.results[0], {
         amount: '5000',
         burn_block_hash: burnBlocks[1].hash,
         burn_block_height: burnBlocks[1].height,
@@ -533,14 +535,14 @@ describe('burnchain tests', () => {
 
       // Fetch for third block by latest
       result = await supertest(api.server).get(`/extended/v2/burn-blocks/latest/pox-transactions`);
-      expect(result.status).toBe(200);
-      expect(result.type).toBe('application/json');
+      assert.equal(result.status, 200);
+      assert.equal(result.type, 'application/json');
       jsonResult = JSON.parse(result.text);
-      expect(jsonResult.limit).toBe(20);
-      expect(jsonResult.offset).toBe(0);
-      expect(jsonResult.total).toBe(6);
-      expect(jsonResult.results.length).toBe(6);
-      expect(jsonResult.results[0]).toStrictEqual({
+      assert.equal(jsonResult.limit, 20);
+      assert.equal(jsonResult.offset, 0);
+      assert.equal(jsonResult.total, 6);
+      assert.equal(jsonResult.results.length, 6);
+      assert.deepEqual(jsonResult.results[0], {
         amount: '3000',
         burn_block_hash: burnBlocks[2].hash,
         burn_block_height: burnBlocks[2].height,
@@ -551,26 +553,26 @@ describe('burnchain tests', () => {
 
       // Fetch unknown block
       result = await supertest(api.server).get(`/extended/v2/burn-blocks/300/pox-transactions`);
-      expect(result.status).toBe(200);
-      expect(result.type).toBe('application/json');
+      assert.equal(result.status, 200);
+      assert.equal(result.type, 'application/json');
       jsonResult = JSON.parse(result.text);
-      expect(jsonResult.limit).toBe(20);
-      expect(jsonResult.offset).toBe(0);
-      expect(jsonResult.total).toBe(0);
-      expect(jsonResult.results.length).toBe(0);
+      assert.equal(jsonResult.limit, 20);
+      assert.equal(jsonResult.offset, 0);
+      assert.equal(jsonResult.total, 0);
+      assert.equal(jsonResult.results.length, 0);
 
       // Fetch for address with a limit and offset
       result = await supertest(api.server).get(
         `/extended/v2/addresses/${recipients[0]}/pox-transactions?limit=2&offset=1`
       );
-      expect(result.status).toBe(200);
-      expect(result.type).toBe('application/json');
+      assert.equal(result.status, 200);
+      assert.equal(result.type, 'application/json');
       jsonResult = JSON.parse(result.text);
-      expect(jsonResult.limit).toBe(2);
-      expect(jsonResult.offset).toBe(1);
-      expect(jsonResult.total).toBe(4);
-      expect(jsonResult.results.length).toBe(2);
-      expect(jsonResult.results[0]).toStrictEqual({
+      assert.equal(jsonResult.limit, 2);
+      assert.equal(jsonResult.offset, 1);
+      assert.equal(jsonResult.total, 4);
+      assert.equal(jsonResult.results.length, 2);
+      assert.deepEqual(jsonResult.results[0], {
         amount: '11000',
         burn_block_hash: burnBlocks[1].hash,
         burn_block_height: burnBlocks[1].height,

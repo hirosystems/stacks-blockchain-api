@@ -1,5 +1,7 @@
 import { BitVec } from '../../../src/helpers.ts';
 import { ECPair, getBitcoinAddressFromKey } from '../../../src/ec-helpers.ts';
+import { describe, test } from 'node:test';
+import assert from 'node:assert/strict';
 
 describe('Bitcoin address encoding formats', () => {
   test('P2PKH bitcoin address encoding', () => {
@@ -36,7 +38,7 @@ describe('Bitcoin address encoding formats', () => {
           network: vector.network,
           addressFormat: vector.format,
         });
-        expect(addrFromPriv).toBe(vector.address);
+        assert.equal(addrFromPriv, vector.address);
       }
       if (vector.publicKey) {
         const addrFromPub = getBitcoinAddressFromKey({
@@ -44,7 +46,7 @@ describe('Bitcoin address encoding formats', () => {
           network: vector.network,
           addressFormat: vector.format,
         });
-        expect(addrFromPub).toBe(vector.address);
+        assert.equal(addrFromPub, vector.address);
       }
     }
   });
@@ -83,7 +85,7 @@ describe('Bitcoin address encoding formats', () => {
           network: vector.network,
           addressFormat: vector.format,
         });
-        expect(addrFromPriv).toBe(vector.address);
+        assert.equal(addrFromPriv, vector.address);
       }
       if (vector.publicKey) {
         const addrFromPub = getBitcoinAddressFromKey({
@@ -91,7 +93,7 @@ describe('Bitcoin address encoding formats', () => {
           network: vector.network,
           addressFormat: vector.format,
         });
-        expect(addrFromPub).toBe(vector.address);
+        assert.equal(addrFromPub, vector.address);
       }
     }
   });
@@ -129,7 +131,7 @@ describe('Bitcoin address encoding formats', () => {
           network: vector.network,
           addressFormat: vector.format,
         });
-        expect(addrFromPriv).toBe(vector.address);
+        assert.equal(addrFromPriv, vector.address);
       }
       if (vector.publicKey) {
         const addrFromPub = getBitcoinAddressFromKey({
@@ -137,7 +139,7 @@ describe('Bitcoin address encoding formats', () => {
           network: vector.network,
           addressFormat: vector.format,
         });
-        expect(addrFromPub).toBe(vector.address);
+        assert.equal(addrFromPub, vector.address);
       }
     }
   });
@@ -174,7 +176,7 @@ describe('Bitcoin address encoding formats', () => {
           network: vector.network,
           addressFormat: vector.format,
         });
-        expect(addrFromPriv).toBe(vector.address);
+        assert.equal(addrFromPriv, vector.address);
       }
       if (vector.publicKey) {
         const addrFromPub = getBitcoinAddressFromKey({
@@ -182,7 +184,7 @@ describe('Bitcoin address encoding formats', () => {
           network: vector.network,
           addressFormat: vector.format,
         });
-        expect(addrFromPub).toBe(vector.address);
+        assert.equal(addrFromPub, vector.address);
       }
     }
   });
@@ -220,7 +222,7 @@ describe('Bitcoin address encoding formats', () => {
           network: vector.network,
           addressFormat: vector.format,
         });
-        expect(addrFromPriv).toBe(vector.address);
+        assert.equal(addrFromPriv, vector.address);
       }
       if (vector.publicKey) {
         const addrFromPub = getBitcoinAddressFromKey({
@@ -228,7 +230,7 @@ describe('Bitcoin address encoding formats', () => {
           network: vector.network,
           addressFormat: vector.format,
         });
-        expect(addrFromPub).toBe(vector.address);
+        assert.equal(addrFromPub, vector.address);
       }
     }
   });
@@ -269,7 +271,7 @@ describe('Bitcoin address encoding formats', () => {
           network: vector.network,
           addressFormat: vector.format,
         });
-        expect(addrFromPriv).toBe(vector.address);
+        assert.equal(addrFromPriv, vector.address);
       }
       if (vector.publicKey) {
         const addrFromPub = getBitcoinAddressFromKey({
@@ -277,7 +279,7 @@ describe('Bitcoin address encoding formats', () => {
           network: vector.network,
           addressFormat: vector.format,
         });
-        expect(addrFromPub).toBe(vector.address);
+        assert.equal(addrFromPub, vector.address);
       }
     }
   });
@@ -314,14 +316,14 @@ describe('Bitcoin address encoding formats', () => {
           network: vector.network,
           addressFormat: 'p2tr',
         });
-        expect(p2trAddrFromPriv).toBe(vector.address);
+        assert.equal(p2trAddrFromPriv, vector.address);
       }
       const p2trAddrFromPub = getBitcoinAddressFromKey({
         publicKey: vector.publicKey,
         network: vector.network,
         addressFormat: 'p2tr',
       });
-      expect(p2trAddrFromPub).toBe(vector.address);
+      assert.equal(p2trAddrFromPub, vector.address);
     }
 
     const randomEcPair = ECPair.makeRandom({ compressed: true });
@@ -330,14 +332,14 @@ describe('Bitcoin address encoding formats', () => {
       network: 'mainnet',
       addressFormat: 'p2tr',
     });
-    expect(randP2TRMainnet).toMatch(/^bc1p/);
+    assert.ok(randP2TRMainnet.startsWith('bc1p'));
 
     const randP2TRTestnet = getBitcoinAddressFromKey({
       publicKey: randomEcPair.publicKey,
       network: 'testnet',
       addressFormat: 'p2tr',
     });
-    expect(randP2TRTestnet).toMatch(/^tb1p/);
+    assert.ok(randP2TRTestnet.startsWith('tb1p'));
   });
 });
 
@@ -345,24 +347,24 @@ test('signer bitvec decoding', () => {
   const signerBitvecString1 = '00010000000100';
   const signerBitvecPayload1 = Buffer.from(signerBitvecString1, 'hex');
   const bitVec1 = BitVec.consensusDeserialize(signerBitvecPayload1);
-  expect(bitVec1.bits).toHaveLength(1);
-  expect(bitVec1.bits).toStrictEqual([false]);
-  expect(bitVec1.toString()).toBe('0');
-  expect(BitVec.consensusDeserializeToString(signerBitvecString1)).toBe('0');
+  assert.equal(bitVec1.bits.length, 1);
+  assert.deepEqual(bitVec1.bits, [false]);
+  assert.equal(bitVec1.toString(), '0');
+  assert.equal(BitVec.consensusDeserializeToString(signerBitvecString1), '0');
 
   const signerBitvecString2 = '000100000001ff';
   const signerBitvecPayload2 = Buffer.from(signerBitvecString2, 'hex');
   const bitVec2 = BitVec.consensusDeserialize(signerBitvecPayload2);
-  expect(bitVec2.bits).toHaveLength(1);
-  expect(bitVec2.bits).toStrictEqual([true]);
-  expect(bitVec2.toString()).toBe('1');
-  expect(BitVec.consensusDeserializeToString(signerBitvecString2)).toBe('1');
+  assert.equal(bitVec2.bits.length, 1);
+  assert.deepEqual(bitVec2.bits, [true]);
+  assert.equal(bitVec2.toString(), '1');
+  assert.equal(BitVec.consensusDeserializeToString(signerBitvecString2), '1');
 
   const signerBitvecString3 = '000300000001c0';
   const signerBitvecPayload3 = Buffer.from(signerBitvecString3, 'hex');
   const bitVec3 = BitVec.consensusDeserialize(signerBitvecPayload3);
-  expect(bitVec3.bits).toHaveLength(3);
-  expect(bitVec3.bits).toStrictEqual([true, true, false]);
-  expect(bitVec3.toString()).toBe('110');
-  expect(BitVec.consensusDeserializeToString(signerBitvecString3)).toBe('110');
+  assert.equal(bitVec3.bits.length, 3);
+  assert.deepEqual(bitVec3.bits, [true, true, false]);
+  assert.equal(bitVec3.toString(), '110');
+  assert.equal(BitVec.consensusDeserializeToString(signerBitvecString3), '110');
 });
