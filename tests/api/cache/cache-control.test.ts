@@ -1,4 +1,4 @@
-import * as supertest from 'supertest';
+import supertest from 'supertest';
 import { ChainID } from '@stacks/transactions';
 import { getBlockFromDataStore } from '../../../src/api/controllers/db-controller.ts';
 import {
@@ -10,10 +10,13 @@ import {
 } from '../../../src/datastore/common.ts';
 import { startApiServer, ApiServer } from '../../../src/api/init.ts';
 import { I32_MAX } from '../../../src/helpers.ts';
-import { TestBlockBuilder, testMempoolTx } from '../utils/test-builders';
+import { TestBlockBuilder, testMempoolTx } from '../test-builders.ts';
 import { PgWriteStore } from '../../../src/datastore/pg-write-store.ts';
 import { bufferToHex } from '@stacks/api-toolkit';
-import { migrate } from '../utils/test-helpers';
+import { migrate } from '../../test-helpers.ts';
+import { beforeEach, afterEach, describe, test } from 'node:test';
+import assert from 'node:assert/strict';
+import { assertMatchesObject } from '../test-helpers.ts';
 
 describe('cache-control tests', () => {
   let db: PgWriteStore;
@@ -157,71 +160,71 @@ describe('cache-control tests', () => {
       microblock_tx_count: {},
     };
 
-    expect(blockQuery.result).toMatchObject(expectedResp1);
+    assertMatchesObject(blockQuery.result, expectedResp1);
 
     const fetchBlockByHash1 = await supertest(api.server).get(
       `/extended/v1/block/${block1.block_hash}`
     );
-    expect(fetchBlockByHash1.status).toBe(200);
-    expect(fetchBlockByHash1.type).toBe('application/json');
-    expect(JSON.parse(fetchBlockByHash1.text)).toMatchObject(expectedResp1);
-    expect(fetchBlockByHash1.headers['etag']).toBe(`"${block1.index_block_hash}"`);
+    assert.equal(fetchBlockByHash1.status, 200);
+    assert.equal(fetchBlockByHash1.type, 'application/json');
+    assertMatchesObject(JSON.parse(fetchBlockByHash1.text), expectedResp1);
+    assert.equal(fetchBlockByHash1.headers['etag'], `"${block1.index_block_hash}"`);
 
     const fetchBlockByHashCached1 = await supertest(api.server)
       .get(`/extended/v1/block/${block1.block_hash}`)
       .set('If-None-Match', `"${block1.index_block_hash}"`);
-    expect(fetchBlockByHashCached1.status).toBe(304);
-    expect(fetchBlockByHashCached1.text).toBe('');
+    assert.equal(fetchBlockByHashCached1.status, 304);
+    assert.equal(fetchBlockByHashCached1.text, '');
 
     const fetchBlockByHashCacheMiss = await supertest(api.server)
       .get(`/extended/v1/block/${block1.block_hash}`)
       .set('If-None-Match', '"0x12345678"');
-    expect(fetchBlockByHashCacheMiss.status).toBe(200);
-    expect(fetchBlockByHashCacheMiss.type).toBe('application/json');
-    expect(JSON.parse(fetchBlockByHashCacheMiss.text)).toMatchObject(expectedResp1);
-    expect(fetchBlockByHashCacheMiss.headers['etag']).toBe(`"${block1.index_block_hash}"`);
+    assert.equal(fetchBlockByHashCacheMiss.status, 200);
+    assert.equal(fetchBlockByHashCacheMiss.type, 'application/json');
+    assertMatchesObject(JSON.parse(fetchBlockByHashCacheMiss.text), expectedResp1);
+    assert.equal(fetchBlockByHashCacheMiss.headers['etag'], `"${block1.index_block_hash}"`);
 
     const fetchBlockByHeight = await supertest(api.server).get(
       `/extended/v1/block/by_height/${block1.block_height}`
     );
-    expect(fetchBlockByHeight.status).toBe(200);
-    expect(fetchBlockByHeight.type).toBe('application/json');
-    expect(JSON.parse(fetchBlockByHeight.text)).toMatchObject(expectedResp1);
-    expect(fetchBlockByHeight.headers['etag']).toBe(`"${block1.index_block_hash}"`);
+    assert.equal(fetchBlockByHeight.status, 200);
+    assert.equal(fetchBlockByHeight.type, 'application/json');
+    assertMatchesObject(JSON.parse(fetchBlockByHeight.text), expectedResp1);
+    assert.equal(fetchBlockByHeight.headers['etag'], `"${block1.index_block_hash}"`);
 
     const fetchBlockByHeightCached = await supertest(api.server)
       .get(`/extended/v1/block/by_height/${block1.block_height}`)
       .set('If-None-Match', `"${block1.index_block_hash}"`);
-    expect(fetchBlockByHeightCached.status).toBe(304);
-    expect(fetchBlockByHeightCached.text).toBe('');
+    assert.equal(fetchBlockByHeightCached.status, 304);
+    assert.equal(fetchBlockByHeightCached.text, '');
 
     const fetchBlockByHeightCacheMiss = await supertest(api.server)
       .get(`/extended/v1/block/by_height/${block1.block_height}`)
       .set('If-None-Match', '"0x12345678"');
-    expect(fetchBlockByHashCacheMiss.status).toBe(200);
-    expect(fetchBlockByHeightCacheMiss.type).toBe('application/json');
-    expect(JSON.parse(fetchBlockByHeightCacheMiss.text)).toMatchObject(expectedResp1);
-    expect(fetchBlockByHeightCacheMiss.headers['etag']).toBe(`"${block1.index_block_hash}"`);
+    assert.equal(fetchBlockByHashCacheMiss.status, 200);
+    assert.equal(fetchBlockByHeightCacheMiss.type, 'application/json');
+    assertMatchesObject(JSON.parse(fetchBlockByHeightCacheMiss.text), expectedResp1);
+    assert.equal(fetchBlockByHeightCacheMiss.headers['etag'], `"${block1.index_block_hash}"`);
 
-    const fetchStxSupplyResp1 = expect.objectContaining({ total_stx: expect.any(String) });
+    const fetchStxSupplyResp1 = { total_stx: String };
     const fetchStxSupply = await supertest(api.server).get(`/extended/v1/stx_supply`);
-    expect(fetchStxSupply.type).toBe('application/json');
-    expect(fetchStxSupply.body).toEqual(fetchStxSupplyResp1);
-    expect(fetchStxSupply.headers['etag']).toBe(`"${block1.index_block_hash}"`);
+    assert.equal(fetchStxSupply.type, 'application/json');
+    assertMatchesObject(fetchStxSupply.body, fetchStxSupplyResp1);
+    assert.equal(fetchStxSupply.headers['etag'], `"${block1.index_block_hash}"`);
 
     const fetchStxSupplyCached = await supertest(api.server)
       .get(`/extended/v1/stx_supply`)
       .set('If-None-Match', `"${block1.index_block_hash}"`);
-    expect(fetchStxSupplyCached.status).toBe(304);
-    expect(fetchStxSupplyCached.text).toBe('');
+    assert.equal(fetchStxSupplyCached.status, 304);
+    assert.equal(fetchStxSupplyCached.text, '');
 
     const fetchStxSupplyCacheMiss = await supertest(api.server)
       .get(`/extended/v1/stx_supply`)
       .set('If-None-Match', '"0x12345678"');
-    expect(fetchStxSupplyCacheMiss.status).toBe(200);
-    expect(fetchStxSupplyCacheMiss.type).toBe('application/json');
-    expect(fetchStxSupplyCacheMiss.body).toEqual(fetchStxSupplyResp1);
-    expect(fetchStxSupplyCacheMiss.headers['etag']).toBe(`"${block1.index_block_hash}"`);
+    assert.equal(fetchStxSupplyCacheMiss.status, 200);
+    assert.equal(fetchStxSupplyCacheMiss.type, 'application/json');
+    assertMatchesObject(fetchStxSupplyCacheMiss.body, fetchStxSupplyResp1);
+    assert.equal(fetchStxSupplyCacheMiss.headers['etag'], `"${block1.index_block_hash}"`);
 
     const mb1: DbMicroblockPartial = {
       microblock_hash: '0xff01',
@@ -297,11 +300,11 @@ describe('cache-control tests', () => {
     });
 
     const chainTip2 = await db.getChainTip(db.sql);
-    expect(chainTip2.block_hash).toBe(block1.block_hash);
-    expect(chainTip2.block_height).toBe(block1.block_height);
-    expect(chainTip2.index_block_hash).toBe(block1.index_block_hash);
-    expect(chainTip2.microblock_hash).toBe(mb1.microblock_hash);
-    expect(chainTip2.microblock_sequence).toBe(mb1.microblock_sequence);
+    assert.equal(chainTip2.block_hash, block1.block_hash);
+    assert.equal(chainTip2.block_height, block1.block_height);
+    assert.equal(chainTip2.index_block_hash, block1.index_block_hash);
+    assert.equal(chainTip2.microblock_hash, mb1.microblock_hash);
+    assert.equal(chainTip2.microblock_sequence, mb1.microblock_sequence);
 
     const expectedResp2 = {
       burn_block_time: 1594647996,
@@ -332,16 +335,16 @@ describe('cache-control tests', () => {
     const fetchBlockByHash2 = await supertest(api.server).get(
       `/extended/v1/block/${block1.block_hash}`
     );
-    expect(fetchBlockByHash2.status).toBe(200);
-    expect(fetchBlockByHash2.type).toBe('application/json');
-    expect(JSON.parse(fetchBlockByHash2.text)).toMatchObject(expectedResp2);
-    expect(fetchBlockByHash2.headers['etag']).toBe(`"${mb1.microblock_hash}"`);
+    assert.equal(fetchBlockByHash2.status, 200);
+    assert.equal(fetchBlockByHash2.type, 'application/json');
+    assertMatchesObject(JSON.parse(fetchBlockByHash2.text), expectedResp2);
+    assert.equal(fetchBlockByHash2.headers['etag'], `"${mb1.microblock_hash}"`);
 
     const fetchBlockByHashCached2 = await supertest(api.server)
       .get(`/extended/v1/block/${block1.block_hash}`)
       .set('If-None-Match', `"${mb1.microblock_hash}"`);
-    expect(fetchBlockByHashCached2.status).toBe(304);
-    expect(fetchBlockByHashCached2.text).toBe('');
+    assert.equal(fetchBlockByHashCached2.status, 304);
+    assert.equal(fetchBlockByHashCached2.text, '');
   });
 
   test('mempool digest cache control', async () => {
@@ -355,8 +358,8 @@ describe('cache-control tests', () => {
 
     // ETag zero.
     const request1 = await supertest(api.server).get('/extended/v1/tx/mempool');
-    expect(request1.status).toBe(200);
-    expect(request1.type).toBe('application/json');
+    assert.equal(request1.status, 200);
+    assert.equal(request1.type, 'application/json');
     const etag0 = request1.headers['etag'];
 
     // Add mempool txs.
@@ -366,18 +369,18 @@ describe('cache-control tests', () => {
 
     // Valid ETag.
     const request2 = await supertest(api.server).get('/extended/v1/tx/mempool');
-    expect(request2.status).toBe(200);
-    expect(request2.type).toBe('application/json');
-    expect(request2.headers['etag']).toBeTruthy();
+    assert.equal(request2.status, 200);
+    assert.equal(request2.type, 'application/json');
+    assert.ok(request2.headers['etag']);
     const etag1 = request2.headers['etag'];
-    expect(etag1).not.toEqual(etag0);
+    assert.notDeepEqual(etag1, etag0);
 
     // Cache works with valid ETag.
     const request3 = await supertest(api.server)
       .get('/extended/v1/tx/mempool')
       .set('If-None-Match', etag1);
-    expect(request3.status).toBe(304);
-    expect(request3.text).toBe('');
+    assert.equal(request3.status, 304);
+    assert.equal(request3.text, '');
 
     // Drop one tx.
     await db.dropMempoolTxs({
@@ -390,9 +393,9 @@ describe('cache-control tests', () => {
     const request4 = await supertest(api.server)
       .get('/extended/v1/tx/mempool')
       .set('If-None-Match', etag1);
-    expect(request4.status).toBe(200);
-    expect(request4.type).toBe('application/json');
-    expect(request4.headers['etag'] !== etag1).toEqual(true);
+    assert.equal(request4.status, 200);
+    assert.equal(request4.type, 'application/json');
+    assert.deepEqual(request4.headers['etag'] !== etag1, true);
     const etag2 = request4.headers['etag'];
 
     // Prune the other tx from the mempool by confirming it into a block.
@@ -409,8 +412,8 @@ describe('cache-control tests', () => {
     const request5 = await supertest(api.server)
       .get('/extended/v1/tx/mempool')
       .set('If-None-Match', etag2);
-    expect(request5.status).toBe(200);
-    expect(request5.type).toBe('application/json');
+    assert.equal(request5.status, 200);
+    assert.equal(request5.type, 'application/json');
     const etag3 = request5.headers['etag'];
 
     // Restore a tx back into the mempool by making its anchor block non-canonical.
@@ -435,9 +438,9 @@ describe('cache-control tests', () => {
     const request6 = await supertest(api.server)
       .get('/extended/v1/tx/mempool')
       .set('If-None-Match', etag3);
-    expect(request6.status).toBe(200);
-    expect(request6.type).toBe('application/json');
-    expect(request6.headers['etag']).not.toEqual(etag3);
+    assert.equal(request6.status, 200);
+    assert.equal(request6.type, 'application/json');
+    assert.notDeepEqual(request6.headers['etag'], etag3);
     const etag4 = request6.headers['etag'];
 
     // Garbage collect all txs.
@@ -454,9 +457,9 @@ describe('cache-control tests', () => {
     const request7 = await supertest(api.server)
       .get('/extended/v1/tx/mempool')
       .set('If-None-Match', etag4);
-    expect(request7.status).toBe(200);
-    expect(request7.type).toBe('application/json');
-    expect(request7.headers['etag']).not.toEqual(etag4);
+    assert.equal(request7.status, 200);
+    assert.equal(request7.type, 'application/json');
+    assert.notDeepEqual(request7.headers['etag'], etag4);
   });
 
   test('transaction cache control', async () => {
@@ -473,8 +476,8 @@ describe('cache-control tests', () => {
 
     // No tx yet.
     const request1 = await supertest(api.server).get(`/extended/v1/tx/${txId1}`);
-    expect(request1.status).toBe(404);
-    expect(request1.type).toBe('application/json');
+    assert.equal(request1.status, 404);
+    assert.equal(request1.type, 'application/json');
 
     // Add mempool tx.
     const mempoolTx1 = testMempoolTx({ tx_id: txId1 });
@@ -482,17 +485,17 @@ describe('cache-control tests', () => {
 
     // Valid mempool ETag.
     const request2 = await supertest(api.server).get(`/extended/v1/tx/${txId1}`);
-    expect(request2.status).toBe(200);
-    expect(request2.type).toBe('application/json');
-    expect(request2.headers['etag']).toBeTruthy();
+    assert.equal(request2.status, 200);
+    assert.equal(request2.type, 'application/json');
+    assert.ok(request2.headers['etag']);
     const etag1 = request2.headers['etag'];
 
     // Cache works with valid ETag.
     const request3 = await supertest(api.server)
       .get(`/extended/v1/tx/${txId1}`)
       .set('If-None-Match', etag1);
-    expect(request3.status).toBe(304);
-    expect(request3.text).toBe('');
+    assert.equal(request3.status, 304);
+    assert.equal(request3.text, '');
 
     // Mine the same tx into a block
     const block2 = new TestBlockBuilder({
@@ -508,21 +511,21 @@ describe('cache-control tests', () => {
     const request4 = await supertest(api.server)
       .get(`/extended/v1/tx/${txId1}`)
       .set('If-None-Match', etag1);
-    expect(request4.status).toBe(200);
-    expect(request4.headers['etag']).toBeTruthy();
+    assert.equal(request4.status, 200);
+    assert.ok(request4.headers['etag']);
     const etag2 = request4.headers['etag'];
 
     // Cache works with new ETag.
     const request5 = await supertest(api.server)
       .get(`/extended/v1/tx/${txId1}`)
       .set('If-None-Match', etag2);
-    expect(request5.status).toBe(304);
-    expect(request5.text).toBe('');
+    assert.equal(request5.status, 304);
+    assert.equal(request5.text, '');
 
     // No tx #2 yet.
     const request6 = await supertest(api.server).get(`/extended/v1/tx/${txId2}`);
-    expect(request6.status).toBe(404);
-    expect(request6.type).toBe('application/json');
+    assert.equal(request6.status, 404);
+    assert.equal(request6.type, 'application/json');
 
     // Tx #2 directly into a block
     const block3 = new TestBlockBuilder({
@@ -536,17 +539,17 @@ describe('cache-control tests', () => {
 
     // Valid block ETag.
     const request7 = await supertest(api.server).get(`/extended/v1/tx/${txId2}`);
-    expect(request7.status).toBe(200);
-    expect(request7.type).toBe('application/json');
-    expect(request7.headers['etag']).toBeTruthy();
+    assert.equal(request7.status, 200);
+    assert.equal(request7.type, 'application/json');
+    assert.ok(request7.headers['etag']);
     const etag3 = request7.headers['etag'];
 
     // Cache works with valid ETag.
     const request8 = await supertest(api.server)
       .get(`/extended/v1/tx/${txId2}`)
       .set('If-None-Match', etag3);
-    expect(request8.status).toBe(304);
-    expect(request8.text).toBe('');
+    assert.equal(request8.status, 304);
+    assert.equal(request8.text, '');
 
     // Oops, new blocks came, all txs before are non-canonical
     const block2a = new TestBlockBuilder({
@@ -578,16 +581,16 @@ describe('cache-control tests', () => {
     const request9 = await supertest(api.server)
       .get(`/extended/v1/tx/${txId1}`)
       .set('If-None-Match', etag2);
-    expect(request9.status).toBe(200);
-    expect(request9.headers['etag']).toBeTruthy();
+    assert.equal(request9.status, 200);
+    assert.ok(request9.headers['etag']);
     const etag4 = request9.headers['etag'];
 
     // Cache works again with new ETag.
     const request10 = await supertest(api.server)
       .get(`/extended/v1/tx/${txId1}`)
       .set('If-None-Match', etag4);
-    expect(request10.status).toBe(304);
-    expect(request10.text).toBe('');
+    assert.equal(request10.status, 304);
+    assert.equal(request10.text, '');
 
     // Mine tx in a new block
     const block5 = new TestBlockBuilder({
@@ -603,10 +606,10 @@ describe('cache-control tests', () => {
     const request11 = await supertest(api.server)
       .get(`/extended/v1/tx/${txId1}`)
       .set('If-None-Match', etag2);
-    expect(request11.status).toBe(200);
-    expect(request11.headers['etag']).toBeTruthy();
+    assert.equal(request11.status, 200);
+    assert.ok(request11.headers['etag']);
     const etag5 = request11.headers['etag'];
-    expect(etag2).not.toBe(etag5);
+    assert.notEqual(etag2, etag5);
   });
 
   test('principal cache control', async () => {
@@ -622,8 +625,8 @@ describe('cache-control tests', () => {
 
     // ETag zero.
     const request1 = await supertest(api.server).get(url);
-    expect(request1.status).toBe(200);
-    expect(request1.type).toBe('application/json');
+    assert.equal(request1.status, 200);
+    assert.equal(request1.type, 'application/json');
     const etag0 = request1.headers['etag'];
 
     // Add STX txs.
@@ -640,16 +643,16 @@ describe('cache-control tests', () => {
 
     // Valid ETag.
     const request2 = await supertest(api.server).get(url);
-    expect(request2.status).toBe(200);
-    expect(request2.type).toBe('application/json');
-    expect(request2.headers['etag']).toBeTruthy();
+    assert.equal(request2.status, 200);
+    assert.equal(request2.type, 'application/json');
+    assert.ok(request2.headers['etag']);
     const etag1 = request2.headers['etag'];
-    expect(etag1).not.toEqual(etag0);
+    assert.notDeepEqual(etag1, etag0);
 
     // Cache works with valid ETag.
     const request3 = await supertest(api.server).get(url).set('If-None-Match', etag1);
-    expect(request3.status).toBe(304);
-    expect(request3.text).toBe('');
+    assert.equal(request3.status, 304);
+    assert.equal(request3.text, '');
 
     // Add FT tx.
     await db.update(
@@ -665,15 +668,15 @@ describe('cache-control tests', () => {
 
     // Cache is now a miss.
     const request4 = await supertest(api.server).get(url).set('If-None-Match', etag1);
-    expect(request4.status).toBe(200);
-    expect(request4.type).toBe('application/json');
-    expect(request4.headers['etag']).not.toEqual(etag1);
+    assert.equal(request4.status, 200);
+    assert.equal(request4.type, 'application/json');
+    assert.notDeepEqual(request4.headers['etag'], etag1);
     const etag2 = request4.headers['etag'];
 
     // Cache works with new ETag.
     const request5 = await supertest(api.server).get(url).set('If-None-Match', etag2);
-    expect(request5.status).toBe(304);
-    expect(request5.text).toBe('');
+    assert.equal(request5.status, 304);
+    assert.equal(request5.text, '');
 
     // Add NFT tx.
     await db.update(
@@ -689,15 +692,15 @@ describe('cache-control tests', () => {
 
     // Cache is now a miss.
     const request6 = await supertest(api.server).get(url).set('If-None-Match', etag2);
-    expect(request6.status).toBe(200);
-    expect(request6.type).toBe('application/json');
-    expect(request6.headers['etag']).not.toEqual(etag2);
+    assert.equal(request6.status, 200);
+    assert.equal(request6.type, 'application/json');
+    assert.notDeepEqual(request6.headers['etag'], etag2);
     const etag3 = request6.headers['etag'];
 
     // Cache works with new ETag.
     const request7 = await supertest(api.server).get(url).set('If-None-Match', etag3);
-    expect(request7.status).toBe(304);
-    expect(request7.text).toBe('');
+    assert.equal(request7.status, 304);
+    assert.equal(request7.text, '');
 
     // Add sponsored tx.
     await db.update(
@@ -712,15 +715,15 @@ describe('cache-control tests', () => {
 
     // Cache is now a miss.
     const request8 = await supertest(api.server).get(url).set('If-None-Match', etag2);
-    expect(request8.status).toBe(200);
-    expect(request8.type).toBe('application/json');
-    expect(request8.headers['etag']).not.toEqual(etag3);
+    assert.equal(request8.status, 200);
+    assert.equal(request8.type, 'application/json');
+    assert.notDeepEqual(request8.headers['etag'], etag3);
     const etag4 = request8.headers['etag'];
 
     // Cache works with new ETag.
     const request9 = await supertest(api.server).get(url).set('If-None-Match', etag4);
-    expect(request9.status).toBe(304);
-    expect(request9.text).toBe('');
+    assert.equal(request9.status, 304);
+    assert.equal(request9.text, '');
 
     // Advance chain with no changes to this address.
     await db.update(
@@ -733,8 +736,8 @@ describe('cache-control tests', () => {
 
     // Cache still works.
     const request10 = await supertest(api.server).get(url).set('If-None-Match', etag4);
-    expect(request10.status).toBe(304);
-    expect(request10.text).toBe('');
+    assert.equal(request10.status, 304);
+    assert.equal(request10.text, '');
   });
 
   test('principal mempool cache control', async () => {
@@ -750,8 +753,8 @@ describe('cache-control tests', () => {
 
     // ETag zero.
     const request1 = await supertest(api.server).get(url);
-    expect(request1.status).toBe(200);
-    expect(request1.type).toBe('application/json');
+    assert.equal(request1.status, 200);
+    assert.equal(request1.type, 'application/json');
     const etag0 = request1.headers['etag'];
 
     // Add STX tx.
@@ -763,16 +766,16 @@ describe('cache-control tests', () => {
 
     // Valid ETag.
     const request2 = await supertest(api.server).get(url);
-    expect(request2.status).toBe(200);
-    expect(request2.type).toBe('application/json');
-    expect(request2.headers['etag']).toBeTruthy();
+    assert.equal(request2.status, 200);
+    assert.equal(request2.type, 'application/json');
+    assert.ok(request2.headers['etag']);
     const etag1 = request2.headers['etag'];
-    expect(etag1).not.toEqual(etag0);
+    assert.notDeepEqual(etag1, etag0);
 
     // Cache works with valid ETag.
     const request3 = await supertest(api.server).get(url).set('If-None-Match', etag1);
-    expect(request3.status).toBe(304);
-    expect(request3.text).toBe('');
+    assert.equal(request3.status, 304);
+    assert.equal(request3.text, '');
 
     // Add sponsor tx.
     await db.updateMempoolTxs({
@@ -788,15 +791,15 @@ describe('cache-control tests', () => {
 
     // Cache is now a miss.
     const request4 = await supertest(api.server).get(url).set('If-None-Match', etag1);
-    expect(request4.status).toBe(200);
-    expect(request4.type).toBe('application/json');
-    expect(request4.headers['etag']).not.toEqual(etag1);
+    assert.equal(request4.status, 200);
+    assert.equal(request4.type, 'application/json');
+    assert.notDeepEqual(request4.headers['etag'], etag1);
     const etag2 = request4.headers['etag'];
 
     // Cache works with new ETag.
     const request5 = await supertest(api.server).get(url).set('If-None-Match', etag2);
-    expect(request5.status).toBe(304);
-    expect(request5.text).toBe('');
+    assert.equal(request5.status, 304);
+    assert.equal(request5.text, '');
 
     // Add token recipient tx.
     await db.updateMempoolTxs({
@@ -812,15 +815,15 @@ describe('cache-control tests', () => {
 
     // Cache is now a miss.
     const request6 = await supertest(api.server).get(url).set('If-None-Match', etag2);
-    expect(request6.status).toBe(200);
-    expect(request6.type).toBe('application/json');
-    expect(request6.headers['etag']).not.toEqual(etag2);
+    assert.equal(request6.status, 200);
+    assert.equal(request6.type, 'application/json');
+    assert.notDeepEqual(request6.headers['etag'], etag2);
     const etag3 = request6.headers['etag'];
 
     // Cache works with new ETag.
     const request7 = await supertest(api.server).get(url).set('If-None-Match', etag3);
-    expect(request7.status).toBe(304);
-    expect(request7.text).toBe('');
+    assert.equal(request7.status, 304);
+    assert.equal(request7.text, '');
 
     // Change mempool with no changes to this address.
     await db.updateMempoolTxs({
@@ -829,8 +832,8 @@ describe('cache-control tests', () => {
 
     // Cache still works.
     const request8 = await supertest(api.server).get(url).set('If-None-Match', etag3);
-    expect(request8.status).toBe(304);
-    expect(request8.text).toBe('');
+    assert.equal(request8.status, 304);
+    assert.equal(request8.text, '');
   });
 
   test('principal mempool cache on received tx balance confirmation', async () => {
@@ -846,8 +849,8 @@ describe('cache-control tests', () => {
 
     // ETag zero.
     const request1 = await supertest(api.server).get(url);
-    expect(request1.status).toBe(200);
-    expect(request1.type).toBe('application/json');
+    assert.equal(request1.status, 200);
+    assert.equal(request1.type, 'application/json');
     const etag0 = request1.headers['etag'];
 
     // Add receiving STX tx.
@@ -863,19 +866,19 @@ describe('cache-control tests', () => {
 
     // Valid ETag.
     const request2 = await supertest(api.server).get(url);
-    expect(request2.status).toBe(200);
-    expect(request2.type).toBe('application/json');
-    expect(request2.headers['etag']).toBeTruthy();
+    assert.equal(request2.status, 200);
+    assert.equal(request2.type, 'application/json');
+    assert.ok(request2.headers['etag']);
     const json2 = JSON.parse(request2.text);
-    expect(json2.stx.balance).toBe('0');
-    expect(json2.stx.estimated_balance).toBe('2000');
+    assert.equal(json2.stx.balance, '0');
+    assert.equal(json2.stx.estimated_balance, '2000');
     const etag1 = request2.headers['etag'];
-    expect(etag1).not.toEqual(etag0);
+    assert.notDeepEqual(etag1, etag0);
 
     // Cache works with valid ETag.
     const request3 = await supertest(api.server).get(url).set('If-None-Match', etag1);
-    expect(request3.status).toBe(304);
-    expect(request3.text).toBe('');
+    assert.equal(request3.status, 304);
+    assert.equal(request3.text, '');
 
     // Confirm mempool tx.
     await db.update(
@@ -895,12 +898,12 @@ describe('cache-control tests', () => {
 
     // Cache is now a miss.
     const request4 = await supertest(api.server).get(url).set('If-None-Match', etag1);
-    expect(request4.status).toBe(200);
-    expect(request4.type).toBe('application/json');
-    expect(request4.headers['etag']).not.toEqual(etag1);
+    assert.equal(request4.status, 200);
+    assert.equal(request4.type, 'application/json');
+    assert.notDeepEqual(request4.headers['etag'], etag1);
     const json4 = JSON.parse(request4.text);
-    expect(json4.stx.balance).toBe('2000');
-    expect(json4.stx.estimated_balance).toBe('2000');
+    assert.equal(json4.stx.balance, '2000');
+    assert.equal(json4.stx.estimated_balance, '2000');
   });
 
   test('block cache control', async () => {
@@ -921,30 +924,30 @@ describe('cache-control tests', () => {
 
     // Valid latest Etag.
     const request1 = await supertest(api.server).get(`/extended/v2/blocks/latest`);
-    expect(request1.status).toBe(200);
-    expect(request1.type).toBe('application/json');
+    assert.equal(request1.status, 200);
+    assert.equal(request1.type, 'application/json');
     const etag0 = request1.headers['etag'];
 
     // Same block hash Etag.
     const request2 = await supertest(api.server).get(
       `/extended/v2/blocks/0x8f652ee1f26bfbffe3cf111994ade25286687b76e6a2f64c33b4632a1f4545ac`
     );
-    expect(request2.status).toBe(200);
-    expect(request2.type).toBe('application/json');
-    expect(request2.headers['etag']).toEqual(etag0);
+    assert.equal(request2.status, 200);
+    assert.equal(request2.type, 'application/json');
+    assert.deepEqual(request2.headers['etag'], etag0);
 
     // Same block height Etag.
     const request3 = await supertest(api.server).get(`/extended/v2/blocks/2`);
-    expect(request3.status).toBe(200);
-    expect(request3.type).toBe('application/json');
-    expect(request3.headers['etag']).toEqual(etag0);
+    assert.equal(request3.status, 200);
+    assert.equal(request3.type, 'application/json');
+    assert.deepEqual(request3.headers['etag'], etag0);
 
     // Cache works with valid ETag.
     const request4 = await supertest(api.server)
       .get(`/extended/v2/blocks/2`)
       .set('If-None-Match', etag0);
-    expect(request4.status).toBe(304);
-    expect(request4.text).toBe('');
+    assert.equal(request4.status, 304);
+    assert.equal(request4.text, '');
 
     // Add new block.
     await db.update(
@@ -960,8 +963,8 @@ describe('cache-control tests', () => {
     const request5 = await supertest(api.server)
       .get(`/extended/v2/blocks/2`)
       .set('If-None-Match', etag0);
-    expect(request5.status).toBe(304);
-    expect(request5.text).toBe('');
+    assert.equal(request5.status, 304);
+    assert.equal(request5.text, '');
 
     // Re-org block 2
     await db.update(
@@ -990,16 +993,16 @@ describe('cache-control tests', () => {
     const request6 = await supertest(api.server)
       .get(`/extended/v2/blocks/2`)
       .set('If-None-Match', etag0);
-    expect(request6.status).toBe(200);
-    expect(request6.type).toBe('application/json');
-    expect(request6.headers['etag']).not.toEqual(etag0);
+    assert.equal(request6.status, 200);
+    assert.equal(request6.type, 'application/json');
+    assert.notDeepEqual(request6.headers['etag'], etag0);
     const etag1 = request6.headers['etag'];
 
     // Cache works with new ETag.
     const request7 = await supertest(api.server)
       .get(`/extended/v2/blocks/2`)
       .set('If-None-Match', etag1);
-    expect(request7.status).toBe(304);
-    expect(request7.text).toBe('');
+    assert.equal(request7.status, 304);
+    assert.equal(request7.text, '');
   });
 });
