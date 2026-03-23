@@ -1,14 +1,16 @@
-import * as supertest from 'supertest';
+import supertest from 'supertest';
 import { PgSqlClient } from '@stacks/api-toolkit';
 import { ChainID } from '@stacks/common';
 import { ApiServer, startApiServer } from '../../../src/api/init.ts';
 import { PgWriteStore } from '../../../src/datastore/pg-write-store.ts';
 import { importEventsFromTsv } from '../../../src/event-replay/event-replay.ts';
-import { migrate } from '../utils/test-helpers';
+import { migrate } from '../../test-helpers.ts';
 import { Transaction } from '../../../src/api/schemas/entities/transactions.ts';
 import { TransactionResults } from '../../../src/api/schemas/responses/responses.ts';
 import { AddressTransaction } from '../../../src/api/schemas/entities/addresses.ts';
 import { ENV } from '../../../src/env.ts';
+import assert from 'node:assert/strict';
+import { after, before, describe, test } from 'node:test';
 
 describe('Out-of-order-multisig tx tests', () => {
   let db: PgWriteStore;
@@ -18,7 +20,7 @@ describe('Out-of-order-multisig tx tests', () => {
   const oooMultiSigTxId = '0xdbc0172e2230a3e9d937762754e407574872f1bc3fdbaf74eb73413433d4ad59';
   const oooMultiSigSenderAddress = 'SN581ZYV1BAKNXQV95HWS53SB4N3ZVSEPNNCM8ZV';
 
-  beforeAll(async () => {
+  before(async () => {
     await migrate('up');
     db = await PgWriteStore.connect({
       usageName: 'tests',
@@ -32,7 +34,7 @@ describe('Out-of-order-multisig tx tests', () => {
     ENV.STACKS_CHAIN_ID = '0x80000000';
   });
 
-  afterAll(async () => {
+  after(async () => {
     await api.terminate();
     await db?.close();
     await migrate('down');
@@ -40,7 +42,7 @@ describe('Out-of-order-multisig tx tests', () => {
 
   test('tsv replay with out-of-order-multisig tx', async () => {
     await importEventsFromTsv(
-      'tests/api/tsv/regtest-env-pox-4-out-of-order-multisig-tx.tsv',
+      'tests/api/event-server/tsv/regtest-env-pox-4-out-of-order-multisig-tx.tsv',
       'archival',
       true,
       true
@@ -51,25 +53,23 @@ describe('Out-of-order-multisig tx tests', () => {
     const { body: tx }: { body: Transaction } = await supertest(api.server).get(
       `/extended/v1/tx/${oooMultiSigTxId}`
     );
-    expect(tx.tx_id).toBe(oooMultiSigTxId);
-    expect(tx.sender_address).toBe(oooMultiSigSenderAddress);
-    expect(tx.tx_type).toBe('token_transfer');
-    expect(tx.tx_status).toBe('success');
+    assert.equal(tx.tx_id, oooMultiSigTxId);
+    assert.equal(tx.sender_address, oooMultiSigSenderAddress);
+    assert.equal(tx.tx_type, 'token_transfer');
+    assert.equal(tx.tx_status, 'success');
   });
 
   test('lookup tx by sender address', async () => {
     const { body }: { body: TransactionResults } = await supertest(api.server).get(
       `/extended/v1/tx?from_address=${oooMultiSigSenderAddress}`
     );
-    expect(body.results).toEqual(
-      expect.arrayContaining([expect.objectContaining({ tx_id: oooMultiSigTxId })])
-    );
+    assert.ok(body.results.some(result => result.tx_id === oooMultiSigTxId));
   });
 
   test('lookup address txs', async () => {
     const { body }: { body: { results: AddressTransaction[] } } = await supertest(api.server).get(
       `/extended/v2/addresses/${oooMultiSigSenderAddress}/transactions`
     );
-    expect(body.results[0].tx).toEqual(expect.objectContaining({ tx_id: oooMultiSigTxId }));
+    assert.equal(body.results[0].tx.tx_id, oooMultiSigTxId);
   });
 });

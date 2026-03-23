@@ -4,8 +4,10 @@ import { httpPostRequest } from '../../../src/helpers.ts';
 import { EventStreamServer, startEventServer } from '../../../src/event-stream/event-server.ts';
 import { PgWriteStore } from '../../../src/datastore/pg-write-store.ts';
 import { PgSqlClient } from '@stacks/api-toolkit';
-import { migrate } from '../utils/test-helpers';
-import { TestBlockBuilder, TestMicroblockStreamBuilder } from '../utils/test-builders';
+import { migrate } from '../../test-helpers.ts';
+import { TestBlockBuilder, TestMicroblockStreamBuilder } from '../test-builders.ts';
+import assert from 'node:assert/strict';
+import { afterEach, beforeEach, describe, test } from 'node:test';
 
 describe('api event-server tests', () => {
   let db: PgWriteStore;
@@ -981,11 +983,11 @@ describe('api event-server tests', () => {
     });
 
     const dbBlock1 = await db.getBlock({ hash: payload.block_hash });
-    expect(dbBlock1.found).toBe(true);
-    expect(dbBlock1.result?.execution_cost_read_count).toBe(payload.anchored_cost.read_count);
-    expect(dbBlock1.result?.execution_cost_read_length).toBe(payload.anchored_cost.read_length);
-    expect(dbBlock1.result?.execution_cost_runtime).toBe(payload.anchored_cost.runtime);
-    expect(dbBlock1.result?.execution_cost_write_count).toBe(payload.anchored_cost.write_count);
-    expect(dbBlock1.result?.execution_cost_write_length).toBe(payload.anchored_cost.write_length);
+    assert.equal(dbBlock1.found, true);
+    assert.equal(dbBlock1.result?.execution_cost_read_count, payload.anchored_cost.read_count);
+    assert.equal(dbBlock1.result?.execution_cost_read_length, payload.anchored_cost.read_length);
+    assert.equal(dbBlock1.result?.execution_cost_runtime, payload.anchored_cost.runtime);
+    assert.equal(dbBlock1.result?.execution_cost_write_count, payload.anchored_cost.write_count);
+    assert.equal(dbBlock1.result?.execution_cost_write_length, payload.anchored_cost.write_length);
   });
 });

@@ -1,11 +1,13 @@
-import * as supertest from 'supertest';
+import supertest from 'supertest';
 import { PgSqlClient, timeout } from '@stacks/api-toolkit';
 import { ChainID } from '@stacks/common';
 import { ApiServer, startApiServer } from '../../../src/api/init.ts';
 import { PgWriteStore } from '../../../src/datastore/pg-write-store.ts';
 import { importEventsFromTsv } from '../../../src/event-replay/event-replay.ts';
-import { migrate } from '../utils/test-helpers';
+import { migrate } from '../../test-helpers.ts';
 import { ENV } from '../../../src/env.ts';
+import assert from 'node:assert/strict';
+import { afterEach, beforeEach, describe, test } from 'node:test';
 
 describe('PoX tests', () => {
   let db: PgWriteStore;
@@ -34,8 +36,8 @@ describe('PoX tests', () => {
 
   test('api with empty cycles', async () => {
     const cycles0 = await supertest(api.server).get(`/extended/v2/pox/cycles`);
-    expect(cycles0.status).toBe(200);
-    expect(JSON.parse(cycles0.text)).toStrictEqual({
+    assert.equal(cycles0.status, 200);
+    assert.deepEqual(JSON.parse(cycles0.text), {
       limit: 20,
       offset: 0,
       results: [],
@@ -44,11 +46,16 @@ describe('PoX tests', () => {
   });
 
   test('api', async () => {
-    await importEventsFromTsv('tests/api/tsv/epoch-3-transition.tsv', 'archival', true, true);
+    await importEventsFromTsv(
+      'tests/api/event-server/tsv/epoch-3-transition.tsv',
+      'archival',
+      true,
+      true
+    );
     const cycles = await supertest(api.server).get(`/extended/v2/pox/cycles`);
-    expect(cycles.status).toBe(200);
-    expect(cycles.type).toBe('application/json');
-    expect(JSON.parse(cycles.text)).toStrictEqual({
+    assert.equal(cycles.status, 200);
+    assert.equal(cycles.type, 'application/json');
+    assert.deepEqual(JSON.parse(cycles.text), {
       limit: 20,
       offset: 0,
       results: [
@@ -88,9 +95,9 @@ describe('PoX tests', () => {
       total: 4,
     });
     const cycle = await supertest(api.server).get(`/extended/v2/pox/cycles/14`);
-    expect(cycle.status).toBe(200);
-    expect(cycle.type).toBe('application/json');
-    expect(JSON.parse(cycle.text)).toStrictEqual({
+    assert.equal(cycle.status, 200);
+    assert.equal(cycle.type, 'application/json');
+    assert.deepEqual(JSON.parse(cycle.text), {
       block_height: 50,
       cycle_number: 14,
       index_block_hash: '0xf5be33abc4e508bdaf2191e88339372edcb3358c44e2a31e1b9b44f2880dde09',
@@ -99,9 +106,9 @@ describe('PoX tests', () => {
       total_weight: 9,
     });
     const signers = await supertest(api.server).get(`/extended/v2/pox/cycles/14/signers`);
-    expect(signers.status).toBe(200);
-    expect(signers.type).toBe('application/json');
-    expect(JSON.parse(signers.text)).toStrictEqual({
+    assert.equal(signers.status, 200);
+    assert.equal(signers.type, 'application/json');
+    assert.deepEqual(JSON.parse(signers.text), {
       limit: 100,
       offset: 0,
       results: [
@@ -141,9 +148,9 @@ describe('PoX tests', () => {
     const signer = await supertest(api.server).get(
       `/extended/v2/pox/cycles/14/signers/0x038e3c4529395611be9abf6fa3b6987e81d402385e3d605a073f42f407565a4a3d`
     );
-    expect(signer.status).toBe(200);
-    expect(signer.type).toBe('application/json');
-    expect(JSON.parse(signer.text)).toStrictEqual({
+    assert.equal(signer.status, 200);
+    assert.equal(signer.type, 'application/json');
+    assert.deepEqual(JSON.parse(signer.text), {
       signing_key: '0x038e3c4529395611be9abf6fa3b6987e81d402385e3d605a073f42f407565a4a3d',
       signer_address: 'STRYYQQ9M8KAF4NS7WNZQYY59X93XEKR31JP64CP',
       stacked_amount: '686251350000000000',
@@ -156,9 +163,9 @@ describe('PoX tests', () => {
     const stackers = await supertest(api.server).get(
       `/extended/v2/pox/cycles/14/signers/0x038e3c4529395611be9abf6fa3b6987e81d402385e3d605a073f42f407565a4a3d/stackers`
     );
-    expect(stackers.status).toBe(200);
-    expect(stackers.type).toBe('application/json');
-    expect(JSON.parse(stackers.text)).toStrictEqual({
+    assert.equal(stackers.status, 200);
+    assert.equal(stackers.type, 'application/json');
+    assert.deepEqual(JSON.parse(stackers.text), {
       limit: 100,
       offset: 0,
       results: [
@@ -187,50 +194,46 @@ describe('PoX tests', () => {
 
     test('snapshot 1', async () => {
       await importEventsFromTsv(
-        'tests/api/tsv/regtest-env-pox-4-stack-stx-in-reward-phase-S1.tsv',
+        'tests/api/event-server/tsv/regtest-env-pox-4-stack-stx-in-reward-phase-S1.tsv',
         'archival',
         true,
         true
       );
 
       const cycles = await supertest(api.server).get(`/extended/v2/pox/cycles`);
-      expect(cycles.status).toBe(200);
-      expect(cycles.type).toBe('application/json');
-      expect(JSON.parse(cycles.text).results.length).toBe(0); // regtest doesn't send pox-set earlier
+      assert.equal(cycles.status, 200);
+      assert.equal(cycles.type, 'application/json');
+      assert.equal(JSON.parse(cycles.text).results.length, 0); // regtest doesn't send pox-set earlier
     });
 
     test('snapshot 2', async () => {
       await importEventsFromTsv(
-        'tests/api/tsv/regtest-env-pox-4-stack-stx-in-reward-phase-S2.tsv',
+        'tests/api/event-server/tsv/regtest-env-pox-4-stack-stx-in-reward-phase-S2.tsv',
         'archival',
         true,
         true
       );
 
       const cycles = await supertest(api.server).get(`/extended/v2/pox/cycles`);
-      expect(cycles.status).toBe(200);
-      expect(cycles.type).toBe('application/json');
-      expect(JSON.parse(cycles.text).results[0]).toEqual(
-        expect.objectContaining({
-          cycle_number: 6, // !!! next cycle (even though we're still in cycle 5)
-          total_signers: 3, // no addition signer
-          total_weight: 21, // additional weight from steph's stacking
-        })
-      );
+      assert.equal(cycles.status, 200);
+      assert.equal(cycles.type, 'application/json');
+      assert.equal(JSON.parse(cycles.text).results[0].cycle_number, 6); // !!! next cycle (even though we're still in cycle 5)
+      assert.equal(JSON.parse(cycles.text).results[0].total_signers, 3); // no addition signer
+      assert.equal(JSON.parse(cycles.text).results[0].total_weight, 21); // additional weight from steph's stacking
     });
 
     test('snapshot 3', async () => {
       await importEventsFromTsv(
-        'tests/api/tsv/regtest-env-pox-4-stack-stx-in-reward-phase-S3.tsv',
+        'tests/api/event-server/tsv/regtest-env-pox-4-stack-stx-in-reward-phase-S3.tsv',
         'archival',
         true,
         true
       );
 
       const cycles = await supertest(api.server).get(`/extended/v2/pox/cycles`);
-      expect(cycles.status).toBe(200);
-      expect(cycles.type).toBe('application/json');
-      expect(JSON.parse(cycles.text)).toStrictEqual({
+      assert.equal(cycles.status, 200);
+      assert.equal(cycles.type, 'application/json');
+      assert.deepEqual(JSON.parse(cycles.text), {
         limit: 20,
         offset: 0,
         results: [
@@ -247,9 +250,9 @@ describe('PoX tests', () => {
       });
 
       const cycle = await supertest(api.server).get(`/extended/v2/pox/cycles/6`);
-      expect(cycle.status).toBe(200);
-      expect(cycle.type).toBe('application/json');
-      expect(JSON.parse(cycle.text)).toStrictEqual({
+      assert.equal(cycle.status, 200);
+      assert.equal(cycle.type, 'application/json');
+      assert.deepEqual(JSON.parse(cycle.text), {
         block_height: 14,
         cycle_number: 6,
         index_block_hash: '0xb2c9e06611349a04e98012748547a5dea6d60fd6d69e43244b9c0a483f1f7c86',
@@ -259,9 +262,9 @@ describe('PoX tests', () => {
       });
 
       const signers = await supertest(api.server).get(`/extended/v2/pox/cycles/6/signers`);
-      expect(signers.status).toBe(200);
-      expect(signers.type).toBe('application/json');
-      expect(JSON.parse(signers.text)).toStrictEqual({
+      assert.equal(signers.status, 200);
+      assert.equal(signers.type, 'application/json');
+      assert.deepEqual(JSON.parse(signers.text), {
         limit: 100,
         offset: 0,
         results: [
@@ -303,9 +306,9 @@ describe('PoX tests', () => {
       const signer = await supertest(api.server).get(
         `/extended/v2/pox/cycles/6/signers/0x029fb154a570a1645af3dd43c3c668a979b59d21a46dd717fd799b13be3b2a0dc7`
       );
-      expect(signer.status).toBe(200);
-      expect(signer.type).toBe('application/json');
-      expect(JSON.parse(signer.text)).toStrictEqual({
+      assert.equal(signer.status, 200);
+      assert.equal(signer.type, 'application/json');
+      assert.deepEqual(JSON.parse(signer.text), {
         signing_key: '0x029fb154a570a1645af3dd43c3c668a979b59d21a46dd717fd799b13be3b2a0dc7',
         signer_address: 'ST3NBRSFKX28FQ2ZJ1MAKX58HKHSDGNV5N7R21XCP',
         stacked_amount: '5000340000000000',
@@ -319,9 +322,9 @@ describe('PoX tests', () => {
       const stackers = await supertest(api.server).get(
         `/extended/v2/pox/cycles/6/signers/0x029fb154a570a1645af3dd43c3c668a979b59d21a46dd717fd799b13be3b2a0dc7/stackers`
       );
-      expect(stackers.status).toBe(200);
-      expect(stackers.type).toBe('application/json');
-      expect(JSON.parse(stackers.text)).toStrictEqual({
+      assert.equal(stackers.status, 200);
+      assert.equal(stackers.type, 'application/json');
+      assert.deepEqual(JSON.parse(stackers.text), {
         limit: 100,
         offset: 0,
         results: [
