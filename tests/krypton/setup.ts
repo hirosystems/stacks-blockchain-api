@@ -48,12 +48,6 @@ export async function globalSetup() {
 export async function globalTeardown() {
   const containers = kryptonContainers();
   for (const config of [...containers].reverse()) {
-    try {
-      process.stdout.write(`\n[testenv:krypton] logs for ${config.name}\n`);
-      await runLogs(config, ['--once']); // tail last logs
-    } catch (error) {
-      process.stdout.write(`[testenv:krypton] could not read logs for ${config.name}: ${error}\n`);
-    }
     await runDown(config);
   }
   process.stdout.write(`[testenv:krypton] all containers removed\n`);

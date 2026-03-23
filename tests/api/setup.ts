@@ -21,63 +21,7 @@ function defaultContainers(): ContainerConfig[] {
     volumes: ['tests/api/event-replay/.tmp/local/:/root/'],
   };
 
-  const bitcoind: ContainerConfig = {
-    image: 'blockstack/bitcoind:v0.20.99.0',
-    name: `stacks-api-test-bitcoind`,
-    ports: [
-      { host: 18443, container: 18443 },
-      { host: 18444, container: 18444 },
-    ],
-    waitPort: 18443,
-    command: [
-      '/usr/local/bin/bitcoind',
-      '-printtoconsole',
-      '-regtest=1',
-      '-txindex=1',
-      '-rpcallowip=0.0.0.0/0',
-      '-rpcbind=0.0.0.0',
-      '-rpcuser=btc',
-      '-rpcpassword=btc',
-    ],
-  };
-
-  const bitcoindFillFaucet: ContainerConfig = {
-    image: 'byrnedo/alpine-curl',
-    name: `stacks-api-test-bitcoind-fill-faucet`,
-    ports: [],
-    waitForReady: false,
-    restartPolicy: 'on-failure',
-    command: [
-      '-f',
-      '-u',
-      'btc:btc',
-      '--data-binary',
-      '{"jsonrpc": "1.0", "id":"c", "method": "generatetoaddress", "params": [110, "mrzLDS7LT3otAnpiRWGYkWipdnAZJaXAZQ"] }',
-      '-H',
-      'content-type: text/plain;',
-      'http://host.docker.internal:18443/',
-    ],
-    extraHosts: ['host.docker.internal:host-gateway'],
-  };
-
-  const stacksBlockchain: ContainerConfig = {
-    image: 'hirosystems/stacks-api-e2e:stacks3.0-0a2c0e2',
-    name: `stacks-api-test-stacks-blockchain`,
-    ports: [
-      { host: 20443, container: 20443 },
-      { host: 20444, container: 20444 },
-    ],
-    waitPort: 20443,
-    env: [
-      'STACKS_EVENT_OBSERVER=host.docker.internal:3700',
-      'BLOCKSTACK_USE_TEST_GENESIS_CHAINSTATE=1',
-      'NOP_BLOCKSTACK_DEBUG=1',
-    ],
-    extraHosts: ['host.docker.internal:host-gateway'],
-    restartPolicy: 'on-failure',
-  };
-
-  return [postgres, bitcoind, bitcoindFillFaucet, stacksBlockchain];
+  return [postgres];
 }
 
 export async function globalSetup() {

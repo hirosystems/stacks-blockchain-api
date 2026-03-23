@@ -19,6 +19,7 @@ function snpContainers(): ContainerConfig[] {
     image: 'redis:7',
     name: `stacks-api-test-snp-redis`,
     ports: [{ host: 6379, container: 6379 }],
+    waitPort: 6379,
   };
 
   const snp: ContainerConfig = {
@@ -35,6 +36,7 @@ function snpContainers(): ContainerConfig[] {
       'PGPASSWORD=postgres',
       'PGDATABASE=postgres',
     ],
+    waitPort: 3022,
     extraHosts: ['host.docker.internal:host-gateway'],
   };
 
