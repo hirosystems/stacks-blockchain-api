@@ -102,7 +102,6 @@ async function waitForSNP(): Promise<void> {
       console.error(`SNP not ready at ${snpUrl}: ${error}`);
     }
     if (attempt >= maxAttempts) {
-      await runLogs(snpContainers()[2], ['--once']);
       break;
     }
     await timeout(100);
@@ -117,6 +116,14 @@ export async function globalSetup() {
   await waitForPostgres();
   await waitForRedis();
   await waitForSNP();
+  for (const config of containers) {
+    try {
+      process.stdout.write(`\n[testenv:snp] logs for ${config.name}\n`);
+      await runLogs(config, ['--once']);
+    } catch (error) {
+      process.stdout.write(`[testenv:snp] could not read logs for ${config.name}: ${error}\n`);
+    }
+  }
   process.stdout.write(`[testenv:snp] all containers ready\n`);
 }
 
