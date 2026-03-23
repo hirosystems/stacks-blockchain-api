@@ -44,6 +44,7 @@ async function standByForPoxToBeReady(client: StacksCoreRpcClient): Promise<void
       }
       break;
     } catch (error) {
+      console.error(error);
       console.log(`Waiting on PoX-4 to be ready, retrying after ${error}`);
       await timeout(500);
     }
