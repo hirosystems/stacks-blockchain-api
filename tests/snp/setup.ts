@@ -117,9 +117,12 @@ export async function globalSetup() {
   await waitForRedis();
   await waitForSNP();
   for (const config of containers) {
+    if (config.name != 'stacks-api-test-snp') {
+      continue;
+    }
     try {
       process.stdout.write(`\n[testenv:snp] logs for ${config.name}\n`);
-      await runLogs(config, ['--once']);
+      await runLogs(config, ['--follow']);
     } catch (error) {
       process.stdout.write(`[testenv:snp] could not read logs for ${config.name}: ${error}\n`);
     }
