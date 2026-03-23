@@ -89,18 +89,21 @@
       "type": "node",
       "request": "launch",
       "name": "test: api",
-      "program": "${workspaceFolder}/node_modules/.bin/jest",
+      "runtimeExecutable": "node",
       "args": [
-        "--testTimeout=3600000",
-        "--runInBand",
-        "--no-cache",
-        "--config",
-        "${workspaceRoot}/tests/jest.config.api.js"
+        "--import",
+        "tsx",
+        "--test",
+        "--test-global-setup=./tests/api/setup.ts",
+        "--test-concurrency=1",
+        // "--test-name-pattern", "websocket notifications",
+        "./tests/api/**/*.test.ts"
       ],
       "outputCapture": "std",
       "console": "integratedTerminal",
-      "preLaunchTask": "npm: testenv:run",
-      "postDebugTask": "npm: testenv:stop"
+      "env": {
+        "NODE_ENV": "test"
+      }
     },
     {
       "type": "node",

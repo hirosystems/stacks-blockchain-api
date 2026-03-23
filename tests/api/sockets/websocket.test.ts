@@ -1,35 +1,35 @@
-import * as WebSocket from 'ws';
 import { startApiServer, ApiServer } from '../../../src/api/init.ts';
 import { DbTxTypeId, DbTxStatus, DbAssetEventTypeId } from '../../../src/datastore/common.ts';
-import { once } from 'events';
 import { RpcWebSocketClient } from 'rpc-websocket-client';
+import WebSocket from 'ws';
+import { once } from 'events';
+import { ChainID } from '@stacks/transactions';
+import { TestBlockBuilder, testMempoolTx, TestMicroblockStreamBuilder } from '../test-builders.ts';
+import { PgWriteStore } from '../../../src/datastore/pg-write-store.ts';
+import { migrate } from '../../test-helpers.ts';
+import { Waiter, waiter } from '@stacks/api-toolkit';
+import assert from 'node:assert/strict';
+import { describe, test, beforeEach, afterEach } from 'node:test';
 import {
-  Block,
-  connectWebSocketClient,
-  MempoolTransaction,
-  Microblock,
-  NftEvent,
-  RpcAddressBalanceNotificationParams,
-  RpcAddressBalanceSubscriptionParams,
-  RpcAddressTxNotificationParams,
-  RpcAddressTxSubscriptionParams,
-  RpcBlockSubscriptionParams,
+  RpcTxUpdateSubscriptionParams,
   RpcMempoolSubscriptionParams,
+  RpcAddressTxNotificationParams,
+  MempoolTransaction,
+  RpcBlockSubscriptionParams,
   RpcMicroblockSubscriptionParams,
+  Microblock,
+  RpcAddressTxSubscriptionParams,
+  RpcAddressBalanceSubscriptionParams,
+  RpcAddressBalanceNotificationParams,
+  RpcNftEventSubscriptionParams,
   RpcNftAssetEventSubscriptionParams,
   RpcNftCollectionEventSubscriptionParams,
-  RpcNftEventSubscriptionParams,
-  RpcTxUpdateSubscriptionParams,
-} from '../../../client/src/index.ts';
-import { ChainID } from '@stacks/transactions';
-import {
-  TestBlockBuilder,
-  testMempoolTx,
-  TestMicroblockStreamBuilder,
-} from '../utils/test-builders';
-import { PgWriteStore } from '../../../src/datastore/pg-write-store.ts';
-import { migrate } from '../utils/test-helpers';
-import { Waiter, waiter } from '@stacks/api-toolkit';
+  NftEvent,
+  Block,
+} from '../../../client/src/types.ts';
+import WsClient from '../../../client/src/ws/index.ts';
+
+type RpcClientSocket = Parameters<RpcWebSocketClient['changeSocket']>[0];
 
 describe('websocket notifications', () => {
   let apiServer: ApiServer;
@@ -60,7 +60,7 @@ describe('websocket notifications', () => {
       await once(socket, 'open');
       const client = new RpcWebSocketClient();
 
-      client.changeSocket(socket);
+      client.changeSocket(socket as unknown as RpcClientSocket);
       client.listenMessages();
 
       // Subscribe to particular tx
@@ -69,14 +69,14 @@ describe('websocket notifications', () => {
         tx_id: txId,
       };
       const result = await client.call('subscribe', subParams1);
-      expect(result).toEqual({ tx_id: txId });
+      assert.deepEqual(result, { tx_id: txId });
 
       // Subscribe to mempool
       const subParams2: RpcMempoolSubscriptionParams = {
         event: 'mempool',
       };
       const result2 = await client.call('subscribe', subParams2);
-      expect(result2).toEqual({});
+      assert.deepEqual(result2, {});
 
       // watch for update to this tx
       let updateIndex = 0;
@@ -116,31 +116,31 @@ describe('websocket notifications', () => {
 
       // check for tx update notification
       const txStatus1 = await txUpdates[0];
-      expect(txStatus1).toBe('pending');
+      assert.equal(txStatus1, 'pending');
 
       // check for mempool update
       const mempoolUpdate = await mempoolWaiter;
-      expect(mempoolUpdate.tx_id).toBe(txId);
+      assert.equal(mempoolUpdate.tx_id, txId);
 
       // check for microblock tx update notification
       const txStatus2 = await txUpdates[1];
-      expect(txStatus2).toBe('success');
+      assert.equal(txStatus2, 'success');
 
       // update DB with TX after WS server is sent txid to monitor
       db.eventEmitter.emit('txUpdate', txId);
 
       // check for tx update notification
       const txStatus3 = await txUpdates[2];
-      expect(txStatus3).toBe('success');
+      assert.equal(txStatus3, 'success');
 
       // unsubscribe from notifications for this tx
       const unsubscribeResult = await client.call('unsubscribe', subParams1);
-      expect(unsubscribeResult).toEqual({ tx_id: txId });
+      assert.deepEqual(unsubscribeResult, { tx_id: txId });
 
       // ensure tx updates no longer received
       db.eventEmitter.emit('txUpdate', txId);
       await new Promise(resolve => setImmediate(resolve));
-      expect(txUpdates[3].isFinished).toBe(false);
+      assert.equal(txUpdates[3].isFinished, false);
     } finally {
       socket.terminate();
     }
@@ -153,14 +153,14 @@ describe('websocket notifications', () => {
 
     await once(socket, 'open');
     const client = new RpcWebSocketClient();
-    client.changeSocket(socket);
+    client.changeSocket(socket as unknown as RpcClientSocket);
     client.listenMessages();
 
     const subParams: RpcBlockSubscriptionParams = {
       event: 'block',
     };
     const subResult = await client.call('subscribe', subParams);
-    expect(subResult).toEqual({});
+    assert.deepEqual(subResult, {});
 
     const updateWaiter: Waiter<Block> = waiter();
     client.onNotification.push(msg => {
@@ -177,9 +177,9 @@ describe('websocket notifications', () => {
 
     const result = await updateWaiter;
     try {
-      expect(result.hash).toEqual('0x1234');
-      expect(result.burn_block_hash).toEqual('0x5454');
-      expect(result.txs[0]).toEqual('0x4321');
+      assert.equal(result.hash, '0x1234');
+      assert.equal(result.burn_block_hash, '0x5454');
+      assert.equal(result.txs[0], '0x4321');
     } finally {
       socket.terminate();
     }
@@ -192,14 +192,14 @@ describe('websocket notifications', () => {
 
     await once(socket, 'open');
     const client = new RpcWebSocketClient();
-    client.changeSocket(socket);
+    client.changeSocket(socket as unknown as RpcClientSocket);
     client.listenMessages();
 
     const subParams: RpcMicroblockSubscriptionParams = {
       event: 'microblock',
     };
     const subResult = await client.call('subscribe', subParams);
-    expect(subResult).toEqual({});
+    assert.deepEqual(subResult, {});
 
     const updateWaiter: Waiter<Microblock> = waiter();
     client.onNotification.push(msg => {
@@ -225,9 +225,9 @@ describe('websocket notifications', () => {
 
     const result = await updateWaiter;
     try {
-      expect(result.microblock_hash).toEqual('0xff01');
-      expect(result.microblock_parent_hash).toEqual('0x1212');
-      expect(result.txs[0]).toEqual('0xf6f6');
+      assert.equal(result.microblock_hash, '0xff01');
+      assert.equal(result.microblock_parent_hash, '0x1212');
+      assert.equal(result.txs[0], '0xf6f6');
     } finally {
       socket.terminate();
     }
@@ -245,10 +245,10 @@ describe('websocket notifications', () => {
 
     try {
       await once(socket, 'open');
-      client.changeSocket(socket);
+      client.changeSocket(socket as unknown as RpcClientSocket);
       client.listenMessages();
       const result = await client.call('subscribe', subParams);
-      expect(result).toEqual({ address: addr });
+      assert.deepEqual(result, { address: addr });
 
       let updateIndex = 0;
       const addrTxUpdates: Waiter<RpcAddressTxNotificationParams>[] = [waiter(), waiter()];
@@ -257,7 +257,7 @@ describe('websocket notifications', () => {
           const txUpdate: RpcAddressTxNotificationParams = msg.params;
           addrTxUpdates[updateIndex++]?.finish(txUpdate);
         } else {
-          fail(msg.method);
+          assert.fail(msg.method);
         }
       });
 
@@ -276,7 +276,7 @@ describe('websocket notifications', () => {
         .build();
       await db.update(block);
       const txUpdate1 = await addrTxUpdates[0];
-      expect(txUpdate1).toEqual({
+      assert.deepEqual(txUpdate1, {
         address: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
         tx_id: '0x8912000000000000000000000000000000000000000000000000000000000000',
         tx_status: 'success',
@@ -353,7 +353,7 @@ describe('websocket notifications', () => {
         .build();
       await db.updateMicroblocks(microblock);
       const txUpdate2 = await addrTxUpdates[1];
-      expect(txUpdate2).toEqual({
+      assert.deepEqual(txUpdate2, {
         address: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
         tx_id: '0x8913',
         tx_status: 'success',
@@ -429,14 +429,14 @@ describe('websocket notifications', () => {
       const client = new RpcWebSocketClient();
       const addr2 = 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6';
 
-      client.changeSocket(socket);
+      client.changeSocket(socket as unknown as RpcClientSocket);
       client.listenMessages();
       const subParams1: RpcAddressBalanceSubscriptionParams = {
         event: 'address_balance_update',
         address: addr2,
       };
       const result = await client.call('subscribe', subParams1);
-      expect(result).toEqual({ address: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6' });
+      assert.deepEqual(result, { address: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6' });
 
       // watch for update to this tx
       let updateIndex = 0;
@@ -463,7 +463,7 @@ describe('websocket notifications', () => {
 
       // check for balance update notification
       const txUpdate1 = await balanceUpdates[0];
-      expect(txUpdate1).toEqual({
+      assert.deepEqual(txUpdate1, {
         address: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
         balance: '100',
         burnchain_lock_height: 0,
@@ -478,7 +478,7 @@ describe('websocket notifications', () => {
       });
 
       const unsubscribeResult = await client.call('unsubscribe', subParams1);
-      expect(unsubscribeResult).toEqual({ address: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6' });
+      assert.deepEqual(unsubscribeResult, { address: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6' });
     } finally {
       socket.terminate();
     }
@@ -492,7 +492,7 @@ describe('websocket notifications', () => {
     try {
       await once(socket, 'open');
       const client = new RpcWebSocketClient();
-      client.changeSocket(socket);
+      client.changeSocket(socket as unknown as RpcClientSocket);
       client.listenMessages();
 
       const crashPunks = 'SP3QSAJQ4EA8WXEDSRRKMZZ29NH91VZ6C5X88FGZQ.crashpunks-v2::crashpunks-v2';
@@ -507,7 +507,7 @@ describe('websocket notifications', () => {
         event: 'nft_event',
       };
       const result1 = await client.call('subscribe', subParams1);
-      expect(result1).toEqual({});
+      assert.deepEqual(result1, {});
 
       const subParams2: RpcNftAssetEventSubscriptionParams = {
         event: 'nft_asset_event',
@@ -515,14 +515,14 @@ describe('websocket notifications', () => {
         value: valueHex1,
       };
       const result2 = await client.call('subscribe', subParams2);
-      expect(result2).toEqual({ asset_identifier: crashPunks, value: valueHex1 });
+      assert.deepEqual(result2, { asset_identifier: crashPunks, value: valueHex1 });
 
       const subParams3: RpcNftCollectionEventSubscriptionParams = {
         event: 'nft_collection_event',
         asset_identifier: wastelandApes,
       };
       const result3 = await client.call('subscribe', subParams3);
-      expect(result3).toEqual({ asset_identifier: wastelandApes });
+      assert.deepEqual(result3, { asset_identifier: wastelandApes });
 
       const nftEventWaiters: Waiter<NftEvent>[] = [waiter(), waiter(), waiter(), waiter()];
       const crashPunksWaiter: Waiter<NftEvent> = waiter();
@@ -640,24 +640,24 @@ describe('websocket notifications', () => {
       const apeEvent0 = await apeWaiters[0];
       const apeEvent1 = await apeWaiters[1];
 
-      expect(event0).toEqual(expectedEvent0);
-      expect(event1).toEqual(expectedEvent1);
-      expect(event2).toEqual(expectedEvent2);
-      expect(event3).toEqual(expectedEvent3);
+      assert.deepEqual(event0, expectedEvent0);
+      assert.deepEqual(event1, expectedEvent1);
+      assert.deepEqual(event2, expectedEvent2);
+      assert.deepEqual(event3, expectedEvent3);
 
-      expect(crashEvent).toEqual(expectedEvent0);
+      assert.deepEqual(crashEvent, expectedEvent0);
 
-      expect(apeEvent0).toEqual(expectedEvent2);
-      expect(apeEvent1).toEqual(expectedEvent3);
+      assert.deepEqual(apeEvent0, expectedEvent2);
+      assert.deepEqual(apeEvent1, expectedEvent3);
 
       const unsubscribeResult1 = await client.call('unsubscribe', subParams1);
-      expect(unsubscribeResult1).toEqual({});
+      assert.deepEqual(unsubscribeResult1, {});
 
       const unsubscribeResult2 = await client.call('unsubscribe', subParams2);
-      expect(unsubscribeResult2).toEqual({ asset_identifier: crashPunks, value: valueHex1 });
+      assert.deepEqual(unsubscribeResult2, { asset_identifier: crashPunks, value: valueHex1 });
 
       const unsubscribeResult3 = await client.call('unsubscribe', subParams3);
-      expect(unsubscribeResult3).toEqual({ asset_identifier: wastelandApes });
+      assert.deepEqual(unsubscribeResult3, { asset_identifier: wastelandApes });
     } finally {
       socket.terminate();
     }
@@ -666,7 +666,7 @@ describe('websocket notifications', () => {
   test('websocket rpc client lib', async () => {
     const addr = apiServer.address;
     const wsAddress = `ws://${addr}/extended/v1/ws`;
-    const client = await connectWebSocketClient(wsAddress);
+    const client = await WsClient.StacksApiWebSocketClient.connect(wsAddress);
     try {
       const addrTxUpdates: Waiter<RpcAddressTxNotificationParams> = waiter();
       const subscription = await client.subscribeAddressTransactions(
@@ -687,7 +687,7 @@ describe('websocket notifications', () => {
 
       // check for tx update notification
       const txUpdate1 = await addrTxUpdates;
-      expect(txUpdate1).toEqual({
+      assert.deepEqual(txUpdate1, {
         address: 'ST3GQB6WGCWKDNFNPSQRV8DY93JN06XPZ2ZE9EVMA',
         tx_id: '0x8912000000000000000000000000000000000000000000000000000000000000',
         tx_status: 'success',

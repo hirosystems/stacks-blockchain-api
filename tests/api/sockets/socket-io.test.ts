@@ -2,15 +2,11 @@ import { io } from 'socket.io-client';
 import { ChainID } from '@stacks/common';
 import { ApiServer, startApiServer } from '../../../src/api/init.ts';
 import { DbAssetEventTypeId, DbTxStatus } from '../../../src/datastore/common.ts';
-import {
-  TestBlockBuilder,
-  testMempoolTx,
-  TestMicroblockStreamBuilder,
-} from '../utils/test-builders';
+import { TestBlockBuilder, testMempoolTx, TestMicroblockStreamBuilder } from '../test-builders.ts';
 import { PgWriteStore } from '../../../src/datastore/pg-write-store.ts';
-import { migrate } from '../utils/test-helpers';
+import { migrate } from '../../test-helpers.ts';
 import { Waiter, waiter } from '@stacks/api-toolkit';
-import { StacksApiSocketClient } from '../../../client/src/socket-io/index.ts';
+import SocketIoClient from '../../../client/src/socket-io/index.ts';
 import {
   AddressStxBalanceResponse,
   AddressTransactionWithTransfers,
@@ -19,9 +15,11 @@ import {
   Microblock,
   NftEvent,
   Transaction,
-} from 'client/src/types';
+} from '../../../client/src/types.ts';
 import { Socket } from 'node:net';
 import { ENV } from '../../../src/env.ts';
+import assert from 'node:assert/strict';
+import { describe, test, beforeEach, afterEach } from 'node:test';
 
 describe('socket-io', () => {
   let apiServer: ApiServer;
@@ -48,7 +46,7 @@ describe('socket-io', () => {
       serverSocketConnectWaiter.finish(socket);
     });
 
-    const client = new StacksApiSocketClient({
+    const client = new SocketIoClient.StacksApiSocketClient({
       url: `http://${apiServer.address}`,
       // socketOpts: { reconnection: false },
     });
@@ -57,7 +55,10 @@ describe('socket-io', () => {
     const subResult = client.subscribeBlocks(block => updateWaiter.finish(block));
 
     // subscriptions should be saved in the client query obj
-    expect(client.socket.io.opts.query).toMatchObject({ subscriptions: 'block' });
+    assert.equal(
+      (client.socket.io.opts.query as { subscriptions?: string }).subscriptions,
+      'block'
+    );
 
     // wait for initial client connection
     await new Promise<void>(resolve => client.socket.once('connect', resolve));
@@ -65,7 +66,10 @@ describe('socket-io', () => {
     const connectAttempt = waiter();
     client.socket.io.once('reconnect_attempt', attempt => {
       // subscriptions should be saved in the client query obj
-      expect(client.socket.io.opts.query).toMatchObject({ subscriptions: 'block' });
+      assert.equal(
+        (client.socket.io.opts.query as { subscriptions?: string }).subscriptions,
+        'block'
+      );
       connectAttempt.finish();
     });
 
@@ -80,7 +84,7 @@ describe('socket-io', () => {
     await reconnectWaiter;
 
     // ensure client still waiting for block update
-    expect(updateWaiter.isFinished).toBe(false);
+    assert.equal(updateWaiter.isFinished, false);
 
     const block = new TestBlockBuilder({ block_hash: '0x1234', burn_block_hash: '0x5454' })
       .addTx({ tx_id: '0x4321' })
@@ -89,9 +93,9 @@ describe('socket-io', () => {
 
     const result = await updateWaiter;
     try {
-      expect(result.hash).toEqual('0x1234');
-      expect(result.burn_block_hash).toEqual('0x5454');
-      expect(result.txs[0]).toEqual('0x4321');
+      assert.equal(result.hash, '0x1234');
+      assert.equal(result.burn_block_hash, '0x5454');
+      assert.equal(result.txs[0], '0x4321');
     } finally {
       subResult.unsubscribe();
       client.socket.close();
@@ -99,7 +103,7 @@ describe('socket-io', () => {
   });
 
   test('socket-io-client > block updates', async () => {
-    const client = new StacksApiSocketClient({
+    const client = new SocketIoClient.StacksApiSocketClient({
       url: `http://${apiServer.address}`,
       socketOpts: { reconnection: false },
     });
@@ -114,9 +118,9 @@ describe('socket-io', () => {
 
     const result = await updateWaiter;
     try {
-      expect(result.hash).toEqual('0x1234');
-      expect(result.burn_block_hash).toEqual('0x5454');
-      expect(result.txs[0]).toEqual('0x4321');
+      assert.equal(result.hash, '0x1234');
+      assert.equal(result.burn_block_hash, '0x5454');
+      assert.equal(result.txs[0], '0x4321');
     } finally {
       subResult.unsubscribe();
       client.socket.close();
@@ -124,7 +128,7 @@ describe('socket-io', () => {
   });
 
   test('socket-io-client > tx updates', async () => {
-    const client = new StacksApiSocketClient({
+    const client = new SocketIoClient.StacksApiSocketClient({
       url: `http://${apiServer.address}`,
       socketOpts: { reconnection: false },
     });
@@ -161,12 +165,12 @@ describe('socket-io', () => {
     const txMicroblockResult = await txWaiters[1];
 
     try {
-      expect(mempoolResult.tx_status).toEqual('pending');
-      expect(mempoolResult.tx_id).toEqual('0x01');
-      expect(txResult.tx_status).toEqual('pending');
-      expect(txResult.tx_id).toEqual('0x01');
-      expect(txMicroblockResult.tx_id).toEqual('0x01');
-      expect(txMicroblockResult.tx_status).toEqual('success');
+      assert.equal(mempoolResult.tx_status, 'pending');
+      assert.equal(mempoolResult.tx_id, '0x01');
+      assert.equal(txResult.tx_status, 'pending');
+      assert.equal(txResult.tx_id, '0x01');
+      assert.equal(txMicroblockResult.tx_id, '0x01');
+      assert.equal(txMicroblockResult.tx_status, 'success');
     } finally {
       mempoolSub.unsubscribe();
       txSub.unsubscribe();
@@ -192,9 +196,9 @@ describe('socket-io', () => {
 
     const result = await updateWaiter;
     try {
-      expect(result.hash).toEqual('0x1234');
-      expect(result.burn_block_hash).toEqual('0x5454');
-      expect(result.txs[0]).toEqual('0x4321');
+      assert.equal(result.hash, '0x1234');
+      assert.equal(result.burn_block_hash, '0x5454');
+      assert.equal(result.txs[0], '0x4321');
     } finally {
       socket.emit('unsubscribe', 'block');
       socket.close();
@@ -226,9 +230,9 @@ describe('socket-io', () => {
 
     const result = await updateWaiter;
     try {
-      expect(result.microblock_hash).toEqual('0xff01');
-      expect(result.parent_block_hash).toEqual('0x1212');
-      expect(result.txs[0]).toEqual('0xf6f6');
+      assert.equal(result.microblock_hash, '0xff01');
+      assert.equal(result.parent_block_hash, '0x1212');
+      assert.equal(result.txs[0], '0xf6f6');
     } finally {
       socket.emit('unsubscribe', 'microblock');
       socket.close();
@@ -274,12 +278,12 @@ describe('socket-io', () => {
     const txMicroblockResult = await txWaiters[1];
 
     try {
-      expect(mempoolResult.tx_status).toEqual('pending');
-      expect(mempoolResult.tx_id).toEqual('0x01');
-      expect(txResult.tx_status).toEqual('pending');
-      expect(txResult.tx_id).toEqual('0x01');
-      expect(txMicroblockResult.tx_id).toEqual('0x01');
-      expect(txMicroblockResult.tx_status).toEqual('success');
+      assert.equal(mempoolResult.tx_status, 'pending');
+      assert.equal(mempoolResult.tx_id, '0x01');
+      assert.equal(txResult.tx_status, 'pending');
+      assert.equal(txResult.tx_id, '0x01');
+      assert.equal(txMicroblockResult.tx_id, '0x01');
+      assert.equal(txMicroblockResult.tx_status, 'success');
     } finally {
       socket.emit('unsubscribe', 'mempool');
       socket.emit('unsubscribe', 'transaction:0x01');
@@ -313,8 +317,8 @@ describe('socket-io', () => {
     const pendingResult = await txWaiters[0];
 
     try {
-      expect(pendingResult.tx_id).toEqual('0x01');
-      expect(pendingResult.tx_status).toEqual('pending');
+      assert.equal(pendingResult.tx_id, '0x01');
+      assert.equal(pendingResult.tx_status, 'pending');
     } finally {
       socket.emit('unsubscribe', 'mempool');
       socket.close();
@@ -361,12 +365,12 @@ describe('socket-io', () => {
     const microblockResult = await addrTxUpdates[1];
 
     try {
-      expect(blockResult.tx.tx_id).toEqual('0x8912');
-      expect(blockResult.stx_sent).toEqual('150'); // Incl. fees
-      expect(blockResult.stx_transfers[0].amount).toEqual('100');
-      expect(microblockResult.tx.tx_id).toEqual('0x8913');
-      expect(microblockResult.stx_sent).toEqual('200'); // Incl. fees
-      expect(microblockResult.stx_transfers[0].amount).toEqual('150');
+      assert.equal(blockResult.tx.tx_id, '0x8912');
+      assert.equal(blockResult.stx_sent, '150'); // Incl. fees
+      assert.equal(blockResult.stx_transfers[0].amount, '100');
+      assert.equal(microblockResult.tx.tx_id, '0x8913');
+      assert.equal(microblockResult.stx_sent, '200'); // Incl. fees
+      assert.equal(microblockResult.stx_transfers[0].amount, '150');
     } finally {
       socket.emit('unsubscribe', `address-transaction:${addr1}`);
       socket.close();
@@ -396,7 +400,7 @@ describe('socket-io', () => {
 
     const result = await updateWaiter;
     try {
-      expect(result.balance).toEqual('100');
+      assert.equal(result.balance, '100');
     } finally {
       socket.emit('unsubscribe', `address-stx-balance:${addr2}`);
       socket.close();
@@ -530,15 +534,15 @@ describe('socket-io', () => {
     const apeEvent0 = await apeWaiters[0];
     const apeEvent1 = await apeWaiters[1];
     try {
-      expect(event0).toEqual(expectedEvent0);
-      expect(event1).toEqual(expectedEvent1);
-      expect(event2).toEqual(expectedEvent2);
-      expect(event3).toEqual(expectedEvent3);
+      assert.deepEqual(event0, expectedEvent0);
+      assert.deepEqual(event1, expectedEvent1);
+      assert.deepEqual(event2, expectedEvent2);
+      assert.deepEqual(event3, expectedEvent3);
 
-      expect(crashEvent).toEqual(expectedEvent0);
+      assert.deepEqual(crashEvent, expectedEvent0);
 
-      expect(apeEvent0).toEqual(expectedEvent2);
-      expect(apeEvent1).toEqual(expectedEvent3);
+      assert.deepEqual(apeEvent0, expectedEvent2);
+      assert.deepEqual(apeEvent1, expectedEvent3);
     } finally {
       socket.emit('unsubscribe', `nft-event`);
       socket.emit('unsubscribe', `nft-asset-event:${crashPunks}+${valueHex1}`);
@@ -564,7 +568,7 @@ describe('socket-io', () => {
     try {
       throw result;
     } catch (err: any) {
-      expect(err.message).toEqual(`Invalid topic: address-stx-balance:${faultyAddr}`);
+      assert.equal(err.message, `Invalid topic: address-stx-balance:${faultyAddr}`);
     } finally {
       socket.close();
     }
@@ -587,7 +591,7 @@ describe('socket-io', () => {
     try {
       throw result;
     } catch (err: any) {
-      expect(err.message).toContain('Invalid topic:');
+      assert.ok(err.message.includes('Invalid topic:'));
     } finally {
       socket.close();
     }
@@ -611,7 +615,7 @@ describe('socket-io', () => {
     try {
       throw result;
     } catch (err: any) {
-      expect(err.message).toEqual(`Invalid topic: ${faultyAddrStx}, ${faultyTx}`);
+      assert.equal(err.message, `Invalid topic: ${faultyAddrStx}, ${faultyTx}`);
     } finally {
       socket.close();
     }
@@ -638,9 +642,9 @@ describe('socket-io', () => {
 
     const result = await updateWaiter;
     try {
-      expect(result.hash).toEqual('0x1234');
-      expect(result.burn_block_hash).toEqual('0x5454');
-      expect(result.txs[0]).toEqual('0x4321');
+      assert.equal(result.hash, '0x1234');
+      assert.equal(result.burn_block_hash, '0x5454');
+      assert.equal(result.txs[0], '0x4321');
     } finally {
       socket.emit('unsubscribe', 'block');
       socket.close();
@@ -672,7 +676,7 @@ describe('socket-io', () => {
     });
 
     await disconnectWaiter;
-    expect(disconnectReason).toBe('io server disconnect');
+    assert.equal(disconnectReason, 'io server disconnect');
   });
 
   test('ping timeout disconnects client', async () => {
@@ -697,6 +701,6 @@ describe('socket-io', () => {
     });
 
     await disconnectWaiter;
-    expect(['ping timeout', 'transport close']).toContain(disconnectReason);
+    assert.ok(['ping timeout', 'transport close'].includes(disconnectReason));
   });
 });

@@ -7,7 +7,9 @@ import {
   WebSocketPayload,
   WebSocketTopics,
 } from '../../../src/api/routes/ws/web-socket-channel.ts';
-import { migrate } from '../utils/test-helpers';
+import { migrate } from '../../test-helpers.ts';
+import assert from 'node:assert/strict';
+import { describe, test, beforeEach, afterEach } from 'node:test';
 
 class TestChannel extends WebSocketChannel {
   connect(): void {
@@ -49,10 +51,10 @@ describe('ws transmitter', () => {
     transmitter = new WebSocketTransmitter(db, fakeServer);
     transmitter['channels'].push(new TestChannel(fakeServer));
     await db.close();
-    await expect(transmitter['blockUpdate']('0xff')).resolves.not.toThrow();
-    await expect(transmitter['microblockUpdate']('0xff')).resolves.not.toThrow();
-    await expect(transmitter['txUpdate']('0xff')).resolves.not.toThrow();
-    await expect(transmitter['nftEventUpdate']('0xff', 0)).resolves.not.toThrow();
-    await expect(transmitter['addressUpdate']('0xff', 1)).resolves.not.toThrow();
+    await assert.doesNotReject(transmitter['blockUpdate']('0xff'));
+    await assert.doesNotReject(transmitter['microblockUpdate']('0xff'));
+    await assert.doesNotReject(transmitter['txUpdate']('0xff'));
+    await assert.doesNotReject(transmitter['nftEventUpdate']('0xff', 0));
+    await assert.doesNotReject(transmitter['addressUpdate']('0xff', 1));
   });
 });
