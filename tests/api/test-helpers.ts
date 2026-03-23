@@ -1,3 +1,5 @@
+import assert from "node:assert";
+
 type Disposable<T> = () =>
   | readonly [item: T, dispose: () => any | Promise<any>]
   | Promise<readonly [item: T, dispose: () => any | Promise<any>]>;
@@ -31,5 +33,20 @@ export async function useWithCleanup<T extends [...Disposable<any>[]]>(
       const run = cleanup();
       run instanceof Promise && (await run);
     }
+  }
+}
+
+export function assertObjectContaining(actual: unknown, expected: unknown): void {
+  if (expected === null || typeof expected !== 'object') {
+    assert.deepEqual(actual, expected);
+    return;
+  }
+  if (Array.isArray(expected)) {
+    assert.deepEqual(actual, expected);
+    return;
+  }
+  assert.ok(actual !== null && typeof actual === 'object');
+  for (const [key, value] of Object.entries(expected)) {
+    assertObjectContaining((actual as Record<string, unknown>)[key], value);
   }
 }

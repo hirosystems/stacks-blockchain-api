@@ -1,10 +1,16 @@
 import { ChainID } from '@stacks/transactions';
 import * as fs from 'fs';
 import * as path from 'path';
+import { fileURLToPath } from 'node:url';
 import { DecodedTxResult, TxPayloadTypeID } from '@stacks/codec';
 import { CoreNodeMsgBlockData, parseMessageTransaction } from '../../../src/event-stream/reader.ts';
 import { parseNewBlockMessage } from '../../../src/event-stream/event-server.ts';
 import { NewBlockMessage } from '@stacks/node-publisher-client';
+import assert from 'node:assert/strict';
+import { describe, test } from 'node:test';
+import { assertObjectContaining } from '../test-helpers.ts';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 // Test processing of the psuedo-Stacks transactions, i.e. the ones that
 // originate on the Bitcoin chain, and have a `raw_tx == '0x00'.
@@ -66,7 +72,7 @@ describe('synthetic stx txs', () => {
       version: 0,
     };
 
-    expect(parsed.parsed_tx).toEqual(expect.objectContaining(expected));
+    assertObjectContaining(parsed.parsed_tx, expected);
   });
 
   test('test synthetic tx token transfer 2', () => {
@@ -126,7 +132,7 @@ describe('synthetic stx txs', () => {
       version: 0,
     };
 
-    expect(parsed.parsed_tx).toEqual(expect.objectContaining(expected));
+    assertObjectContaining(parsed.parsed_tx, expected);
   });
 
   test('test synthetic tx stx lock 1', () => {
@@ -207,7 +213,7 @@ describe('synthetic stx txs', () => {
       version: 0,
     };
 
-    expect(parsed.parsed_tx).toEqual(expect.objectContaining(expected));
+    assertObjectContaining(parsed.parsed_tx, expected);
   });
 
   test('test synthetic tx stx lock 3', () => {
@@ -228,13 +234,13 @@ describe('synthetic stx txs', () => {
     const events = [parsed.txs[0].contractLogEvents, parsed.txs[0].stxLockEvents]
       .flat()
       .sort((a, b) => a.event_index - b.event_index);
-    expect(events).toHaveLength(13);
+    assert.equal(events.length, 13);
     for (let i = 0; i < events.length; i++) {
-      expect(events[i].event_index).toEqual(i);
+      assert.equal(events[i].event_index, i);
     }
     // Ensure synthetic pox event indexes are in expected range
     for (const poxEvent of parsed.txs[0].pox4Events) {
-      expect(poxEvent.event_index).toBeLessThan(events.length);
+      assert.ok(poxEvent.event_index < events.length);
     }
   });
 
@@ -316,7 +322,7 @@ describe('synthetic stx txs', () => {
       version: 0,
     };
 
-    expect(parsed.parsed_tx).toEqual(expect.objectContaining(expected));
+    assertObjectContaining(parsed.parsed_tx, expected);
   });
 
   // Note this is a helper function used to grab samples of the psuedo-Stacks transactions.
