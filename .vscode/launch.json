@@ -108,125 +108,42 @@
     {
       "type": "node",
       "request": "launch",
-      "name": "test: event-replay",
-      "program": "${workspaceFolder}/node_modules/.bin/jest",
+      "name": "test: krypton",
+      "runtimeExecutable": "node",
       "args": [
-        "--testTimeout=3600000",
-        "--runInBand",
-        "--no-cache",
-        "--config",
-        "${workspaceRoot}/tests/jest.config.event-replay.js"
+        "--import",
+        "tsx",
+        "--test",
+        "--test-global-setup=./tests/krypton/setup.ts",
+        "--test-concurrency=1",
+        // "--test-name-pattern", "websocket notifications",
+        "./tests/krypton/**/*.test.ts"
       ],
       "outputCapture": "std",
       "console": "integratedTerminal",
-      "preLaunchTask": "npm: testenv:run",
-      "postDebugTask": "npm: testenv:stop"
-    },
-    {
-      "type": "node",
-      "request": "launch",
-      "name": "test: 2.5",
-      "program": "${workspaceFolder}/node_modules/.bin/jest",
-      "args": [
-        "--testTimeout=3600000",
-        "--runInBand",
-        "--no-cache",
-        "--config",
-        "${workspaceRoot}/tests/jest.config.2.5.js",
-      ],
-      "outputCapture": "std",
-      "console": "integratedTerminal",
-      "preLaunchTask": "npm: testenv:run:krypton",
-      "postDebugTask": "npm: testenv:stop:krypton",
-      "smartStep": false,
-      "sourceMaps": true,
-    },
-    {
-      "type": "node",
-      "request": "launch",
-      "name": "test: bns",
-      "program": "${workspaceFolder}/node_modules/.bin/jest",
-      "args": [
-        "--testTimeout=3600000",
-        "--runInBand",
-        "--no-cache",
-        "--config",
-        "${workspaceRoot}/tests/jest.config.bns.js",
-      ],
-      "outputCapture": "std",
-      "console": "integratedTerminal",
-      "preLaunchTask": "npm: testenv:run:krypton",
-      "postDebugTask": "npm: testenv:stop:krypton",
-    },
-    {
-      "type": "node",
-      "request": "launch",
-      "name": "test: bns-e2e",
-      "program": "${workspaceFolder}/node_modules/.bin/jest",
-      "args": [
-        "--testTimeout=3600000",
-        "--runInBand",
-        "--no-cache",
-        "--config",
-        "${workspaceRoot}/tests/jest.config.bns-e2e.js",
-      ],
-      "outputCapture": "std",
-      "console": "integratedTerminal",
-      "preLaunchTask": "npm: testenv:run:krypton",
-      "postDebugTask": "npm: testenv:stop:krypton",
-    },
-    {
-      "type": "node",
-      "request": "launch",
-      "name": "test: rpc",
-      "program": "${workspaceFolder}/node_modules/.bin/jest",
-      "args": [
-        "--testTimeout=3600000",
-        "--runInBand",
-        "--no-cache",
-        "--config",
-        "${workspaceRoot}/tests/jest.config.rpc.js"
-      ],
-      "outputCapture": "std",
-      "console": "integratedTerminal",
-      "preLaunchTask": "npm: testenv:run:krypton",
-      "postDebugTask": "npm: testenv:stop:krypton",
-      "smartStep": false,
-      "sourceMaps": true,
-    },
-    {
-      "type": "node",
-      "request": "launch",
-      "name": "test: btc-faucet",
-      "program": "${workspaceFolder}/node_modules/.bin/jest",
-      "args": [
-        "--testTimeout=3600000",
-        "--runInBand",
-        "--no-cache",
-        "--config",
-        "${workspaceRoot}/tests/jest.config.btc-faucet.js"
-      ],
-      "outputCapture": "std",
-      "console": "integratedTerminal",
-      "preLaunchTask": "npm: testenv:run",
-      "postDebugTask": "npm: testenv:stop"
+      "env": {
+        "NODE_ENV": "test"
+      }
     },
     {
       "type": "node",
       "request": "launch",
       "name": "test: snp",
-      "program": "${workspaceFolder}/node_modules/.bin/jest",
+      "runtimeExecutable": "node",
       "args": [
-        "--testTimeout=3600000",
-        "--runInBand",
-        "--no-cache",
-        "--config",
-        "${workspaceRoot}/tests/jest.config.snp.js"
+        "--import",
+        "tsx",
+        "--test",
+        "--test-global-setup=./tests/snp/setup.ts",
+        "--test-concurrency=1",
+        // "--test-name-pattern", "websocket notifications",
+        "./tests/snp/**/*.test.ts"
       ],
       "outputCapture": "std",
       "console": "integratedTerminal",
-      "preLaunchTask": "npm: testenv:run:snp",
-      "postDebugTask": "npm: testenv:stop:snp"
+      "env": {
+        "NODE_ENV": "test"
+      }
     },
   ],
 }
