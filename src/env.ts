@@ -217,7 +217,7 @@ const schema = Type.Object({
    * the SNP stream. This is an alternative to consuming events directly from a stacks-node.
    */
   SNP_EVENT_STREAMING: Type.Boolean({ default: false }),
-  SNP_REDIS_URL: Type.String({ default: '127.0.0.1:6379' }),
+  SNP_REDIS_URL: Type.String({ default: 'redis://127.0.0.1:6379' }),
   SNP_REDIS_STREAM_KEY_PREFIX: Type.Optional(Type.String()),
   /**
    * If enabled, the API will only receive blocks and burn blocks from SNP, ignoring all other

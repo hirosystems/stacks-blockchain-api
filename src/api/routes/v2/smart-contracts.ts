@@ -1,10 +1,10 @@
-import { handleChainTipCache } from '../../controllers/cache-controller';
-import { SmartContractStatusParamsSchema } from './schemas';
-import { parseDbSmartContractStatusArray } from './helpers';
+import { handleChainTipCache } from '../../controllers/cache-controller.js';
+import { SmartContractStatusParamsSchema } from './schemas.js';
+import { parseDbSmartContractStatusArray } from './helpers.js';
 import { FastifyPluginAsync } from 'fastify';
 import { TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
 import { Server } from 'node:http';
-import { SmartContractStatusListSchema } from '../../schemas/entities/smart-contracts';
+import { SmartContractStatusListSchema } from '../../schemas/entities/smart-contracts.js';
 
 export const SmartContractRoutesV2: FastifyPluginAsync<
   Record<never, never>,

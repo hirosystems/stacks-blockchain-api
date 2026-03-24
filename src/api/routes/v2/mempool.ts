@@ -1,5 +1,5 @@
-import { handleMempoolCache } from '../../controllers/cache-controller';
-import { DbMempoolFeePriority, DbTxTypeId } from '../../../datastore/common';
+import { handleMempoolCache } from '../../controllers/cache-controller.js';
+import { DbMempoolFeePriority, DbTxTypeId } from '../../../datastore/common.js';
 import { FastifyPluginAsync } from 'fastify';
 import { Static, Type, TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
 import { Server } from 'node:http';

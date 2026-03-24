@@ -1,5 +1,5 @@
 import { ClarityAbi } from '@stacks/transactions';
-import { getTxTypeId, getTxTypeString, TransactionType } from '../api/controllers/db-controller';
+import { getTxTypeId, getTxTypeString, TransactionType } from '../api/controllers/db-controller.js';
 import {
   unwrapNotNullish,
   FoundOrNot,
@@ -10,8 +10,8 @@ import {
   bnsNameFromSubdomain,
   ChainID,
   REPO_DIR,
-} from '../helpers';
-import { PgStoreEventEmitter } from './pg-store-event-emitter';
+} from '../helpers.js';
+import { PgStoreEventEmitter } from './pg-store-event-emitter.js';
 import {
   BlockIdentifier,
   BlockQueryResult,
@@ -64,7 +64,7 @@ import {
   PoxSyntheticEventTable,
   DbPoxStacker,
   DbPoxSyntheticEvent,
-} from './common';
+} from './common.js';
 import {
   abiColumn,
   BLOCK_COLUMNS,
@@ -84,15 +84,15 @@ import {
   prefixedCols,
   TX_COLUMNS,
   validateZonefileHash,
-} from './helpers';
-import { PgNotifier } from './pg-notifier';
-import { SyntheticPoxEventName } from '../pox-helpers';
+} from './helpers.js';
+import { PgNotifier } from './pg-notifier.js';
+import { SyntheticPoxEventName } from '../pox-helpers.js';
 import { BasePgStore, PgSqlClient, PgSqlQuery, connectPostgres } from '@stacks/api-toolkit';
-import { getConnectionArgs, getConnectionConfig } from './connection';
+import { getConnectionArgs, getConnectionConfig } from './connection.js';
 import * as path from 'path';
-import { PgStoreV2 } from './pg-store-v2';
-import { parseBlockParam } from '../api/routes/v2/schemas';
-import { ENV } from '../env';
+import { PgStoreV2 } from './pg-store-v2.js';
+import { parseBlockParam } from '../api/routes/v2/schemas.js';
+import { ENV } from '../env.js';
 
 export const MIGRATIONS_DIR = path.join(REPO_DIR, 'migrations');
 
@@ -633,6 +633,7 @@ export class PgStore extends BasePgStore {
         AND block_height <= ${dbBlock.result.block_height}
       `;
       let lastExecutedTxNonce: number | null = null;
+      // eslint-disable-next-line no-useless-assignment
       let possibleNextNonce = 0;
       if (nonceQuery.length > 0 && typeof nonceQuery[0].nonce === 'number') {
         lastExecutedTxNonce = nonceQuery[0].nonce;
@@ -2165,7 +2166,10 @@ export class PgStore extends BasePgStore {
     >`
       SELECT tx_id, canonical, contract_id, block_height, clarity_version, source_code, abi
       FROM smart_contracts
-      WHERE abi->'functions' @> ${traitFunctionList as any}::jsonb
+      WHERE abi->'functions' @> ${
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        traitFunctionList as any
+      }::jsonb
         AND canonical = true AND microblock_canonical = true
       ORDER BY block_height DESC
       LIMIT ${args.limit} OFFSET ${args.offset}
@@ -3932,7 +3936,7 @@ export class PgStore extends BasePgStore {
   async getSubdomainsListInName({
     name,
     includeUnanchored,
-    chainId,
+    chainId: _chainId,
   }: {
     name: string;
     includeUnanchored: boolean;
@@ -4013,7 +4017,7 @@ export class PgStore extends BasePgStore {
   async getSubdomain({
     subdomain,
     includeUnanchored,
-    chainId,
+    chainId: _chainId,
   }: {
     subdomain: string;
     includeUnanchored: boolean;
@@ -4367,6 +4371,7 @@ export class PgStore extends BasePgStore {
       }
     }
 
+    // eslint-disable-next-line no-useless-assignment
     let poxV4Unlocks: StxLockEventResult[] = [];
     const pox4EventQuery = await sql<PoxSyntheticEventQueryResult[]>`
         SELECT DISTINCT ON (stacker) stacker, ${sql(POX4_SYNTHETIC_EVENT_COLUMNS)}
@@ -4572,6 +4577,7 @@ export class PgStore extends BasePgStore {
     // Group blocks by tenure.
     let tenureCond = sql``;
     let low = firstTenureBlock;
+    // eslint-disable-next-line no-useless-assignment
     let high = low;
     for (let i = 1; i < tenureChanges.length; i++) {
       high = tenureChanges[i].block_height - 1;

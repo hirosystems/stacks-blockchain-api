@@ -1,10 +1,10 @@
-import { parsePagingQueryInput } from '../../../api/pagination';
-import { bnsBlockchain, BnsErrors } from '../../../event-stream/bns/bns-constants';
-import { handleChainTipCache } from '../../../api/controllers/cache-controller';
+import { parsePagingQueryInput } from '../../../api/pagination.js';
+import { bnsBlockchain, BnsErrors } from '../../../event-stream/bns/bns-constants.js';
+import { handleChainTipCache } from '../../../api/controllers/cache-controller.js';
 import { FastifyPluginAsync } from 'fastify';
 import { Type, TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
 import { Server } from 'node:http';
-import { UnanchoredParamSchema } from '../../schemas/params';
+import { UnanchoredParamSchema } from '../../schemas/params.js';
 
 class NameRedirectError extends Error {
   constructor(message: string) {
@@ -276,7 +276,7 @@ export const BnsNameRoutes: FastifyPluginAsync<
       const includeUnanchored = req.query.unanchored ?? false;
 
       await fastify.db
-        .sqlTransaction(async sql => {
+        .sqlTransaction(async _sql => {
           // Subdomain case
           if (name.split('.').length == 3) {
             const subdomainQuery = await fastify.db.getSubdomain({

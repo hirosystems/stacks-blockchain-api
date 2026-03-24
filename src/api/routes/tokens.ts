@@ -1,16 +1,21 @@
-import { getPagingQueryLimit, parsePagingQueryInput, ResourceType } from '../pagination';
-import { isValidPrincipal } from '../../helpers';
-import { decodeClarityValueToRepr } from '@stacks/codec';
-import { getAssetEventTypeString, parseDbTx } from '../controllers/db-controller';
-import { handleChainTipCache } from '../controllers/cache-controller';
+import { getPagingQueryLimit, parsePagingQueryInput, ResourceType } from '../pagination.js';
+import { isValidPrincipal } from '../../helpers.js';
+import codec from '@stacks/codec';
+import { getAssetEventTypeString, parseDbTx } from '../controllers/db-controller.js';
+import { handleChainTipCache } from '../controllers/cache-controller.js';
 import { has0xPrefix } from '@stacks/api-toolkit';
-import { InvalidRequestError, InvalidRequestErrorType } from '../../errors';
+import { InvalidRequestError, InvalidRequestErrorType } from '../../errors.js';
 
 import { FastifyPluginAsync } from 'fastify';
 import { Type, TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
 import { Server } from 'node:http';
-import { LimitParam, OffsetParam, PrincipalSchema, UnanchoredParamSchema } from '../schemas/params';
-import { PaginatedResponse } from '../schemas/util';
+import {
+  LimitParam,
+  OffsetParam,
+  PrincipalSchema,
+  UnanchoredParamSchema,
+} from '../schemas/params.js';
+import { PaginatedResponse } from '../schemas/util.js';
 import {
   NonFungibleTokenHistoryEventWithTxIdSchema,
   NonFungibleTokenHistoryEventWithTxMetadataSchema,
@@ -18,7 +23,7 @@ import {
   NonFungibleTokenHoldingWithTxMetadataSchema,
   NonFungibleTokenMintWithTxIdSchema,
   NonFungibleTokenMintWithTxMetadataSchema,
-} from '../schemas/entities/tokens';
+} from '../schemas/entities/tokens.js';
 
 export const TokenRoutes: FastifyPluginAsync<
   Record<never, never>,
@@ -104,7 +109,7 @@ export const TokenRoutes: FastifyPluginAsync<
         includeTxMetadata: includeTxMetadata,
       });
       const parsedResults = results.map(result => {
-        const parsedClarityValue = decodeClarityValueToRepr(result.nft_holding_info.value);
+        const parsedClarityValue = codec.decodeClarityValueToRepr(result.nft_holding_info.value);
         const parsedNftData = {
           asset_identifier: result.nft_holding_info.asset_identifier,
           value: {
@@ -202,7 +207,7 @@ export const TokenRoutes: FastifyPluginAsync<
       const includeTxMetadata = req.query.tx_metadata ?? false;
 
       await fastify.db
-        .sqlTransaction(async sql => {
+        .sqlTransaction(async _sql => {
           const chainTip = await fastify.db.getCurrentBlockHeight();
           if (!chainTip.found) {
             throw { error: `Unable to find a valid block to query` };
@@ -306,7 +311,7 @@ export const TokenRoutes: FastifyPluginAsync<
       const includeTxMetadata = req.query.tx_metadata ?? false;
 
       await fastify.db
-        .sqlTransaction(async sql => {
+        .sqlTransaction(async _sql => {
           const chainTip = await fastify.db.getCurrentBlockHeight();
           if (!chainTip.found) {
             throw { error: `Unable to find a valid block to query` };
@@ -319,7 +324,7 @@ export const TokenRoutes: FastifyPluginAsync<
             includeTxMetadata: includeTxMetadata,
           });
           const parsedResults = results.map(result => {
-            const parsedClarityValue = decodeClarityValueToRepr(result.nft_event.value);
+            const parsedClarityValue = codec.decodeClarityValueToRepr(result.nft_event.value);
             const parsedNftData = {
               recipient: result.nft_event.recipient,
               event_index: result.nft_event.event_index,

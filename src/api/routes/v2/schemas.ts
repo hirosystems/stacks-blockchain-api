@@ -1,25 +1,6 @@
 import { Type, Static, TSchema } from '@sinclair/typebox';
-import { ResourceType, pagingQueryLimits } from '../../../api/pagination';
-import Ajv from 'ajv';
-import addFormats from 'ajv-formats';
+import { ResourceType, pagingQueryLimits } from '../../../api/pagination.js';
 import { has0xPrefix, isTestEnv } from '@stacks/api-toolkit';
-
-const ajv = addFormats(new Ajv({ coerceTypes: true }), [
-  'date-time',
-  'time',
-  'date',
-  'email',
-  'hostname',
-  'ipv4',
-  'ipv6',
-  'uri',
-  'uri-reference',
-  'uuid',
-  'uri-template',
-  'json-pointer',
-  'relative-json-pointer',
-  'regex',
-]);
 
 // ==========================
 // Parameters
@@ -178,9 +159,11 @@ const PaginationQueryParamsSchema = <T extends TSchema>(t: T) =>
     { additionalProperties: false }
   );
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const BlockPaginationQueryParamsSchema = PaginationQueryParamsSchema(BlockLimitParamSchema);
 export type BlockPaginationQueryParams = Static<typeof BlockPaginationQueryParamsSchema>;
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const TransactionPaginationQueryParamsSchema = PaginationQueryParamsSchema(
   TransactionLimitParamSchema
 );
@@ -188,6 +171,7 @@ export type TransactionPaginationQueryParams = Static<
   typeof TransactionPaginationQueryParamsSchema
 >;
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const PoxCyclePaginationQueryParamsSchema = PaginationQueryParamsSchema(PoxCycleLimitParamSchema);
 export type PoxCyclePaginationQueryParams = Static<typeof PoxCyclePaginationQueryParamsSchema>;
 

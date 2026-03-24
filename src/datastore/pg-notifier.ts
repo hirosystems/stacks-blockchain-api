@@ -1,7 +1,7 @@
 import * as postgres from 'postgres';
-import { DbConfigState } from './common';
+import { DbConfigState } from './common.js';
 import { PgSqlClient, connectPostgres, logger } from '@stacks/api-toolkit';
-import { PgServer, getConnectionArgs, getConnectionConfig } from './connection';
+import { PgServer, getConnectionArgs, getConnectionConfig } from './connection.js';
 
 type PgTxNotificationPayload = {
   txId: string;

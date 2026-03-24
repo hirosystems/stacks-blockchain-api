@@ -1,12 +1,19 @@
 import { RPCClient } from 'rpc-bitcoin';
 import * as btc from 'bitcoinjs-lib';
 import * as ecc from 'tiny-secp256k1';
-import { mapSeriesAsync } from './helpers';
-import * as coinselect from 'coinselect';
-import { ECPair, ECPairInterface, validateSigFunction } from './ec-helpers';
-import { BtcFaucetConfigError } from './errors';
+import { mapSeriesAsync } from './helpers.js';
+import coinselect from 'coinselect';
+import { BtcFaucetConfigError } from './errors.js';
 import { time, logger } from '@stacks/api-toolkit';
-import { ENV } from './env';
+import { ENV } from './env.js';
+import type { ECPairAPI, ECPairInterface } from 'ecpair';
+import { ECPairFactory } from 'ecpair';
+
+const ECPair: ECPairAPI = ECPairFactory(ecc);
+
+function validateSigFunction(pubkey: Buffer, msghash: Buffer, signature: Buffer): boolean {
+  return ECPair.fromPublicKey(pubkey).verify(msghash, signature);
+}
 
 function getFaucetPk(): string {
   const BTC_FAUCET_PK = ENV.BTC_FAUCET_PK;
@@ -50,6 +57,7 @@ export function getRpcClient(): RPCClient {
 
 interface TxOutUnspent {
   amount: number;
+  coinbase?: boolean;
   desc: string;
   height: number;
   scriptPubKey: string;
@@ -70,13 +78,14 @@ interface TxOutSet {
 const REGTEST_FEE_RATE = 50;
 
 const MIN_TX_CONFIRMATIONS = 1;
+const COINBASE_MATURITY_CONFIRMATIONS = 100;
 
 export function isValidBtcAddress(network: btc.Network, address: string): boolean {
   try {
     btc.initEccLib(ecc);
     btc.address.toOutputScript(address, network);
     return true;
-  } catch (error) {
+  } catch (_error) {
     return false;
   }
 }
@@ -97,6 +106,7 @@ async function getTxOutSet(client: RPCClient, address: string): Promise<TxOutSet
   );
   if (!txOutSet.success) {
     logger.error('scantxoutset did not immediately complete -- polling for progress...');
+    // eslint-disable-next-line no-useless-assignment
     let scanProgress = true;
     do {
       scanProgress = await client.scantxoutset({
@@ -133,7 +143,6 @@ interface GetRawTxResult {
 async function getRawTransactions(client: RPCClient, txIds: string[]): Promise<GetRawTxResult[]> {
   const batchRawTxRes: GetRawTxResult[] = await time(
     async () => {
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-return
       return await mapSeriesAsync(txIds, async txId =>
         client.getrawtransaction({ txid: txId, verbose: true })
       );
@@ -151,11 +160,16 @@ async function getSpendableUtxos(client: RPCClient, address: string): Promise<Tx
   );
   const rawTxs = await getRawTransactions(client, mempoolTxIds);
   const spentUtxos = rawTxs.map(tx => tx.vin).flat();
-  const spendableUtxos = txOutSet.unspents.filter(
-    utxo =>
+  const spendableUtxos = txOutSet.unspents.filter(utxo => {
+    const confirmations = txOutSet.height - utxo.height;
+    const requiredConfirmations = utxo.coinbase
+      ? COINBASE_MATURITY_CONFIRMATIONS
+      : MIN_TX_CONFIRMATIONS;
+    return (
       !spentUtxos.find(vin => vin.txid === utxo.txid && vin.vout === utxo.vout) &&
-      txOutSet.height - utxo.height > MIN_TX_CONFIRMATIONS
-  );
+      confirmations > requiredConfirmations
+    );
+  });
   return spendableUtxos;
 }
 

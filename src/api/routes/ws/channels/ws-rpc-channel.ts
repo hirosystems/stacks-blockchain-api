@@ -1,14 +1,14 @@
 import * as http from 'http';
-import * as WebSocket from 'ws';
+import WebSocket from 'ws';
 import * as net from 'net';
-import { isValidPrincipal, normalizeHashString } from '../../../../helpers';
-import { WebSocketPrometheus } from '../web-socket-prometheus';
+import { isValidPrincipal, normalizeHashString } from '../../../../helpers.js';
+import { WebSocketPrometheus } from '../web-socket-prometheus.js';
 import {
   ListenerType,
   WebSocketChannel,
   WebSocketPayload,
   WebSocketTopics,
-} from '../web-socket-channel';
+} from '../web-socket-channel.js';
 import {
   JsonRpcError,
   JsonRpc,
@@ -30,14 +30,14 @@ import type {
   RpcNftAssetEventSubscriptionParams,
   RpcNftCollectionEventSubscriptionParams,
   NftEvent,
-} from 'client/src/types';
-import { getWsMessageTimeoutMs, getWsPingIntervalMs } from '../web-socket-transmitter';
+} from '../../../../../client/src/types.js';
+import { getWsMessageTimeoutMs, getWsPingIntervalMs } from '../web-socket-transmitter.js';
 import { isProdEnv, logger, resolveOrTimeout } from '@stacks/api-toolkit';
 
-import { Transaction, MempoolTransaction } from '../../../schemas/entities/transactions';
-import { Block } from '../../..//schemas/entities/block';
-import { Microblock } from '../../..//schemas/entities/microblock';
-import { AddressTransactionWithTransfers } from '../../../schemas/entities/addresses';
+import { Transaction, MempoolTransaction } from '../../../schemas/entities/transactions.js';
+import { Block } from '../../..//schemas/entities/block.js';
+import { Microblock } from '../../..//schemas/entities/microblock.js';
+import { AddressTransactionWithTransfers } from '../../../schemas/entities/addresses.js';
 
 type Subscription =
   | RpcTxUpdateSubscriptionParams
@@ -194,7 +194,7 @@ export class WsRpcChannel extends WebSocketChannel {
       clientSocket.on('message', data => {
         this.handleClientMessage(clientSocket, data);
       });
-      clientSocket.on('close', (_: WebSocket) => {
+      clientSocket.on('close', (_unused: WebSocket) => {
         logger.info(`WsRpcChannel client disconnected from ${clientAddress}`);
         this.prometheus?.disconnect(clientSocket);
       });
@@ -202,7 +202,7 @@ export class WsRpcChannel extends WebSocketChannel {
         logger.error(error, `WsRpcChannel client error from ${clientAddress}: ${error}`);
       });
     });
-    wsServer.on('close', (_: WebSocket.Server) => {
+    wsServer.on('close', (_unused: WebSocket.Server) => {
       logger.info(`WsRpcChannel server closed`);
       this.subscriptions.forEach(manager => manager.close());
     });
@@ -350,9 +350,11 @@ export class WsRpcChannel extends WebSocketChannel {
               JsonRpcError.invalidRequest('unexpected success msg from client')
             );
           case 'invalid':
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             return jsonRpcError(null as any, rpcReq.payload);
           default:
             return jsonRpcError(
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
               null as any,
               JsonRpcError.invalidRequest('unexpected msg type from client')
             );
@@ -372,12 +374,14 @@ export class WsRpcChannel extends WebSocketChannel {
           }
         });
       }
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       // Response `id` is null for invalid JSON requests (or other errors where the request ID isn't known).
       try {
         const res = err instanceof JsonRpcError ? err : JsonRpcError.internalError(err.toString());
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         this.sendRpcResponse(client, jsonRpcError(null as any, res));
-      } catch (error) {
+      } catch (_error) {
         // ignore any errors here
       }
     }
@@ -854,6 +858,6 @@ export class WsRpcChannel extends WebSocketChannel {
           manager.removeSubscription(client, topicId);
         }
       })
-      .catch(_ => manager.removeSubscription(client, topicId));
+      .catch(_err => manager.removeSubscription(client, topicId));
   }
 }

@@ -1,15 +1,5 @@
-import { Static, Type } from '@sinclair/typebox';
-import {
-  AbstractMempoolTransactionProperties,
-  BaseTransactionSchemaProperties,
-  CoinbaseTransactionMetadataProperties,
-  ContractCallTransactionMetadataProperties,
-  PoisonMicroblockTransactionMetadataProperties,
-  SmartContractTransactionMetadataProperties,
-  TenureChangeTransactionMetadataProperties,
-  TokenTransferTransactionMetadataProperties,
-} from './transactions';
-import { Nullable } from '../util';
+import { Type } from '@sinclair/typebox';
+import { Nullable } from '../util.js';
 
 export const MempoolStatsSchema = Type.Object(
   {

@@ -1,12 +1,12 @@
-import { isValidBitcoinAddress, tryConvertC32ToBtc } from '../../helpers';
-import { InvalidRequestError, InvalidRequestErrorType } from '../../errors';
-import { getPagingQueryLimit, ResourceType } from '../pagination';
+import { isValidBitcoinAddress, tryConvertC32ToBtc } from '../../helpers.js';
+import { InvalidRequestError, InvalidRequestErrorType } from '../../errors.js';
+import { getPagingQueryLimit, ResourceType } from '../pagination.js';
 
 import { FastifyPluginAsync } from 'fastify';
 import { Type, TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
 import { Server } from 'node:http';
-import { LimitParam, OffsetParam } from '../schemas/params';
-import { PaginatedResponse } from '../schemas/util';
+import { LimitParam, OffsetParam } from '../schemas/params.js';
+import { PaginatedResponse } from '../schemas/util.js';
 import {
   BurnchainReward,
   BurnchainRewardSchema,
@@ -14,11 +14,11 @@ import {
   BurnchainRewardSlotHolderSchema,
   BurnchainRewardsTotal,
   BurnchainRewardsTotalSchema,
-} from '../schemas/entities/burnchain-rewards';
+} from '../schemas/entities/burnchain-rewards.js';
 import {
   BurnchainRewardListResponseSchema,
   BurnchainRewardSlotHolderListResponseSchema,
-} from '../schemas/responses/responses';
+} from '../schemas/responses/responses.js';
 
 export const BurnchainRoutes: FastifyPluginAsync<
   Record<never, never>,

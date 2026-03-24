@@ -7,24 +7,24 @@ import type {
   ServerToClientMessages,
   Topic,
   TransactionTopic,
-} from 'client/src/types';
+} from '../../../../../client/src/types.js';
 import * as http from 'http';
 import { Server as SocketIOServer } from 'socket.io';
 import { Adapter } from 'socket.io-adapter';
-import { isValidTxId } from '../../../../api/query-helpers';
-import { isValidPrincipal } from '../../../../helpers';
-import { WebSocketPrometheus } from '../web-socket-prometheus';
+import { isValidTxId } from '../../../../api/query-helpers.js';
+import { isValidPrincipal } from '../../../../helpers.js';
+import { WebSocketPrometheus } from '../web-socket-prometheus.js';
 import {
   ListenerType,
   WebSocketChannel,
   WebSocketPayload,
   WebSocketTopics,
-} from '../web-socket-channel';
+} from '../web-socket-channel.js';
 import {
   getWsMessageTimeoutMs,
   getWsPingIntervalMs,
   getWsPingTimeoutMs,
-} from '../web-socket-transmitter';
+} from '../web-socket-transmitter.js';
 import { isProdEnv, logger } from '@stacks/api-toolkit';
 
 const component = { component: 'socket-io' };
@@ -180,7 +180,7 @@ export class SocketIOChannel extends WebSocketChannel {
     }
     // If a client takes more than this number of ms to respond to an event `emit`, it will be
     // disconnected.
-    const timeout = getWsMessageTimeoutMs();
+    const _timeout = getWsMessageTimeoutMs();
     switch (payload) {
       case 'block': {
         const [block] = args as ListenerType<WebSocketPayload['block']>;

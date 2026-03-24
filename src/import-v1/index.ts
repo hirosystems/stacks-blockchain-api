@@ -5,8 +5,8 @@ import * as util from 'util';
 import * as readline from 'readline';
 import * as path from 'path';
 import * as zlib from 'zlib';
-import { bitcoinToStacksAddress } from '@stacks/codec';
-import * as split2 from 'split2';
+import codec from '@stacks/codec';
+import split2 from 'split2';
 import {
   DataStoreBnsBlockTxData,
   DbBnsName,
@@ -14,17 +14,17 @@ import {
   DbBnsSubdomain,
   DbConfigState,
   DbTokenOfferingLocked,
-} from '../datastore/common';
-import { REPO_DIR } from '../helpers';
-import { getBnsGenesisBlockFromBlockMessage } from '../event-replay/helpers';
-import { PgWriteStore } from '../datastore/pg-write-store';
+} from '../datastore/common.js';
+import { REPO_DIR } from '../helpers.js';
+import { getBnsGenesisBlockFromBlockMessage } from '../event-replay/helpers.js';
+import { PgWriteStore } from '../datastore/pg-write-store.js';
 import {
   PgSqlClient,
   asyncBatchIterate,
   asyncIterableToGenerator,
   logger,
 } from '@stacks/api-toolkit';
-import { ENV } from '../env';
+import { ENV } from '../env.js';
 
 const finished = util.promisify(stream.finished);
 const pipeline = util.promisify(stream.pipeline);
@@ -63,9 +63,11 @@ class LineReaderStream extends stream.Duplex {
       }
     }
   }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   _write(chunk: any, encoding: BufferEncoding, callback: (error?: Error | null) => void) {
     this.passthrough.write(chunk, encoding, callback);
   }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   _destroy(error: any, callback: (error: Error | null) => void) {
     this.passthrough.destroy(error);
     this.readlineInstance.close();
@@ -106,7 +108,8 @@ class ChainProcessor extends stream.Writable {
     done();
   }
 
-  async _write(chunk: any, encoding: string, next: (error?: Error) => void) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  async _write(chunk: any, _encoding: string, next: (error?: Error) => void) {
     const line = (chunk as Buffer).toString();
 
     /*
@@ -229,8 +232,8 @@ class SubdomainZonefileParser extends stream.Transform {
 // Convert a BTC address to STX, otherwise return the original value if invalid
 function btcToStxAddress(btcAddress: string) {
   try {
-    return bitcoinToStacksAddress(btcAddress);
-  } catch (error) {
+    return codec.bitcoinToStacksAddress(btcAddress);
+  } catch (_error) {
     return btcAddress;
   }
 }
@@ -378,7 +381,7 @@ class StxVestingTransform extends stream.Transform {
       // skip the headers row
       if (address !== 'address') {
         if (!address.startsWith('S')) {
-          address = bitcoinToStacksAddress(address);
+          address = codec.bitcoinToStacksAddress(address);
         }
         const tokenOfferingLocked: DbTokenOfferingLocked = {
           address,

@@ -1,14 +1,9 @@
 import { inspect } from 'util';
 import * as net from 'net';
-import Fastify, {
-  FastifyInstance,
-  FastifyReply,
-  FastifyRequest,
-  FastifyServerOptions,
-} from 'fastify';
+import Fastify, { FastifyInstance, FastifyRequest, FastifyServerOptions } from 'fastify';
 import PQueue from 'p-queue';
 import * as prom from 'prom-client';
-import { BitVec, ChainID, assertNotNullish, getChainIDNetwork } from '../helpers';
+import { BitVec, ChainID, assertNotNullish, getChainIDNetwork } from '../helpers.js';
 import {
   DbEventBase,
   DbSmartContractEvent,
@@ -31,7 +26,7 @@ import {
   DbTxStatus,
   DbPoxSetSigners,
   DbBurnBlockPoxTx,
-} from '../datastore/common';
+} from '../datastore/common.js';
 import {
   getTxSenderAddress,
   getTxSponsorAddress,
@@ -40,39 +35,26 @@ import {
   parseMicroblocksFromTxs,
   isPoxPrintEvent,
   newCoreNoreBlockEventCounts,
-} from './reader';
-import {
-  decodeTransaction,
-  decodeClarityValue,
-  ClarityValueBuffer,
-  ClarityValueStringAscii,
-  ClarityValueTuple,
-  TxPayloadTypeID,
-} from '@stacks/codec';
-import { BnsContractIdentifier } from './bns/bns-constants';
+} from './reader.js';
+import codec from '@stacks/codec';
+import type { ClarityValueBuffer, ClarityValueStringAscii, ClarityValueTuple } from '@stacks/codec';
+import { BnsContractIdentifier } from './bns/bns-constants.js';
 import {
   parseNameFromContractEvent,
   parseNameRenewalWithNoZonefileHashFromContractCall,
   parseNamespaceFromContractEvent,
-} from './bns/bns-helpers';
-import { PgWriteStore } from '../datastore/pg-write-store';
+} from './bns/bns-helpers.js';
+import { PgWriteStore } from '../datastore/pg-write-store.js';
 import {
   createDbMempoolTxFromCoreMsg,
   createDbTxFromCoreMsg,
   getTxDbStatus,
-} from '../datastore/helpers';
-import { handleBnsImport } from '../import-v1';
-import { decodePoxSyntheticPrintEvent } from './pox-event-parsing';
-import {
-  hexToBuffer,
-  isProdEnv,
-  logger,
-  parseBoolean,
-  PINO_LOGGER_CONFIG,
-  stopwatch,
-} from '@stacks/api-toolkit';
-import { ENV } from '../env';
-import { POX_2_CONTRACT_NAME, POX_3_CONTRACT_NAME, POX_4_CONTRACT_NAME } from '../pox-helpers';
+} from '../datastore/helpers.js';
+import { handleBnsImport } from '../import-v1/index.js';
+import { decodePoxSyntheticPrintEvent } from './pox-event-parsing.js';
+import { hexToBuffer, isProdEnv, logger, PINO_LOGGER_CONFIG, stopwatch } from '@stacks/api-toolkit';
+import { ENV } from '../env.js';
+import { POX_2_CONTRACT_NAME, POX_3_CONTRACT_NAME, POX_4_CONTRACT_NAME } from '../pox-helpers.js';
 import {
   DropMempoolTxMessage,
   NewBlockEvent,
@@ -82,10 +64,11 @@ import {
   NewMicroblocksMessage,
   AttachmentsNewMessage,
 } from '@stacks/node-publisher-client';
-import { CoreNodeParsedTxMessage } from './core-node-message';
+import { CoreNodeParsedTxMessage } from './core-node-message.js';
 
 async function handleRawEventRequest(
   eventPath: string,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   payload: any,
   db: PgWriteStore
 ): Promise<void> {
@@ -153,7 +136,7 @@ async function handleMempoolTxsMessage(rawTxs: string[], db: PgWriteStore): Prom
   // TODO: mempool-tx receipt date should be sent from the core-node
   const receiptDate = Math.round(Date.now() / 1000);
   const decodedTxs = rawTxs.map(str => {
-    const parsedTx = decodeTransaction(str);
+    const parsedTx = codec.decodeTransaction(str);
     const txSender = getTxSenderAddress(parsedTx);
     const sponsorAddress = getTxSponsorAddress(parsedTx);
     return {
@@ -293,11 +276,11 @@ function parseDataStoreTxEventData(
       pox4Events: [],
     };
     switch (tx.parsed_tx.payload.type_id) {
-      case TxPayloadTypeID.VersionedSmartContract:
-      case TxPayloadTypeID.SmartContract:
+      case codec.TxPayloadTypeID.VersionedSmartContract:
+      case codec.TxPayloadTypeID.SmartContract: {
         const contractId = `${tx.sender_address}.${tx.parsed_tx.payload.contract_name}`;
         const clarityVersion =
-          tx.parsed_tx.payload.type_id == TxPayloadTypeID.VersionedSmartContract
+          tx.parsed_tx.payload.type_id == codec.TxPayloadTypeID.VersionedSmartContract
             ? tx.parsed_tx.payload.clarity_version
             : null;
         dbTx.smartContracts.push({
@@ -310,7 +293,8 @@ function parseDataStoreTxEventData(
           canonical: true,
         });
         break;
-      case TxPayloadTypeID.ContractCall:
+      }
+      case codec.TxPayloadTypeID.ContractCall: {
         // Name renewals can happen without a zonefile_hash. In that case, the BNS contract does NOT
         // emit a `name-renewal` contract log, causing us to miss this event. This function catches
         // those cases.
@@ -319,6 +303,7 @@ function parseDataStoreTxEventData(
           dbTx.names.push(name);
         }
         break;
+      }
       default:
         break;
     }
@@ -341,8 +326,8 @@ function parseDataStoreTxEventData(
       if (event.type === NewBlockEventType.Contract) {
         let reprStr = '?';
         try {
-          reprStr = decodeClarityValue(event.contract_event.raw_value).repr;
-        } catch (e) {
+          reprStr = codec.decodeClarityValue(event.contract_event.raw_value).repr;
+        } catch (_e) {
           logger.warn(`Failed to decode contract log event: ${event.contract_event.raw_value}`);
         }
         logger.debug(
@@ -597,7 +582,7 @@ async function handleNewAttachmentMessage(msg: AttachmentsNewMessage[], db: PgWr
         message.contract_id === BnsContractIdentifier.mainnet ||
         message.contract_id === BnsContractIdentifier.testnet
       ) {
-        const metadataCV = decodeClarityValue<
+        const metadataCV = codec.decodeClarityValue<
           ClarityValueTuple<{
             op: ClarityValueStringAscii;
             name: ClarityValueBuffer;
@@ -631,6 +616,7 @@ export const DummyEventMessageHandler: EventMessageHandler = {
 };
 
 interface EventMessageHandler {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   handleRawEventRequest(eventPath: string, payload: any, db: PgWriteStore): Promise<void> | void;
   handleBlockMessage(
     chainId: ChainID,
@@ -702,6 +688,7 @@ function createMessageProcessorQueue(db: PgWriteStore): EventMessageHandler {
   };
 
   const handler: EventMessageHandler = {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     handleRawEventRequest: (eventPath: string, payload: any, db: PgWriteStore) => {
       const queue =
         eventPath === '/new_block' || eventPath === '/new_burn_block'
@@ -836,7 +823,7 @@ export async function startEventServer(opts: {
     ignoreTrailingSlash: true,
   });
 
-  app.addHook('onRequest', (req, reply, done) => {
+  app.addHook('onRequest', (req, _reply, done) => {
     req.raw.on('close', () => {
       if (req.raw.aborted) {
         logger.warn(
@@ -996,7 +983,7 @@ export async function startEventServer(opts: {
 export function parseNewBlockMessage(
   chainId: ChainID,
   msg: NewBlockMessage,
-  isEventReplay: boolean
+  _isEventReplay: boolean
 ) {
   const counts = newCoreNoreBlockEventCounts();
 
@@ -1020,31 +1007,31 @@ export function parseNewBlockMessage(
       parsedTxs.push(parsedTx);
       counts.tx_total += 1;
       switch (parsedTx.parsed_tx.payload.type_id) {
-        case TxPayloadTypeID.Coinbase:
+        case codec.TxPayloadTypeID.Coinbase:
           counts.txs.coinbase += 1;
           break;
-        case TxPayloadTypeID.CoinbaseToAltRecipient:
+        case codec.TxPayloadTypeID.CoinbaseToAltRecipient:
           counts.txs.coinbase_to_alt_recipient += 1;
           break;
-        case TxPayloadTypeID.ContractCall:
+        case codec.TxPayloadTypeID.ContractCall:
           counts.txs.contract_call += 1;
           break;
-        case TxPayloadTypeID.NakamotoCoinbase:
+        case codec.TxPayloadTypeID.NakamotoCoinbase:
           counts.txs.nakamoto_coinbase += 1;
           break;
-        case TxPayloadTypeID.PoisonMicroblock:
+        case codec.TxPayloadTypeID.PoisonMicroblock:
           counts.txs.poison_microblock += 1;
           break;
-        case TxPayloadTypeID.SmartContract:
+        case codec.TxPayloadTypeID.SmartContract:
           counts.txs.smart_contract += 1;
           break;
-        case TxPayloadTypeID.TenureChange:
+        case codec.TxPayloadTypeID.TenureChange:
           counts.txs.tenure_change += 1;
           break;
-        case TxPayloadTypeID.TokenTransfer:
+        case codec.TxPayloadTypeID.TokenTransfer:
           counts.txs.token_transfer += 1;
           break;
-        case TxPayloadTypeID.VersionedSmartContract:
+        case codec.TxPayloadTypeID.VersionedSmartContract:
           counts.txs.versioned_smart_contract += 1;
           break;
       }

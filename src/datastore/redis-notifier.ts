@@ -1,9 +1,9 @@
-import Redis, { Cluster, RedisOptions } from 'ioredis';
-import { BlockHeader, ReOrgUpdatedEntities } from './common';
+import { Redis, Cluster, type RedisOptions } from 'ioredis';
+import { BlockHeader, ReOrgUpdatedEntities } from './common.js';
 import { ChainID } from '@stacks/transactions';
-import { getApiConfiguredChainID } from '../helpers';
+import { getApiConfiguredChainID } from '../helpers.js';
 import { logger } from '@stacks/api-toolkit';
-import { ENV } from '../env';
+import { ENV } from '../env.js';
 
 /**
  * Notifies Chainhooks of the progress of the Stacks index via a message sent to a Redis queue. This

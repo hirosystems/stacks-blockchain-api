@@ -1,7 +1,7 @@
 import { pipeline } from 'node:stream/promises';
 import { Readable } from 'stream';
-import { DbRawEventRequest } from '../datastore/common';
-import { getConnectionArgs, getConnectionConfig, PgServer } from '../datastore/connection';
+import { DbRawEventRequest } from '../datastore/common.js';
+import { getConnectionArgs, getConnectionConfig, PgServer } from '../datastore/connection.js';
 import { connectPostgres } from '@stacks/api-toolkit';
 import { createWriteStream } from 'node:fs';
 

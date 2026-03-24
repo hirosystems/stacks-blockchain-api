@@ -1,16 +1,16 @@
-import { handleChainTipCache } from '../../controllers/cache-controller';
-import { parseDbBurnBlock, parseDbBurnBlockPoxTx, parseDbNakamotoBlock } from './helpers';
-import { BurnBlockParamsSchema, cleanBlockHeightOrHashParam, parseBlockParam } from './schemas';
-import { InvalidRequestError, NotFoundError } from '../../../errors';
+import { handleChainTipCache } from '../../controllers/cache-controller.js';
+import { parseDbBurnBlock, parseDbBurnBlockPoxTx, parseDbNakamotoBlock } from './helpers.js';
+import { BurnBlockParamsSchema, cleanBlockHeightOrHashParam, parseBlockParam } from './schemas.js';
+import { InvalidRequestError, NotFoundError } from '../../../errors.js';
 import { FastifyPluginAsync } from 'fastify';
 import { Type, TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
 import { Server } from 'node:http';
-import { LimitParam, OffsetParam } from '../../schemas/params';
-import { ResourceType } from '../../pagination';
-import { PaginatedResponse } from '../../schemas/util';
-import { BurnBlock, BurnBlockSchema } from '../../schemas/entities/burn-blocks';
-import { NakamotoBlockSchema } from '../../schemas/entities/block';
-import { BurnBlockPoxTxSchema } from '../../schemas/entities/pox-transaction';
+import { LimitParam, OffsetParam } from '../../schemas/params.js';
+import { ResourceType } from '../../pagination.js';
+import { PaginatedResponse } from '../../schemas/util.js';
+import { BurnBlock, BurnBlockSchema } from '../../schemas/entities/burn-blocks.js';
+import { NakamotoBlockSchema } from '../../schemas/entities/block.js';
+import { BurnBlockPoxTxSchema } from '../../schemas/entities/pox-transaction.js';
 
 export const BurnBlockRoutesV2: FastifyPluginAsync<
   Record<never, never>,

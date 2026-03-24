@@ -1,0 +1,1185 @@
+import supertest from 'supertest';
+import { ChainID } from '@stacks/transactions';
+import { getBlockFromDataStore } from '../../../src/api/controllers/db-controller.ts';
+import {
+  DbBlock,
+  DbTxRaw,
+  DbTxTypeId,
+  DataStoreBlockUpdateData,
+} from '../../../src/datastore/common.ts';
+import { startApiServer, ApiServer } from '../../../src/api/init.ts';
+import { I32_MAX, unixEpochToIso } from '../../../src/helpers.ts';
+import { TestBlockBuilder, TestMicroblockStreamBuilder } from '../test-builders.ts';
+import { PgWriteStore } from '../../../src/datastore/pg-write-store.ts';
+import { PgSqlClient, bufferToHex } from '@stacks/api-toolkit';
+import { migrate } from '../../test-helpers.ts';
+import {
+  BlockListV2Response,
+  BlockSignerSignatureResponse,
+} from '../../../src/api/schemas/responses/responses.ts';
+import { beforeEach, afterEach, describe, test } from 'node:test';
+import assert from 'node:assert/strict';
+import { assertMatchesObject } from '../test-helpers.ts';
+
+describe('block tests', () => {
+  let db: PgWriteStore;
+  let client: PgSqlClient;
+  let api: ApiServer;
+
+  beforeEach(async () => {
+    await migrate('up');
+    db = await PgWriteStore.connect({
+      usageName: 'tests',
+      withNotifier: false,
+      skipMigrations: true,
+    });
+    client = db.sql;
+    api = await startApiServer({ datastore: db, chainId: ChainID.Testnet });
+  });
+
+  afterEach(async () => {
+    await api.terminate();
+    await db?.close();
+    await migrate('down');
+  });
+
+  test('info block time', async () => {
+    const query1 = await supertest(api.server).get(`/extended/v1/info/network_block_times`);
+    assert.equal(query1.status, 200);
+    assert.equal(query1.type, 'application/json');
+    assert.deepEqual(JSON.parse(query1.text), {
+      testnet: { target_block_time: 120 },
+      mainnet: { target_block_time: 600 },
+    });
+    const query2 = await supertest(api.server).get(`/extended/v1/info/network_block_time/mainnet`);
+    assert.equal(query2.status, 200);
+    assert.equal(query2.type, 'application/json');
+    assert.deepEqual(JSON.parse(query2.text), { target_block_time: 600 });
+    const query3 = await supertest(api.server).get(`/extended/v1/info/network_block_time/testnet`);
+    assert.equal(query3.status, 200);
+    assert.equal(query3.type, 'application/json');
+    assert.deepEqual(JSON.parse(query3.text), { target_block_time: 120 });
+    const query4 = await supertest(api.server).get(`/extended/v1/info/network_block_time/badnet`);
+    assert.equal(query4.status, 400);
+    assert.equal(query4.type, 'application/json');
+  });
+
+  test('block store and process', async () => {
+    const block: DbBlock = {
+      block_hash: '0x1234',
+      index_block_hash: '0xdeadbeef',
+      parent_index_block_hash: '0x5678',
+      parent_block_hash: '0xff0011',
+      parent_microblock_hash: '',
+      parent_microblock_sequence: 0,
+      block_height: 1235,
+      tenure_height: 1235,
+      block_time: 1594647996,
+      burn_block_time: 1594647996,
+      burn_block_hash: '0x1234',
+      burn_block_height: 123,
+      miner_txid: '0x4321',
+      canonical: true,
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
+      tx_count: 1,
+      tx_total_size: 1,
+      signer_bitvec: null,
+      signer_signatures: null,
+    };
+    await db.updateBlock(client, block);
+    const tx: DbTxRaw = {
+      tx_id: '0x1234',
+      anchor_mode: 3,
+      tx_index: 4,
+      nonce: 0,
+      raw_tx: '',
+      index_block_hash: block.index_block_hash,
+      block_hash: block.block_hash,
+      block_height: 68456,
+      block_time: 1594647995,
+      burn_block_height: 68456,
+      burn_block_time: 1594647995,
+      parent_burn_block_time: 1626122935,
+      type_id: DbTxTypeId.Coinbase,
+      coinbase_payload: bufferToHex(Buffer.from('hi')),
+      status: 1,
+      raw_result: '0x0100000000000000000000000000000001', // u1
+      canonical: true,
+      microblock_canonical: true,
+      microblock_sequence: I32_MAX,
+      microblock_hash: '',
+      parent_index_block_hash: '',
+      parent_block_hash: '',
+      post_conditions: '0x01f5',
+      fee_rate: 1234n,
+      sponsored: false,
+      sponsor_address: undefined,
+      sender_address: 'sender-addr',
+      origin_hash_mode: 1,
+      event_count: 0,
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
+      vm_error: null,
+    };
+    await db.updateTx(client, tx);
+    const blockQuery = await getBlockFromDataStore({
+      blockIdentifer: { hash: block.block_hash },
+      db,
+    });
+    if (!blockQuery.found) {
+      throw new Error('block not found');
+    }
+    const expectedResp = {
+      burn_block_time: 1594647996,
+      burn_block_time_iso: '2020-07-13T13:46:36.000Z',
+      burn_block_hash: '0x1234',
+      burn_block_height: 123,
+      miner_txid: '0x4321',
+      canonical: true,
+      hash: '0x1234',
+      height: 1235,
+      block_time: 1594647996,
+      block_time_iso: '2020-07-13T13:46:36.000Z',
+      index_block_hash: '0xdeadbeef',
+      parent_block_hash: '0xff0011',
+      parent_microblock_hash: '0x',
+      parent_microblock_sequence: 0,
+      txs: ['0x1234'],
+      microblocks_accepted: [],
+      microblocks_streamed: [],
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
+      microblock_tx_count: {},
+    };
+    assertMatchesObject(blockQuery.result, expectedResp);
+    const fetchBlockByHash = await supertest(api.server).get(
+      `/extended/v1/block/${block.block_hash}`
+    );
+    assert.equal(fetchBlockByHash.status, 200);
+    assert.equal(fetchBlockByHash.type, 'application/json');
+    assertMatchesObject(JSON.parse(fetchBlockByHash.text), expectedResp);
+    const fetchBlockByHeight = await supertest(api.server).get(
+      `/extended/v1/block/by_height/${block.block_height}`
+    );
+    assert.equal(fetchBlockByHeight.status, 200);
+    assert.equal(fetchBlockByHeight.type, 'application/json');
+    assertMatchesObject(JSON.parse(fetchBlockByHeight.text), expectedResp);
+    const fetchBlockByBurnBlockHeight = await supertest(api.server).get(
+      `/extended/v1/block/by_burn_block_height/${block.burn_block_height}`
+    );
+    assert.equal(fetchBlockByBurnBlockHeight.status, 200);
+    assert.equal(fetchBlockByBurnBlockHeight.type, 'application/json');
+    assertMatchesObject(JSON.parse(fetchBlockByBurnBlockHeight.text), expectedResp);
+    const fetchBlockByInvalidBurnBlockHeight1 = await supertest(api.server).get(
+      `/extended/v1/block/by_burn_block_height/999`
+    );
+    assert.equal(fetchBlockByInvalidBurnBlockHeight1.status, 404);
+    assert.equal(fetchBlockByInvalidBurnBlockHeight1.type, 'application/json');
+    const expectedResp1 = {
+      message: 'cannot find block by height',
+    };
+    assert.equal(
+      JSON.parse(fetchBlockByInvalidBurnBlockHeight1.text).message,
+      expectedResp1.message
+    );
+    const fetchBlockByInvalidBurnBlockHeight2 = await supertest(api.server).get(
+      `/extended/v1/block/by_burn_block_height/abc`
+    );
+    assert.equal(fetchBlockByInvalidBurnBlockHeight2.status, 400);
+    assert.equal(fetchBlockByInvalidBurnBlockHeight2.type, 'application/json');
+    const expectedResp2 = {
+      message: 'params/burn_block_height must be integer',
+    };
+    assert.equal(
+      JSON.parse(fetchBlockByInvalidBurnBlockHeight2.text).message,
+      expectedResp2.message
+    );
+    const fetchBlockByInvalidBurnBlockHeight3 = await supertest(api.server).get(
+      `/extended/v1/block/by_burn_block_height/0`
+    );
+    assert.notEqual(fetchBlockByInvalidBurnBlockHeight3.status, 200);
+    assert.equal(fetchBlockByInvalidBurnBlockHeight3.type, 'application/json');
+    const fetchBlockByBurnBlockHash = await supertest(api.server).get(
+      `/extended/v1/block/by_burn_block_hash/${block.burn_block_hash}`
+    );
+    assert.equal(fetchBlockByBurnBlockHash.status, 200);
+    assert.equal(fetchBlockByBurnBlockHash.type, 'application/json');
+    assertMatchesObject(JSON.parse(fetchBlockByBurnBlockHash.text), expectedResp);
+    const fetchBlockByInvalidBurnBlockHash = await supertest(api.server).get(
+      `/extended/v1/block/by_burn_block_hash/0x000000`
+    );
+    assert.equal(fetchBlockByInvalidBurnBlockHash.status, 404);
+    assert.equal(fetchBlockByInvalidBurnBlockHash.type, 'application/json');
+    const expectedResp4 = {
+      message: 'cannot find block by burn block hash',
+    };
+    assert.equal(JSON.parse(fetchBlockByInvalidBurnBlockHash.text).message, expectedResp4.message);
+  });
+
+  test('/block', async () => {
+    const block_hash = '0x1234',
+      index_block_hash = '0xabcd',
+      tx_id = '0x12ff';
+    const block1 = new TestBlockBuilder({
+      block_hash,
+      index_block_hash,
+      // parent_index_block_hash: genesis_index_block_hash,
+      block_height: 1,
+    })
+      .addTx({ block_hash, tx_id, index_block_hash })
+      .build();
+    const microblock = new TestMicroblockStreamBuilder()
+      .addMicroblock({ parent_index_block_hash: index_block_hash })
+      .build();
+    await db.update(block1);
+    await db.updateMicroblocks(microblock);
+    const expectedResp = {
+      limit: 20,
+      offset: 0,
+      total: 1,
+      results: [
+        {
+          canonical: true,
+          height: 1,
+          hash: block_hash,
+          block_time: 94869287,
+          block_time_iso: '1973-01-03T00:34:47.000Z',
+          parent_block_hash: '0x',
+          burn_block_time: 94869286,
+          burn_block_time_iso: '1973-01-03T00:34:46.000Z',
+          burn_block_hash: '0xf44f44',
+          burn_block_height: 713000,
+          miner_txid: '0x4321',
+          parent_microblock_hash: '0x00',
+          index_block_hash: '0xabcd',
+          parent_microblock_sequence: 0,
+          txs: [tx_id],
+          microblocks_accepted: [],
+          microblocks_streamed: [microblock.microblocks[0].microblock_hash],
+          execution_cost_read_count: 0,
+          execution_cost_read_length: 0,
+          execution_cost_runtime: 0,
+          execution_cost_write_count: 0,
+          execution_cost_write_length: 0,
+          microblock_tx_count: {},
+        },
+      ],
+    };
+    const result = await supertest(api.server).get(`/extended/v1/block/`);
+    assertMatchesObject(result.body, expectedResp);
+  });
+
+  test('block tenure-change', async () => {
+    const parentData = new TestBlockBuilder({
+      block_height: 0,
+    }).build();
+
+    // Epoch2.x block (missing tenure-change in event payload)
+    const block1 = new TestBlockBuilder({
+      block_height: 1,
+      block_hash: '0x1234',
+      index_block_hash: '0x123456',
+      parent_block_hash: parentData.block.block_hash,
+      parent_index_block_hash: parentData.block.index_block_hash,
+    }).build();
+    block1.block.signer_bitvec = null;
+    block1.block.tenure_height = null;
+
+    // Epoch2.x block
+    const block2 = new TestBlockBuilder({
+      block_height: 2,
+      block_hash: '0x2234',
+      index_block_hash: '0x223456',
+      parent_block_hash: block1.block.block_hash,
+      parent_index_block_hash: block1.block.index_block_hash,
+    }).build();
+    block2.block.signer_bitvec = null;
+    block2.block.tenure_height = 22;
+
+    // Epoch3 block (missing tenure-change in event payload)
+    const block3 = new TestBlockBuilder({
+      block_height: 3,
+      block_hash: '0x3234',
+      index_block_hash: '0x323456',
+      parent_block_hash: block2.block.block_hash,
+      parent_index_block_hash: block2.block.index_block_hash,
+    }).build();
+    block3.block.signer_bitvec = '1111';
+    block3.block.tenure_height = null;
+
+    // Epoch3 block
+    const block4 = new TestBlockBuilder({
+      block_height: 4,
+      block_hash: '0x4234',
+      index_block_hash: '0x423456',
+      parent_block_hash: block3.block.block_hash,
+      parent_index_block_hash: block3.block.index_block_hash,
+    }).build();
+    block4.block.signer_bitvec = '1111';
+    block4.block.tenure_height = 33;
+
+    await db.update(parentData);
+    await db.update(block1);
+    await db.update(block2);
+    await db.update(block3);
+    await db.update(block4);
+
+    const result1 = await supertest(api.server).get(
+      `/extended/v1/block/${block1.block.block_hash}`
+    );
+    assertMatchesObject(result1.body, {
+      canonical: true,
+      height: block1.block.block_height,
+      hash: block1.block.block_hash,
+      tenure_height: block1.block.block_height, // epoch2.x w/ missing tenure-change should default to block_height
+    });
+
+    const result2 = await supertest(api.server).get(
+      `/extended/v1/block/${block2.block.block_hash}`
+    );
+    assertMatchesObject(result2.body, {
+      canonical: true,
+      height: block2.block.block_height,
+      hash: block2.block.block_hash,
+      tenure_height: block2.block.tenure_height, // epoch2.x w/ tenure-change should use tenure_height
+    });
+
+    const result3 = await supertest(api.server).get(
+      `/extended/v1/block/${block3.block.block_hash}`
+    );
+    assertMatchesObject(result3.body, {
+      canonical: true,
+      height: block3.block.block_height,
+      hash: block3.block.block_hash,
+      tenure_height: -1, // epoch3 w/ missing tenure-change should return -1 to indicate problem
+    });
+
+    const result4 = await supertest(api.server).get(
+      `/extended/v1/block/${block4.block.block_hash}`
+    );
+    assertMatchesObject(result4.body, {
+      canonical: true,
+      height: block4.block.block_height,
+      hash: block4.block.block_hash,
+      tenure_height: block4.block.tenure_height, // epoch3 w/ tenure-change should use tenure_height
+    });
+  });
+
+  test('/block signer signatures', async () => {
+    const block_hash = '0x1234',
+      index_block_hash = '0xabcd',
+      tx_id = '0x12ff';
+    const signerSignatures: string[] = [];
+    // 65 bytes each, up to 4000 signatures byte strings possible
+    for (let i = 0; i < 4000; i++) {
+      signerSignatures.push(`0x${i.toString(16).padStart(130, '0')}`);
+    }
+    const block1 = new TestBlockBuilder({
+      block_hash,
+      index_block_hash,
+      // parent_index_block_hash: genesis_index_block_hash,
+      block_height: 1,
+      signer_signatures: signerSignatures,
+    })
+      .addTx({ block_hash, tx_id, index_block_hash })
+      .build();
+    await db.update(block1);
+    const expectedResp = {
+      limit: 20,
+      offset: 0,
+      total: 1,
+      results: [
+        {
+          canonical: true,
+          height: 1,
+          hash: block_hash,
+          block_time: 94869287,
+          block_time_iso: '1973-01-03T00:34:47.000Z',
+          parent_block_hash: '0x',
+          burn_block_time: 94869286,
+          burn_block_time_iso: '1973-01-03T00:34:46.000Z',
+          burn_block_hash: '0xf44f44',
+          burn_block_height: 713000,
+          miner_txid: '0x4321',
+          parent_microblock_hash: '0x00',
+          index_block_hash: '0xabcd',
+          parent_microblock_sequence: 0,
+          txs: [tx_id],
+          microblocks_accepted: [],
+          microblocks_streamed: [],
+          execution_cost_read_count: 0,
+          execution_cost_read_length: 0,
+          execution_cost_runtime: 0,
+          execution_cost_write_count: 0,
+          execution_cost_write_length: 0,
+          microblock_tx_count: {},
+        },
+      ],
+    };
+    const result = await supertest(api.server).get(`/extended/v1/block/`);
+    assertMatchesObject(result.body, expectedResp);
+    const sigReq = await supertest(api.server).get(
+      `/extended/v2/blocks/${block1.block.block_height}/signer-signatures?limit=3&offset=70`
+    );
+    const sigResult: BlockSignerSignatureResponse = sigReq.body;
+    assert.deepEqual(sigResult, {
+      limit: 3,
+      offset: 70,
+      total: 4000,
+      results: signerSignatures.slice(70, 73),
+    });
+  });
+
+  test('/burn_block', async () => {
+    const burnBlock1 = {
+      burn_block_hash: '0x5678111111111111111111111111111111111111111111111111111111111111',
+      burn_block_height: 5,
+      burn_block_time: 1702386592,
+    };
+    const burnBlock2 = {
+      burn_block_hash: '0x5678211111111111111111111111111111111111111111111111111111111111',
+      burn_block_height: 7,
+      burn_block_time: 1702386678,
+    };
+
+    const tenMinutes = 10 * 60;
+    let blockStartTime = 1714139800;
+    const stacksBlock1 = {
+      block_height: 1,
+      block_time: (blockStartTime += tenMinutes),
+      block_hash: '0x1234111111111111111111111111111111111111111111111111111111111111',
+      index_block_hash: '0xabcd111111111111111111111111111111111111111111111111111111111111',
+      parent_index_block_hash: '0x0000000000000000000000000000000000000000000000000000000000000000',
+      burn_block_hash: burnBlock1.burn_block_hash,
+      burn_block_height: burnBlock1.burn_block_height,
+      burn_block_time: burnBlock1.burn_block_time,
+    };
+    const stacksBlock2 = {
+      block_height: 2,
+      block_time: (blockStartTime += tenMinutes),
+      block_hash: '0x1234211111111111111111111111111111111111111111111111111111111111',
+      index_block_hash: '0xabcd211111111111111111111111111111111111111111111111111111111111',
+      parent_index_block_hash: stacksBlock1.index_block_hash,
+      burn_block_hash: burnBlock2.burn_block_hash,
+      burn_block_height: burnBlock2.burn_block_height,
+      burn_block_time: burnBlock2.burn_block_time,
+    };
+    const stacksBlock3 = {
+      block_height: 3,
+      block_time: (blockStartTime += tenMinutes),
+      block_hash: '0x1234311111111111111111111111111111111111111111111111111111111111',
+      index_block_hash: '0xabcd311111111111111111111111111111111111111111111111111111111111',
+      parent_index_block_hash: stacksBlock2.index_block_hash,
+      burn_block_hash: burnBlock2.burn_block_hash,
+      burn_block_height: burnBlock2.burn_block_height,
+      burn_block_time: burnBlock2.burn_block_time,
+    };
+    const stacksBlock4 = {
+      block_height: 4,
+      block_time: (blockStartTime += tenMinutes),
+      block_hash: '0x1234411111111111111111111111111111111111111111111111111111111111',
+      index_block_hash: '0xabcd411111111111111111111111111111111111111111111111111111111111',
+      parent_index_block_hash: stacksBlock3.index_block_hash,
+      burn_block_hash: burnBlock2.burn_block_hash,
+      burn_block_height: burnBlock2.burn_block_height,
+      burn_block_time: burnBlock2.burn_block_time,
+    };
+
+    const stacksBlocks = [stacksBlock1, stacksBlock2, stacksBlock3, stacksBlock4];
+
+    for (let i = 0; i < stacksBlocks.length; i++) {
+      const block = stacksBlocks[i];
+      const dbBlock = new TestBlockBuilder({
+        block_hash: block.block_hash,
+        block_time: block.block_time,
+        index_block_hash: block.index_block_hash,
+        parent_index_block_hash: block.parent_index_block_hash,
+        block_height: block.block_height,
+        burn_block_hash: block.burn_block_hash,
+        burn_block_height: block.burn_block_height,
+        burn_block_time: block.burn_block_time,
+      })
+        .addTx({ tx_id: `0x${i.toString().padStart(64, '0')}` })
+        .build();
+      await db.update(dbBlock);
+    }
+
+    const result = await supertest(api.server).get(`/extended/v2/burn-blocks`);
+    assert.deepEqual(result.body.results, [
+      {
+        avg_block_time: tenMinutes,
+        burn_block_hash: burnBlock2.burn_block_hash,
+        burn_block_height: burnBlock2.burn_block_height,
+        burn_block_time: burnBlock2.burn_block_time,
+        burn_block_time_iso: unixEpochToIso(burnBlock2.burn_block_time),
+        stacks_blocks: [stacksBlock4.block_hash, stacksBlock3.block_hash, stacksBlock2.block_hash],
+        total_tx_count: 3,
+      },
+      {
+        avg_block_time: 0,
+        burn_block_hash: burnBlock1.burn_block_hash,
+        burn_block_height: burnBlock1.burn_block_height,
+        burn_block_time: burnBlock1.burn_block_time,
+        burn_block_time_iso: unixEpochToIso(burnBlock1.burn_block_time),
+        stacks_blocks: [stacksBlock1.block_hash],
+        total_tx_count: 1,
+      },
+    ]);
+
+    // test 'latest' filter
+    const result2 = await supertest(api.server).get(`/extended/v2/burn-blocks/latest`);
+    assert.deepEqual(result2.body, {
+      avg_block_time: tenMinutes,
+      burn_block_hash: stacksBlocks.at(-1)?.burn_block_hash,
+      burn_block_height: stacksBlocks.at(-1)?.burn_block_height,
+      burn_block_time: stacksBlocks.at(-1)?.burn_block_time,
+      burn_block_time_iso: unixEpochToIso(stacksBlocks.at(-1)?.burn_block_time ?? 0),
+      stacks_blocks: [stacksBlock4.block_hash, stacksBlock3.block_hash, stacksBlock2.block_hash],
+      total_tx_count: 3,
+    });
+
+    // test hash filter
+    const result3 = await supertest(api.server).get(
+      `/extended/v2/burn-blocks/${stacksBlock1.burn_block_hash}`
+    );
+    assert.deepEqual(result3.body, {
+      avg_block_time: 0,
+      burn_block_hash: stacksBlock1.burn_block_hash,
+      burn_block_height: stacksBlock1.burn_block_height,
+      burn_block_time: stacksBlock1.burn_block_time,
+      burn_block_time_iso: unixEpochToIso(stacksBlock1.burn_block_time),
+      stacks_blocks: [stacksBlock1.block_hash],
+      total_tx_count: 1,
+    });
+
+    // test height filter
+    const result4 = await supertest(api.server).get(
+      `/extended/v2/burn-blocks/${stacksBlock1.burn_block_height}`
+    );
+    assert.deepEqual(result4.body, {
+      avg_block_time: 0,
+      burn_block_hash: stacksBlock1.burn_block_hash,
+      burn_block_height: stacksBlock1.burn_block_height,
+      burn_block_time: stacksBlock1.burn_block_time,
+      burn_block_time_iso: unixEpochToIso(stacksBlock1.burn_block_time),
+      stacks_blocks: [stacksBlock1.block_hash],
+      total_tx_count: 1,
+    });
+  });
+
+  test('block tx list excludes non-canonical', async () => {
+    const block1 = new TestBlockBuilder({ block_hash: '0x0001', index_block_hash: '0x0001' })
+      .addTx({ tx_id: '0x0001' })
+      .build();
+    await db.update(block1);
+    const microblock1 = new TestMicroblockStreamBuilder()
+      .addMicroblock({
+        microblock_sequence: 0,
+        microblock_hash: '0xff01',
+        microblock_parent_hash: '0x1212',
+        parent_index_block_hash: block1.block.index_block_hash,
+      })
+      .addTx({ tx_id: '0x1001', index_block_hash: '0x0002' })
+      .build();
+    await db.updateMicroblocks(microblock1);
+    const microblock2 = new TestMicroblockStreamBuilder()
+      .addMicroblock({
+        microblock_sequence: 1,
+        microblock_hash: '0xff02',
+        microblock_parent_hash: microblock1.microblocks[0].microblock_hash,
+        parent_index_block_hash: block1.block.index_block_hash,
+      })
+      .addTx({ tx_id: '0x1002', index_block_hash: '0x0002' })
+      .build();
+    await db.updateMicroblocks(microblock2);
+    const expectedResp1 = {
+      burn_block_hash: '0xf44f44',
+      burn_block_height: Number,
+      burn_block_time: Number,
+      burn_block_time_iso: String,
+      canonical: true,
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
+      index_block_hash: '0x0001',
+      hash: '0x0001',
+      height: 1,
+      block_time: 94869287,
+      block_time_iso: '1973-01-03T00:34:47.000Z',
+      microblocks_accepted: [],
+      microblocks_streamed: [
+        microblock1.microblocks[0].microblock_hash,
+        microblock2.microblocks[0].microblock_hash,
+      ],
+      miner_txid: '0x4321',
+      parent_block_hash: '0x',
+      parent_microblock_hash: '0x00',
+      parent_microblock_sequence: 0,
+      txs: ['0x0001'],
+      microblock_tx_count: {},
+    };
+    const fetch1 = await supertest(api.server).get(
+      `/extended/v1/block/by_height/${block1.block.block_height}`
+    );
+    assert.equal(fetch1.status, 200);
+    assert.equal(fetch1.type, 'application/json');
+    assertMatchesObject(JSON.parse(fetch1.text), expectedResp1);
+    // Confirm the first microblock, but orphan the second
+    const block2 = new TestBlockBuilder({
+      block_height: block1.block.block_height + 1,
+      block_hash: '0x0002',
+      index_block_hash: '0x0002',
+      parent_block_hash: block1.block.block_hash,
+      parent_index_block_hash: block1.block.index_block_hash,
+      parent_microblock_hash: microblock1.microblocks[0].microblock_hash,
+      parent_microblock_sequence: microblock1.microblocks[0].microblock_sequence,
+    })
+      .addTx({ tx_id: microblock1.txs[0].tx.tx_id })
+      .addTx({ tx_id: '0x0002' })
+      .build();
+    await db.update(block2);
+    const fetch2 = await supertest(api.server).get(
+      `/extended/v1/block/by_height/${block2.block.block_height}`
+    );
+    const expectedResp2 = {
+      burn_block_hash: '0xf44f44',
+      burn_block_height: Number,
+      burn_block_time: Number,
+      burn_block_time_iso: String,
+      canonical: true,
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
+      index_block_hash: '0x0002',
+      hash: '0x0002',
+      height: 2,
+      block_time: 94869287,
+      block_time_iso: '1973-01-03T00:34:47.000Z',
+      microblocks_accepted: [microblock1.microblocks[0].microblock_hash],
+      microblocks_streamed: [],
+      miner_txid: '0x4321',
+      parent_block_hash: '0x0001',
+      parent_microblock_hash: microblock1.microblocks[0].microblock_hash,
+      parent_microblock_sequence: microblock1.microblocks[0].microblock_sequence,
+      // Ensure micro-orphaned tx `0x1002` is not included
+      txs: ['0x0002', '0x1001'],
+      microblock_tx_count: {
+        '0xff01': microblock1.txs.length,
+      },
+    };
+    assert.equal(fetch2.status, 200);
+    assert.equal(fetch2.type, 'application/json');
+    assertMatchesObject(JSON.parse(fetch2.text), expectedResp2);
+  });
+
+  test('blocks v2 filtered by burn block', async () => {
+    for (let i = 1; i < 6; i++) {
+      const block = new TestBlockBuilder({
+        block_height: i,
+        block_hash: `0x000${i}`,
+        index_block_hash: `0x000${i}`,
+        parent_index_block_hash: `0x000${i - 1}`,
+        parent_block_hash: `0x000${i - 1}`,
+        burn_block_height: 700000,
+        burn_block_hash: '0x00000000000000000001e2ee7f0c6bd5361b5e7afd76156ca7d6f524ee5ca3d8',
+      })
+        .addTx({ tx_id: `0x000${i}` })
+        .build();
+      await db.update(block);
+    }
+    for (let i = 6; i < 9; i++) {
+      const block = new TestBlockBuilder({
+        block_height: i,
+        block_hash: `0x000${i}`,
+        index_block_hash: `0x000${i}`,
+        parent_index_block_hash: `0x000${i - 1}`,
+        parent_block_hash: `0x000${i - 1}`,
+        burn_block_height: 700001,
+        burn_block_hash: '0x000000000000000000028eacd4e6e58405d5a37d06b5d7b93776f1eab68d2494',
+      })
+        .addTx({ tx_id: `0x001${i}` })
+        .build();
+      await db.update(block);
+    }
+
+    // Filter by burn hash
+    const block5 = {
+      block_time: 94869287,
+      block_time_iso: '1973-01-03T00:34:47.000Z',
+      burn_block_hash: '0x00000000000000000001e2ee7f0c6bd5361b5e7afd76156ca7d6f524ee5ca3d8',
+      burn_block_height: 700000,
+      burn_block_time: 94869286,
+      burn_block_time_iso: '1973-01-03T00:34:46.000Z',
+      canonical: true,
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
+      hash: '0x0005',
+      height: 5,
+      index_block_hash: '0x0005',
+      miner_txid: '0x4321',
+      parent_block_hash: '0x0004',
+      parent_index_block_hash: '0x0004',
+      tx_count: 1,
+    };
+    let fetch = await supertest(api.server).get(
+      `/extended/v2/burn-blocks/00000000000000000001e2ee7f0c6bd5361b5e7afd76156ca7d6f524ee5ca3d8/blocks`
+    );
+    let json = JSON.parse(fetch.text);
+    assert.equal(fetch.status, 200);
+    assert.deepEqual(json.total, 5);
+    assertMatchesObject(json.results[0], block5);
+    // Filter by burn height
+    fetch = await supertest(api.server).get(`/extended/v2/burn-blocks/700000/blocks`);
+    json = JSON.parse(fetch.text);
+    assert.equal(fetch.status, 200);
+    assert.deepEqual(json.total, 5);
+    assertMatchesObject(json.results[0], block5);
+    // Get latest block
+    const block8 = {
+      block_time: 94869287,
+      block_time_iso: '1973-01-03T00:34:47.000Z',
+      burn_block_hash: '0x000000000000000000028eacd4e6e58405d5a37d06b5d7b93776f1eab68d2494',
+      burn_block_height: 700001,
+      burn_block_time: 94869286,
+      burn_block_time_iso: '1973-01-03T00:34:46.000Z',
+      canonical: true,
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
+      hash: '0x0008',
+      height: 8,
+      index_block_hash: '0x0008',
+      miner_txid: '0x4321',
+      parent_block_hash: '0x0007',
+      parent_index_block_hash: '0x0007',
+      tx_count: 1,
+    };
+    fetch = await supertest(api.server).get(`/extended/v2/burn-blocks/latest/blocks`);
+    json = JSON.parse(fetch.text);
+    assert.equal(fetch.status, 200);
+    assert.deepEqual(json.total, 3);
+    assertMatchesObject(json.results[0], block8);
+    // Block hashes are validated
+    fetch = await supertest(api.server).get(`/extended/v2/burn-blocks/testvalue/blocks`);
+    assert.notEqual(fetch.status, 200);
+  });
+
+  test('blocks v2 cursor pagination', async () => {
+    for (let i = 1; i <= 14; i++) {
+      const block = new TestBlockBuilder({
+        block_height: i,
+        block_hash: `0x11${i.toString().padStart(62, '0')}`,
+        index_block_hash: `0x${i.toString().padStart(64, '0')}`,
+        parent_index_block_hash: `0x${(i - 1).toString().padStart(64, '0')}`,
+        parent_block_hash: `0x${(i - 1).toString().padStart(64, '0')}`,
+        burn_block_height: 700000,
+        burn_block_hash: '0x00000000000000000001e2ee7f0c6bd5361b5e7afd76156ca7d6f524ee5ca3d8',
+      })
+        .addTx({ tx_id: `0x${i.toString().padStart(64, '0')}` })
+        .build();
+      await db.update(block);
+    }
+
+    let body: BlockListV2Response;
+
+    // Fetch latest page
+    ({ body } = await supertest(api.server).get(`/extended/v2/blocks?limit=3`));
+    assertMatchesObject(body, {
+      limit: 3,
+      offset: 0,
+      total: 14,
+      cursor: '0x0000000000000000000000000000000000000000000000000000000000000014',
+      next_cursor: null,
+      prev_cursor: '0x0000000000000000000000000000000000000000000000000000000000000011',
+      results: [{ height: 14 }, { height: 13 }, { height: 12 }],
+    });
+    const latestPageCursor = body.cursor;
+    const latestBlock = body.results[0];
+
+    // Cursor fetch is rejected if it's not a valid block hash
+    const req2 = await supertest(api.server).get(`/extended/v2/blocks?limit=3&cursor=testvalue`);
+    assert.equal(req2.statusCode, 400);
+    // Can fetch same page using cursor
+    ({ body } = await supertest(api.server).get(
+      `/extended/v2/blocks?limit=3&cursor=${body.cursor}`
+    ));
+    assertMatchesObject(body, {
+      limit: 3,
+      offset: 0,
+      total: 14,
+      cursor: '0x0000000000000000000000000000000000000000000000000000000000000014',
+      next_cursor: null,
+      prev_cursor: '0x0000000000000000000000000000000000000000000000000000000000000011',
+      results: [{ height: 14 }, { height: 13 }, { height: 12 }],
+    });
+    // Fetch previous page
+    ({ body } = await supertest(api.server).get(
+      `/extended/v2/blocks?limit=3&cursor=${body.prev_cursor}`
+    ));
+    assertMatchesObject(body, {
+      limit: 3,
+      offset: 0,
+      total: 14,
+      cursor: '0x0000000000000000000000000000000000000000000000000000000000000011',
+      next_cursor: '0x0000000000000000000000000000000000000000000000000000000000000014',
+      prev_cursor: '0x0000000000000000000000000000000000000000000000000000000000000008',
+      results: [{ height: 11 }, { height: 10 }, { height: 9 }],
+    });
+    // Oldest page has no prev_cursor
+    ({ body } = await supertest(api.server).get(
+      `/extended/v2/blocks?limit=3&cursor=0x0000000000000000000000000000000000000000000000000000000000000002`
+    ));
+    assertMatchesObject(body, {
+      limit: 3,
+      offset: 0,
+      total: 14,
+      cursor: '0x0000000000000000000000000000000000000000000000000000000000000002',
+      next_cursor: '0x0000000000000000000000000000000000000000000000000000000000000005',
+      prev_cursor: null,
+      results: [{ height: 2 }, { height: 1 }],
+    });
+    // Offset + cursor works
+    ({ body } = await supertest(api.server).get(
+      `/extended/v2/blocks?limit=3&cursor=0x0000000000000000000000000000000000000000000000000000000000000011&offset=2`
+    ));
+    assertMatchesObject(body, {
+      limit: 3,
+      offset: 2,
+      total: 14,
+      cursor: '0x0000000000000000000000000000000000000000000000000000000000000009',
+      next_cursor: '0x0000000000000000000000000000000000000000000000000000000000000012',
+      prev_cursor: '0x0000000000000000000000000000000000000000000000000000000000000006',
+      results: [{ height: 9 }, { height: 8 }, { height: 7 }],
+    });
+    // Negative offset + cursor
+    ({ body } = await supertest(api.server).get(
+      `/extended/v2/blocks?limit=3&cursor=0x0000000000000000000000000000000000000000000000000000000000000008&offset=-2`
+    ));
+    assertMatchesObject(body, {
+      limit: 3,
+      offset: -2,
+      total: 14,
+      cursor: '0x0000000000000000000000000000000000000000000000000000000000000010',
+      next_cursor: '0x0000000000000000000000000000000000000000000000000000000000000013',
+      prev_cursor: '0x0000000000000000000000000000000000000000000000000000000000000007',
+      results: [{ height: 10 }, { height: 9 }, { height: 8 }],
+    });
+    // Offset (no cursor) works, has original behavior
+    ({ body } = await supertest(api.server).get(`/extended/v2/blocks?limit=3&offset=5`));
+    assertMatchesObject(body, {
+      limit: 3,
+      offset: 5,
+      total: 14,
+      cursor: '0x0000000000000000000000000000000000000000000000000000000000000009',
+      next_cursor: '0x0000000000000000000000000000000000000000000000000000000000000012',
+      prev_cursor: '0x0000000000000000000000000000000000000000000000000000000000000006',
+      results: [{ height: 9 }, { height: 8 }, { height: 7 }],
+    });
+    // Re-org the the cursor for the latest block, should get a 404 on use
+    const blockB1 = new TestBlockBuilder({
+      block_height: latestBlock.height,
+      block_hash: `0x22${latestBlock.height.toString().padStart(62, '0')}`,
+      index_block_hash: `0xbb${latestBlock.height.toString().padStart(62, '0')}`,
+      parent_index_block_hash: `0x${(latestBlock.height - 1).toString().padStart(64, '0')}`,
+      parent_block_hash: `0x${(latestBlock.height - 1).toString().padStart(64, '0')}`,
+      burn_block_height: 700000,
+      burn_block_hash: '0x00000000000000000001e2ee7f0c6bd5361b5e7afd76156ca7d6f524ee5ca3d8',
+    })
+      .addTx({ tx_id: `0x${latestBlock.height.toString().padStart(64, '0')}` })
+      .build();
+    await db.update(blockB1);
+    const blockB2 = new TestBlockBuilder({
+      block_height: latestBlock.height + 1,
+      block_hash: `0x22${(latestBlock.height + 1).toString().padStart(62, '0')}`,
+      index_block_hash: `0xbb${(latestBlock.height + 1).toString().padStart(62, '0')}`,
+      parent_index_block_hash: `0xbb${latestBlock.height.toString().padStart(62, '0')}`,
+      parent_block_hash: `0x${latestBlock.height.toString().padStart(64, '0')}`,
+      burn_block_height: 700000,
+      burn_block_hash: '0x00000000000000000001e2ee7f0c6bd5361b5e7afd76156ca7d6f524ee5ca3d8',
+    })
+      .addTx({ tx_id: `0x${(latestBlock.height + 1).toString().padStart(64, '0')}` })
+      .build();
+    await db.update(blockB2);
+
+    // Should get a 404 when using cursor for re-orged block
+    const req = await supertest(api.server).get(
+      `/extended/v2/blocks?limit=3&cursor=${latestPageCursor}`
+    );
+    assert.equal(req.statusCode, 404);
+    // Latest page should have the re-org blocks
+    ({ body } = await supertest(api.server).get(`/extended/v2/blocks?limit=3`));
+    assertMatchesObject(body, {
+      limit: 3,
+      offset: 0,
+      total: 15,
+      cursor: '0xbb00000000000000000000000000000000000000000000000000000000000015',
+      next_cursor: null,
+      prev_cursor: '0x0000000000000000000000000000000000000000000000000000000000000012',
+      results: [{ height: 15 }, { height: 14 }, { height: 13 }],
+    });
+  });
+
+  test('blocks by tenure with cursor pagination', async () => {
+    for (let i = 1; i <= 14; i++) {
+      const block = new TestBlockBuilder({
+        block_height: i,
+        block_hash: `0x11${i.toString().padStart(62, '0')}`,
+        index_block_hash: `0x${i.toString().padStart(64, '0')}`,
+        parent_index_block_hash: `0x${(i - 1).toString().padStart(64, '0')}`,
+        parent_block_hash: `0x${(i - 1).toString().padStart(64, '0')}`,
+        burn_block_height: 700000,
+        burn_block_hash: '0x00000000000000000001e2ee7f0c6bd5361b5e7afd76156ca7d6f524ee5ca3d8',
+        // Only include 9 in the latest tenure.
+        tenure_height: i > 5 ? 2 : 1,
+      })
+        .addTx({ tx_id: `0x${i.toString().padStart(64, '0')}` })
+        .build();
+      await db.update(block);
+    }
+
+    let body: BlockListV2Response;
+
+    // Fetch latest page
+    ({ body } = await supertest(api.server).get(`/extended/v2/block-tenures/2/blocks?limit=3`));
+    assertMatchesObject(body, {
+      limit: 3,
+      offset: 0,
+      total: 9,
+      cursor: '0x0000000000000000000000000000000000000000000000000000000000000014',
+      next_cursor: null,
+      prev_cursor: '0x0000000000000000000000000000000000000000000000000000000000000011',
+      results: [{ height: 14 }, { height: 13 }, { height: 12 }],
+    });
+    const latestPageCursor = body.cursor;
+    const latestBlock = body.results[0];
+
+    // Can fetch same page using cursor
+    ({ body } = await supertest(api.server).get(
+      `/extended/v2/block-tenures/2/blocks?limit=3&cursor=${body.cursor}`
+    ));
+    assertMatchesObject(body, {
+      limit: 3,
+      offset: 0,
+      total: 9,
+      cursor: '0x0000000000000000000000000000000000000000000000000000000000000014',
+      next_cursor: null,
+      prev_cursor: '0x0000000000000000000000000000000000000000000000000000000000000011',
+      results: [{ height: 14 }, { height: 13 }, { height: 12 }],
+    });
+    // Fetch previous page
+    ({ body } = await supertest(api.server).get(
+      `/extended/v2/block-tenures/2/blocks?limit=3&cursor=${body.prev_cursor}`
+    ));
+    assertMatchesObject(body, {
+      limit: 3,
+      offset: 0,
+      total: 9,
+      cursor: '0x0000000000000000000000000000000000000000000000000000000000000011',
+      next_cursor: '0x0000000000000000000000000000000000000000000000000000000000000014',
+      prev_cursor: '0x0000000000000000000000000000000000000000000000000000000000000008',
+      results: [{ height: 11 }, { height: 10 }, { height: 9 }],
+    });
+    // Oldest page has no prev_cursor
+    ({ body } = await supertest(api.server).get(
+      `/extended/v2/block-tenures/2/blocks?limit=3&cursor=0x0000000000000000000000000000000000000000000000000000000000000008`
+    ));
+    assertMatchesObject(body, {
+      limit: 3,
+      offset: 0,
+      total: 9,
+      cursor: '0x0000000000000000000000000000000000000000000000000000000000000008',
+      next_cursor: '0x0000000000000000000000000000000000000000000000000000000000000011',
+      prev_cursor: null,
+      results: [{ height: 8 }, { height: 7 }, { height: 6 }],
+    });
+    // Offset + cursor works
+    ({ body } = await supertest(api.server).get(
+      `/extended/v2/block-tenures/2/blocks?limit=3&cursor=0x0000000000000000000000000000000000000000000000000000000000000011&offset=2`
+    ));
+    assertMatchesObject(body, {
+      limit: 3,
+      offset: 2,
+      total: 9,
+      cursor: '0x0000000000000000000000000000000000000000000000000000000000000009',
+      next_cursor: '0x0000000000000000000000000000000000000000000000000000000000000012',
+      prev_cursor: '0x0000000000000000000000000000000000000000000000000000000000000006',
+      results: [{ height: 9 }, { height: 8 }, { height: 7 }],
+    });
+    // Negative offset + cursor
+    ({ body } = await supertest(api.server).get(
+      `/extended/v2/block-tenures/2/blocks?limit=3&cursor=0x0000000000000000000000000000000000000000000000000000000000000008&offset=-2`
+    ));
+    assertMatchesObject(body, {
+      limit: 3,
+      offset: -2,
+      total: 9,
+      cursor: '0x0000000000000000000000000000000000000000000000000000000000000010',
+      next_cursor: '0x0000000000000000000000000000000000000000000000000000000000000013',
+      prev_cursor: '0x0000000000000000000000000000000000000000000000000000000000000007',
+      results: [{ height: 10 }, { height: 9 }, { height: 8 }],
+    });
+    // Offset (no cursor) works, has original behavior
+    ({ body } = await supertest(api.server).get(
+      `/extended/v2/block-tenures/2/blocks?limit=3&offset=5`
+    ));
+    assertMatchesObject(body, {
+      limit: 3,
+      offset: 5,
+      total: 9,
+      cursor: '0x0000000000000000000000000000000000000000000000000000000000000009',
+      next_cursor: '0x0000000000000000000000000000000000000000000000000000000000000012',
+      prev_cursor: '0x0000000000000000000000000000000000000000000000000000000000000006',
+      results: [{ height: 9 }, { height: 8 }, { height: 7 }],
+    });
+  });
+
+  test('blocks v2 retrieved by hash or height', async () => {
+    const blocks: DataStoreBlockUpdateData[] = [];
+    for (let i = 1; i < 6; i++) {
+      const block = new TestBlockBuilder({
+        block_height: i,
+        block_hash: `0x000000000000000000000000000000000000000000000000000000000000000${i}`,
+        index_block_hash: `0x000000000000000000000000000000000000000000000000000000000000011${i}`,
+        parent_index_block_hash: `0x000000000000000000000000000000000000000000000000000000000000011${i - 1}`,
+        parent_block_hash: `0x000000000000000000000000000000000000000000000000000000000000000${i - 1}`,
+        burn_block_height: 700000,
+        burn_block_hash: '0x00000000000000000001e2ee7f0c6bd5361b5e7afd76156ca7d6f524ee5ca3d8',
+      })
+        .addTx({ tx_id: `0x000${i}` })
+        .build();
+      blocks.push(block);
+    }
+
+    // set tenure-height on last block
+    const testTenureHeight = 4555;
+    blocks.slice(-1)[0].block.tenure_height = testTenureHeight;
+
+    for (const block of blocks) {
+      await db.update(block);
+    }
+
+    // Get latest
+    const block5 = {
+      block_time: 94869287,
+      block_time_iso: '1973-01-03T00:34:47.000Z',
+      burn_block_hash: '0x00000000000000000001e2ee7f0c6bd5361b5e7afd76156ca7d6f524ee5ca3d8',
+      burn_block_height: 700000,
+      burn_block_time: 94869286,
+      burn_block_time_iso: '1973-01-03T00:34:46.000Z',
+      canonical: true,
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
+      hash: '0x0000000000000000000000000000000000000000000000000000000000000005',
+      height: 5,
+      index_block_hash: '0x0000000000000000000000000000000000000000000000000000000000000115',
+      miner_txid: '0x4321',
+      parent_block_hash: '0x0000000000000000000000000000000000000000000000000000000000000004',
+      parent_index_block_hash: '0x0000000000000000000000000000000000000000000000000000000000000114',
+      tx_count: 1,
+      tenure_height: testTenureHeight,
+    };
+    let fetch = await supertest(api.server).get(`/extended/v2/blocks/latest`);
+    let json = JSON.parse(fetch.text);
+    assert.equal(fetch.status, 200);
+    assertMatchesObject(json, block5);
+    // Get by height
+    fetch = await supertest(api.server).get(`/extended/v2/blocks/5`);
+    json = JSON.parse(fetch.text);
+    assert.equal(fetch.status, 200);
+    assertMatchesObject(json, block5);
+    // Get by hash
+    fetch = await supertest(api.server).get(
+      `/extended/v2/blocks/0x0000000000000000000000000000000000000000000000000000000000000005`
+    );
+    json = JSON.parse(fetch.text);
+    assert.equal(fetch.status, 200);
+    assertMatchesObject(json, block5);
+    // Get by index block hash
+    fetch = await supertest(api.server).get(
+      `/extended/v2/blocks/0x0000000000000000000000000000000000000000000000000000000000000115`
+    );
+    json = JSON.parse(fetch.text);
+    assert.equal(fetch.status, 200);
+    assertMatchesObject(json, block5);
+  });
+
+  test('blocks v2 retrieved by digit-only hash', async () => {
+    const block = new TestBlockBuilder({
+      block_height: 1,
+      block_hash: `0x1111111111111111111111111111111111111111111111111111111111111111`,
+      index_block_hash: `0x1111111111111111111111111111111111111111111111111111111111111111`,
+      parent_index_block_hash: `0x0000000000000000000000000000000000000000000000000000000000000000`,
+      parent_block_hash: `0x0000000000000000000000000000000000000000000000000000000000000000`,
+      burn_block_height: 700000,
+      burn_block_hash: '0x00000000000000000001e2ee7f0c6bd5361b5e7afd76156ca7d6f524ee5ca3d8',
+    }).build();
+    await db.update(block);
+
+    // Get by hash
+    const fetch = await supertest(api.server).get(
+      `/extended/v2/blocks/1111111111111111111111111111111111111111111111111111111111111111`
+    );
+    const json = JSON.parse(fetch.text);
+    assert.equal(fetch.status, 200);
+    assert.deepEqual(json.height, block.block.block_height);
+  });
+
+  test('blocks average time', async () => {
+    const blockCount = 50;
+    const now = Math.round(Date.now() / 1000);
+    const thirtyMinutes = 30 * 60;
+    // Return timestamp in seconds for block, latest block will be now(), and previous blocks will be 30 minutes apart
+    const timeForBlock = (blockHeight: number) => {
+      const blockDistance = blockCount - blockHeight;
+      return now - thirtyMinutes * blockDistance;
+    };
+    for (let i = 1; i <= blockCount; i++) {
+      const block = new TestBlockBuilder({
+        block_height: i,
+        block_time: timeForBlock(i),
+        block_hash: `0x${i.toString().padStart(64, '0')}`,
+        index_block_hash: `0x11${i.toString().padStart(62, '0')}`,
+        parent_index_block_hash: `0x11${(i - 1).toString().padStart(62, '0')}`,
+        parent_block_hash: `0x${(i - 1).toString().padStart(64, '0')}`,
+        burn_block_height: 700000,
+        burn_block_hash: '0x00000000000000000001e2ee7f0c6bd5361b5e7afd76156ca7d6f524ee5ca3d8',
+      })
+        .addTx({ tx_id: `0x${i.toString().padStart(64, '0')}` })
+        .build();
+      await db.update(block);
+    }
+
+    const fetch = await supertest(api.server).get(`/extended/v2/blocks/average-times`);
+    const response = fetch.body;
+    assert.equal(fetch.status, 200);
+    // All block time averages should be about 30 minutes
+    const getRatio = (time: number) =>
+      Math.min(thirtyMinutes, time) / Math.max(thirtyMinutes, time);
+    assert.ok(getRatio(response.last_1h) >= 0.9);
+    assert.ok(getRatio(response.last_24h) >= 0.9);
+    assert.ok(getRatio(response.last_7d) >= 0.9);
+    assert.ok(getRatio(response.last_30d) >= 0.9);
+  });
+});

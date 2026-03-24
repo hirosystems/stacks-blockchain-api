@@ -1,26 +1,26 @@
-import { BlockIdentifier } from '../../datastore/common';
-import { getPagingQueryLimit, parsePagingQueryInput, ResourceType } from '../pagination';
-import { getBlockParams, parseUntilBlockQuery, validatePrincipal } from '../query-helpers';
+import { BlockIdentifier } from '../../datastore/common.js';
+import { getPagingQueryLimit, parsePagingQueryInput, ResourceType } from '../pagination.js';
+import { getBlockParams, parseUntilBlockQuery, validatePrincipal } from '../query-helpers.js';
 import {
   formatMapToObject,
   getSendManyContract,
   isValidPrincipal,
   mapSeriesAsync,
-} from '../../helpers';
+} from '../../helpers.js';
 import {
   getTxFromDataStore,
   parseDbEvent,
   parseDbMempoolTx,
   parseDbTx,
-} from '../controllers/db-controller';
-import { InvalidRequestError, InvalidRequestErrorType, NotFoundError } from '../../errors';
-import { decodeClarityValueToRepr } from '@stacks/codec';
+} from '../controllers/db-controller.js';
+import { InvalidRequestError, InvalidRequestErrorType, NotFoundError } from '../../errors.js';
+import codec from '@stacks/codec';
 import {
   handlePrincipalCache,
   handlePrincipalMempoolCache,
   handleTransactionCache,
-} from '../controllers/cache-controller';
-import { PgStore } from '../../datastore/pg-store';
+} from '../controllers/cache-controller.js';
+import { PgStore } from '../../datastore/pg-store.js';
 import { has0xPrefix, logger } from '@stacks/api-toolkit';
 
 import { FastifyPluginAsync } from 'fastify';
@@ -33,7 +33,7 @@ import {
   UnanchoredParamSchema,
   UntilBlockSchema,
   ExcludeFunctionArgsParamSchema,
-} from '../schemas/params';
+} from '../schemas/params.js';
 import {
   AddressBalance,
   AddressBalanceSchema,
@@ -44,21 +44,25 @@ import {
   AddressTransactionWithTransfers,
   AddressTransactionWithTransfersSchema,
   InboundStxTransfer,
-} from '../schemas/entities/addresses';
-import { PaginatedResponse } from '../schemas/util';
-import { MempoolTransaction, MempoolTransactionSchema } from '../schemas/entities/transactions';
-import { TransactionEvent, TransactionEventSchema } from '../schemas/entities/transaction-events';
+} from '../schemas/entities/addresses.js';
+import { PaginatedResponse } from '../schemas/util.js';
+import { MempoolTransaction, MempoolTransactionSchema } from '../schemas/entities/transactions.js';
+import {
+  TransactionEvent,
+  TransactionEventSchema,
+} from '../schemas/entities/transaction-events.js';
 import {
   AddressStxInboundListResponseSchema,
   AddressTransactionsListResponseSchema,
   AddressTransactionsWithTransfersListResponseSchema,
-} from '../schemas/responses/responses';
+} from '../schemas/responses/responses.js';
 
 async function getBlockHeight(
   untilBlock: number | string | undefined,
   unanchored: boolean | undefined,
   db: PgStore
 ): Promise<number> {
+  // eslint-disable-next-line no-useless-assignment
   let blockHeight = 0;
   if (typeof untilBlock === 'number') {
     blockHeight = untilBlock;
@@ -300,9 +304,10 @@ export const AddressRoutes: FastifyPluginAsync<
       const offset = req.query.offset ?? 0;
       const excludeFunctionArgs = req.query.exclude_function_args ?? false;
 
-      const response = await fastify.db.sqlTransaction(async sql => {
+      const response = await fastify.db.sqlTransaction(async _sql => {
         const blockParams = getBlockParams(req.query.height, req.query.unanchored);
         let atSingleBlock = false;
+        // eslint-disable-next-line no-useless-assignment
         let blockHeight = 0;
         if (blockParams.blockHeight) {
           if (untilBlock) {
@@ -365,7 +370,7 @@ export const AddressRoutes: FastifyPluginAsync<
       if (!has0xPrefix(tx_id)) {
         tx_id = '0x' + tx_id;
       }
-      const result = await fastify.db.sqlTransaction(async sql => {
+      const result = await fastify.db.sqlTransaction(async _sql => {
         const results = await fastify.db.getInformationTxsWithStxTransfers({ stxAddress, tx_id });
         if (results && results.tx) {
           const txQuery = await getTxFromDataStore(fastify.db, {
@@ -434,9 +439,10 @@ export const AddressRoutes: FastifyPluginAsync<
       validatePrincipal(stxAddress);
       const untilBlock = parseUntilBlockQuery(req.query.until_block, req.query.unanchored);
 
-      const response = await fastify.db.sqlTransaction(async sql => {
+      const response = await fastify.db.sqlTransaction(async _sql => {
         const blockParams = getBlockParams(req.query.height, req.query.unanchored);
         let atSingleBlock = false;
+        // eslint-disable-next-line no-useless-assignment
         let blockHeight = 0;
         if (blockParams.blockHeight) {
           if (untilBlock) {
@@ -487,7 +493,7 @@ export const AddressRoutes: FastifyPluginAsync<
               recipient: transfer.recipient,
             })),
             nft_transfers: entry.nft_transfers.map(transfer => {
-              const parsedClarityValue = decodeClarityValueToRepr(transfer.value);
+              const parsedClarityValue = codec.decodeClarityValueToRepr(transfer.value);
               const nftTransfer = {
                 asset_identifier: transfer.asset_identifier,
                 value: {
@@ -549,7 +555,7 @@ export const AddressRoutes: FastifyPluginAsync<
       const limit = getPagingQueryLimit(ResourceType.Event, req.query.limit);
       const offset = req.query.offset ?? 0;
 
-      const response = await fastify.db.sqlTransaction(async sql => {
+      const response = await fastify.db.sqlTransaction(async _sql => {
         const blockHeight = await getBlockHeight(untilBlock, req.query.unanchored, fastify.db);
         const { results: assetEvents, total } = await fastify.db.getAddressAssetEvents({
           stxAddress,
@@ -604,10 +610,11 @@ export const AddressRoutes: FastifyPluginAsync<
         }
         validatePrincipal(stxAddress);
 
-        const response = await fastify.db.sqlTransaction(async sql => {
+        const response = await fastify.db.sqlTransaction(async _sql => {
           let atSingleBlock = false;
           const untilBlock = parseUntilBlockQuery(req.query.until_block, req.query.unanchored);
           const blockParams = getBlockParams(req.query.height, req.query.unanchored);
+          // eslint-disable-next-line no-useless-assignment
           let blockHeight = 0;
           if (blockParams.blockHeight) {
             if (untilBlock) {

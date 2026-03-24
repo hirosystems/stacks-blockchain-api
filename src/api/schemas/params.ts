@@ -1,5 +1,5 @@
 import { Type } from '@sinclair/typebox';
-import { pagingQueryLimits, ResourceType } from '../pagination';
+import { pagingQueryLimits, ResourceType } from '../pagination.js';
 import { isTestEnv } from '@stacks/api-toolkit';
 
 export const OffsetParam = (title?: string, description?: string) =>

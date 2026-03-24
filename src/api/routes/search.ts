@@ -4,20 +4,20 @@ import {
   DbMempoolTx,
   DbSearchResult,
   DbSearchResultWithMetadata,
-} from '../../datastore/common';
-import { isValidPrincipal, FoundOrNot } from '../../helpers';
+} from '../../datastore/common.js';
+import { isValidPrincipal, FoundOrNot } from '../../helpers.js';
 import {
   getTxTypeString,
   parseDbMempoolTx,
   parseDbTx,
   searchHashWithMetadata,
-} from '../controllers/db-controller';
+} from '../controllers/db-controller.js';
 import { has0xPrefix } from '@stacks/api-toolkit';
 import { FastifyPluginAsync } from 'fastify';
 import { Type, TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
 import { Server } from 'node:http';
-import { AddressStxBalance } from '../schemas/entities/addresses';
-import { Block } from '../schemas/entities/block';
+import { AddressStxBalance } from '../schemas/entities/addresses.js';
+import { Block } from '../schemas/entities/block.js';
 import {
   AddressSearchResult,
   BlockSearchResult,
@@ -26,7 +26,7 @@ import {
   SearchResult,
   SearchResultSchema,
   TxSearchResult,
-} from '../schemas/entities/search';
+} from '../schemas/entities/search.js';
 
 enum SearchResultType {
   TxId = 'tx_id',
@@ -61,6 +61,7 @@ export const SearchRoutes: FastifyPluginAsync<
     }
     if (hashBuffer !== undefined && hashBuffer.length === 32) {
       const hash = '0x' + hashBuffer.toString('hex');
+      // eslint-disable-next-line no-useless-assignment
       let queryResult: FoundOrNot<DbSearchResult> | FoundOrNot<DbSearchResultWithMetadata> = {
         found: false,
       };
@@ -293,7 +294,7 @@ export const SearchRoutes: FastifyPluginAsync<
       const { id: rawTerm } = req.params;
       const includeMetadata = req.query.include_metadata ?? false;
       const term = rawTerm.trim();
-      const searchResult = await fastify.db.sqlTransaction(async sql => {
+      const searchResult = await fastify.db.sqlTransaction(async _sql => {
         return await performSearch(term, includeMetadata);
       });
       if (searchResult.found) {

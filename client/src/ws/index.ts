@@ -77,15 +77,15 @@ export class StacksApiWebSocketClient {
       const parsed = JsonRpcLite.parse(event.data as string);
       const rpcObjects = Array.isArray(parsed) ? parsed : [parsed];
       rpcObjects.forEach(obj => {
-        if (obj.type === JsonRpcLite.RpcStatusType.notification) {
+        if (obj.type === 'notification') {
           this.handleNotification(obj.payload);
-        } else if (obj.type === JsonRpcLite.RpcStatusType.success) {
+        } else if (obj.type === 'success') {
           const req = this.pendingRequests.get(obj.payload.id);
           if (req) {
             this.pendingRequests.delete(obj.payload.id);
             req.resolve(obj.payload.result);
           }
-        } else if (obj.type === JsonRpcLite.RpcStatusType.error) {
+        } else if (obj.type === 'error') {
           const req = this.pendingRequests.get(obj.payload.id);
           if (req) {
             this.pendingRequests.delete(obj.payload.id);

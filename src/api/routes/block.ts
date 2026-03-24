@@ -1,16 +1,16 @@
-import { getBlockFromDataStore, getBlocksWithMetadata } from '../controllers/db-controller';
-import { NotFoundError } from '../../errors';
-import { getPagingQueryLimit, parsePagingQueryInput, ResourceType } from '../pagination';
-import { validateRequestHexInput } from '../query-helpers';
-import { handleChainTipCache } from '../controllers/cache-controller';
+import { getBlockFromDataStore, getBlocksWithMetadata } from '../controllers/db-controller.js';
+import { NotFoundError } from '../../errors.js';
+import { getPagingQueryLimit, parsePagingQueryInput, ResourceType } from '../pagination.js';
+import { validateRequestHexInput } from '../query-helpers.js';
+import { handleChainTipCache } from '../controllers/cache-controller.js';
 import { has0xPrefix } from '@stacks/api-toolkit';
 
 import { FastifyPluginAsync } from 'fastify';
 import { Type, TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
 import { Server } from 'node:http';
-import { LimitParam, OffsetParam } from '../schemas/params';
-import { PaginatedResponse } from '../schemas/util';
-import { BlockSchema } from '../schemas/entities/block';
+import { LimitParam, OffsetParam } from '../schemas/params.js';
+import { PaginatedResponse } from '../schemas/util.js';
+import { BlockSchema } from '../schemas/entities/block.js';
 
 export const BlockRoutes: FastifyPluginAsync<
   Record<never, never>,
