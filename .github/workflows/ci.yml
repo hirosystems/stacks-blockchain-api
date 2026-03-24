@@ -56,18 +56,23 @@ jobs:
       matrix:
         suite:
           [
+            api:blocks,
             api:bns,
             api:cache,
             api:datastore,
             api:event-replay,
             api:event-server,
+            api:mempool,
             api:microblocks,
             api:principal,
             api:redis,
+            api:smart-contracts,
             api:sockets,
             api:synthetic-txs,
+            api:transactions,
             api:v2-proxy,
             krypton:bns-e2e,
+            krypton:faucets,
             krypton:pox-4,
             krypton:pox-4-burnchain,
             krypton:rpc,
