@@ -160,18 +160,16 @@ async function getSpendableUtxos(client: RPCClient, address: string): Promise<Tx
   );
   const rawTxs = await getRawTransactions(client, mempoolTxIds);
   const spentUtxos = rawTxs.map(tx => tx.vin).flat();
-  const spendableUtxos = txOutSet.unspents.filter(
-    utxo => {
-      const confirmations = txOutSet.height - utxo.height;
-      const requiredConfirmations = utxo.coinbase
-        ? COINBASE_MATURITY_CONFIRMATIONS
-        : MIN_TX_CONFIRMATIONS;
-      return (
-        !spentUtxos.find(vin => vin.txid === utxo.txid && vin.vout === utxo.vout) &&
-        confirmations > requiredConfirmations
-      );
-    }
-  );
+  const spendableUtxos = txOutSet.unspents.filter(utxo => {
+    const confirmations = txOutSet.height - utxo.height;
+    const requiredConfirmations = utxo.coinbase
+      ? COINBASE_MATURITY_CONFIRMATIONS
+      : MIN_TX_CONFIRMATIONS;
+    return (
+      !spentUtxos.find(vin => vin.txid === utxo.txid && vin.vout === utxo.vout) &&
+      confirmations > requiredConfirmations
+    );
+  });
   return spendableUtxos;
 }
 
