@@ -1,3 +1,9 @@
+## [8.15.0](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.14.2...v8.15.0) (2026-03-24)
+
+### Features
+
+* update to stacks codec, support stacks 3.4 ([#2487](https://github.com/hirosystems/stacks-blockchain-api/issues/2487)) ([61ab19f](https://github.com/hirosystems/stacks-blockchain-api/commit/61ab19f59470a33e9faca3cb2e33af888f83e95f))
+
 ## [8.14.2](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.14.1...v8.14.2) (2026-03-10)
 
 ### Bug Fixes
