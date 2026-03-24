@@ -7,7 +7,7 @@ import { ChainID } from '@stacks/transactions';
 import { ApiServer, startApiServer } from '../../src/api/init.js';
 import { EventStreamServer, startEventServer } from '../../src/event-stream/event-server.js';
 import { PgWriteStore } from '../../src/datastore/pg-write-store.js';
-import { onceWhen, PgSqlClient } from '@stacks/api-toolkit';
+import { onceWhen, PgSqlClient, timeout } from '@stacks/api-toolkit';
 import { migrate } from '../test-helpers.js';
 import { SnpEventStreamHandler } from '../../src/event-stream/snp-event-stream.js';
 import { fetch } from 'undici';
@@ -58,7 +58,8 @@ describe('SNP integration tests', { concurrency: 1 }, () => {
 
   test('populate SNP server data', async () => {
     const payloadDumpFile = './tests/snp/dumps/epoch-3-transition.tsv.gz';
-    // const payloadDumpFile = './tests/snp/dumps/stackerdb-sample-events.tsv.gz';
+    const maxPostAttempts = 10;
+    const retryDelayMs = 1_000;
     const rl = readline.createInterface({
       input: fs.createReadStream(payloadDumpFile).pipe(zlib.createGunzip()),
       crlfDelay: Infinity,
@@ -66,18 +67,24 @@ describe('SNP integration tests', { concurrency: 1 }, () => {
     for await (const line of rl) {
       const [_id, timestamp, path, payload] = line.split('\t');
       // use fetch to POST the payload to the SNP event observer server
-      try {
-        const res = await fetch(snpObserverUrl + path, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'X-Original-Timestamp': timestamp },
-          body: payload,
-        });
-        if (res.status !== 200) {
-          throw new Error(`Failed to POST event: ${path} - ${payload.slice(0, 100)}`);
+      for (let attempt = 1; attempt <= maxPostAttempts; attempt++) {
+        try {
+          const res = await fetch(snpObserverUrl + path, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-Original-Timestamp': timestamp },
+            body: payload,
+          });
+          if (res.status !== 200) {
+            throw new Error(`Failed to POST event: ${path} - ${payload.slice(0, 100)}`);
+          }
+          break;
+        } catch (error) {
+          if (attempt === maxPostAttempts) {
+            console.error(`Error posting event after ${maxPostAttempts} attempts: ${error}`, error);
+            throw error;
+          }
+          await timeout(retryDelayMs);
         }
-      } catch (error) {
-        console.error(`Error posting event: ${error}`, error);
-        throw error;
       }
     }
     rl.close();
