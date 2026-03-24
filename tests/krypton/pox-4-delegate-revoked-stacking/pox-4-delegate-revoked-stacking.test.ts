@@ -30,6 +30,7 @@ import {
   standByForPoxCycle,
   standByForTx,
   standByForTxSuccess,
+  standByUntilBurnBlock,
   stopKryptonContext,
 } from '../krypton-env.ts';
 import assert from 'node:assert/strict';
@@ -479,9 +480,10 @@ describe('PoX-4 - Delegate Revoked Stacking', () => {
     assert.equal(res.results[0].stacker, POOL.stxAddr);
   });
 
-  test('Wait for current two pox cycles to complete', async () => {
-    await standByForPoxCycle(ctx);
-    await standByForPoxCycle(ctx);
+  test('Wait for stack lock to reach unlock block', async () => {
+    const coreBalanceInfo = await ctx.client.getAccount(STACKER.stxAddr);
+    assert.ok(coreBalanceInfo.unlock_height > 0);
+    await standByUntilBurnBlock(coreBalanceInfo.unlock_height + 1, ctx);
   });
 
   test('Validate account balances are unlocked', async () => {
