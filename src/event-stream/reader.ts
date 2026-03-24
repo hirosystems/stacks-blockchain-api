@@ -23,10 +23,9 @@ import {
   BootContractAddress,
 } from '../helpers.js';
 import {
-  TransactionVersion,
   uintCV,
   bufferCV,
-  serializeCV,
+  serializeCVBytes,
   noneCV,
   someCV,
   OptionalCV,
@@ -35,12 +34,12 @@ import {
   UIntCV,
   stringAsciiCV,
   hexToCV,
+  principalCV,
 } from '@stacks/transactions';
 import { poxAddressToTuple } from '@stacks/stacking';
 import { c32ToB58 } from 'c32check';
 import { decodePoxSyntheticPrintEvent } from './pox-event-parsing.js';
 import { PoxContractIdentifiers, SyntheticPoxEventName } from '../pox-helpers.js';
-import { principalCV } from '@stacks/transactions/dist/clarity/types/principalCV.js';
 import { bufferToHex, hexToBuffer, logger } from '@stacks/api-toolkit';
 import { hexToBytes } from '@stacks/common';
 import {
@@ -112,7 +111,7 @@ function createSubnetTransactionFromL1RegisterAsset(
   ];
   const fnLenBuffer = Buffer.alloc(4);
   fnLenBuffer.writeUInt32BE(legacyClarityVals.length);
-  const serializedClarityValues = legacyClarityVals.map(c => serializeCV(c));
+  const serializedClarityValues = legacyClarityVals.map(c => Buffer.from(serializeCVBytes(c)));
   const rawFnArgs = bufferToHex(Buffer.concat([fnLenBuffer, ...serializedClarityValues]));
   const clarityFnArgs = codec.decodeClarityValueList(rawFnArgs);
 
@@ -120,8 +119,8 @@ function createSubnetTransactionFromL1RegisterAsset(
     tx_id: txId,
     version:
       getChainIDNetwork(chainId) === 'mainnet'
-        ? TransactionVersion.Mainnet
-        : TransactionVersion.Testnet,
+        ? codec.TransactionVersion.Mainnet
+        : codec.TransactionVersion.Testnet,
     chain_id: chainId,
     auth: {
       type_id: codec.PostConditionAuthFlag.Standard,
@@ -172,7 +171,7 @@ function createSubnetTransactionFromL1NftDeposit(
   ];
   const fnLenBuffer = Buffer.alloc(4);
   fnLenBuffer.writeUInt32BE(legacyClarityVals.length);
-  const serializedClarityValues = legacyClarityVals.map(c => serializeCV(c));
+  const serializedClarityValues = legacyClarityVals.map(c => Buffer.from(serializeCVBytes(c)));
   const rawFnArgs = bufferToHex(Buffer.concat([fnLenBuffer, ...serializedClarityValues]));
   const clarityFnArgs = codec.decodeClarityValueList(rawFnArgs);
 
@@ -180,8 +179,8 @@ function createSubnetTransactionFromL1NftDeposit(
     tx_id: txId,
     version:
       getChainIDNetwork(chainId) === 'mainnet'
-        ? TransactionVersion.Mainnet
-        : TransactionVersion.Testnet,
+        ? codec.TransactionVersion.Mainnet
+        : codec.TransactionVersion.Testnet,
     chain_id: chainId,
     auth: {
       type_id: codec.PostConditionAuthFlag.Standard,
@@ -232,7 +231,7 @@ function createSubnetTransactionFromL1FtDeposit(
   ];
   const fnLenBuffer = Buffer.alloc(4);
   fnLenBuffer.writeUInt32BE(legacyClarityVals.length);
-  const serializedClarityValues = legacyClarityVals.map(c => serializeCV(c));
+  const serializedClarityValues = legacyClarityVals.map(c => Buffer.from(serializeCVBytes(c)));
   const rawFnArgs = bufferToHex(Buffer.concat([fnLenBuffer, ...serializedClarityValues]));
   const clarityFnArgs = codec.decodeClarityValueList(rawFnArgs);
 
@@ -240,8 +239,8 @@ function createSubnetTransactionFromL1FtDeposit(
     tx_id: txId,
     version:
       getChainIDNetwork(chainId) === 'mainnet'
-        ? TransactionVersion.Mainnet
-        : TransactionVersion.Testnet,
+        ? codec.TransactionVersion.Mainnet
+        : codec.TransactionVersion.Testnet,
     chain_id: chainId,
     auth: {
       type_id: codec.PostConditionAuthFlag.Standard,
@@ -292,8 +291,8 @@ function createSubnetTransactionFromL1StxDeposit(
     tx_id: txId,
     version:
       getChainIDNetwork(chainId) === 'mainnet'
-        ? TransactionVersion.Mainnet
-        : TransactionVersion.Testnet,
+        ? codec.TransactionVersion.Mainnet
+        : codec.TransactionVersion.Testnet,
     chain_id: chainId,
     auth: {
       type_id: codec.PostConditionAuthFlag.Standard,
@@ -380,7 +379,7 @@ function createTransactionFromCoreBtcStxLockEvent(
   ];
   const fnLenBuffer = Buffer.alloc(4);
   fnLenBuffer.writeUInt32BE(legacyClarityVals.length);
-  const serializedClarityValues = legacyClarityVals.map(c => serializeCV(c));
+  const serializedClarityValues = legacyClarityVals.map(c => Buffer.from(serializeCVBytes(c)));
   const rawFnArgs = bufferToHex(Buffer.concat([fnLenBuffer, ...serializedClarityValues]));
   const clarityFnArgs = codec.decodeClarityValueList(rawFnArgs);
 
@@ -388,8 +387,8 @@ function createTransactionFromCoreBtcStxLockEvent(
     tx_id: txId,
     version:
       getChainIDNetwork(chainId) === 'mainnet'
-        ? TransactionVersion.Mainnet
-        : TransactionVersion.Testnet,
+        ? codec.TransactionVersion.Mainnet
+        : codec.TransactionVersion.Testnet,
     chain_id: chainId,
     auth: {
       type_id: codec.PostConditionAuthFlag.Standard,
@@ -462,7 +461,7 @@ function createTransactionFromCoreBtcStxLockEventPox4(
   ];
   const fnLenBuffer = Buffer.alloc(4);
   fnLenBuffer.writeUInt32BE(legacyClarityVals.length);
-  const serializedClarityValues = legacyClarityVals.map(c => serializeCV(c));
+  const serializedClarityValues = legacyClarityVals.map(c => Buffer.from(serializeCVBytes(c)));
   const rawFnArgs = bufferToHex(Buffer.concat([fnLenBuffer, ...serializedClarityValues]));
   const clarityFnArgs = codec.decodeClarityValueList(rawFnArgs);
 
@@ -470,8 +469,8 @@ function createTransactionFromCoreBtcStxLockEventPox4(
     tx_id: txId,
     version:
       getChainIDNetwork(chainId) === 'mainnet'
-        ? TransactionVersion.Mainnet
-        : TransactionVersion.Testnet,
+        ? codec.TransactionVersion.Mainnet
+        : codec.TransactionVersion.Testnet,
     chain_id: chainId,
     auth: {
       type_id: codec.PostConditionAuthFlag.Standard,
@@ -534,7 +533,7 @@ function createTransactionFromCoreBtcDelegateStxEventPox4(
   ];
   const fnLenBuffer = Buffer.alloc(4);
   fnLenBuffer.writeUInt32BE(legacyClarityVals.length);
-  const serializedClarityValues = legacyClarityVals.map(c => serializeCV(c));
+  const serializedClarityValues = legacyClarityVals.map(c => Buffer.from(serializeCVBytes(c)));
   const rawFnArgs = bufferToHex(Buffer.concat([fnLenBuffer, ...serializedClarityValues]));
   const clarityFnArgs = codec.decodeClarityValueList(rawFnArgs);
 
@@ -542,8 +541,8 @@ function createTransactionFromCoreBtcDelegateStxEventPox4(
     tx_id: txId,
     version:
       getChainIDNetwork(chainId) === 'mainnet'
-        ? TransactionVersion.Mainnet
-        : TransactionVersion.Testnet,
+        ? codec.TransactionVersion.Mainnet
+        : codec.TransactionVersion.Testnet,
     chain_id: chainId,
     auth: {
       type_id: codec.PostConditionAuthFlag.Standard,
@@ -630,7 +629,7 @@ function createTransactionFromCoreBtcDelegateStxEvent(
   ];
   const fnLenBuffer = Buffer.alloc(4);
   fnLenBuffer.writeUInt32BE(legacyClarityVals.length);
-  const serializedClarityValues = legacyClarityVals.map(c => serializeCV(c));
+  const serializedClarityValues = legacyClarityVals.map(c => Buffer.from(serializeCVBytes(c)));
   const rawFnArgs = bufferToHex(Buffer.concat([fnLenBuffer, ...serializedClarityValues]));
   const clarityFnArgs = codec.decodeClarityValueList(rawFnArgs);
 
@@ -638,8 +637,8 @@ function createTransactionFromCoreBtcDelegateStxEvent(
     tx_id: txId,
     version:
       getChainIDNetwork(chainId) === 'mainnet'
-        ? TransactionVersion.Mainnet
-        : TransactionVersion.Testnet,
+        ? codec.TransactionVersion.Mainnet
+        : codec.TransactionVersion.Testnet,
     chain_id: chainId,
     auth: {
       type_id: codec.PostConditionAuthFlag.Standard,
@@ -685,8 +684,8 @@ function createTransactionFromCoreBtcTxEvent(
     tx_id: txId,
     version:
       getChainIDNetwork(chainId) === 'mainnet'
-        ? TransactionVersion.Mainnet
-        : TransactionVersion.Testnet,
+        ? codec.TransactionVersion.Mainnet
+        : codec.TransactionVersion.Testnet,
     chain_id: chainId,
     auth: {
       type_id: codec.PostConditionAuthFlag.Standard,

@@ -1,7 +1,6 @@
 import { Redis, Cluster, type RedisOptions } from 'ioredis';
 import { BlockHeader, ReOrgUpdatedEntities } from './common.js';
-import { ChainID } from '@stacks/transactions';
-import { getApiConfiguredChainID } from '../helpers.js';
+import { ChainID, getApiConfiguredChainID, getChainIDNetwork } from '../helpers.js';
 import { logger } from '@stacks/api-toolkit';
 import { ENV } from '../env.js';
 
@@ -33,7 +32,7 @@ export class RedisNotifier {
       id: `stacks-${block.block_height}-${block.index_block_hash}-${time}`,
       payload: {
         chain: 'stacks',
-        network: this.chainId === ChainID.Mainnet ? 'mainnet' : 'testnet',
+        network: getChainIDNetwork(this.chainId),
         time,
         apply_blocks: [
           ...reOrg.markedCanonical.blockHeaders.map(block => ({

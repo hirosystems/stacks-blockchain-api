@@ -2,16 +2,14 @@ import * as btc from 'bitcoinjs-lib';
 import PQueue from 'p-queue';
 import { BigNumber } from 'bignumber.js';
 import {
-  AnchorMode,
   getAddressFromPrivateKey,
   makeSTXTokenTransfer,
-  pubKeyfromPrivKey,
-  publicKeyToString,
+  privateKeyToPublic,
+  publicKeyToHex,
   SignedTokenTransferOptions,
-  StacksTransaction,
-  TransactionVersion,
+  StacksTransactionWire,
 } from '@stacks/transactions';
-import { StacksNetwork } from '@stacks/network';
+import type { StacksNetwork } from '@stacks/network';
 import {
   makeBtcFaucetPayment,
   getBtcBalance,
@@ -66,11 +64,11 @@ interface SeededAccount {
 export const FAUCET_TESTNET_KEYS: SeededAccount[] = testnetAccounts.map(t => ({
   secretKey: t.secretKey,
   stacksAddress: t.stacksAddress,
-  pubKey: publicKeyToString(pubKeyfromPrivKey(t.secretKey)),
+  pubKey: publicKeyToHex(privateKeyToPublic(t.secretKey)),
 }));
 
 function clientFromNetwork(network: StacksNetwork): StacksCoreRpcClient {
-  const coreUrl = new URL(network.coreApiUrl);
+  const coreUrl = new URL(network.client.baseUrl);
   return new StacksCoreRpcClient({ host: coreUrl.hostname, port: coreUrl.port });
 }
 
@@ -321,7 +319,7 @@ export const FaucetRoutes: FastifyPluginAsync<
     senderKey: string,
     nonce: bigint,
     fee?: bigint
-  ): Promise<StacksTransaction> {
+  ): Promise<StacksTransactionWire> {
     try {
       const options: SignedTokenTransferOptions = {
         recipient,
@@ -329,7 +327,6 @@ export const FaucetRoutes: FastifyPluginAsync<
         senderKey,
         network,
         memo: 'faucet',
-        anchorMode: AnchorMode.Any,
         nonce,
       };
       if (fee) options.fee = fee;
@@ -465,7 +462,7 @@ export const FaucetRoutes: FastifyPluginAsync<
         do {
           keysAttempted++;
           const senderKey = STX_FAUCET_KEYS[keyIndex];
-          const senderAddress = getAddressFromPrivateKey(senderKey, TransactionVersion.Testnet);
+          const senderAddress = getAddressFromPrivateKey(senderKey, 'testnet');
           logger.debug(`StxFaucet attempting faucet transaction from sender: ${senderAddress}`);
           const nonces = await fastify.db.getAddressNonces({ stxAddress: senderAddress });
           const tx = await buildSTXFaucetTx(
