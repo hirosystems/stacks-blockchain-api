@@ -15,7 +15,7 @@ import { before, after, test, describe } from 'node:test';
 async function getBalanceWithWalletImport(ctx: KryptonContext, address: string): Promise<number> {
   const client = ctx.bitcoinRpcClient;
   const walletName = `recipient_wallet_${address}`;
-  await client.createwallet({ wallet_name: walletName });
+  await client.createwallet({ wallet_name: walletName, descriptors: false } as any);
   await client.importaddress({ address: address, rescan: true }, walletName);
   const getBalanceResult: number = await client.getbalance({ include_watchonly: true }, walletName);
   return getBalanceResult;

@@ -57,6 +57,7 @@ export function getRpcClient(): RPCClient {
 
 interface TxOutUnspent {
   amount: number;
+  coinbase?: boolean;
   desc: string;
   height: number;
   scriptPubKey: string;
@@ -77,6 +78,7 @@ interface TxOutSet {
 const REGTEST_FEE_RATE = 50;
 
 const MIN_TX_CONFIRMATIONS = 1;
+const COINBASE_MATURITY_CONFIRMATIONS = 100;
 
 export function isValidBtcAddress(network: btc.Network, address: string): boolean {
   try {
@@ -159,9 +161,16 @@ async function getSpendableUtxos(client: RPCClient, address: string): Promise<Tx
   const rawTxs = await getRawTransactions(client, mempoolTxIds);
   const spentUtxos = rawTxs.map(tx => tx.vin).flat();
   const spendableUtxos = txOutSet.unspents.filter(
-    utxo =>
-      !spentUtxos.find(vin => vin.txid === utxo.txid && vin.vout === utxo.vout) &&
-      txOutSet.height - utxo.height > MIN_TX_CONFIRMATIONS
+    utxo => {
+      const confirmations = txOutSet.height - utxo.height;
+      const requiredConfirmations = utxo.coinbase
+        ? COINBASE_MATURITY_CONFIRMATIONS
+        : MIN_TX_CONFIRMATIONS;
+      return (
+        !spentUtxos.find(vin => vin.txid === utxo.txid && vin.vout === utxo.vout) &&
+        confirmations > requiredConfirmations
+      );
+    }
   );
   return spendableUtxos;
 }

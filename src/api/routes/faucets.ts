@@ -21,7 +21,7 @@ import {
 import { DbFaucetRequestCurrency } from '../../datastore/common.js';
 import { getChainIDNetwork, getStxFaucetNetwork, stxToMicroStx } from '../../helpers.js';
 import { StacksCoreRpcClient } from '../../core-rpc/client.js';
-import { logger } from '@stacks/api-toolkit';
+import { isProdEnv, logger } from '@stacks/api-toolkit';
 import { ENV } from '../../env.js';
 import { FastifyPluginAsync, preHandlerHookHandler } from 'fastify';
 import { Type, TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
@@ -436,21 +436,24 @@ export const FaucetRoutes: FastifyPluginAsync<
         const ip =
           (Array.isArray(forwardedFor) ? forwardedFor[0] : forwardedFor?.split(',')[0])?.trim() ??
           req.ip;
-        const lastRequests = await fastify.db.getSTXFaucetRequests(recipientAddress);
-        const now = Date.now();
         const isStackingReq = req.query.stacking ?? false;
-        const [window, triggerCount] = isStackingReq
-          ? [FAUCET_STACKING_WINDOW, FAUCET_STACKING_TRIGGER_COUNT]
-          : [FAUCET_DEFAULT_WINDOW, FAUCET_DEFAULT_TRIGGER_COUNT];
-        const requestsInWindow = lastRequests.results
-          .map(r => now - r.occurred_at)
-          .filter(r => r <= window);
-        if (requestsInWindow.length >= triggerCount) {
-          logger.warn(`StxFaucet rate limit hit for address ${recipientAddress}`);
-          return await reply.status(429).send({
-            error: 'Too many requests',
-            success: false,
-          });
+        const now = Date.now();
+
+        if (isProdEnv) {
+          const lastRequests = await fastify.db.getSTXFaucetRequests(recipientAddress);
+          const [window, triggerCount] = isStackingReq
+            ? [FAUCET_STACKING_WINDOW, FAUCET_STACKING_TRIGGER_COUNT]
+            : [FAUCET_DEFAULT_WINDOW, FAUCET_DEFAULT_TRIGGER_COUNT];
+          const requestsInWindow = lastRequests.results
+            .map(r => now - r.occurred_at)
+            .filter(r => r <= window);
+          if (requestsInWindow.length >= triggerCount) {
+            logger.warn(`StxFaucet rate limit hit for address ${recipientAddress}`);
+            return await reply.status(429).send({
+              error: 'Too many requests',
+              success: false,
+            });
+          }
         }
 
         // Start with a random key index. We will try others in order if this one fails.
@@ -477,13 +480,12 @@ export const FaucetRoutes: FastifyPluginAsync<
             const res = await rpcClient.sendTransaction(rawTx);
             sendSuccess = { txId: res.txId, txRaw: rawTx.toString('hex') };
             logger.info(
-              `StxFaucet success. Sent ${stxAmount} uSTX from ${senderAddress} to ${recipientAddress}.`
+              `StxFaucet success. Sent ${stxAmount} uSTX from ${senderAddress} to ${recipientAddress} (txId: ${sendSuccess.txId}).`
             );
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          } catch (error: any) {
+          } catch (error) {
             if (
-              error.message?.includes('ConflictingNonceInMempool') ||
-              error.message?.includes('TooMuchChaining')
+              (error as Error).message?.includes('ConflictingNonceInMempool') ||
+              (error as Error).message?.includes('TooMuchChaining')
             ) {
               if (keysAttempted == STX_FAUCET_KEYS.length) {
                 logger.warn(

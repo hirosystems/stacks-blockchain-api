@@ -116,7 +116,6 @@
         "--test",
         "--test-global-setup=./tests/krypton/setup.ts",
         "--test-concurrency=1",
-        // "--test-name-pattern", "websocket notifications",
         "./tests/krypton/**/*.test.ts"
       ],
       "outputCapture": "std",

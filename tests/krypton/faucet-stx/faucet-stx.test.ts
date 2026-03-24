@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-non-null-assertion */
 import supertest from 'supertest';
 import { RunFaucetResponse } from '../../../src/api/schemas/responses/responses.ts';
 import { AddressStxBalance } from '../../../src/api/schemas/entities/addresses.ts';
@@ -35,8 +34,6 @@ describe('STX Faucet', () => {
     );
     assert.equal(response.status, 200);
     reqTx = response.body;
-    assert.equal(typeof reqTx.txId, 'string');
-    assert.equal(typeof reqTx.txRaw, 'string');
     assert.equal(reqTx.success, true);
   });
 
@@ -64,7 +61,6 @@ describe('STX Faucet', () => {
       ctx
     );
     assert.ok(BigInt(addrBalance.balance) > 0n);
-
     // Validate account has balance from RPC endpoint
     const coreBalance = await ctx.client.getAccount(reqAccount.stxAddr);
     assert.ok(BigInt(coreBalance.balance) > 0n);

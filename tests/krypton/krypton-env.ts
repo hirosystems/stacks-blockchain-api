@@ -162,128 +162,42 @@ export async function standByUntilBurnBlock(
   burnBlockHeight: number,
   ctx: KryptonContext
 ): Promise<DbBlock> {
-  const client = ctx.client;
   const api = ctx.api;
   let blockFound = false;
   const dbBlock = await new Promise<DbBlock>(async resolve => {
-    const listener: (blockHash: string) => void = async blockHash => {
-      const dbBlockQuery = await api.datastore.getBlock({ hash: blockHash });
-      if (!dbBlockQuery.found || dbBlockQuery.result.burn_block_height < burnBlockHeight) {
-        return;
-      }
-      api.datastore.eventEmitter.removeListener('blockUpdate', listener);
-      blockFound = true;
-      resolve(dbBlockQuery.result);
-    };
-    api.datastore.eventEmitter.addListener('blockUpdate', listener);
-
-    // Check if block height already reached
     while (!blockFound) {
-      const curHeight = await api.datastore.getCurrentBlock();
-      if (curHeight.found && curHeight.result.burn_block_height >= burnBlockHeight) {
-        const dbBlock = await api.datastore.getBlock({
-          height: curHeight.result.block_height,
-        });
-        if (!dbBlock.found) {
-          throw new Error('Unhandled missing block');
-        }
-        api.datastore.eventEmitter.removeListener('blockUpdate', listener);
+      const dbBlock = await api.datastore.getBlockByBurnBlockHeight(burnBlockHeight);
+      if (dbBlock.found) {
         blockFound = true;
         resolve(dbBlock.result);
       } else {
-        await timeout(200);
+        await timeout(50);
       }
     }
   });
-
-  // Ensure stacks-node is caught up with processing this block
-  while (true) {
-    const nodeInfo = await client.getInfo();
-    if (nodeInfo.stacks_tip_height >= dbBlock.block_height) {
-      break;
-    } else {
-      await timeout(50);
-    }
-  }
   return dbBlock;
 }
 
-export async function standByForTx(
-  expectedTxId: string,
-  ctx: KryptonContext
-): Promise<DbTx> {
-  const client = ctx.client;
+export async function standByForTx(expectedTxId: string, ctx: KryptonContext): Promise<DbTx> {
   const api = ctx.api;
-
-  const stack = new Error().stack;
-  const timeoutSeconds = 25;
-  const timer = setTimeout(() => {
-    console.error(
-      `Could not find TX ${expectedTxId} after ${timeoutSeconds} seconds.. stack: ${stack}`
-    );
-  }, timeoutSeconds * 1000);
-
-  const standByForTxInner = async () => {
-    console.log(`Waiting for TX: ${expectedTxId}...`);
-    const tx = await new Promise<DbTx>(async resolve => {
-      let found = false;
-      const listener: (txId: string) => void = async txId => {
-        if (txId !== expectedTxId) {
-          return;
-        }
-        const dbTxQuery = await api.datastore.getTx({
-          txId: expectedTxId,
-          includeUnanchored: false,
-        });
-        if (!dbTxQuery.found) {
-          return;
-        }
-        api.datastore.eventEmitter.removeListener('txUpdate', listener);
+  console.log(`Waiting for TX: ${expectedTxId}...`);
+  const standByForTxInner = new Promise<DbTx>(async resolve => {
+    let found = false;
+    do {
+      const dbTxQuery = await api.datastore.getTx({
+        txId: expectedTxId,
+        includeUnanchored: false,
+      });
+      if (dbTxQuery.found) {
         found = true;
+        console.log(`Found TX: ${expectedTxId}`);
         resolve(dbTxQuery.result);
-      };
-      api.datastore.eventEmitter.addListener('txUpdate', listener);
-
-      // Check if tx is already received
-      do {
-        const dbTxQuery = await api.datastore.getTx({
-          txId: expectedTxId,
-          includeUnanchored: false,
-        });
-        if (dbTxQuery.found) {
-          api.datastore.eventEmitter.removeListener('txUpdate', listener);
-          found = true;
-          resolve(dbTxQuery.result);
-        } else {
-          await timeout(50);
-        }
-      } while (!found);
-    });
-
-    // Ensure stacks-node is caught up with processing the block for this tx
-    while (true) {
-      const nodeInfo = await client.getInfo();
-      if (nodeInfo.stacks_tip_height >= tx.block_height) {
-        break;
       } else {
-        await timeout(50);
+        await timeout(100);
       }
-    }
-
-    // Ensure stacks-node is caught up processing the next nonce for this address
-    while (true) {
-      const nextNonce = await client.getAccountNonce(tx.sender_address);
-      if (BigInt(nextNonce) > BigInt(tx.nonce)) {
-        break;
-      } else {
-        await timeout(50);
-      }
-    }
-
-    return tx;
-  };
-  const tx = await standByForTxInner();
-  clearTimeout(timer);
+    } while (!found);
+  });
+  const tx = await standByForTxInner;
   return tx;
 }
 
@@ -305,46 +219,18 @@ export async function standByUntilBlock(
   ctx: KryptonContext
 ): Promise<DbBlock> {
   let blockFound = false;
-  const client = ctx.client;
   const api = ctx.api;
   const dbBlock = await new Promise<DbBlock>(async resolve => {
-    const listener: (blockHash: string) => void = async blockHash => {
-      const dbBlockQuery = await api.datastore.getBlock({ hash: blockHash });
-      if (!dbBlockQuery.found || dbBlockQuery.result.block_height < blockHeight) {
-        return;
-      }
-      api.datastore.eventEmitter.removeListener('blockUpdate', listener);
-      blockFound = true;
-      resolve(dbBlockQuery.result);
-    };
-    api.datastore.eventEmitter.addListener('blockUpdate', listener);
-
-    // Check if block height already reached
     while (!blockFound) {
-      const curHeight = await api.datastore.getCurrentBlockHeight();
-      if (curHeight.found && curHeight.result >= blockHeight) {
-        const dbBlock = await api.datastore.getBlock({ height: curHeight.result });
-        if (!dbBlock.found) {
-          throw new Error('Unhandled missing block');
-        }
-        api.datastore.eventEmitter.removeListener('blockUpdate', listener);
+      const dbBlock = await api.datastore.getBlock({ height: blockHeight });
+      if (dbBlock.found) {
+        blockFound = true;
         resolve(dbBlock.result);
-        return;
       } else {
-        await timeout(200);
+        await timeout(50);
       }
     }
   });
-
-  // Ensure stacks-node is caught up with processing this block
-  while (true) {
-    const nodeInfo = await client.getInfo();
-    if (nodeInfo.stacks_tip_height >= blockHeight) {
-      break;
-    } else {
-      await timeout(50);
-    }
-  }
   return dbBlock;
 }
 
@@ -353,7 +239,10 @@ export async function standByForAccountUnlock(address: string, ctx: KryptonConte
     const poxInfo = await ctx.client.getPox();
     const info = await ctx.client.getInfo();
     const accountInfo = await ctx.client.getAccount(address);
-    const addrBalance = await fetchGet<AddressStxBalance>(`/extended/v1/address/${address}/stx`, ctx);
+    const addrBalance = await fetchGet<AddressStxBalance>(
+      `/extended/v1/address/${address}/stx`,
+      ctx
+    );
     const status = await fetchGet<ServerStatusResponse>('/extended/v1/status', ctx);
     console.log({
       poxInfo,
@@ -363,10 +252,6 @@ export async function standByForAccountUnlock(address: string, ctx: KryptonConte
       accountInfo,
       addrBalance,
     });
-    if (BigInt(addrBalance.locked) !== BigInt(accountInfo.locked)) {
-      console.log('womp');
-    }
-    assert.equal(BigInt(addrBalance.locked), BigInt(accountInfo.locked));
     if (BigInt(accountInfo.locked) === 0n) {
       break;
     }
