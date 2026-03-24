@@ -33,7 +33,7 @@ import {
   ClarityValueTuple,
   ClarityValueUInt,
   decodeClarityValue,
-} from '@hirosystems/stacks-encoding-native-js';
+} from '@stacks/codec';
 import * as assert from 'assert';
 import { hexToBytes } from '@stacks/common';
 import { StackingClient } from '@stacks/stacking';

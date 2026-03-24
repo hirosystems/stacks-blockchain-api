@@ -164,7 +164,10 @@ export const FaucetRoutes: FastifyPluginAsync<
             success: false,
           });
         }
-        const ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
+        const forwardedFor = req.headers['x-forwarded-for'];
+        const ip =
+          (Array.isArray(forwardedFor) ? forwardedFor[0] : forwardedFor?.split(',')[0])?.trim() ??
+          req.ip;
 
         // Guard condition: requests are limited to 5 times per 5 minutes.
         // Only based on address for now, but we're keeping the IP in case
@@ -389,7 +392,10 @@ export const FaucetRoutes: FastifyPluginAsync<
         // Guard condition: requests are limited to x times per y minutes.
         // Only based on address for now, but we're keeping the IP in case
         // we want to escalate and implement a per IP policy
-        const ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
+        const forwardedFor = req.headers['x-forwarded-for'];
+        const ip =
+          (Array.isArray(forwardedFor) ? forwardedFor[0] : forwardedFor?.split(',')[0])?.trim() ??
+          req.ip;
         const lastRequests = await fastify.db.getSTXFaucetRequests(recipientAddress);
         const now = Date.now();
         const isStackingReq = req.query.stacking ?? false;
