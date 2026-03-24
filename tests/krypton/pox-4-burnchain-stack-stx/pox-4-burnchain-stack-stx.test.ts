@@ -323,9 +323,9 @@ describe('PoX-4 - Stack using Bitcoin-chain stack ops', () => {
     }
   });
 
-  test('Wait for 1 Stacks block', async () => {
-    const curInfo = await ctx.client.getInfo();
-    await standByUntilBlock(curInfo.stacks_tip_height + 1, ctx);
+  test('Wait for 1 Bitcoin block', async () => {
+    const curInfo = await ctx.bitcoinRpcClient.getblockchaininfo();
+    await standByUntilBurnBlock(curInfo.blocks + 1, ctx);
   });
 
   test('Test synthetic STX tx', async () => {
@@ -334,7 +334,13 @@ describe('PoX-4 - Stack using Bitcoin-chain stack ops', () => {
       .get(`/extended/v1/tx/events?address=${account.stxAddr}`)
       .expect(200);
     const addressEvents = addressEventsResp.body.events as TransactionEventsResponse['events'];
-    const event1 = addressEvents[0] as StxLockTransactionEvent;
+    const event1 = addressEvents.find(
+      event =>
+        event.event_type === 'stx_lock' &&
+        (event as StxLockTransactionEvent).stx_lock_event.locked_address === account.stxAddr &&
+        BigInt((event as StxLockTransactionEvent).stx_lock_event.locked_amount) === testStackAmount
+    ) as StxLockTransactionEvent | undefined;
+    assert.ok(event1 !== undefined);
     assert.equal(event1.event_type, 'stx_lock');
     assert.equal(event1.stx_lock_event.locked_address, account.stxAddr);
     assert.ok(event1.stx_lock_event.unlock_height > 0);

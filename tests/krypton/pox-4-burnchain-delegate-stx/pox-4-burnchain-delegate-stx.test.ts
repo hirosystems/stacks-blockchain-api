@@ -334,10 +334,16 @@ describe('PoX-4 - Stack using Bitcoin-chain delegate ops', () => {
     const pox2Txs = await supertest(ctx.api.server)
       .get(`/extended/v1/address/${BootContractAddress.testnet}.pox-4/transactions`)
       .expect(200);
-    const delegateStxTxResp = await supertest(ctx.api.server)
-      .get(`/extended/v1/tx/${pox2Txs.body.results[0].tx_id}`)
-      .expect(200);
-    const delegateStxTx = delegateStxTxResp.body as ContractCallTransaction;
+    const pox2ContractTxs = pox2Txs.body as AddressTransactionsListResponse;
+    const delegateStxTx = pox2ContractTxs.results.find(
+      tx =>
+        tx.sender_address === account.stxAddr &&
+        tx.tx_type === 'contract_call' &&
+        (tx as ContractCallTransaction).contract_call.contract_id ===
+          PoxContractIdentifier.pox4.testnet &&
+        (tx as ContractCallTransaction).contract_call.function_name === 'delegate-stx'
+    ) as ContractCallTransaction | undefined;
+    assert.ok(delegateStxTx !== undefined);
     assert.equal(delegateStxTx.tx_status, 'success');
     assert.equal(delegateStxTx.tx_type, 'contract_call');
     assert.equal(delegateStxTx.sender_address, account.stxAddr);
