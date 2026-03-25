@@ -105,8 +105,9 @@ describe('BNS integration tests', () => {
   }
   async function getContractTransaction(txOptions: SignedContractCallOptions, zonefile?: string) {
     const transaction = await makeBnsContractCall(txOptions);
+    const serializedHex = transaction.serialize();
     const body: { tx: string; attachment?: string } = {
-      tx: Buffer.from(transaction.serialize()).toString('hex'),
+      tx: serializedHex,
     };
     if (zonefile) body.attachment = Buffer.from(zonefile).toString('hex');
     const apiResult = await fetch(`${ctx.stacksNetwork.client.baseUrl}/v2/transactions`, {
@@ -114,6 +115,12 @@ describe('BNS integration tests', () => {
       body: JSON.stringify(body),
       headers: { 'Content-Type': 'application/json' },
     });
+    if (!apiResult.ok) {
+      const errBody = await apiResult.text();
+      throw new Error(
+        `Failed to post contract transaction: ${apiResult.status} ${apiResult.statusText}: ${errBody}`
+      );
+    }
     await apiResult.json();
     const expectedTxId = '0x' + transaction.txid();
     const standByNamePromise = standbyBnsName(expectedTxId);

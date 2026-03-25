@@ -69,7 +69,7 @@ describe('PoX-4 - Stack extend and increase operations', () => {
     decodedBtcAddr = decodeBtcAddress(btcAddr);
     assert.deepEqual(
       {
-        data: Buffer.from(decodedBtcAddr.data).toString('hex'),
+        data: decodedBtcAddr.data,
         version: decodedBtcAddr.version,
       },
       { data: '06afd46bcdfd22ef94ac122aa11f241244a37ecc', version: 0 }
@@ -150,7 +150,8 @@ describe('PoX-4 - Stack extend and increase operations', () => {
       validateWithAbi: false,
     });
     const expectedTxId = '0x' + stackStxTx.txid();
-    const sendTxResult = await ctx.client.sendTransaction(Buffer.from(stackStxTx.serialize()));
+    const stackStxTxHex = stackStxTx.serialize();
+    const sendTxResult = await ctx.client.sendTransaction(Buffer.from(stackStxTxHex, 'hex'));
     assert.equal(sendTxResult.txId, expectedTxId);
 
     // Wait for API to receive and ingest tx
@@ -258,7 +259,8 @@ describe('PoX-4 - Stack extend and increase operations', () => {
       validateWithAbi: false,
     });
     const expectedTxId = '0x' + stackIncreaseTx.txid();
-    const sendTxResult = await ctx.client.sendTransaction(Buffer.from(stackIncreaseTx.serialize()));
+    const stackIncreaseTxHex = stackIncreaseTx.serialize();
+    const sendTxResult = await ctx.client.sendTransaction(Buffer.from(stackIncreaseTxHex, 'hex'));
     assert.equal(sendTxResult.txId, expectedTxId);
 
     const dbTx = await standByForTxSuccess(sendTxResult.txId, ctx);
@@ -368,7 +370,8 @@ describe('PoX-4 - Stack extend and increase operations', () => {
       validateWithAbi: false,
     });
     const expectedTxId = '0x' + stackExtendTx.txid();
-    const sendTxResult = await ctx.client.sendTransaction(Buffer.from(stackExtendTx.serialize()));
+    const stackExtendTxHex = stackExtendTx.serialize();
+    const sendTxResult = await ctx.client.sendTransaction(Buffer.from(stackExtendTxHex, 'hex'));
     assert.equal(sendTxResult.txId, expectedTxId);
 
     const dbTx = await standByForTxSuccess(expectedTxId, ctx);

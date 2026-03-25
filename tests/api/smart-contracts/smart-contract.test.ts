@@ -122,7 +122,7 @@ describe('smart contract tests', () => {
       event_type: DbEventTypeId.SmartContractLog,
       contract_identifier: 'some-contract-id',
       topic: 'some-topic',
-      value: bufferToHex(Buffer.from(serializeCV(bufferCVFromString('some val')))),
+      value: bufferToHex(Buffer.from(serializeCV(bufferCVFromString('some val')), 'hex')),
     };
     const smartContract1: DbSmartContract = {
       tx_id: '0x421234',
@@ -509,7 +509,7 @@ describe('smart contract tests', () => {
       event_type: DbEventTypeId.SmartContractLog,
       contract_identifier: 'some-contract-id',
       topic: 'some-topic',
-      value: bufferToHex(Buffer.from(serializeCV(bufferCVFromString('some val')))),
+      value: bufferToHex(Buffer.from(serializeCV(bufferCVFromString('some val')), 'hex')),
     };
     const contractJsonAbi = {
       maps: [],

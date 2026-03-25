@@ -14,7 +14,11 @@ export async function migrate(direction: 'up' | 'down') {
 export function createClarityValueArray(...input: ClarityValue[]): Buffer {
   const buffers = new Array<Buffer>(input.length);
   for (let i = 0; i < input.length; i++) {
-    buffers[i] = Buffer.from(serializeCV(input[i]));
+    const serialized = serializeCV(input[i]);
+    buffers[i] =
+      typeof serialized === 'string'
+        ? Buffer.from(serialized.replace(/^0x/i, ''), 'hex')
+        : Buffer.from(serialized);
   }
   const valueCountBuffer = Buffer.alloc(4);
   valueCountBuffer.writeUInt32BE(input.length);

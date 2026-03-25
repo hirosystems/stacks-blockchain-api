@@ -88,8 +88,9 @@ describe('PoX-4 - Delegate Stacking operations', () => {
       network: ctx.stacksNetwork,
       fee: 200,
     });
+    const stxXfer1Hex = stxXfer1.serialize();
     const { txId: stxXferId1 } = await ctx.client.sendTransaction(
-      Buffer.from(stxXfer1.serialize())
+      Buffer.from(stxXfer1Hex, 'hex')
     );
 
     // transfer pox "min_amount_ustx" from seed to delegatee account
@@ -102,8 +103,9 @@ describe('PoX-4 - Delegate Stacking operations', () => {
       fee: 200,
       nonce: stxXfer1.auth.spendingCondition.nonce + 1n,
     });
+    const stxXfer2Hex = stxXfer2.serialize();
     const { txId: stxXferId2 } = await ctx.client.sendTransaction(
-      Buffer.from(stxXfer2.serialize())
+      Buffer.from(stxXfer2Hex, 'hex')
     );
 
     const stxXferTx1 = await standByForTxSuccess(stxXferId1, ctx);
@@ -153,8 +155,9 @@ describe('PoX-4 - Delegate Stacking operations', () => {
       fee: txFee,
       validateWithAbi: false,
     });
+    const delegateStxTxHex = delegateStxTx.serialize();
     const { txId: delegateStxTxId } = await ctx.client.sendTransaction(
-      Buffer.from(delegateStxTx.serialize())
+      Buffer.from(delegateStxTxHex, 'hex')
     );
     const delegateStxDbTx = await standByForTxSuccess(delegateStxTxId, ctx);
 
@@ -236,8 +239,9 @@ describe('PoX-4 - Delegate Stacking operations', () => {
       fee: txFee,
       validateWithAbi: false,
     });
+    const delegateStackStxTxHex = delegateStackStxTx.serialize();
     const { txId: delegateStackStxTxId } = await ctx.client.sendTransaction(
-      Buffer.from(delegateStackStxTx.serialize())
+      Buffer.from(delegateStackStxTxHex, 'hex')
     );
     const delegateStackStxDbTx = await standByForTxSuccess(delegateStackStxTxId, ctx);
 
@@ -286,8 +290,9 @@ describe('PoX-4 - Delegate Stacking operations', () => {
       fee: txFee,
       validateWithAbi: false,
     });
+    const delegateStackIncreaseTxHex = delegateStackIncreaseTx.serialize();
     const { txId: delegateStackIncreaseTxId } = await ctx.client.sendTransaction(
-      Buffer.from(delegateStackIncreaseTx.serialize())
+      Buffer.from(delegateStackIncreaseTxHex, 'hex')
     );
     const delegateStackIncreaseDbTx = await standByForTxSuccess(delegateStackIncreaseTxId, ctx);
 
@@ -348,8 +353,9 @@ describe('PoX-4 - Delegate Stacking operations', () => {
       fee: txFee,
       validateWithAbi: false,
     });
+    const delegateStackExtendTxHex = delegateStackExtendTx.serialize();
     const { txId: delegateStackExtendTxId } = await ctx.client.sendTransaction(
-      Buffer.from(delegateStackExtendTx.serialize())
+      Buffer.from(delegateStackExtendTxHex, 'hex')
     );
     const delegateStackExtendDbTx = await standByForTxSuccess(delegateStackExtendTxId, ctx);
 
@@ -415,8 +421,9 @@ describe('PoX-4 - Delegate Stacking operations', () => {
       fee: 10000,
       validateWithAbi: false,
     });
+    const stackAggrCommitTxHex = stackAggrCommitTx.serialize();
     const { txId: stackAggrCommitTxId } = await ctx.client.sendTransaction(
-      Buffer.from(stackAggrCommitTx.serialize())
+      Buffer.from(stackAggrCommitTxHex, 'hex')
     );
     const stackAggrCommmitDbTx = await standByForTxSuccess(stackAggrCommitTxId, ctx);
 

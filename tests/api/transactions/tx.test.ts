@@ -936,14 +936,15 @@ describe('tx tests', () => {
       fee: 300,
       sponsorNonce: 2,
     });
-    const serialized = Buffer.from(sponsoredTx.serialize());
-    const tx = codec.decodeTransaction(serialized);
+    const serializedHex = sponsoredTx.serialize();
+    const serialized = Buffer.from(serializedHex, 'hex');
+    const tx = codec.decodeTransaction(serializedHex);
     const dbTx = createDbTxFromCoreMsg({
       core_tx: {
-        raw_tx: '0x' + serialized.toString('hex'),
+        raw_tx: '0x' + serializedHex,
         status: 'success',
         raw_result: '0x0100000000000000000000000000000001', // u1
-        txid: '0x' + txBuilder.txid(),
+        txid: '0x' + sponsoredTx.txid(),
         tx_index: 2,
         contract_interface: null,
         microblock_hash: null,
@@ -1046,7 +1047,7 @@ describe('tx tests', () => {
       parent_block_hash: '0x5678',
       parent_burn_block_time: 1626122935,
       parent_burn_block_time_iso: '2021-07-12T20:48:55.000Z',
-      tx_id: '0xc889d593d349834e100f63cf58975b6aa2787d6f3784a26f5654221e38f75b05',
+      tx_id: dbTx.tx_id,
       tx_index: 2,
       tx_status: 'success',
       tx_result: {
@@ -1164,14 +1165,15 @@ describe('tx tests', () => {
       fee: 300,
       sponsorNonce: 3,
     });
-    const serialized = Buffer.from(sponsoredTx.serialize());
-    const tx = codec.decodeTransaction(serialized);
+    const serializedHex = sponsoredTx.serialize();
+    const serialized = Buffer.from(serializedHex, 'hex');
+    const tx = codec.decodeTransaction(serializedHex);
     const dbTx = createDbTxFromCoreMsg({
       core_tx: {
-        raw_tx: '0x' + serialized.toString('hex'),
+        raw_tx: '0x' + serializedHex,
         status: 'success',
         raw_result: '0x0100000000000000000000000000000001', // u1
-        txid: '0x' + txBuilder.txid(),
+        txid: '0x' + sponsoredTx.txid(),
         tx_index: 2,
         contract_interface: null,
         microblock_hash: null,
@@ -1566,11 +1568,12 @@ describe('tx tests', () => {
       postConditions: [pc1, pc2, pc3],
       nonce: 0,
     });
-    const serialized = Buffer.from(txBuilder.serialize());
-    const tx = codec.decodeTransaction(serialized);
+    const serializedHex = txBuilder.serialize();
+    const serialized = Buffer.from(serializedHex, 'hex');
+    const tx = codec.decodeTransaction(serializedHex);
     const dbTx = createDbTxFromCoreMsg({
       core_tx: {
-        raw_tx: '0x' + serialized.toString('hex'),
+        raw_tx: '0x' + serializedHex,
         status: 'success',
         raw_result: '0x0100000000000000000000000000000001', // u1
         txid: '0x' + txBuilder.txid(),
@@ -1799,11 +1802,12 @@ describe('tx tests', () => {
       senderKey: 'b8d99fd45da58038d630d9855d3ca2466e8e0f89d3894c4724f0efc9ff4b51f001',
       postConditions: [],
     });
-    const serialized = Buffer.from(txBuilder.serialize());
-    const tx = codec.decodeTransaction(serialized);
+    const serializedHex = txBuilder.serialize();
+    const serialized = Buffer.from(serializedHex, 'hex');
+    const tx = codec.decodeTransaction(serializedHex);
     const dbTx = createDbTxFromCoreMsg({
       core_tx: {
-        raw_tx: '0x' + serialized.toString('hex'),
+        raw_tx: '0x' + serializedHex,
         raw_result: '0x0100000000000000000000000000000001', // u1
         status: 'abort_by_response',
         txid: '0x' + txBuilder.txid(),
@@ -1886,7 +1890,7 @@ describe('tx tests', () => {
       parent_block_hash: '0x5678',
       parent_burn_block_time: 1626122935,
       parent_burn_block_time_iso: '2021-07-12T20:48:55.000Z',
-      tx_id: '0x068e0faed65a1fcddfba0dc5d8dbb685128c7f25e735bbf0fe57e58e8bbb8b75',
+      tx_id: dbTx.tx_id,
       tx_index: 2,
       tx_status: 'abort_by_response',
       tx_result: {
@@ -1903,7 +1907,7 @@ describe('tx tests', () => {
       post_condition_mode: 'deny',
       post_conditions: [],
       smart_contract: {
-        clarity_version: 2,
+        clarity_version: 4,
         contract_id: 'SP2ZRX0K27GW0SP3GJCEMHD95TQGJMKB7GB36ZAR0.hello-world',
         source_code: '()',
       },
@@ -1956,11 +1960,12 @@ describe('tx tests', () => {
       postConditions: [],
       nonce: 0,
     });
-    const serialized = Buffer.from(txBuilder.serialize());
-    const tx = codec.decodeTransaction(serialized);
+    const serializedHex = txBuilder.serialize();
+    const serialized = Buffer.from(serializedHex, 'hex');
+    const tx = codec.decodeTransaction(serializedHex);
     const dbTx = createDbTxFromCoreMsg({
       core_tx: {
-        raw_tx: '0x' + serialized.toString('hex'),
+        raw_tx: '0x' + serializedHex,
         raw_result: '0x0100000000000000000000000000000001', // u1
         status: 'abort_by_post_condition',
         txid: '0x' + txBuilder.txid(),
@@ -2043,7 +2048,7 @@ describe('tx tests', () => {
       parent_burn_block_time: 1626122935,
       parent_burn_block_time_iso: '2021-07-12T20:48:55.000Z',
       canonical: true,
-      tx_id: '0x068e0faed65a1fcddfba0dc5d8dbb685128c7f25e735bbf0fe57e58e8bbb8b75',
+      tx_id: dbTx.tx_id,
       tx_index: 2,
       tx_status: 'abort_by_post_condition',
       tx_result: {
@@ -2060,7 +2065,7 @@ describe('tx tests', () => {
       post_condition_mode: 'deny',
       post_conditions: [],
       smart_contract: {
-        clarity_version: 2,
+        clarity_version: 4,
         contract_id: 'SP2ZRX0K27GW0SP3GJCEMHD95TQGJMKB7GB36ZAR0.hello-world',
         source_code: '()',
       },

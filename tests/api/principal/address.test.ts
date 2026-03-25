@@ -189,7 +189,7 @@ describe('address tests', () => {
           tx_id: tx.tx_id,
           tx_index: tx.tx_index,
           block_height: tx.block_height,
-          value: bufferToHex(Buffer.from(serializeCV(uintCV(amount)))),
+          value: bufferToHex(Buffer.from(serializeCV(uintCV(amount)), 'hex')),
           recipient,
           sender,
         };
@@ -2570,14 +2570,14 @@ describe('address tests', () => {
       fee: 300,
       sponsorNonce: 2,
     });
-    const serialized = Buffer.from(sponsoredTx.serialize());
-    const tx = codec.decodeTransaction(serialized);
+    const serializedHex = sponsoredTx.serialize();
+    const tx = codec.decodeTransaction(serializedHex);
     const DbTxRaw = createDbTxFromCoreMsg({
       core_tx: {
-        raw_tx: '0x' + serialized.toString('hex'),
+        raw_tx: '0x' + serializedHex,
         status: 'success',
         raw_result: '0x0100000000000000000000000000000001', // u1
-        txid: '0x' + txBuilder.txid(),
+        txid: '0x' + sponsoredTx.txid(),
         tx_index: 2,
         contract_interface: null,
         microblock_hash: null,

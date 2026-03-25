@@ -502,9 +502,10 @@ export function bnsHexValueToName(hex: string): string {
   const tuple = hexToCV(hex) as TupleCV;
   const name = tuple.value.name as BufferCV;
   const namespace = tuple.value.namespace as BufferCV;
-  return `${Buffer.from(name.value, 'hex').toString('utf8')}.${Buffer.from(namespace.value, 'hex').toString(
-    'utf8'
-  )}`;
+  return `${Buffer.from(name.value, 'hex').toString('utf8')}.${Buffer.from(
+    namespace.value,
+    'hex'
+  ).toString('utf8')}`;
 }
 
 /**
