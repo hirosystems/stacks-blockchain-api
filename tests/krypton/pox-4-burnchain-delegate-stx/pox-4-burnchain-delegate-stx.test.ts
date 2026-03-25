@@ -93,13 +93,13 @@ async function createPox2DelegateStx(
     })
     .addOutput({
       script: btc.payments.embed({ data: [preStxOpPayload] }).output!,
-      value: 0,
+      value: 0n,
     })
     // Then, the second Bitcoin output must be Stacker address that will be used in a StackStxOp.
     // This address must be a standard address type parseable by the stacks-blockchain node.
     .addOutput({
       address: c32ToB58(args.stackerAddress),
-      value: outAmount1,
+      value: BigInt(outAmount1),
     })
     .signInput(0, btcAccount)
     .finalizeAllInputs()
@@ -146,18 +146,18 @@ async function createPox2DelegateStx(
     // The first transaction output must contain an OP_RETURN payload.
     .addOutput({
       script: btc.payments.embed({ data: [delegateStxOpTxPayload] }).output!,
-      value: 0,
+      value: 0n,
     })
     // The second transaction output encodes the Stacks address to which the STX are delegated. This output must
     // decode to a Stacks address. This field corresponds to the delegate-to argument in delegate-stx.
     .addOutput({
       address: c32ToB58(args.delegatorStacksAddress),
-      value: Math.round(outAmount1 - feeAmount * sats - dust),
+      value: BigInt(Math.round(outAmount1 - feeAmount * sats - dust)),
     })
     // Add output for the `pox-addr`
     .addOutput({
       address: args.poxAddrPayout,
-      value: dust,
+      value: BigInt(dust),
     })
     .signInput(0, btcAccount)
     .finalizeAllInputs()
