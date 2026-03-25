@@ -1,6 +1,5 @@
 import { ApiServer, startApiServer } from '../../../src/api/init.ts';
 import supertest from 'supertest';
-import { ChainID } from '@stacks/transactions';
 import { importV1BnsNames, importV1BnsSubdomains } from '../../../src/import-v1/index.ts';
 import { TestBlockBuilder } from '../test-builders.ts';
 import { DataStoreBlockUpdateData, DataStoreBnsBlockTxData } from '../../../src/datastore/common.ts';
@@ -8,6 +7,7 @@ import { PgWriteStore } from '../../../src/datastore/pg-write-store.ts';
 import { migrate } from '../../test-helpers.ts';
 import { beforeEach, afterEach, describe, test } from 'node:test';
 import assert from 'node:assert/strict';
+import { STACKS_TESTNET } from '@stacks/network';
 
 describe('BNS V1 import', () => {
   let db: PgWriteStore;
@@ -17,7 +17,7 @@ describe('BNS V1 import', () => {
   beforeEach(async () => {
     await migrate('up');
     db = await PgWriteStore.connect({ usageName: 'tests' });
-    api = await startApiServer({ datastore: db, chainId: ChainID.Testnet });
+    api = await startApiServer({ datastore: db, chainId: STACKS_TESTNET.chainId });
 
     block = new TestBlockBuilder().addTx().build();
     await db.update(block);
@@ -220,7 +220,7 @@ describe('BNS V1 import', () => {
     const dbquery = await db.getSubdomain({
       subdomain: `flushreset.id.blockstack`,
       includeUnanchored: false,
-      chainId: ChainID.Testnet,
+      chainId: STACKS_TESTNET.chainId,
     });
     assert(dbquery.found);
     if (dbquery.result) {

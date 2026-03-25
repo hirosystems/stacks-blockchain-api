@@ -1,4 +1,3 @@
-import { ChainID } from '@stacks/transactions';
 import { ApiServer, startApiServer } from '../../../src/api/init.ts';
 import { httpPostRequest } from '../../../src/helpers.ts';
 import { EventStreamServer, startEventServer } from '../../../src/event-stream/event-server.ts';
@@ -8,6 +7,7 @@ import { migrate } from '../../test-helpers.ts';
 import { TestBlockBuilder, TestMicroblockStreamBuilder } from '../test-builders.ts';
 import assert from 'node:assert/strict';
 import { afterEach, beforeEach, describe, test } from 'node:test';
+import { STACKS_MAINNET } from '@stacks/network';
 
 describe('api event-server tests', () => {
   let db: PgWriteStore;
@@ -26,13 +26,13 @@ describe('api event-server tests', () => {
 
     eventServer = await startEventServer({
       datastore: db,
-      chainId: ChainID.Mainnet,
+      chainId: STACKS_MAINNET.chainId,
       serverHost: '127.0.0.1',
       serverPort: 0,
     });
     apiServer = await startApiServer({
       datastore: db,
-      chainId: ChainID.Mainnet,
+      chainId: STACKS_MAINNET.chainId,
     });
   });
 

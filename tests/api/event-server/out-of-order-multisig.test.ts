@@ -1,6 +1,5 @@
 import supertest from 'supertest';
 import { PgSqlClient } from '@stacks/api-toolkit';
-import { ChainID } from '@stacks/common';
 import { ApiServer, startApiServer } from '../../../src/api/init.ts';
 import { PgWriteStore } from '../../../src/datastore/pg-write-store.ts';
 import { importEventsFromTsv } from '../../../src/event-replay/event-replay.ts';
@@ -11,6 +10,7 @@ import { AddressTransaction } from '../../../src/api/schemas/entities/addresses.
 import { ENV } from '../../../src/env.ts';
 import assert from 'node:assert/strict';
 import { after, before, describe, test } from 'node:test';
+import { STACKS_TESTNET } from '@stacks/network';
 
 describe('Out-of-order-multisig tx tests', () => {
   let db: PgWriteStore;
@@ -28,7 +28,7 @@ describe('Out-of-order-multisig tx tests', () => {
       skipMigrations: true,
     });
     client = db.sql;
-    api = await startApiServer({ datastore: db, chainId: ChainID.Testnet });
+    api = await startApiServer({ datastore: db, chainId: STACKS_TESTNET.chainId });
 
     // set chainId env, because TSV import reads it manually
     ENV.STACKS_CHAIN_ID = '0x80000000';

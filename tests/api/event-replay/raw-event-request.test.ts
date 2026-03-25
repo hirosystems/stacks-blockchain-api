@@ -1,6 +1,5 @@
 import * as fs from 'fs';
 import { PgWriteStore } from '../../../src/datastore/pg-write-store.ts';
-import { ChainID } from '@stacks/transactions';
 import { httpPostRequest } from '../../../src/helpers.ts';
 import { EventStreamServer, startEventServer } from '../../../src/event-stream/event-server.ts';
 import { getRawEventRequests } from '../../../src/event-replay/event-requests.ts';
@@ -9,6 +8,7 @@ import { PgSqlClient } from '@stacks/api-toolkit';
 import { migrate } from '../../test-helpers.ts';
 import assert from 'node:assert/strict';
 import { afterEach, beforeEach, describe, test } from 'node:test';
+import { STACKS_MAINNET } from '@stacks/network';
 
 describe('Events table', () => {
   let db: PgWriteStore;
@@ -21,7 +21,7 @@ describe('Events table', () => {
     client = db.sql;
     eventServer = await startEventServer({
       datastore: db,
-      chainId: ChainID.Mainnet,
+      chainId: STACKS_MAINNET.chainId,
       serverHost: '127.0.0.1',
       serverPort: 0,
     });
@@ -48,7 +48,7 @@ describe('Events table', () => {
       async () => {
         const eventServer = await startEventServer({
           datastore: db,
-          chainId: ChainID.Mainnet,
+          chainId: STACKS_MAINNET.chainId,
           serverHost: '127.0.0.1',
           serverPort: 0,
         });
@@ -94,7 +94,7 @@ describe('Events table', () => {
       async () => {
         const eventServer = await startEventServer({
           datastore: db,
-          chainId: ChainID.Mainnet,
+          chainId: STACKS_MAINNET.chainId,
           serverHost: '127.0.0.1',
           serverPort: 0,
         });

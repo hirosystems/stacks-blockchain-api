@@ -269,11 +269,10 @@ export function parseNameRenewalWithNoZonefileHashFromContractCall(
     hexToCV(payload.function_args[4].hex).type === ClarityType.OptionalNone
   ) {
     const namespace = Buffer.from(
-      (hexToCV(payload.function_args[0].hex) as BufferCV).value
+      (hexToCV(payload.function_args[0].hex) as BufferCV).value,
+      'hex'
     ).toString('utf8');
-    const name = Buffer.from((hexToCV(payload.function_args[1].hex) as BufferCV).value).toString(
-      'utf8'
-    );
+    const name = Buffer.from((hexToCV(payload.function_args[1].hex) as BufferCV).value, 'hex').toString('utf8');
     return {
       name: `${name}.${namespace}`,
       namespace_id: namespace,

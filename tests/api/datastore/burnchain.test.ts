@@ -1,5 +1,4 @@
 import supertest from 'supertest';
-import { ChainID } from '@stacks/transactions';
 import {
   DbBurnBlockPoxTx,
   DbBurnchainReward,
@@ -11,6 +10,7 @@ import { PgSqlClient } from '@stacks/api-toolkit';
 import { migrate } from '../../test-helpers.ts';
 import { beforeEach, afterEach, describe, test } from 'node:test';
 import assert from 'node:assert/strict';
+import { STACKS_TESTNET } from '@stacks/network';
 
 describe('burnchain tests', () => {
   let db: PgWriteStore;
@@ -25,7 +25,7 @@ describe('burnchain tests', () => {
       skipMigrations: true,
     });
     client = db.sql;
-    api = await startApiServer({ datastore: db, chainId: ChainID.Testnet });
+    api = await startApiServer({ datastore: db, chainId: STACKS_TESTNET.chainId });
   });
 
   afterEach(async () => {

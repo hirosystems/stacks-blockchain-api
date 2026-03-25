@@ -1,5 +1,4 @@
 import supertest from 'supertest';
-import { ChainID } from '@stacks/transactions';
 import { getBlockFromDataStore } from '../../../src/api/controllers/db-controller.ts';
 import {
   DbBlock,
@@ -17,6 +16,7 @@ import { migrate } from '../../test-helpers.ts';
 import { beforeEach, afterEach, describe, test } from 'node:test';
 import assert from 'node:assert/strict';
 import { assertMatchesObject } from '../test-helpers.ts';
+import { STACKS_TESTNET } from '@stacks/network';
 
 describe('cache-control tests', () => {
   let db: PgWriteStore;
@@ -29,7 +29,7 @@ describe('cache-control tests', () => {
       withNotifier: false,
       skipMigrations: true,
     });
-    api = await startApiServer({ datastore: db, chainId: ChainID.Testnet });
+    api = await startApiServer({ datastore: db, chainId: STACKS_TESTNET.chainId });
   });
 
   afterEach(async () => {

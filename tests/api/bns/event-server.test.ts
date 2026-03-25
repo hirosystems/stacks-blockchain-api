@@ -1,4 +1,3 @@
-import { ChainID } from '@stacks/transactions';
 import { bnsNameCV, httpPostRequest } from '../../../src/helpers.ts';
 import { EventStreamServer, startEventServer } from '../../../src/event-stream/event-server.ts';
 import { TestBlockBuilder, TestMicroblockStreamBuilder } from '../test-builders.ts';
@@ -8,6 +7,7 @@ import { PgSqlClient } from '@stacks/api-toolkit';
 import { migrate } from '../../test-helpers.ts';
 import { beforeEach, afterEach, describe, test } from 'node:test';
 import assert from 'node:assert/strict';
+import { STACKS_MAINNET } from '@stacks/network';
 
 describe('BNS event server tests', () => {
   let db: PgWriteStore;
@@ -20,7 +20,7 @@ describe('BNS event server tests', () => {
     client = db.sql;
     eventServer = await startEventServer({
       datastore: db,
-      chainId: ChainID.Mainnet,
+      chainId: STACKS_MAINNET.chainId,
       serverHost: '127.0.0.1',
       serverPort: 0,
     });

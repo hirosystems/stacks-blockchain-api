@@ -1,6 +1,5 @@
 import supertest from 'supertest';
-import { PgSqlClient, timeout } from '@stacks/api-toolkit';
-import { ChainID } from '@stacks/common';
+import { PgSqlClient } from '@stacks/api-toolkit';
 import { ApiServer, startApiServer } from '../../../src/api/init.ts';
 import { PgWriteStore } from '../../../src/datastore/pg-write-store.ts';
 import { importEventsFromTsv } from '../../../src/event-replay/event-replay.ts';
@@ -8,6 +7,7 @@ import { migrate } from '../../test-helpers.ts';
 import { ENV } from '../../../src/env.ts';
 import assert from 'node:assert/strict';
 import { afterEach, beforeEach, describe, test } from 'node:test';
+import { STACKS_TESTNET } from '@stacks/network';
 
 describe('PoX tests', () => {
   let db: PgWriteStore;
@@ -22,7 +22,7 @@ describe('PoX tests', () => {
       skipMigrations: true,
     });
     client = db.sql;
-    api = await startApiServer({ datastore: db, chainId: ChainID.Testnet });
+    api = await startApiServer({ datastore: db, chainId: STACKS_TESTNET.chainId });
 
     // set chainId env, because TSV import reads it manually
     ENV.STACKS_CHAIN_ID = '0x80000000';

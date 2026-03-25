@@ -26,11 +26,11 @@ import { getBlocksWithMetadata, parseDbEvent } from '../../../src/api/controller
 import assert from 'node:assert/strict';
 import { PgWriteStore } from '../../../src/datastore/pg-write-store.ts';
 import { bnsNameCV, I32_MAX } from '../../../src/helpers.ts';
-import { ChainID } from '@stacks/transactions';
 import { TestBlockBuilder } from '../test-builders.ts';
 import { PgSqlClient, bufferToHex } from '@stacks/api-toolkit';
 import { migrate } from '../../test-helpers.ts';
 import { beforeEach, afterEach, describe, test } from 'node:test';
+import { STACKS_MAINNET } from '@stacks/network';
 
 describe('postgres datastore', () => {
   let db: PgWriteStore;
@@ -4260,7 +4260,7 @@ describe('postgres datastore', () => {
     let subdomain = await db.getSubdomain({
       subdomain: 'def.xyz.abc',
       includeUnanchored: false,
-      chainId: ChainID.Mainnet,
+      chainId: STACKS_MAINNET.chainId,
     });
     assert(subdomain.found);
     assert.equal(subdomain.result.canonical, true);
@@ -4502,7 +4502,7 @@ describe('postgres datastore', () => {
     subdomain = await db.getSubdomain({
       subdomain: 'def.xyz.abc',
       includeUnanchored: false,
-      chainId: ChainID.Mainnet,
+      chainId: STACKS_MAINNET.chainId,
     });
     assert(subdomain.found);
     assert.equal(subdomain.result.canonical, true);

@@ -7,7 +7,6 @@ import {
   DbBnsNamespace,
   DbBnsSubdomain,
 } from '../../../src/datastore/common.ts';
-import { ChainID } from '@stacks/transactions';
 import { bnsNameCV, I32_MAX } from '../../../src/helpers.ts';
 import { PgWriteStore } from '../../../src/datastore/pg-write-store.ts';
 import { TestBlockBuilder, TestMicroblockStreamBuilder } from '../test-builders.ts';
@@ -15,6 +14,7 @@ import { migrate } from '../../test-helpers.ts';
 import { PgSqlClient } from '@stacks/api-toolkit';
 import { beforeEach, afterEach, describe, test } from 'node:test';
 import assert from 'node:assert/strict';
+import { STACKS_TESTNET } from '@stacks/network';
 
 describe('BNS API tests', () => {
   let db: PgWriteStore;
@@ -45,7 +45,7 @@ describe('BNS API tests', () => {
     await migrate('up');
     db = await PgWriteStore.connect({ usageName: 'tests' });
     client = db.sql;
-    api = await startApiServer({ datastore: db, chainId: ChainID.Testnet });
+    api = await startApiServer({ datastore: db, chainId: STACKS_TESTNET.chainId });
 
     const block = new TestBlockBuilder({
       block_hash: '0xff',
