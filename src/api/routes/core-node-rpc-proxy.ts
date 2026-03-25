@@ -409,7 +409,9 @@ export const CoreNodeRpcProxyRouter: FastifyPluginAsync<
           }
           await reply.removeHeader('content-length').send(JSON.stringify(responseJson));
         } else {
-          await reply.send(response);
+          // Forward the upstream response body stream; sending the wrapper object causes
+          // Fastify to serialize proxy metadata ({ statusCode, headers, stream }) as JSON.
+          await reply.send(response.stream);
         }
       },
     },
