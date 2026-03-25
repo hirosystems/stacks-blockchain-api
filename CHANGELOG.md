@@ -1,3 +1,9 @@
+## [8.15.1](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.15.0...v8.15.1) (2026-03-25)
+
+### Bug Fixes
+
+* forward proxied stacks node response body correctly ([#2501](https://github.com/hirosystems/stacks-blockchain-api/issues/2501)) ([8d66403](https://github.com/hirosystems/stacks-blockchain-api/commit/8d66403883f18083dd46129a615741ef0dbe9e18))
+
 ## [8.15.0](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.14.2...v8.15.0) (2026-03-24)
 
 ### Features
