@@ -1,5 +1,4 @@
 import supertest from 'supertest';
-import { ChainID } from '@stacks/transactions';
 import { ApiServer, startApiServer } from '../../../src/api/init.ts';
 import { TestBlockBuilder, TestMicroblockStreamBuilder } from '../test-builders.ts';
 import { DbAssetEventTypeId } from '../../../src/datastore/common.ts';
@@ -7,6 +6,7 @@ import { PgWriteStore } from '../../../src/datastore/pg-write-store.ts';
 import { migrate } from '../../test-helpers.ts';
 import { beforeEach, afterEach, describe, test } from 'node:test';
 import assert from 'node:assert/strict';
+import { STACKS_TESTNET } from '@stacks/network';
 
 describe('/extended/v1/tokens tests', () => {
   let db: PgWriteStore;
@@ -19,7 +19,7 @@ describe('/extended/v1/tokens tests', () => {
       withNotifier: false,
       skipMigrations: true,
     });
-    api = await startApiServer({ datastore: db, chainId: ChainID.Testnet });
+    api = await startApiServer({ datastore: db, chainId: STACKS_TESTNET.chainId });
   });
 
   afterEach(async () => {

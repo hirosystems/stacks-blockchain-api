@@ -18,7 +18,7 @@ import {
   parseDbTx,
 } from '../../../api/controllers/db-controller.js';
 import codec from '@stacks/codec';
-import { TransactionVersion, getAddressFromPublicKey } from '@stacks/transactions';
+import { getAddressFromPublicKey } from '@stacks/transactions';
 import { SmartContractStatusList } from '../../schemas/entities/smart-contracts.js';
 import { AddressTransaction, AddressTransactionEvent } from '../../schemas/entities/addresses.js';
 import { NakamotoBlock } from '../../schemas/entities/block.js';
@@ -190,7 +190,7 @@ export function parseDbPoxCycle(cycle: DbPoxCycle): PoxCycle {
 export function parseDbPoxSigner(signer: DbPoxCycleSigner, isMainnet: boolean): PoxSigner {
   const signerAddress = getAddressFromPublicKey(
     Buffer.from(signer.signing_key.slice(2), 'hex'),
-    isMainnet ? TransactionVersion.Mainnet : TransactionVersion.Testnet
+    isMainnet ? 'mainnet' : 'testnet'
   );
   const result: PoxSigner = {
     signing_key: signer.signing_key,

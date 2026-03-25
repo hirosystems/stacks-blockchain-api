@@ -1,8 +1,8 @@
-import { ChainID } from '@stacks/transactions';
 import { parseNewBlockMessage } from '../../../src/event-stream/event-server.ts';
 import { NewBlockMessage } from '@stacks/node-publisher-client';
 import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
+import { STACKS_MAINNET } from '@stacks/network';
 
 describe('block time tests', () => {
   test('takes block_time from block header', () => {
@@ -28,7 +28,7 @@ describe('block time tests', () => {
       signer_signature_hash: '0x1234',
       miner_signature: '0x1234',
     };
-    const { dbData: parsed } = parseNewBlockMessage(ChainID.Mainnet, block, false);
+    const { dbData: parsed } = parseNewBlockMessage(STACKS_MAINNET.chainId, block, false);
     assert.deepEqual(parsed.block.block_time, 1716238792); // Takes block_time from block header
   });
 
@@ -55,7 +55,7 @@ describe('block time tests', () => {
       signer_signature_hash: '0x1234',
       miner_signature: '0x1234',
     };
-    const { dbData: parsed } = parseNewBlockMessage(ChainID.Mainnet, block, false);
+    const { dbData: parsed } = parseNewBlockMessage(STACKS_MAINNET.chainId, block, false);
     assert.deepEqual(parsed.block.block_time, 1234567890); // Takes burn_block_time from block header
   });
 
@@ -84,7 +84,7 @@ describe('block time tests', () => {
       miner_signature: '0x1234',
     };
     assert.throws(
-      () => parseNewBlockMessage(ChainID.Mainnet, block, false),
+      () => parseNewBlockMessage(STACKS_MAINNET.chainId, block, false),
       /Block message has no block_time or burn_block_time/
     );
   });

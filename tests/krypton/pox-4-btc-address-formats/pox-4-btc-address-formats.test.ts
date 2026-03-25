@@ -1,8 +1,6 @@
 import { hexToBuffer, timeout } from '@stacks/api-toolkit';
 import { StackingClient, decodeBtcAddress } from '@stacks/stacking';
 import {
-  AnchorMode,
-  StacksPrivateKey,
   bufferCV,
   makeContractCall,
   makeRandomPrivKey,
@@ -51,7 +49,7 @@ for (const addressSetup of ADDRESS_SETUPS) {
     let contractName: string;
     let ustxAmount: bigint;
     let stackingClient: StackingClient;
-    let signerPrivKey: StacksPrivateKey;
+    let signerPrivKey: string;
     let signerPubKey: string;
     const cycleCount = 1;
 
@@ -109,9 +107,9 @@ for (const addressSetup of ADDRESS_SETUPS) {
       cycleBlockLength = cycleCount * poxInfo.reward_cycle_length;
       [contractAddress, contractName] = poxInfo.contract_id.split('.');
 
-      stackingClient = new StackingClient(account.stacksAddress, ctx.stacksNetwork);
+      stackingClient = new StackingClient({ address: account.stacksAddress, network: ctx.stacksNetwork });
       signerPrivKey = makeRandomPrivKey();
-      signerPubKey = getPublicKeyFromPrivate(signerPrivKey.data);
+      signerPubKey = getPublicKeyFromPrivate(signerPrivKey);
 
       assert.equal(contractName, 'pox-4');
     });
@@ -137,7 +135,7 @@ for (const addressSetup of ADDRESS_SETUPS) {
         functionArgs: [
           uintCV(ustxAmount.toString()), // amount-ustx
           tupleCV({
-            hashbytes: bufferCV(btcAddrDecoded.data),
+            hashbytes: bufferCV(hexToBytes(btcAddrDecoded.data)),
             version: bufferCV(Buffer.from([btcAddrDecoded.version])),
           }), // pox-addr
           uintCV(burnBlockHeight), // start-burn-ht
@@ -148,7 +146,6 @@ for (const addressSetup of ADDRESS_SETUPS) {
           uintCV(0), // auth-id
         ],
         network: ctx.stacksNetwork,
-        anchorMode: AnchorMode.OnChainOnly,
         fee: 10000,
         validateWithAbi: false,
       });

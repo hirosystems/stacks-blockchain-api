@@ -3,7 +3,6 @@ import codec from '@stacks/codec';
 import * as fs from 'fs';
 import * as readline from 'readline';
 import { PgSqlClient } from '@stacks/api-toolkit';
-import { ChainID } from '@stacks/common';
 import { ApiServer, startApiServer } from '../../../src/api/init.ts';
 import { PgWriteStore } from '../../../src/datastore/pg-write-store.ts';
 import { startEventServer } from '../../../src/event-stream/event-server.ts';
@@ -11,6 +10,7 @@ import { httpPostRequest } from '../../../src/helpers.ts';
 import { ENV } from '../../../src/env.ts';
 import assert from 'node:assert/strict';
 import { afterEach, beforeEach, describe, test } from 'node:test';
+import { STACKS_TESTNET } from '@stacks/network';
 
 describe('transaction parsing', () => {
   test('buggy parsing of contract-call args', () => {
@@ -37,7 +37,7 @@ describe('transaction parsing', () => {
         skipMigrations: true,
       });
       client = db.sql;
-      api = await startApiServer({ datastore: db, chainId: ChainID.Testnet });
+      api = await startApiServer({ datastore: db, chainId: STACKS_TESTNET.chainId });
 
       // set chainId env, because TSV import reads it manually
       ENV.STACKS_CHAIN_ID = '0x80000000';
@@ -52,7 +52,7 @@ describe('transaction parsing', () => {
     test('parse fuzzed transactions', async () => {
       const eventServer = await startEventServer({
         datastore: db,
-        chainId: ChainID.Testnet,
+        chainId: STACKS_TESTNET.chainId,
         serverHost: '127.0.0.1',
         serverPort: 0,
       });

@@ -1,6 +1,5 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import {
-  AnchorMode,
   boolCV,
   bufferCV,
   makeContractCall,
@@ -205,11 +204,11 @@ describe('PoX-4 - Stack using Bitcoin-chain stack ops', () => {
       recipient: account.stxAddr,
       amount: testAccountBalance,
       network: ctx.stacksNetwork,
-      anchorMode: AnchorMode.OnChainOnly,
       fee: 200,
     });
+    const stxXfer1Hex = stxXfer1.serialize();
     const { txId: stxXferId1 } = await ctx.client.sendTransaction(
-      Buffer.from(stxXfer1.serialize())
+      Buffer.from(stxXfer1Hex, 'hex')
     );
 
     const stxXferTx1 = await standByForTxSuccess(stxXferId1, ctx);
@@ -280,12 +279,12 @@ describe('PoX-4 - Stack using Bitcoin-chain stack ops', () => {
         uintCV(testStackAuthID), // (auth-id uint)
       ],
       network: ctx.stacksNetwork,
-      anchorMode: AnchorMode.OnChainOnly,
       fee: 10000,
       validateWithAbi: false,
     });
     const expectedTxId = '0x' + tx.txid();
-    const sendResult = await ctx.client.sendTransaction(Buffer.from(tx.serialize()));
+    const txHex = tx.serialize();
+    const sendResult = await ctx.client.sendTransaction(Buffer.from(txHex, 'hex'));
     assert.equal(sendResult.txId, expectedTxId);
 
     // Wait for API to receive and ingest tx
@@ -365,9 +364,9 @@ describe('PoX-4 - Stack using Bitcoin-chain stack ops', () => {
     );
 
     const expectedPoxPayoutAddr = decodeBtcAddress(poxAddrPayoutAccount.btcTestnetAddr);
-    const expectedPoxPayoutAddrRepr = `(tuple (hashbytes 0x${Buffer.from(
+    const expectedPoxPayoutAddrRepr = `(tuple (hashbytes 0x${
       expectedPoxPayoutAddr.data
-    ).toString('hex')}) (version 0x${Buffer.from([expectedPoxPayoutAddr.version]).toString(
+    }) (version 0x${Buffer.from([expectedPoxPayoutAddr.version]).toString(
       'hex'
     )}))`;
     const callArg2 = txObj.contract_call.function_args![1];

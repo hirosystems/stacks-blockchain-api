@@ -9,7 +9,8 @@ import * as ecc from 'tiny-secp256k1';
 import { getCoreNodeEndpoint, StacksCoreRpcClient } from './core-rpc/client.js';
 import { DbEventTypeId } from './datastore/common.js';
 import { has0xPrefix, logger, numberToHex } from '@stacks/api-toolkit';
-import { StacksNetwork, StacksTestnet } from '@stacks/network';
+import { createNetwork, STACKS_TESTNET } from '@stacks/network';
+import type { StacksNetwork } from '@stacks/network';
 import { ENV } from './env.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -29,13 +30,19 @@ export function getStxFaucetNetwork(): StacksNetwork {
       logger.error(error);
       throw new Error(error);
     }
-    const network = new StacksTestnet({
-      url: `http://${faucetNodeHostOverride}:${faucetNodePortOverride}`,
+    const network = createNetwork({
+      network: STACKS_TESTNET,
+      client: {
+        baseUrl: `http://${faucetNodeHostOverride}:${faucetNodePortOverride}`,
+      },
     });
     return network;
   }
-  return new StacksTestnet({
-    url: `http://${getCoreNodeEndpoint()}`,
+  return createNetwork({
+    network: STACKS_TESTNET,
+    client: {
+      baseUrl: `http://${getCoreNodeEndpoint()}`,
+    },
   });
 }
 
@@ -493,11 +500,12 @@ export function bnsNameCV(name: string): string {
  */
 export function bnsHexValueToName(hex: string): string {
   const tuple = hexToCV(hex) as TupleCV;
-  const name = tuple.data.name as BufferCV;
-  const namespace = tuple.data.namespace as BufferCV;
-  return `${Buffer.from(name.buffer).toString('utf8')}.${Buffer.from(namespace.buffer).toString(
-    'utf8'
-  )}`;
+  const name = tuple.value.name as BufferCV;
+  const namespace = tuple.value.namespace as BufferCV;
+  return `${Buffer.from(name.value, 'hex').toString('utf8')}.${Buffer.from(
+    namespace.value,
+    'hex'
+  ).toString('utf8')}`;
 }
 
 /**

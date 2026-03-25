@@ -1,26 +1,25 @@
 import * as assert from 'node:assert/strict';
 import supertest from 'supertest';
 import { createHash } from 'crypto';
-import { AnchorMode, ChainID, PostConditionMode, someCV } from '@stacks/transactions';
+import { PostConditionMode, someCV } from '@stacks/transactions';
 import {
   broadcastTransaction,
   bufferCV,
   ClarityAbi,
-  FungibleConditionCode,
   getAddressFromPrivateKey,
   makeContractCall,
-  makeStandardSTXPostCondition,
+  Pc,
   standardPrincipalCV,
   uintCV,
   SignedContractCallOptions,
   noneCV,
-  StacksTransaction,
-  TransactionVersion,
+  StacksTransactionWire,
 } from '@stacks/transactions';
 import { FAUCET_TESTNET_KEYS } from '../../../src/api/routes/faucets.js';
 import { logger } from '@stacks/api-toolkit';
 import { getKryptonContext, stopKryptonContext, KryptonContext, standByForTx } from '../krypton-env.ts';
 import { after, before, describe, test } from 'node:test';
+import { STACKS_TESTNET } from '@stacks/network';
 
 function hash160(bfr: Buffer): Buffer {
   const hash160 = createHash('ripemd160')
@@ -59,7 +58,7 @@ describe('BNS integration tests', () => {
       }
     }
 
-    const abiUrl = ctx.stacksNetwork.getAbiApiUrl(deployedTo, deployedName);
+    const abiUrl = `${ctx.stacksNetwork.client.baseUrl}/v2/contracts/interface/${deployedTo}/${deployedName}`;
     const response = await fetch(abiUrl);
     if (!response.ok) {
       throw new Error(
@@ -79,9 +78,9 @@ describe('BNS integration tests', () => {
   }
   async function makeBnsContractCall(
     txOptions: SignedContractCallOptions
-  ): Promise<StacksTransaction> {
+  ): Promise<StacksTransactionWire> {
     const abi = await getBnsContractAbi();
-    const senderAddress = getAddressFromPrivateKey(txOptions.senderKey, TransactionVersion.Testnet);
+    const senderAddress = getAddressFromPrivateKey(txOptions.senderKey, ctx.stacksNetwork);
     const nonces = await ctx.db.getAddressNonces({ stxAddress: senderAddress });
     const options = {
       ...txOptions,
@@ -106,15 +105,22 @@ describe('BNS integration tests', () => {
   }
   async function getContractTransaction(txOptions: SignedContractCallOptions, zonefile?: string) {
     const transaction = await makeBnsContractCall(txOptions);
+    const serializedHex = transaction.serialize();
     const body: { tx: string; attachment?: string } = {
-      tx: Buffer.from(transaction.serialize()).toString('hex'),
+      tx: serializedHex,
     };
     if (zonefile) body.attachment = Buffer.from(zonefile).toString('hex');
-    const apiResult = await fetch(ctx.stacksNetwork.getBroadcastApiUrl(), {
+    const apiResult = await fetch(`${ctx.stacksNetwork.client.baseUrl}/v2/transactions`, {
       method: 'post',
       body: JSON.stringify(body),
       headers: { 'Content-Type': 'application/json' },
     });
+    if (!apiResult.ok) {
+      const errBody = await apiResult.text();
+      throw new Error(
+        `Failed to post contract transaction: ${apiResult.status} ${apiResult.statusText}: ${errBody}`
+      );
+    }
     await apiResult.json();
     const expectedTxId = '0x' + transaction.txid();
     const standByNamePromise = standbyBnsName(expectedTxId);
@@ -132,15 +138,14 @@ describe('BNS integration tests', () => {
       senderKey: testnetKey.pkey,
       validateWithAbi: true,
       postConditions: [
-        makeStandardSTXPostCondition(testnetKey.address, FungibleConditionCode.GreaterEqual, 1),
+        Pc.principal(testnetKey.address).willSendGte(1).ustx(),
       ],
       network: ctx.stacksNetwork,
-      anchorMode: AnchorMode.Any,
       fee: 100000,
     };
 
     const transaction = await makeBnsContractCall(txOptions);
-    await broadcastTransaction(transaction, ctx.stacksNetwork);
+    await broadcastTransaction({ transaction, network: ctx.stacksNetwork });
     const preorder = await standByForTx('0x' + transaction.txid(), ctx);
     if (preorder.status != 1) logger.error('Namespace preorder error');
 
@@ -185,11 +190,10 @@ describe('BNS integration tests', () => {
       senderKey: testnetKey.pkey,
       validateWithAbi: true,
       network: ctx.stacksNetwork,
-      anchorMode: AnchorMode.Any,
       fee: 100000,
     };
     const revealTransaction = await makeBnsContractCall(revealTxOptions);
-    await broadcastTransaction(revealTransaction, ctx.stacksNetwork);
+    await broadcastTransaction({ transaction: revealTransaction, network: ctx.stacksNetwork });
     const reveal = await standByForTx('0x' + revealTransaction.txid(), ctx);
     if (reveal.status != 1) logger.error('Namespace Reveal Error');
     return revealTransaction;
@@ -213,11 +217,10 @@ describe('BNS integration tests', () => {
       senderKey: pkey,
       validateWithAbi: true,
       network: ctx.stacksNetwork,
-      anchorMode: AnchorMode.Any,
       fee: 100000,
     };
     const transaction = await makeBnsContractCall(txOptions);
-    await broadcastTransaction(transaction, ctx.stacksNetwork);
+    await broadcastTransaction({ transaction, network: ctx.stacksNetwork });
     const readyResult = await standByForTx('0x' + transaction.txid(), ctx);
     if (readyResult.status != 1) logger.error('namespace-ready error');
     return transaction;
@@ -241,7 +244,6 @@ describe('BNS integration tests', () => {
       senderKey: testnetKey.pkey,
       validateWithAbi: true,
       network: ctx.stacksNetwork,
-      anchorMode: AnchorMode.Any,
       fee: 100000,
     };
     return await getContractTransaction(txOptions, zonefile);
@@ -259,7 +261,6 @@ describe('BNS integration tests', () => {
       senderKey: pkey,
       validateWithAbi: true,
       network: ctx.stacksNetwork,
-      anchorMode: AnchorMode.Any,
       fee: 100000,
     };
 
@@ -272,7 +273,7 @@ describe('BNS integration tests', () => {
     name: string
   ) {
     const postConditions = [
-      makeStandardSTXPostCondition(testnetKey.address, FungibleConditionCode.GreaterEqual, 1),
+      Pc.principal(testnetKey.address).willSendGte(1).ustx(),
     ];
     const fqn = `${name}.${namespace}${saltName}`;
     const nameSaltedHash = hash160(Buffer.from(fqn));
@@ -285,12 +286,11 @@ describe('BNS integration tests', () => {
       validateWithAbi: true,
       postConditions: postConditions,
       network: ctx.stacksNetwork,
-      anchorMode: AnchorMode.Any,
       fee: 100000,
     };
 
     const preOrderTransaction = await makeBnsContractCall(preOrderTxOptions);
-    await broadcastTransaction(preOrderTransaction, ctx.stacksNetwork);
+    await broadcastTransaction({ transaction: preOrderTransaction, network: ctx.stacksNetwork });
     const preorderResult = await standByForTx('0x' + preOrderTransaction.txid(), ctx);
     return preOrderTransaction;
   }
@@ -315,7 +315,6 @@ describe('BNS integration tests', () => {
       senderKey: testnetKey.pkey,
       validateWithAbi: true,
       network: ctx.stacksNetwork,
-      anchorMode: AnchorMode.Any,
       fee: 100000,
     };
     return await getContractTransaction(txOptions, zonefile);
@@ -334,7 +333,6 @@ describe('BNS integration tests', () => {
       senderKey: testnetKey.pkey,
       validateWithAbi: true,
       postConditionMode: PostConditionMode.Allow,
-      anchorMode: AnchorMode.Any,
       network: ctx.stacksNetwork,
       fee: 100000,
     };
@@ -350,7 +348,6 @@ describe('BNS integration tests', () => {
       senderKey: pkey,
       validateWithAbi: true,
       network: ctx.stacksNetwork,
-      anchorMode: AnchorMode.Any,
       fee: 100000,
     };
     return await getContractTransaction(txOptions);
@@ -370,7 +367,6 @@ describe('BNS integration tests', () => {
       senderKey: pkey,
       validateWithAbi: true,
       network: ctx.stacksNetwork,
-      anchorMode: AnchorMode.Any,
       fee: 100000,
     };
     return await getContractTransaction(txOptions);
@@ -454,7 +450,7 @@ describe('BNS integration tests', () => {
       const query2 = await ctx.db.getSubdomain({
         subdomain: `1yeardaily.${name}.${namespace}`,
         includeUnanchored: false,
-        chainId: ChainID.Testnet,
+        chainId: STACKS_TESTNET.chainId,
       });
       assert.equal(query2.found, true);
       if (query2.result) assert.equal(query2.result.resolver, '');

@@ -1,8 +1,6 @@
 import { StackingClient, poxAddressToTuple } from '@stacks/stacking';
 import {
-  AnchorMode,
   Cl,
-  StacksPrivateKey,
   bufferCV,
   makeContractCall,
   makeRandomPrivKey,
@@ -55,7 +53,7 @@ describe('PoX-4 - Delegate Revoked Stacking', () => {
   let contractName: string;
 
   let stackingClient: StackingClient;
-  let signerPrivKey: StacksPrivateKey;
+  let signerPrivKey: string;
   let signerPubKey: string;
 
   before(async () => {
@@ -64,9 +62,9 @@ describe('PoX-4 - Delegate Revoked Stacking', () => {
     POOL = accountFromKey(delegatorKey);
     STACKER = accountFromKey(delegateeKey);
 
-    stackingClient = new StackingClient(POOL.stxAddr, ctx.stacksNetwork);
+    stackingClient = new StackingClient({ address: POOL.stxAddr, network: ctx.stacksNetwork });
     signerPrivKey = makeRandomPrivKey();
-    signerPubKey = getPublicKeyFromPrivate(signerPrivKey.data);
+    signerPubKey = getPublicKeyFromPrivate(signerPrivKey);
   });
 
   after(async () => {
@@ -83,11 +81,11 @@ describe('PoX-4 - Delegate Revoked Stacking', () => {
       recipient: POOL.stxAddr,
       amount: gasAmount,
       network: ctx.stacksNetwork,
-      anchorMode: AnchorMode.OnChainOnly,
       fee: 10000n,
     });
+    const stxXfer1Hex = stxXfer1.serialize();
     const { txId: stxXferId1 } = await ctx.client.sendTransaction(
-      Buffer.from(stxXfer1.serialize())
+      Buffer.from(stxXfer1Hex, 'hex')
     );
 
     // transfer pox "min_amount_ustx" from seed to delegatee account
@@ -97,12 +95,12 @@ describe('PoX-4 - Delegate Revoked Stacking', () => {
       recipient: STACKER.stxAddr,
       amount: stackingAmount,
       network: ctx.stacksNetwork,
-      anchorMode: AnchorMode.OnChainOnly,
       nonce: stxXfer1.auth.spendingCondition.nonce + 1n,
       fee: 10000n,
     });
+    const stxXfer2Hex = stxXfer2.serialize();
     const { txId: stxXferId2 } = await ctx.client.sendTransaction(
-      Buffer.from(stxXfer2.serialize())
+      Buffer.from(stxXfer2Hex, 'hex')
     );
 
     const stxXferTx1 = await standByForTxSuccess(stxXferId1, ctx);
@@ -149,11 +147,11 @@ describe('PoX-4 - Delegate Revoked Stacking', () => {
         uintCV(1), // lock-period
       ],
       network: ctx.stacksNetwork,
-      anchorMode: AnchorMode.OnChainOnly,
       fee: 10000n,
     });
+    const delegateStackTxHex = delegateStackTx.serialize();
     const delegateStackTxResult = await ctx.client.sendTransaction(
-      Buffer.from(delegateStackTx.serialize())
+      Buffer.from(delegateStackTxHex, 'hex')
     );
     const delegateStackDbTx = await standByForTx(delegateStackTxResult.txId, ctx);
     assert.notEqual(delegateStackDbTx.status, DbTxStatus.Success);
@@ -175,11 +173,11 @@ describe('PoX-4 - Delegate Revoked Stacking', () => {
         someCV(STACKER.poxAddrClar), // pox-addr
       ],
       network: ctx.stacksNetwork,
-      anchorMode: AnchorMode.OnChainOnly,
       fee: 10000n,
     });
+    const delegateStxTxHex = delegateStxTx.serialize();
     const { txId: delegateStxTxId } = await ctx.client.sendTransaction(
-      Buffer.from(delegateStxTx.serialize())
+      Buffer.from(delegateStxTxHex, 'hex')
     );
     const delegateStxDbTx = await standByForTxSuccess(delegateStxTxId, ctx);
 
@@ -241,11 +239,11 @@ describe('PoX-4 - Delegate Revoked Stacking', () => {
         uintCV(3), // lock-period
       ],
       network: ctx.stacksNetwork,
-      anchorMode: AnchorMode.OnChainOnly,
       fee: 10000n,
     });
+    const delegateStackStxTxHex = delegateStackStxTx.serialize();
     const { txId: delegateStackStxTxId } = await ctx.client.sendTransaction(
-      Buffer.from(delegateStackStxTx.serialize())
+      Buffer.from(delegateStackStxTxHex, 'hex')
     );
     await standByForTxSuccess(delegateStackStxTxId, ctx);
 
@@ -284,10 +282,10 @@ describe('PoX-4 - Delegate Revoked Stacking', () => {
       functionName: 'revoke-delegate-stx',
       functionArgs: [],
       network: ctx.stacksNetwork,
-      anchorMode: AnchorMode.OnChainOnly,
       fee: 10000n,
     });
-    const revokeTxResult = await ctx.client.sendTransaction(Buffer.from(revokeTx.serialize()));
+    const revokeTxHex = revokeTx.serialize();
+    const revokeTxResult = await ctx.client.sendTransaction(Buffer.from(revokeTxHex, 'hex'));
     const revokeStackDbTx = await standByForTx(revokeTxResult.txId, ctx);
 
     assert.equal(revokeStackDbTx.status, DbTxStatus.Success);
@@ -342,11 +340,11 @@ describe('PoX-4 - Delegate Revoked Stacking', () => {
         uintCV(1), // lock-period
       ],
       network: ctx.stacksNetwork,
-      anchorMode: AnchorMode.OnChainOnly,
       fee: 10000n,
     });
+    const delegateStackTxHex = delegateStackTx.serialize();
     const delegateStackTxResult = await ctx.client.sendTransaction(
-      Buffer.from(delegateStackTx.serialize())
+      Buffer.from(delegateStackTxHex, 'hex')
     );
     const delegateStackDbTx = await standByForTx(delegateStackTxResult.txId, ctx);
     assert.notEqual(delegateStackDbTx.status, DbTxStatus.Success);
@@ -366,11 +364,11 @@ describe('PoX-4 - Delegate Revoked Stacking', () => {
         uintCV(DELEGATE_INCREASE_AMOUNT), // increase-by
       ],
       network: ctx.stacksNetwork,
-      anchorMode: AnchorMode.OnChainOnly,
       fee: 10000n,
     });
+    const delegateStackIncreaseTxHex = delegateStackIncreaseTx.serialize();
     const { txId: delegateStackIncreaseTxId } = await ctx.client.sendTransaction(
-      Buffer.from(delegateStackIncreaseTx.serialize())
+      Buffer.from(delegateStackIncreaseTxHex, 'hex')
     );
     const delegateStackIncreaseTxResult = await standByForTx(delegateStackIncreaseTxId, ctx);
     const delegateStackIncreaseResult = codec.decodeClarityValue(
@@ -392,11 +390,11 @@ describe('PoX-4 - Delegate Revoked Stacking', () => {
         uintCV(2), // extend-count
       ],
       network: ctx.stacksNetwork,
-      anchorMode: AnchorMode.OnChainOnly,
       fee: 10000n,
     });
+    const delegateStackextendTxHex = delegateStackextendTx.serialize();
     const { txId: delegateStackextendTxId } = await ctx.client.sendTransaction(
-      Buffer.from(delegateStackextendTx.serialize())
+      Buffer.from(delegateStackextendTxHex, 'hex')
     );
     const delegateStackextendTxResult = await standByForTx(delegateStackextendTxId, ctx);
     const delegateStackextendResult = codec.decodeClarityValue(
@@ -423,11 +421,11 @@ describe('PoX-4 - Delegate Revoked Stacking', () => {
         uintCV(1), // lock-period
       ],
       network: ctx.stacksNetwork,
-      anchorMode: AnchorMode.OnChainOnly,
       fee: 10000n,
     });
+    const delegateStackStxTxHex = delegateStackStxTx.serialize();
     const { txId: delegateStackStxTxId } = await ctx.client.sendTransaction(
-      Buffer.from(delegateStackStxTx.serialize())
+      Buffer.from(delegateStackStxTxHex, 'hex')
     );
     const delegateStackStxTxResult = await standByForTx(delegateStackStxTxId, ctx);
     assert.notEqual(delegateStackStxTxResult.status, DbTxStatus.Success);
@@ -463,11 +461,11 @@ describe('PoX-4 - Delegate Revoked Stacking', () => {
         uintCV(0), // auth-id
       ],
       network: ctx.stacksNetwork,
-      anchorMode: AnchorMode.OnChainOnly,
       fee: 10000n,
     });
+    const stackAggrCommitTxHex = stackAggrCommitTx.serialize();
     const { txId: stackAggrCommitTxId } = await ctx.client.sendTransaction(
-      Buffer.from(stackAggrCommitTx.serialize())
+      Buffer.from(stackAggrCommitTxHex, 'hex')
     );
     await standByForTxSuccess(stackAggrCommitTxId, ctx);
 

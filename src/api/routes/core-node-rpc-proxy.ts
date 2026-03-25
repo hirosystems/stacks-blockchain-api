@@ -372,7 +372,7 @@ export const CoreNodeRpcProxyRouter: FastifyPluginAsync<
           }
           await reply.removeHeader('content-length').send(JSON.stringify(responseJson));
         } else {
-          await reply.send(response);
+          await reply.send(response.stream);
         }
       },
     },

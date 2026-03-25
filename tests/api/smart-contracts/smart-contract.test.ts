@@ -1,5 +1,5 @@
 import supertest from 'supertest';
-import { bufferCVFromString, ChainID, serializeCV } from '@stacks/transactions';
+import { bufferCVFromString, serializeCV } from '@stacks/transactions';
 import {
   DbBlock,
   DbTxRaw,
@@ -16,6 +16,7 @@ import { migrate } from '../../test-helpers.ts';
 import { TestBlockBuilder, testMempoolTx } from '../test-builders.ts';
 import { beforeEach, afterEach, describe, test } from 'node:test';
 import assert from 'node:assert/strict';
+import { STACKS_TESTNET } from '@stacks/network';
 
 describe('smart contract tests', () => {
   let db: PgWriteStore;
@@ -30,7 +31,7 @@ describe('smart contract tests', () => {
       skipMigrations: true,
     });
     client = db.sql;
-    api = await startApiServer({ datastore: db, chainId: ChainID.Testnet });
+    api = await startApiServer({ datastore: db, chainId: STACKS_TESTNET.chainId });
   });
 
   afterEach(async () => {
@@ -121,7 +122,7 @@ describe('smart contract tests', () => {
       event_type: DbEventTypeId.SmartContractLog,
       contract_identifier: 'some-contract-id',
       topic: 'some-topic',
-      value: bufferToHex(Buffer.from(serializeCV(bufferCVFromString('some val')))),
+      value: bufferToHex(Buffer.from(serializeCV(bufferCVFromString('some val')), 'hex')),
     };
     const smartContract1: DbSmartContract = {
       tx_id: '0x421234',
@@ -508,7 +509,7 @@ describe('smart contract tests', () => {
       event_type: DbEventTypeId.SmartContractLog,
       contract_identifier: 'some-contract-id',
       topic: 'some-topic',
-      value: bufferToHex(Buffer.from(serializeCV(bufferCVFromString('some val')))),
+      value: bufferToHex(Buffer.from(serializeCV(bufferCVFromString('some val')), 'hex')),
     };
     const contractJsonAbi = {
       maps: [],

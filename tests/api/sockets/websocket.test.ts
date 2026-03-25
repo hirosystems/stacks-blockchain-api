@@ -3,7 +3,6 @@ import { DbTxTypeId, DbTxStatus, DbAssetEventTypeId } from '../../../src/datasto
 import { RpcWebSocketClient } from 'rpc-websocket-client';
 import WebSocket from 'ws';
 import { once } from 'events';
-import { ChainID } from '@stacks/transactions';
 import { TestBlockBuilder, testMempoolTx, TestMicroblockStreamBuilder } from '../test-builders.ts';
 import { PgWriteStore } from '../../../src/datastore/pg-write-store.ts';
 import { migrate } from '../../test-helpers.ts';
@@ -28,6 +27,7 @@ import {
   Block,
 } from '../../../client/src/types.ts';
 import WsClient from '../../../client/src/ws/index.ts';
+import { STACKS_TESTNET } from '@stacks/network';
 
 type RpcClientSocket = Parameters<RpcWebSocketClient['changeSocket']>[0];
 
@@ -40,7 +40,7 @@ describe('websocket notifications', () => {
     db = await PgWriteStore.connect({ usageName: 'tests', skipMigrations: true });
     apiServer = await startApiServer({
       datastore: db,
-      chainId: ChainID.Testnet,
+      chainId: STACKS_TESTNET.chainId,
     });
   });
 

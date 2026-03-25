@@ -2,7 +2,7 @@ import { BufferCV, ClarityType, hexToCV } from '@stacks/transactions';
 import { bnsNameCV, ChainID, getChainIDNetwork } from '../../helpers.js';
 import { CoreNodeParsedTxMessage } from '../../event-stream/core-node-message.js';
 import { getCoreNodeEndpoint } from '../../core-rpc/client.js';
-import { StacksMainnet, StacksTestnet } from '@stacks/network';
+import { createNetwork, STACKS_MAINNET, STACKS_TESTNET } from '@stacks/network';
 import { URIType } from 'zone-file/dist/zoneFile.js';
 import { BnsContractIdentifier, printTopic } from './bns-constants.js';
 import * as crypto from 'crypto';
@@ -182,8 +182,8 @@ export function GetStacksNetwork(chainId: ChainID) {
   const url = `http://${getCoreNodeEndpoint()}`;
   const network =
     getChainIDNetwork(chainId) === 'mainnet'
-      ? new StacksMainnet({ url })
-      : new StacksTestnet({ url });
+      ? createNetwork({ network: STACKS_MAINNET, client: { baseUrl: url } })
+      : createNetwork({ network: STACKS_TESTNET, client: { baseUrl: url } });
   return network;
 }
 
@@ -269,11 +269,13 @@ export function parseNameRenewalWithNoZonefileHashFromContractCall(
     hexToCV(payload.function_args[4].hex).type === ClarityType.OptionalNone
   ) {
     const namespace = Buffer.from(
-      (hexToCV(payload.function_args[0].hex) as BufferCV).buffer
+      (hexToCV(payload.function_args[0].hex) as BufferCV).value,
+      'hex'
     ).toString('utf8');
-    const name = Buffer.from((hexToCV(payload.function_args[1].hex) as BufferCV).buffer).toString(
-      'utf8'
-    );
+    const name = Buffer.from(
+      (hexToCV(payload.function_args[1].hex) as BufferCV).value,
+      'hex'
+    ).toString('utf8');
     return {
       name: `${name}.${namespace}`,
       namespace_id: namespace,
@@ -361,9 +363,9 @@ export function parseNamespaceFromContractEvent(
   const decodedEvent = hexToCV(event.contract_event.raw_value);
   if (
     decodedEvent.type === ClarityType.Tuple &&
-    decodedEvent.data.status &&
-    decodedEvent.data.status.type === ClarityType.StringASCII &&
-    decodedEvent.data.status.data === 'ready'
+    decodedEvent.value.status &&
+    decodedEvent.value.status.type === ClarityType.StringASCII &&
+    decodedEvent.value.status.value === 'ready'
   ) {
     const namespace = parseNamespaceRawValue(
       event.contract_event.raw_value,

@@ -1,5 +1,4 @@
 import supertest from 'supertest';
-import { ChainID } from '@stacks/transactions';
 import { startApiServer, ApiServer } from '../../../src/api/init.ts';
 import { PgWriteStore } from '../../../src/datastore/pg-write-store.ts';
 import {
@@ -16,6 +15,7 @@ import { PgSqlClient, bufferToHex } from '@stacks/api-toolkit';
 import { migrate } from '../../test-helpers.ts';
 import { beforeEach, afterEach, describe, test } from 'node:test';
 import assert from 'node:assert/strict';
+import { STACKS_TESTNET } from '@stacks/network';
 
 describe('mempool tests', () => {
   let db: PgWriteStore;
@@ -30,7 +30,7 @@ describe('mempool tests', () => {
       skipMigrations: true,
     });
     client = db.sql;
-    api = await startApiServer({ datastore: db, chainId: ChainID.Testnet });
+    api = await startApiServer({ datastore: db, chainId: STACKS_TESTNET.chainId });
   });
 
   afterEach(async () => {

@@ -1,16 +1,5 @@
 import supertest from 'supertest';
 import assert from 'node:assert/strict';
-import {
-  makeContractCall,
-  ClarityAbi,
-  ClarityType,
-  sponsorTransaction,
-  ChainID,
-  AnchorMode,
-  uintCV,
-  stringAsciiCV,
-  serializeCV,
-} from '@stacks/transactions';
 import { createClarityValueArray } from '../../test-helpers.ts';
 import codec from '@stacks/codec';
 import {
@@ -32,16 +21,22 @@ import {
 } from '../../../src/datastore/common.ts';
 import { startApiServer, ApiServer } from '../../../src/api/init.ts';
 import { I32_MAX } from '../../../src/helpers.ts';
-import {
-  TestBlockBuilder,
-  testMempoolTx,
-  TestMicroblockStreamBuilder,
-} from '../test-builders.ts';
+import { TestBlockBuilder, testMempoolTx, TestMicroblockStreamBuilder } from '../test-builders.ts';
 import { PgWriteStore } from '../../../src/datastore/pg-write-store.ts';
 import { createDbTxFromCoreMsg } from '../../../src/datastore/helpers.ts';
 import { PgSqlClient, bufferToHex } from '@stacks/api-toolkit';
 import { migrate } from '../../test-helpers.ts';
 import { beforeEach, afterEach, describe, test } from 'node:test';
+import {
+  serializeCV,
+  uintCV,
+  stringAsciiCV,
+  makeContractCall,
+  ClarityType,
+  sponsorTransaction,
+  ClarityAbi,
+} from '@stacks/transactions';
+import { STACKS_TESTNET } from '@stacks/network';
 
 describe('address tests', () => {
   let db: PgWriteStore;
@@ -56,7 +51,7 @@ describe('address tests', () => {
       skipMigrations: true,
     });
     client = db.sql;
-    api = await startApiServer({ datastore: db, chainId: ChainID.Testnet });
+    api = await startApiServer({ datastore: db, chainId: STACKS_TESTNET.chainId });
   });
 
   afterEach(async () => {
@@ -194,7 +189,7 @@ describe('address tests', () => {
           tx_id: tx.tx_id,
           tx_index: tx.tx_index,
           block_height: tx.block_height,
-          value: bufferToHex(Buffer.from(serializeCV(uintCV(amount)))),
+          value: bufferToHex(Buffer.from(serializeCV(uintCV(amount)), 'hex')),
           recipient,
           sender,
         };
@@ -1602,7 +1597,10 @@ describe('address tests', () => {
     );
     assert.equal(fetchAddrBalance1.status, 200);
     assert.equal(fetchAddrBalance1.type, 'application/json');
-    assert.equal(fetchAddrBalance1.headers['warning'], '299 - "Deprecated: See https://docs.hiro.so/stacks/api for more information"');
+    assert.equal(
+      fetchAddrBalance1.headers['warning'],
+      '299 - "Deprecated: See https://docs.hiro.so/stacks/api for more information"'
+    );
     const expectedResp1 = {
       stx: {
         balance: '88679',
@@ -2495,13 +2493,16 @@ describe('address tests', () => {
     assert.equal(blockTxsRows.found, true);
     const blockTxsRowsResult = blockTxsRows.result as DbTxRaw[];
     const contractCallResult1 = blockTxsRowsResult.find(tx => tx.tx_id === contractCall.tx_id);
-    assert.deepEqual({
-      ...contractCallResult1,
-      abi: JSON.parse(contractCallResult1?.abi ?? ''),
-    }, {
-      ...contractCall,
-      ...{ abi: contractJsonAbi, vm_error: null },
-    });
+    assert.deepEqual(
+      {
+        ...contractCallResult1,
+        abi: JSON.parse(contractCallResult1?.abi ?? ''),
+      },
+      {
+        ...contractCall,
+        ...{ abi: contractJsonAbi, vm_error: null },
+      }
+    );
 
     const searchResult8 = await supertest(api.server).get(
       `/extended/v1/search/0x1232000000000000000000000000000000000000000000000000000000000000?include_metadata=true`
@@ -2515,13 +2516,16 @@ describe('address tests', () => {
     const contractCallResult2 = blockTxResult.result.results.find(
       tx => tx.tx_id === contractCall.tx_id
     );
-    assert.deepEqual({
-      ...contractCallResult2,
-      abi: JSON.parse(contractCallResult2?.abi ?? ''),
-    }, {
-      ...contractCall,
-      ...{ abi: contractJsonAbi, vm_error: null },
-    });
+    assert.deepEqual(
+      {
+        ...contractCallResult2,
+        abi: JSON.parse(contractCallResult2?.abi ?? ''),
+      },
+      {
+        ...contractCall,
+        ...{ abi: contractJsonAbi, vm_error: null },
+      }
+    );
   });
 
   test('address - sponsor nonces', async () => {
@@ -2559,7 +2563,6 @@ describe('address tests', () => {
       senderKey: 'b8d99fd45da58038d630d9855d3ca2466e8e0f89d3894c4724f0efc9ff4b51f001',
       nonce: 0,
       sponsored: true,
-      anchorMode: AnchorMode.Any,
     });
     const sponsoredTx = await sponsorTransaction({
       transaction: txBuilder,
@@ -2567,14 +2570,14 @@ describe('address tests', () => {
       fee: 300,
       sponsorNonce: 2,
     });
-    const serialized = Buffer.from(sponsoredTx.serialize());
-    const tx = codec.decodeTransaction(serialized);
+    const serializedHex = sponsoredTx.serialize();
+    const tx = codec.decodeTransaction(serializedHex);
     const DbTxRaw = createDbTxFromCoreMsg({
       core_tx: {
-        raw_tx: '0x' + serialized.toString('hex'),
+        raw_tx: '0x' + serializedHex,
         status: 'success',
         raw_result: '0x0100000000000000000000000000000001', // u1
-        txid: '0x' + txBuilder.txid(),
+        txid: '0x' + sponsoredTx.txid(),
         tx_index: 2,
         contract_interface: null,
         microblock_hash: null,

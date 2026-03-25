@@ -1,10 +1,8 @@
 import {
   makeRandomPrivKey,
   getAddressFromPrivateKey,
-  TransactionVersion,
-  ReadOnlyFunctionOptions,
   bufferCVFromString,
-  callReadOnlyFunction,
+  fetchCallReadOnlyFunction,
   ClarityType,
 } from '@stacks/transactions';
 import { getChainIDNetwork, isValidPrincipal } from './../../../helpers.js';
@@ -48,12 +46,7 @@ export const BnsPriceRoutes: FastifyPluginAsync<
         return;
       }
       const randomPrivKey = makeRandomPrivKey();
-      const address = getAddressFromPrivateKey(
-        randomPrivKey.data,
-        getChainIDNetwork(fastify.chainId) === 'mainnet'
-          ? TransactionVersion.Mainnet
-          : TransactionVersion.Testnet
-      );
+      const address = getAddressFromPrivateKey(randomPrivKey, getChainIDNetwork(fastify.chainId));
       const bnsContractIdentifier = getBnsContractID(fastify.chainId);
       if (!bnsContractIdentifier || !isValidPrincipal(bnsContractIdentifier)) {
         logger.error('BNS contract ID not properly configured');
@@ -62,7 +55,7 @@ export const BnsPriceRoutes: FastifyPluginAsync<
 
       const [bnsContractAddress, bnsContractName] = bnsContractIdentifier.split('.');
 
-      const txOptions: ReadOnlyFunctionOptions = {
+      const txOptions = {
         senderAddress: address,
         contractAddress: bnsContractAddress,
         contractName: bnsContractName,
@@ -70,7 +63,7 @@ export const BnsPriceRoutes: FastifyPluginAsync<
         functionArgs: [bufferCVFromString(namespace)],
         network: GetStacksNetwork(fastify.chainId),
       };
-      const contractCallTx = await callReadOnlyFunction(txOptions);
+      const contractCallTx = await fetchCallReadOnlyFunction(txOptions);
       if (
         contractCallTx.type == ClarityType.ResponseOk &&
         contractCallTx.value.type == ClarityType.UInt
@@ -124,12 +117,7 @@ export const BnsPriceRoutes: FastifyPluginAsync<
       const name = split[0];
       const namespace = split[1];
       const randomPrivKey = makeRandomPrivKey();
-      const address = getAddressFromPrivateKey(
-        randomPrivKey.data,
-        getChainIDNetwork(fastify.chainId) === 'mainnet'
-          ? TransactionVersion.Mainnet
-          : TransactionVersion.Testnet
-      );
+      const address = getAddressFromPrivateKey(randomPrivKey, getChainIDNetwork(fastify.chainId));
 
       const bnsContractIdentifier = getBnsContractID(fastify.chainId);
       if (!bnsContractIdentifier || !isValidPrincipal(bnsContractIdentifier)) {
@@ -138,7 +126,7 @@ export const BnsPriceRoutes: FastifyPluginAsync<
       }
 
       const [bnsContractAddress, bnsContractName] = bnsContractIdentifier.split('.');
-      const txOptions: ReadOnlyFunctionOptions = {
+      const txOptions = {
         senderAddress: address,
         contractAddress: bnsContractAddress,
         contractName: bnsContractName,
@@ -147,7 +135,7 @@ export const BnsPriceRoutes: FastifyPluginAsync<
         network: GetStacksNetwork(fastify.chainId),
       };
 
-      const contractCall = await callReadOnlyFunction(txOptions);
+      const contractCall = await fetchCallReadOnlyFunction(txOptions);
       if (
         contractCall.type == ClarityType.ResponseOk &&
         contractCall.value.type == ClarityType.UInt

@@ -1,8 +1,6 @@
 import { CoreRpcPoxInfo } from '../../../src/core-rpc/client.ts';
 import { stxToMicroStx } from '../../../src/helpers.ts';
 import {
-  AnchorMode,
-  StacksPrivateKey,
   bufferCV,
   makeContractCall,
   makeRandomPrivKey,
@@ -52,7 +50,7 @@ describe('PoX-4 - Delegate aggregation increase operations', () => {
   let poxCycleAddressIndex: bigint;
 
   let stackingClient: StackingClient;
-  let signerPrivKey: StacksPrivateKey;
+  let signerPrivKey: string;
   let signerPubKey: string;
 
   before(async () => {
@@ -63,9 +61,9 @@ describe('PoX-4 - Delegate aggregation increase operations', () => {
     delegatorAccount = accountFromKey(delegatorKey);
     delegateeAccount = accountFromKey(delegateeKey);
 
-    stackingClient = new StackingClient(delegatorAccount.stxAddr, ctx.stacksNetwork);
+    stackingClient = new StackingClient({ address: delegatorAccount.stxAddr, network: ctx.stacksNetwork });
     signerPrivKey = makeRandomPrivKey();
-    signerPubKey = getPublicKeyFromPrivate(signerPrivKey.data);
+    signerPubKey = getPublicKeyFromPrivate(signerPrivKey);
   });
 
   after(async () => {
@@ -91,11 +89,11 @@ describe('PoX-4 - Delegate aggregation increase operations', () => {
       recipient: delegatorAccount.stxAddr,
       amount: gasAmount,
       network: ctx.stacksNetwork,
-      anchorMode: AnchorMode.OnChainOnly,
       fee: 200,
     });
+    const stxXfer1Hex = stxXfer1.serialize();
     const { txId: stxXferId1 } = await ctx.client.sendTransaction(
-      Buffer.from(stxXfer1.serialize())
+      Buffer.from(stxXfer1Hex, 'hex')
     );
 
     // transfer pox "min_amount_ustx" from seed to delegatee account
@@ -105,12 +103,12 @@ describe('PoX-4 - Delegate aggregation increase operations', () => {
       recipient: delegateeAccount.stxAddr,
       amount: stackingAmount,
       network: ctx.stacksNetwork,
-      anchorMode: AnchorMode.OnChainOnly,
       fee: 200,
       nonce: stxXfer1.auth.spendingCondition.nonce + 1n,
     });
+    const stxXfer2Hex = stxXfer2.serialize();
     const { txId: stxXferId2 } = await ctx.client.sendTransaction(
-      Buffer.from(stxXfer2.serialize())
+      Buffer.from(stxXfer2Hex, 'hex')
     );
 
     const stxXferTx1 = await standByForTxSuccess(stxXferId1, ctx);
@@ -157,12 +155,12 @@ describe('PoX-4 - Delegate aggregation increase operations', () => {
         someCV(delegateeAccount.poxAddrClar), // pox-addr
       ],
       network: ctx.stacksNetwork,
-      anchorMode: AnchorMode.OnChainOnly,
       fee: txFee,
       validateWithAbi: false,
     });
+    const delegateStxTxHex = delegateStxTx.serialize();
     const { txId: delegateStxTxId } = await ctx.client.sendTransaction(
-      Buffer.from(delegateStxTx.serialize())
+      Buffer.from(delegateStxTxHex, 'hex')
     );
     const delegateStxDbTx = await standByForTxSuccess(delegateStxTxId, ctx);
 
@@ -223,12 +221,12 @@ describe('PoX-4 - Delegate aggregation increase operations', () => {
         uintCV(6), // lock-period,
       ],
       network: ctx.stacksNetwork,
-      anchorMode: AnchorMode.OnChainOnly,
       fee: txFee,
       validateWithAbi: false,
     });
+    const delegateStackStxTxHex = delegateStackStxTx.serialize();
     const { txId: delegateStackStxTxId } = await ctx.client.sendTransaction(
-      Buffer.from(delegateStackStxTx.serialize())
+      Buffer.from(delegateStackStxTxHex, 'hex')
     );
     const delegateStackStxDbTx = await standByForTxSuccess(delegateStackStxTxId, ctx);
 
@@ -288,12 +286,12 @@ describe('PoX-4 - Delegate aggregation increase operations', () => {
         uintCV(0), // auth-id
       ],
       network: ctx.stacksNetwork,
-      anchorMode: AnchorMode.OnChainOnly,
       fee: 10000,
       validateWithAbi: false,
     });
+    const stackAggrCommitTxHex = stackAggrCommitTx.serialize();
     const { txId: stackAggrCommitTxId } = await ctx.client.sendTransaction(
-      Buffer.from(stackAggrCommitTx.serialize())
+      Buffer.from(stackAggrCommitTxHex, 'hex')
     );
     const stackAggrCommmitDbTx = await standByForTxSuccess(stackAggrCommitTxId, ctx);
 
@@ -347,12 +345,12 @@ describe('PoX-4 - Delegate aggregation increase operations', () => {
         uintCV(stxToDelegateIncrease), // increase-by
       ],
       network: ctx.stacksNetwork,
-      anchorMode: AnchorMode.OnChainOnly,
       fee: txFee,
       validateWithAbi: false,
     });
+    const delegateStackIncreaseTxHex = delegateStackIncreaseTx.serialize();
     const { txId: delegateStackIncreaseTxId } = await ctx.client.sendTransaction(
-      Buffer.from(delegateStackIncreaseTx.serialize())
+      Buffer.from(delegateStackIncreaseTxHex, 'hex')
     );
 
     const delegateStackIncreaseDbTx = await standByForTxSuccess(delegateStackIncreaseTxId, ctx);
@@ -451,13 +449,13 @@ describe('PoX-4 - Delegate aggregation increase operations', () => {
         uintCV(1), // auth-id
       ],
       network: ctx.stacksNetwork,
-      anchorMode: AnchorMode.OnChainOnly,
       fee: txFee,
       validateWithAbi: false,
       nonce: delegateStackIncreaseTx.auth.spendingCondition.nonce + 1n,
     });
+    const stackAggrIncreaseTxHex = stackAggrIncreaseTx.serialize();
     const { txId: stackAggrIncreaseTxId } = await ctx.client.sendTransaction(
-      Buffer.from(stackAggrIncreaseTx.serialize())
+      Buffer.from(stackAggrIncreaseTxHex, 'hex')
     );
 
     // validate API endpoint balance state for account

@@ -1,5 +1,4 @@
 import { io } from 'socket.io-client';
-import { ChainID } from '@stacks/common';
 import { ApiServer, startApiServer } from '../../../src/api/init.ts';
 import { DbAssetEventTypeId, DbTxStatus } from '../../../src/datastore/common.ts';
 import { TestBlockBuilder, testMempoolTx, TestMicroblockStreamBuilder } from '../test-builders.ts';
@@ -20,6 +19,7 @@ import { Socket } from 'node:net';
 import { ENV } from '../../../src/env.ts';
 import assert from 'node:assert/strict';
 import { describe, test, beforeEach, afterEach } from 'node:test';
+import { STACKS_TESTNET } from '@stacks/network';
 
 describe('socket-io', () => {
   let apiServer: ApiServer;
@@ -30,7 +30,7 @@ describe('socket-io', () => {
     db = await PgWriteStore.connect({ usageName: 'tests', skipMigrations: true });
     apiServer = await startApiServer({
       datastore: db,
-      chainId: ChainID.Testnet,
+      chainId: STACKS_TESTNET.chainId,
     });
   });
 

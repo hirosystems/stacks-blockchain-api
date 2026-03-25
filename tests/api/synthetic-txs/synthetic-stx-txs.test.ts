@@ -1,4 +1,3 @@
-import { ChainID } from '@stacks/transactions';
 import * as fs from 'fs';
 import * as path from 'path';
 import { fileURLToPath } from 'node:url';
@@ -9,6 +8,7 @@ import { NewBlockMessage } from '@stacks/node-publisher-client';
 import assert from 'node:assert/strict';
 import { describe, test } from 'node:test';
 import { assertObjectContaining } from '../test-helpers.ts';
+import { STACKS_MAINNET } from '@stacks/network';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -27,7 +27,7 @@ describe('synthetic stx txs', () => {
       throw new Error(`Cound not find tx ${txid}`);
     }
     const parsed = parseMessageTransaction(
-      ChainID.Mainnet,
+      STACKS_MAINNET.chainId,
       txMsg,
       blockMsg as unknown as CoreNodeMsgBlockData,
       blockMsg.events
@@ -87,7 +87,7 @@ describe('synthetic stx txs', () => {
       throw new Error(`Cound not find tx ${txid}`);
     }
     const parsed = parseMessageTransaction(
-      ChainID.Mainnet,
+      STACKS_MAINNET.chainId,
       txMsg,
       blockMsg as unknown as CoreNodeMsgBlockData,
       blockMsg.events
@@ -147,7 +147,7 @@ describe('synthetic stx txs', () => {
       throw new Error(`Cound not find tx ${txid}`);
     }
     const parsed = parseMessageTransaction(
-      ChainID.Mainnet,
+      STACKS_MAINNET.chainId,
       txMsg,
       blockMsg as unknown as CoreNodeMsgBlockData,
       blockMsg.events
@@ -226,7 +226,7 @@ describe('synthetic stx txs', () => {
     if (!txMsg) {
       throw new Error(`Cound not find tx ${txid}`);
     }
-    const { dbData: parsed } = parseNewBlockMessage(ChainID.Mainnet, blockMsg, false);
+    const { dbData: parsed } = parseNewBlockMessage(STACKS_MAINNET.chainId, blockMsg, false);
     if (!parsed) {
       throw new Error(`Failed to parse ${txid}`);
     }
@@ -256,7 +256,7 @@ describe('synthetic stx txs', () => {
       throw new Error(`Cound not find tx ${txid}`);
     }
     const parsed = parseMessageTransaction(
-      ChainID.Mainnet,
+      STACKS_MAINNET.chainId,
       txMsg,
       blockMsg as unknown as CoreNodeMsgBlockData,
       blockMsg.events
@@ -357,7 +357,7 @@ describe('synthetic stx txs', () => {
 
     const parsedTxs = payloads.map(payload => {
       const parsed = parseMessageTransaction(
-        ChainID.Mainnet,
+        STACKS_MAINNET.chainId,
         payload.txMsg,
         payload.blockMsg as unknown as CoreNodeMsgBlockData,
         payload.blockMsg.events

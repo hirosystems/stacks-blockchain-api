@@ -1,6 +1,5 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import {
-  AnchorMode,
   Cl,
   makeContractCall,
   makeSTXTokenTransfer,
@@ -239,11 +238,11 @@ describe('PoX-4 - Stack using Bitcoin-chain delegate ops', () => {
       recipient: account.stxAddr,
       amount: testAccountBalance,
       network: ctx.stacksNetwork,
-      anchorMode: AnchorMode.OnChainOnly,
       fee: 200,
     });
+    const stxXfer1Hex = stxXfer1.serialize();
     const { txId: stxXferId1 } = await ctx.client.sendTransaction(
-      Buffer.from(stxXfer1.serialize())
+      Buffer.from(stxXfer1Hex, 'hex')
     );
 
     const stxXferTx1 = await standByForTxSuccess(stxXferId1, ctx);
@@ -350,9 +349,9 @@ describe('PoX-4 - Stack using Bitcoin-chain delegate ops', () => {
     assert.deepEqual(delegateStxTx.tx_result, { hex: '0x0703', repr: '(ok true)' });
 
     const expectedPoxPayoutAddr = decodeBtcAddress(poxAddrPayoutAccount.btcTestnetAddr);
-    const expectedPoxPayoutAddrRepr = `(some (tuple (hashbytes 0x${Buffer.from(
+    const expectedPoxPayoutAddrRepr = `(some (tuple (hashbytes 0x${
       expectedPoxPayoutAddr.data
-    ).toString('hex')}) (version 0x${Buffer.from([expectedPoxPayoutAddr.version]).toString(
+    }) (version 0x${Buffer.from([expectedPoxPayoutAddr.version]).toString(
       'hex'
     )})))`;
 
@@ -409,12 +408,12 @@ describe('PoX-4 - Stack using Bitcoin-chain delegate ops', () => {
         uintCV(1), // lock-period
       ],
       network: ctx.stacksNetwork,
-      anchorMode: AnchorMode.OnChainOnly,
       fee: txFee,
       validateWithAbi: false,
     });
+    const delegateStackStxTxHex = delegateStackStxTx.serialize();
     const { txId: delegateStackStxTxId } = await ctx.client.sendTransaction(
-      Buffer.from(delegateStackStxTx.serialize())
+      Buffer.from(delegateStackStxTxHex, 'hex')
     );
     const delegateStackStxDbTx = await standByForTxSuccess(delegateStackStxTxId, ctx);
 

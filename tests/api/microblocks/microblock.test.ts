@@ -1,12 +1,5 @@
 import supertest from 'supertest';
 import {
-  bufferCVFromString,
-  ChainID,
-  stringAsciiCV,
-  uintCV,
-  serializeCV,
-} from '@stacks/transactions';
-import {
   DbBlock,
   DbTxRaw,
   DbTxTypeId,
@@ -44,6 +37,8 @@ import { PgSqlClient, bufferToHex, logger } from '@stacks/api-toolkit';
 import { createClarityValueArray, migrate } from '../../test-helpers.ts';
 import assert from 'node:assert/strict';
 import { describe, test, beforeEach, afterEach } from 'node:test';
+import { STACKS_MAINNET, STACKS_TESTNET } from '@stacks/network';
+import { bufferCVFromString, serializeCV, stringAsciiCV, uintCV } from '@stacks/transactions';
 
 describe('microblock tests', () => {
   let db: PgWriteStore;
@@ -82,7 +77,7 @@ describe('microblock tests', () => {
       async () => {
         const eventServer = await startEventServer({
           datastore: db,
-          chainId: ChainID.Mainnet,
+          chainId: STACKS_MAINNET.chainId,
           serverHost: '127.0.0.1',
           serverPort: 0,
         });
@@ -91,7 +86,7 @@ describe('microblock tests', () => {
       async () => {
         const apiServer = await startApiServer({
           datastore: db,
-          chainId: ChainID.Mainnet,
+          chainId: STACKS_MAINNET.chainId,
         });
         return [apiServer, apiServer.terminate] as const;
       },
@@ -142,7 +137,7 @@ describe('microblock tests', () => {
       async () => {
         const eventServer = await startEventServer({
           datastore: db,
-          chainId: ChainID.Mainnet,
+          chainId: STACKS_MAINNET.chainId,
           serverHost: '127.0.0.1',
           serverPort: 0,
         });
@@ -151,7 +146,7 @@ describe('microblock tests', () => {
       async () => {
         const apiServer = await startApiServer({
           datastore: db,
-          chainId: ChainID.Mainnet,
+          chainId: STACKS_MAINNET.chainId,
         });
         return [apiServer, apiServer.terminate] as const;
       },
@@ -206,7 +201,7 @@ describe('microblock tests', () => {
       async () => {
         const eventServer = await startEventServer({
           datastore: db,
-          chainId: ChainID.Mainnet,
+          chainId: STACKS_MAINNET.chainId,
           serverHost: '127.0.0.1',
           serverPort: 0,
         });
@@ -215,7 +210,7 @@ describe('microblock tests', () => {
       async () => {
         const apiServer = await startApiServer({
           datastore: db,
-          chainId: ChainID.Mainnet,
+          chainId: STACKS_MAINNET.chainId,
         });
         return [apiServer, apiServer.terminate] as const;
       },
@@ -257,7 +252,7 @@ describe('microblock tests', () => {
       async () => {
         const apiServer = await startApiServer({
           datastore: db,
-          chainId: ChainID.Testnet,
+          chainId: STACKS_TESTNET.chainId,
         });
         return [apiServer, apiServer.terminate] as const;
       },
@@ -362,7 +357,7 @@ describe('microblock tests', () => {
           event_type: DbEventTypeId.SmartContractLog,
           contract_identifier: contractAddr,
           topic: 'some-topic',
-          value: bufferToHex(Buffer.from(serializeCV(bufferCVFromString('some val')))),
+          value: bufferToHex(Buffer.from(serializeCV(bufferCVFromString('some val')), 'hex')),
         };
         const smartContract1: DbSmartContract = {
           tx_id: tx1.tx_id,
@@ -676,7 +671,10 @@ describe('microblock tests', () => {
         }: { body: AddressTransactionsWithTransfersListResponse } = addrTxsTransfers2;
         assert.equal(addrTxsTransfersBody2.results.length, 2);
         assert.equal(addrTxsTransfersBody2.results[1].tx.tx_id, mbTx1.tx_id);
-        assert.equal(addrTxsTransfersBody2.results[1].stx_received, mbTxStxEvent1.amount.toString());
+        assert.equal(
+          addrTxsTransfersBody2.results[1].stx_received,
+          mbTxStxEvent1.amount.toString()
+        );
 
         const addrTxs1 = await supertest(api.server).get(
           `/extended/v1/address/${addr2}/transactions`

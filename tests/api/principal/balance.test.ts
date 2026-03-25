@@ -1,6 +1,5 @@
 import supertest from 'supertest';
 import assert from 'node:assert/strict';
-import { ChainID } from '@stacks/transactions';
 import { DbTxTypeId } from '../../../src/datastore/common.ts';
 import { startApiServer, ApiServer } from '../../../src/api/init.ts';
 import { TestBlockBuilder, TestMicroblockStreamBuilder } from '../test-builders.ts';
@@ -8,6 +7,7 @@ import { PgWriteStore } from '../../../src/datastore/pg-write-store.ts';
 import { PgSqlClient } from '@stacks/api-toolkit';
 import { migrate } from '../../test-helpers.ts';
 import { beforeEach, afterEach, describe, test } from 'node:test';
+import { STACKS_TESTNET } from '@stacks/network';
 
 describe('balance tests', () => {
   let db: PgWriteStore;
@@ -22,7 +22,7 @@ describe('balance tests', () => {
       skipMigrations: true,
     });
     client = db.sql;
-    api = await startApiServer({ datastore: db, chainId: ChainID.Testnet });
+    api = await startApiServer({ datastore: db, chainId: STACKS_TESTNET.chainId });
   });
 
   afterEach(async () => {

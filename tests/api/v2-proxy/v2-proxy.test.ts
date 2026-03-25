@@ -1,5 +1,4 @@
 import supertest from 'supertest';
-import { ChainID } from '@stacks/transactions';
 import { startApiServer } from '../../../src/api/init.ts';
 import { useWithCleanup } from '../test-helpers.ts';
 import nock from 'nock';
@@ -11,6 +10,7 @@ import { TestBlockBuilder } from '../test-builders.ts';
 import { ENV } from '../../../src/env.ts';
 import assert from 'node:assert/strict';
 import { afterEach, beforeEach, describe, test } from 'node:test';
+import { STACKS_MAINNET } from '@stacks/network';
 
 describe('v2-proxy tests', () => {
   let db: PgWriteStore;
@@ -72,7 +72,7 @@ describe('v2-proxy tests', () => {
       async () => {
         const apiServer = await startApiServer({
           datastore: db,
-          chainId: ChainID.Mainnet,
+          chainId: STACKS_MAINNET.chainId,
         });
         return [apiServer, apiServer.terminate] as const;
       },
