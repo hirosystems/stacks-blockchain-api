@@ -250,8 +250,8 @@ export function getBitcoinAddressFromKey<TVerbose extends boolean = false>(
     const output: VerboseKeyOutput = {
       address: keyOutput.address,
       wif: keyOutput.ecPair.toWIF(),
-      privateKey: keyOutput.ecPair.privateKey as Buffer,
-      publicKey: keyOutput.ecPair.publicKey,
+      privateKey: Buffer.from(keyOutput.ecPair.privateKey as Uint8Array),
+      publicKey: Buffer.from(keyOutput.ecPair.publicKey),
     };
     return output as TVerbose extends true ? VerboseKeyOutput : string;
   } else {
@@ -261,5 +261,5 @@ export function getBitcoinAddressFromKey<TVerbose extends boolean = false>(
 
 export function privateToPublicKey(privateKey: string | Buffer): Buffer {
   const ecPair = ecPairFromKeyInputArgs({ privateKey, network: 'mainnet' });
-  return ecPair.publicKey;
+  return Buffer.from(ecPair.publicKey);
 }

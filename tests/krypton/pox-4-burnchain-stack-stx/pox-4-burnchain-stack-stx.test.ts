@@ -89,13 +89,13 @@ async function createPox4StackStx(
     })
     .addOutput({
       script: btc.payments.embed({ data: [preStxOpPayload] }).output!,
-      value: 0,
+      value: 0n,
     })
     // Then, the second Bitcoin output must be Stacker address that will be used in a StackStxOp.
     // This address must be a standard address type parseable by the stacks-blockchain node.
     .addOutput({
       address: c32ToB58(args.stackerAddress),
-      value: outAmount1,
+      value: BigInt(outAmount1),
     })
     .signInput(0, btcAccount)
     .finalizeAllInputs()
@@ -125,12 +125,12 @@ async function createPox4StackStx(
     .addInput({ hash: preStxOpTxId, index: 1, nonWitnessUtxo: Buffer.from(preStxOpTxHex, 'hex') })
     .addOutput({
       script: btc.payments.embed({ data: [stackStxOpTxPayload] }).output!,
-      value: 0,
+      value: 0n,
     })
     // The second Bitcoin output will be used as the reward address for any stacking rewards.
     .addOutput({
       address: args.poxAddrPayout,
-      value: Math.round(outAmount1 - feeAmount * sats),
+      value: BigInt(Math.round(outAmount1 - feeAmount * sats)),
     })
     .signInput(0, btcAccount)
     .finalizeAllInputs()

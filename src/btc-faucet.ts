@@ -11,7 +11,11 @@ import { ECPairFactory } from 'ecpair';
 
 const ECPair: ECPairAPI = ECPairFactory(ecc);
 
-function validateSigFunction(pubkey: Buffer, msghash: Buffer, signature: Buffer): boolean {
+function validateSigFunction(
+  pubkey: Uint8Array,
+  msghash: Uint8Array,
+  signature: Uint8Array
+): boolean {
   return ECPair.fromPublicKey(pubkey).verify(msghash, signature);
 }
 
@@ -225,7 +229,7 @@ export async function makeBtcFaucetPayment(
       // output change address
       output.address = faucetWallet.address;
     }
-    psbt.addOutput({ address: output.address, value: output.value });
+    psbt.addOutput({ address: output.address, value: BigInt(output.value) });
   });
 
   psbt.signAllInputs(faucetWallet.key);
