@@ -472,10 +472,11 @@ export const FaucetRoutes: FastifyPluginAsync<
             senderKey,
             BigInt(nonces.possibleNextNonce)
           );
-          const rawTx = Buffer.from(tx.serialize());
+          const rawTxHex = tx.serialize();
+          const rawTx = Buffer.from(rawTxHex, 'hex');
           try {
             const res = await rpcClient.sendTransaction(rawTx);
-            sendSuccess = { txId: res.txId, txRaw: rawTx.toString('hex') };
+            sendSuccess = { txId: res.txId, txRaw: rawTxHex };
             logger.info(
               `StxFaucet success. Sent ${stxAmount} uSTX from ${senderAddress} to ${recipientAddress} (txId: ${sendSuccess.txId}).`
             );
