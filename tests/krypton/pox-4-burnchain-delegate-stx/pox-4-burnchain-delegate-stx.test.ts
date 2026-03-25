@@ -1,6 +1,5 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import {
-  AnchorMode,
   Cl,
   makeContractCall,
   makeSTXTokenTransfer,
@@ -239,7 +238,6 @@ describe('PoX-4 - Stack using Bitcoin-chain delegate ops', () => {
       recipient: account.stxAddr,
       amount: testAccountBalance,
       network: ctx.stacksNetwork,
-      anchorMode: AnchorMode.OnChainOnly,
       fee: 200,
     });
     const { txId: stxXferId1 } = await ctx.client.sendTransaction(
@@ -409,7 +407,6 @@ describe('PoX-4 - Stack using Bitcoin-chain delegate ops', () => {
         uintCV(1), // lock-period
       ],
       network: ctx.stacksNetwork,
-      anchorMode: AnchorMode.OnChainOnly,
       fee: txFee,
       validateWithAbi: false,
     });

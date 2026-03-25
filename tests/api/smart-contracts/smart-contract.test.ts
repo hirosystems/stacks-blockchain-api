@@ -1,5 +1,5 @@
 import supertest from 'supertest';
-import { bufferCVFromString, ChainID, serializeCV } from '@stacks/transactions';
+import { bufferCVFromString, serializeCV } from '@stacks/transactions';
 import {
   DbBlock,
   DbTxRaw,
@@ -16,6 +16,7 @@ import { migrate } from '../../test-helpers.ts';
 import { TestBlockBuilder, testMempoolTx } from '../test-builders.ts';
 import { beforeEach, afterEach, describe, test } from 'node:test';
 import assert from 'node:assert/strict';
+import { STACKS_TESTNET } from '@stacks/network';
 
 describe('smart contract tests', () => {
   let db: PgWriteStore;
@@ -30,7 +31,7 @@ describe('smart contract tests', () => {
       skipMigrations: true,
     });
     client = db.sql;
-    api = await startApiServer({ datastore: db, chainId: ChainID.Testnet });
+    api = await startApiServer({ datastore: db, chainId: STACKS_TESTNET.chainId });
   });
 
   afterEach(async () => {

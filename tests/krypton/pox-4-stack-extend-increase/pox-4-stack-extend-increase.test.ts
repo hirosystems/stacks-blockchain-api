@@ -1,8 +1,6 @@
 import { CoreRpcPoxInfo } from '../../../src/core-rpc/client.ts';
 import { getBitcoinAddressFromKey, privateToPublicKey } from '../ec-helpers.ts';
 import {
-  AnchorMode,
-  StacksPrivateKey,
   bufferCV,
   makeContractCall,
   makeRandomPrivKey,
@@ -41,7 +39,7 @@ describe('PoX-4 - Stack extend and increase operations', () => {
   let btcAddr: string;
   let btcAddrRegtest: string;
   let btcPubKey: string;
-  let decodedBtcAddr: { version: number; data: Uint8Array };
+  let decodedBtcAddr: { version: number; data: string };
   let poxInfo: CoreRpcPoxInfo;
   let burnBlockHeight: number;
   let cycleBlockLength: number;
@@ -49,7 +47,7 @@ describe('PoX-4 - Stack extend and increase operations', () => {
   let contractName: string;
   let ustxAmount: bigint;
   let stackingClient: StackingClient;
-  let signerPrivKey: StacksPrivateKey;
+  let signerPrivKey: string;
   let signerPubKey: string;
   const lockPeriod = 3;
   const btcPrivateKey = '0000000000000000000000000000000000000000000000000000000000000002';
@@ -77,9 +75,9 @@ describe('PoX-4 - Stack extend and increase operations', () => {
       { data: '06afd46bcdfd22ef94ac122aa11f241244a37ecc', version: 0 }
     );
 
-    stackingClient = new StackingClient(account.stacksAddress, ctx.stacksNetwork);
+    stackingClient = new StackingClient({ address: account.stacksAddress, network: ctx.stacksNetwork });
     signerPrivKey = makeRandomPrivKey();
-    signerPubKey = getPublicKeyFromPrivate(signerPrivKey.data);
+    signerPubKey = getPublicKeyFromPrivate(signerPrivKey);
 
     // Create a regtest address to use with bitcoind json-rpc since the krypton-stacks-node uses testnet addresses
     btcAddrRegtest = getBitcoinAddressFromKey({
@@ -137,7 +135,7 @@ describe('PoX-4 - Stack extend and increase operations', () => {
       functionArgs: [
         uintCV(ustxAmount.toString()), // amount-ustx
         tupleCV({
-          hashbytes: bufferCV(decodedBtcAddr.data),
+          hashbytes: bufferCV(hexToBytes(decodedBtcAddr.data)),
           version: bufferCV(Buffer.from([decodedBtcAddr.version])),
         }), // pox-addr
         uintCV(burnBlockHeight), // start-burn-ht
@@ -148,7 +146,6 @@ describe('PoX-4 - Stack extend and increase operations', () => {
         uintCV(0), // auth-id
       ],
       network: ctx.stacksNetwork,
-      anchorMode: AnchorMode.OnChainOnly,
       fee: txFee,
       validateWithAbi: false,
     });
@@ -257,7 +254,6 @@ describe('PoX-4 - Stack extend and increase operations', () => {
         uintCV(1), // auth-id
       ],
       network: ctx.stacksNetwork,
-      anchorMode: AnchorMode.OnChainOnly,
       fee: stackIncreaseTxFee,
       validateWithAbi: false,
     });
@@ -359,7 +355,7 @@ describe('PoX-4 - Stack extend and increase operations', () => {
       functionArgs: [
         uintCV(extendCycleAmount), // extend-count
         tupleCV({
-          hashbytes: bufferCV(decodedBtcAddr.data),
+          hashbytes: bufferCV(hexToBytes(decodedBtcAddr.data)),
           version: bufferCV(Buffer.from([decodedBtcAddr.version])),
         }), // pox-addr
         someCV(bufferCV(signerSig)), // signer-sig
@@ -368,7 +364,6 @@ describe('PoX-4 - Stack extend and increase operations', () => {
         uintCV(2), // auth-id
       ],
       network: ctx.stacksNetwork,
-      anchorMode: AnchorMode.OnChainOnly,
       fee: txFee,
       validateWithAbi: false,
     });

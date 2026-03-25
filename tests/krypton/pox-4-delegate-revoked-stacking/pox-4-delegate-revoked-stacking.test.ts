@@ -1,8 +1,6 @@
 import { StackingClient, poxAddressToTuple } from '@stacks/stacking';
 import {
-  AnchorMode,
   Cl,
-  StacksPrivateKey,
   bufferCV,
   makeContractCall,
   makeRandomPrivKey,
@@ -55,7 +53,7 @@ describe('PoX-4 - Delegate Revoked Stacking', () => {
   let contractName: string;
 
   let stackingClient: StackingClient;
-  let signerPrivKey: StacksPrivateKey;
+  let signerPrivKey: string;
   let signerPubKey: string;
 
   before(async () => {
@@ -64,9 +62,9 @@ describe('PoX-4 - Delegate Revoked Stacking', () => {
     POOL = accountFromKey(delegatorKey);
     STACKER = accountFromKey(delegateeKey);
 
-    stackingClient = new StackingClient(POOL.stxAddr, ctx.stacksNetwork);
+    stackingClient = new StackingClient({ address: POOL.stxAddr, network: ctx.stacksNetwork });
     signerPrivKey = makeRandomPrivKey();
-    signerPubKey = getPublicKeyFromPrivate(signerPrivKey.data);
+    signerPubKey = getPublicKeyFromPrivate(signerPrivKey);
   });
 
   after(async () => {
@@ -83,7 +81,6 @@ describe('PoX-4 - Delegate Revoked Stacking', () => {
       recipient: POOL.stxAddr,
       amount: gasAmount,
       network: ctx.stacksNetwork,
-      anchorMode: AnchorMode.OnChainOnly,
       fee: 10000n,
     });
     const { txId: stxXferId1 } = await ctx.client.sendTransaction(
@@ -97,7 +94,6 @@ describe('PoX-4 - Delegate Revoked Stacking', () => {
       recipient: STACKER.stxAddr,
       amount: stackingAmount,
       network: ctx.stacksNetwork,
-      anchorMode: AnchorMode.OnChainOnly,
       nonce: stxXfer1.auth.spendingCondition.nonce + 1n,
       fee: 10000n,
     });
@@ -149,7 +145,6 @@ describe('PoX-4 - Delegate Revoked Stacking', () => {
         uintCV(1), // lock-period
       ],
       network: ctx.stacksNetwork,
-      anchorMode: AnchorMode.OnChainOnly,
       fee: 10000n,
     });
     const delegateStackTxResult = await ctx.client.sendTransaction(
@@ -175,7 +170,6 @@ describe('PoX-4 - Delegate Revoked Stacking', () => {
         someCV(STACKER.poxAddrClar), // pox-addr
       ],
       network: ctx.stacksNetwork,
-      anchorMode: AnchorMode.OnChainOnly,
       fee: 10000n,
     });
     const { txId: delegateStxTxId } = await ctx.client.sendTransaction(
@@ -241,7 +235,6 @@ describe('PoX-4 - Delegate Revoked Stacking', () => {
         uintCV(3), // lock-period
       ],
       network: ctx.stacksNetwork,
-      anchorMode: AnchorMode.OnChainOnly,
       fee: 10000n,
     });
     const { txId: delegateStackStxTxId } = await ctx.client.sendTransaction(
@@ -284,7 +277,6 @@ describe('PoX-4 - Delegate Revoked Stacking', () => {
       functionName: 'revoke-delegate-stx',
       functionArgs: [],
       network: ctx.stacksNetwork,
-      anchorMode: AnchorMode.OnChainOnly,
       fee: 10000n,
     });
     const revokeTxResult = await ctx.client.sendTransaction(Buffer.from(revokeTx.serialize()));
@@ -342,7 +334,6 @@ describe('PoX-4 - Delegate Revoked Stacking', () => {
         uintCV(1), // lock-period
       ],
       network: ctx.stacksNetwork,
-      anchorMode: AnchorMode.OnChainOnly,
       fee: 10000n,
     });
     const delegateStackTxResult = await ctx.client.sendTransaction(
@@ -366,7 +357,6 @@ describe('PoX-4 - Delegate Revoked Stacking', () => {
         uintCV(DELEGATE_INCREASE_AMOUNT), // increase-by
       ],
       network: ctx.stacksNetwork,
-      anchorMode: AnchorMode.OnChainOnly,
       fee: 10000n,
     });
     const { txId: delegateStackIncreaseTxId } = await ctx.client.sendTransaction(
@@ -392,7 +382,6 @@ describe('PoX-4 - Delegate Revoked Stacking', () => {
         uintCV(2), // extend-count
       ],
       network: ctx.stacksNetwork,
-      anchorMode: AnchorMode.OnChainOnly,
       fee: 10000n,
     });
     const { txId: delegateStackextendTxId } = await ctx.client.sendTransaction(
@@ -423,7 +412,6 @@ describe('PoX-4 - Delegate Revoked Stacking', () => {
         uintCV(1), // lock-period
       ],
       network: ctx.stacksNetwork,
-      anchorMode: AnchorMode.OnChainOnly,
       fee: 10000n,
     });
     const { txId: delegateStackStxTxId } = await ctx.client.sendTransaction(
@@ -463,7 +451,6 @@ describe('PoX-4 - Delegate Revoked Stacking', () => {
         uintCV(0), // auth-id
       ],
       network: ctx.stacksNetwork,
-      anchorMode: AnchorMode.OnChainOnly,
       fee: 10000n,
     });
     const { txId: stackAggrCommitTxId } = await ctx.client.sendTransaction(

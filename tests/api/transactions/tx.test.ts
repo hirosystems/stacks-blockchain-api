@@ -1,22 +1,16 @@
 import supertest from 'supertest';
 import {
   makeContractCall,
-  NonFungibleConditionCode,
-  FungibleConditionCode,
   bufferCVFromString,
   ClarityAbi,
   ClarityType,
   makeContractDeploy,
   sponsorTransaction,
-  createNonFungiblePostCondition,
-  createFungiblePostCondition,
-  createSTXPostCondition,
-  ChainID,
-  AnchorMode,
   uintCV,
-  pubKeyfromPrivKey,
   publicKeyToAddress,
   AddressVersion,
+  privateKeyToPublic,
+  Pc,
   bufferCV,
   stringAsciiCV,
 } from '@stacks/transactions';
@@ -49,6 +43,7 @@ import { beforeEach, afterEach, describe, test } from 'node:test';
 import assert from 'node:assert/strict';
 import { Transaction } from '../../../src/api/schemas/entities/transactions.ts';
 import { assertMatchesObject } from '../test-helpers.ts';
+import { STACKS_TESTNET } from '@stacks/network';
 
 describe('tx tests', () => {
   function getByPath(obj: any, path: string | number | Array<string | number>): any {
@@ -73,7 +68,7 @@ describe('tx tests', () => {
       skipMigrations: true,
     });
     client = db.sql;
-    api = await startApiServer({ datastore: db, chainId: ChainID.Testnet });
+    api = await startApiServer({ datastore: db, chainId: STACKS_TESTNET.chainId });
   });
 
   afterEach(async () => {
@@ -934,7 +929,6 @@ describe('tx tests', () => {
       senderKey: 'b8d99fd45da58038d630d9855d3ca2466e8e0f89d3894c4724f0efc9ff4b51f001',
       nonce: 0,
       sponsored: true,
-      anchorMode: AnchorMode.Any,
     });
     const sponsoredTx = await sponsorTransaction({
       transaction: txBuilder,
@@ -1097,7 +1091,7 @@ describe('tx tests', () => {
   test('tx - sponsored negtive balance', async () => {
     //a key with 0 balance
     const randomKey = '5e0f18e16a585a280b73198b271d558deaf7178be1b2e238b08d7aa175c697d6';
-    const publicKey = pubKeyfromPrivKey(randomKey);
+    const publicKey = privateKeyToPublic(randomKey);
     const address = publicKeyToAddress(AddressVersion.TestnetSingleSig, publicKey);
     const sponsoredAddress = 'SP2ZRX0K27GW0SP3GJCEMHD95TQGJMKB7GB36ZAR0';
 
@@ -1163,7 +1157,6 @@ describe('tx tests', () => {
       senderKey: '5e0f18e16a585a280b73198b271d558deaf7178be1b2e238b08d7aa175c697d6',
       nonce: 0,
       sponsored: true,
-      anchorMode: AnchorMode.Any,
     });
     const sponsoredTx = await sponsorTransaction({
       transaction: txBuilder,
@@ -1548,25 +1541,20 @@ describe('tx tests', () => {
       signer_signatures: null,
     };
 
-    const pc1 = createNonFungiblePostCondition(
-      'ST1HB1T8WRNBYB0Y3T7WXZS38NKKPTBR3EG9EPJKR',
-      NonFungibleConditionCode.DoesNotSend,
-      'STRYYQQ9M8KAF4NS7WNZQYY59X93XEKR31JP64CP.hello::asset-name',
-      bufferCVFromString('asset-value')
-    );
+    const pc1 = Pc.principal('ST1HB1T8WRNBYB0Y3T7WXZS38NKKPTBR3EG9EPJKR')
+      .willNotSendAsset()
+      .nft(
+        'STRYYQQ9M8KAF4NS7WNZQYY59X93XEKR31JP64CP.hello::asset-name',
+        bufferCVFromString('asset-value')
+      );
 
-    const pc2 = createFungiblePostCondition(
-      'ST1HB1T8WRNBYB0Y3T7WXZS38NKKPTBR3EG9EPJKR',
-      FungibleConditionCode.GreaterEqual,
-      123456,
-      'STRYYQQ9M8KAF4NS7WNZQYY59X93XEKR31JP64CP.hello-ft::asset-name-ft'
-    );
+    const pc2 = Pc.principal('ST1HB1T8WRNBYB0Y3T7WXZS38NKKPTBR3EG9EPJKR')
+      .willSendGte(123456)
+      .ft('STRYYQQ9M8KAF4NS7WNZQYY59X93XEKR31JP64CP.hello-ft', 'asset-name-ft');
 
-    const pc3 = createSTXPostCondition(
-      'ST1HB1T8WRNBYB0Y3T7WXZS38NKKPTBR3EG9EPJKR',
-      FungibleConditionCode.LessEqual,
-      36723458
-    );
+    const pc3 = Pc.principal('ST1HB1T8WRNBYB0Y3T7WXZS38NKKPTBR3EG9EPJKR')
+      .willSendLte(36723458)
+      .ustx();
 
     const txBuilder = await makeContractCall({
       contractAddress: 'ST11NJTTKGVT6D1HY4NJRVQWMQM7TVAR091EJ8P2Y',
@@ -1577,7 +1565,6 @@ describe('tx tests', () => {
       senderKey: 'b8d99fd45da58038d630d9855d3ca2466e8e0f89d3894c4724f0efc9ff4b51f001',
       postConditions: [pc1, pc2, pc3],
       nonce: 0,
-      anchorMode: AnchorMode.Any,
     });
     const serialized = Buffer.from(txBuilder.serialize());
     const tx = codec.decodeTransaction(serialized);
@@ -1811,7 +1798,6 @@ describe('tx tests', () => {
       nonce: 0,
       senderKey: 'b8d99fd45da58038d630d9855d3ca2466e8e0f89d3894c4724f0efc9ff4b51f001',
       postConditions: [],
-      anchorMode: AnchorMode.Any,
     });
     const serialized = Buffer.from(txBuilder.serialize());
     const tx = codec.decodeTransaction(serialized);
@@ -1969,7 +1955,6 @@ describe('tx tests', () => {
       senderKey: 'b8d99fd45da58038d630d9855d3ca2466e8e0f89d3894c4724f0efc9ff4b51f001',
       postConditions: [],
       nonce: 0,
-      anchorMode: AnchorMode.Any,
     });
     const serialized = Buffer.from(txBuilder.serialize());
     const tx = codec.decodeTransaction(serialized);

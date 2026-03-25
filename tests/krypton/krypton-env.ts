@@ -1,9 +1,7 @@
 import {
   bufferCV,
-  ChainID,
   ClarityValue,
   getAddressFromPrivateKey,
-  TransactionVersion,
   tupleCV,
   TupleCV,
 } from '@stacks/transactions';
@@ -14,7 +12,8 @@ import { PgWriteStore } from '../../src/datastore/pg-write-store.ts';
 import { ApiServer, startApiServer } from '../../src/api/init.ts';
 import { CoreRpcPoxInfo, StacksCoreRpcClient } from '../../src/core-rpc/client.ts';
 import { coerceToBuffer, timeout } from '@stacks/api-toolkit';
-import { StacksNetwork, StacksTestnet } from '@stacks/network';
+import { ChainId, createNetwork, STACKS_TESTNET } from '@stacks/network';
+import type { StacksNetwork } from '@stacks/network';
 import { RPCClient } from 'rpc-bitcoin';
 import codec from '@stacks/codec';
 import { decodeBtcAddress } from '@stacks/stacking';
@@ -23,6 +22,7 @@ import { AddressStxBalance } from '../../src/api/schemas/entities/addresses.ts';
 import { ServerStatusResponse } from '../../src/api/schemas/responses/responses.ts';
 import { DbBlock, DbTx, DbTxStatus } from '../../src/datastore/common.ts';
 import { BitcoinAddressFormat, ECPair, getBitcoinAddressFromKey } from './ec-helpers.ts';
+import { hexToBytes } from '@stacks/common';
 import supertest from 'supertest';
 import assert from 'node:assert/strict';
 
@@ -62,7 +62,7 @@ export type Account = {
   stxAddr: string;
   btcAddr: string;
   btcTestnetAddr: string;
-  poxAddr: { version: number; data: Uint8Array };
+  poxAddr: { version: number; data: string };
   poxAddrClar: TupleCV;
   wif: string;
 };
@@ -81,7 +81,7 @@ export function accountFromKey(
     throw new Error(`key mismatch`);
   }
   const pubKey = ecPair.publicKey.toString('hex');
-  const stxAddr = getAddressFromPrivateKey(secretKey, TransactionVersion.Testnet);
+  const stxAddr = getAddressFromPrivateKey(secretKey, 'testnet');
   const btcAccount = getBitcoinAddressFromKey({
     privateKey: ecPair.privateKey!,
     network: 'regtest',
@@ -91,7 +91,7 @@ export function accountFromKey(
   const btcAddr = btcAccount.address;
   const poxAddr = decodeBtcAddress(btcAddr);
   const poxAddrClar = tupleCV({
-    hashbytes: bufferCV(poxAddr.data),
+    hashbytes: bufferCV(hexToBytes(poxAddr.data)),
     version: bufferCV(Buffer.from([poxAddr.version])),
   });
   const wif = btcAccount.wif;
@@ -317,13 +317,16 @@ export async function getKryptonContext(): Promise<KryptonContext> {
   const db = await PgWriteStore.connect({ usageName: 'tests' });
   const eventServer = await startEventServer({
     datastore: db,
-    chainId: ChainID.Testnet,
+    chainId: ChainId.Testnet,
     serverHost: '0.0.0.0',
     serverPort: 3700,
   });
-  const api = await startApiServer({ datastore: db, writeDatastore: db, chainId: ChainID.Testnet });
+  const api = await startApiServer({ datastore: db, writeDatastore: db, chainId: ChainId.Testnet });
   const client = new StacksCoreRpcClient({ host: '127.0.0.1', port: 20443 });
-  const stacksNetwork = new StacksTestnet({ url: `http://${client.endpoint}` });
+  const stacksNetwork = createNetwork({
+    network: STACKS_TESTNET,
+    client: { baseUrl: `http://${client.endpoint}` },
+  });
   const bitcoinRpcClient = new RPCClient({
     url: ENV.BTC_RPC_HOST,
     port: ENV.BTC_RPC_PORT,

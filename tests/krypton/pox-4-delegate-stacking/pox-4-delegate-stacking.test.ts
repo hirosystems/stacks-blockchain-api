@@ -1,8 +1,6 @@
 import { CoreRpcPoxInfo } from '../../../src/core-rpc/client.ts';
 import { stxToMicroStx } from '../../../src/helpers.ts';
 import {
-  AnchorMode,
-  StacksPrivateKey,
   bufferCV,
   makeContractCall,
   makeRandomPrivKey,
@@ -51,7 +49,7 @@ describe('PoX-4 - Delegate Stacking operations', () => {
   let contractName: string;
 
   let stackingClient: StackingClient;
-  let signerPrivKey: StacksPrivateKey;
+  let signerPrivKey: string;
   let signerPubKey: string;
 
   before(async () => {
@@ -60,9 +58,9 @@ describe('PoX-4 - Delegate Stacking operations', () => {
     delegatorAccount = accountFromKey(delegatorKey);
     delegateeAccount = accountFromKey(delegateeKey);
 
-    stackingClient = new StackingClient(delegatorAccount.stxAddr, ctx.stacksNetwork);
+    stackingClient = new StackingClient({ address: delegatorAccount.stxAddr, network: ctx.stacksNetwork });
     signerPrivKey = makeRandomPrivKey();
-    signerPubKey = getPublicKeyFromPrivate(signerPrivKey.data);
+    signerPubKey = getPublicKeyFromPrivate(signerPrivKey);
   });
 
   after(async () => {
@@ -88,7 +86,6 @@ describe('PoX-4 - Delegate Stacking operations', () => {
       recipient: delegatorAccount.stxAddr,
       amount: gasAmount,
       network: ctx.stacksNetwork,
-      anchorMode: AnchorMode.OnChainOnly,
       fee: 200,
     });
     const { txId: stxXferId1 } = await ctx.client.sendTransaction(
@@ -102,7 +99,6 @@ describe('PoX-4 - Delegate Stacking operations', () => {
       recipient: delegateeAccount.stxAddr,
       amount: stackingAmount,
       network: ctx.stacksNetwork,
-      anchorMode: AnchorMode.OnChainOnly,
       fee: 200,
       nonce: stxXfer1.auth.spendingCondition.nonce + 1n,
     });
@@ -154,7 +150,6 @@ describe('PoX-4 - Delegate Stacking operations', () => {
         someCV(delegateeAccount.poxAddrClar), // pox-addr
       ],
       network: ctx.stacksNetwork,
-      anchorMode: AnchorMode.OnChainOnly,
       fee: txFee,
       validateWithAbi: false,
     });
@@ -238,7 +233,6 @@ describe('PoX-4 - Delegate Stacking operations', () => {
         uintCV(1), // lock-period,
       ],
       network: ctx.stacksNetwork,
-      anchorMode: AnchorMode.OnChainOnly,
       fee: txFee,
       validateWithAbi: false,
     });
@@ -289,7 +283,6 @@ describe('PoX-4 - Delegate Stacking operations', () => {
         uintCV(stxToDelegateIncrease), // increase-by
       ],
       network: ctx.stacksNetwork,
-      anchorMode: AnchorMode.OnChainOnly,
       fee: txFee,
       validateWithAbi: false,
     });
@@ -352,7 +345,6 @@ describe('PoX-4 - Delegate Stacking operations', () => {
         uintCV(extendCount), // extend-count
       ],
       network: ctx.stacksNetwork,
-      anchorMode: AnchorMode.OnChainOnly,
       fee: txFee,
       validateWithAbi: false,
     });
@@ -420,7 +412,6 @@ describe('PoX-4 - Delegate Stacking operations', () => {
         uintCV(0), // auth-id
       ],
       network: ctx.stacksNetwork,
-      anchorMode: AnchorMode.OnChainOnly,
       fee: 10000,
       validateWithAbi: false,
     });

@@ -3,7 +3,6 @@ import * as fs from 'node:fs';
 import * as zlib from 'node:zlib';
 import * as assert from 'node:assert/strict';
 import { after, before, describe, test } from 'node:test';
-import { ChainID } from '@stacks/transactions';
 import { ApiServer, startApiServer } from '../../src/api/init.js';
 import { EventStreamServer, startEventServer } from '../../src/event-stream/event-server.js';
 import { PgWriteStore } from '../../src/datastore/pg-write-store.js';
@@ -12,6 +11,7 @@ import { migrate } from '../test-helpers.js';
 import { SnpEventStreamHandler } from '../../src/event-stream/snp-event-stream.js';
 import { fetch } from 'undici';
 import supertest from 'supertest';
+import { STACKS_MAINNET } from '@stacks/network';
 
 describe('SNP integration tests', { concurrency: 1 }, () => {
   let snpObserverUrl: string;
@@ -39,13 +39,13 @@ describe('SNP integration tests', { concurrency: 1 }, () => {
 
     eventServer = await startEventServer({
       datastore: db,
-      chainId: ChainID.Mainnet,
+      chainId: STACKS_MAINNET.chainId,
       serverHost: '127.0.0.1',
       serverPort: 0,
     });
     apiServer = await startApiServer({
       datastore: db,
-      chainId: ChainID.Mainnet,
+      chainId: STACKS_MAINNET.chainId,
     });
   });
 

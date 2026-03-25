@@ -1,6 +1,5 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import {
-  AnchorMode,
   boolCV,
   bufferCV,
   makeContractCall,
@@ -205,7 +204,6 @@ describe('PoX-4 - Stack using Bitcoin-chain stack ops', () => {
       recipient: account.stxAddr,
       amount: testAccountBalance,
       network: ctx.stacksNetwork,
-      anchorMode: AnchorMode.OnChainOnly,
       fee: 200,
     });
     const { txId: stxXferId1 } = await ctx.client.sendTransaction(
@@ -280,7 +278,6 @@ describe('PoX-4 - Stack using Bitcoin-chain stack ops', () => {
         uintCV(testStackAuthID), // (auth-id uint)
       ],
       network: ctx.stacksNetwork,
-      anchorMode: AnchorMode.OnChainOnly,
       fee: 10000,
       validateWithAbi: false,
     });

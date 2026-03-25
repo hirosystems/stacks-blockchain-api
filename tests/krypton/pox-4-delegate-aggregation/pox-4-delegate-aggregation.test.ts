@@ -1,8 +1,6 @@
 import { CoreRpcPoxInfo } from '../../../src/core-rpc/client.ts';
 import { stxToMicroStx } from '../../../src/helpers.ts';
 import {
-  AnchorMode,
-  StacksPrivateKey,
   bufferCV,
   makeContractCall,
   makeRandomPrivKey,
@@ -52,7 +50,7 @@ describe('PoX-4 - Delegate aggregation increase operations', () => {
   let poxCycleAddressIndex: bigint;
 
   let stackingClient: StackingClient;
-  let signerPrivKey: StacksPrivateKey;
+  let signerPrivKey: string;
   let signerPubKey: string;
 
   before(async () => {
@@ -63,9 +61,9 @@ describe('PoX-4 - Delegate aggregation increase operations', () => {
     delegatorAccount = accountFromKey(delegatorKey);
     delegateeAccount = accountFromKey(delegateeKey);
 
-    stackingClient = new StackingClient(delegatorAccount.stxAddr, ctx.stacksNetwork);
+    stackingClient = new StackingClient({ address: delegatorAccount.stxAddr, network: ctx.stacksNetwork });
     signerPrivKey = makeRandomPrivKey();
-    signerPubKey = getPublicKeyFromPrivate(signerPrivKey.data);
+    signerPubKey = getPublicKeyFromPrivate(signerPrivKey);
   });
 
   after(async () => {
@@ -91,7 +89,6 @@ describe('PoX-4 - Delegate aggregation increase operations', () => {
       recipient: delegatorAccount.stxAddr,
       amount: gasAmount,
       network: ctx.stacksNetwork,
-      anchorMode: AnchorMode.OnChainOnly,
       fee: 200,
     });
     const { txId: stxXferId1 } = await ctx.client.sendTransaction(
@@ -105,7 +102,6 @@ describe('PoX-4 - Delegate aggregation increase operations', () => {
       recipient: delegateeAccount.stxAddr,
       amount: stackingAmount,
       network: ctx.stacksNetwork,
-      anchorMode: AnchorMode.OnChainOnly,
       fee: 200,
       nonce: stxXfer1.auth.spendingCondition.nonce + 1n,
     });
@@ -157,7 +153,6 @@ describe('PoX-4 - Delegate aggregation increase operations', () => {
         someCV(delegateeAccount.poxAddrClar), // pox-addr
       ],
       network: ctx.stacksNetwork,
-      anchorMode: AnchorMode.OnChainOnly,
       fee: txFee,
       validateWithAbi: false,
     });
@@ -223,7 +218,6 @@ describe('PoX-4 - Delegate aggregation increase operations', () => {
         uintCV(6), // lock-period,
       ],
       network: ctx.stacksNetwork,
-      anchorMode: AnchorMode.OnChainOnly,
       fee: txFee,
       validateWithAbi: false,
     });
@@ -288,7 +282,6 @@ describe('PoX-4 - Delegate aggregation increase operations', () => {
         uintCV(0), // auth-id
       ],
       network: ctx.stacksNetwork,
-      anchorMode: AnchorMode.OnChainOnly,
       fee: 10000,
       validateWithAbi: false,
     });
@@ -347,7 +340,6 @@ describe('PoX-4 - Delegate aggregation increase operations', () => {
         uintCV(stxToDelegateIncrease), // increase-by
       ],
       network: ctx.stacksNetwork,
-      anchorMode: AnchorMode.OnChainOnly,
       fee: txFee,
       validateWithAbi: false,
     });
@@ -451,7 +443,6 @@ describe('PoX-4 - Delegate aggregation increase operations', () => {
         uintCV(1), // auth-id
       ],
       network: ctx.stacksNetwork,
-      anchorMode: AnchorMode.OnChainOnly,
       fee: txFee,
       validateWithAbi: false,
       nonce: delegateStackIncreaseTx.auth.spendingCondition.nonce + 1n,
