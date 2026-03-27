@@ -286,4 +286,118 @@ describe('smart contract print events v2', () => {
     );
     assert.equal(body.total, 3);
   });
+
+  test('contract_log_counts stays consistent across re-orgs', async () => {
+    const ibh = (i: number) => `0x${i.toString().padStart(64, '0')}`;
+
+    // Block 1: 2 print events on the canonical chain
+    await db.update(
+      new TestBlockBuilder({
+        block_height: 1,
+        index_block_hash: ibh(1),
+        parent_index_block_hash: ibh(0),
+      })
+        .addTx({ tx_id: ibh(0x1001) })
+        .addTxContractLogEvent({ contract_identifier: CONTRACT_ID, topic: 'print' })
+        .addTxContractLogEvent({ contract_identifier: CONTRACT_ID, topic: 'print' })
+        .build()
+    );
+
+    // Block 2: 3 print events on the canonical chain
+    await db.update(
+      new TestBlockBuilder({
+        block_height: 2,
+        index_block_hash: ibh(2),
+        parent_index_block_hash: ibh(1),
+      })
+        .addTx({ tx_id: ibh(0x2001) })
+        .addTxContractLogEvent({ contract_identifier: CONTRACT_ID, topic: 'print' })
+        .addTxContractLogEvent({ contract_identifier: CONTRACT_ID, topic: 'print' })
+        .addTxContractLogEvent({ contract_identifier: CONTRACT_ID, topic: 'print' })
+        .build()
+    );
+
+    // Block 3: 1 print event on the canonical chain
+    await db.update(
+      new TestBlockBuilder({
+        block_height: 3,
+        index_block_hash: ibh(3),
+        parent_index_block_hash: ibh(2),
+      })
+        .addTx({ tx_id: ibh(0x3001) })
+        .addTxContractLogEvent({ contract_identifier: CONTRACT_ID, topic: 'print' })
+        .build()
+    );
+
+    // Verify: 2 + 3 + 1 = 6 events total
+    let countResult = await client`
+      SELECT count FROM contract_log_counts WHERE contract_identifier = ${CONTRACT_ID}
+    `;
+    assert.equal(countResult[0].count, 6);
+    let { body } = await supertest(api.server).get(
+      `/extended/v2/smart-contracts/${CONTRACT_ID}/print-events`
+    );
+    assert.equal(body.total, 6);
+    assert.equal(body.results.length, 6);
+
+    // --- Trigger a re-org ---
+    // Create an alternative block 2b (fork at height 2) that builds on block 1.
+    // This goes in as non-canonical because it doesn't extend past the current tip (height 3).
+    await db.update(
+      new TestBlockBuilder({
+        block_height: 2,
+        index_block_hash: ibh(0xb2),
+        parent_index_block_hash: ibh(1),
+      })
+        .addTx({ tx_id: ibh(0xb201) })
+        .addTxContractLogEvent({ contract_identifier: CONTRACT_ID, topic: 'print' })
+        .build()
+    );
+
+    // Block 3b on the fork
+    await db.update(
+      new TestBlockBuilder({
+        block_height: 3,
+        index_block_hash: ibh(0xb3),
+        parent_index_block_hash: ibh(0xb2),
+      })
+        .addTx({ tx_id: ibh(0xb301) })
+        .build()
+    );
+
+    // Block 4b extends the fork past the original tip (height 3) — triggers re-org.
+    // Original blocks 2 and 3 become non-canonical (losing 3 + 1 = 4 events).
+    // Fork blocks 2b and 3b become canonical (gaining 1 + 0 = 1 event).
+    await db.update(
+      new TestBlockBuilder({
+        block_height: 4,
+        index_block_hash: ibh(0xb4),
+        parent_index_block_hash: ibh(0xb3),
+      })
+        .addTx({ tx_id: ibh(0xb401) })
+        .build()
+    );
+
+    // After re-org: block 1 (2 events) + block 2b (1 event) = 3 canonical events
+    countResult = await client`
+      SELECT count FROM contract_log_counts WHERE contract_identifier = ${CONTRACT_ID}
+    `;
+    assert.equal(countResult[0].count, 3);
+
+    // API should reflect the same total
+    ({ body } = await supertest(api.server).get(
+      `/extended/v2/smart-contracts/${CONTRACT_ID}/print-events`
+    ));
+    assert.equal(body.total, 3);
+    assert.equal(body.results.length, 3);
+
+    // Verify the remaining events come from the correct blocks/txs
+    const txIds = body.results.map((e: { tx_id: string }) => e.tx_id);
+    // Block 2b event + block 1 events (newest first)
+    assert.ok(txIds.includes(ibh(0xb201)), 'should include fork block 2b tx');
+    assert.ok(txIds.includes(ibh(0x1001)), 'should include original block 1 tx');
+    // Original block 2 and 3 txs should NOT be present
+    assert.ok(!txIds.includes(ibh(0x2001)), 'should not include orphaned block 2 tx');
+    assert.ok(!txIds.includes(ibh(0x3001)), 'should not include orphaned block 3 tx');
+  });
 });

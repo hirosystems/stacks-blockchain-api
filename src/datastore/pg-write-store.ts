@@ -1824,10 +1824,12 @@ export class PgWriteStore extends PgStore {
       `;
       assert(res.count === batch.length, `Expecting ${batch.length} inserts, got ${res.count}`);
     }
-    // Update contract_log_counts
+    // Update contract_log_counts (only for canonical events)
     const countDeltas = new Map<string, number>();
     for (const v of values) {
-      countDeltas.set(v.contract_identifier, (countDeltas.get(v.contract_identifier) ?? 0) + 1);
+      if (v.canonical) {
+        countDeltas.set(v.contract_identifier, (countDeltas.get(v.contract_identifier) ?? 0) + 1);
+      }
     }
     for (const [contractId, count] of countDeltas) {
       await sql`
@@ -1858,13 +1860,15 @@ export class PgWriteStore extends PgStore {
     await sql`
       INSERT INTO contract_logs ${sql(values)}
     `;
-    // Update contract_log_counts
-    await sql`
-      INSERT INTO contract_log_counts (contract_identifier, count)
-      VALUES (${event.contract_identifier}, 1)
-      ON CONFLICT (contract_identifier)
-      DO UPDATE SET count = contract_log_counts.count + 1
-    `;
+    // Update contract_log_counts (only for canonical events)
+    if (event.canonical) {
+      await sql`
+        INSERT INTO contract_log_counts (contract_identifier, count)
+        VALUES (${event.contract_identifier}, 1)
+        ON CONFLICT (contract_identifier)
+        DO UPDATE SET count = contract_log_counts.count + 1
+      `;
+    }
   }
 
   async updatePoxSetsBatch(sql: PgSqlClient, block: DbBlock, poxSet: DbPoxSetSigners) {
