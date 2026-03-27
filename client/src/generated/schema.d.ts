@@ -470,7 +470,7 @@ export interface paths {
         /**
          * Get contract events
          * @deprecated
-         * @description **NOTE:** This endpoint is deprecated in favor of `get_smart_contract_print_events`.
+         * @description **NOTE:** This endpoint is deprecated in favor of `get_smart_contract_logs`.
          *
          *     Retrieves a list of events that have been triggered by a given `contract_id`
          */
@@ -1428,7 +1428,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/extended/v2/smart-contracts/{contract_id}/print-events": {
+    "/extended/v2/smart-contracts/{contract_id}/logs": {
         parameters: {
             query?: never;
             header?: never;
@@ -1436,10 +1436,10 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Get smart contract print events
-         * @description Retrieves print events (contract log events) for a given smart contract.
+         * Get smart contract logs
+         * @description Retrieves contract log events for a given smart contract.
          */
-        get: operations["get_smart_contract_print_events"];
+        get: operations["get_smart_contract_logs"];
         put?: never;
         post?: never;
         delete?: never;
@@ -29560,7 +29560,7 @@ export interface operations {
             };
         };
     };
-    get_smart_contract_print_events: {
+    get_smart_contract_logs: {
         parameters: {
             query?: {
                 /** @description Results per page */
