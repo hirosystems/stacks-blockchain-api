@@ -1,3 +1,9 @@
+## [9.0.0-next.22](https://github.com/hirosystems/stacks-blockchain-api/compare/v9.0.0-next.21...v9.0.0-next.22) (2026-03-27)
+
+### Features
+
+* add new endpoint `/extended/v2/smart-contracts/:contract_id/print-events` ([#2513](https://github.com/hirosystems/stacks-blockchain-api/issues/2513)) ([75b3461](https://github.com/hirosystems/stacks-blockchain-api/commit/75b346178219597d74755514686e60ad62ed7241))
+
 ## [9.0.0-next.21](https://github.com/hirosystems/stacks-blockchain-api/compare/v9.0.0-next.20...v9.0.0-next.21) (2026-03-27)
 
 ### Features
