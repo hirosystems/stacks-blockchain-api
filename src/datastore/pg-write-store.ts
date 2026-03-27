@@ -1824,6 +1824,21 @@ export class PgWriteStore extends PgStore {
       `;
       assert(res.count === batch.length, `Expecting ${batch.length} inserts, got ${res.count}`);
     }
+    // Update contract_log_counts (only for canonical events)
+    const countDeltas = new Map<string, number>();
+    for (const v of values) {
+      if (v.canonical) {
+        countDeltas.set(v.contract_identifier, (countDeltas.get(v.contract_identifier) ?? 0) + 1);
+      }
+    }
+    for (const [contractId, count] of countDeltas) {
+      await sql`
+        INSERT INTO contract_log_counts (contract_identifier, count)
+        VALUES (${contractId}, ${count})
+        ON CONFLICT (contract_identifier)
+        DO UPDATE SET count = contract_log_counts.count + EXCLUDED.count
+      `;
+    }
   }
 
   async updateSmartContractEvent(sql: PgSqlClient, tx: DbTx, event: DbSmartContractEvent) {
@@ -1845,6 +1860,15 @@ export class PgWriteStore extends PgStore {
     await sql`
       INSERT INTO contract_logs ${sql(values)}
     `;
+    // Update contract_log_counts (only for canonical events)
+    if (event.canonical) {
+      await sql`
+        INSERT INTO contract_log_counts (contract_identifier, count)
+        VALUES (${event.contract_identifier}, 1)
+        ON CONFLICT (contract_identifier)
+        DO UPDATE SET count = contract_log_counts.count + 1
+      `;
+    }
   }
 
   async updatePoxSetsBatch(sql: PgSqlClient, block: DbBlock, poxSet: DbPoxSetSigners) {
@@ -3629,15 +3653,27 @@ export class PgWriteStore extends PgStore {
       }
     });
     q.enqueue(async () => {
-      const contractLogResult = await sql`
-        UPDATE contract_logs
-        SET canonical = ${canonical}
-        WHERE index_block_hash = ${indexBlockHash} AND canonical != ${canonical}
+      const contractLogResult = await sql<{ contract_identifier: string; delta: number }[]>`
+        WITH updated AS (
+          UPDATE contract_logs
+          SET canonical = ${canonical}
+          WHERE index_block_hash = ${indexBlockHash} AND canonical != ${canonical}
+          RETURNING contract_identifier
+        )
+        SELECT contract_identifier, COUNT(*)::int AS delta FROM updated GROUP BY contract_identifier
       `;
+      for (const row of contractLogResult) {
+        await sql`
+          UPDATE contract_log_counts
+          SET count = count + ${canonical ? row.delta : -row.delta}
+          WHERE contract_identifier = ${row.contract_identifier}
+        `;
+      }
+      const totalCount = contractLogResult.reduce((sum, r) => sum + r.delta, 0);
       if (canonical) {
-        updatedEntities.markedCanonical.contractLogs += contractLogResult.count;
+        updatedEntities.markedCanonical.contractLogs += totalCount;
       } else {
-        updatedEntities.markedNonCanonical.contractLogs += contractLogResult.count;
+        updatedEntities.markedNonCanonical.contractLogs += totalCount;
       }
     });
     q.enqueue(async () => {

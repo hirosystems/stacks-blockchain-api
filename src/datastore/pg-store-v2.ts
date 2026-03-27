@@ -11,6 +11,8 @@ import {
   PoxSignerLimitParamSchema,
   BlockIdParam,
   BlockSignerSignatureLimitParamSchema,
+  parseEventCursor,
+  buildEventCursor,
 } from '../api/routes/v2/schemas.js';
 import { InvalidRequestError, InvalidRequestErrorType } from '../errors.js';
 import { FoundOrNot, normalizeHashString } from '../helpers.js';
@@ -34,6 +36,7 @@ import {
   DbCursorPaginatedResult,
   PoxSyntheticEventQueryResult,
   DbBurnBlockPoxTx,
+  DbSmartContractEvent,
 } from './common.js';
 import {
   BLOCK_COLUMNS,
@@ -1225,5 +1228,181 @@ export class PgStoreV2 extends BasePgStoreModule {
       burnchainLockHeight,
       burnchainUnlockHeight,
     };
+  }
+
+  async getSmartContractEvents(args: {
+    contractId: string;
+    limit: number;
+    offset?: number;
+    cursor?: string;
+  }): Promise<DbCursorPaginatedResult<DbSmartContractEvent>> {
+    return await this.sqlTransaction(async sql => {
+      const limit = args.limit;
+      const offset = args.offset ?? 0;
+      const contractId = args.contractId;
+
+      // Resolve cursor components or default to the latest event for this contract
+      let cursorValues: {
+        block_height: number;
+        microblock_sequence: number;
+        tx_index: number;
+        event_index: number;
+      } | null = null;
+      if (args.cursor) {
+        cursorValues = parseEventCursor(args.cursor);
+      }
+
+      const orderCols = sql`block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC`;
+      const canonicalFilter = sql`canonical = true AND microblock_canonical = true AND contract_identifier = ${contractId}`;
+
+      const cursorFilter = cursorValues
+        ? sql`AND (block_height, microblock_sequence, tx_index, event_index) <= (${cursorValues.block_height}, ${cursorValues.microblock_sequence}, ${cursorValues.tx_index}, ${cursorValues.event_index})`
+        : sql``;
+
+      type EventRow = {
+        event_index: number;
+        tx_id: string;
+        tx_index: number;
+        block_height: number;
+        microblock_sequence: number;
+        canonical: boolean;
+        contract_identifier: string;
+        topic: string;
+        value: string;
+        total: number;
+        next_block_height: number | null;
+        next_microblock_sequence: number | null;
+        next_tx_index: number | null;
+        next_event_index: number | null;
+        prev_block_height: number | null;
+        prev_microblock_sequence: number | null;
+        prev_tx_index: number | null;
+        prev_event_index: number | null;
+      };
+
+      const eventsQuery = await sql<EventRow[]>`
+        WITH cursor_event AS (
+          SELECT block_height, microblock_sequence, tx_index, event_index
+          FROM contract_logs
+          WHERE ${canonicalFilter} ${cursorFilter}
+          ORDER BY ${orderCols}
+          OFFSET ${offset}
+          LIMIT 1
+        ),
+        selected_events AS (
+          SELECT event_index, tx_id, tx_index, block_height, microblock_sequence,
+                 canonical, contract_identifier, topic, value
+          FROM contract_logs
+          WHERE ${canonicalFilter}
+            AND (block_height, microblock_sequence, tx_index, event_index) <= (
+              SELECT block_height, microblock_sequence, tx_index, event_index FROM cursor_event
+            )
+          ORDER BY ${orderCols}
+          LIMIT ${limit}
+        ),
+        top_of_page AS (
+          SELECT block_height, microblock_sequence, tx_index, event_index
+          FROM selected_events
+          ORDER BY ${orderCols}
+          LIMIT 1
+        ),
+        next_page AS (
+          SELECT block_height, microblock_sequence, tx_index, event_index
+          FROM contract_logs
+          WHERE ${canonicalFilter}
+            AND (block_height, microblock_sequence, tx_index, event_index) > (
+              SELECT block_height, microblock_sequence, tx_index, event_index FROM top_of_page
+            )
+          ORDER BY block_height ASC, microblock_sequence ASC, tx_index ASC, event_index ASC
+          OFFSET ${limit - 1}
+          LIMIT 1
+        ),
+        prev_page AS (
+          SELECT block_height, microblock_sequence, tx_index, event_index
+          FROM contract_logs
+          WHERE ${canonicalFilter}
+            AND (block_height, microblock_sequence, tx_index, event_index) < (
+              SELECT block_height, microblock_sequence, tx_index, event_index FROM top_of_page
+            )
+          ORDER BY ${orderCols}
+          OFFSET ${limit - 1}
+          LIMIT 1
+        ),
+        event_count AS (
+          SELECT COALESCE(count, 0)::int AS total
+          FROM contract_log_counts
+          WHERE contract_identifier = ${contractId}
+        )
+        SELECT
+          (SELECT total FROM event_count) AS total,
+          se.*,
+          np.block_height AS next_block_height,
+          np.microblock_sequence AS next_microblock_sequence,
+          np.tx_index AS next_tx_index,
+          np.event_index AS next_event_index,
+          pp.block_height AS prev_block_height,
+          pp.microblock_sequence AS prev_microblock_sequence,
+          pp.tx_index AS prev_tx_index,
+          pp.event_index AS prev_event_index
+        FROM selected_events se
+        LEFT JOIN next_page np ON true
+        LEFT JOIN prev_page pp ON true
+        ORDER BY se.block_height DESC, se.microblock_sequence DESC, se.tx_index DESC, se.event_index DESC
+      `;
+
+      const events: DbSmartContractEvent[] = eventsQuery.map(r => ({
+        event_index: r.event_index,
+        tx_id: r.tx_id,
+        tx_index: r.tx_index,
+        block_height: r.block_height,
+        canonical: r.canonical,
+        event_type: DbEventTypeId.SmartContractLog,
+        contract_identifier: r.contract_identifier,
+        topic: r.topic,
+        value: r.value,
+      }));
+
+      const total = eventsQuery[0]?.total ?? 0;
+
+      const nextCursor =
+        eventsQuery[0]?.next_block_height != null
+          ? buildEventCursor({
+              block_height: eventsQuery[0].next_block_height,
+              microblock_sequence: eventsQuery[0].next_microblock_sequence!,
+              tx_index: eventsQuery[0].next_tx_index!,
+              event_index: eventsQuery[0].next_event_index!,
+            })
+          : null;
+
+      const prevCursor =
+        eventsQuery[0]?.prev_block_height != null
+          ? buildEventCursor({
+              block_height: eventsQuery[0].prev_block_height,
+              microblock_sequence: eventsQuery[0].prev_microblock_sequence!,
+              tx_index: eventsQuery[0].prev_tx_index!,
+              event_index: eventsQuery[0].prev_event_index!,
+            })
+          : null;
+
+      const firstRow = eventsQuery[0];
+      const currentCursor = firstRow
+        ? buildEventCursor({
+            block_height: firstRow.block_height,
+            microblock_sequence: firstRow.microblock_sequence,
+            tx_index: firstRow.tx_index,
+            event_index: firstRow.event_index,
+          })
+        : null;
+
+      return {
+        limit,
+        offset,
+        results: events,
+        total,
+        next_cursor: nextCursor,
+        prev_cursor: prevCursor,
+        current_cursor: currentCursor,
+      };
+    });
   }
 }

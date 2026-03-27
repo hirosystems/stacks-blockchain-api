@@ -8,13 +8,12 @@
       "type": "node",
       "request": "launch",
       "name": "start: api",
-      "runtimeArgs": ["-r", "ts-node/register/transpile-only", "-r", "tsconfig-paths/register"],
+      "runtimeArgs": ["--import", "tsx"],
       "args": ["${workspaceFolder}/src/index.ts"],
       "outputCapture": "std",
       "internalConsoleOptions": "openOnSessionStart",
       "env": {
-        "NODE_ENV": "development",
-        "TS_NODE_SKIP_IGNORE": "true"
+        "NODE_ENV": "development"
       }
     },
     {
@@ -24,7 +23,7 @@
       "skipFiles": [
         "<node_internals>/**"
       ],
-      "runtimeArgs": ["-r", "ts-node/register/transpile-only", "-r", "tsconfig-paths/register"],
+      "runtimeArgs": ["--import", "tsx"],
       "args": ["${workspaceFolder}/src/index.ts"],
       "outputCapture": "std",
       "internalConsoleOptions": "openOnSessionStart",
@@ -32,8 +31,7 @@
       "postDebugTask": "npm: testenv:stop",
       "env": {
         "STACKS_CHAIN_ID": "0x80000000",
-        "NODE_ENV": "development",
-        "TS_NODE_SKIP_IGNORE": "true"
+        "NODE_ENV": "development"
       },
       "killBehavior": "polite",
     },
@@ -44,7 +42,7 @@
       "skipFiles": [
         "<node_internals>/**"
       ],
-      "runtimeArgs": ["-r", "ts-node/register/transpile-only", "-r", "tsconfig-paths/register"],
+      "runtimeArgs": ["--import", "tsx"],
       "args": ["${workspaceFolder}/src/index.ts"],
       "outputCapture": "std",
       "internalConsoleOptions": "openOnSessionStart",
@@ -53,8 +51,7 @@
       "env": {
         "STACKS_API_MODE": "writeonly",
         "STACKS_CHAIN_ID": "0x80000000",
-        "NODE_ENV": "development",
-        "TS_NODE_SKIP_IGNORE": "true"
+        "NODE_ENV": "development"
       },
       "killBehavior": "polite",
     },
@@ -65,12 +62,7 @@
       "skipFiles": [
         "<node_internals>/**"
       ],
-      "runtimeArgs": [
-        "-r",
-        "ts-node/register/transpile-only",
-        "-r",
-        "tsconfig-paths/register"
-      ],
+      "runtimeArgs": ["--import", "tsx"],
       "args": [
         "${workspaceFolder}/src/index.ts"
       ],
@@ -80,8 +72,7 @@
         "STACKS_BLOCKCHAIN_API_PORT": "3998",
         "STACKS_API_MODE": "readonly",
         "STACKS_CHAIN_ID": "0x00000001",
-        "NODE_ENV": "production",
-        "TS_NODE_SKIP_IGNORE": "true"
+        "NODE_ENV": "production"
       },
       "killBehavior": "polite",
     },
@@ -96,7 +87,6 @@
         "--test",
         "--test-global-setup=./tests/api/setup.ts",
         "--test-concurrency=1",
-        // "--test-name-pattern", "websocket notifications",
         "./tests/api/**/*.test.ts"
       ],
       "outputCapture": "std",
@@ -135,7 +125,6 @@
         "--test",
         "--test-global-setup=./tests/snp/setup.ts",
         "--test-concurrency=1",
-        // "--test-name-pattern", "websocket notifications",
         "./tests/snp/**/*.test.ts"
       ],
       "outputCapture": "std",
