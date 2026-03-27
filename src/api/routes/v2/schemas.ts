@@ -60,7 +60,8 @@ export const BlockCursorParamSchema = Type.String({
 export type BlockIdParam =
   | { type: 'height'; height: number }
   | { type: 'hash'; hash: string }
-  | { type: 'latest'; latest: true };
+  | { type: 'latest'; latest: true }
+  | { type: 'timestamp'; timestamp: number };
 
 export function parseBlockParam(value: string | number): BlockIdParam {
   if (value === 'latest') {
@@ -218,6 +219,18 @@ export const AddressParamsSchema = Type.Object(
   { additionalProperties: false }
 );
 export type AddressParams = Static<typeof AddressParamsSchema>;
+
+export const BlockTimestampParamsSchema = Type.Object(
+  {
+    timestamp: Type.Integer({
+      minimum: 0,
+      title: 'Block timestamp',
+      description: 'Unix timestamp (in seconds)',
+      examples: [1677731361],
+    }),
+  },
+  { additionalProperties: false }
+);
 
 export const AddressTransactionParamsSchema = Type.Object(
   {

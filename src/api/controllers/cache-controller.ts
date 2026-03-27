@@ -8,7 +8,7 @@ import {
   logger,
 } from '@stacks/api-toolkit';
 import { FastifyReply, FastifyRequest } from 'fastify';
-import { BlockParams } from '../routes/v2/schemas.js';
+import { BlockIdParam, parseBlockParam } from '../routes/v2/schemas.js';
 
 /**
  * Describes a key-value to be saved into a request's locals, representing the current
@@ -129,8 +129,12 @@ async function calculateETag(
       }
 
       case ETagType.block: {
-        const params = req.params as BlockParams;
-        const status = await db.getBlockCanonicalStatus(params.height_or_hash);
+        const params = req.params as { height_or_hash?: string | number; timestamp?: number };
+        const blockId: BlockIdParam =
+          params.timestamp !== undefined
+            ? { type: 'timestamp', timestamp: params.timestamp }
+            : parseBlockParam(params.height_or_hash as string | number);
+        const status = await db.getBlockCanonicalStatus(blockId);
         if (!status) return ETAG_EMPTY;
         return `${status.index_block_hash}:${status.canonical}`;
       }

@@ -175,7 +175,9 @@ export class PgStoreV2 extends BasePgStoreModule {
           ? sql`burn_block_hash = (SELECT burn_block_hash FROM blocks WHERE canonical = TRUE ORDER BY block_height DESC LIMIT 1)`
           : args.block.type === 'hash'
             ? sql`burn_block_hash = ${normalizeHashString(args.block.hash)}`
-            : sql`burn_block_height = ${args.block.height}`;
+            : args.block.type === 'height'
+              ? sql`burn_block_height = ${args.block.height}`
+              : sql`burn_block_time = ${args.block.timestamp}`;
       const blockCheck = await sql`SELECT burn_block_hash FROM blocks WHERE ${filter} LIMIT 1`;
       if (blockCheck.count === 0)
         throw new InvalidRequestError(
@@ -227,7 +229,9 @@ export class PgStoreV2 extends BasePgStoreModule {
           ? sql`burn_block_hash = (SELECT burn_block_hash FROM burn_block_pox_txs WHERE canonical = true ORDER BY burn_block_height DESC LIMIT 1)`
           : args.block.type === 'hash'
             ? sql`burn_block_hash = ${normalizeHashString(args.block.hash)}`
-            : sql`burn_block_height = ${args.block.height}`
+            : args.block.type === 'height'
+              ? sql`burn_block_height = ${args.block.height}`
+              : sql`burn_block_time = ${args.block.timestamp}`
         : sql`TRUE`;
       const recipientFilter = args.recipient ? sql`recipient = ${args.recipient}` : sql`TRUE`;
       const countQuery =
@@ -272,7 +276,9 @@ export class PgStoreV2 extends BasePgStoreModule {
               block_hash = ${normalizeHashString(args.hash)}
               OR index_block_hash = ${normalizeHashString(args.hash)}
             )`
-            : sql`block_height = ${args.height}`;
+            : args.type === 'height'
+              ? sql`block_height = ${args.height}`
+              : sql`block_time = ${args.timestamp}`;
       const blockQuery = await sql<BlockQueryResult[]>`
         SELECT ${sql(BLOCK_COLUMNS)}
         FROM blocks
@@ -300,7 +306,9 @@ export class PgStoreV2 extends BasePgStoreModule {
               block_hash = ${normalizeHashString(blockId.hash)}
               OR index_block_hash = ${normalizeHashString(blockId.hash)}
             )`
-            : sql`block_height = ${blockId.height}`;
+            : blockId.type === 'height'
+              ? sql`block_height = ${blockId.height}`
+              : sql`block_time = ${blockId.timestamp}`;
       const blockQuery = await sql<{ signer_signatures: string[]; total: number }[]>`
         SELECT
           signer_signatures[${offset + 1}:${offset + limit}] as signer_signatures,
@@ -323,6 +331,18 @@ export class PgStoreV2 extends BasePgStoreModule {
         total: blockQuery[0].total,
       };
     });
+  }
+
+  async getBlockAtTimestamp(args: { timestamp: number }): Promise<DbBlock | null> {
+    const result = await this.sql<BlockQueryResult[]>`
+      SELECT ${this.sql(BLOCK_COLUMNS)}
+      FROM blocks
+      WHERE canonical = true AND block_time <= ${args.timestamp}
+      ORDER BY block_time DESC
+      LIMIT 1
+    `;
+    if (result.count > 0) return parseBlockQueryResult(result[0]);
+    return null;
   }
 
   async getAverageBlockTimes(): Promise<{
@@ -398,7 +418,9 @@ export class PgStoreV2 extends BasePgStoreModule {
                   block_hash = ${normalizeHashString(args.block.hash)}
                   OR index_block_hash = ${normalizeHashString(args.block.hash)}
                 ) AND canonical = TRUE`
-                : sql`block_height = ${args.block.height} AND canonical = TRUE`
+                : args.block.type === 'height'
+                  ? sql`block_height = ${args.block.height} AND canonical = TRUE`
+                  : sql`block_time = ${args.block.timestamp} AND canonical = TRUE`
           }
           LIMIT 1
         ),
@@ -499,7 +521,9 @@ export class PgStoreV2 extends BasePgStoreModule {
           ? sql`burn_block_hash = (SELECT burn_block_hash FROM blocks WHERE canonical = TRUE ORDER BY block_height DESC LIMIT 1)`
           : args.type === 'hash'
             ? sql`burn_block_hash = ${args.hash}`
-            : sql`burn_block_height = ${args.height}`;
+            : args.type === 'height'
+              ? sql`burn_block_height = ${args.height}`
+              : sql`burn_block_time = ${args.timestamp}`;
       const blockQuery = await sql<DbBurnBlock[]>`
         WITH BlocksWithPrevTime AS (
           SELECT
