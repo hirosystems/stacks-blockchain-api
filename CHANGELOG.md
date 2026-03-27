@@ -1,3 +1,9 @@
+## [9.0.0-next.23](https://github.com/hirosystems/stacks-blockchain-api/compare/v9.0.0-next.22...v9.0.0-next.23) (2026-03-27)
+
+### Bug Fixes
+
+* change print events route path to `/logs` ([#2514](https://github.com/hirosystems/stacks-blockchain-api/issues/2514)) ([b50a8aa](https://github.com/hirosystems/stacks-blockchain-api/commit/b50a8aae0c1f417df8d28812342377d683eb1353))
+
 ## [9.0.0-next.22](https://github.com/hirosystems/stacks-blockchain-api/compare/v9.0.0-next.21...v9.0.0-next.22) (2026-03-27)
 
 ### Features
