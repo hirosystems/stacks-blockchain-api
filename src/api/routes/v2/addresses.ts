@@ -4,14 +4,14 @@ import {
   handleChainTipCache,
   handlePrincipalCache,
   handleTransactionCache,
-} from '../../../api/controllers/cache-controller';
-import { AddressParamsSchema, AddressTransactionParamsSchema } from './schemas';
+} from '../../../api/controllers/cache-controller.js';
+import { AddressParamsSchema, AddressTransactionParamsSchema } from './schemas.js';
 import {
   parseDbAddressTransactionTransfer,
   parseDbBurnBlockPoxTx,
   parseDbTxWithAccountTransferSummary,
-} from './helpers';
-import { InvalidRequestError, NotFoundError } from '../../../errors';
+} from './helpers.js';
+import { InvalidRequestError, NotFoundError } from '../../../errors.js';
 import { FastifyPluginAsync } from 'fastify';
 import { Type, TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
 import { Server } from 'node:http';
@@ -21,9 +21,9 @@ import {
   PrincipalSchema,
   ExcludeFunctionArgsParamSchema,
   BurnchainAddressParamSchema,
-} from '../../schemas/params';
-import { getPagingQueryLimit, ResourceType } from '../../pagination';
-import { PaginatedCursorResponse, PaginatedResponse } from '../../schemas/util';
+} from '../../schemas/params.js';
+import { getPagingQueryLimit, ResourceType } from '../../pagination.js';
+import { PaginatedCursorResponse, PaginatedResponse } from '../../schemas/util.js';
 import {
   AddressTransaction,
   AddressTransactionEvent,
@@ -31,10 +31,10 @@ import {
   AddressTransactionSchema,
   PrincipalFtBalance,
   PrincipalFtBalanceSchema,
-} from '../../schemas/entities/addresses';
-import { validatePrincipal } from '../../query-helpers';
-import { StxBalance, StxBalanceSchema } from '../../schemas/entities/balances';
-import { BurnBlockPoxTxSchema } from '../../schemas/entities/pox-transaction';
+} from '../../schemas/entities/addresses.js';
+import { validatePrincipal } from '../../query-helpers.js';
+import { StxBalance, StxBalanceSchema } from '../../schemas/entities/balances.js';
+import { BurnBlockPoxTxSchema } from '../../schemas/entities/pox-transaction.js';
 
 export const AddressRoutesV2: FastifyPluginAsync<
   Record<never, never>,

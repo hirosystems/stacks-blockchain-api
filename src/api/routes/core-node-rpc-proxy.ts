@@ -1,14 +1,13 @@
-import { REPO_DIR } from '../../helpers';
+import { REPO_DIR } from '../../helpers.js';
 import * as fs from 'fs';
 import * as path from 'path';
-import fetch, { RequestInit } from 'node-fetch';
 import { FastifyPluginAsync } from 'fastify';
 import { TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
 import { IncomingMessage, Server } from 'node:http';
 import { fastifyHttpProxy } from '@fastify/http-proxy';
-import { StacksCoreRpcClient } from '../../core-rpc/client';
+import { StacksCoreRpcClient } from '../../core-rpc/client.js';
 import { logger } from '@stacks/api-toolkit';
-import { ENV } from '../../env';
+import { ENV } from '../../env.js';
 
 function GetStacksNodeProxyEndpoint() {
   const proxyHost = ENV.STACKS_CORE_PROXY_HOST;
@@ -276,8 +275,8 @@ export const CoreNodeRpcProxyRouter: FastifyPluginAsync<
       const postFn = async (endpoint: string) => {
         const reqOpts: RequestInit = {
           method: 'POST',
-          body: reqBody,
-          headers: reqHeaders,
+          body: new Uint8Array(reqBody),
+          headers: reqHeaders as [string, string][],
         };
         const proxyResult = await fetch(endpoint, reqOpts);
         return proxyResult;
@@ -373,7 +372,7 @@ export const CoreNodeRpcProxyRouter: FastifyPluginAsync<
           }
           await reply.removeHeader('content-length').send(JSON.stringify(responseJson));
         } else {
-          await reply.send(response);
+          await reply.send(response.stream);
         }
       },
     },

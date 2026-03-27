@@ -1,15 +1,15 @@
-import { getPagingQueryLimit, parsePagingQueryInput, ResourceType } from '../pagination';
-import { parseDbEvent } from '../controllers/db-controller';
-import { handleChainTipCache } from '../controllers/cache-controller';
+import { getPagingQueryLimit, parsePagingQueryInput, ResourceType } from '../pagination.js';
+import { parseDbEvent } from '../controllers/db-controller.js';
+import { handleChainTipCache } from '../controllers/cache-controller.js';
 
 import { FastifyPluginAsync } from 'fastify';
 import { Type, TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
 import { Server } from 'node:http';
-import { LimitParam, OffsetParam } from '../schemas/params';
-import { InvalidRequestError, InvalidRequestErrorType, NotFoundError } from '../../errors';
+import { LimitParam, OffsetParam } from '../schemas/params.js';
+import { InvalidRequestError, InvalidRequestErrorType, NotFoundError } from '../../errors.js';
 import { ClarityAbi } from '@stacks/transactions';
-import { SmartContractSchema } from '../schemas/entities/smart-contracts';
-import { TransactionEventSchema } from '../schemas/entities/transaction-events';
+import { SmartContractSchema } from '../schemas/entities/smart-contracts.js';
+import { TransactionEventSchema } from '../schemas/entities/transaction-events.js';
 
 export const ContractRoutes: FastifyPluginAsync<
   Record<never, never>,

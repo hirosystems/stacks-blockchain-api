@@ -1,35 +1,32 @@
-import * as process from 'process';
 import * as btc from 'bitcoinjs-lib';
 import PQueue from 'p-queue';
 import { BigNumber } from 'bignumber.js';
 import {
-  AnchorMode,
   getAddressFromPrivateKey,
   makeSTXTokenTransfer,
-  pubKeyfromPrivKey,
-  publicKeyToString,
+  privateKeyToPublic,
+  publicKeyToHex,
   SignedTokenTransferOptions,
-  StacksTransaction,
-  TransactionVersion,
+  StacksTransactionWire,
 } from '@stacks/transactions';
-import { StacksNetwork } from '@stacks/network';
+import type { StacksNetwork } from '@stacks/network';
 import {
   makeBtcFaucetPayment,
   getBtcBalance,
   getRpcClient,
   isValidBtcAddress,
-} from '../../btc-faucet';
-import { DbFaucetRequestCurrency } from '../../datastore/common';
-import { getChainIDNetwork, getStxFaucetNetwork, stxToMicroStx } from '../../helpers';
-import { StacksCoreRpcClient } from '../../core-rpc/client';
-import { logger } from '@stacks/api-toolkit';
-import { ENV } from '../../env';
+} from '../../btc-faucet.js';
+import { DbFaucetRequestCurrency } from '../../datastore/common.js';
+import { getChainIDNetwork, getStxFaucetNetwork, stxToMicroStx } from '../../helpers.js';
+import { StacksCoreRpcClient } from '../../core-rpc/client.js';
+import { isProdEnv, logger } from '@stacks/api-toolkit';
+import { ENV } from '../../env.js';
 import { FastifyPluginAsync, preHandlerHookHandler } from 'fastify';
 import { Type, TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
 import { fastifyFormbody } from '@fastify/formbody';
 import { Server } from 'node:http';
-import { OptionalNullable } from '../schemas/util';
-import { RunFaucetResponseSchema } from '../schemas/responses/responses';
+import { OptionalNullable } from '../schemas/util.js';
+import { RunFaucetResponseSchema } from '../schemas/responses/responses.js';
 
 const testnetAccounts = [
   {
@@ -67,11 +64,11 @@ interface SeededAccount {
 export const FAUCET_TESTNET_KEYS: SeededAccount[] = testnetAccounts.map(t => ({
   secretKey: t.secretKey,
   stacksAddress: t.stacksAddress,
-  pubKey: publicKeyToString(pubKeyfromPrivKey(t.secretKey)),
+  pubKey: publicKeyToHex(privateKeyToPublic(t.secretKey)),
 }));
 
 function clientFromNetwork(network: StacksNetwork): StacksCoreRpcClient {
-  const coreUrl = new URL(network.coreApiUrl);
+  const coreUrl = new URL(network.client.baseUrl);
   return new StacksCoreRpcClient({ host: coreUrl.hostname, port: coreUrl.port });
 }
 
@@ -302,7 +299,7 @@ export const FaucetRoutes: FastifyPluginAsync<
           .toString();
         stxAmount = stxAmount + BigInt(padAmount);
         return stxAmount;
-      } catch (error) {
+      } catch (_error) {
         // ignore
       }
     }
@@ -322,7 +319,7 @@ export const FaucetRoutes: FastifyPluginAsync<
     senderKey: string,
     nonce: bigint,
     fee?: bigint
-  ): Promise<StacksTransaction> {
+  ): Promise<StacksTransactionWire> {
     try {
       const options: SignedTokenTransferOptions = {
         recipient,
@@ -330,7 +327,6 @@ export const FaucetRoutes: FastifyPluginAsync<
         senderKey,
         network,
         memo: 'faucet',
-        anchorMode: AnchorMode.Any,
         nonce,
       };
       if (fee) options.fee = fee;
@@ -339,6 +335,7 @@ export const FaucetRoutes: FastifyPluginAsync<
       network.chainId = await fetchNetworkChainID(network);
 
       return await makeSTXTokenTransfer(options);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       if (
         fee === undefined &&
@@ -436,21 +433,24 @@ export const FaucetRoutes: FastifyPluginAsync<
         const ip =
           (Array.isArray(forwardedFor) ? forwardedFor[0] : forwardedFor?.split(',')[0])?.trim() ??
           req.ip;
-        const lastRequests = await fastify.db.getSTXFaucetRequests(recipientAddress);
-        const now = Date.now();
         const isStackingReq = req.query.stacking ?? false;
-        const [window, triggerCount] = isStackingReq
-          ? [FAUCET_STACKING_WINDOW, FAUCET_STACKING_TRIGGER_COUNT]
-          : [FAUCET_DEFAULT_WINDOW, FAUCET_DEFAULT_TRIGGER_COUNT];
-        const requestsInWindow = lastRequests.results
-          .map(r => now - r.occurred_at)
-          .filter(r => r <= window);
-        if (requestsInWindow.length >= triggerCount) {
-          logger.warn(`StxFaucet rate limit hit for address ${recipientAddress}`);
-          return await reply.status(429).send({
-            error: 'Too many requests',
-            success: false,
-          });
+        const now = Date.now();
+
+        if (isProdEnv) {
+          const lastRequests = await fastify.db.getSTXFaucetRequests(recipientAddress);
+          const [window, triggerCount] = isStackingReq
+            ? [FAUCET_STACKING_WINDOW, FAUCET_STACKING_TRIGGER_COUNT]
+            : [FAUCET_DEFAULT_WINDOW, FAUCET_DEFAULT_TRIGGER_COUNT];
+          const requestsInWindow = lastRequests.results
+            .map(r => now - r.occurred_at)
+            .filter(r => r <= window);
+          if (requestsInWindow.length >= triggerCount) {
+            logger.warn(`StxFaucet rate limit hit for address ${recipientAddress}`);
+            return await reply.status(429).send({
+              error: 'Too many requests',
+              success: false,
+            });
+          }
         }
 
         // Start with a random key index. We will try others in order if this one fails.
@@ -462,7 +462,7 @@ export const FaucetRoutes: FastifyPluginAsync<
         do {
           keysAttempted++;
           const senderKey = STX_FAUCET_KEYS[keyIndex];
-          const senderAddress = getAddressFromPrivateKey(senderKey, TransactionVersion.Testnet);
+          const senderAddress = getAddressFromPrivateKey(senderKey, 'testnet');
           logger.debug(`StxFaucet attempting faucet transaction from sender: ${senderAddress}`);
           const nonces = await fastify.db.getAddressNonces({ stxAddress: senderAddress });
           const tx = await buildSTXFaucetTx(
@@ -472,17 +472,18 @@ export const FaucetRoutes: FastifyPluginAsync<
             senderKey,
             BigInt(nonces.possibleNextNonce)
           );
-          const rawTx = Buffer.from(tx.serialize());
+          const rawTxHex = tx.serialize();
+          const rawTx = Buffer.from(rawTxHex, 'hex');
           try {
             const res = await rpcClient.sendTransaction(rawTx);
-            sendSuccess = { txId: res.txId, txRaw: rawTx.toString('hex') };
+            sendSuccess = { txId: res.txId, txRaw: rawTxHex };
             logger.info(
-              `StxFaucet success. Sent ${stxAmount} uSTX from ${senderAddress} to ${recipientAddress}.`
+              `StxFaucet success. Sent ${stxAmount} uSTX from ${senderAddress} to ${recipientAddress} (txId: ${sendSuccess.txId}).`
             );
-          } catch (error: any) {
+          } catch (error) {
             if (
-              error.message?.includes('ConflictingNonceInMempool') ||
-              error.message?.includes('TooMuchChaining')
+              (error as Error).message?.includes('ConflictingNonceInMempool') ||
+              (error as Error).message?.includes('TooMuchChaining')
             ) {
               if (keysAttempted == STX_FAUCET_KEYS.length) {
                 logger.warn(

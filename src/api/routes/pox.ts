@@ -1,14 +1,19 @@
-import { getPagingQueryLimit, parsePagingQueryInput, ResourceType } from '../pagination';
-import { parsePoxSyntheticEvent } from '../controllers/db-controller';
-import { getBlockParams, validatePrincipal, validateRequestHexInput } from '../query-helpers';
-import { handleChainTipCache } from '../controllers/cache-controller';
+import { getPagingQueryLimit, parsePagingQueryInput, ResourceType } from '../pagination.js';
+import { parsePoxSyntheticEvent } from '../controllers/db-controller.js';
+import { getBlockParams, validatePrincipal, validateRequestHexInput } from '../query-helpers.js';
+import { handleChainTipCache } from '../controllers/cache-controller.js';
 import { FastifyPluginAsync } from 'fastify';
 import { Type, TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
 import { Server } from 'node:http';
-import { LimitParam, OffsetParam, PrincipalSchema, UnanchoredParamSchema } from '../schemas/params';
-import { NotFoundError } from '../../errors';
-import { PaginatedResponse } from '../schemas/util';
-import { PoolDelegation, PoolDelegationSchema } from '../schemas/entities/pox';
+import {
+  LimitParam,
+  OffsetParam,
+  PrincipalSchema,
+  UnanchoredParamSchema,
+} from '../schemas/params.js';
+import { NotFoundError } from '../../errors.js';
+import { PaginatedResponse } from '../schemas/util.js';
+import { PoolDelegation, PoolDelegationSchema } from '../schemas/entities/pox.js';
 
 export const PoxEventRoutes: FastifyPluginAsync<
   Record<never, never>,

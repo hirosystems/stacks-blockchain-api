@@ -13,9 +13,9 @@ import {
   DbPoxSyntheticStackExtendEvent,
   DbPoxSyntheticStackIncreaseEvent,
   DbPoxSyntheticStackStxEvent,
-} from '../datastore/common';
-import {
-  ClarityTypeID,
+} from '../datastore/common.js';
+import codec from '@stacks/codec';
+import type {
   ClarityValue,
   ClarityValueAbstract,
   ClarityValueBuffer,
@@ -28,10 +28,9 @@ import {
   ClarityValueStringAscii,
   ClarityValueTuple,
   ClarityValueUInt,
-  decodeClarityValue,
 } from '@stacks/codec';
 import { poxAddressToBtcAddress } from '@stacks/stacking';
-import { SyntheticPoxEventName } from '../pox-helpers';
+import { SyntheticPoxEventName } from '../pox-helpers.js';
 import { bufferToHex, coerceToBuffer, logger } from '@stacks/api-toolkit';
 
 function tryClarityPoxAddressToBtcAddress(
@@ -42,13 +41,13 @@ function tryClarityPoxAddressToBtcAddress(
   network: 'mainnet' | 'testnet' | 'devnet' | 'mocknet'
 ): { btcAddr: string | null; raw: Buffer } {
   let btcAddr: string | null = null;
-  if (poxAddr.type_id === ClarityTypeID.OptionalNone) {
+  if (poxAddr.type_id === codec.ClarityTypeID.OptionalNone) {
     return {
       btcAddr,
       raw: Buffer.alloc(0),
     };
   }
-  if (poxAddr.type_id === ClarityTypeID.OptionalSome) {
+  if (poxAddr.type_id === codec.ClarityTypeID.OptionalSome) {
     poxAddr = poxAddr.value;
   }
   try {
@@ -185,9 +184,9 @@ interface PoxSyntheticPrintEventTypes {
 function clarityPrincipalToFullAddress(
   principal: ClarityValuePrincipalStandard | ClarityValuePrincipalContract
 ): string {
-  if (principal.type_id === ClarityTypeID.PrincipalStandard) {
+  if (principal.type_id === codec.ClarityTypeID.PrincipalStandard) {
     return principal.address;
-  } else if (principal.type_id === ClarityTypeID.PrincipalContract) {
+  } else if (principal.type_id === codec.ClarityTypeID.PrincipalContract) {
     return `${principal.address}.${principal.contract_name}`;
   }
   throw new Error(
@@ -203,18 +202,18 @@ export function decodePoxSyntheticPrintEvent(
   rawClarityData: string,
   network: 'mainnet' | 'testnet' | 'devnet' | 'mocknet'
 ): DbPoxSyntheticEventData | null {
-  const decoded = decodeClarityValue<ClarityValueResponse>(rawClarityData);
-  if (decoded.type_id === ClarityTypeID.ResponseError) {
+  const decoded = codec.decodeClarityValue<ClarityValueResponse>(rawClarityData);
+  if (decoded.type_id === codec.ClarityTypeID.ResponseError) {
     logger.info(`Received ResponseError when decoding Pox synthetic print event: ${decoded.repr}`);
     return null;
   }
-  if (decoded.type_id !== ClarityTypeID.ResponseOk) {
+  if (decoded.type_id !== codec.ClarityTypeID.ResponseOk) {
     const valCommon: ClarityValueAbstract = decoded;
     throw new Error(
       `Unexpected PoX synthetic event Clarity type ID, expected ResponseOk, got ${valCommon.type_id}: ${valCommon.repr}`
     );
   }
-  if (decoded.value.type_id !== ClarityTypeID.Tuple) {
+  if (decoded.value.type_id !== codec.ClarityTypeID.Tuple) {
     throw new Error(
       `Unexpected PoX synthetic event Clarity type ID, expected Tuple, got ${decoded.value.type_id}`
     );
@@ -231,14 +230,14 @@ export function decodePoxSyntheticPrintEvent(
   };
 
   const eventName = opData.name.data as keyof PoxSyntheticPrintEventTypes;
-  if (opData.name.type_id !== ClarityTypeID.StringAscii) {
+  if (opData.name.type_id !== codec.ClarityTypeID.StringAscii) {
     throw new Error(
       `Unexpected PoX synthetic event name type, expected StringAscii, got ${opData.name.type_id}`
     );
   }
 
   const eventData = opData.data.data;
-  if (opData.data.type_id !== ClarityTypeID.Tuple) {
+  if (opData.data.type_id !== codec.ClarityTypeID.Tuple) {
     throw new Error(
       `Unexpected PoX synthetic event data payload type, expected Tuple, got ${opData.data.type_id}`
     );
@@ -282,9 +281,9 @@ export function decodePoxSyntheticPrintEvent(
           start_burn_height: BigInt(d['start-burn-height'].value),
           unlock_burn_height: BigInt(d['unlock-burn-height'].value),
           signer_key:
-            d['signer-key']?.type_id === ClarityTypeID.Buffer ? d['signer-key'].buffer : null,
+            d['signer-key']?.type_id === codec.ClarityTypeID.Buffer ? d['signer-key'].buffer : null,
           end_cycle_id:
-            d['end-cycle-id']?.type_id === ClarityTypeID.OptionalSome
+            d['end-cycle-id']?.type_id === codec.ClarityTypeID.OptionalSome
               ? BigInt(d['end-cycle-id'].value.value)
               : null,
           start_cycle_id: d['start-cycle-id']?.value ? BigInt(d['start-cycle-id'].value) : null,
@@ -306,9 +305,9 @@ export function decodePoxSyntheticPrintEvent(
           increase_by: BigInt(d['increase-by'].value),
           total_locked: BigInt(d['total-locked'].value),
           signer_key:
-            d['signer-key']?.type_id === ClarityTypeID.Buffer ? d['signer-key'].buffer : null,
+            d['signer-key']?.type_id === codec.ClarityTypeID.Buffer ? d['signer-key'].buffer : null,
           end_cycle_id:
-            d['end-cycle-id']?.type_id === ClarityTypeID.OptionalSome
+            d['end-cycle-id']?.type_id === codec.ClarityTypeID.OptionalSome
               ? BigInt(d['end-cycle-id'].value.value)
               : null,
           start_cycle_id: d['start-cycle-id']?.value ? BigInt(d['start-cycle-id'].value) : null,
@@ -329,9 +328,9 @@ export function decodePoxSyntheticPrintEvent(
           extend_count: BigInt(d['extend-count'].value),
           unlock_burn_height: BigInt(d['unlock-burn-height'].value),
           signer_key:
-            d['signer-key']?.type_id === ClarityTypeID.Buffer ? d['signer-key'].buffer : null,
+            d['signer-key']?.type_id === codec.ClarityTypeID.Buffer ? d['signer-key'].buffer : null,
           end_cycle_id:
-            d['end-cycle-id']?.type_id === ClarityTypeID.OptionalSome
+            d['end-cycle-id']?.type_id === codec.ClarityTypeID.OptionalSome
               ? BigInt(d['end-cycle-id'].value.value)
               : null,
           start_cycle_id: d['start-cycle-id']?.value ? BigInt(d['start-cycle-id'].value) : null,
@@ -351,11 +350,11 @@ export function decodePoxSyntheticPrintEvent(
           amount_ustx: BigInt(d['amount-ustx'].value),
           delegate_to: clarityPrincipalToFullAddress(d['delegate-to']),
           unlock_burn_height:
-            d['unlock-burn-height'].type_id === ClarityTypeID.OptionalSome
+            d['unlock-burn-height'].type_id === codec.ClarityTypeID.OptionalSome
               ? BigInt(d['unlock-burn-height'].value.value)
               : null,
           end_cycle_id:
-            d['end-cycle-id']?.type_id === ClarityTypeID.OptionalSome
+            d['end-cycle-id']?.type_id === codec.ClarityTypeID.OptionalSome
               ? BigInt(d['end-cycle-id'].value.value)
               : null,
           start_cycle_id: d['start-cycle-id']?.value ? BigInt(d['start-cycle-id'].value) : null,
@@ -380,7 +379,7 @@ export function decodePoxSyntheticPrintEvent(
           lock_period: BigInt(d['lock-period'].value),
           delegator: clarityPrincipalToFullAddress(d['delegator']),
           end_cycle_id:
-            d['end-cycle-id']?.type_id === ClarityTypeID.OptionalSome
+            d['end-cycle-id']?.type_id === codec.ClarityTypeID.OptionalSome
               ? BigInt(d['end-cycle-id'].value.value)
               : null,
           start_cycle_id: d['start-cycle-id']?.value ? BigInt(d['start-cycle-id'].value) : null,
@@ -403,7 +402,7 @@ export function decodePoxSyntheticPrintEvent(
           total_locked: BigInt(d['total-locked'].value),
           delegator: clarityPrincipalToFullAddress(d['delegator']),
           end_cycle_id:
-            d['end-cycle-id']?.type_id === ClarityTypeID.OptionalSome
+            d['end-cycle-id']?.type_id === codec.ClarityTypeID.OptionalSome
               ? BigInt(d['end-cycle-id'].value.value)
               : null,
           start_cycle_id: d['start-cycle-id']?.value ? BigInt(d['start-cycle-id'].value) : null,
@@ -425,7 +424,7 @@ export function decodePoxSyntheticPrintEvent(
           extend_count: BigInt(d['extend-count'].value),
           delegator: clarityPrincipalToFullAddress(d['delegator']),
           end_cycle_id:
-            d['end-cycle-id']?.type_id === ClarityTypeID.OptionalSome
+            d['end-cycle-id']?.type_id === codec.ClarityTypeID.OptionalSome
               ? BigInt(d['end-cycle-id'].value.value)
               : null,
           start_cycle_id: d['start-cycle-id']?.value ? BigInt(d['start-cycle-id'].value) : null,
@@ -445,9 +444,9 @@ export function decodePoxSyntheticPrintEvent(
           reward_cycle: BigInt(d['reward-cycle'].value),
           amount_ustx: BigInt(d['amount-ustx'].value),
           signer_key:
-            d['signer-key']?.type_id === ClarityTypeID.Buffer ? d['signer-key'].buffer : null,
+            d['signer-key']?.type_id === codec.ClarityTypeID.Buffer ? d['signer-key'].buffer : null,
           end_cycle_id:
-            d['end-cycle-id']?.type_id === ClarityTypeID.OptionalSome
+            d['end-cycle-id']?.type_id === codec.ClarityTypeID.OptionalSome
               ? BigInt(d['end-cycle-id'].value.value)
               : null,
           start_cycle_id: d['start-cycle-id']?.value ? BigInt(d['start-cycle-id'].value) : null,
@@ -464,9 +463,9 @@ export function decodePoxSyntheticPrintEvent(
           reward_cycle: BigInt(d['reward-cycle'].value),
           amount_ustx: BigInt(d['amount-ustx'].value),
           signer_key:
-            d['signer-key']?.type_id === ClarityTypeID.Buffer ? d['signer-key'].buffer : null,
+            d['signer-key']?.type_id === codec.ClarityTypeID.Buffer ? d['signer-key'].buffer : null,
           end_cycle_id:
-            d['end-cycle-id']?.type_id === ClarityTypeID.OptionalSome
+            d['end-cycle-id']?.type_id === codec.ClarityTypeID.OptionalSome
               ? BigInt(d['end-cycle-id'].value.value)
               : null,
           start_cycle_id: d['start-cycle-id']?.value ? BigInt(d['start-cycle-id'].value) : null,
@@ -483,7 +482,7 @@ export function decodePoxSyntheticPrintEvent(
           reward_cycle: BigInt(d['reward-cycle'].value),
           amount_ustx: BigInt(d['amount-ustx'].value),
           end_cycle_id:
-            d['end-cycle-id']?.type_id === ClarityTypeID.OptionalSome
+            d['end-cycle-id']?.type_id === codec.ClarityTypeID.OptionalSome
               ? BigInt(d['end-cycle-id'].value.value)
               : null,
           start_cycle_id: d['start-cycle-id']?.value ? BigInt(d['start-cycle-id'].value) : null,
@@ -499,7 +498,7 @@ export function decodePoxSyntheticPrintEvent(
         data: {
           delegate_to: clarityPrincipalToFullAddress(d['delegate-to']),
           end_cycle_id:
-            d['end-cycle-id']?.type_id === ClarityTypeID.OptionalSome
+            d['end-cycle-id']?.type_id === codec.ClarityTypeID.OptionalSome
               ? BigInt(d['end-cycle-id'].value.value)
               : null,
           start_cycle_id: d['start-cycle-id']?.value ? BigInt(d['start-cycle-id'].value) : null,

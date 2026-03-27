@@ -1,7 +1,7 @@
 import { FastifyPluginAsync } from 'fastify';
 import { Type, TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
 import { Server } from 'node:http';
-import { handleChainTipCache } from '../controllers/cache-controller';
+import { handleChainTipCache } from '../controllers/cache-controller.js';
 
 const enum TargetBlockTime {
   /**

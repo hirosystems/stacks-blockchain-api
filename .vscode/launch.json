@@ -7,17 +7,7 @@
     {
       "type": "node",
       "request": "launch",
-      "name": "stacks-blockchain dist-tool",
-      "program": "${workspaceFolder}/stacks-blockchain/dist-tool/index.js",
-      "skipFiles": ["<node_internals>/**"],
-      "env": {
-        "STACKS_BLOCKCHAIN_BRANCH": "feature/event-observer-envvar"
-      }
-    },
-    {
-      "type": "node",
-      "request": "launch",
-      "name": "Launch: app",
+      "name": "start: api",
       "runtimeArgs": ["-r", "ts-node/register/transpile-only", "-r", "tsconfig-paths/register"],
       "args": ["${workspaceFolder}/src/index.ts"],
       "outputCapture": "std",
@@ -30,7 +20,7 @@
     {
       "type": "node",
       "request": "launch",
-      "name": "Launch: mocknet",
+      "name": "start: mocknet",
       "skipFiles": [
         "<node_internals>/**"
       ],
@@ -38,8 +28,8 @@
       "args": ["${workspaceFolder}/src/index.ts"],
       "outputCapture": "std",
       "internalConsoleOptions": "openOnSessionStart",
-      "preLaunchTask": "stacks-node:deploy-dev",
-      "postDebugTask": "stacks-node:stop-dev",
+      "preLaunchTask": "npm: testenv:run",
+      "postDebugTask": "npm: testenv:stop",
       "env": {
         "STACKS_CHAIN_ID": "0x80000000",
         "NODE_ENV": "development",
@@ -50,28 +40,7 @@
     {
       "type": "node",
       "request": "launch",
-      "name": "Launch: w/ postgres",
-      "skipFiles": [
-        "<node_internals>/**"
-      ],
-      "runtimeVersion": "22",
-      "runtimeArgs": ["-r", "ts-node/register/transpile-only", "-r", "tsconfig-paths/register"],
-      "args": ["${workspaceFolder}/src/index.ts"],
-      "outputCapture": "std",
-      "internalConsoleOptions": "openOnSessionStart",
-      "preLaunchTask": "deploy:pg",
-      "postDebugTask": "stop:pg",
-      "env": {
-        "STACKS_CHAIN_ID": "0x80000000",
-        "NODE_ENV": "development",
-        "TS_NODE_SKIP_IGNORE": "true"
-      },
-      "killBehavior": "polite",
-    },
-    {
-      "type": "node",
-      "request": "launch",
-      "name": "Launch: krypton 2.1",
+      "name": "start: mocknet write-only",
       "skipFiles": [
         "<node_internals>/**"
       ],
@@ -79,48 +48,8 @@
       "args": ["${workspaceFolder}/src/index.ts"],
       "outputCapture": "std",
       "internalConsoleOptions": "openOnSessionStart",
-      "preLaunchTask": "deploy:krypton",
-      "postDebugTask": "stop:krypton",
-      "env": {
-        "STACKS_CHAIN_ID": "0x80000000",
-        "NODE_ENV": "development",
-        "TS_NODE_SKIP_IGNORE": "true"
-      },
-      "killBehavior": "polite",
-    },
-    {
-      "type": "node",
-      "request": "launch",
-      "name": "Launch: krypton 2.1-transition",
-      "skipFiles": [
-        "<node_internals>/**"
-      ],
-      "runtimeArgs": ["-r", "ts-node/register/transpile-only", "-r", "tsconfig-paths/register"],
-      "args": ["${workspaceFolder}/src/index.ts"],
-      "outputCapture": "std",
-      "internalConsoleOptions": "openOnSessionStart",
-      "preLaunchTask": "deploy:krypton-2.1-transition",
-      "postDebugTask": "stop:krypton-2.1-transition",
-      "env": {
-        "STACKS_CHAIN_ID": "0x80000000",
-        "NODE_ENV": "development",
-        "TS_NODE_SKIP_IGNORE": "true"
-      },
-      "killBehavior": "polite",
-    },
-    {
-      "type": "node",
-      "request": "launch",
-      "name": "Launch: mocknet write-only",
-      "skipFiles": [
-        "<node_internals>/**"
-      ],
-      "runtimeArgs": ["-r", "ts-node/register/transpile-only", "-r", "tsconfig-paths/register"],
-      "args": ["${workspaceFolder}/src/index.ts"],
-      "outputCapture": "std",
-      "internalConsoleOptions": "openOnSessionStart",
-      "preLaunchTask": "stacks-node:deploy-dev",
-      "postDebugTask": "stacks-node:stop-dev",
+      "preLaunchTask": "npm: testenv:run",
+      "postDebugTask": "npm: testenv:stop",
       "env": {
         "STACKS_API_MODE": "writeonly",
         "STACKS_CHAIN_ID": "0x80000000",
@@ -132,35 +61,7 @@
     {
       "type": "node",
       "request": "launch",
-      "name": "Launch: mocknet offline-mode",
-      "skipFiles": [
-        "<node_internals>/**"
-      ],
-      "runtimeArgs": [
-        "-r",
-        "ts-node/register/transpile-only",
-        "-r",
-        "tsconfig-paths/register"
-      ],
-      "args": [
-        "${workspaceFolder}/src/index.ts"
-      ],
-      "outputCapture": "std",
-      "internalConsoleOptions": "openOnSessionStart",
-      "preLaunchTask": "stacks-node:start-mocknet",
-      "postDebugTask": "stacks-node:stop-mocknet",
-      "env": {
-        "STACKS_CHAIN_ID": "0x80000000",
-        "NODE_ENV": "development",
-        "STACKS_API_MODE": "offline",
-        "TS_NODE_SKIP_IGNORE": "true"
-      },
-      "killBehavior": "polite",
-    },
-    {
-      "type": "node",
-      "request": "launch",
-      "name": "Launch: read-only",
+      "name": "start: read-only",
       "skipFiles": [
         "<node_internals>/**"
       ],
@@ -187,227 +88,61 @@
     {
       "type": "node",
       "request": "launch",
-      "name": "Launch: follower",
-      "runtimeArgs": ["-r", "ts-node/register/transpile-only", "-r", "tsconfig-paths/register"],
-      "args": ["${workspaceFolder}/src/index.ts"],
+      "name": "test: api",
+      "runtimeExecutable": "node",
+      "args": [
+        "--import",
+        "tsx",
+        "--test",
+        "--test-global-setup=./tests/api/setup.ts",
+        "--test-concurrency=1",
+        // "--test-name-pattern", "websocket notifications",
+        "./tests/api/**/*.test.ts"
+      ],
       "outputCapture": "std",
-      "internalConsoleOptions": "openOnSessionStart",
-      "preLaunchTask": "stacks-node:deploy-follower",
-      "postDebugTask": "stacks-node:stop-dev",
+      "console": "integratedTerminal",
       "env": {
-        "STACKS_CHAIN_ID": "0x00000001",
-        "NODE_ENV": "development",
-        "TS_NODE_SKIP_IGNORE": "true"
+        "NODE_ENV": "test"
       }
     },
     {
       "type": "node",
       "request": "launch",
-      "name": "Launch: export-events",
-      "runtimeArgs": ["-r", "ts-node/register/transpile-only", "-r", "tsconfig-paths/register"],
-      "args": ["${workspaceFolder}/src/index.ts", "export-events", "--file", "/tmp/test-events-export.csv", "--overwrite-file"],
+      "name": "test: krypton",
+      "runtimeExecutable": "node",
+      "args": [
+        "--import",
+        "tsx",
+        "--test",
+        "--test-global-setup=./tests/krypton/setup.ts",
+        "--test-concurrency=1",
+        "./tests/krypton/**/*.test.ts"
+      ],
       "outputCapture": "std",
-      "internalConsoleOptions": "openOnSessionStart",
+      "console": "integratedTerminal",
       "env": {
-        "NODE_ENV": "development",
-        "TS_NODE_SKIP_IGNORE": "true"
+        "NODE_ENV": "test"
       }
     },
     {
       "type": "node",
       "request": "launch",
-      "name": "Launch: import-events",
-      "runtimeArgs": ["-r", "ts-node/register/transpile-only", "-r", "tsconfig-paths/register"],
-      "args": ["${workspaceFolder}/src/index.ts", "import-events", "--file", "/tmp/test-events-export.csv", "--wipe-db"],
+      "name": "test: snp",
+      "runtimeExecutable": "node",
+      "args": [
+        "--import",
+        "tsx",
+        "--test",
+        "--test-global-setup=./tests/snp/setup.ts",
+        "--test-concurrency=1",
+        // "--test-name-pattern", "websocket notifications",
+        "./tests/snp/**/*.test.ts"
+      ],
       "outputCapture": "std",
-      "internalConsoleOptions": "openOnSessionStart",
+      "console": "integratedTerminal",
       "env": {
-        "NODE_ENV": "development",
-        "TS_NODE_SKIP_IGNORE": "true"
+        "NODE_ENV": "test"
       }
-    },
-    {
-      "type": "node",
-      "request": "launch",
-      "name": "Jest: API",
-      "program": "${workspaceFolder}/node_modules/.bin/jest",
-      "args": [
-        "--testTimeout=3600000",
-        "--runInBand",
-        "--no-cache",
-        "--config",
-        "${workspaceRoot}/tests/jest.config.api.js"
-      ],
-      "outputCapture": "std",
-      "console": "integratedTerminal",
-      "preLaunchTask": "stacks-node:deploy-dev",
-      "postDebugTask": "stacks-node:stop-dev"
-    },
-    {
-      "type": "node",
-      "request": "launch",
-      "name": "Jest: Event Replay",
-      "program": "${workspaceFolder}/node_modules/.bin/jest",
-      "args": [
-        "--testTimeout=3600000",
-        "--runInBand",
-        "--no-cache",
-        "--config",
-        "${workspaceRoot}/tests/jest.config.event-replay.js"
-      ],
-      "outputCapture": "std",
-      "console": "integratedTerminal",
-      "preLaunchTask": "stacks-node:deploy-dev",
-      "postDebugTask": "stacks-node:stop-dev"
-    },
-    {
-      "type": "node",
-      "request": "launch",
-      "name": "Jest: 2.5",
-      "program": "${workspaceFolder}/node_modules/.bin/jest",
-      "args": [
-        "--testTimeout=3600000",
-        "--runInBand",
-        "--no-cache",
-        "--config",
-        "${workspaceRoot}/tests/jest.config.2.5.js",
-      ],
-      "outputCapture": "std",
-      "console": "integratedTerminal",
-      "preLaunchTask": "deploy:krypton",
-      "postDebugTask": "stop:krypton",
-      "smartStep": false,
-      "sourceMaps": true,
-    },
-    {
-      "type": "node",
-      "request": "launch",
-      "name": "Jest: BNS",
-      "program": "${workspaceFolder}/node_modules/.bin/jest",
-      "args": [
-        "--testTimeout=3600000",
-        "--runInBand",
-        "--no-cache",
-        "--config",
-        "${workspaceRoot}/tests/jest.config.bns.js",
-      ],
-      "outputCapture": "std",
-      "console": "integratedTerminal",
-      "preLaunchTask": "deploy:krypton",
-      "postDebugTask": "stop:krypton",
-    },
-    {
-      "type": "node",
-      "request": "launch",
-      "name": "Jest: BNS-e2e",
-      "program": "${workspaceFolder}/node_modules/.bin/jest",
-      "args": [
-        "--testTimeout=3600000",
-        "--runInBand",
-        "--no-cache",
-        "--config",
-        "${workspaceRoot}/tests/jest.config.bns-e2e.js",
-      ],
-      "outputCapture": "std",
-      "console": "integratedTerminal",
-      "preLaunchTask": "deploy:krypton",
-      "postDebugTask": "stop:krypton",
-    },
-    {
-      "type": "node",
-      "request": "launch",
-      "name": "Jest: RPC",
-      "program": "${workspaceFolder}/node_modules/.bin/jest",
-      "args": [
-        "--testTimeout=3600000",
-        "--runInBand",
-        "--no-cache",
-        "--config",
-        "${workspaceRoot}/tests/jest.config.rpc.js"
-      ],
-      "outputCapture": "std",
-      "console": "integratedTerminal",
-      "preLaunchTask": "deploy:krypton",
-      "postDebugTask": "stop:krypton",
-      "smartStep": false,
-      "sourceMaps": true,
-    },
-    {
-      "type": "node",
-      "request": "launch",
-      "name": "Jest: btc-faucet",
-      "program": "${workspaceFolder}/node_modules/.bin/jest",
-      "args": [
-        "--testTimeout=3600000",
-        "--runInBand",
-        "--no-cache",
-        "--config",
-        "${workspaceRoot}/tests/jest.config.btc-faucet.js"
-      ],
-      "outputCapture": "std",
-      "console": "integratedTerminal",
-      "preLaunchTask": "stacks-node:deploy-dev",
-      "postDebugTask": "stacks-node:stop-dev"
-    },
-    {
-      "type": "node",
-      "request": "launch",
-      "name": "Jest: SNP",
-      "program": "${workspaceFolder}/node_modules/.bin/jest",
-      "args": [
-        "--testTimeout=3600000",
-        "--runInBand",
-        "--no-cache",
-        "--config",
-        "${workspaceRoot}/tests/jest.config.snp.js"
-      ],
-      "outputCapture": "std",
-      "console": "integratedTerminal",
-      "nodeVersionHint": 22,
-      "runtimeVersion": "22"
-    },
-    {
-      "type": "node",
-      "request": "launch",
-      "name": "client-lib test",
-      "runtimeArgs": ["-r", "ts-node/register/transpile-only", "-r", "tsconfig-paths/register"],
-      "cwd": "${workspaceFolder}/docs/client",
-      "args": ["${workspaceFolder}/docs/client/src/test.ts"],
-      "outputCapture": "std",
-      "internalConsoleOptions": "openOnSessionStart",
-      "env": {
-        "NODE_ENV": "development",
-        "TS_NODE_SKIP_IGNORE": "true"
-      }
-    },
-    {
-      "type": "node",
-      "request": "launch",
-      "name": "docs: openapi-generator",
-      "runtimeArgs": ["-r", "ts-node/register/transpile-only"],
-      "args": ["${workspaceFolder}/src/openapi-generator.ts"]
-    },
-    {
-      "type": "node",
-      "request": "launch",
-      "name": "docs: generate-types",
-      "runtimeArgs": ["-r", "ts-node/register/transpile-only"],
-      "cwd": "${workspaceFolder}/docs",
-      "args": ["${workspaceFolder}/docs/scripts/generate-types.ts"]
-    },
-    {
-      "type": "node",
-      "request": "launch",
-      "name": "utils: chaintip cache-control test",
-      "runtimeArgs": ["-r", "ts-node/register/transpile-only"],
-      "cwd": "${workspaceFolder}/utils",
-      "args": ["${workspaceFolder}/utils/src/chaintip-cache-control-test.ts"]
     },
   ],
-  "compounds": [
-    {
-      "name": "Launch: mocknet reader-writer",
-      "configurations": ["Launch: mocknet", "Launch: read-only"]
-    }
-  ]
 }

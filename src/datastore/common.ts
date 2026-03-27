@@ -1,5 +1,5 @@
-import { Block } from '../api/schemas/entities/block';
-import { SyntheticPoxEventName } from '../pox-helpers';
+import { Block } from '../api/schemas/entities/block.js';
+import { SyntheticPoxEventName } from '../pox-helpers.js';
 import { PgBytea, PgJsonb, PgNumeric } from '@stacks/api-toolkit';
 
 export interface DbBlock {

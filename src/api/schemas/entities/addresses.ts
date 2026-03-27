@@ -1,8 +1,8 @@
 import { Static, Type } from '@sinclair/typebox';
-import { TransactionSchema } from './transactions';
-import { TransactionEventAssetTypeSchema } from './transaction-events';
-import { Nullable } from '../util';
-import { FtBalanceSchema, NftBalanceSchema, StxBalanceSchema } from './balances';
+import { TransactionSchema } from './transactions.js';
+import { TransactionEventAssetTypeSchema } from './transaction-events.js';
+import { Nullable } from '../util.js';
+import { FtBalanceSchema, NftBalanceSchema, StxBalanceSchema } from './balances.js';
 
 export const AddressNoncesSchema = Type.Object(
   {

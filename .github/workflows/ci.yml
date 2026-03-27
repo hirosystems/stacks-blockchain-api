@@ -33,7 +33,7 @@ jobs:
         run: echo "dir=$(npm config get cache)" >> ${GITHUB_OUTPUT}
 
       - name: Cache node modules
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         id: npm-cache # use this to check for `cache-hit` ==> if: steps.npm-cache.outputs.cache-hit != 'true'
         with:
           path: ${{ steps.npm-cache-dir.outputs.dir }}
@@ -50,21 +50,39 @@ jobs:
       - name: Lint Prettier
         run: npm run lint:prettier
 
-      - name: Lint Unused Exports
-        run: npm run lint:unused-exports
-
   test:
     strategy:
       fail-fast: false
       matrix:
         suite:
           [
-            api,
-            bns,
-            bns-e2e,
-            btc-faucet,
-            event-replay,
-            rpc,
+            api:blocks,
+            api:bns,
+            api:cache,
+            api:datastore,
+            api:event-replay,
+            api:event-server,
+            api:mempool,
+            api:microblocks,
+            api:principal,
+            api:redis,
+            api:smart-contracts,
+            api:sockets,
+            api:synthetic-txs,
+            api:transactions,
+            api:v2-proxy,
+            krypton:bns-e2e,
+            krypton:faucet-btc,
+            krypton:faucet-stx,
+            krypton:pox-4-btc-address-formats,
+            krypton:pox-4-burnchain-delegate-stx,
+            krypton:pox-4-burnchain-stack-stx,
+            krypton:pox-4-delegate-aggregation,
+            krypton:pox-4-delegate-revoked-stacking,
+            krypton:pox-4-delegate-stacking,
+            krypton:pox-4-stack-extend-increase,
+            krypton:rpc,
+            snp,
           ]
     runs-on: ubuntu-latest
     steps:
@@ -82,7 +100,7 @@ jobs:
         run: echo "dir=$(npm config get cache)" >> ${GITHUB_OUTPUT}
 
       - name: Cache node modules
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         id: npm-cache # use this to check for `cache-hit` ==> if: steps.npm-cache.outputs.cache-hit != 'true'
         with:
           path: ${{ steps.npm-cache-dir.outputs.dir }}
@@ -97,143 +115,18 @@ jobs:
         working-directory: client
         run: npm ci --audit=false
 
-      - name: Setup env vars
-        run: echo "STACKS_CORE_EVENT_HOST=http://0.0.0.0" >> $GITHUB_ENV
-
-      - name: Setup replay directories
-        if: matrix.suite == 'event-replay'
+      - name: Setup replay directory permissions
+        if: matrix.suite == 'api:event-replay'
         run: |
-          mkdir -p tests/event-replay/.tmp/local/
-          sudo chown 999:999 tests/event-replay/.tmp/local/
-          sudo chmod -R 777 tests/event-replay/.tmp/local/
-
-      - name: Setup integration environment
-        run: |
-          sudo ufw disable
-          npm run devenv:deploy -- -d
-          npm run devenv:logs -- --no-color &> docker-compose-logs.txt &
+          mkdir -p tests/api/event-replay/.tmp/local/
+          sudo chown 999:999 tests/api/event-replay/.tmp/local/
+          sudo chmod -R 777 tests/api/event-replay/.tmp/local/
 
       - name: Run tests
-        run: npm run test:${{ matrix.suite }} -- --coverage
-
-      - name: Print integration environment logs
-        run: cat docker-compose-logs.txt
-        if: failure()
-
-      - name: Teardown integration environment
-        run: npm run devenv:stop
-        if: always()
+        run: npx c8 --reporter=lcov npm run test:${{ matrix.suite }}
 
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v4
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}
-        if: always()
-
-  test-snp:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-
-      - name: Use Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version-file: ".nvmrc"
-
-      # https://github.com/actions/cache/blob/main/examples.md#node---npm
-      - name: Get npm cache directory
-        id: npm-cache-dir
-        shell: bash
-        run: echo "dir=$(npm config get cache)" >> ${GITHUB_OUTPUT}
-
-      - name: Cache node modules
-        uses: actions/cache@v4
-        id: npm-cache # use this to check for `cache-hit` ==> if: steps.npm-cache.outputs.cache-hit != 'true'
-        with:
-          path: ${{ steps.npm-cache-dir.outputs.dir }}
-          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-node-
-
-      - name: Install deps
-        run: npm ci --audit=false
-
-      - name: Install client deps
-        working-directory: client
-        run: npm ci --audit=false
-      - name: Run tests
-        run: npm run test:snp -- --coverage
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v4
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}
-        if: always()
-
-  test-2_5:
-    strategy:
-      fail-fast: false
-      matrix:
-        suite:
-          [
-            block-zero-handling,
-            faucet-stx,
-            pox-4-btc-address-formats,
-            pox-4-delegate-aggregation,
-            pox-4-delegate-stacking,
-            pox-4-delegate-revoked-stacking,
-            pox-4-stack-extend-increase,
-            pox-4-burnchain-stack-stx,
-            pox-4-burnchain-delegate-stx,
-          ]
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-
-      - name: Use Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version-file: ".nvmrc"
-
-      # https://github.com/actions/cache/blob/main/examples.md#node---npm
-      - name: Get npm cache directory
-        id: npm-cache-dir
-        shell: bash
-        run: echo "dir=$(npm config get cache)" >> ${GITHUB_OUTPUT}
-
-      - name: Cache node modules
-        uses: actions/cache@v4
-        id: npm-cache # use this to check for `cache-hit` ==> if: steps.npm-cache.outputs.cache-hit != 'true'
-        with:
-          path: ${{ steps.npm-cache-dir.outputs.dir }}
-          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-node-
-
-      - name: Install deps
-        run: npm ci --audit=false
-
-      - name: Setup env vars
-        run: echo "STACKS_CORE_EVENT_HOST=http://0.0.0.0" >> $GITHUB_ENV
-
-      - name: Setup integration environment
-        run: |
-          sudo ufw disable
-          npm run devenv:deploy-krypton -- -d
-          npm run devenv:logs-krypton -- --no-color &> docker-compose-logs.txt &
-
-      - name: Run tests
-        run: npm run test:2.5 -- --testPathPatterns "${{ matrix.suite }}" --coverage
-
-      - name: Print integration environment logs
-        run: cat docker-compose-logs.txt
-        if: failure()
-
-      - name: Teardown integration environment
-        run: npm run devenv:stop-krypton
-        if: always()
-
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v4
+        uses: codecov/codecov-action@v5
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
         if: always()
@@ -248,7 +141,6 @@ jobs:
     needs:
       - lint
       - test
-      - test-2_5
     outputs:
       new_release_version: ${{ steps.semantic.outputs.new_release_version }}
       new_release_published: ${{ steps.semantic.outputs.new_release_published }}
@@ -256,7 +148,7 @@ jobs:
     steps:
       - name: Generate release bot app token
         id: generate_token
-        uses: actions/create-github-app-token@v2
+        uses: actions/create-github-app-token@v3
         with:
           app-id: ${{ secrets.HIROSYSTEMS_RELEASE_BOT_ID }}
           private-key: ${{ secrets.HIROSYSTEMS_RELEASE_BOT_PEM }}
@@ -284,7 +176,7 @@ jobs:
           GH_TOKEN: ${{ steps.generate_token.outputs.token }}
 
       - name: Semantic Release
-        uses: cycjimmy/semantic-release-action@b12c8f6015dc215fe37bc154d4ad456dd3833c90 # v6
+        uses: cycjimmy/semantic-release-action@v6
         id: semantic
         # Only run on non-PR events or only PRs that aren't from forks
         if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
@@ -317,14 +209,14 @@ jobs:
           ref: v${{ needs.semantic-release.outputs.new_release_version }}
 
       - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
+        uses: docker/setup-qemu-action@v4
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
 
       - name: Docker Meta
         id: meta
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6
         with:
           images: |
             hirosystems/${{ github.event.repository.name }}
@@ -336,13 +228,13 @@ jobs:
             type=raw,value=latest,enable=${{ github.ref == format('refs/heads/{0}', 'master') }}
 
       - name: Login to DockerHub
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_PASSWORD }}
 
       - name: Build/Tag/Push Image
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           platforms: ${{ (github.ref == 'refs/heads/master' || github.ref == 'refs/heads/beta') && 'linux/amd64,linux/arm64' || 'linux/amd64' }}

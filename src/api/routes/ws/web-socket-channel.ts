@@ -3,11 +3,11 @@ import {
   AddressStxBalanceResponse,
   AddressTransactionWithTransfers,
   NftEvent,
-} from 'client/src/types';
-import { WebSocketPrometheus } from './web-socket-prometheus';
-import { Block } from '../../schemas/entities/block';
-import { Microblock } from '../../schemas/entities/microblock';
-import { Transaction, MempoolTransaction } from '../../schemas/entities/transactions';
+} from '../../../../client/src/types.js';
+import { WebSocketPrometheus } from './web-socket-prometheus.js';
+import { Block } from '../../schemas/entities/block.js';
+import { Microblock } from '../../schemas/entities/microblock.js';
+import { Transaction, MempoolTransaction } from '../../schemas/entities/transactions.js';
 
 /**
  * Topics that external API users may subscribe to when looking for real time updates.
@@ -46,6 +46,7 @@ export type WebSocketPayload = {
  * Type hack taken from https://github.com/bterlson/strict-event-emitter-types to dynamically set
  * the argument types depending on the selected topic or payload.
  */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type ListenerType<T> = [T] extends [(...args: infer U) => any]
   ? U
   : [T] extends [void]

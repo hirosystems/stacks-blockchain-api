@@ -1,14 +1,15 @@
 import * as http from 'http';
-import * as WebSocket from 'ws';
+import WebSocket from 'ws';
+import { WebSocketServer } from 'ws';
 import * as net from 'net';
-import { isValidPrincipal, normalizeHashString } from '../../../../helpers';
-import { WebSocketPrometheus } from '../web-socket-prometheus';
+import { isValidPrincipal, normalizeHashString } from '../../../../helpers.js';
+import { WebSocketPrometheus } from '../web-socket-prometheus.js';
 import {
   ListenerType,
   WebSocketChannel,
   WebSocketPayload,
   WebSocketTopics,
-} from '../web-socket-channel';
+} from '../web-socket-channel.js';
 import {
   JsonRpcError,
   JsonRpc,
@@ -30,14 +31,14 @@ import type {
   RpcNftAssetEventSubscriptionParams,
   RpcNftCollectionEventSubscriptionParams,
   NftEvent,
-} from 'client/src/types';
-import { getWsMessageTimeoutMs, getWsPingIntervalMs } from '../web-socket-transmitter';
+} from '../../../../../client/src/types.js';
+import { getWsMessageTimeoutMs, getWsPingIntervalMs } from '../web-socket-transmitter.js';
 import { isProdEnv, logger, resolveOrTimeout } from '@stacks/api-toolkit';
 
-import { Transaction, MempoolTransaction } from '../../../schemas/entities/transactions';
-import { Block } from '../../..//schemas/entities/block';
-import { Microblock } from '../../..//schemas/entities/microblock';
-import { AddressTransactionWithTransfers } from '../../../schemas/entities/addresses';
+import { Transaction, MempoolTransaction } from '../../../schemas/entities/transactions.js';
+import { Block } from '../../..//schemas/entities/block.js';
+import { Microblock } from '../../..//schemas/entities/microblock.js';
+import { AddressTransactionWithTransfers } from '../../../schemas/entities/addresses.js';
 
 type Subscription =
   | RpcTxUpdateSubscriptionParams
@@ -139,7 +140,7 @@ class SubscriptionManager {
  */
 export class WsRpcChannel extends WebSocketChannel {
   private subscriptions = new Map<keyof WebSocketTopics, SubscriptionManager>();
-  private wsServer?: WebSocket.Server;
+  private wsServer?: WebSocketServer;
 
   constructor(server: http.Server) {
     super(server);
@@ -151,14 +152,14 @@ export class WsRpcChannel extends WebSocketChannel {
   connect(): void {
     // Use `noServer` and the `upgrade` event to prevent the ws lib from hijacking the http.Server error event
     const wsPath = '/extended/v1/ws';
-    const wsServer = new WebSocket.Server({ noServer: true, path: wsPath });
+    const wsServer = new WebSocketServer({ noServer: true, path: wsPath });
     this.server.on('upgrade', (request: http.IncomingMessage, socket, head) => {
       const clientAddress =
         request.headers['x-forwarded-for'] || request.socket.remoteAddress || 'unknown';
       logger.info(`WsRpcChannel upgrade event received from ${clientAddress}`);
       if (request.url?.startsWith(wsPath)) {
         try {
-          wsServer.handleUpgrade(request, socket as net.Socket, head, ws => {
+          wsServer.handleUpgrade(request, socket as net.Socket, head, (ws: WebSocket) => {
             wsServer.emit('connection', ws, request);
           });
         } catch (error) {
@@ -182,7 +183,7 @@ export class WsRpcChannel extends WebSocketChannel {
     this.subscriptions.set('nftCollectionEvent', new SubscriptionManager());
 
     logger.info(`WsRpcChannel server created at path: ${wsPath}`);
-    wsServer.on('connection', (clientSocket, req) => {
+    wsServer.on('connection', (clientSocket: WebSocket, req: http.IncomingMessage) => {
       const clientAddress = req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'unknown';
       logger.info(`WsRpcChannel client connected from ${clientAddress}`);
 
@@ -191,22 +192,22 @@ export class WsRpcChannel extends WebSocketChannel {
       } else if (req.socket.remoteAddress) {
         this.prometheus?.connect(req.socket.remoteAddress);
       }
-      clientSocket.on('message', data => {
+      clientSocket.on('message', (data: WebSocket.Data) => {
         this.handleClientMessage(clientSocket, data);
       });
-      clientSocket.on('close', (_: WebSocket) => {
+      clientSocket.on('close', (_unused: WebSocket) => {
         logger.info(`WsRpcChannel client disconnected from ${clientAddress}`);
         this.prometheus?.disconnect(clientSocket);
       });
-      clientSocket.on('error', error => {
+      clientSocket.on('error', (error: Error) => {
         logger.error(error, `WsRpcChannel client error from ${clientAddress}: ${error}`);
       });
     });
-    wsServer.on('close', (_: WebSocket.Server) => {
+    wsServer.on('close', (_unused: WebSocketServer) => {
       logger.info(`WsRpcChannel server closed`);
       this.subscriptions.forEach(manager => manager.close());
     });
-    wsServer.on('error', error => {
+    wsServer.on('error', (error: Error) => {
       logger.error(error, `WsRpcChannel server error: ${error}`);
     });
 
@@ -325,10 +326,21 @@ export class WsRpcChannel extends WebSocketChannel {
   private handleClientMessage(client: WebSocket, data: WebSocket.Data) {
     logger.info(data, `WsRpcChannel received message from client`);
     try {
-      if (typeof data !== 'string') {
-        throw JsonRpcError.parseError(`unexpected data type: ${data.constructor.name}`);
+      let payload: string;
+      if (typeof data === 'string') {
+        payload = data;
+      } else if (Array.isArray(data)) {
+        payload = Buffer.concat(data).toString('utf8');
+      } else if (data instanceof ArrayBuffer) {
+        payload = Buffer.from(data).toString('utf8');
+      } else if (Buffer.isBuffer(data)) {
+        payload = data.toString('utf8');
+      } else {
+        const dataType =
+          (data as { constructor?: { name?: string } }).constructor?.name ?? typeof data;
+        throw JsonRpcError.parseError(`unexpected data type: ${dataType}`);
       }
-      const parsedRpcReq = parseRpcString(data);
+      const parsedRpcReq = parseRpcString(payload);
       const isBatchRequest = Array.isArray(parsedRpcReq);
       let rpcReqs = Array.isArray(parsedRpcReq) ? parsedRpcReq : [parsedRpcReq];
 
@@ -350,9 +362,11 @@ export class WsRpcChannel extends WebSocketChannel {
               JsonRpcError.invalidRequest('unexpected success msg from client')
             );
           case 'invalid':
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             return jsonRpcError(null as any, rpcReq.payload);
           default:
             return jsonRpcError(
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
               null as any,
               JsonRpcError.invalidRequest('unexpected msg type from client')
             );
@@ -372,12 +386,14 @@ export class WsRpcChannel extends WebSocketChannel {
           }
         });
       }
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       // Response `id` is null for invalid JSON requests (or other errors where the request ID isn't known).
       try {
         const res = err instanceof JsonRpcError ? err : JsonRpcError.internalError(err.toString());
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         this.sendRpcResponse(client, jsonRpcError(null as any, res));
-      } catch (error) {
+      } catch (_error) {
         // ignore any errors here
       }
     }
@@ -854,6 +870,6 @@ export class WsRpcChannel extends WebSocketChannel {
           manager.removeSubscription(client, topicId);
         }
       })
-      .catch(_ => manager.removeSubscription(client, topicId));
+      .catch(_err => manager.removeSubscription(client, topicId));
   }
 }

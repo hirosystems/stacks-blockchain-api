@@ -3,14 +3,18 @@ import BigNumber from 'bignumber.js';
 import * as btc from 'bitcoinjs-lib';
 import * as http from 'http';
 import * as path from 'path';
-import { isValidStacksAddress, stacksToBitcoinAddress } from '@stacks/codec';
+import { fileURLToPath } from 'node:url';
+import codec from '@stacks/codec';
 import * as ecc from 'tiny-secp256k1';
-import { getCoreNodeEndpoint, StacksCoreRpcClient } from './core-rpc/client';
-import { DbEventTypeId } from './datastore/common';
+import { getCoreNodeEndpoint, StacksCoreRpcClient } from './core-rpc/client.js';
+import { DbEventTypeId } from './datastore/common.js';
 import { has0xPrefix, logger, numberToHex } from '@stacks/api-toolkit';
-import { StacksNetwork, StacksTestnet } from '@stacks/network';
-import { ENV } from './env';
+import { createNetwork, STACKS_TESTNET } from '@stacks/network';
+import type { StacksNetwork } from '@stacks/network';
+import { ENV } from './env.js';
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 export const REPO_DIR = path.dirname(__dirname);
 
 export const I32_MAX = 0x7fffffff;
@@ -26,13 +30,19 @@ export function getStxFaucetNetwork(): StacksNetwork {
       logger.error(error);
       throw new Error(error);
     }
-    const network = new StacksTestnet({
-      url: `http://${faucetNodeHostOverride}:${faucetNodePortOverride}`,
+    const network = createNetwork({
+      network: STACKS_TESTNET,
+      client: {
+        baseUrl: `http://${faucetNodeHostOverride}:${faucetNodePortOverride}`,
+      },
     });
     return network;
   }
-  return new StacksTestnet({
-    url: `http://${getCoreNodeEndpoint()}`,
+  return createNetwork({
+    network: STACKS_TESTNET,
+    client: {
+      baseUrl: `http://${getCoreNodeEndpoint()}`,
+    },
   });
 }
 
@@ -45,7 +55,6 @@ function createEnumChecker<T extends string, TEnumValue extends number>(enumVari
   return (value: number): value is TEnumValue => enumValueSet.has(value);
 }
 
-// eslint-disable-next-line @typescript-eslint/ban-types
 const enumCheckFunctions = new Map<object, (value: number) => boolean>();
 
 /**
@@ -92,7 +101,6 @@ export function parseEnum<T extends string, TEnumValue extends number>(
   }
 }
 
-// eslint-disable-next-line @typescript-eslint/ban-types
 const enumMaps = new Map<object, Map<unknown, unknown>>();
 
 export function getEnumDescription<T extends string, TEnumValue extends number>(
@@ -171,19 +179,19 @@ export function isValidBitcoinAddress(address: string): boolean {
   try {
     btc.address.toOutputScript(address, btc.networks.bitcoin);
     return true;
-  } catch (e) {
+  } catch (_e) {
     // ignore
   }
   try {
     btc.address.toOutputScript(address, btc.networks.testnet);
     return true;
-  } catch (e) {
+  } catch (_e) {
     // ignore
   }
   try {
     btc.address.toOutputScript(address, btc.networks.regtest);
     return true;
-  } catch (e) {
+  } catch (_e) {
     // ignore
   }
   return false;
@@ -191,17 +199,17 @@ export function isValidBitcoinAddress(address: string): boolean {
 
 export function tryConvertC32ToBtc(address: string): string | false {
   try {
-    const result = stacksToBitcoinAddress(address);
+    const result = codec.stacksToBitcoinAddress(address);
     return result;
-  } catch (e) {
+  } catch (_e) {
     return false;
   }
 }
 
 export function isValidC32Address(stxAddress: string): boolean {
   try {
-    return isValidStacksAddress(stxAddress);
-  } catch (error) {
+    return codec.isValidStacksAddress(stxAddress);
+  } catch (_error) {
     return false;
   }
 }
@@ -294,13 +302,9 @@ export function httpPostRequest(
 
 /** Converts a unix timestamp (in seconds) to an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) string */
 export function unixEpochToIso(timestamp: number): string {
-  try {
-    const date = new Date(timestamp * 1000);
-    const iso = date.toISOString();
-    return iso;
-  } catch (error) {
-    throw error;
-  }
+  const date = new Date(timestamp * 1000);
+  const iso = date.toISOString();
+  return iso;
 }
 
 export function unwrapOptional<T>(
@@ -496,11 +500,12 @@ export function bnsNameCV(name: string): string {
  */
 export function bnsHexValueToName(hex: string): string {
   const tuple = hexToCV(hex) as TupleCV;
-  const name = tuple.data.name as BufferCV;
-  const namespace = tuple.data.namespace as BufferCV;
-  return `${Buffer.from(name.buffer).toString('utf8')}.${Buffer.from(namespace.buffer).toString(
-    'utf8'
-  )}`;
+  const name = tuple.value.name as BufferCV;
+  const namespace = tuple.value.namespace as BufferCV;
+  return `${Buffer.from(name.value, 'hex').toString('utf8')}.${Buffer.from(
+    namespace.value,
+    'hex'
+  ).toString('utf8')}`;
 }
 
 /**
