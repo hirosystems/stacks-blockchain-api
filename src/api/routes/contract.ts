@@ -1,7 +1,6 @@
 import { getPagingQueryLimit, parsePagingQueryInput, ResourceType } from '../pagination.js';
 import { parseDbEvent } from '../controllers/db-controller.js';
 import { handleChainTipCache } from '../controllers/cache-controller.js';
-
 import { FastifyPluginAsync } from 'fastify';
 import { Type, TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
 import { Server } from 'node:http';
@@ -101,9 +100,11 @@ export const ContractRoutes: FastifyPluginAsync<
     {
       preHandler: handleChainTipCache,
       schema: {
+        deprecated: true,
         operationId: 'get_contract_events_by_id',
         summary: 'Get contract events',
-        description: 'Retrieves a list of events that have been triggered by a given `contract_id`',
+        description:
+          '**NOTE:** This endpoint is deprecated in favor of `get_smart_contract_print_events`.\n\nRetrieves a list of events that have been triggered by a given `contract_id`',
         tags: ['Smart Contracts'],
         params: Type.Object({
           contract_id: Type.String({
