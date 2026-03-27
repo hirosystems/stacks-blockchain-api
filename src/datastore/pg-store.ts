@@ -92,6 +92,7 @@ import { getConnectionArgs, getConnectionConfig } from './connection.js';
 import * as path from 'path';
 import { PgStoreV2 } from './pg-store-v2.js';
 import { ENV } from '../env.js';
+import { BlockIdParam } from 'src/api/routes/v2/schemas.js';
 
 export const MIGRATIONS_DIR = path.join(REPO_DIR, 'migrations');
 
