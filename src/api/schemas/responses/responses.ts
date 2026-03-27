@@ -7,7 +7,10 @@ import {
   AddressTransactionWithTransfersSchema,
   InboundStxTransferSchema,
 } from '../entities/addresses.js';
-import { TransactionEventSchema } from '../entities/transaction-events.js';
+import {
+  SmartContractLogTransactionEventSchema,
+  TransactionEventSchema,
+} from '../entities/transaction-events.js';
 import {
   BurnchainRewardSchema,
   BurnchainRewardSlotHolderSchema,
@@ -183,6 +186,13 @@ export type RunFaucetResponse = Static<typeof RunFaucetResponseSchema>;
 
 export const BlockListV2ResponseSchema = PaginatedCursorResponse(NakamotoBlockSchema);
 export type BlockListV2Response = Static<typeof BlockListV2ResponseSchema>;
+
+export const SmartContractLogEventListResponseSchema = PaginatedCursorResponse(
+  SmartContractLogTransactionEventSchema
+);
+export type SmartContractLogEventListResponse = Static<
+  typeof SmartContractLogEventListResponseSchema
+>;
 
 export const BlockSignerSignatureResponseSchema = PaginatedResponse(SignerSignatureSchema);
 export type BlockSignerSignatureResponse = Static<typeof BlockSignerSignatureResponseSchema>;

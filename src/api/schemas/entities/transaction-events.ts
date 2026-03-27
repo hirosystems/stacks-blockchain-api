@@ -24,7 +24,7 @@ const AbstractTransactionEventSchema = Type.Object(
   }
 );
 
-const SmartContractLogTransactionEventSchema = Type.Intersect(
+export const SmartContractLogTransactionEventSchema = Type.Intersect(
   [
     AbstractTransactionEventSchema,
     Type.Object({

@@ -57,6 +57,31 @@ export const BlockCursorParamSchema = Type.String({
   description: 'Cursor for block pagination',
 });
 
+export const TransactionEventCursorParamSchema = Type.String({
+  pattern: '^[0-9]+:[0-9]+:[0-9]+:[0-9]+$',
+  description:
+    'Cursor for transaction event pagination (block_height:microblock_sequence:tx_index:event_index)',
+});
+
+export function parseEventCursor(cursor: string): {
+  block_height: number;
+  microblock_sequence: number;
+  tx_index: number;
+  event_index: number;
+} {
+  const [block_height, microblock_sequence, tx_index, event_index] = cursor.split(':').map(Number);
+  return { block_height, microblock_sequence, tx_index, event_index };
+}
+
+export function buildEventCursor(row: {
+  block_height: number;
+  microblock_sequence: number;
+  tx_index: number;
+  event_index: number;
+}): string {
+  return `${row.block_height}:${row.microblock_sequence}:${row.tx_index}:${row.event_index}`;
+}
+
 export type BlockIdParam =
   | { type: 'height'; height: number }
   | { type: 'hash'; hash: string }
