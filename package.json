@@ -36,7 +36,7 @@
     "test:krypton:rpc": "NODE_ENV=test node --import tsx --test --test-global-setup=./tests/krypton/setup.ts --test-concurrency=1 ./tests/krypton/rpc/**/*.test.ts",
     "generate:git-info": "rimraf .git-info && api-toolkit-git-info",
     "generate:openapi": "tsx ./src/openapi-generator.ts",
-    "generate:client": "openapi-typescript ./docs/openapi.yaml -o ./client/src/generated/schema.d.ts",
+    "generate:client": "openapi-typescript ./openapi.yaml -o ./client/src/generated/schema.d.ts",
     "lint": "npm run lint:eslint && npm run lint:prettier",
     "lint:eslint": "eslint .",
     "lint:prettier": "prettier --check src/**/*.ts",

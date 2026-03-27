@@ -469,7 +469,10 @@ export interface paths {
         };
         /**
          * Get contract events
-         * @description Retrieves a list of events that have been triggered by a given `contract_id`
+         * @deprecated
+         * @description **NOTE:** This endpoint is deprecated in favor of `get_smart_contract_logs`.
+         *
+         *     Retrieves a list of events that have been triggered by a given `contract_id`
          */
         get: operations["get_contract_events_by_id"];
         put?: never;
@@ -1225,6 +1228,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/extended/v2/blocks/at-time/{timestamp}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get block at time
+         * @description Retrieves the most recent block mined at or before a given Unix timestamp (in seconds)
+         */
+        get: operations["get_block_at_time"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/extended/v2/blocks/{height_or_hash}": {
         parameters: {
             query?: never;
@@ -1397,6 +1420,26 @@ export interface paths {
          * @description Retrieves the deployment status of multiple smart contracts.
          */
         get: operations["get_smart_contracts_status"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/extended/v2/smart-contracts/{contract_id}/logs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get smart contract logs
+         * @description Retrieves contract log events for a given smart contract.
+         */
+        get: operations["get_smart_contract_logs"];
         put?: never;
         post?: never;
         delete?: never;
@@ -27539,6 +27582,87 @@ export interface operations {
             };
         };
     };
+    get_block_at_time: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /**
+                 * @description Unix timestamp (in seconds)
+                 * @example 1677731361
+                 */
+                timestamp: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Set to `true` if block corresponds to the canonical chain tip */
+                        canonical: boolean;
+                        /** @description Height of the block */
+                        height: number;
+                        /** @description Hash representing the block */
+                        hash: string;
+                        /** @description Unix timestamp (in seconds) indicating when this block was mined. */
+                        block_time: number;
+                        /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) indicating when this block was mined. */
+                        block_time_iso: string;
+                        /** @description The tenure height (AKA coinbase height) of this block */
+                        tenure_height: number;
+                        /** @description The only hash that can uniquely identify an anchored block or an unconfirmed state trie */
+                        index_block_hash: string;
+                        /** @description Hash of the parent block */
+                        parent_block_hash: string;
+                        /** @description Index block hash of the parent block */
+                        parent_index_block_hash: string;
+                        /** @description Unix timestamp (in seconds) indicating when this block was mined. */
+                        burn_block_time: number;
+                        /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) indicating when this block was mined. */
+                        burn_block_time_iso: string;
+                        /** @description Hash of the anchor chain block */
+                        burn_block_hash: string;
+                        /** @description Height of the anchor chain block */
+                        burn_block_height: number;
+                        /** @description Anchor chain transaction ID */
+                        miner_txid: string;
+                        /** @description Number of transactions included in the block */
+                        tx_count: number;
+                        /** @description Execution cost read count. */
+                        execution_cost_read_count: number;
+                        /** @description Execution cost read length. */
+                        execution_cost_read_length: number;
+                        /** @description Execution cost runtime. */
+                        execution_cost_runtime: number;
+                        /** @description Execution cost write count. */
+                        execution_cost_write_count: number;
+                        /** @description Execution cost write length. */
+                        execution_cost_write_length: number;
+                    };
+                };
+            };
+            /** @description Default Response */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: string;
+                        message?: string;
+                    } & {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
     get_block: {
         parameters: {
             query?: never;
@@ -29417,6 +29541,78 @@ export interface operations {
                             /** @enum {boolean} */
                             found: false;
                         };
+                    };
+                };
+            };
+            /** @description Default Response */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: string;
+                        message?: string;
+                    } & {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
+    get_smart_contract_logs: {
+        parameters: {
+            query?: {
+                /** @description Results per page */
+                limit?: number;
+                /** @description Result offset */
+                offset?: number;
+                /** @description Cursor for transaction event pagination (block_height:microblock_sequence:tx_index:event_index) */
+                cursor?: string;
+            };
+            header?: never;
+            path: {
+                /**
+                 * @description Contract identifier formatted as `<contract_address>.<contract_name>`
+                 * @example SP000000000000000000002Q6VF78.pox-3
+                 */
+                contract_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @example 20 */
+                        limit: number;
+                        /** @example 0 */
+                        offset: number;
+                        /** @example 1 */
+                        total: number;
+                        next_cursor: string | null;
+                        prev_cursor: string | null;
+                        cursor: string | null;
+                        results: ({
+                            event_index: number;
+                        } & {
+                            /** @enum {string} */
+                            event_type: "smart_contract_log";
+                            tx_id: string;
+                            contract_log: {
+                                contract_id: string;
+                                topic: string;
+                                value: {
+                                    hex: string;
+                                    repr: string;
+                                };
+                            };
+                        })[];
                     };
                 };
             };

@@ -104,7 +104,7 @@ export const ContractRoutes: FastifyPluginAsync<
         operationId: 'get_contract_events_by_id',
         summary: 'Get contract events',
         description:
-          '**NOTE:** This endpoint is deprecated in favor of `get_smart_contract_print_events`.\n\nRetrieves a list of events that have been triggered by a given `contract_id`',
+          '**NOTE:** This endpoint is deprecated in favor of `get_smart_contract_logs`.\n\nRetrieves a list of events that have been triggered by a given `contract_id`',
         tags: ['Smart Contracts'],
         params: Type.Object({
           contract_id: Type.String({

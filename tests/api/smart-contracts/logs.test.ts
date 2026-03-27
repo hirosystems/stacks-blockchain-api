@@ -10,7 +10,7 @@ import { STACKS_TESTNET } from '@stacks/network';
 
 const CONTRACT_ID = 'SP000000000000000000002Q6VF78.pox-3';
 
-describe('smart contract print events v2', () => {
+describe('smart contract logs v2', () => {
   let db: PgWriteStore;
   let client: PgSqlClient;
   let api: ApiServer;
@@ -43,7 +43,7 @@ describe('smart contract print events v2', () => {
     await db.update(block);
 
     const { body } = await supertest(api.server).get(
-      `/extended/v2/smart-contracts/${CONTRACT_ID}/print-events`
+      `/extended/v2/smart-contracts/${CONTRACT_ID}/logs`
     );
     assert.equal(body.total, 0);
     assert.equal(body.results.length, 0);
@@ -63,7 +63,7 @@ describe('smart contract print events v2', () => {
     await db.update(block);
 
     const { body } = await supertest(api.server).get(
-      `/extended/v2/smart-contracts/${CONTRACT_ID}/print-events`
+      `/extended/v2/smart-contracts/${CONTRACT_ID}/logs`
     );
     assert.equal(body.total, 1);
     assert.equal(body.results.length, 1);
@@ -99,7 +99,7 @@ describe('smart contract print events v2', () => {
 
     // Total should be 7 events
     const { body: firstPage } = await supertest(api.server).get(
-      `/extended/v2/smart-contracts/${CONTRACT_ID}/print-events?limit=3`
+      `/extended/v2/smart-contracts/${CONTRACT_ID}/logs?limit=3`
     );
     assert.equal(firstPage.total, 7);
     assert.equal(firstPage.results.length, 3);
@@ -115,7 +115,7 @@ describe('smart contract print events v2', () => {
 
     // Navigate to previous page (older events)
     const { body: secondPage } = await supertest(api.server).get(
-      `/extended/v2/smart-contracts/${CONTRACT_ID}/print-events?limit=3&cursor=${firstPage.prev_cursor}`
+      `/extended/v2/smart-contracts/${CONTRACT_ID}/logs?limit=3&cursor=${firstPage.prev_cursor}`
     );
     assert.equal(secondPage.results.length, 3);
     assert.notEqual(secondPage.next_cursor, null);
@@ -123,7 +123,7 @@ describe('smart contract print events v2', () => {
 
     // Navigate to the oldest page
     const { body: thirdPage } = await supertest(api.server).get(
-      `/extended/v2/smart-contracts/${CONTRACT_ID}/print-events?limit=3&cursor=${secondPage.prev_cursor}`
+      `/extended/v2/smart-contracts/${CONTRACT_ID}/logs?limit=3&cursor=${secondPage.prev_cursor}`
     );
     assert.equal(thirdPage.results.length, 1);
     // Oldest page has no prev_cursor
@@ -133,7 +133,7 @@ describe('smart contract print events v2', () => {
 
     // Navigate back to the second page using next_cursor
     const { body: backToSecond } = await supertest(api.server).get(
-      `/extended/v2/smart-contracts/${CONTRACT_ID}/print-events?limit=3&cursor=${thirdPage.next_cursor}`
+      `/extended/v2/smart-contracts/${CONTRACT_ID}/logs?limit=3&cursor=${thirdPage.next_cursor}`
     );
     assert.equal(backToSecond.results.length, 3);
     assert.equal(backToSecond.cursor, secondPage.cursor);
@@ -153,14 +153,14 @@ describe('smart contract print events v2', () => {
     }
 
     const { body: page1 } = await supertest(api.server).get(
-      `/extended/v2/smart-contracts/${CONTRACT_ID}/print-events?limit=2`
+      `/extended/v2/smart-contracts/${CONTRACT_ID}/logs?limit=2`
     );
     assert.equal(page1.results.length, 2);
     assert.notEqual(page1.cursor, null);
 
     // Fetching with the same cursor should return the same page
     const { body: page1Again } = await supertest(api.server).get(
-      `/extended/v2/smart-contracts/${CONTRACT_ID}/print-events?limit=2&cursor=${page1.cursor}`
+      `/extended/v2/smart-contracts/${CONTRACT_ID}/logs?limit=2&cursor=${page1.cursor}`
     );
     assert.equal(page1Again.cursor, page1.cursor);
     assert.equal(page1Again.results.length, page1.results.length);
@@ -179,7 +179,7 @@ describe('smart contract print events v2', () => {
 
     // A cursor far in the future just returns the latest events
     const { body } = await supertest(api.server).get(
-      `/extended/v2/smart-contracts/${CONTRACT_ID}/print-events?cursor=999999:0:0:0`
+      `/extended/v2/smart-contracts/${CONTRACT_ID}/logs?cursor=999999:0:0:0`
     );
     assert.equal(body.total, 1);
     assert.equal(body.results.length, 1);
@@ -199,7 +199,7 @@ describe('smart contract print events v2', () => {
     }
 
     const { body } = await supertest(api.server).get(
-      `/extended/v2/smart-contracts/${CONTRACT_ID}/print-events?limit=10`
+      `/extended/v2/smart-contracts/${CONTRACT_ID}/logs?limit=10`
     );
     assert.equal(body.results.length, 3);
     // Results should be in descending order (newest first)
@@ -224,7 +224,7 @@ describe('smart contract print events v2', () => {
     await db.update(block);
 
     const { body } = await supertest(api.server).get(
-      `/extended/v2/smart-contracts/${CONTRACT_ID}/print-events`
+      `/extended/v2/smart-contracts/${CONTRACT_ID}/logs`
     );
     assert.equal(body.total, 2);
     assert.equal(body.results.length, 2);
@@ -233,7 +233,7 @@ describe('smart contract print events v2', () => {
     }
 
     const { body: otherBody } = await supertest(api.server).get(
-      `/extended/v2/smart-contracts/${otherContract}/print-events`
+      `/extended/v2/smart-contracts/${otherContract}/logs`
     );
     assert.equal(otherBody.total, 1);
     assert.equal(otherBody.results.length, 1);
@@ -255,7 +255,7 @@ describe('smart contract print events v2', () => {
     await db.update(block);
 
     const { body } = await supertest(api.server).get(
-      `/extended/v2/smart-contracts/${CONTRACT_ID}/print-events?limit=2`
+      `/extended/v2/smart-contracts/${CONTRACT_ID}/logs?limit=2`
     );
     assert.equal(body.limit, 2);
     assert.equal(body.total, 5);
@@ -282,7 +282,7 @@ describe('smart contract print events v2', () => {
 
     // Verify total in API matches
     const { body } = await supertest(api.server).get(
-      `/extended/v2/smart-contracts/${CONTRACT_ID}/print-events`
+      `/extended/v2/smart-contracts/${CONTRACT_ID}/logs`
     );
     assert.equal(body.total, 3);
   });
@@ -335,7 +335,7 @@ describe('smart contract print events v2', () => {
     `;
     assert.equal(countResult[0].count, 6);
     let { body } = await supertest(api.server).get(
-      `/extended/v2/smart-contracts/${CONTRACT_ID}/print-events`
+      `/extended/v2/smart-contracts/${CONTRACT_ID}/logs`
     );
     assert.equal(body.total, 6);
     assert.equal(body.results.length, 6);
@@ -386,7 +386,7 @@ describe('smart contract print events v2', () => {
 
     // API should reflect the same total
     ({ body } = await supertest(api.server).get(
-      `/extended/v2/smart-contracts/${CONTRACT_ID}/print-events`
+      `/extended/v2/smart-contracts/${CONTRACT_ID}/logs`
     ));
     assert.equal(body.total, 3);
     assert.equal(body.results.length, 3);

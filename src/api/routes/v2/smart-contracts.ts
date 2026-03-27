@@ -41,13 +41,13 @@ export const SmartContractRoutesV2: FastifyPluginAsync<
   );
 
   fastify.get(
-    '/:contract_id/print-events',
+    '/:contract_id/logs',
     {
       preHandler: handleChainTipCache,
       schema: {
-        operationId: 'get_smart_contract_print_events',
-        summary: 'Get smart contract print events',
-        description: `Retrieves print events (contract log events) for a given smart contract.`,
+        operationId: 'get_smart_contract_logs',
+        summary: 'Get smart contract logs',
+        description: `Retrieves contract log events for a given smart contract.`,
         tags: ['Smart Contracts'],
         params: Type.Object({
           contract_id: Type.String({
