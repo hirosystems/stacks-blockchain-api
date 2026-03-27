@@ -1,3 +1,9 @@
+## [9.0.0-next.21](https://github.com/hirosystems/stacks-blockchain-api/compare/v9.0.0-next.20...v9.0.0-next.21) (2026-03-27)
+
+### Features
+
+* add new endpoint `/extended/v2/blocks/at-time/:timestamp` ([#2511](https://github.com/hirosystems/stacks-blockchain-api/issues/2511)) ([8244716](https://github.com/hirosystems/stacks-blockchain-api/commit/8244716f8641e41599212f626ae4be573882ca04))
+
 ## [9.0.0-next.20](https://github.com/hirosystems/stacks-blockchain-api/compare/v9.0.0-next.19...v9.0.0-next.20) (2026-03-12)
 
 ### Features
