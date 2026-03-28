@@ -172,6 +172,23 @@ describe('PoX tests', () => {
     });
   });
 
+  test('signer_key works without 0x prefix', async () => {
+    await importEventsFromTsv('tests/api/tsv/epoch-3-transition.tsv', 'archival', true, true);
+    const keyNoPrefix = '038e3c4529395611be9abf6fa3b6987e81d402385e3d605a073f42f407565a4a3d';
+
+    const signer = await supertest(api.server).get(
+      `/extended/v2/pox/cycles/14/signers/${keyNoPrefix}`
+    );
+    expect(signer.status).toBe(200);
+    expect(JSON.parse(signer.text).signing_key).toBe(`0x${keyNoPrefix}`);
+
+    const stackers = await supertest(api.server).get(
+      `/extended/v2/pox/cycles/14/signers/${keyNoPrefix}/stackers`
+    );
+    expect(stackers.status).toBe(200);
+    expect(JSON.parse(stackers.text).total).toBe(1);
+  });
+
   describe('regtest-env stack-stx in-reward-phase', () => {
     // TEST CASE
     // steph (STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6) stacks (using signer 029fb154a570a1645af3dd43c3c668a979b59d21a46dd717fd799b13be3b2a0dc7)
