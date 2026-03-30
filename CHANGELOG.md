@@ -1,3 +1,9 @@
+## [9.0.0-next.26](https://github.com/hirosystems/stacks-blockchain-api/compare/v9.0.0-next.25...v9.0.0-next.26) (2026-03-30)
+
+### Bug Fixes
+
+* rename by-block-time endpoint ([75c850e](https://github.com/hirosystems/stacks-blockchain-api/commit/75c850e05bf0b949d8df19ccae95a1f18962e306))
+
 ## [9.0.0-next.25](https://github.com/hirosystems/stacks-blockchain-api/compare/v9.0.0-next.24...v9.0.0-next.25) (2026-03-30)
 
 ### Bug Fixes
