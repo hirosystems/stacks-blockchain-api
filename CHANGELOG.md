@@ -1,3 +1,9 @@
+## [9.0.0-next.24](https://github.com/hirosystems/stacks-blockchain-api/compare/v9.0.0-next.23...v9.0.0-next.24) (2026-03-30)
+
+### Bug Fixes
+
+* coerce old 0/1 boolean env vars to true/false ([5935192](https://github.com/hirosystems/stacks-blockchain-api/commit/59351928d7990aaf9850210c927877f391f338fe))
+
 ## [9.0.0-next.23](https://github.com/hirosystems/stacks-blockchain-api/compare/v9.0.0-next.22...v9.0.0-next.23) (2026-03-27)
 
 ### Bug Fixes
