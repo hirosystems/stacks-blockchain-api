@@ -110,12 +110,12 @@ export const BlockRoutesV2: FastifyPluginAsync<
   );
 
   fastify.get(
-    '/at-time/:timestamp',
+    '/by-block-time/:timestamp',
     {
       preHandler: handleBlockCache,
       schema: {
-        operationId: 'get_block_at_time',
-        summary: 'Get block at time',
+        operationId: 'get_block_by_block_time',
+        summary: 'Get block by block time',
         description: `Retrieves the most recent block mined at or before a given Unix timestamp (in seconds)`,
         tags: ['Blocks'],
         params: BlockTimestampParamsSchema,

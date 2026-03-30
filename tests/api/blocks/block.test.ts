@@ -1270,33 +1270,33 @@ describe('block tests', () => {
     }
 
     // Query with timestamp between block 2 and block 3 => should return block 2
-    const res1 = await supertest(api.server).get(`/extended/v2/blocks/at-time/2500`);
+    const res1 = await supertest(api.server).get(`/extended/v2/blocks/by-block-time/2500`);
     assert.equal(res1.status, 200);
     assert.equal(res1.body.height, 2);
     assert.equal(res1.body.block_time, 2000);
     assert.equal(res1.body.hash, '0x2222222222222222222222222222222222222222222222222222222222222222');
 
     // Exact match: query with timestamp equal to block 3 => should return block 3
-    const res2 = await supertest(api.server).get(`/extended/v2/blocks/at-time/3000`);
+    const res2 = await supertest(api.server).get(`/extended/v2/blocks/by-block-time/3000`);
     assert.equal(res2.status, 200);
     assert.equal(res2.body.height, 3);
     assert.equal(res2.body.block_time, 3000);
 
     // Query with timestamp before all blocks => should return 404
-    const res3 = await supertest(api.server).get(`/extended/v2/blocks/at-time/500`);
+    const res3 = await supertest(api.server).get(`/extended/v2/blocks/by-block-time/500`);
     assert.equal(res3.status, 404);
 
     // Query with very large timestamp => should return most recent block
-    const res4 = await supertest(api.server).get(`/extended/v2/blocks/at-time/999999999`);
+    const res4 = await supertest(api.server).get(`/extended/v2/blocks/by-block-time/999999999`);
     assert.equal(res4.status, 200);
     assert.equal(res4.body.height, 3);
 
     // Invalid timestamp (negative) => should return 400
-    const res5 = await supertest(api.server).get(`/extended/v2/blocks/at-time/-1`);
+    const res5 = await supertest(api.server).get(`/extended/v2/blocks/by-block-time/-1`);
     assert.equal(res5.status, 400);
 
     // Invalid timestamp (non-numeric) => should return 400
-    const res6 = await supertest(api.server).get(`/extended/v2/blocks/at-time/abc`);
+    const res6 = await supertest(api.server).get(`/extended/v2/blocks/by-block-time/abc`);
     assert.equal(res6.status, 400);
   });
 });

@@ -1228,7 +1228,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/extended/v2/blocks/at-time/{timestamp}": {
+    "/extended/v2/blocks/by-block-time/{timestamp}": {
         parameters: {
             query?: never;
             header?: never;
@@ -1236,10 +1236,10 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Get block at time
+         * Get block by block time
          * @description Retrieves the most recent block mined at or before a given Unix timestamp (in seconds)
          */
-        get: operations["get_block_at_time"];
+        get: operations["get_block_by_block_time"];
         put?: never;
         post?: never;
         delete?: never;
@@ -27582,7 +27582,7 @@ export interface operations {
             };
         };
     };
-    get_block_at_time: {
+    get_block_by_block_time: {
         parameters: {
             query?: never;
             header?: never;

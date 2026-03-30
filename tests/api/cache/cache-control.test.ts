@@ -1006,7 +1006,7 @@ describe('cache-control tests', () => {
     assert.equal(request7.text, '');
   });
 
-  test('block at-time cache control', async () => {
+  test('block by-block-time cache control', async () => {
     const blockTime1 = 1700000000;
     const blockTime2 = 1700001000;
 
@@ -1031,7 +1031,7 @@ describe('cache-control tests', () => {
 
     // Valid ETag for timestamp query.
     const request1 = await supertest(api.server).get(
-      `/extended/v2/blocks/at-time/${blockTime2}`
+      `/extended/v2/blocks/by-block-time/${blockTime2}`
     );
     assert.equal(request1.status, 200);
     assert.equal(request1.type, 'application/json');
@@ -1041,21 +1041,21 @@ describe('cache-control tests', () => {
 
     // Cache works with valid ETag.
     const request2 = await supertest(api.server)
-      .get(`/extended/v2/blocks/at-time/${blockTime2}`)
+      .get(`/extended/v2/blocks/by-block-time/${blockTime2}`)
       .set('If-None-Match', etag0);
     assert.equal(request2.status, 304);
     assert.equal(request2.text, '');
 
     // Cache miss with wrong ETag.
     const request3 = await supertest(api.server)
-      .get(`/extended/v2/blocks/at-time/${blockTime2}`)
+      .get(`/extended/v2/blocks/by-block-time/${blockTime2}`)
       .set('If-None-Match', '"0x12345678"');
     assert.equal(request3.status, 200);
     assert.equal(request3.headers['etag'], etag0);
 
     // Timestamp between blocks returns earlier block with different ETag.
     const request4 = await supertest(api.server).get(
-      `/extended/v2/blocks/at-time/${blockTime1 + 500}`
+      `/extended/v2/blocks/by-block-time/${blockTime1 + 500}`
     );
     assert.equal(request4.status, 200);
     assert.equal(request4.body.height, 1);
@@ -1064,7 +1064,7 @@ describe('cache-control tests', () => {
 
     // Cache works for earlier block timestamp.
     const request5 = await supertest(api.server)
-      .get(`/extended/v2/blocks/at-time/${blockTime1 + 500}`)
+      .get(`/extended/v2/blocks/by-block-time/${blockTime1 + 500}`)
       .set('If-None-Match', etag1);
     assert.equal(request5.status, 304);
     assert.equal(request5.text, '');
@@ -1091,7 +1091,7 @@ describe('cache-control tests', () => {
 
     // Old ETag is now a miss after re-org.
     const request6 = await supertest(api.server)
-      .get(`/extended/v2/blocks/at-time/${blockTime2}`)
+      .get(`/extended/v2/blocks/by-block-time/${blockTime2}`)
       .set('If-None-Match', etag0);
     assert.equal(request6.status, 200);
     assert.notEqual(request6.headers['etag'], etag0);
@@ -1099,7 +1099,7 @@ describe('cache-control tests', () => {
 
     // Cache works with new ETag.
     const request7 = await supertest(api.server)
-      .get(`/extended/v2/blocks/at-time/${blockTime2}`)
+      .get(`/extended/v2/blocks/by-block-time/${blockTime2}`)
       .set('If-None-Match', etag2);
     assert.equal(request7.status, 304);
     assert.equal(request7.text, '');
