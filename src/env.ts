@@ -1,5 +1,24 @@
-import { Static, Type } from '@sinclair/typebox';
+import { Static, TObject, Type } from '@sinclair/typebox';
 import envSchema from 'env-schema';
+
+/**
+ * Normalize legacy "0"/"1" env var values to "false"/"true" for all boolean schema properties,
+ * since Ajv's coerceTypes only handles "true"/"false" strings for booleans.
+ */
+function coerceBooleanEnvVars(schema: TObject) {
+  for (const [key, prop] of Object.entries(schema.properties)) {
+    const val = process.env[key];
+    if (val !== '0' && val !== '1') continue;
+    const p = prop as Record<string, unknown>;
+    const isBooleanProp =
+      p.type === 'boolean' ||
+      (Array.isArray(p.anyOf) &&
+        p.anyOf.some((s: unknown) => (s as Record<string, unknown>).type === 'boolean'));
+    if (isBooleanProp) {
+      process.env[key] = val === '1' ? 'true' : 'false';
+    }
+  }
+}
 
 const schema = Type.Object({
   PG_HOST: Type.String({ default: '127.0.0.1' }),
@@ -247,6 +266,7 @@ const schema = Type.Object({
 
 type Env = Static<typeof schema>;
 
+coerceBooleanEnvVars(schema);
 export const ENV = envSchema<Env>({
   schema: schema,
   dotenv: true,
