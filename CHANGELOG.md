@@ -1,3 +1,9 @@
+## [9.0.0-next.25](https://github.com/hirosystems/stacks-blockchain-api/compare/v9.0.0-next.24...v9.0.0-next.25) (2026-03-30)
+
+### Bug Fixes
+
+* rename block time migration ([#2519](https://github.com/hirosystems/stacks-blockchain-api/issues/2519)) ([2b8cf2c](https://github.com/hirosystems/stacks-blockchain-api/commit/2b8cf2cac4993f336182a00d0dbab160705ba197))
+
 ## [9.0.0-next.24](https://github.com/hirosystems/stacks-blockchain-api/compare/v9.0.0-next.23...v9.0.0-next.24) (2026-03-30)
 
 ### Bug Fixes
