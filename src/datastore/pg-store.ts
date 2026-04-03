@@ -4443,15 +4443,18 @@ export class PgStore extends BasePgStore {
 
   /**
    * Retrieves the last transaction IDs with STX, FT or NFT activity for a principal, with or
-   * without mempool transactions.
+   * without mempool transactions. Also returns the current PoX lock state so that ETags
+   * invalidate when STX unlock at a PoX cycle boundary (no transaction is emitted for unlocks).
    * @param includeMempool - include mempool transactions
-   * @returns the last confirmed and mempool transaction IDs for the principal
+   * @returns the last confirmed and mempool transaction IDs for the principal, plus PoX lock state
    */
   async getPrincipalLastActivityTxIds(
     principal: string,
     includeMempool: boolean = false
-  ): Promise<{ confirmed: string | null; mempool: string | null }> {
-    const result = await this.sql<{ confirmed: string | null; mempool: string | null }[]>`
+  ): Promise<{ confirmed: string | null; mempool: string | null; pox_state: string | null }> {
+    const result = await this.sql<
+      { confirmed: string | null; mempool: string | null; pox_state: string | null }[]
+    >`
       SELECT (
           SELECT '0x' || encode(tx_id, 'hex') AS tx_id
           FROM principal_txs
@@ -4474,7 +4477,20 @@ export class PgStore extends BasePgStore {
             )`
             : this.sql`NULL`
         }
-        AS mempool
+        AS mempool,
+        (
+          SELECT CASE
+            WHEN burnchain_unlock_height >= (SELECT burn_block_height FROM chain_tip)
+              AND name != ${SyntheticPoxEventName.HandleUnlock}
+            THEN 'locked'
+            ELSE 'unlocked'
+          END
+          FROM pox4_events
+          WHERE stacker = ${principal}
+            AND canonical = true AND microblock_canonical = true
+          ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
+          LIMIT 1
+        ) AS pox_state
     `;
     return result[0];
   }
