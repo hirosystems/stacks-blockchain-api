@@ -1,3 +1,9 @@
+## [9.0.0-next.27](https://github.com/hirosystems/stacks-blockchain-api/compare/v9.0.0-next.26...v9.0.0-next.27) (2026-04-03)
+
+### Bug Fixes
+
+* include pox unlocks in principal etag calculations ([#2520](https://github.com/hirosystems/stacks-blockchain-api/issues/2520)) ([6db395a](https://github.com/hirosystems/stacks-blockchain-api/commit/6db395a63b90dae75c81d718f6649a1b5c0414b7))
+
 ## [9.0.0-next.26](https://github.com/hirosystems/stacks-blockchain-api/compare/v9.0.0-next.25...v9.0.0-next.26) (2026-03-30)
 
 ### Bug Fixes
