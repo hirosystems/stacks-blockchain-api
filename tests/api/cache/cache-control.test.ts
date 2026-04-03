@@ -17,6 +17,7 @@ import { beforeEach, afterEach, describe, test } from 'node:test';
 import assert from 'node:assert/strict';
 import { assertMatchesObject } from '../test-helpers.ts';
 import { STACKS_TESTNET } from '@stacks/network';
+import { SyntheticPoxEventName } from '../../../src/pox-helpers.ts';
 
 describe('cache-control tests', () => {
   let db: PgWriteStore;
@@ -1101,6 +1102,118 @@ describe('cache-control tests', () => {
     const request7 = await supertest(api.server)
       .get(`/extended/v2/blocks/by-block-time/${blockTime2}`)
       .set('If-None-Match', etag2);
+    assert.equal(request7.status, 304);
+    assert.equal(request7.text, '');
+  });
+
+  test('principal cache control invalidates on PoX STX unlock', async () => {
+    const stacker = 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6';
+    const url = `/extended/v2/addresses/${stacker}/transactions`;
+
+    // Block 1: initial block, no stacking activity.
+    await db.update(
+      new TestBlockBuilder({
+        block_height: 1,
+        index_block_hash: '0x01',
+        parent_index_block_hash: '0x00',
+        burn_block_height: 100,
+      }).build()
+    );
+
+    const request1 = await supertest(api.server).get(url);
+    assert.equal(request1.status, 200);
+    const etag0 = request1.headers['etag'];
+
+    // Block 2: stacker locks STX via stack-stx, unlocking at burn height 200.
+    const block2 = new TestBlockBuilder({
+      block_height: 2,
+      index_block_hash: '0x02',
+      parent_index_block_hash: '0x01',
+      burn_block_height: 100,
+    }).addTx({ tx_id: '0x0001', sender_address: stacker });
+    block2.txData.pox4Events.push({
+      event_index: 0,
+      tx_id: '0x0001',
+      tx_index: 0,
+      block_height: 2,
+      canonical: true,
+      stacker: stacker,
+      locked: 1000n,
+      balance: 5000n,
+      burnchain_unlock_height: 200n,
+      pox_addr: null,
+      pox_addr_raw: null,
+      name: SyntheticPoxEventName.StackStx,
+      data: {
+        lock_amount: 1000n,
+        lock_period: 1n,
+        start_burn_height: 100n,
+        unlock_burn_height: 200n,
+        signer_key: '0x0011223344',
+        end_cycle_id: null,
+        start_cycle_id: null,
+      },
+    });
+    await db.update(block2.build());
+
+    // ETag changed due to the new transaction.
+    const request2 = await supertest(api.server).get(url);
+    assert.equal(request2.status, 200);
+    const etag1 = request2.headers['etag'];
+    assert.notEqual(etag1, etag0);
+
+    // Cache works with current ETag.
+    const request3 = await supertest(api.server).get(url).set('If-None-Match', etag1);
+    assert.equal(request3.status, 304);
+    assert.equal(request3.text, '');
+
+    // Block 3: chain advances, burn height still below unlock — no new tx for stacker.
+    await db.update(
+      new TestBlockBuilder({
+        block_height: 3,
+        index_block_hash: '0x03',
+        parent_index_block_hash: '0x02',
+        burn_block_height: 150,
+      }).build()
+    );
+
+    // Cache still works: pox_state is still 'locked', no new activity.
+    const request4 = await supertest(api.server).get(url).set('If-None-Match', etag1);
+    assert.equal(request4.status, 304);
+    assert.equal(request4.text, '');
+
+    // Block 4: burn height crosses unlock threshold — STX are now unlocked.
+    await db.update(
+      new TestBlockBuilder({
+        block_height: 4,
+        index_block_hash: '0x04',
+        parent_index_block_hash: '0x03',
+        burn_block_height: 201,
+      }).build()
+    );
+
+    // Cache is now a miss because pox_state changed from 'locked' to 'unlocked'.
+    const request5 = await supertest(api.server).get(url).set('If-None-Match', etag1);
+    assert.equal(request5.status, 200);
+    const etag2 = request5.headers['etag'];
+    assert.notEqual(etag2, etag1);
+
+    // New ETag works.
+    const request6 = await supertest(api.server).get(url).set('If-None-Match', etag2);
+    assert.equal(request6.status, 304);
+    assert.equal(request6.text, '');
+
+    // Block 5: chain advances further, no new activity — ETag stays stable.
+    await db.update(
+      new TestBlockBuilder({
+        block_height: 5,
+        index_block_hash: '0x05',
+        parent_index_block_hash: '0x04',
+        burn_block_height: 250,
+      }).build()
+    );
+
+    const request7 = await supertest(api.server).get(url).set('If-None-Match', etag2);
     assert.equal(request7.status, 304);
     assert.equal(request7.text, '');
   });

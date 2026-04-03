@@ -149,7 +149,9 @@ async function calculateETag(
           etagType == ETagType.principalMempool
         );
         if (!activity.confirmed && !activity.mempool) return ETAG_EMPTY;
-        return sha256(`${activity.confirmed ?? ''}:${activity.mempool ?? ''}`);
+        return sha256(
+          `${activity.confirmed ?? ''}:${activity.mempool ?? ''}:${activity.pox_state ?? ''}`
+        );
       }
     }
   } catch (error) {
