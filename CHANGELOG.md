@@ -1,3 +1,9 @@
+## [8.15.2](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.15.1...v8.15.2) (2026-04-14)
+
+### Bug Fixes
+
+* optimize etag generation for principal activity ([#2525](https://github.com/hirosystems/stacks-blockchain-api/issues/2525)) ([560d27f](https://github.com/hirosystems/stacks-blockchain-api/commit/560d27fda4953a16a32744668883720442ca5fee))
+
 ## [8.15.1](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.15.0...v8.15.1) (2026-03-25)
 
 ### Bug Fixes
