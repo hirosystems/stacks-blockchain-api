@@ -4487,10 +4487,27 @@ export class PgStore extends BasePgStore {
         UNION
         (
           SELECT '0x' || encode(tx_id, 'hex') AS tx_id
-          FROM nft_events
-          WHERE (sender = ${principal} OR recipient = ${principal})
-            AND canonical = true
-            AND microblock_canonical = true
+          FROM (
+            (
+              SELECT tx_id, block_height, microblock_sequence, tx_index, event_index
+              FROM nft_events
+              WHERE sender = ${principal}
+                AND canonical = true
+                AND microblock_canonical = true
+              ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
+              LIMIT 1
+            )
+            UNION ALL
+            (
+              SELECT tx_id, block_height, microblock_sequence, tx_index, event_index
+              FROM nft_events
+              WHERE recipient = ${principal}
+                AND canonical = true
+                AND microblock_canonical = true
+              ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
+              LIMIT 1
+            )
+          ) AS combined
           ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
           LIMIT 1
         )
