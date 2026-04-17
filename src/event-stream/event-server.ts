@@ -72,8 +72,11 @@ async function handleRawEventRequest(
   payload: any,
   db: PgWriteStore
 ): Promise<void> {
-  if (!ENV.STACKS_API_STORE_RAW_EVENTS) return;
-  await db.storeRawEventRequest(eventPath, payload);
+  if (ENV.STACKS_API_STORE_RAW_EVENTS) {
+    await db.storeRawEventRequest(eventPath, payload);
+  } else {
+    await db.updateEventObserverTimestamp(eventPath);
+  }
 }
 
 async function handleBurnBlockMessage(

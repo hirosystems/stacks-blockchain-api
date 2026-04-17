@@ -194,6 +194,15 @@ export class PgWriteStore extends PgStore {
     return store;
   }
 
+  async updateEventObserverTimestamp(eventPath: string): Promise<void> {
+    await this.sql`
+      INSERT INTO event_observer_timestamps (id, receive_timestamp, event_path)
+      VALUES (0, NOW(), ${eventPath})
+      ON CONFLICT (event_path) DO UPDATE SET
+        receive_timestamp = EXCLUDED.receive_timestamp
+    `;
+  }
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   async storeRawEventRequest(eventPath: string, payload: any): Promise<void> {
     if (eventPath === '/new_block' && typeof payload === 'object') {
