@@ -1,3 +1,9 @@
+## [9.0.0-next.28](https://github.com/hirosystems/stacks-blockchain-api/compare/v9.0.0-next.27...v9.0.0-next.28) (2026-04-17)
+
+### Bug Fixes
+
+* write event_observer_timestamps even if raw request writes are disabled ([#2532](https://github.com/hirosystems/stacks-blockchain-api/issues/2532)) ([fbb7977](https://github.com/hirosystems/stacks-blockchain-api/commit/fbb797711af7f61de8dd191b54070b6a13708632))
+
 ## [9.0.0-next.27](https://github.com/hirosystems/stacks-blockchain-api/compare/v9.0.0-next.26...v9.0.0-next.27) (2026-04-03)
 
 ### Bug Fixes
