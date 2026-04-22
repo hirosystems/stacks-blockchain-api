@@ -1,3 +1,9 @@
+## [8.15.3](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.15.2...v8.15.3) (2026-04-22)
+
+### Bug Fixes
+
+* upgrade fastify http proxy ([#2534](https://github.com/hirosystems/stacks-blockchain-api/issues/2534)) ([20ee86a](https://github.com/hirosystems/stacks-blockchain-api/commit/20ee86a945d810d824559a6854934eb9b8b2b22f))
+
 ## [8.15.2](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.15.1...v8.15.2) (2026-04-14)
 
 ### Bug Fixes
