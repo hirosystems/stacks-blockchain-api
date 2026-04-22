@@ -61,7 +61,7 @@
   "dependencies": {
     "@fastify/cors": "11.2.0",
     "@fastify/formbody": "8.0.2",
-    "@fastify/http-proxy": "11.4.1",
+    "@fastify/http-proxy": "11.4.4",
     "@fastify/type-provider-typebox": "5.2.0",
     "@sinclair/typebox": "0.34.48",
     "@stacks/api-toolkit": "1.12.2",
