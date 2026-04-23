@@ -1,10 +1,9 @@
 import { connectPostgres, timeout } from '@stacks/api-toolkit';
-import type { ContainerConfig } from '../docker-container.ts';
-import { runDown, runLogs, runUp } from '../docker-container.ts';
+import { dockerTestDown, dockerTestUp, type DockerTestContainerConfig } from '@stacks/api-test-toolkit';
 import { createClient } from 'redis';
 
-function snpContainers(): ContainerConfig[] {
-  const postgres: ContainerConfig = {
+function snpContainers(): DockerTestContainerConfig[] {
+  const postgres: DockerTestContainerConfig = {
     image: 'postgres:17',
     name: `stacks-api-test-snp-postgres`,
     host: '0.0.0.0',
@@ -18,7 +17,7 @@ function snpContainers(): ContainerConfig[] {
     healthcheck: 'cat /ready.txt && pg_isready -U postgres',
   };
 
-  const redis: ContainerConfig = {
+  const redis: DockerTestContainerConfig = {
     image: 'redis:7',
     name: `stacks-api-test-snp-redis`,
     host: '0.0.0.0',
@@ -26,7 +25,7 @@ function snpContainers(): ContainerConfig[] {
     waitPort: 6379,
   };
 
-  const snp: ContainerConfig = {
+  const snp: DockerTestContainerConfig = {
     image: 'ghcr.io/stx-labs/stacks-node-publisher:latest',
     name: `stacks-api-test-snp`,
     ports: [{ host: 3022, container: 3022 }],
@@ -113,7 +112,7 @@ async function waitForSNP(): Promise<void> {
 export async function globalSetup() {
   const containers = snpContainers();
   for (const config of containers) {
-    await runUp(config);
+    await dockerTestUp({ config });
   }
   await waitForPostgres();
   await waitForRedis();
@@ -124,7 +123,7 @@ export async function globalSetup() {
 export async function globalTeardown() {
   const containers = snpContainers();
   for (const config of [...containers].reverse()) {
-    await runDown(config);
+    await dockerTestDown({ config });
   }
   process.stdout.write(`[testenv:snp] all containers removed\n`);
 }
