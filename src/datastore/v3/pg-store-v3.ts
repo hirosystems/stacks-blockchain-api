@@ -1,7 +1,8 @@
 import { BasePgStoreModule } from '@stacks/api-toolkit';
-import { DbCursorPaginatedResult } from '../common.js';
-import { DbTransaction, DbTransactionSummary } from './types.js';
+import { DbCursorPaginatedResult, DbEventTypeId } from '../common.js';
+import { DbTransaction, DbTransactionEvent, DbTransactionSummary } from './types.js';
 import { InvalidRequestError, InvalidRequestErrorType } from '../../errors.js';
+import { TransactionLimitParamSchema } from 'src/api/routes/v2/schemas.js';
 
 type TransactionSummaryQueryResult = DbTransactionSummary & {
   microblock_sequence: number;
@@ -71,23 +72,10 @@ export class PgStoreV3 extends BasePgStoreModule {
       let cursorFilter = sql``;
       if (args.cursor) {
         const parts = args.cursor.split(':');
-        if (parts.length !== 3) {
-          throw new InvalidRequestError(
-            'Invalid cursor format',
-            InvalidRequestErrorType.invalid_param
-          );
-        }
         const [blockHeightStr, microblockSequenceStr, txIndexStr] = parts;
         const blockHeight = parseInt(blockHeightStr, 10);
         const microblockSequence = parseInt(microblockSequenceStr, 10);
         const txIndex = parseInt(txIndexStr, 10);
-        if (isNaN(blockHeight) || isNaN(microblockSequence) || isNaN(txIndex)) {
-          throw new InvalidRequestError(
-            'Invalid cursor format',
-            InvalidRequestErrorType.invalid_param
-          );
-        }
-
         cursorFilter = sql`
           AND (block_height, microblock_sequence, tx_index)
               <= (${blockHeight}, ${microblockSequence}, ${txIndex})
@@ -169,5 +157,85 @@ export class PgStoreV3 extends BasePgStoreModule {
     `;
     if (result.length === 0) return null;
     return result[0];
+  }
+
+  async getTransactionEvents(args: {
+    txId: string;
+    limit: number;
+    cursor?: string;
+  }): Promise<DbCursorPaginatedResult<DbTransactionEvent>> {
+    return await this.sqlTransaction(async sql => {
+      const limit = args.limit ?? TransactionLimitParamSchema.default;
+      const txCheck = await sql<{ event_count: number }[]>`
+        SELECT event_count
+        FROM txs
+        WHERE tx_id = ${args.txId} AND canonical = true AND microblock_canonical = true
+        LIMIT 1
+      `;
+      if (txCheck.count === 0)
+        throw new InvalidRequestError(
+          `Transaction not found`,
+          InvalidRequestErrorType.invalid_param
+        );
+
+      let cursorFilter = sql``;
+      if (args.cursor) {
+        cursorFilter = sql`AND event_index >= ${parseInt(args.cursor, 10)}`;
+      }
+
+      const eventCond = sql`
+        canonical = true AND microblock_canonical = true AND tx_id = ${args.txId} ${cursorFilter}
+      `;
+      const resultQuery = await sql<DbTransactionEvent[]>`
+        WITH events AS (
+          (
+            SELECT
+              sender, recipient, event_index, amount, NULL as asset_identifier,
+              NULL::bytea as value, ${DbEventTypeId.StxAsset}::int as event_type_id,
+              asset_event_type_id
+            FROM stx_events
+            WHERE ${eventCond}
+          )
+          UNION
+          (
+            SELECT
+              sender, recipient, event_index, amount, asset_identifier, NULL::bytea as value,
+              ${DbEventTypeId.FungibleTokenAsset}::int as event_type_id, asset_event_type_id
+            FROM ft_events
+            WHERE ${eventCond}
+          )
+          UNION
+          (
+            SELECT
+              sender, recipient, event_index, 0 as amount, asset_identifier, value,
+              ${DbEventTypeId.NonFungibleTokenAsset}::int as event_type_id, asset_event_type_id
+            FROM nft_events
+            WHERE ${eventCond}
+          )
+        )
+        SELECT *
+        FROM events
+        ORDER BY event_index ASC
+        LIMIT ${limit + 1}
+      `;
+      const hasNextPage = resultQuery.count > limit;
+      const results = hasNextPage ? resultQuery.slice(0, limit) : resultQuery;
+      const firstResult = results[0];
+      const extraResult = hasNextPage ? resultQuery[limit] : null;
+      const prevCursor =
+        firstResult && firstResult.event_index > 0
+          ? Math.max(firstResult.event_index - limit, 0).toString()
+          : null;
+
+      return {
+        total: txCheck[0].event_count,
+        limit,
+        offset: 0,
+        next_cursor: extraResult ? extraResult.event_index.toString() : null,
+        prev_cursor: prevCursor,
+        current_cursor: firstResult ? firstResult.event_index.toString() : null,
+        results,
+      };
+    });
   }
 }

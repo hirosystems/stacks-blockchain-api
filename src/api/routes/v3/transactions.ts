@@ -62,8 +62,8 @@ export const V3TransactionsRoutes: FastifyPluginAsync<
     {
       preHandler: handleTransactionCache,
       schema: {
-        operationId: 'get_transaction_details',
-        summary: 'Get transaction details',
+        operationId: 'get_transaction_by_id',
+        summary: 'Get transaction',
         description: `Retrieves details for a given transaction ID`,
         tags: ['Transactions'],
         params: Type.Object({
@@ -82,6 +82,44 @@ export const V3TransactionsRoutes: FastifyPluginAsync<
       }
       const result = parseDbTransaction(transaction);
       await reply.send(result);
+    }
+  );
+
+  fastify.get(
+    '/:tx_id/events',
+    {
+      preHandler: handleTransactionCache,
+      schema: {
+        operationId: 'get_transaction_events',
+        summary: 'Get transaction events',
+        description: `Retrieves events for a given transaction ID`,
+        tags: ['Transactions'],
+        params: Type.Object({
+          tx_id: TransactionIdParamSchema,
+        }),
+        querystring: Type.Object({
+          limit: LimitParam(ResourceType.Event),
+          cursor: Type.Optional(
+            Type.String({
+              pattern: '^\\d+$',
+              description: 'Cursor for transaction event pagination',
+            })
+          ),
+        }),
+      },
+    },
+    async (req, reply) => {
+      const { tx_id } = req.params;
+      const query = req.query;
+      const events = await fastify.db.v3.getTransactionEvents({
+        txId: tx_id,
+        limit: getPagingQueryLimit(ResourceType.Event, query.limit),
+        cursor: query.cursor,
+      });
+      if (query.cursor && !events.current_cursor) {
+        throw new NotFoundError('Cursor not found');
+      }
+      await reply.send(events);
     }
   );
 
