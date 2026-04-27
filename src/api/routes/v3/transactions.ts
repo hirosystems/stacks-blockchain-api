@@ -8,7 +8,11 @@ import { getPagingQueryLimit, ResourceType } from '../../pagination.js';
 import { PaginatedCursorResponse } from '../../schemas/util.js';
 import { TransactionSummarySchema } from '../../schemas/entities/transaction-summaries.js';
 import { LimitParam } from '../../schemas/params.js';
-import { BlockCursorParamSchema } from '../v2/schemas.js';
+
+const TransactionSummaryCursorParamSchema = Type.String({
+  pattern: '^\\d+:\\d+:\\d+$',
+  description: 'Cursor for transaction summary pagination',
+});
 
 export const V3TransactionsRoutes: FastifyPluginAsync<
   Record<never, never>,
@@ -26,7 +30,7 @@ export const V3TransactionsRoutes: FastifyPluginAsync<
         tags: ['Transactions'],
         querystring: Type.Object({
           limit: LimitParam(ResourceType.Tx),
-          cursor: Type.Optional(BlockCursorParamSchema),
+          cursor: Type.Optional(TransactionSummaryCursorParamSchema),
         }),
         response: {
           200: PaginatedCursorResponse(TransactionSummarySchema),
