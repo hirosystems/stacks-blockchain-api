@@ -1,5 +1,5 @@
 import { Static, Type } from '@sinclair/typebox';
-import { Nullable } from '../util.js';
+import { Nullable } from '../../util.js';
 
 const TransactionSenderSchema = Type.Object({
   address: Type.String({
@@ -10,7 +10,7 @@ const TransactionSenderSchema = Type.Object({
   }),
 });
 
-const TenureChangeCauseSchema = Type.Union(
+export const TenureChangeCauseSchema = Type.Union(
   [
     Type.Literal('block_found'),
     Type.Literal('extended'),
@@ -36,7 +36,7 @@ const TransactionSummaryStatusSchema = Type.Union(
 );
 export type TransactionSummaryStatus = Static<typeof TransactionSummaryStatusSchema>;
 
-const BaseTransactionSummarySchema = Type.Object({
+export const BaseTransactionSummarySchema = Type.Object({
   tx_id: Type.String({
     description: 'Transaction ID',
   }),

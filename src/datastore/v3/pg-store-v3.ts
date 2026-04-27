@@ -1,6 +1,6 @@
 import { BasePgStoreModule } from '@stacks/api-toolkit';
 import { DbCursorPaginatedResult } from '../common.js';
-import { DbTransactionSummary } from './types.js';
+import { DbTransaction, DbTransactionSummary } from './types.js';
 import { InvalidRequestError, InvalidRequestErrorType } from '../../errors.js';
 
 type TransactionSummaryQueryResult = DbTransactionSummary & {
@@ -8,8 +8,62 @@ type TransactionSummaryQueryResult = DbTransactionSummary & {
   total: number;
 };
 
+const TX_SUMMARY_COLUMNS = [
+  'tx_id',
+  'sender_address',
+  'sponsor_address',
+  'sponsor_nonce',
+  'nonce',
+  'fee_rate',
+  'block_height',
+  'block_hash',
+  'index_block_hash',
+  'block_time',
+  'tx_index',
+  'tenure_height',
+  'microblock_sequence',
+  'burn_block_height',
+  'burn_block_time',
+  'canonical',
+  'status',
+  'type_id',
+  'token_transfer_recipient_address',
+  'token_transfer_amount',
+  'token_transfer_memo',
+  'smart_contract_clarity_version',
+  'smart_contract_contract_id',
+  'contract_call_contract_id',
+  'contract_call_function_name',
+  'coinbase_alt_recipient',
+  'tenure_change_cause',
+];
+
+const TX_COLUMNS = [
+  ...TX_SUMMARY_COLUMNS,
+  'parent_block_hash',
+  'parent_index_block_hash',
+  'post_conditions',
+  'event_count',
+  'execution_cost_read_count',
+  'execution_cost_read_length',
+  'execution_cost_runtime',
+  'execution_cost_write_count',
+  'execution_cost_write_length',
+  'vm_error',
+  'smart_contract_source_code',
+  'contract_call_function_args',
+  'coinbase_payload',
+  'coinbase_vrf_proof',
+  'tenure_change_tenure_consensus_hash',
+  'tenure_change_prev_tenure_consensus_hash',
+  'tenure_change_burn_view_consensus_hash',
+  'tenure_change_previous_tenure_end',
+  'tenure_change_previous_tenure_blocks',
+  'tenure_change_pubkey_hash',
+];
+
 export class PgStoreV3 extends BasePgStoreModule {
-  async getTransactionSummaries(args: {
+  async getTransactionSummaryList(args: {
     limit: number;
     cursor?: string;
   }): Promise<DbCursorPaginatedResult<DbTransactionSummary>> {
@@ -45,12 +99,7 @@ export class PgStoreV3 extends BasePgStoreModule {
           SELECT tx_count FROM chain_tip
         )
         SELECT
-          tx_id, sender_address, sponsor_address, sponsor_nonce, nonce, fee_rate,
-          block_height, block_hash, index_block_hash, block_time, tx_index, tenure_height,
-          microblock_sequence, burn_block_height, burn_block_time, canonical, status, type_id,
-          token_transfer_recipient_address, token_transfer_amount, token_transfer_memo,
-          smart_contract_clarity_version, smart_contract_contract_id, contract_call_contract_id,
-          contract_call_function_name, coinbase_alt_recipient, tenure_change_cause,
+          ${sql(TX_SUMMARY_COLUMNS)},
           (SELECT total FROM total)::int AS total
         FROM txs
         WHERE canonical = true
@@ -110,5 +159,15 @@ export class PgStoreV3 extends BasePgStoreModule {
         results,
       };
     });
+  }
+
+  async getTransaction(args: { txId: string }): Promise<DbTransaction | null> {
+    const result = await this.sql<DbTransaction[]>`
+      SELECT ${this.sql(TX_COLUMNS)}
+      FROM txs
+      WHERE tx_id = ${args.txId} AND canonical = true AND microblock_canonical = true
+    `;
+    if (result.length === 0) return null;
+    return result[0];
   }
 }

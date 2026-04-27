@@ -1,13 +1,14 @@
-import { handleChainTipCache } from '../../controllers/cache-controller.js';
-import { parseDbTransactionSummary } from './helpers.js';
+import { handleChainTipCache, handleTransactionCache } from '../../controllers/cache-controller.js';
+import { parseDbTransaction, parseDbTransactionSummary } from '../../serializers/transactions.js';
 import { NotFoundError } from '../../../errors.js';
 import { FastifyPluginAsync } from 'fastify';
 import { Type, TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
 import { Server } from 'node:http';
 import { getPagingQueryLimit, ResourceType } from '../../pagination.js';
 import { PaginatedCursorResponse } from '../../schemas/util.js';
-import { TransactionSummarySchema } from '../../schemas/entities/transaction-summaries.js';
-import { LimitParam } from '../../schemas/params.js';
+import { TransactionSummarySchema } from '../../schemas/entities/v3/transaction-summaries.js';
+import { LimitParam, TransactionIdParamSchema } from '../../schemas/params.js';
+import { TransactionSchema } from 'src/api/schemas/entities/v3/transactions.js';
 
 const TransactionSummaryCursorParamSchema = Type.String({
   pattern: '^\\d+:\\d+:\\d+$',
@@ -40,7 +41,7 @@ export const V3TransactionsRoutes: FastifyPluginAsync<
     async (req, reply) => {
       const query = req.query;
       const limit = getPagingQueryLimit(ResourceType.Tx, req.query.limit);
-      const results = await fastify.db.v3.getTransactionSummaries({ ...query, limit });
+      const results = await fastify.db.v3.getTransactionSummaryList({ ...query, limit });
       if (query.cursor && !results.current_cursor) {
         throw new NotFoundError('Cursor not found');
       }
@@ -53,6 +54,34 @@ export const V3TransactionsRoutes: FastifyPluginAsync<
         cursor: results.current_cursor,
         results: results.results.map(r => parseDbTransactionSummary(r)),
       });
+    }
+  );
+
+  fastify.get(
+    '/:tx_id',
+    {
+      preHandler: handleTransactionCache,
+      schema: {
+        operationId: 'get_transaction_details',
+        summary: 'Get transaction details',
+        description: `Retrieves details for a given transaction ID`,
+        tags: ['Transactions'],
+        params: Type.Object({
+          tx_id: TransactionIdParamSchema,
+        }),
+        response: {
+          200: TransactionSchema,
+        },
+      },
+    },
+    async (req, reply) => {
+      const { tx_id } = req.params;
+      const transaction = await fastify.db.v3.getTransaction({ txId: tx_id });
+      if (!transaction) {
+        throw new NotFoundError('Transaction not found');
+      }
+      const result = parseDbTransaction(transaction);
+      await reply.send(result);
     }
   );
 
