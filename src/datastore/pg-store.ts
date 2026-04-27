@@ -93,6 +93,7 @@ import * as path from 'path';
 import { PgStoreV2 } from './pg-store-v2.js';
 import { ENV } from '../env.js';
 import { BlockIdParam } from 'src/api/routes/v2/schemas.js';
+import { PgStoreV3 } from './v3/pg-store-v3.js';
 
 export const MIGRATIONS_DIR = path.join(REPO_DIR, 'migrations');
 
@@ -104,6 +105,7 @@ export const MIGRATIONS_DIR = path.join(REPO_DIR, 'migrations');
  */
 export class PgStore extends BasePgStore {
   readonly v2: PgStoreV2;
+  readonly v3: PgStoreV3;
   readonly eventEmitter: PgStoreEventEmitter;
   readonly notifier?: PgNotifier;
 
@@ -112,6 +114,7 @@ export class PgStore extends BasePgStore {
     this.notifier = notifier;
     this.eventEmitter = new PgStoreEventEmitter();
     this.v2 = new PgStoreV2(this);
+    this.v3 = new PgStoreV3(this);
   }
 
   static async connect({

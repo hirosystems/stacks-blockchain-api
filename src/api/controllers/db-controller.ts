@@ -137,7 +137,7 @@ function getTxAnchorModeString(anchorMode: number): TransactionAnchorModeType {
   }
 }
 
-function getTxTenureChangeCauseString(cause: number) {
+export function getTxTenureChangeCauseString(cause: number) {
   switch (cause) {
     case 0:
       return 'block_found';
