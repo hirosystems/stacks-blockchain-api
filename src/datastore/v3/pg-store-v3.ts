@@ -101,10 +101,10 @@ export class PgStoreV3 extends BasePgStoreModule {
       const results = hasNextPage ? resultQuery.slice(0, args.limit) : resultQuery;
       const total = resultQuery.count > 0 ? resultQuery[0].total : 0;
 
-      const lastResult = resultQuery[resultQuery.length - 1];
-      const prevCursor =
-        hasNextPage && lastResult
-          ? `${lastResult.block_height}:${lastResult.microblock_sequence}:${lastResult.tx_index}`
+      const nextResult = resultQuery[resultQuery.length - 1];
+      const nextCursor =
+        hasNextPage && nextResult
+          ? `${nextResult.block_height}:${nextResult.microblock_sequence}:${nextResult.tx_index}`
           : null;
 
       const firstResult = results[0];
@@ -112,9 +112,9 @@ export class PgStoreV3 extends BasePgStoreModule {
         ? `${firstResult.block_height}:${firstResult.microblock_sequence}:${firstResult.tx_index}`
         : null;
 
-      let nextCursor: string | null = null;
+      let prevCursor: string | null = null;
       if (firstResult) {
-        const prevQuery = await sql<
+        const prevPageQuery = await sql<
           { block_height: number; microblock_sequence: number; tx_index: number }[]
         >`
           SELECT block_height, microblock_sequence, tx_index
@@ -131,9 +131,9 @@ export class PgStoreV3 extends BasePgStoreModule {
           OFFSET ${args.limit - 1}
           LIMIT 1
         `;
-        if (prevQuery.length > 0) {
-          const prev = prevQuery[0];
-          nextCursor = `${prev.block_height}:${prev.microblock_sequence}:${prev.tx_index}`;
+        if (prevPageQuery.length > 0) {
+          const prevPage = prevPageQuery[0];
+          prevCursor = `${prevPage.block_height}:${prevPage.microblock_sequence}:${prevPage.tx_index}`;
         }
       }
 

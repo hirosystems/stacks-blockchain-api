@@ -15,13 +15,13 @@ const TransactionSummaryCursorParamSchema = Type.String({
   description: 'Cursor for transaction summary pagination',
 });
 
-export const V3TransactionsRoutes: FastifyPluginAsync<
+export const TransactionRoutes: FastifyPluginAsync<
   Record<never, never>,
   Server,
   TypeBoxTypeProvider
 > = async fastify => {
   fastify.get(
-    '/',
+    '/transactions',
     {
       preHandler: handleChainTipCache,
       schema: {
@@ -58,7 +58,7 @@ export const V3TransactionsRoutes: FastifyPluginAsync<
   );
 
   fastify.get(
-    '/:tx_id',
+    '/transactions/:tx_id',
     {
       preHandler: handleTransactionCache,
       schema: {
@@ -86,7 +86,7 @@ export const V3TransactionsRoutes: FastifyPluginAsync<
   );
 
   fastify.get(
-    '/:tx_id/events',
+    '/transactions/:tx_id/events',
     {
       preHandler: handleTransactionCache,
       schema: {
