@@ -80,6 +80,7 @@
     "env-schema": "7.0.0",
     "fastify": "5.8.2",
     "fastify-metrics": "12.1.0",
+    "fastify-plugin": "5.1.0",
     "getopts": "2.3.0",
     "ioredis": "5.10.1",
     "jsonrpc-lite": "2.2.0",
