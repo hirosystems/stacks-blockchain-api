@@ -107,6 +107,12 @@ const MEMPOOL_TX_COLUMNS = [
   'tenure_change_pubkey_hash',
 ];
 
+function encodeMempoolTxSummaryCursor(
+  tx: Pick<DbMempoolTransactionSummary, 'receipt_time' | 'tx_id'>
+) {
+  return `${tx.receipt_time}:${tx.tx_id}`;
+}
+
 export class PgStoreV3 extends BasePgStoreModule {
   async getTransactionSummaryList(args: {
     limit: number;
@@ -198,24 +204,56 @@ export class PgStoreV3 extends BasePgStoreModule {
     cursor?: string;
   }): Promise<DbCursorPaginatedResult<DbMempoolTransactionSummary>> {
     return await this.sqlTransaction(async sql => {
+      let cursorFilter = sql``;
+      if (args.cursor) {
+        const [receiptTime, txId] = args.cursor.split(':');
+        cursorFilter = sql`
+          AND (receipt_time, tx_id) <= (${parseInt(receiptTime, 10)}, ${txId})
+        `;
+      }
+
       const resultQuery = await sql<(DbMempoolTransactionSummary & { total: number })[]>`
         SELECT
           ${sql(MEMPOOL_TX_SUMMARY_COLUMNS)},
           (SELECT mempool_tx_count FROM chain_tip) AS total
         FROM mempool_txs
         WHERE pruned = false
-        ORDER BY receipt_time DESC
-        LIMIT ${args.limit}
+          ${cursorFilter}
+        ORDER BY receipt_time DESC, tx_id DESC
+        LIMIT ${args.limit + 1}
       `;
+
+      const hasNextPage = resultQuery.count > args.limit;
+      const results = hasNextPage ? resultQuery.slice(0, args.limit) : resultQuery;
+      const total = resultQuery.count > 0 ? resultQuery[0].total : 0;
+      const firstResult = results[0];
+      const extraResult = hasNextPage ? resultQuery[args.limit] : null;
+
+      let prevCursor: string | null = null;
+      if (firstResult) {
+        const prevPageQuery = await sql<
+          Pick<DbMempoolTransactionSummary, 'receipt_time' | 'tx_id'>[]
+        >`
+          SELECT receipt_time, tx_id
+          FROM mempool_txs
+          WHERE pruned = false
+            AND (receipt_time, tx_id) > (${firstResult.receipt_time}, ${firstResult.tx_id})
+          ORDER BY receipt_time ASC, tx_id ASC
+          OFFSET ${args.limit - 1}
+          LIMIT 1
+        `;
+        prevCursor =
+          prevPageQuery.length > 0 ? encodeMempoolTxSummaryCursor(prevPageQuery[0]) : null;
+      }
 
       return {
         limit: args.limit,
         offset: 0,
-        next_cursor: null,
-        prev_cursor: null,
-        current_cursor: null,
-        total: resultQuery[0]?.total ?? 0,
-        results: resultQuery,
+        next_cursor: extraResult ? encodeMempoolTxSummaryCursor(extraResult) : null,
+        prev_cursor: prevCursor,
+        current_cursor: firstResult ? encodeMempoolTxSummaryCursor(firstResult) : null,
+        total,
+        results,
       };
     });
   }

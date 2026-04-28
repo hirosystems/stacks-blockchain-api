@@ -1,5 +1,6 @@
 import { handleChainTipCache } from '../../controllers/cache-controller.js';
 import { parseDbMempoolTransactionSummary } from '../../serializers/transactions.js';
+import { NotFoundError } from '../../../errors.js';
 import { FastifyPluginAsync } from 'fastify';
 import { Type, TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
 import { Server } from 'node:http';
@@ -7,6 +8,11 @@ import { getPagingQueryLimit, ResourceType } from '../../pagination.js';
 import { PaginatedCursorResponse } from '../../schemas/util.js';
 import { LimitParam } from '../../schemas/params.js';
 import { MempoolTransactionSummarySchema } from 'src/api/schemas/entities/v3/mempool-transaction-summaries.js';
+
+const MempoolTransactionSummaryCursorParamSchema = Type.String({
+  pattern: '^\\d+:(0x)?[a-fA-F0-9]{64}$',
+  description: 'Cursor for mempool transaction summary pagination',
+});
 
 export const MempoolRoutes: FastifyPluginAsync<
   Record<never, never>,
@@ -24,7 +30,7 @@ export const MempoolRoutes: FastifyPluginAsync<
         tags: ['Mempool'],
         querystring: Type.Object({
           limit: LimitParam(ResourceType.Tx),
-          // cursor: Type.Optional(TransactionSummaryCursorParamSchema),
+          cursor: Type.Optional(MempoolTransactionSummaryCursorParamSchema),
         }),
         response: {
           200: PaginatedCursorResponse(MempoolTransactionSummarySchema),
@@ -35,9 +41,9 @@ export const MempoolRoutes: FastifyPluginAsync<
       const query = req.query;
       const limit = getPagingQueryLimit(ResourceType.Tx, req.query.limit);
       const results = await fastify.db.v3.getMempoolTransactionSummaryList({ ...query, limit });
-      // if (query.cursor && !results.current_cursor) {
-      //   throw new NotFoundError('Cursor not found');
-      // }
+      if (query.cursor && !results.current_cursor) {
+        throw new NotFoundError('Cursor not found');
+      }
       await reply.send({
         limit: results.limit,
         offset: results.offset,
