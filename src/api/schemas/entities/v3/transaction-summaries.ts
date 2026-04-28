@@ -1,7 +1,7 @@
 import { Static, Type } from '@sinclair/typebox';
 import { Nullable } from '../../util.js';
 
-const TransactionSenderSchema = Type.Object({
+export const TransactionSenderSchema = Type.Object({
   address: Type.String({
     description: 'Address of the transaction initiator',
   }),
@@ -26,7 +26,7 @@ export const TenureChangeCauseSchema = Type.Union(
   }
 );
 
-const TransactionSummaryStatusSchema = Type.Union(
+const TransactionStatusSchema = Type.Union(
   [
     Type.Literal('success'),
     Type.Literal('abort_by_response'),
@@ -34,7 +34,7 @@ const TransactionSummaryStatusSchema = Type.Union(
   ],
   { description: 'Status of the transaction' }
 );
-export type TransactionSummaryStatus = Static<typeof TransactionSummaryStatusSchema>;
+export type TransactionStatus = Static<typeof TransactionStatusSchema>;
 
 export const BaseTransactionSummarySchema = Type.Object({
   tx_id: Type.String({
@@ -77,7 +77,7 @@ export const BaseTransactionSummarySchema = Type.Object({
   canonical: Type.Boolean({
     description: 'Set to `true` if block corresponds to the canonical chain tip',
   }),
-  status: TransactionSummaryStatusSchema,
+  status: TransactionStatusSchema,
 });
 export type BaseTransactionSummary = Static<typeof BaseTransactionSummarySchema>;
 

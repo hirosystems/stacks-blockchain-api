@@ -3,7 +3,7 @@ import { BaseTransactionSummarySchema, TenureChangeCauseSchema } from './transac
 import { PostConditionSchema } from '../post-conditions.js';
 import { Nullable } from '../../util.js';
 
-const DecodedClarityValueSchema = Type.Object({
+export const DecodedClarityValueSchema = Type.Object({
   hex: Type.String(),
   repr: Type.String(),
 });
