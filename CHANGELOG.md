@@ -1,3 +1,9 @@
+## [9.0.0-next.29](https://github.com/hirosystems/stacks-blockchain-api/compare/v9.0.0-next.28...v9.0.0-next.29) (2026-04-22)
+
+### Bug Fixes
+
+* upgrade fastify http proxy dependency ([#2533](https://github.com/hirosystems/stacks-blockchain-api/issues/2533)) ([5c0a016](https://github.com/hirosystems/stacks-blockchain-api/commit/5c0a0167657a66b8cfc99e22cf5ea231e3af12df))
+
 ## [9.0.0-next.28](https://github.com/hirosystems/stacks-blockchain-api/compare/v9.0.0-next.27...v9.0.0-next.28) (2026-04-17)
 
 ### Bug Fixes
