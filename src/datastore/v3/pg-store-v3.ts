@@ -27,7 +27,6 @@ const TX_SUMMARY_COLUMNS = [
   'index_block_hash',
   'block_time',
   'tx_index',
-  'tenure_height',
   'microblock_sequence',
   'burn_block_height',
   'burn_block_time',
@@ -138,7 +137,7 @@ export class PgStoreV3 extends BasePgStoreModule {
         )
         SELECT
           ${sql(TX_SUMMARY_COLUMNS)},
-          (SELECT total FROM total)::int AS total
+          (SELECT tx_count FROM total)::int AS total
         FROM txs
         WHERE canonical = true
           AND microblock_canonical = true

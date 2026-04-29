@@ -8,7 +8,7 @@ import { FastifyPluginAsync } from 'fastify';
 import { Type, TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
 import { Server } from 'node:http';
 import { getPagingQueryLimit, ResourceType } from '../../pagination.js';
-import { PaginatedCursorResponse } from '../../schemas/util.js';
+import { CursorResponse } from '../../schemas/util.js';
 import { TransactionSummarySchema } from '../../schemas/entities/v3/transaction-summaries.js';
 import { LimitParam, TransactionIdParamSchema } from '../../schemas/params.js';
 import { TransactionSchema } from '../../schemas/entities/v3/transactions.js';
@@ -38,7 +38,7 @@ export const TransactionRoutes: FastifyPluginAsync<
           cursor: Type.Optional(TransactionSummaryCursorParamSchema),
         }),
         response: {
-          200: PaginatedCursorResponse(TransactionSummarySchema),
+          200: CursorResponse(TransactionSummarySchema),
         },
       },
     },
@@ -51,11 +51,12 @@ export const TransactionRoutes: FastifyPluginAsync<
       }
       await reply.send({
         limit: results.limit,
-        offset: results.offset,
         total: results.total,
-        next_cursor: results.next_cursor,
-        prev_cursor: results.prev_cursor,
-        cursor: results.current_cursor,
+        cursor: {
+          next: results.next_cursor,
+          previous: results.prev_cursor,
+          current: results.current_cursor,
+        },
         results: results.results.map(r => parseDbTransactionSummary(r)),
       });
     }

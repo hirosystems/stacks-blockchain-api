@@ -62,9 +62,6 @@ export const BaseTransactionSummarySchema = Type.Object({
       description:
         'Index of the transaction, indicating the order. Starts at `0` and increases with each transaction',
     }),
-    tenure_height: Type.Integer({
-      description: 'Height of the tenure this transactions was associated with',
-    }),
   }),
   burn_block: Type.Object({
     height: Type.Integer({

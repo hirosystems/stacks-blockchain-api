@@ -26,3 +26,18 @@ export const PaginatedCursorResponse = <T extends TSchema>(type: T, options?: Ob
     },
     options
   );
+
+export const CursorResponse = <T extends TSchema>(type: T, options?: ObjectOptions) =>
+  Type.Object(
+    {
+      total: Type.Integer({ examples: [1] }),
+      limit: Type.Integer({ examples: [20] }),
+      cursor: Type.Object({
+        next: Nullable(Type.String({ description: 'Next page cursor' })),
+        previous: Nullable(Type.String({ description: 'Previous page cursor' })),
+        current: Nullable(Type.String({ description: 'Current page cursor' })),
+      }),
+      results: Type.Array(type),
+    },
+    options
+  );

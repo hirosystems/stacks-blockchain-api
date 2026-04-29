@@ -119,7 +119,6 @@ export function parseDbTransactionSummary(summary: DbTransactionSummary): Transa
       index_hash: summary.index_block_hash,
       time: summary.block_time,
       tx_index: summary.tx_index,
-      tenure_height: summary.tenure_height,
     },
     burn_block: {
       height: summary.burn_block_height,

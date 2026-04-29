@@ -50,6 +50,7 @@ import * as promClient from 'prom-client';
 import DeprecationPlugin from './deprecation-plugin.js';
 import { BlockTenureRoutes } from './routes/v2/block-tenures.js';
 import { TransactionRoutes } from './routes/v3/transactions.js';
+import { MempoolRoutes } from './routes/v3/mempool.js';
 
 export interface ApiServer {
   fastifyApp: FastifyInstance;
@@ -100,7 +101,13 @@ export const StacksApiRoutes: FastifyPluginAsync<
     { prefix: '/extended/v2' }
   );
 
-  await fastify.register(TransactionRoutes, { prefix: '/extended/v3' });
+  await fastify.register(
+    async fastify => {
+      await fastify.register(TransactionRoutes);
+      await fastify.register(MempoolRoutes);
+    },
+    { prefix: '/extended/v3' }
+  );
 
   // Setup legacy API v1 and v2 routes
   await fastify.register(BnsNameRoutes, { prefix: '/v1/names' });
