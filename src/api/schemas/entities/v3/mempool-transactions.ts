@@ -2,7 +2,7 @@ import { Static, Type } from '@sinclair/typebox';
 import { BaseMempoolTransactionSummarySchema } from './mempool-transaction-summaries.js';
 import { PostConditionSchema } from '../post-conditions.js';
 import { Nullable } from '../../util.js';
-import { DecodedClarityValueSchema } from './transactions.js';
+import { DecodedClarityValueSchema } from './common.js';
 
 const BaseMempoolTransactionSchema = Type.Composite([
   BaseMempoolTransactionSummarySchema,

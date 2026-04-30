@@ -2,29 +2,7 @@ import { Static, Type } from '@sinclair/typebox';
 import { BaseTransactionSummarySchema, TenureChangeCauseSchema } from './transaction-summaries.js';
 import { PostConditionSchema } from '../post-conditions.js';
 import { Nullable } from '../../util.js';
-
-export const DecodedClarityValueSchema = Type.Object({
-  hex: Type.String(),
-  repr: Type.String(),
-});
-
-const ExecutionCostSchema = Type.Object({
-  read_count: Type.Integer({
-    description: 'Number of reads in the transaction',
-  }),
-  read_length: Type.Integer({
-    description: 'Length of reads in the transaction',
-  }),
-  runtime: Type.Integer({
-    description: 'Runtime of the transaction',
-  }),
-  write_count: Type.Integer({
-    description: 'Number of writes in the transaction',
-  }),
-  write_length: Type.Integer({
-    description: 'Length of writes in the transaction',
-  }),
-});
+import { DecodedClarityValueSchema, ExecutionCostSchema } from './common.js';
 
 const BaseTransactionSchema = Type.Composite([
   BaseTransactionSummarySchema,

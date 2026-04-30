@@ -120,7 +120,7 @@ export function parseDbTransactionSummary(summary: DbTransactionSummary): Transa
       time: summary.block_time,
       tx_index: summary.tx_index,
     },
-    burn_block: {
+    bitcoin_block: {
       height: summary.burn_block_height,
       time: summary.burn_block_time,
     },

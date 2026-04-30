@@ -63,7 +63,7 @@ export const BaseTransactionSummarySchema = Type.Object({
         'Index of the transaction, indicating the order. Starts at `0` and increases with each transaction',
     }),
   }),
-  burn_block: Type.Object({
+  bitcoin_block: Type.Object({
     height: Type.Integer({
       description: 'Height of the anchor burn block.',
     }),
