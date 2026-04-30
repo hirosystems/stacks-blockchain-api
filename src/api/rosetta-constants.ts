@@ -27,6 +27,39 @@ export const RosettaConstants = {
   VestingSchedule: 'VestingSchedule',
 };
 
+// Block 1 includes the stacks genesis state transaction, which encodes the
+// pre-upgrade (stacks 1.0) balances as roughly 330k STX mint events. Returning
+// all of those ops in a single `/block` response would produce a ~150 MB JSON
+// payload, which no gateway or consumer in the pipeline can handle. We therefore
+// split the genesis state tx's event-derived operations into deterministic
+// chunks and surface them via Rosetta's `other_transactions` mechanism, so
+// consumers can fetch each chunk concurrently via `/block/transaction`.
+export const GENESIS_CHUNK_EVENT_SIZE = 1000;
+export const GENESIS_CHUNK_TX_ID_SEPARATOR = ':genesis-chunk:';
+
+export function buildGenesisChunkTxId(origTxId: string, chunkIndex: number): string {
+  return `${origTxId}${GENESIS_CHUNK_TX_ID_SEPARATOR}${chunkIndex}`;
+}
+
+export function parseGenesisChunkTxId(
+  txId: string
+): { origTxId: string; chunkIndex: number } | null {
+  const idx = txId.lastIndexOf(GENESIS_CHUNK_TX_ID_SEPARATOR);
+  if (idx < 0) {
+    return null;
+  }
+  const origTxId = txId.slice(0, idx);
+  const chunkStr = txId.slice(idx + GENESIS_CHUNK_TX_ID_SEPARATOR.length);
+  if (!/^\d+$/.test(chunkStr)) {
+    return null;
+  }
+  const chunkIndex = Number(chunkStr);
+  if (!Number.isInteger(chunkIndex) || chunkIndex < 0) {
+    return null;
+  }
+  return { origTxId, chunkIndex };
+}
+
 export function getRosettaNetworkName(chainId: ChainID): string {
   if (getChainIDNetwork(chainId) === 'mainnet') {
     return RosettaNetworks.mainnet;

@@ -135,6 +135,28 @@ export async function getOperations(
   return await getOperationsInternal(tx, db, chainID, minerRewards, events, stxUnlockEvents);
 }
 
+/**
+ * Build a RosettaOperation list from a slice of events alone, bypassing the per-tx-type static
+ * operations (fee / sender / receiver / coinbase / etc.) that `getOperations` normally prepends.
+ * Used to construct synthetic chunked transactions for the stacks genesis state tx in block 1.
+ */
+export async function getOperationsFromEvents(
+  tx: DbTx | BaseTx,
+  db: PgStore,
+  chainID: ChainID,
+  events: DbEvent[]
+): Promise<RosettaOperation[]> {
+  const operations: RosettaOperation[] = [];
+  if (db instanceof PgStore) {
+    return await db.sqlTransaction(async _sql => {
+      await processEvents(db, events, tx as BaseTx, operations, chainID);
+      return operations;
+    });
+  }
+  await processEvents(db, events, tx as BaseTx, operations, chainID);
+  return operations;
+}
+
 async function getOperationsInternal(
   tx: DbTx | DbMempoolTx | BaseTx,
   db: PgStore,
@@ -533,10 +555,13 @@ function makeSenderOperation(
   };
 
   if (memo) {
-    sender.metadata = {
-      ...sender.metadata,
-      memo: parseTransactionMemo(memo),
-    };
+    const parsedMemo = parseTransactionMemo(memo);
+    if (parsedMemo) {
+      sender.metadata = {
+        ...sender.metadata,
+        memo: parsedMemo,
+      };
+    }
   }
 
   return sender;
@@ -606,10 +631,13 @@ function makeReceiverOperation(
   };
 
   if (memo) {
-    receiver.metadata = {
-      ...receiver.metadata,
-      memo: parseTransactionMemo(memo),
-    };
+    const parsedMemo = parseTransactionMemo(memo);
+    if (parsedMemo) {
+      receiver.metadata = {
+        ...receiver.metadata,
+        memo: parsedMemo,
+      };
+    }
   }
 
   return receiver;
