@@ -35,7 +35,7 @@ import {
   StxUnlockEvent,
   DbPoxSyntheticEvent,
 } from '../../datastore/common';
-import { unwrapOptional, FoundOrNot, unixEpochToIso, EMPTY_HASH_256, ChainID } from '../../helpers';
+import { unwrapOptional, FoundOrNot, unixEpochToIso, EMPTY_HASH_256, ChainID, NETWORK_CHAIN_ID } from '../../helpers';
 import { serializePostCondition, serializePostConditionMode } from '../serializers/post-conditions';
 import {
   getOperations,
@@ -48,6 +48,8 @@ import { logger } from '../../logger';
 import {
   buildGenesisChunkTxId,
   GENESIS_CHUNK_EVENT_SIZE,
+  GENESIS_CHUNK_TX_EVENT_COUNT,
+  GENESIS_CHUNK_TX_ID,
   parseGenesisChunkTxId,
 } from '../rosetta-constants';
 
@@ -507,7 +509,7 @@ export function parseDbEvent(dbEvent: DbEvent): TransactionEvent {
  * @param blockHash -- hexadecimal hash string
  * @param blockHeight -- number
  */
-export interface RosettaBlockWithOtherTransactions {
+interface RosettaBlockWithOtherTransactions {
   block: RosettaBlock;
   otherTransactions: OtherTransactionIdentifier[];
 }
@@ -909,20 +911,15 @@ async function getRosettaBlockTransactionsFromDataStore(opts: {
     const otherTransactions: OtherTransactionIdentifier[] = [];
 
     // At block 1, the stacks genesis state tx carries ~330k STX mint events representing
-    // pre-upgrade (stacks 1.0) balances. Returning all of those ops inline blows up response
-    // size (~150 MB), so for any tx at block 1 whose event count exceeds
-    // GENESIS_CHUNK_EVENT_SIZE we split its event-derived operations into deterministic
+    // pre-upgrade (stacks 1.0) balances. Returning all of those ops inline blows up response size
+    // (~150 MB), so we split the genesis state tx's event-derived operations into deterministic
     // chunks and expose them via `other_transactions`. The tx itself still appears in
     // `transactions[]` with only its static (fee / sender / coinbase / etc.) ops.
     for (const tx of txsQuery.result) {
       let skipEventFetch = false;
-      if (opts.blockHeight === 1) {
-        const eventCount = await opts.db.getTxEventCount({
-          txId: tx.tx_id,
-          indexBlockHash: opts.indexBlockHash,
-        });
-        if (eventCount > GENESIS_CHUNK_EVENT_SIZE) {
-          const numChunks = Math.ceil(eventCount / GENESIS_CHUNK_EVENT_SIZE);
+      if (opts.blockHeight === 1 && opts.chainId === NETWORK_CHAIN_ID.mainnet) {
+        if (tx.tx_id === GENESIS_CHUNK_TX_ID) {
+          const numChunks = Math.ceil(GENESIS_CHUNK_TX_EVENT_COUNT / GENESIS_CHUNK_EVENT_SIZE);
           for (let i = 0; i < numChunks; i++) {
             otherTransactions.push({ hash: buildGenesisChunkTxId(tx.tx_id, i) });
           }

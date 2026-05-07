@@ -35,6 +35,9 @@ export const RosettaConstants = {
 // chunks and surface them via Rosetta's `other_transactions` mechanism, so
 // consumers can fetch each chunk concurrently via `/block/transaction`.
 export const GENESIS_CHUNK_EVENT_SIZE = 1000;
+export const GENESIS_CHUNK_TX_ID =
+  '0x2f079994c9bd92b2272258b9de73e278824d76efe1b5a83a3b00941f9559de8a';
+export const GENESIS_CHUNK_TX_EVENT_COUNT = 330_441;
 export const GENESIS_CHUNK_TX_ID_SEPARATOR = ':genesis-chunk:';
 
 export function buildGenesisChunkTxId(origTxId: string, chunkIndex: number): string {

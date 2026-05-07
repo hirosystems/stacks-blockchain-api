@@ -1646,46 +1646,6 @@ export class PgStore extends BasePgStore {
   }
 
   /**
-   * Returns the total number of events (stx_lock, stx, ft, nft, contract_log) associated with a
-   * given tx. Used by rosetta `/block` when deciding how many `other_transactions` chunks to emit
-   * for the stacks genesis state tx at block 1.
-   */
-  async getTxEventCount(args: { txId: string; indexBlockHash: string }): Promise<number> {
-    return await this.sqlTransaction(async sql => {
-      const [stxLockRes, stxRes, ftRes, nftRes, logRes] = await Promise.all([
-        sql<{ c: string }[]>`
-          SELECT COUNT(*)::text AS c FROM stx_lock_events
-          WHERE tx_id = ${args.txId} AND index_block_hash = ${args.indexBlockHash}
-            AND microblock_canonical = true
-        `,
-        sql<{ c: string }[]>`
-          SELECT COUNT(*)::text AS c FROM stx_events
-          WHERE tx_id = ${args.txId} AND index_block_hash = ${args.indexBlockHash}
-            AND microblock_canonical = true
-        `,
-        sql<{ c: string }[]>`
-          SELECT COUNT(*)::text AS c FROM ft_events
-          WHERE tx_id = ${args.txId} AND index_block_hash = ${args.indexBlockHash}
-            AND microblock_canonical = true
-        `,
-        sql<{ c: string }[]>`
-          SELECT COUNT(*)::text AS c FROM nft_events
-          WHERE tx_id = ${args.txId} AND index_block_hash = ${args.indexBlockHash}
-            AND microblock_canonical = true
-        `,
-        sql<{ c: string }[]>`
-          SELECT COUNT(*)::text AS c FROM contract_logs
-          WHERE tx_id = ${args.txId} AND index_block_hash = ${args.indexBlockHash}
-            AND microblock_canonical = true
-        `,
-      ]);
-      return [stxLockRes, stxRes, ftRes, nftRes, logRes]
-        .map(r => Number(r[0]?.c ?? 0))
-        .reduce((a, b) => a + b, 0);
-    });
-  }
-
-  /**
    * TODO investigate if this method needs be deprecated in favor of {@link getTransactionEvents}
    */
   async getTxEvents(args: {
