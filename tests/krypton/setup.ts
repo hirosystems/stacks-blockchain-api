@@ -1,8 +1,8 @@
-import type { ContainerConfig } from '../docker-container.ts';
-import { runDown, runUp } from '../docker-container.ts';
+import type { DockerTestContainerConfig } from '@stacks/api-test-toolkit';
+import { dockerTestDown, dockerTestUp } from '@stacks/api-test-toolkit';
 
-function kryptonContainers(): ContainerConfig[] {
-  const postgres: ContainerConfig = {
+function kryptonContainers(): DockerTestContainerConfig[] {
+  const postgres: DockerTestContainerConfig = {
     image: 'postgres:17',
     name: `stacks-api-test-krypton-postgres`,
     ports: [{ host: 5490, container: 5432 }],
@@ -20,7 +20,7 @@ function kryptonContainers(): ContainerConfig[] {
     healthcheck: 'cat /ready.txt && pg_isready -U postgres',
   };
 
-  const stacksBlockchain: ContainerConfig = {
+  const stacksBlockchain: DockerTestContainerConfig = {
     image: 'hirosystems/stacks-api-e2e:stacks3.0-0a2c0e2',
     name: `stacks-api-test-krypton-stacks-blockchain`,
     ports: [
@@ -40,7 +40,7 @@ function kryptonContainers(): ContainerConfig[] {
 export async function globalSetup() {
   const containers = kryptonContainers();
   for (const config of containers) {
-    await runUp(config);
+    await dockerTestUp({ config });
   }
   process.stdout.write(`[testenv:krypton] all containers ready\n`);
 }
@@ -48,7 +48,7 @@ export async function globalSetup() {
 export async function globalTeardown() {
   const containers = kryptonContainers();
   for (const config of [...containers].reverse()) {
-    await runDown(config);
+    await dockerTestDown({ config });
   }
   process.stdout.write(`[testenv:krypton] all containers removed\n`);
 }
