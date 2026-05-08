@@ -37,6 +37,7 @@ export class PgStoreV3 extends BasePgStoreModule {
         INNER JOIN txs AS t USING (tx_id, index_block_hash, microblock_hash)
         WHERE p.canonical = true
           AND p.microblock_canonical = true
+          AND p.principal = ${args.principal}
           ${cursorFilter}
         ORDER BY p.block_height DESC, p.microblock_sequence DESC, p.tx_index DESC
         LIMIT ${args.limit + 1}
@@ -66,6 +67,7 @@ export class PgStoreV3 extends BasePgStoreModule {
           FROM principal_txs
           WHERE canonical = true
             AND microblock_canonical = true
+            AND principal = ${args.principal}
             AND (block_height, microblock_sequence, tx_index)
                 > (
                   ${firstResult.block_height},

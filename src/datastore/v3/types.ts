@@ -1,4 +1,4 @@
-import { DbAssetEventTypeId, DbEventTypeId, DbTxStatus, DbTxTypeId } from '../common.js';
+import { DbTxStatus, DbTxTypeId } from '../common.js';
 
 export type DbCursorPaginatedResult<T> = {
   limit: number;
@@ -41,38 +41,4 @@ export interface DbTransactionSummary {
 export interface DbPrincipalTransactionSummary extends DbTransactionSummary {
   stx_sent: string;
   stx_received: string;
-}
-
-export interface DbTransaction extends DbTransactionSummary {
-  parent_block_hash: string;
-  parent_index_block_hash: string;
-  post_conditions: string;
-  event_count: number;
-  execution_cost_read_count: number;
-  execution_cost_read_length: number;
-  execution_cost_runtime: number;
-  execution_cost_write_count: number;
-  execution_cost_write_length: number;
-  vm_error: string | null;
-  smart_contract_source_code: string | null;
-  contract_call_function_args: string | null;
-  coinbase_payload: string | null;
-  coinbase_vrf_proof: string | null;
-  tenure_change_tenure_consensus_hash: string | null;
-  tenure_change_prev_tenure_consensus_hash: string | null;
-  tenure_change_burn_view_consensus_hash: string | null;
-  tenure_change_previous_tenure_end: string | null;
-  tenure_change_previous_tenure_blocks: number | null;
-  tenure_change_pubkey_hash: string | null;
-}
-
-export interface DbTransactionEvent {
-  event_index: number;
-  amount: string;
-  event_type_id: DbEventTypeId;
-  asset_event_type_id: DbAssetEventTypeId;
-  sender: string | null;
-  recipient: string | null;
-  asset_identifier: string | null;
-  value: string | null;
 }
