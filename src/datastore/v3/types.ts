@@ -1,5 +1,14 @@
 import { DbAssetEventTypeId, DbEventTypeId, DbTxStatus, DbTxTypeId } from '../common.js';
 
+export type DbCursorPaginatedResult<T> = {
+  limit: number;
+  next_cursor: string | null;
+  prev_cursor: string | null;
+  current_cursor: string | null;
+  total: number;
+  results: T[];
+};
+
 export interface DbTransactionSummary {
   tx_id: string;
   sender_address: string;
@@ -27,6 +36,11 @@ export interface DbTransactionSummary {
   contract_call_function_name: string | null;
   coinbase_alt_recipient: string | null;
   tenure_change_cause: number | null;
+}
+
+export interface DbPrincipalTransactionSummary extends DbTransactionSummary {
+  stx_sent: string;
+  stx_received: string;
 }
 
 export interface DbTransaction extends DbTransactionSummary {

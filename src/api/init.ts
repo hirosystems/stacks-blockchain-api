@@ -49,8 +49,7 @@ import { TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
 import * as promClient from 'prom-client';
 import DeprecationPlugin from './deprecation-plugin.js';
 import { BlockTenureRoutes } from './routes/v2/block-tenures.js';
-import { TransactionRoutes } from './routes/v3/transactions.js';
-import { MempoolRoutes } from './routes/v3/mempool.js';
+import { PrincipalsRoutes } from './routes/v3/principals.js';
 
 export interface ApiServer {
   fastifyApp: FastifyInstance;
@@ -103,8 +102,7 @@ export const StacksApiRoutes: FastifyPluginAsync<
 
   await fastify.register(
     async fastify => {
-      await fastify.register(TransactionRoutes);
-      await fastify.register(MempoolRoutes);
+      await fastify.register(PrincipalsRoutes);
     },
     { prefix: '/extended/v3' }
   );
