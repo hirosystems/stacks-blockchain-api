@@ -41,4 +41,8 @@ export interface DbTransactionSummary {
 export interface DbPrincipalTransactionSummary extends DbTransactionSummary {
   stx_sent: string;
   stx_received: string;
+  stx_net: string;
+  stx_balance_affected: boolean;
+  ft_balance_affected: boolean;
+  nft_balance_affected: boolean;
 }

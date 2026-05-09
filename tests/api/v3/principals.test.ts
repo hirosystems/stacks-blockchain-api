@@ -179,11 +179,15 @@ describe('principals', () => {
             memo: '0x',
           },
         },
-        balance_changes: {
-          stx: {
-            sent: '100050',
-            received: '0',
-          },
+        stx_balance_change: {
+          sent: '100050',
+          received: '0',
+          net: '-100050',
+        },
+        affected_asset_balances: {
+          stx: true,
+          ft: true,
+          nft: true,
         },
       });
       assert.deepEqual(body1.results[1], {
@@ -213,11 +217,15 @@ describe('principals', () => {
             alt_recipient: null,
           },
         },
-        balance_changes: {
-          stx: {
-            sent: '50',
-            received: '0',
-          },
+        stx_balance_change: {
+          sent: '50',
+          received: '0',
+          net: '-50',
+        },
+        affected_asset_balances: {
+          stx: true,
+          ft: false,
+          nft: false,
         },
       });
 

@@ -20,7 +20,7 @@ export const PrincipalsRoutes: FastifyPluginAsync<
       schema: {
         operationId: 'get_principal_transactions',
         summary: 'Get principal transactions',
-        description: `Retrieves a paginated list of confirmed transactions sent or received by a STX address or Smart Contract ID`,
+        description: `Returns a list of confirmed transactions sent or received by a Stacks principal`,
         tags: ['Transactions'],
         params: Type.Object({ principal: PrincipalSchema }),
         querystring: CursorPaginationQuerystring(ResourceType.Tx, Type.String()),

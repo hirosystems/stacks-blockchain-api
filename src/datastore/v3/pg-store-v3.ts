@@ -30,6 +30,10 @@ export class PgStoreV3 extends BasePgStoreModule {
           t.microblock_sequence,
           p.stx_sent,
           p.stx_received,
+          (p.stx_received - p.stx_sent) AS stx_net,
+          p.stx_balance_affected,
+          p.ft_balance_affected,
+          p.nft_balance_affected,
           (
             SELECT COALESCE(count, 0)::int FROM principal_tx_counts WHERE principal = ${args.principal}
           ) AS total
