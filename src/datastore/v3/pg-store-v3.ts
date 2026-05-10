@@ -34,6 +34,11 @@ export class PgStoreV3 extends BasePgStoreModule {
           p.stx_balance_affected,
           p.ft_balance_affected,
           p.nft_balance_affected,
+          CASE
+            WHEN t.sender_address = ${args.principal} THEN 'sender'
+            WHEN t.sponsor_address = ${args.principal} THEN 'sponsor'
+            ELSE 'affected'
+          END AS involvement,
           (
             SELECT COALESCE(count, 0)::int FROM principal_tx_counts WHERE principal = ${args.principal}
           ) AS total

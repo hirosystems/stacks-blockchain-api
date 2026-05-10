@@ -179,12 +179,15 @@ describe('principals', () => {
             memo: '0x',
           },
         },
-        stx_balance_change: {
-          sent: '100050',
-          received: '0',
-          net: '-100050',
+        involvement: 'sender',
+        balance_changes: {
+          stx: {
+            sent: '100050',
+            received: '0',
+            net: '-100050',
+          },
         },
-        affected_asset_balances: {
+        affected_asset_types: {
           stx: true,
           ft: true,
           nft: true,
@@ -217,12 +220,15 @@ describe('principals', () => {
             alt_recipient: null,
           },
         },
-        stx_balance_change: {
-          sent: '50',
-          received: '0',
-          net: '-50',
+        involvement: 'sender',
+        balance_changes: {
+          stx: {
+            sent: '50',
+            received: '0',
+            net: '-50',
+          },
         },
-        affected_asset_balances: {
+        affected_asset_types: {
           stx: true,
           ft: false,
           nft: false,

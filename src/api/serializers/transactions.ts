@@ -143,12 +143,15 @@ export function parsePrincipalTransactionSummary(
 ): PrincipalTransactionSummary {
   return {
     transaction: parseDbTransactionSummary(summary),
-    stx_balance_change: {
-      sent: summary.stx_sent,
-      received: summary.stx_received,
-      net: summary.stx_net,
+    involvement: summary.involvement,
+    balance_changes: {
+      stx: {
+        sent: summary.stx_sent,
+        received: summary.stx_received,
+        net: summary.stx_net,
+      },
     },
-    affected_asset_balances: {
+    affected_asset_types: {
       stx: summary.stx_balance_affected,
       ft: summary.ft_balance_affected,
       nft: summary.nft_balance_affected,

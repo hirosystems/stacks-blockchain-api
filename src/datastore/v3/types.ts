@@ -38,6 +38,8 @@ export interface DbTransactionSummary {
   tenure_change_cause: number | null;
 }
 
+export type DbPrincipalTransactionInvolvement = 'sender' | 'sponsor' | 'affected';
+
 export interface DbPrincipalTransactionSummary extends DbTransactionSummary {
   stx_sent: string;
   stx_received: string;
@@ -45,4 +47,5 @@ export interface DbPrincipalTransactionSummary extends DbTransactionSummary {
   stx_balance_affected: boolean;
   ft_balance_affected: boolean;
   nft_balance_affected: boolean;
+  involvement: DbPrincipalTransactionInvolvement;
 }
