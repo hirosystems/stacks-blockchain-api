@@ -408,7 +408,7 @@ describe('Rosetta API', () => {
       });
     expect(query1.status).toBe(200);
     expect(query1.type).toBe('application/json');
-    expect(JSON.parse(query1.text)).toEqual({
+    expect(JSON.parse(query1.text).transaction).toEqual({
       transaction_identifier: {
         hash: tx.tx_id,
       },
@@ -607,7 +607,7 @@ describe('Rosetta API', () => {
       });
     expect(query1.status).toBe(200);
     expect(query1.type).toBe('application/json');
-    expect(JSON.parse(query1.text)).toEqual({
+    expect(JSON.parse(query1.text).transaction).toEqual({
       transaction_identifier: {
         hash: '0xc152de9376bab4fc27291c9cd088643698290a12bb511d768f873cb3d280eb48',
       },
@@ -769,7 +769,7 @@ describe('Rosetta API', () => {
       });
     expect(query1.status).toBe(200);
     expect(query1.type).toBe('application/json');
-    expect(JSON.parse(query1.text)).toEqual({
+    expect(JSON.parse(query1.text).transaction).toEqual({
       operations: [
         {
           account: {
@@ -799,7 +799,7 @@ describe('Rosetta API', () => {
       });
     expect(query2.status).toBe(200);
     expect(query2.type).toBe('application/json');
-    expect(JSON.parse(query2.text)).toEqual({
+    expect(JSON.parse(query2.text).transaction).toEqual({
       operations: [
         {
           account: {
@@ -870,7 +870,7 @@ describe('Rosetta API', () => {
         });
       expect(query1.status).toBe(200);
       expect(query1.type).toBe('application/json');
-      expect(query1.body).toEqual({
+      expect(query1.body.transaction).toEqual({
         transaction_identifier: {
           hash: txTenureChange1.tx_id,
         },

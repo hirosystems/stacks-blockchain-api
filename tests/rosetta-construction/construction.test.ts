@@ -2063,10 +2063,10 @@ describe('Rosetta Construction', () => {
     expect(stxOpsTx.operations).toContainEqual(expect.objectContaining(expectedStackStxOp));
     expect(stxOpsTx.operations).toContainEqual(expect.objectContaining(expectedStxLockOp));
 
-    expect(blockTxOpsQuery.body.operations).toContainEqual(
+    expect(blockTxOpsQuery.body.transaction.operations).toContainEqual(
       expect.objectContaining(expectedStackStxOp)
     );
-    expect(blockTxOpsQuery.body.operations).toContainEqual(
+    expect(blockTxOpsQuery.body.transaction.operations).toContainEqual(
       expect.objectContaining(expectedStxLockOp)
     );
 

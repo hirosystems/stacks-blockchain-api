@@ -35,7 +35,14 @@ import {
   StxUnlockEvent,
   DbPoxSyntheticEvent,
 } from '../../datastore/common';
-import { unwrapOptional, FoundOrNot, unixEpochToIso, EMPTY_HASH_256, ChainID, NETWORK_CHAIN_ID } from '../../helpers';
+import {
+  unwrapOptional,
+  FoundOrNot,
+  unixEpochToIso,
+  EMPTY_HASH_256,
+  ChainID,
+  NETWORK_CHAIN_ID,
+} from '../../helpers';
 import { serializePostCondition, serializePostConditionMode } from '../serializers/post-conditions';
 import {
   getOperations,
