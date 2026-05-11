@@ -1,7 +1,7 @@
 import * as net from 'node:net';
 import * as Docker from 'dockerode';
 import { connectPostgres, timeout } from '@hirosystems/api-toolkit';
-import { createClient } from 'redis';
+import Redis from 'ioredis';
 import { loadDotEnv } from '../../src/helpers';
 import { fetch } from 'undici';
 
@@ -122,9 +122,10 @@ async function waitForPostgres(): Promise<void> {
 }
 
 async function waitForRedis(): Promise<void> {
-  const redisClient = createClient({
-    url: process.env['SNP_REDIS_URL'],
-    name: 'stacks-blockchain-api-server-tests',
+  const redisClient = new Redis(process.env['SNP_REDIS_URL'] as string, {
+    connectionName: 'stacks-blockchain-api-server-tests',
+    lazyConnect: true,
+    retryStrategy: () => null,
   });
   redisClient.on('error', (err: Error) => console.error(`Redis not ready: ${err}`));
   redisClient.once('ready', () => console.log('Connected to Redis successfully!'));
@@ -134,10 +135,11 @@ async function waitForRedis(): Promise<void> {
       break;
     } catch (error) {
       console.error(`Failed to connect to Redis:`, error);
+      redisClient.disconnect();
       await timeout(100);
     }
   }
-  await redisClient.disconnect();
+  redisClient.disconnect();
 }
 
 async function waitForSNP(): Promise<void> {
