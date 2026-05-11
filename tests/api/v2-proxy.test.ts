@@ -263,6 +263,55 @@ describe('v2-proxy tests', () => {
     );
   });
 
+  test('proxy forwards upstream JSON payload for v2 info', async () => {
+    const primaryProxyEndpoint = 'proxy-stacks-node:12345';
+
+    await useWithCleanup(
+      () => {
+        const restoreEnvVars = withEnvVars(
+          ['STACKS_CORE_PROXY_HOST', primaryProxyEndpoint.split(':')[0]],
+          ['STACKS_CORE_PROXY_PORT', primaryProxyEndpoint.split(':')[1]]
+        );
+        return [, () => restoreEnvVars()] as const;
+      },
+      () => {
+        const agent = new MockAgent();
+        const originalAgent = getGlobalDispatcher();
+        setGlobalDispatcher(agent);
+        return [agent, () => setGlobalDispatcher(originalAgent)] as const;
+      },
+      async () => {
+        const apiServer = await startApiServer({
+          datastore: db,
+          chainId: ChainID.Mainnet,
+        });
+        return [apiServer, apiServer.terminate] as const;
+      },
+      async (_, mockAgent, api) => {
+        const upstreamResponse = {
+          peer_version: 4207599119,
+          network_id: 2147483648,
+          stacks_tip_height: 3925994,
+        };
+
+        mockAgent
+          .get(`http://${primaryProxyEndpoint}`)
+          .intercept({
+            path: '/v2/info',
+            method: 'GET',
+          })
+          .reply(200, JSON.stringify(upstreamResponse), {
+            headers: { 'Content-Type': 'application/json' },
+          });
+
+        const infoReq = await supertest(api.server).get(`/v2/info`);
+        expect(infoReq.status).toBe(200);
+        expect(infoReq.body).toEqual(upstreamResponse);
+        expect(infoReq.body).not.toHaveProperty('stream');
+      }
+    );
+  });
+
   test('tx post multicast', async () => {
     const primaryProxyEndpoint = 'proxy-stacks-node:12345';
     const extraTxEndpoint = 'http://extra-tx-endpoint-a/test';

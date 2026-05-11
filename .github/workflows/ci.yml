@@ -347,7 +347,7 @@ jobs:
 
       - name: Upgrade to latest npm
         run: |
-          npm install -g npm@latest
+          npm install -g npm@~11.10.0
           npm -v
 
       - name: Get bot user ID
