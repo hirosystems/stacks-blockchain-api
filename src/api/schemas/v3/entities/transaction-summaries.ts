@@ -71,9 +71,6 @@ export const BaseTransactionSummarySchema = Type.Object({
       description: 'Unix timestamp (in seconds) indicating when this block was mined.',
     }),
   }),
-  canonical: Type.Boolean({
-    description: 'Set to `true` if block corresponds to the canonical chain tip',
-  }),
   status: TransactionStatusSchema,
 });
 export type BaseTransactionSummary = Static<typeof BaseTransactionSummarySchema>;

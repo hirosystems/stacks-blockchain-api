@@ -63,7 +63,6 @@ export function parseDbTransactionSummary(summary: DbTransactionSummary): Transa
       height: summary.burn_block_height,
       time: summary.burn_block_time,
     },
-    canonical: summary.canonical,
     status: parseDbTransactionSummaryStatus(summary.status),
   };
   switch (summary.type_id) {

@@ -170,7 +170,6 @@ describe('principals', () => {
             height: 2,
             time: 2000,
           },
-          canonical: true,
           status: 'success',
           type: 'token_transfer',
           token_transfer: {
@@ -213,7 +212,6 @@ describe('principals', () => {
             height: 1,
             time: 1000,
           },
-          canonical: true,
           status: 'success',
           type: 'coinbase',
           coinbase: {
