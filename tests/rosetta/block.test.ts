@@ -395,7 +395,7 @@ describe('/block tests', () => {
       });
     expect(query5.status).toBe(200);
     expect(query5.type).toBe('application/json');
-    const result5 = JSON.parse(query5.text);
+    const result5 = JSON.parse(query5.text).transaction;
     // No operation, ignored due to missing metadata.
     expect(result5.operations[1]).toEqual(undefined);
   });

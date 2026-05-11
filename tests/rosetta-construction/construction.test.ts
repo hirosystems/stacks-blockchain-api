@@ -2118,7 +2118,7 @@ describe('Rosetta Construction', () => {
     };
     expect(query2.status).toBe(200);
     expect(query2.type).toBe('application/json');
-    expect(query2.body.operations[1]).toStrictEqual(expectedResponse);
+    expect(query2.body.transaction.operations[1]).toStrictEqual(expectedResponse);
   });
 
   //---------------------
