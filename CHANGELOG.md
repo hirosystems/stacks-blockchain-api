@@ -1,3 +1,27 @@
+## [8.15.3](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.15.2...v8.15.3) (2026-04-22)
+
+### Bug Fixes
+
+* upgrade fastify http proxy ([#2534](https://github.com/hirosystems/stacks-blockchain-api/issues/2534)) ([20ee86a](https://github.com/hirosystems/stacks-blockchain-api/commit/20ee86a945d810d824559a6854934eb9b8b2b22f))
+
+## [8.15.2](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.15.1...v8.15.2) (2026-04-14)
+
+### Bug Fixes
+
+* optimize etag generation for principal activity ([#2525](https://github.com/hirosystems/stacks-blockchain-api/issues/2525)) ([560d27f](https://github.com/hirosystems/stacks-blockchain-api/commit/560d27fda4953a16a32744668883720442ca5fee))
+
+## [8.15.1](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.15.0...v8.15.1) (2026-03-25)
+
+### Bug Fixes
+
+* forward proxied stacks node response body correctly ([#2501](https://github.com/hirosystems/stacks-blockchain-api/issues/2501)) ([8d66403](https://github.com/hirosystems/stacks-blockchain-api/commit/8d66403883f18083dd46129a615741ef0dbe9e18))
+
+## [8.15.0](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.14.2...v8.15.0) (2026-03-24)
+
+### Features
+
+* update to stacks codec, support stacks 3.4 ([#2487](https://github.com/hirosystems/stacks-blockchain-api/issues/2487)) ([61ab19f](https://github.com/hirosystems/stacks-blockchain-api/commit/61ab19f59470a33e9faca3cb2e33af888f83e95f))
+
 ## [8.14.2](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.14.1...v8.14.2) (2026-03-10)
 
 ### Bug Fixes
