@@ -1,3 +1,9 @@
+## [8.15.4-rosetta.1](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.15.3...v8.15.4-rosetta.1) (2026-05-11)
+
+### Bug Fixes
+
+* **rosetta:** emit block-1 genesis state ops via other_transactions ([#2540](https://github.com/hirosystems/stacks-blockchain-api/issues/2540)) ([819f2f7](https://github.com/hirosystems/stacks-blockchain-api/commit/819f2f796336518df6d9e6f9fb01178056e9e5aa))
+
 ## [8.15.3](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.15.2...v8.15.3) (2026-04-22)
 
 ### Bug Fixes
