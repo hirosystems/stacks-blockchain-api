@@ -12,6 +12,7 @@ import {
 } from '@stacks/codec';
 
 import {
+  OtherTransactionIdentifier,
   RosettaBlock,
   RosettaParentBlockIdentifier,
   RosettaTransaction,
@@ -34,12 +35,30 @@ import {
   StxUnlockEvent,
   DbPoxSyntheticEvent,
 } from '../../datastore/common';
-import { unwrapOptional, FoundOrNot, unixEpochToIso, EMPTY_HASH_256, ChainID } from '../../helpers';
+import {
+  unwrapOptional,
+  FoundOrNot,
+  unixEpochToIso,
+  EMPTY_HASH_256,
+  ChainID,
+  NETWORK_CHAIN_ID,
+} from '../../helpers';
 import { serializePostCondition, serializePostConditionMode } from '../serializers/post-conditions';
-import { getOperations, parseTransactionMemo } from '../../rosetta/rosetta-helpers';
+import {
+  getOperations,
+  getOperationsFromEvents,
+  parseTransactionMemo,
+} from '../../rosetta/rosetta-helpers';
 import { PgStore } from '../../datastore/pg-store';
 import { SyntheticPoxEventName } from '../../pox-helpers';
 import { logger } from '../../logger';
+import {
+  buildGenesisChunkTxId,
+  GENESIS_CHUNK_EVENT_SIZE,
+  GENESIS_CHUNK_TX_EVENT_COUNT,
+  GENESIS_CHUNK_TX_ID,
+  parseGenesisChunkTxId,
+} from '../rosetta-constants';
 
 import {
   AbstractMempoolTransaction,
@@ -497,13 +516,18 @@ export function parseDbEvent(dbEvent: DbEvent): TransactionEvent {
  * @param blockHash -- hexadecimal hash string
  * @param blockHeight -- number
  */
+interface RosettaBlockWithOtherTransactions {
+  block: RosettaBlock;
+  otherTransactions: OtherTransactionIdentifier[];
+}
+
 export async function getRosettaBlockFromDataStore(
   db: PgStore,
   fetchTransactions: boolean,
   chainId: ChainID,
   blockHash?: string,
   blockHeight?: number
-): Promise<FoundOrNot<RosettaBlock>> {
+): Promise<FoundOrNot<RosettaBlockWithOtherTransactions>> {
   return await db.sqlTransaction(async sql => {
     let blockQuery: FoundOrNot<DbBlock>;
     if (blockHash) {
@@ -518,15 +542,20 @@ export async function getRosettaBlockFromDataStore(
       return { found: false };
     }
     const dbBlock = blockQuery.result;
-    let blockTxs = {} as FoundOrNot<RosettaTransaction[]>;
-    blockTxs.found = false;
+    let transactions: RosettaTransaction[] = [];
+    let otherTransactions: OtherTransactionIdentifier[] = [];
     if (fetchTransactions) {
-      blockTxs = await getRosettaBlockTransactionsFromDataStore({
+      const blockTxs = await getRosettaBlockTransactionsFromDataStore({
         blockHash: dbBlock.block_hash,
         indexBlockHash: dbBlock.index_block_hash,
+        blockHeight: dbBlock.block_height,
         db,
         chainId,
       });
+      if (blockTxs.found) {
+        transactions = blockTxs.result.transactions;
+        otherTransactions = blockTxs.result.otherTransactions;
+      }
     }
 
     const parentBlockHash = dbBlock.parent_block_hash;
@@ -562,12 +591,12 @@ export async function getRosettaBlockFromDataStore(
       block_identifier: { index: dbBlock.block_height, hash: dbBlock.block_hash },
       parent_block_identifier,
       timestamp: timestamp,
-      transactions: blockTxs.found ? blockTxs.result : [],
+      transactions,
       metadata: {
         burn_block_height: dbBlock.burn_block_height,
       },
     };
-    return { found: true, result: apiBlock };
+    return { found: true, result: { block: apiBlock, otherTransactions } };
   });
 }
 
@@ -726,11 +755,17 @@ async function parseRosettaTxDetail(opts: {
   minerRewards: DbMinerReward[];
   unlockingEvents: StxUnlockEvent[];
   chainId: ChainID;
+  /**
+   * When true, skip fetching this tx's events because they are being emitted separately as
+   * synthetic chunked transactions via the rosetta `other_transactions` mechanism. Used for the
+   * block-1 genesis state tx, which carries ~330k STX mint events representing pre-upgrade
+   * (stacks 1.0) balances.
+   */
+  skipEventFetch?: boolean;
 }): Promise<RosettaTransaction> {
   return await opts.db.sqlTransaction(async sql => {
     let events: DbEvent[] = [];
-    if (opts.block_height > 1) {
-      // only return events of blocks at height greater than 1
+    if (!opts.skipEventFetch) {
       const eventsQuery = await opts.db.getTxEvents({
         txId: opts.tx.tx_id,
         indexBlockHash: opts.indexBlockHash,
@@ -794,12 +829,74 @@ async function getRosettaBlockTxFromDataStore(opts: {
   });
 }
 
+/**
+ * Build a synthetic RosettaTransaction representing a single chunk of the block-1 genesis
+ * state tx's event-derived operations. Called when `/block/transaction` is invoked with a
+ * synthetic tx id of the form `{origTxId}:genesis-chunk:{i}`.
+ *
+ * The chunk contains up to GENESIS_CHUNK_EVENT_SIZE ops derived from events starting at
+ * `event_index` offset = chunkIndex * GENESIS_CHUNK_EVENT_SIZE. This lets consumers page
+ * through the ~330k pre-upgrade (stacks 1.0) balance mint events concurrently without
+ * blowing up the `/block` response size.
+ */
+async function getRosettaGenesisChunkTransactionFromDataStore(opts: {
+  synthesizedTxId: string;
+  origTxId: string;
+  chunkIndex: number;
+  db: PgStore;
+  chainId: ChainID;
+}): Promise<FoundOrNot<RosettaTransaction>> {
+  return await opts.db.sqlTransaction(async sql => {
+    const txQuery = await opts.db.getTx({ txId: opts.origTxId, includeUnanchored: false });
+    if (!txQuery.found) {
+      return { found: false };
+    }
+    const origTx = txQuery.result;
+
+    // Only chunk the genesis state tx at block 1. Reject synthetic ids that reference a tx
+    // at any other height so we do not fabricate data for arbitrary tx ids.
+    const blockQuery = await opts.db.getBlock({ hash: origTx.block_hash });
+    if (!blockQuery.found || blockQuery.result.block_height !== 1) {
+      return { found: false };
+    }
+
+    const offset = opts.chunkIndex * GENESIS_CHUNK_EVENT_SIZE;
+    const eventsQuery = await opts.db.getTxEvents({
+      txId: opts.origTxId,
+      indexBlockHash: origTx.index_block_hash,
+      limit: GENESIS_CHUNK_EVENT_SIZE,
+      offset,
+    });
+    if (eventsQuery.results.length === 0) {
+      return { found: false };
+    }
+
+    const operations = await getOperationsFromEvents(
+      origTx,
+      opts.db,
+      opts.chainId,
+      eventsQuery.results
+    );
+    const rosettaTx: RosettaTransaction = {
+      transaction_identifier: { hash: opts.synthesizedTxId },
+      operations,
+    };
+    return { found: true, result: rosettaTx };
+  });
+}
+
 async function getRosettaBlockTransactionsFromDataStore(opts: {
   blockHash: string;
   indexBlockHash: string;
+  blockHeight: number;
   db: PgStore;
   chainId: ChainID;
-}): Promise<FoundOrNot<RosettaTransaction[]>> {
+}): Promise<
+  FoundOrNot<{
+    transactions: RosettaTransaction[];
+    otherTransactions: OtherTransactionIdentifier[];
+  }>
+> {
   return await opts.db.sqlTransaction(async sql => {
     const blockQuery = await opts.db.getBlock({ hash: opts.blockHash });
     if (!blockQuery.found) {
@@ -818,8 +915,24 @@ async function getRosettaBlockTransactionsFromDataStore(opts: {
     const unlockingEvents = await opts.db.getUnlockedAddressesAtBlock(blockQuery.result);
 
     const transactions: RosettaTransaction[] = [];
+    const otherTransactions: OtherTransactionIdentifier[] = [];
 
+    // At block 1, the stacks genesis state tx carries ~330k STX mint events representing
+    // pre-upgrade (stacks 1.0) balances. Returning all of those ops inline blows up response size
+    // (~150 MB), so we split the genesis state tx's event-derived operations into deterministic
+    // chunks and expose them via `other_transactions`. The tx itself still appears in
+    // `transactions[]` with only its static (fee / sender / coinbase / etc.) ops.
     for (const tx of txsQuery.result) {
+      let skipEventFetch = false;
+      if (opts.blockHeight === 1 && opts.chainId === NETWORK_CHAIN_ID.mainnet) {
+        if (tx.tx_id === GENESIS_CHUNK_TX_ID) {
+          const numChunks = Math.ceil(GENESIS_CHUNK_TX_EVENT_COUNT / GENESIS_CHUNK_EVENT_SIZE);
+          for (let i = 0; i < numChunks; i++) {
+            otherTransactions.push({ hash: buildGenesisChunkTxId(tx.tx_id, i) });
+          }
+          skipEventFetch = true;
+        }
+      }
       const rosettaTx = await parseRosettaTxDetail({
         block_height: blockQuery.result.block_height,
         indexBlockHash: opts.indexBlockHash,
@@ -828,11 +941,12 @@ async function getRosettaBlockTransactionsFromDataStore(opts: {
         minerRewards,
         unlockingEvents,
         chainId: opts.chainId,
+        skipEventFetch,
       });
       transactions.push(rosettaTx);
     }
 
-    return { found: true, result: transactions };
+    return { found: true, result: { transactions, otherTransactions } };
   });
 }
 
@@ -842,6 +956,20 @@ export async function getRosettaTransactionFromDataStore(
   chainId: ChainID
 ): Promise<FoundOrNot<RosettaTransaction>> {
   return await db.sqlTransaction(async sql => {
+    // Synthetic tx ids (e.g. `0x2f07...:genesis-chunk:3`) are emitted by block 1 via
+    // `other_transactions`. Resolve them to a slice of event-derived operations on the
+    // original genesis state tx.
+    const chunkInfo = parseGenesisChunkTxId(txId);
+    if (chunkInfo) {
+      return await getRosettaGenesisChunkTransactionFromDataStore({
+        synthesizedTxId: txId,
+        origTxId: chunkInfo.origTxId,
+        chunkIndex: chunkInfo.chunkIndex,
+        db,
+        chainId,
+      });
+    }
+
     const txQuery = await db.getTx({ txId, includeUnanchored: false });
     if (!txQuery.found) {
       return { found: false };

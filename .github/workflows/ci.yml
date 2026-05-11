@@ -6,7 +6,7 @@ on:
       - master
       - develop
       - beta
-      - nakamoto
+      - rosetta
     tags-ignore:
       - "**"
     paths-ignore:

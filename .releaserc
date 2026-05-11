@@ -7,8 +7,8 @@
       "prerelease": true
     },
     {
-      "name": "nakamoto",
-      "channel": "nakamoto",
+      "name": "rosetta",
+      "channel": "rosetta",
       "prerelease": true
     }
   ],
@@ -42,12 +42,6 @@
       "@semantic-release/npm",
       {
         "pkgRoot": "./client"
-      }
-    ],
-    [
-      "@semantic-release/github",
-      {
-        "draftRelease": true
       }
     ],
     "@semantic-release/changelog",

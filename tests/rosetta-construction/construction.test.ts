@@ -2063,10 +2063,10 @@ describe('Rosetta Construction', () => {
     expect(stxOpsTx.operations).toContainEqual(expect.objectContaining(expectedStackStxOp));
     expect(stxOpsTx.operations).toContainEqual(expect.objectContaining(expectedStxLockOp));
 
-    expect(blockTxOpsQuery.body.operations).toContainEqual(
+    expect(blockTxOpsQuery.body.transaction.operations).toContainEqual(
       expect.objectContaining(expectedStackStxOp)
     );
-    expect(blockTxOpsQuery.body.operations).toContainEqual(
+    expect(blockTxOpsQuery.body.transaction.operations).toContainEqual(
       expect.objectContaining(expectedStxLockOp)
     );
 
@@ -2118,7 +2118,7 @@ describe('Rosetta Construction', () => {
     };
     expect(query2.status).toBe(200);
     expect(query2.type).toBe('application/json');
-    expect(query2.body.operations[1]).toStrictEqual(expectedResponse);
+    expect(query2.body.transaction.operations[1]).toStrictEqual(expectedResponse);
   });
 
   //---------------------

@@ -37,8 +37,11 @@ export function createRosettaBlockRouter(db: PgStore, chainId: ChainID): express
         return;
       }
       const blockResponse: RosettaBlockResponse = {
-        block: block.result,
+        block: block.result.block,
       };
+      if (block.result.otherTransactions.length > 0) {
+        blockResponse.other_transactions = block.result.otherTransactions;
+      }
       res.json(blockResponse);
     })
   );
@@ -63,7 +66,7 @@ export function createRosettaBlockRouter(db: PgStore, chainId: ChainID): express
         return;
       }
 
-      res.json(transaction.result);
+      res.json({ transaction: transaction.result });
     })
   );
 

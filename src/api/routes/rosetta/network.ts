@@ -61,7 +61,7 @@ export function createRosettaNetworkRouter(db: PgStore, chainId: ChainID): expre
           if (!genesis.found) {
             throw RosettaErrors[RosettaErrorsTypes.blockNotFound];
           }
-          return { block: block.result, genesis: genesis.result };
+          return { block: block.result.block, genesis: genesis.result.block };
         });
         block = results.block;
         genesis = results.genesis;

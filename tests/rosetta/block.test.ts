@@ -100,7 +100,7 @@ describe('/block tests', () => {
       });
     expect(query1.status).toBe(200);
     expect(query1.type).toBe('application/json');
-    const result = JSON.parse(query1.text);
+    const result = JSON.parse(query1.text).transaction;
     expect(result.transaction_identifier.hash).toEqual('0x1112');
     expect(result.operations[1].metadata).toEqual({
       contract_id: 'ST27W5M8BRKA7C5MZE2R1S1F4XTPHFWFRNHA9M04Y.hello-world',
@@ -183,7 +183,7 @@ describe('/block tests', () => {
       });
     expect(query1.status).toBe(200);
     expect(query1.type).toBe('application/json');
-    const result1 = JSON.parse(query1.text);
+    const result1 = JSON.parse(query1.text).transaction;
     expect(result1.operations[1]).toEqual({
       account: {
         address: 'SP3WV3VC6GM1WF215SDHP0MESQ3BNXHB1N6TPB70S',
@@ -269,7 +269,7 @@ describe('/block tests', () => {
       });
     expect(query2.status).toBe(200);
     expect(query2.type).toBe('application/json');
-    const result2 = JSON.parse(query2.text);
+    const result2 = JSON.parse(query2.text).transaction;
     expect(result2.operations[1]).toEqual({
       account: {
         address: 'SP3WV3VC6GM1WF215SDHP0MESQ3BNXHB1N6TPB70S',
@@ -318,7 +318,7 @@ describe('/block tests', () => {
       });
     expect(query3.status).toBe(200);
     expect(query3.type).toBe('application/json');
-    const result3 = JSON.parse(query3.text);
+    const result3 = JSON.parse(query3.text).transaction;
     expect(result3.operations[1]).toEqual({
       account: {
         address: 'SP3WV3VC6GM1WF215SDHP0MESQ3BNXHB1N6TPB70S',
@@ -395,7 +395,7 @@ describe('/block tests', () => {
       });
     expect(query5.status).toBe(200);
     expect(query5.type).toBe('application/json');
-    const result5 = JSON.parse(query5.text);
+    const result5 = JSON.parse(query5.text).transaction;
     // No operation, ignored due to missing metadata.
     expect(result5.operations[1]).toEqual(undefined);
   });
@@ -565,7 +565,7 @@ describe('/block tests', () => {
       });
     expect(query1.status).toBe(200);
     expect(query1.type).toBe('application/json');
-    const result = JSON.parse(query1.text);
+    const result = JSON.parse(query1.text).transaction;
     expect(result.transaction_identifier.hash).toEqual('0x1112');
     expect(result.operations[2].metadata).toEqual({ memo: 'memo-1' });
     expect(result.operations[2].operation_identifier.index).toEqual(2);
@@ -619,7 +619,7 @@ describe('/block tests', () => {
       });
     expect(query2.status).toBe(200);
     expect(query2.type).toBe('application/json');
-    const result2 = JSON.parse(query2.text);
+    const result2 = JSON.parse(query2.text).transaction;
     expect(result2.transaction_identifier.hash).toEqual('0x1113');
     expect(result2.operations[2].metadata).toEqual({ memo: 'memo-1' });
     expect(result2.operations[3].metadata).toEqual({ memo: 'memo-1' });
