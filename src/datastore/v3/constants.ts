@@ -50,3 +50,19 @@ export const TX_COLUMNS = [
   'tenure_change_previous_tenure_blocks',
   'tenure_change_pubkey_hash',
 ];
+
+export const PRINCIPAL_TRANSACTION_BALANCE_CHANGE_COLUMNS = [
+  'principal',
+  'tx_id',
+  'block_height',
+  'index_block_hash',
+  'microblock_hash',
+  'microblock_sequence',
+  'tx_index',
+  'canonical',
+  'microblock_canonical',
+  'asset_type',
+  'asset_identifier',
+  'sent',
+  'received',
+];

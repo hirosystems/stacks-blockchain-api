@@ -4,7 +4,12 @@ import { Type, TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
 import { Server } from 'node:http';
 import { getPagingQueryLimit, ResourceType } from '../../pagination.js';
 import { PrincipalSchema, TransactionIdSchema } from '../../schemas/v3/entities/common.js';
-import { CursorPaginationQuerystring, CursorPaginatedResponse } from '../../schemas/v3/params.js';
+import {
+  CursorPaginationQuerystring,
+  CursorPaginatedResponse,
+  TransactionCursorSchema,
+  PrincipalTransactionBalanceChangeCursorSchema,
+} from '../../schemas/v3/params.js';
 import { PrincipalTransactionSummarySchema } from '../../schemas/v3/entities/principal-transactions.js';
 import {
   parsePrincipalTransactionBalanceChange,
@@ -27,14 +32,14 @@ export const PrincipalsRoutes: FastifyPluginAsync<
         description: `Returns a list of confirmed transactions sent or received by a Stacks principal`,
         tags: ['Transactions'],
         params: Type.Object({ principal: PrincipalSchema }),
-        querystring: CursorPaginationQuerystring(ResourceType.Tx, Type.String()),
+        querystring: CursorPaginationQuerystring(ResourceType.Tx, TransactionCursorSchema),
         response: {
           200: CursorPaginatedResponse(PrincipalTransactionSummarySchema),
         },
       },
     },
     async (req, reply) => {
-      const results = await fastify.db.v3.getPrincipalTransactionSummaryList({
+      const results = await fastify.db.v3.getPrincipalTransactionSummaries({
         principal: req.params.principal,
         limit: req.query.limit ?? getPagingQueryLimit(ResourceType.Tx),
         cursor: req.query.cursor,
@@ -63,7 +68,10 @@ export const PrincipalsRoutes: FastifyPluginAsync<
         description: `Returns the balance changes for a principal's transaction`,
         tags: ['Transactions'],
         params: Type.Object({ principal: PrincipalSchema, tx_id: TransactionIdSchema }),
-        querystring: CursorPaginationQuerystring(ResourceType.Tx, Type.String()),
+        querystring: CursorPaginationQuerystring(
+          ResourceType.Tx,
+          PrincipalTransactionBalanceChangeCursorSchema
+        ),
         response: {
           200: CursorPaginatedResponse(PrincipalTransactionBalanceChangeSchema),
         },

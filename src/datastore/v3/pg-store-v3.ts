@@ -4,11 +4,16 @@ import {
   DbPrincipalTransactionBalanceChange,
   DbPrincipalTransactionSummary,
 } from './types.js';
-import { TX_SUMMARY_COLUMNS } from './constants.js';
+import { PRINCIPAL_TRANSACTION_BALANCE_CHANGE_COLUMNS, TX_SUMMARY_COLUMNS } from './constants.js';
 import { prefixedCols } from '../helpers.js';
 
 export class PgStoreV3 extends BasePgStoreModule {
-  async getPrincipalTransactionSummaryList(args: {
+  /**
+   * Gets the summaries for a principal's transactions.
+   * @param args - The arguments for the query.
+   * @returns The summaries for the principal's transactions.
+   */
+  async getPrincipalTransactionSummaries(args: {
     principal: string;
     limit: number;
     cursor?: string;
@@ -108,6 +113,11 @@ export class PgStoreV3 extends BasePgStoreModule {
     });
   }
 
+  /**
+   * Gets the balance changes for a principal's transaction.
+   * @param args - The arguments for the query.
+   * @returns The balance changes for the principal's transaction.
+   */
   async getPrincipalTransactionBalanceChanges(args: {
     principal: string;
     tx_id: string;
@@ -115,7 +125,25 @@ export class PgStoreV3 extends BasePgStoreModule {
     cursor?: string;
   }): Promise<DbCursorPaginatedResult<DbPrincipalTransactionBalanceChange>> {
     return await this.sqlTransaction(async sql => {
-      const results = await sql<(DbPrincipalTransactionBalanceChange & { total: number })[]>`
+      // Cursor format: `${asset_type}:${asset_identifier}`. We split on the *first* colon
+      // only because FT/NFT asset identifiers contain `::` internally (e.g.
+      // `SP000…contract-name::asset-name`); a naive split would over-split. The cursor is
+      // inclusive and points at the first row of the current page, matching the convention
+      // used by `getPrincipalTransactionSummaryList`.
+      let cursorFilter = sql``;
+      if (args.cursor) {
+        const colonIdx = args.cursor.indexOf(':');
+        if (colonIdx > 0) {
+          const cursorAssetType = parseInt(args.cursor.substring(0, colonIdx), 10);
+          const cursorAssetIdentifier = args.cursor.substring(colonIdx + 1);
+          cursorFilter = sql`
+            AND (asset_type, asset_identifier)
+                >= (${cursorAssetType}, ${cursorAssetIdentifier})
+          `;
+        }
+      }
+
+      const resultQuery = await sql<(DbPrincipalTransactionBalanceChange & { total: number })[]>`
         WITH total AS (
           SELECT balance_change_count
           FROM principal_txs
@@ -124,25 +152,63 @@ export class PgStoreV3 extends BasePgStoreModule {
             AND canonical = true
             AND microblock_canonical = true
         )
-        SELECT *,
-          (sent - received) AS net,
+        SELECT ${sql(PRINCIPAL_TRANSACTION_BALANCE_CHANGE_COLUMNS)},
+          (received - sent) AS net,
           (SELECT balance_change_count FROM total) AS total
         FROM principal_tx_balance_changes
         WHERE principal = ${args.principal}
           AND tx_id = ${args.tx_id}
           AND canonical = true
           AND microblock_canonical = true
+          ${cursorFilter}
         ORDER BY asset_type ASC, asset_identifier ASC
+        LIMIT ${args.limit + 1}
       `;
+
+      const hasNextPage = resultQuery.count > args.limit;
+      const results = hasNextPage ? resultQuery.slice(0, args.limit) : resultQuery;
+      const total = resultQuery.count > 0 ? resultQuery[0].total : 0;
+
+      const peekResult = resultQuery[resultQuery.length - 1];
+      const nextCursor =
+        hasNextPage && peekResult
+          ? `${peekResult.asset_type}:${peekResult.asset_identifier}`
+          : null;
+
+      const firstResult = results[0];
+      const currentCursor = firstResult
+        ? `${firstResult.asset_type}:${firstResult.asset_identifier}`
+        : null;
+
+      let prevCursor: string | null = null;
+      if (firstResult) {
+        const prevPageQuery = await sql<{ asset_type: number; asset_identifier: string }[]>`
+          SELECT asset_type, asset_identifier
+          FROM principal_tx_balance_changes
+          WHERE principal = ${args.principal}
+            AND tx_id = ${args.tx_id}
+            AND canonical = true
+            AND microblock_canonical = true
+            AND (asset_type, asset_identifier)
+                < (${firstResult.asset_type}, ${firstResult.asset_identifier})
+          ORDER BY asset_type DESC, asset_identifier DESC
+          OFFSET ${args.limit - 1}
+          LIMIT 1
+        `;
+        if (prevPageQuery.length > 0) {
+          const prevPage = prevPageQuery[0];
+          prevCursor = `${prevPage.asset_type}:${prevPage.asset_identifier}`;
+        }
+      }
 
       return {
         limit: args.limit,
         next_cursor: nextCursor,
         prev_cursor: prevCursor,
         current_cursor: currentCursor,
-        total: results[0]?.total ?? 0,
+        total,
         results,
-      }
+      };
     });
   }
 }

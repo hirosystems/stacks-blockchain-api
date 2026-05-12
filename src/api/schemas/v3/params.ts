@@ -48,3 +48,19 @@ export const CursorPaginatedResponse = <T extends TSchema>(type: T, options?: Ob
     },
     options
   );
+
+export const TransactionCursorSchema = Type.String({
+  description:
+    'Cursor for paginating transactions. Format: block_height:microblock_sequence:tx_index',
+  pattern: '^[0-9]+:[0-9]+:[0-9]+$',
+});
+
+export const PrincipalTransactionBalanceChangeCursorSchema = Type.String({
+  description:
+    'Cursor for paginating principal transaction balance changes. Format: ' +
+    '`<asset_type>:<asset_identifier>` where `asset_type` is a numeric tag ' +
+    '(1=STX, 2=FT, 3=NFT) and `asset_identifier` is `<stx>` for STX or a ' +
+    'fully-qualified Clarity asset id such as `SP000…contract-name::asset-name` ' +
+    'for FT/NFT.',
+  pattern: '^[0-9]+:\\S+$',
+});
