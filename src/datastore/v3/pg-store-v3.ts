@@ -1,5 +1,9 @@
 import { BasePgStoreModule } from '@stacks/api-toolkit';
-import { DbCursorPaginatedResult, DbPrincipalTransactionSummary } from './types.js';
+import {
+  DbCursorPaginatedResult,
+  DbPrincipalTransactionBalanceChange,
+  DbPrincipalTransactionSummary,
+} from './types.js';
 import { TX_SUMMARY_COLUMNS } from './constants.js';
 import { prefixedCols } from '../helpers.js';
 
@@ -101,6 +105,44 @@ export class PgStoreV3 extends BasePgStoreModule {
         total,
         results,
       };
+    });
+  }
+
+  async getPrincipalTransactionBalanceChanges(args: {
+    principal: string;
+    tx_id: string;
+    limit: number;
+    cursor?: string;
+  }): Promise<DbCursorPaginatedResult<DbPrincipalTransactionBalanceChange>> {
+    return await this.sqlTransaction(async sql => {
+      const results = await sql<(DbPrincipalTransactionBalanceChange & { total: number })[]>`
+        WITH total AS (
+          SELECT balance_change_count
+          FROM principal_txs
+          WHERE principal = ${args.principal}
+            AND tx_id = ${args.tx_id}
+            AND canonical = true
+            AND microblock_canonical = true
+        )
+        SELECT *,
+          (sent - received) AS net,
+          (SELECT balance_change_count FROM total) AS total
+        FROM principal_tx_balance_changes
+        WHERE principal = ${args.principal}
+          AND tx_id = ${args.tx_id}
+          AND canonical = true
+          AND microblock_canonical = true
+        ORDER BY asset_type ASC, asset_identifier ASC
+      `;
+
+      return {
+        limit: args.limit,
+        next_cursor: nextCursor,
+        prev_cursor: prevCursor,
+        current_cursor: currentCursor,
+        total: results[0]?.total ?? 0,
+        results,
+      }
     });
   }
 }

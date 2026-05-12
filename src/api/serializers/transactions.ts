@@ -9,10 +9,15 @@ import {
   TransactionSummary,
   TransactionStatus,
 } from '../schemas/v3/entities/transaction-summaries.js';
-import { DbPrincipalTransactionSummary, DbTransactionSummary } from '../../datastore/v3/types.js';
-import { DbTxStatus, DbTxTypeId } from '../../datastore/common.js';
+import {
+  DbPrincipalTransactionBalanceChange,
+  DbPrincipalTransactionSummary,
+  DbTransactionSummary,
+} from '../../datastore/v3/types.js';
+import { DbAssetType, DbTxStatus, DbTxTypeId } from '../../datastore/common.js';
 import { getTxTenureChangeCauseString } from '../controllers/db-controller.js';
 import { PrincipalTransactionSummary } from '../schemas/v3/entities/principal-transactions.js';
+import { PrincipalTransactionBalanceChange } from '../schemas/v3/entities/principal-balance-changes.js';
 
 /**
  * Parses a database transaction summary status into a transaction summary status.
@@ -154,6 +159,47 @@ export function parsePrincipalTransactionSummary(
       stx: summary.stx_balance_affected,
       ft: summary.ft_balance_affected,
       nft: summary.nft_balance_affected,
+    },
+  };
+}
+
+function parseAssetType(type: DbAssetType): 'stx' | 'ft' | 'nft' {
+  switch (type) {
+    case DbAssetType.Stx:
+      return 'stx';
+    case DbAssetType.Ft:
+      return 'ft';
+    case DbAssetType.Nft:
+      return 'nft';
+    default:
+      throw new Error(`Unexpected DbAssetType: ${type}`);
+  }
+}
+
+/**
+ * Parses a database principal transaction balance change into a principal transaction balance
+ * change.
+ * @param change - The database principal transaction balance change to parse.
+ * @returns The parsed principal transaction balance change.
+ */
+export function parsePrincipalTransactionBalanceChange(
+  change: DbPrincipalTransactionBalanceChange
+): PrincipalTransactionBalanceChange {
+  const assetType = parseAssetType(change.asset_type);
+  return {
+    asset:
+      assetType === 'stx'
+        ? {
+            type: 'stx',
+          }
+        : {
+            type: assetType,
+            identifier: change.asset_identifier,
+          },
+    balance_change: {
+      sent: change.sent,
+      received: change.received,
+      net: change.net,
     },
   };
 }

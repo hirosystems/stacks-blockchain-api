@@ -1,20 +1,6 @@
 import { Static, Type } from '@sinclair/typebox';
 import { TransactionSummarySchema } from './transaction-summaries.js';
-
-export const PrincipalTransactionBalanceChangeSchema = Type.Object({
-  sent: Type.String({
-    description: 'Amount sent by the principal',
-  }),
-  received: Type.String({
-    description: 'Amount received by the principal',
-  }),
-  net: Type.String({
-    description: 'Net balance change for the principal',
-  }),
-});
-export type PrincipalTransactionBalanceChange = Static<
-  typeof PrincipalTransactionBalanceChangeSchema
->;
+import { BalanceChangeSchema } from './principal-balance-changes.js';
 
 export const PrincipalTransactionSummarySchema = Type.Object({
   transaction: TransactionSummarySchema,
@@ -25,7 +11,7 @@ export const PrincipalTransactionSummarySchema = Type.Object({
     }
   ),
   balance_changes: Type.Object({
-    stx: PrincipalTransactionBalanceChangeSchema,
+    stx: BalanceChangeSchema,
   }),
   affected_asset_types: Type.Object({
     stx: Type.Boolean({

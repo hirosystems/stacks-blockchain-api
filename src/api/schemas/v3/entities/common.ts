@@ -1,23 +1,31 @@
 import { Static, Type } from '@sinclair/typebox';
 
-export const AddressParamSchema = Type.String({
+export const AddressSchema = Type.String({
   pattern: '^[0123456789ABCDEFGHJKMNPQRSTVWXYZ]{28,41}',
   title: 'Stacks Address',
   description: 'Stacks Address',
   examples: ['SP318Q55DEKHRXJK696033DQN5C54D9K2EE6DHRWP'],
 });
-export type Address = Static<typeof AddressParamSchema>;
+export type Address = Static<typeof AddressSchema>;
 
-export const SmartContractIdParamSchema = Type.String({
+export const SmartContractIdSchema = Type.String({
   pattern: '^[0123456789ABCDEFGHJKMNPQRSTVWXYZ]{28,41}.[a-zA-Z]([a-zA-Z0-9]|[-_]){0,39}$',
   title: 'Smart Contract ID',
   description: 'Smart Contract ID',
   examples: ['SP000000000000000000002Q6VF78.pox-3'],
 });
-export type SmartContractId = Static<typeof SmartContractIdParamSchema>;
+export type SmartContractId = Static<typeof SmartContractIdSchema>;
 
-export const PrincipalSchema = Type.Union([AddressParamSchema, SmartContractIdParamSchema]);
+export const PrincipalSchema = Type.Union([AddressSchema, SmartContractIdSchema]);
 export type Principal = Static<typeof PrincipalSchema>;
+
+export const TransactionIdSchema = Type.String({
+  pattern: '^(0x)?[a-fA-F0-9]{64}$',
+  title: 'Transaction ID',
+  description: 'Transaction ID',
+  examples: ['0xf6bd5f4a7b26184a3466340b2e99fd003b4962c0e382a7e4b6a13df3dd7a91c6'],
+});
+export type TransactionId = Static<typeof TransactionIdSchema>;
 
 export const DecodedClarityValueSchema = Type.Object({
   hex: Type.String(),
