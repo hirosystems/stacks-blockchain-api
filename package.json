@@ -42,7 +42,7 @@
     "lint:eslint": "eslint .",
     "lint:prettier": "prettier --check src/**/*.ts",
     "lint:fix": "eslint . --fix && prettier --write --check src/**/*.{ts,json}",
-    "migrate": "node-pg-migrate -m migrations"
+    "migrate": "node-pg-migrate -m migrations -j ts"
   },
   "repository": {
     "type": "git",
