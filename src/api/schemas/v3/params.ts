@@ -64,3 +64,10 @@ export const PrincipalTransactionBalanceChangeCursorSchema = Type.String({
     'for FT/NFT.',
   pattern: '^[0-9]+:\\S+$',
 });
+
+export const PrincipalBalanceChangeCursorSchema = Type.String({
+  description:
+    'Cursor for paginating principal balance changes across multiple transactions. ' +
+    'Format: `<block_height>:<microblock_sequence>:<tx_index>:<asset_type>:<asset_identifier>`.',
+  pattern: '^[0-9]+:[0-9]+:[0-9]+:[0-9]+:\\S+$',
+});

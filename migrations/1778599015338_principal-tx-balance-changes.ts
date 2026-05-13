@@ -164,7 +164,6 @@ export function up(pgm: MigrationBuilder) {
       principal, tx_id, block_height, index_block_hash, microblock_hash,
       microblock_sequence, tx_index, canonical, microblock_canonical,
       asset_type, asset_identifier
-    ON CONFLICT ON CONSTRAINT unique_principal_tx_balance_changes DO NOTHING;
   `);
 
   // Backfill the newly added `principal_txs.balance_change_count` from the rows we just

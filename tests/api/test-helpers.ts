@@ -78,3 +78,7 @@ export function assertMatchesObject(actual: any, expected: any): void {
   }
   assert.deepEqual(actual, expected);
 }
+
+export function hex(value: number): string {
+  return `0x${value.toString(16).padStart(64, '0')}`;
+}

@@ -17,14 +17,17 @@ import {
 import { DbAssetType, DbTxStatus, DbTxTypeId } from '../../datastore/common.js';
 import { getTxTenureChangeCauseString } from '../controllers/db-controller.js';
 import { PrincipalTransactionSummary } from '../schemas/v3/entities/principal-transactions.js';
-import { PrincipalTransactionBalanceChange } from '../schemas/v3/entities/principal-balance-changes.js';
+import {
+  PrincipalBalanceChange,
+  PrincipalTransactionBalanceChange,
+} from '../schemas/v3/entities/principal-balance-changes.js';
 
 /**
  * Parses a database transaction summary status into a transaction summary status.
  * @param status - The database transaction status.
  * @returns The parsed transaction summary status.
  */
-function parseDbTransactionSummaryStatus(status: DbTxStatus): TransactionStatus {
+function serializeDbTransactionSummaryStatus(status: DbTxStatus): TransactionStatus {
   switch (status) {
     case DbTxStatus.AbortByResponse:
       return 'abort_by_response';
@@ -42,7 +45,7 @@ function parseDbTransactionSummaryStatus(status: DbTxStatus): TransactionStatus 
  * @param summary - The database transaction summary to parse.
  * @returns The parsed transaction summary.
  */
-export function parseDbTransactionSummary(summary: DbTransactionSummary): TransactionSummary {
+export function serializeDbTransactionSummary(summary: DbTransactionSummary): TransactionSummary {
   const result: BaseTransactionSummary = {
     tx_id: summary.tx_id,
     sender: {
@@ -68,7 +71,7 @@ export function parseDbTransactionSummary(summary: DbTransactionSummary): Transa
       height: summary.burn_block_height,
       time: summary.burn_block_time,
     },
-    status: parseDbTransactionSummaryStatus(summary.status),
+    status: serializeDbTransactionSummaryStatus(summary.status),
   };
   switch (summary.type_id) {
     case DbTxTypeId.TokenTransfer: {
@@ -142,11 +145,11 @@ export function parseDbTransactionSummary(summary: DbTransactionSummary): Transa
  * @param summary - The database principal transaction summary to parse.
  * @returns The parsed principal transaction summary.
  */
-export function parsePrincipalTransactionSummary(
+export function serializePrincipalTransactionSummary(
   summary: DbPrincipalTransactionSummary
 ): PrincipalTransactionSummary {
   return {
-    transaction: parseDbTransactionSummary(summary),
+    transaction: serializeDbTransactionSummary(summary),
     involvement: summary.involvement,
     balance_changes: {
       stx: {
@@ -163,7 +166,7 @@ export function parsePrincipalTransactionSummary(
   };
 }
 
-function parseAssetType(type: DbAssetType): 'stx' | 'ft' | 'nft' {
+function serializeAssetType(type: DbAssetType): 'stx' | 'ft' | 'nft' {
   switch (type) {
     case DbAssetType.Stx:
       return 'stx';
@@ -182,10 +185,10 @@ function parseAssetType(type: DbAssetType): 'stx' | 'ft' | 'nft' {
  * @param change - The database principal transaction balance change to parse.
  * @returns The parsed principal transaction balance change.
  */
-export function parsePrincipalTransactionBalanceChange(
+export function serializePrincipalTransactionBalanceChange(
   change: DbPrincipalTransactionBalanceChange
 ): PrincipalTransactionBalanceChange {
-  const assetType = parseAssetType(change.asset_type);
+  const assetType = serializeAssetType(change.asset_type);
   return {
     asset:
       assetType === 'stx'
@@ -201,5 +204,20 @@ export function parsePrincipalTransactionBalanceChange(
       received: change.received,
       net: change.net,
     },
+  };
+}
+
+/**
+ * Parses a database principal transaction balance change into a principal balance change
+ * (the flattened batch shape that carries `tx_id` alongside the asset and balance fields).
+ * @param change - The database principal transaction balance change to parse.
+ * @returns The parsed principal balance change.
+ */
+export function serializePrincipalBalanceChange(
+  change: DbPrincipalTransactionBalanceChange
+): PrincipalBalanceChange {
+  return {
+    tx_id: change.tx_id,
+    ...serializePrincipalTransactionBalanceChange(change),
   };
 }
