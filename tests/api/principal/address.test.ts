@@ -1,7 +1,7 @@
 import supertest from 'supertest';
 import assert from 'node:assert/strict';
 import { createClarityValueArray } from '../../test-helpers.ts';
-import codec from '@stacks/codec';
+import { decodeTransaction } from '@stacks/codec';
 import {
   DbBlock,
   DbTxTypeId,
@@ -2571,7 +2571,7 @@ describe('address tests', () => {
       sponsorNonce: 2,
     });
     const serializedHex = sponsoredTx.serialize();
-    const tx = codec.decodeTransaction(serializedHex);
+    const tx = decodeTransaction(serializedHex);
     const DbTxRaw = createDbTxFromCoreMsg({
       core_tx: {
         raw_tx: '0x' + serializedHex,

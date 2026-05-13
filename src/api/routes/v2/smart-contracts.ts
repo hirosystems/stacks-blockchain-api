@@ -10,7 +10,7 @@ import { CursorOffsetParam, LimitParam } from '../../schemas/params.js';
 import { getPagingQueryLimit, ResourceType } from '../../pagination.js';
 import { NotFoundError } from '../../../errors.js';
 import { SmartContractLogTransactionEvent } from '../../schemas/entities/transaction-events.js';
-import codec from '@stacks/codec';
+import { decodeClarityValueToRepr } from '@stacks/codec';
 
 export const SmartContractRoutesV2: FastifyPluginAsync<
   Record<never, never>,
@@ -77,7 +77,7 @@ export const SmartContractRoutesV2: FastifyPluginAsync<
         throw new NotFoundError('Cursor not found');
       }
       const events: SmartContractLogTransactionEvent[] = eventQuery.results.map(r => {
-        const parsedClarityValue = codec.decodeClarityValueToRepr(r.value);
+        const parsedClarityValue = decodeClarityValueToRepr(r.value);
         return {
           event_index: r.event_index,
           event_type: 'smart_contract_log' as const,

@@ -5,7 +5,7 @@ import * as util from 'util';
 import * as readline from 'readline';
 import * as path from 'path';
 import * as zlib from 'zlib';
-import codec from '@stacks/codec';
+import { bitcoinToStacksAddress } from '@stacks/codec';
 import split2 from 'split2';
 import {
   DataStoreBnsBlockTxData,
@@ -232,7 +232,7 @@ class SubdomainZonefileParser extends stream.Transform {
 // Convert a BTC address to STX, otherwise return the original value if invalid
 function btcToStxAddress(btcAddress: string) {
   try {
-    return codec.bitcoinToStacksAddress(btcAddress);
+    return bitcoinToStacksAddress(btcAddress);
   } catch (_error) {
     return btcAddress;
   }
@@ -381,7 +381,7 @@ class StxVestingTransform extends stream.Transform {
       // skip the headers row
       if (address !== 'address') {
         if (!address.startsWith('S')) {
-          address = codec.bitcoinToStacksAddress(address);
+          address = bitcoinToStacksAddress(address);
         }
         const tokenOfferingLocked: DbTokenOfferingLocked = {
           address,

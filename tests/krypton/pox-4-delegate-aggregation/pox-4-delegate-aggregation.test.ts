@@ -10,7 +10,14 @@ import {
   standardPrincipalCV,
   uintCV,
 } from '@stacks/transactions';
-import codec from '@stacks/codec';
+import { decodeClarityValue } from '@stacks/codec';
+import type {
+  ClarityValueBoolTrue,
+  ClarityValuePrincipalStandard,
+  ClarityValueResponseOk,
+  ClarityValueTuple,
+  ClarityValueUInt,
+} from '@stacks/codec';
 import * as assert from 'node:assert/strict';
 import { hexToBytes } from '@stacks/common';
 import { StackingClient } from '@stacks/stacking';
@@ -191,7 +198,7 @@ describe('PoX-4 - Delegate aggregation increase operations', () => {
     await standByForPoxCycle(ctx);
     // get amount delegated
     const getDelegationInfo1 = await readOnlyFnCall<
-      codec.ClarityValueTuple<{ 'amount-ustx': codec.ClarityValueUInt }>
+      ClarityValueTuple<{ 'amount-ustx': ClarityValueUInt }>
     >(
       [contractAddress, contractName],
       'get-delegation-info',
@@ -295,8 +302,8 @@ describe('PoX-4 - Delegate aggregation increase operations', () => {
     );
     const stackAggrCommmitDbTx = await standByForTxSuccess(stackAggrCommitTxId, ctx);
 
-    const commitIndexResult = codec.decodeClarityValue<
-      codec.ClarityValueResponseOk<codec.ClarityValueUInt>
+    const commitIndexResult = decodeClarityValue<
+      ClarityValueResponseOk<ClarityValueUInt>
     >(stackAggrCommmitDbTx.raw_result);
     console.log('stack-aggregation-commit-indexed result:', commitIndexResult.repr);
 
@@ -354,11 +361,11 @@ describe('PoX-4 - Delegate aggregation increase operations', () => {
     );
 
     const delegateStackIncreaseDbTx = await standByForTxSuccess(delegateStackIncreaseTxId, ctx);
-    const delegateStackIncreaseResult = codec.decodeClarityValue<
-      codec.ClarityValueResponseOk<
-        codec.ClarityValueTuple<{
-          stacker: codec.ClarityValuePrincipalStandard;
-          'total-locked': codec.ClarityValueUInt;
+    const delegateStackIncreaseResult = decodeClarityValue<
+      ClarityValueResponseOk<
+        ClarityValueTuple<{
+          stacker: ClarityValuePrincipalStandard;
+          'total-locked': ClarityValueUInt;
         }>
       >
     >(delegateStackIncreaseDbTx.raw_result);
@@ -467,8 +474,8 @@ describe('PoX-4 - Delegate aggregation increase operations', () => {
     assert.equal(apiBalance.burnchain_unlock_height, coreBalanceInfo.unlock_height);
 
     const stackAggrIncreaseDbTx = await standByForTxSuccess(stackAggrIncreaseTxId, ctx);
-    const aggrIncreaseResult = codec.decodeClarityValue<
-      codec.ClarityValueResponseOk<codec.ClarityValueBoolTrue>
+    const aggrIncreaseResult = decodeClarityValue<
+      ClarityValueResponseOk<ClarityValueBoolTrue>
     >(stackAggrIncreaseDbTx.raw_result);
     assert.equal(aggrIncreaseResult.value.value, true);
 

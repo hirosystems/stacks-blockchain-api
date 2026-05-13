@@ -10,7 +10,8 @@ import {
   standardPrincipalCV,
   uintCV,
 } from '@stacks/transactions';
-import codec from '@stacks/codec';
+import { decodeClarityValue } from '@stacks/codec';
+import type { ClarityValueTuple, ClarityValueUInt } from '@stacks/codec';
 import { CoreRpcPoxInfo } from '../../../src/core-rpc/client.ts';
 import { DbTxStatus } from '../../../src/datastore/common.ts';
 import { stxToMicroStx } from '../../../src/helpers.ts';
@@ -155,7 +156,7 @@ describe('PoX-4 - Delegate Revoked Stacking', () => {
     );
     const delegateStackDbTx = await standByForTx(delegateStackTxResult.txId, ctx);
     assert.notEqual(delegateStackDbTx.status, DbTxStatus.Success);
-    const delegateStackResult = codec.decodeClarityValue(delegateStackDbTx.raw_result);
+    const delegateStackResult = decodeClarityValue(delegateStackDbTx.raw_result);
     assert.equal(delegateStackResult.repr, '(err 9)'); // ERR_STACKING_PERMISSION_DENIED
   });
 
@@ -197,7 +198,7 @@ describe('PoX-4 - Delegate Revoked Stacking', () => {
 
     // check delegation readonly function
     const getDelegationInfo = await readOnlyFnCall<
-      codec.ClarityValueTuple<{ 'amount-ustx': codec.ClarityValueUInt }>
+      ClarityValueTuple<{ 'amount-ustx': ClarityValueUInt }>
     >(
       [contractAddress, contractName],
       'get-delegation-info',
@@ -348,7 +349,7 @@ describe('PoX-4 - Delegate Revoked Stacking', () => {
     );
     const delegateStackDbTx = await standByForTx(delegateStackTxResult.txId, ctx);
     assert.notEqual(delegateStackDbTx.status, DbTxStatus.Success);
-    const delegateStackResult = codec.decodeClarityValue(delegateStackDbTx.raw_result);
+    const delegateStackResult = decodeClarityValue(delegateStackDbTx.raw_result);
     assert.equal(delegateStackResult.repr, '(err 9)'); // ERR_STACKING_PERMISSION_DENIED
   });
 
@@ -371,7 +372,7 @@ describe('PoX-4 - Delegate Revoked Stacking', () => {
       Buffer.from(delegateStackIncreaseTxHex, 'hex')
     );
     const delegateStackIncreaseTxResult = await standByForTx(delegateStackIncreaseTxId, ctx);
-    const delegateStackIncreaseResult = codec.decodeClarityValue(
+    const delegateStackIncreaseResult = decodeClarityValue(
       delegateStackIncreaseTxResult.raw_result
     );
     assert.equal(delegateStackIncreaseResult.repr, '(err 9)'); // ERR_STACKING_PERMISSION_DENIED
@@ -397,7 +398,7 @@ describe('PoX-4 - Delegate Revoked Stacking', () => {
       Buffer.from(delegateStackextendTxHex, 'hex')
     );
     const delegateStackextendTxResult = await standByForTx(delegateStackextendTxId, ctx);
-    const delegateStackextendResult = codec.decodeClarityValue(
+    const delegateStackextendResult = decodeClarityValue(
       delegateStackextendTxResult.raw_result
     );
     assert.equal(delegateStackextendResult.repr, '(err 9)'); // ERR_STACKING_PERMISSION_DENIED
@@ -429,7 +430,7 @@ describe('PoX-4 - Delegate Revoked Stacking', () => {
     );
     const delegateStackStxTxResult = await standByForTx(delegateStackStxTxId, ctx);
     assert.notEqual(delegateStackStxTxResult.status, DbTxStatus.Success);
-    const delegateStackStxResult = codec.decodeClarityValue(delegateStackStxTxResult.raw_result);
+    const delegateStackStxResult = decodeClarityValue(delegateStackStxTxResult.raw_result);
     assert.equal(delegateStackStxResult.repr, '(err 9)'); // ERR_STACKING_PERMISSION_DENIED
   });
 

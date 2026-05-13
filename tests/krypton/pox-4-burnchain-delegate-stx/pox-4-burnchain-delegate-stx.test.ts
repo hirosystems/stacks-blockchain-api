@@ -13,7 +13,8 @@ import * as btc from 'bitcoinjs-lib';
 import { b58ToC32, c32ToB58 } from 'c32check';
 import supertest from 'supertest';
 import { PoxContractIdentifier } from '../../../src/pox-helpers.ts';
-import codec from '@stacks/codec';
+import { decodeClarityValue } from '@stacks/codec';
+import type { ClarityValueUInt } from '@stacks/codec';
 import { decodeBtcAddress, poxAddressToBtcAddress } from '@stacks/stacking';
 import { timeout } from '@stacks/api-toolkit';
 import { AddressStxBalance } from '../../../src/api/schemas/entities/addresses.ts';
@@ -470,7 +471,7 @@ describe('PoX-4 - Stack using Bitcoin-chain delegate ops', () => {
     const callArg1 = txObj.contract_call.function_args![0];
     assert.equal(callArg1.name, 'amount-ustx');
     assert.equal(
-      BigInt(codec.decodeClarityValue<codec.ClarityValueUInt>(callArg1.hex).value),
+      BigInt(decodeClarityValue<ClarityValueUInt>(callArg1.hex).value),
       testStackAmount
     );
 
