@@ -24,12 +24,16 @@ export const PrincipalsRoutes: FastifyPluginAsync<
       schema: {
         operationId: 'get_principal_transactions',
         summary: 'Get principal transactions',
-        description: `Returns a list of confirmed transactions sent or received by a Stacks principal`,
+        description: `Returns a list of confirmed transactions sent or received by a Stacks principal, including the transaction summary, the involvement of the principal in the transaction, and the balances affected by the transaction.`,
         tags: ['Transactions'],
         params: Type.Object({ principal: PrincipalSchema }),
-        querystring: CursorPaginationQuerystring(ResourceType.Tx, TransactionCursorSchema),
+        querystring: CursorPaginationQuerystring(TransactionCursorSchema, ResourceType.Tx),
         response: {
-          200: CursorPaginatedResponse(PrincipalTransactionSummarySchema),
+          200: CursorPaginatedResponse(
+            PrincipalTransactionSummarySchema,
+            TransactionCursorSchema,
+            ResourceType.Tx
+          ),
         },
       },
     },

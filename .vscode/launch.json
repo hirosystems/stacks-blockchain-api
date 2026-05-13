@@ -91,7 +91,7 @@
         "--test",
         "--test-global-setup=./tests/api/setup.ts",
         "--test-concurrency=1",
-        "./tests/api/v3/**/*.test.ts"
+        "./tests/api/**/*.test.ts"
       ],
       "outputCapture": "std",
       "console": "integratedTerminal",

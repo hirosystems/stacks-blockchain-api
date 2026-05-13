@@ -3,48 +3,52 @@ import { pagingQueryLimits, ResourceType } from '../../pagination.js';
 import { Nullable } from '../util.js';
 
 /**
+ * Resource limit querystring parameter
+ * @param resource - Resource type to determine the default limit and max limit
+ * @returns Resource limit querystring parameter
+ */
+export const ResourceLimitQuerystringParam = (resource: ResourceType) =>
+  Type.Integer({
+    minimum: 1,
+    default: pagingQueryLimits[resource].defaultLimit,
+    maximum: pagingQueryLimits[resource].maxLimit,
+    description: `Number of results per page`,
+  });
+
+/**
  * Cursor pagination querystring
  * @param resource - Resource type to determine the default limit and max limit
  * @param type - Type of the cursor to paginate by
  * @returns Cursor pagination querystring
  */
-export const CursorPaginationQuerystring = <T extends TSchema>(
-  resource: ResourceType,
-  type: T,
-  title?: string,
-  description?: string,
-  limitOverride?: number
-) =>
+export const CursorPaginationQuerystring = <T extends TSchema>(type: T, resource: ResourceType) =>
   Type.Object({
-    limit: Type.Optional(
-      Type.Integer({
-        minimum: 0,
-        default: pagingQueryLimits[resource].defaultLimit,
-        maximum: limitOverride ?? pagingQueryLimits[resource].maxLimit,
-        title: title ?? 'Limit',
-        description: description ?? 'Results per page',
-      })
-    ),
+    limit: Type.Optional(ResourceLimitQuerystringParam(resource)),
     cursor: Type.Optional(type),
   });
 
 /**
  * Cursor pagination response
- * @param type - Type of the response object
+ * @param resultType - Type of the response object
  * @param options - Options for the response
  * @returns Cursor pagination response schema
  */
-export const CursorPaginatedResponse = <T extends TSchema>(type: T, options?: ObjectOptions) =>
+export const CursorPaginatedResponse = <TResult extends TSchema, TCursor extends TSchema>(
+  resultType: TResult,
+  cursorType: TCursor,
+  resource: ResourceType,
+  options?: ObjectOptions
+) =>
   Type.Object(
     {
       total: Type.Integer({ examples: [1] }),
-      limit: Type.Integer({ examples: [20] }),
+      limit: ResourceLimitQuerystringParam(resource),
       cursor: Type.Object({
-        next: Nullable(Type.String({ description: 'Next page cursor' })),
-        previous: Nullable(Type.String({ description: 'Previous page cursor' })),
-        current: Nullable(Type.String({ description: 'Current page cursor' })),
+        next: Nullable(cursorType),
+        previous: Nullable(cursorType),
+        current: Nullable(cursorType),
       }),
-      results: Type.Array(type),
+      results: Type.Array(resultType),
     },
     options
   );
