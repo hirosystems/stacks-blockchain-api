@@ -1,6 +1,6 @@
 {
   "name": "@stacks/blockchain-api-client",
-  "version": "0.1.2",
+  "version": "9.0.0-next.30",
   "access": "public",
   "description": "Client for the Stacks Blockchain API",
   "homepage": "https://github.com/hirosystems/stacks-blockchain-api/tree/master/client#readme",
