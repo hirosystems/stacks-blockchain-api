@@ -188,7 +188,7 @@ describe('principals', () => {
             net: '-100050',
           },
         },
-        affected_asset_types: {
+        affected_balances: {
           stx: true,
           ft: true,
           nft: true,
@@ -228,7 +228,7 @@ describe('principals', () => {
             net: '-50',
           },
         },
-        affected_asset_types: {
+        affected_balances: {
           stx: true,
           ft: false,
           nft: false,
