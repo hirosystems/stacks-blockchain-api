@@ -73,12 +73,11 @@ jobs:
             type=semver,pattern={{major}},value=${{ inputs.version }}
             type=raw,value=latest,enable=${{ !contains(inputs.version, '-') }}
 
-      - name: Log in to GitHub Container Registry
+      - name: Login to DockerHub
         uses: docker/login-action@v4
         with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_PASSWORD }}
 
       - name: Build/Tag/Push Image
         uses: docker/build-push-action@v7
