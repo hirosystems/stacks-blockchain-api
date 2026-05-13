@@ -22,6 +22,7 @@
     "test:api:synthetic-txs": "NODE_ENV=test node --import tsx --test --test-global-setup=./tests/api/setup.ts --test-concurrency=1 ./tests/api/synthetic-txs/**/*.test.ts",
     "test:api:transactions": "NODE_ENV=test node --import tsx --test --test-global-setup=./tests/api/setup.ts --test-concurrency=1 ./tests/api/transactions/**/*.test.ts",
     "test:api:v2-proxy": "NODE_ENV=test node --import tsx --test --test-global-setup=./tests/api/setup.ts --test-concurrency=1 ./tests/api/v2-proxy/**/*.test.ts",
+    "test:api:v3": "NODE_ENV=test node --import tsx --test --test-global-setup=./tests/api/setup.ts --test-concurrency=1 ./tests/api/v3/**/*.test.ts",
     "test:snp": "NODE_ENV=test node --import tsx --test --test-global-setup=./tests/snp/setup.ts --test-concurrency=1 ./tests/snp/**/*.test.ts",
     "test:krypton:bns-e2e": "NODE_ENV=test node --import tsx --test --test-global-setup=./tests/krypton/setup.ts --test-concurrency=1 ./tests/krypton/bns-e2e/**/*.test.ts",
     "test:krypton:faucet-btc": "NODE_ENV=test node --import tsx --test --test-global-setup=./tests/krypton/setup.ts --test-concurrency=1 ./tests/krypton/faucet-btc/**/*.test.ts",
@@ -41,7 +42,7 @@
     "lint:eslint": "eslint .",
     "lint:prettier": "prettier --check src/**/*.ts",
     "lint:fix": "eslint . --fix && prettier --write --check src/**/*.{ts,json}",
-    "migrate": "node-pg-migrate -m migrations"
+    "migrate": "node-pg-migrate -m migrations -j ts"
   },
   "repository": {
     "type": "git",

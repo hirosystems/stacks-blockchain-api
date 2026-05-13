@@ -71,6 +71,7 @@ jobs:
             api:synthetic-txs,
             api:transactions,
             api:v2-proxy,
+            api:v3,
             krypton:bns-e2e,
             krypton:faucet-btc,
             krypton:faucet-stx,
