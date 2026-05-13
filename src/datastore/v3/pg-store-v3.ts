@@ -32,7 +32,6 @@ export class PgStoreV3 extends BasePgStoreModule {
       >`
         SELECT
           ${sql(prefixedCols(TX_SUMMARY_COLUMNS, 't'))},
-          t.microblock_sequence,
           p.stx_sent,
           p.stx_received,
           (p.stx_received - p.stx_sent) AS stx_net,

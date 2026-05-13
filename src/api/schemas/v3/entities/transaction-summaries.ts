@@ -9,6 +9,7 @@ export const TransactionSenderSchema = Type.Object({
     description: 'Nonce of the transaction initiator',
   }),
 });
+export type TransactionSender = Static<typeof TransactionSenderSchema>;
 
 export const TenureChangeCauseSchema = Type.Union(
   [
@@ -25,6 +26,7 @@ export const TenureChangeCauseSchema = Type.Union(
       'Cause of change in mining tenure. Depending on cause, tenure can be ended or extended.',
   }
 );
+export type TenureChangeCause = Static<typeof TenureChangeCauseSchema>;
 
 const TransactionStatusSchema = Type.Union(
   [

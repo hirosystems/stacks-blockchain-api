@@ -8,10 +8,10 @@ import {
   TokenTransferTransactionSummary,
   TransactionSummary,
   TransactionStatus,
+  TenureChangeCause,
 } from '../schemas/v3/entities/transaction-summaries.js';
 import { DbPrincipalTransactionSummary, DbTransactionSummary } from '../../datastore/v3/types.js';
 import { DbTxStatus, DbTxTypeId } from '../../datastore/common.js';
-import { getTxTenureChangeCauseString } from '../controllers/db-controller.js';
 import { PrincipalTransactionSummary } from '../schemas/v3/entities/principal-transactions.js';
 
 /**
@@ -19,7 +19,7 @@ import { PrincipalTransactionSummary } from '../schemas/v3/entities/principal-tr
  * @param status - The database transaction status.
  * @returns The serialized transaction summary status.
  */
-function serializeDbTransactionSummaryStatus(status: DbTxStatus): TransactionStatus {
+function serializeDbTransactionStatus(status: DbTxStatus): TransactionStatus {
   switch (status) {
     case DbTxStatus.AbortByResponse:
       return 'abort_by_response';
@@ -29,6 +29,32 @@ function serializeDbTransactionSummaryStatus(status: DbTxStatus): TransactionSta
       return 'success';
     default:
       throw new Error(`Unexpected DbTxStatus: ${status}`);
+  }
+}
+
+/**
+ * Serializes a database transaction tenure change cause into a tenure change cause.
+ * @param cause - The database transaction tenure change cause.
+ * @returns The serialized tenure change cause.
+ */
+function serializeDbTransactionTenureChangeCause(cause: number): TenureChangeCause {
+  switch (cause) {
+    case 0:
+      return 'block_found';
+    case 1:
+      return 'extended';
+    case 2:
+      return 'extended_runtime';
+    case 3:
+      return 'extended_read_count';
+    case 4:
+      return 'extended_read_length';
+    case 5:
+      return 'extended_write_count';
+    case 6:
+      return 'extended_write_length';
+    default:
+      throw new Error(`Unexpected tenure change cause value ${cause}`);
   }
 }
 
@@ -63,7 +89,7 @@ export function serializeDbTransactionSummary(summary: DbTransactionSummary): Tr
       height: summary.burn_block_height,
       time: summary.burn_block_time,
     },
-    status: serializeDbTransactionSummaryStatus(summary.status),
+    status: serializeDbTransactionStatus(summary.status),
   };
   switch (summary.type_id) {
     case DbTxTypeId.TokenTransfer: {
@@ -122,7 +148,7 @@ export function serializeDbTransactionSummary(summary: DbTransactionSummary): Tr
         ...result,
         type: 'tenure_change',
         tenure_change: {
-          cause: getTxTenureChangeCauseString(summary.tenure_change_cause!),
+          cause: serializeDbTransactionTenureChangeCause(summary.tenure_change_cause!),
         },
       };
       return tenureChange;

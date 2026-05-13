@@ -21,10 +21,8 @@ export interface DbTransactionSummary {
   index_block_hash: string;
   block_time: number;
   tx_index: number;
-  tenure_height: number;
   burn_block_height: number;
   burn_block_time: number;
-  canonical: boolean;
   status: DbTxStatus;
   type_id: DbTxTypeId;
   token_transfer_recipient_address: string | null;

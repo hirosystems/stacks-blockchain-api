@@ -13,7 +13,6 @@ export const TX_SUMMARY_COLUMNS = [
   'microblock_sequence',
   'burn_block_height',
   'burn_block_time',
-  'canonical',
   'status',
   'type_id',
   'token_transfer_recipient_address',
