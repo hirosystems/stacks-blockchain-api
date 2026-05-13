@@ -4,7 +4,7 @@ import { EventEmitter } from 'node:events';
 import { EventStreamServer } from './event-server.js';
 import { PgWriteStore } from '../datastore/pg-write-store.js';
 import { StacksMessageStream } from '@stacks/node-publisher-client';
-import { MessagePath } from '@stacks/node-publisher-client/dist/messages/index.js';
+import { MessagePath } from '@stacks/node-publisher-client';
 import { ENV } from '../env.js';
 
 export class SnpEventStreamHandler {
