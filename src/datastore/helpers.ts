@@ -48,7 +48,12 @@ import {
   DbTxWithAddressTransfers,
 } from './common.js';
 import { CoreNodeParsedTxMessage } from '../event-stream/core-node-message.js';
-import codec from '@stacks/codec';
+import {
+  decodeClarityValueToRepr,
+  PostConditionAuthFlag,
+  PrincipalTypeID,
+  TxPayloadTypeID,
+} from '@stacks/codec';
 import type { DecodedTxResult } from '@stacks/codec';
 import { getTxSenderAddress } from '../event-stream/reader.js';
 import postgres from 'postgres';
@@ -995,7 +1000,7 @@ export function parseNftEvent(dbEvent: DbNftEvent) {
     asset_event_type: getAssetEventTypeString(dbEvent.asset_event_type_id),
     value: {
       hex: dbEvent.value,
-      repr: codec.decodeClarityValueToRepr(dbEvent.value),
+      repr: decodeClarityValueToRepr(dbEvent.value),
     },
     tx_id: dbEvent.tx_id,
     tx_index: dbEvent.tx_index,
@@ -1050,9 +1055,9 @@ export function getTxDbStatus(
  */
 function extractTransactionPayload(txData: DecodedTxResult, dbTx: DbTx | DbMempoolTx) {
   switch (txData.payload.type_id) {
-    case codec.TxPayloadTypeID.TokenTransfer: {
+    case TxPayloadTypeID.TokenTransfer: {
       let recipientPrincipal = txData.payload.recipient.address;
-      if (txData.payload.recipient.type_id === codec.PrincipalTypeID.Contract) {
+      if (txData.payload.recipient.type_id === PrincipalTypeID.Contract) {
         recipientPrincipal += '.' + txData.payload.recipient.contract_name;
       }
       dbTx.token_transfer_recipient_address = recipientPrincipal;
@@ -1060,55 +1065,55 @@ function extractTransactionPayload(txData: DecodedTxResult, dbTx: DbTx | DbMempo
       dbTx.token_transfer_memo = txData.payload.memo_hex;
       break;
     }
-    case codec.TxPayloadTypeID.SmartContract: {
+    case TxPayloadTypeID.SmartContract: {
       const sender_address = getTxSenderAddress(txData);
       dbTx.smart_contract_contract_id = sender_address + '.' + txData.payload.contract_name;
       dbTx.smart_contract_source_code = txData.payload.code_body;
       break;
     }
-    case codec.TxPayloadTypeID.VersionedSmartContract: {
+    case TxPayloadTypeID.VersionedSmartContract: {
       const sender_address = getTxSenderAddress(txData);
       dbTx.smart_contract_contract_id = sender_address + '.' + txData.payload.contract_name;
       dbTx.smart_contract_source_code = txData.payload.code_body;
       dbTx.smart_contract_clarity_version = txData.payload.clarity_version;
       break;
     }
-    case codec.TxPayloadTypeID.ContractCall: {
+    case TxPayloadTypeID.ContractCall: {
       const contractAddress = txData.payload.address;
       dbTx.contract_call_contract_id = `${contractAddress}.${txData.payload.contract_name}`;
       dbTx.contract_call_function_name = txData.payload.function_name;
       dbTx.contract_call_function_args = txData.payload.function_args_buffer;
       break;
     }
-    case codec.TxPayloadTypeID.PoisonMicroblock: {
+    case TxPayloadTypeID.PoisonMicroblock: {
       dbTx.poison_microblock_header_1 = txData.payload.microblock_header_1.buffer;
       dbTx.poison_microblock_header_2 = txData.payload.microblock_header_2.buffer;
       break;
     }
-    case codec.TxPayloadTypeID.Coinbase: {
+    case TxPayloadTypeID.Coinbase: {
       dbTx.coinbase_payload = txData.payload.payload_buffer;
       break;
     }
-    case codec.TxPayloadTypeID.CoinbaseToAltRecipient: {
+    case TxPayloadTypeID.CoinbaseToAltRecipient: {
       dbTx.coinbase_payload = txData.payload.payload_buffer;
-      if (txData.payload.recipient.type_id === codec.PrincipalTypeID.Standard) {
+      if (txData.payload.recipient.type_id === PrincipalTypeID.Standard) {
         dbTx.coinbase_alt_recipient = txData.payload.recipient.address;
       } else {
         dbTx.coinbase_alt_recipient = `${txData.payload.recipient.address}.${txData.payload.recipient.contract_name}`;
       }
       break;
     }
-    case codec.TxPayloadTypeID.NakamotoCoinbase: {
+    case TxPayloadTypeID.NakamotoCoinbase: {
       dbTx.coinbase_payload = txData.payload.payload_buffer;
-      if (txData.payload.recipient?.type_id === codec.PrincipalTypeID.Standard) {
+      if (txData.payload.recipient?.type_id === PrincipalTypeID.Standard) {
         dbTx.coinbase_alt_recipient = txData.payload.recipient.address;
-      } else if (txData.payload.recipient?.type_id === codec.PrincipalTypeID.Contract) {
+      } else if (txData.payload.recipient?.type_id === PrincipalTypeID.Contract) {
         dbTx.coinbase_alt_recipient = `${txData.payload.recipient.address}.${txData.payload.recipient.contract_name}`;
       }
       dbTx.coinbase_vrf_proof = txData.payload.vrf_proof;
       break;
     }
-    case codec.TxPayloadTypeID.TenureChange: {
+    case TxPayloadTypeID.TenureChange: {
       dbTx.tenure_change_tenure_consensus_hash = txData.payload.tenure_consensus_hash;
       dbTx.tenure_change_prev_tenure_consensus_hash = txData.payload.prev_tenure_consensus_hash;
       dbTx.tenure_change_burn_view_consensus_hash = txData.payload.burn_view_consensus_hash;
@@ -1135,7 +1140,7 @@ export function createDbMempoolTxFromCoreMsg(msg: {
     pruned: false,
     nonce: Number(msg.txData.auth.origin_condition.nonce),
     sponsor_nonce:
-      msg.txData.auth.type_id === codec.PostConditionAuthFlag.Sponsored
+      msg.txData.auth.type_id === PostConditionAuthFlag.Sponsored
         ? Number(msg.txData.auth.sponsor_condition.nonce)
         : undefined,
     tx_id: msg.txId,
@@ -1145,12 +1150,12 @@ export function createDbMempoolTxFromCoreMsg(msg: {
     status: DbTxStatus.Pending,
     receipt_time: msg.receiptDate,
     fee_rate:
-      msg.txData.auth.type_id === codec.PostConditionAuthFlag.Sponsored
+      msg.txData.auth.type_id === PostConditionAuthFlag.Sponsored
         ? BigInt(msg.txData.auth.sponsor_condition.tx_fee)
         : BigInt(msg.txData.auth.origin_condition.tx_fee),
     sender_address: msg.sender,
     origin_hash_mode: msg.txData.auth.origin_condition.hash_mode as number,
-    sponsored: msg.txData.auth.type_id === codec.PostConditionAuthFlag.Sponsored,
+    sponsored: msg.txData.auth.type_id === PostConditionAuthFlag.Sponsored,
     sponsor_address: msg.sponsorAddress,
     post_conditions: msg.txData.post_conditions_buffer,
   };
@@ -1166,7 +1171,7 @@ export function createDbTxFromCoreMsg(msg: CoreNodeParsedTxMessage): DbTxRaw {
     tx_index: coreTx.tx_index,
     nonce: Number(parsedTx.auth.origin_condition.nonce),
     sponsor_nonce:
-      parsedTx.auth.type_id === codec.PostConditionAuthFlag.Sponsored
+      parsedTx.auth.type_id === PostConditionAuthFlag.Sponsored
         ? Number(parsedTx.auth.sponsor_condition.nonce)
         : undefined,
     raw_tx: msg.raw_tx,
@@ -1184,13 +1189,13 @@ export function createDbTxFromCoreMsg(msg: CoreNodeParsedTxMessage): DbTxRaw {
     status: getTxDbStatus(coreTx.status),
     raw_result: coreTx.raw_result,
     fee_rate:
-      parsedTx.auth.type_id === codec.PostConditionAuthFlag.Sponsored
+      parsedTx.auth.type_id === PostConditionAuthFlag.Sponsored
         ? BigInt(parsedTx.auth.sponsor_condition.tx_fee)
         : BigInt(parsedTx.auth.origin_condition.tx_fee),
     sender_address: msg.sender_address,
     sponsor_address: msg.sponsor_address,
     origin_hash_mode: parsedTx.auth.origin_condition.hash_mode as number,
-    sponsored: parsedTx.auth.type_id === codec.PostConditionAuthFlag.Sponsored,
+    sponsored: parsedTx.auth.type_id === PostConditionAuthFlag.Sponsored,
     canonical: true,
     microblock_canonical: true,
     microblock_sequence: msg.microblock_sequence,

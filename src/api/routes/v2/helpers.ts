@@ -17,7 +17,7 @@ import {
   getTxStatusString,
   parseDbTx,
 } from '../../../api/controllers/db-controller.js';
-import codec from '@stacks/codec';
+import { decodeClarityValueToRepr } from '@stacks/codec';
 import { getAddressFromPublicKey } from '@stacks/transactions';
 import { SmartContractStatusList } from '../../schemas/entities/smart-contracts.js';
 import { AddressTransaction, AddressTransactionEvent } from '../../schemas/entities/addresses.js';
@@ -154,7 +154,7 @@ export function parseDbAddressTransactionTransfer(
           asset_identifier: transfer.asset_identifier ?? '',
           value: {
             hex: transfer.value ?? '',
-            repr: codec.decodeClarityValueToRepr(transfer.value ?? ''),
+            repr: decodeClarityValueToRepr(transfer.value ?? ''),
           },
           sender: transfer.sender ?? undefined,
           recipient: transfer.recipient ?? undefined,

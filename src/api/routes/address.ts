@@ -14,7 +14,7 @@ import {
   parseDbTx,
 } from '../controllers/db-controller.js';
 import { InvalidRequestError, InvalidRequestErrorType, NotFoundError } from '../../errors.js';
-import codec from '@stacks/codec';
+import { decodeClarityValueToRepr } from '@stacks/codec';
 import {
   handlePrincipalCache,
   handlePrincipalMempoolCache,
@@ -493,7 +493,7 @@ export const AddressRoutes: FastifyPluginAsync<
               recipient: transfer.recipient,
             })),
             nft_transfers: entry.nft_transfers.map(transfer => {
-              const parsedClarityValue = codec.decodeClarityValueToRepr(transfer.value);
+              const parsedClarityValue = decodeClarityValueToRepr(transfer.value);
               const nftTransfer = {
                 asset_identifier: transfer.asset_identifier,
                 value: {

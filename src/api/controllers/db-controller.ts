@@ -4,7 +4,12 @@ import {
   ClarityAbiFunction,
   getTypeString,
 } from '@stacks/transactions';
-import codec from '@stacks/codec';
+import {
+  decodeClarityValueList,
+  decodeClarityValueToRepr,
+  decodeClarityValueToTypeName,
+  decodePostConditions,
+} from '@stacks/codec';
 import {
   BlockIdentifier,
   DbAssetEventTypeId,
@@ -385,7 +390,7 @@ export function parsePoxSyntheticEvent(poxEvent: DbPoxSyntheticEvent) {
 export function parseDbEvent(dbEvent: DbEvent): TransactionEvent {
   switch (dbEvent.event_type) {
     case DbEventTypeId.SmartContractLog: {
-      const parsedClarityValue = codec.decodeClarityValueToRepr(dbEvent.value);
+      const parsedClarityValue = decodeClarityValueToRepr(dbEvent.value);
       const event: SmartContractLogTransactionEvent = {
         event_index: dbEvent.event_index,
         event_type: 'smart_contract_log',
@@ -447,7 +452,7 @@ export function parseDbEvent(dbEvent: DbEvent): TransactionEvent {
       return event;
     }
     case DbEventTypeId.NonFungibleTokenAsset: {
-      const parsedClarityValue = codec.decodeClarityValueToRepr(dbEvent.value);
+      const parsedClarityValue = decodeClarityValueToRepr(dbEvent.value);
       const event: NonFungibleTokenAssetTransactionEvent = {
         event_index: dbEvent.event_index,
         event_type: 'non_fungible_token_asset',
@@ -644,7 +649,7 @@ interface GetTxWithEventsArgs extends GetTxArgs {
 }
 
 function parseDbBaseTx(dbTx: DbTx | DbMempoolTx): BaseTransaction {
-  const decodedPostConditions = codec.decodePostConditions(dbTx.post_conditions);
+  const decodedPostConditions = decodePostConditions(dbTx.post_conditions);
   const normalizedPostConditions = decodedPostConditions.post_conditions.map(pc =>
     serializePostCondition(pc)
   );
@@ -851,9 +856,8 @@ function parseContractCallMetadata(
 
   // Only process function_args if not excluded
   if (!excludeFunctionArgs && tx.contract_call_function_args) {
-    contractCall.function_args = codec
-      .decodeClarityValueList(tx.contract_call_function_args)
-      .map((c, idx) => {
+    contractCall.function_args = decodeClarityValueList(tx.contract_call_function_args).map(
+      (c, idx) => {
         const functionArgAbi = functionAbi ? functionAbi.args[idx] : { name: '', type: undefined };
         return {
           hex: c.hex,
@@ -861,9 +865,10 @@ function parseContractCallMetadata(
           name: functionArgAbi?.name || '',
           type: functionArgAbi?.type
             ? getTypeString(functionArgAbi.type)
-            : codec.decodeClarityValueToTypeName(c.hex),
+            : decodeClarityValueToTypeName(c.hex),
         };
-      });
+      }
+    );
   }
 
   const metadata: ContractCallTransactionMetadata = {
@@ -897,7 +902,7 @@ function parseDbAbstractTx(dbTx: DbTx, baseTx: BaseTransaction): AbstractTransac
     tx_status: getTxStatusString(dbTx.status) as TransactionStatus,
     tx_result: {
       hex: dbTx.raw_result,
-      repr: codec.decodeClarityValueToRepr(dbTx.raw_result),
+      repr: decodeClarityValueToRepr(dbTx.raw_result),
     },
     microblock_hash: dbTx.microblock_hash,
     microblock_sequence: dbTx.microblock_sequence,

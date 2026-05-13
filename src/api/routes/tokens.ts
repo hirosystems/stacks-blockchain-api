@@ -1,6 +1,6 @@
 import { getPagingQueryLimit, parsePagingQueryInput, ResourceType } from '../pagination.js';
 import { isValidPrincipal } from '../../helpers.js';
-import codec from '@stacks/codec';
+import { decodeClarityValueToRepr } from '@stacks/codec';
 import { getAssetEventTypeString, parseDbTx } from '../controllers/db-controller.js';
 import { handleChainTipCache } from '../controllers/cache-controller.js';
 import { has0xPrefix } from '@stacks/api-toolkit';
@@ -109,7 +109,7 @@ export const TokenRoutes: FastifyPluginAsync<
         includeTxMetadata: includeTxMetadata,
       });
       const parsedResults = results.map(result => {
-        const parsedClarityValue = codec.decodeClarityValueToRepr(result.nft_holding_info.value);
+        const parsedClarityValue = decodeClarityValueToRepr(result.nft_holding_info.value);
         const parsedNftData = {
           asset_identifier: result.nft_holding_info.asset_identifier,
           value: {
@@ -324,7 +324,7 @@ export const TokenRoutes: FastifyPluginAsync<
             includeTxMetadata: includeTxMetadata,
           });
           const parsedResults = results.map(result => {
-            const parsedClarityValue = codec.decodeClarityValueToRepr(result.nft_event.value);
+            const parsedClarityValue = decodeClarityValueToRepr(result.nft_event.value);
             const parsedNftData = {
               recipient: result.nft_event.recipient,
               event_index: result.nft_event.event_index,

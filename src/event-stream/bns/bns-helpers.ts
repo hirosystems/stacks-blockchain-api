@@ -6,7 +6,7 @@ import { createNetwork, STACKS_MAINNET, STACKS_TESTNET } from '@stacks/network';
 import { URIType } from 'zone-file/dist/zoneFile.js';
 import { BnsContractIdentifier, printTopic } from './bns-constants.js';
 import * as crypto from 'crypto';
-import codec from '@stacks/codec';
+import { ClarityTypeID, decodeClarityValue, TxPayloadTypeID } from '@stacks/codec';
 import type {
   ClarityValueBuffer,
   ClarityValueList,
@@ -41,7 +41,7 @@ interface Attachment {
 }
 
 export function parseNameRawValue(rawValue: string): Attachment {
-  const cl_val = codec.decodeClarityValue<
+  const cl_val = decodeClarityValue<
     ClarityValueTuple<{
       attachment: ClarityValueTuple<{
         hash: ClarityValueBuffer;
@@ -54,7 +54,7 @@ export function parseNameRawValue(rawValue: string): Attachment {
       }>;
     }>
   >(rawValue);
-  if (cl_val.type_id !== codec.ClarityTypeID.Tuple) {
+  if (cl_val.type_id !== ClarityTypeID.Tuple) {
     throw Error('Invalid clarity type');
   }
   const attachment = cl_val.data.attachment;
@@ -96,7 +96,7 @@ export function parseNamespaceRawValue(
   txid: string,
   txIndex: number
 ): DbBnsNamespace | undefined {
-  const cl_val = codec.decodeClarityValue<
+  const cl_val = decodeClarityValue<
     ClarityValueTuple<{
       namespace: ClarityValueBuffer;
       status: ClarityValueStringAscii;
@@ -115,7 +115,7 @@ export function parseNamespaceRawValue(
       }>;
     }>
   >(rawValue);
-  if (cl_val.type_id !== codec.ClarityTypeID.Tuple) {
+  if (cl_val.type_id !== ClarityTypeID.Tuple) {
     throw new Error('Invalid clarity type');
   }
 
@@ -127,9 +127,7 @@ export function parseNamespaceRawValue(
 
   const launched_atCV = properties.data['launched-at'];
   const launched_at =
-    launched_atCV.type_id === codec.ClarityTypeID.OptionalSome
-      ? parseInt(launched_atCV.value.value)
-      : 0;
+    launched_atCV.type_id === ClarityTypeID.OptionalSome ? parseInt(launched_atCV.value.value) : 0;
   const lifetimeCV = properties.data.lifetime;
   const lifetime = BigInt(lifetimeCV.value);
   const revealed_atCV = properties.data['revealed-at'];
@@ -153,7 +151,7 @@ export function parseNamespaceRawValue(
   const listCV = bucketsCV.list;
   for (let i = 0; i < listCV.length; i++) {
     const cv = listCV[i];
-    if (cv.type_id === codec.ClarityTypeID.UInt) {
+    if (cv.type_id === ClarityTypeID.UInt) {
       buckets.push(BigInt(cv.value));
     }
   }
@@ -262,7 +260,7 @@ export function parseNameRenewalWithNoZonefileHashFromContractCall(
   const payload = tx.parsed_tx.payload;
   if (
     tx.core_tx.status === 'success' &&
-    payload.type_id === codec.TxPayloadTypeID.ContractCall &&
+    payload.type_id === TxPayloadTypeID.ContractCall &&
     payload.function_name === 'name-renewal' &&
     getBnsContractID(chainId) === `${payload.address}.${payload.contract_name}` &&
     payload.function_args.length === 5 &&

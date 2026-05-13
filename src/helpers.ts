@@ -4,7 +4,7 @@ import * as btc from 'bitcoinjs-lib';
 import * as http from 'http';
 import * as path from 'path';
 import { fileURLToPath } from 'node:url';
-import codec from '@stacks/codec';
+import { isValidStacksAddress, stacksToBitcoinAddress } from '@stacks/codec';
 import * as ecc from 'tiny-secp256k1';
 import { getCoreNodeEndpoint, StacksCoreRpcClient } from './core-rpc/client.js';
 import { DbEventTypeId } from './datastore/common.js';
@@ -199,7 +199,7 @@ export function isValidBitcoinAddress(address: string): boolean {
 
 export function tryConvertC32ToBtc(address: string): string | false {
   try {
-    const result = codec.stacksToBitcoinAddress(address);
+    const result = stacksToBitcoinAddress(address);
     return result;
   } catch (_e) {
     return false;
@@ -208,7 +208,7 @@ export function tryConvertC32ToBtc(address: string): string | false {
 
 export function isValidC32Address(stxAddress: string): boolean {
   try {
-    return codec.isValidStacksAddress(stxAddress);
+    return isValidStacksAddress(stxAddress);
   } catch (_error) {
     return false;
   }
