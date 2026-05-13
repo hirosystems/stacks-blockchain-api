@@ -32,8 +32,17 @@ jobs:
         working-directory: client
 
       - name: Publish client to npm
-        run: npm publish --provenance --access public
         working-directory: client
+        run: |
+          VERSION="${{ inputs.version }}"
+          if [[ "$VERSION" == *-* ]]; then
+            # Extract the prerelease identifier (e.g. "next" from "9.0.0-next.30")
+            TAG="${VERSION#*-}"
+            TAG="${TAG%%.*}"
+            npm publish --provenance --access public --tag "$TAG"
+          else
+            npm publish --provenance --access public
+          fi
 
   publish-docker:
     runs-on: ubuntu-latest
