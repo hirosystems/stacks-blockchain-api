@@ -1,6 +1,6 @@
 {
   "name": "@hirosystems/stacks-blockchain-api",
-  "version": "9.0.0-next.30",
+  "version": "9.0.0-next.31",
   "type": "module",
   "main": "./lib/index.js",
   "scripts": {
@@ -36,7 +36,7 @@
     "test:krypton:pox-4-stack-extend-increase": "NODE_ENV=test node --import tsx --test --test-global-setup=./tests/krypton/setup.ts --test-concurrency=1 ./tests/krypton/pox-4-stack-extend-increase/**/*.test.ts",
     "test:krypton:rpc": "NODE_ENV=test node --import tsx --test --test-global-setup=./tests/krypton/setup.ts --test-concurrency=1 ./tests/krypton/rpc/**/*.test.ts",
     "generate:git-info": "rimraf .git-info && api-toolkit-git-info",
-    "generate:openapi": "tsx ./src/openapi-generator.ts",
+    "generate:openapi": "NODE_ENV=development tsx ./src/openapi-generator.ts",
     "generate:client": "openapi-typescript ./openapi.yaml -o ./client/src/generated/schema.d.ts",
     "lint": "npm run lint:eslint && npm run lint:prettier",
     "lint:eslint": "eslint .",
