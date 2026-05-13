@@ -23,13 +23,34 @@ export class PgStoreV3 extends BasePgStoreModule {
         const microblockSequence = parseInt(microblockSequenceStr, 10);
         const txIndex = parseInt(txIndexStr, 10);
         cursorFilter = sql`
-          AND (p.block_height, p.microblock_sequence, p.tx_index)
+          AND (block_height, microblock_sequence, tx_index)
               <= (${blockHeight}, ${microblockSequence}, ${txIndex})
         `;
       }
       const resultQuery = await sql<
         (DbPrincipalTransactionSummary & { microblock_sequence: number; total: number })[]
       >`
+        WITH p AS (
+          SELECT
+            tx_id,
+            index_block_hash,
+            microblock_hash,
+            block_height,
+            microblock_sequence,
+            tx_index,
+            stx_sent,
+            stx_received,
+            stx_balance_affected,
+            ft_balance_affected,
+            nft_balance_affected
+          FROM principal_txs
+          WHERE canonical = true
+            AND microblock_canonical = true
+            AND principal = ${args.principal}
+            ${cursorFilter}
+          ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC
+          LIMIT ${args.limit + 1}
+        )
         SELECT
           ${sql(prefixedCols(TX_SUMMARY_COLUMNS, 't'))},
           p.stx_sent,
@@ -46,14 +67,9 @@ export class PgStoreV3 extends BasePgStoreModule {
           (
             SELECT COALESCE(count, 0)::int FROM principal_tx_counts WHERE principal = ${args.principal}
           ) AS total
-        FROM principal_txs AS p
+        FROM p
         INNER JOIN txs AS t USING (tx_id, index_block_hash, microblock_hash)
-        WHERE p.canonical = true
-          AND p.microblock_canonical = true
-          AND p.principal = ${args.principal}
-          ${cursorFilter}
         ORDER BY p.block_height DESC, p.microblock_sequence DESC, p.tx_index DESC
-        LIMIT ${args.limit + 1}
       `;
 
       const hasNextPage = resultQuery.count > args.limit;

@@ -176,7 +176,7 @@ export function serializePrincipalTransactionSummary(
         net: summary.stx_net,
       },
     },
-    affected_asset_types: {
+    affected_balances: {
       stx: summary.stx_balance_affected,
       ft: summary.ft_balance_affected,
       nft: summary.nft_balance_affected,
