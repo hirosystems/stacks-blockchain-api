@@ -82,9 +82,11 @@ const ContractCallTransactionSchema = Type.Composite([
       function_name: Type.String({
         description: 'Function name of the contract call',
       }),
-      function_args: Type.Array(DecodedClarityValueSchema, {
-        description: 'List of arguments used to invoke the function',
-      }),
+      function_args: Type.Optional(
+        Type.Array(DecodedClarityValueSchema, {
+          description: 'List of arguments used to invoke the function',
+        })
+      ),
     }),
   }),
 ]);
