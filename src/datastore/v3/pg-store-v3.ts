@@ -1,9 +1,101 @@
 import { BasePgStoreModule } from '@stacks/api-toolkit';
-import { DbCursorPaginatedResult, DbPrincipalTransactionSummary } from './types.js';
+import {
+  DbCursorPaginatedResult,
+  DbPrincipalTransactionSummary,
+  DbTransactionSummary,
+} from './types.js';
 import { TX_SUMMARY_COLUMNS } from './constants.js';
 import { prefixedCols } from '../helpers.js';
 
 export class PgStoreV3 extends BasePgStoreModule {
+  /**
+   * Gets the summaries for all transactions.
+   * @param args - The arguments for the query.
+   * @returns The summaries for all transactions.
+   */
+  async getTransactionSummaries(args: {
+    limit: number;
+    cursor?: string;
+  }): Promise<DbCursorPaginatedResult<DbTransactionSummary>> {
+    return await this.sqlTransaction(async sql => {
+      let cursorFilter = sql``;
+      if (args.cursor) {
+        const parts = args.cursor.split(':');
+        const [blockHeightStr, microblockSequenceStr, txIndexStr] = parts;
+        const blockHeight = parseInt(blockHeightStr, 10);
+        const microblockSequence = parseInt(microblockSequenceStr, 10);
+        const txIndex = parseInt(txIndexStr, 10);
+        cursorFilter = sql`
+          AND (block_height, microblock_sequence, tx_index)
+              <= (${blockHeight}, ${microblockSequence}, ${txIndex})
+        `;
+      }
+      const resultQuery = await sql<
+        (DbTransactionSummary & { microblock_sequence: number; total: number })[]
+      >`
+        SELECT
+          ${sql(TX_SUMMARY_COLUMNS)},
+          (SELECT tx_count FROM chain_tip) AS total
+        FROM txs
+        WHERE canonical = true
+          AND microblock_canonical = true
+          ${cursorFilter}
+        ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC
+        LIMIT ${args.limit + 1}
+      `;
+
+      const hasNextPage = resultQuery.count > args.limit;
+      const results = hasNextPage ? resultQuery.slice(0, args.limit) : resultQuery;
+      const total = resultQuery.count > 0 ? resultQuery[0].total : 0;
+
+      const nextResult = resultQuery[resultQuery.length - 1];
+      const nextCursor =
+        hasNextPage && nextResult
+          ? `${nextResult.block_height}:${nextResult.microblock_sequence}:${nextResult.tx_index}`
+          : null;
+
+      const firstResult = results[0];
+      const currentCursor = firstResult
+        ? `${firstResult.block_height}:${firstResult.microblock_sequence}:${firstResult.tx_index}`
+        : null;
+
+      let prevCursor: string | null = null;
+      if (firstResult) {
+        const prevPageQuery = await sql<
+          { block_height: number; microblock_sequence: number; tx_index: number }[]
+        >`
+          SELECT block_height, microblock_sequence, tx_index
+          FROM txs
+          WHERE canonical = true
+            AND microblock_canonical = true
+            AND (block_height, microblock_sequence, tx_index)
+                > (
+                  ${firstResult.block_height},
+                  ${firstResult.microblock_sequence},
+                  ${firstResult.tx_index}
+                )
+          ORDER BY block_height ASC, microblock_sequence ASC, tx_index ASC
+          OFFSET ${args.limit - 1}
+          LIMIT 1
+        `;
+        if (prevPageQuery.length > 0) {
+          const prevPage = prevPageQuery[0];
+          prevCursor = `${prevPage.block_height}:${prevPage.microblock_sequence}:${prevPage.tx_index}`;
+        }
+      }
+
+      return {
+        limit: args.limit,
+        offset: 0,
+        next_cursor: nextCursor,
+        prev_cursor: prevCursor,
+        current_cursor: currentCursor,
+        total,
+        results,
+      };
+    });
+  }
+
   /**
    * Gets the summaries for a principal's transactions.
    * @param args - The arguments for the query.

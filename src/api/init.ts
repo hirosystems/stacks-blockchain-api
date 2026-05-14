@@ -50,6 +50,7 @@ import * as promClient from 'prom-client';
 import DeprecationPlugin from './deprecation-plugin.js';
 import { BlockTenureRoutes } from './routes/v2/block-tenures.js';
 import { PrincipalsRoutes } from './routes/v3/principals.js';
+import { TransactionsRoutes } from './routes/v3/transactions.js';
 
 export interface ApiServer {
   fastifyApp: FastifyInstance;
@@ -103,6 +104,7 @@ export const StacksApiRoutes: FastifyPluginAsync<
   await fastify.register(
     async fastify => {
       await fastify.register(PrincipalsRoutes);
+      await fastify.register(TransactionsRoutes);
     },
     { prefix: '/extended/v3' }
   );
