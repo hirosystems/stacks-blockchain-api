@@ -115,11 +115,10 @@ describe('transactions', () => {
           time: 2000,
           tx_index: 0,
         },
-        burn_block: {
+        bitcoin_block: {
           height: 2,
           time: 2000,
         },
-        canonical: true,
         sender: {
           address: 'SP466FNC0P7JWTNM2R9T199QRZN1MYEDTAR0KP27',
           nonce: 0,
@@ -143,11 +142,10 @@ describe('transactions', () => {
           time: 1000,
           tx_index: 0,
         },
-        burn_block: {
+        bitcoin_block: {
           height: 1,
           time: 1000,
         },
-        canonical: true,
         sender: {
           address: 'SP466FNC0P7JWTNM2R9T199QRZN1MYEDTAR0KP27',
           nonce: 0,
