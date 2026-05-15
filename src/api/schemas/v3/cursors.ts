@@ -58,3 +58,8 @@ export const TransactionCursorSchema = Type.String({
     'Cursor for paginating transactions. Format: block_height:microblock_sequence:tx_index',
   pattern: '^[0-9]+:[0-9]+:[0-9]+$',
 });
+
+export const MempoolTransactionCursorSchema = Type.String({
+  pattern: '^\\d+:(0x)?[a-fA-F0-9]{64}$',
+  description: 'Cursor for paginating mempool transactions. Format: receipt_time:tx_id',
+});

@@ -1,10 +1,11 @@
 import { BasePgStoreModule } from '@stacks/api-toolkit';
 import {
   DbCursorPaginatedResult,
+  DbMempoolTransactionSummary,
   DbPrincipalTransactionSummary,
   DbTransactionSummary,
 } from './types.js';
-import { TX_SUMMARY_COLUMNS } from './constants.js';
+import { MEMPOOL_TX_SUMMARY_COLUMNS, TX_SUMMARY_COLUMNS } from './constants.js';
 import { prefixedCols } from '../helpers.js';
 
 export class PgStoreV3 extends BasePgStoreModule {
@@ -210,6 +211,74 @@ export class PgStoreV3 extends BasePgStoreModule {
         next_cursor: nextCursor,
         prev_cursor: prevCursor,
         current_cursor: currentCursor,
+        total,
+        results,
+      };
+    });
+  }
+
+  /**
+   * Gets the summaries for all mempool transactions.
+   * @param args - The arguments for the query.
+   * @returns The summaries for all mempool transactions.
+   */
+  async getMempoolTransactionSummaries(args: {
+    limit: number;
+    cursor?: string;
+  }): Promise<DbCursorPaginatedResult<DbMempoolTransactionSummary>> {
+    return await this.sqlTransaction(async sql => {
+      const encodeMempoolTxSummaryCursor = (
+        tx: Pick<DbMempoolTransactionSummary, 'receipt_time' | 'tx_id'>
+      ) => `${tx.receipt_time}:${tx.tx_id}`;
+
+      let cursorFilter = sql``;
+      if (args.cursor) {
+        const [receiptTime, txId] = args.cursor.split(':');
+        cursorFilter = sql`
+          AND (receipt_time, tx_id) <= (${parseInt(receiptTime, 10)}, ${txId})
+        `;
+      }
+
+      const resultQuery = await sql<(DbMempoolTransactionSummary & { total: number })[]>`
+        SELECT
+          ${sql(MEMPOOL_TX_SUMMARY_COLUMNS)},
+          (SELECT mempool_tx_count FROM chain_tip) AS total
+        FROM mempool_txs
+        WHERE pruned = false
+          ${cursorFilter}
+        ORDER BY receipt_time DESC, tx_id DESC
+        LIMIT ${args.limit + 1}
+      `;
+
+      const hasNextPage = resultQuery.count > args.limit;
+      const results = hasNextPage ? resultQuery.slice(0, args.limit) : resultQuery;
+      const total = resultQuery.count > 0 ? resultQuery[0].total : 0;
+      const firstResult = results[0];
+      const extraResult = hasNextPage ? resultQuery[args.limit] : null;
+
+      let prevCursor: string | null = null;
+      if (firstResult) {
+        const prevPageQuery = await sql<
+          Pick<DbMempoolTransactionSummary, 'receipt_time' | 'tx_id'>[]
+        >`
+          SELECT receipt_time, tx_id
+          FROM mempool_txs
+          WHERE pruned = false
+            AND (receipt_time, tx_id) > (${firstResult.receipt_time}, ${firstResult.tx_id})
+          ORDER BY receipt_time ASC, tx_id ASC
+          OFFSET ${args.limit - 1}
+          LIMIT 1
+        `;
+        prevCursor =
+          prevPageQuery.length > 0 ? encodeMempoolTxSummaryCursor(prevPageQuery[0]) : null;
+      }
+
+      return {
+        limit: args.limit,
+        offset: 0,
+        next_cursor: extraResult ? encodeMempoolTxSummaryCursor(extraResult) : null,
+        prev_cursor: prevCursor,
+        current_cursor: firstResult ? encodeMempoolTxSummaryCursor(firstResult) : null,
         total,
         results,
       };

@@ -1,42 +1,42 @@
 import { handleChainTipCache } from '../../controllers/cache-controller.js';
-import { serializeDbTransactionSummary } from '../../serializers/v3/transactions.js';
 import { FastifyPluginAsync } from 'fastify';
 import { TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
 import { Server } from 'node:http';
 import { getPagingQueryLimit, ResourceType } from '../../pagination.js';
-import { TransactionSummarySchema } from '../../schemas/v3/entities/transaction-summaries.js';
 import {
   CursorPaginatedResponse,
   CursorPaginationQuerystring,
-  TransactionCursorSchema,
+  MempoolTransactionCursorSchema,
 } from '../../schemas/v3/cursors.js';
+import { serializeDbMempoolTransactionSummary } from '../../serializers/v3/mempool-transactions.js';
+import { MempoolTransactionSummarySchema } from '../../schemas/v3/entities/mempool-transaction-summaries.js';
 
-export const TransactionsRoutes: FastifyPluginAsync<
+export const MempoolRoutes: FastifyPluginAsync<
   Record<never, never>,
   Server,
   TypeBoxTypeProvider
 > = async fastify => {
   fastify.get(
-    '/transactions',
+    '/mempool/transactions',
     {
       preHandler: handleChainTipCache,
       schema: {
-        operationId: 'get_transactions',
-        summary: 'Get transactions',
-        description: `Retrieves a list of recently mined transactions`,
-        tags: ['Transactions'],
-        querystring: CursorPaginationQuerystring(TransactionCursorSchema, ResourceType.Tx),
+        operationId: 'get_mempool_transactions',
+        summary: 'Get mempool transactions',
+        description: `Retrieves a list of recently broadcasted transactions`,
+        tags: ['Mempool'],
+        querystring: CursorPaginationQuerystring(MempoolTransactionCursorSchema, ResourceType.Tx),
         response: {
           200: CursorPaginatedResponse(
-            TransactionSummarySchema,
-            TransactionCursorSchema,
+            MempoolTransactionSummarySchema,
+            MempoolTransactionCursorSchema,
             ResourceType.Tx
           ),
         },
       },
     },
     async (req, reply) => {
-      const results = await fastify.db.v3.getTransactionSummaries({
+      const results = await fastify.db.v3.getMempoolTransactionSummaries({
         limit: req.query.limit ?? getPagingQueryLimit(ResourceType.Tx),
         cursor: req.query.cursor,
       });
@@ -48,7 +48,7 @@ export const TransactionsRoutes: FastifyPluginAsync<
           previous: results.prev_cursor,
           current: results.current_cursor,
         },
-        results: results.results.map(r => serializeDbTransactionSummary(r)),
+        results: results.results.map(r => serializeDbMempoolTransactionSummary(r)),
       });
     }
   );
