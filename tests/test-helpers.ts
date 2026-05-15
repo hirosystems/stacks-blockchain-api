@@ -32,6 +32,8 @@ export async function createSchema(connArgs: PgConnectionArgs) {
       usageName: 'tests-migrations-setup',
       connectionArgs: connArgs,
     });
+    // Docker test setup already creates this schema; suppress duplicate-schema NOTICE (42P06).
+    await sql`set client_min_messages = warning`;
     await sql`CREATE SCHEMA IF NOT EXISTS ${sql(connArgs.schema)}`;
     await sql.end();
   }

@@ -220,5 +220,77 @@ describe('transactions', () => {
         current: '9:0:4',
       });
     });
+
+    test('should return 304 when ETag matches and refresh ETag when chain tip changes', async () => {
+      await db.update(
+        new TestBlockBuilder({
+          block_height: 1,
+          index_block_hash: '0x0001',
+          parent_index_block_hash: '0x0000',
+          parent_block_hash: '0x0000',
+        })
+          .addTx({ tx_id: '0x0001' })
+          .build()
+      );
+
+      // First request returns 200 with an ETag header derived from the chain tip.
+      const first = await api.fastifyApp.inject({
+        method: 'GET',
+        url: '/extended/v3/transactions',
+      });
+      assert.equal(first.statusCode, 200);
+      const etag = first.headers['etag'];
+      assert.ok(etag, 'expected ETag header to be set');
+      assert.equal(etag, '"0x0001"');
+
+      // Same ETag returns 304 with an empty body.
+      const cached = await api.fastifyApp.inject({
+        method: 'GET',
+        url: '/extended/v3/transactions',
+        headers: { 'if-none-match': etag as string },
+      });
+      assert.equal(cached.statusCode, 304);
+      assert.equal(cached.body, '');
+
+      // A stale ETag returns 200 with the current data and ETag.
+      const stale = await api.fastifyApp.inject({
+        method: 'GET',
+        url: '/extended/v3/transactions',
+        headers: { 'if-none-match': '"0xdeadbeef"' },
+      });
+      assert.equal(stale.statusCode, 200);
+      assert.equal(stale.headers['etag'], etag);
+
+      // Advancing the chain tip invalidates the ETag.
+      await db.update(
+        new TestBlockBuilder({
+          block_height: 2,
+          index_block_hash: '0x0002',
+          parent_index_block_hash: '0x0001',
+          parent_block_hash: '0x0001',
+        })
+          .addTx({ tx_id: '0x0002' })
+          .build()
+      );
+
+      const afterAdvance = await api.fastifyApp.inject({
+        method: 'GET',
+        url: '/extended/v3/transactions',
+        headers: { 'if-none-match': etag as string },
+      });
+      assert.equal(afterAdvance.statusCode, 200);
+      const newEtag = afterAdvance.headers['etag'];
+      assert.ok(newEtag);
+      assert.notEqual(newEtag, etag);
+      assert.equal(newEtag, '"0x0002"');
+
+      // The new ETag is now the cache key for 304s.
+      const refreshed = await api.fastifyApp.inject({
+        method: 'GET',
+        url: '/extended/v3/transactions',
+        headers: { 'if-none-match': newEtag as string },
+      });
+      assert.equal(refreshed.statusCode, 304);
+    });
   });
 });
