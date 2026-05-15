@@ -51,6 +51,7 @@ import DeprecationPlugin from './deprecation-plugin.js';
 import { BlockTenureRoutes } from './routes/v2/block-tenures.js';
 import { PrincipalsRoutes } from './routes/v3/principals.js';
 import { TransactionsRoutes } from './routes/v3/transactions.js';
+import { MempoolRoutes } from './routes/v3/mempool.js';
 
 export interface ApiServer {
   fastifyApp: FastifyInstance;
@@ -105,6 +106,7 @@ export const StacksApiRoutes: FastifyPluginAsync<
     async fastify => {
       await fastify.register(PrincipalsRoutes);
       await fastify.register(TransactionsRoutes);
+      await fastify.register(MempoolRoutes);
     },
     { prefix: '/extended/v3' }
   );

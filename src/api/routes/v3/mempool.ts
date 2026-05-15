@@ -1,4 +1,4 @@
-import { handleChainTipCache } from '../../controllers/cache-controller.js';
+import { handleMempoolCache } from '../../controllers/cache-controller.js';
 import { FastifyPluginAsync } from 'fastify';
 import { TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
 import { Server } from 'node:http';
@@ -19,7 +19,7 @@ export const MempoolRoutes: FastifyPluginAsync<
   fastify.get(
     '/mempool/transactions',
     {
-      preHandler: handleChainTipCache,
+      preHandler: handleMempoolCache,
       schema: {
         operationId: 'get_mempool_transactions',
         summary: 'Get mempool transactions',
