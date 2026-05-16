@@ -101,6 +101,8 @@ import { parseBlockParam } from '../api/routes/v2/schemas';
 
 export const MIGRATIONS_DIR = path.join(REPO_DIR, 'migrations');
 
+const TRGM_SIMILARITY_THRESHOLD = 0.3;
+
 /**
  * This is the main interface between the API and the Postgres database. It contains all methods that
  * query the DB in search for blockchain data to be returned via endpoints or WebSockets/Socket.IO.
@@ -1416,6 +1418,7 @@ export class PgStore extends BasePgStore {
     startTime,
     endTime,
     contractId,
+    searchTerm,
     functionName,
     nonce,
     order,
@@ -1430,6 +1433,7 @@ export class PgStore extends BasePgStore {
     startTime?: number;
     endTime?: number;
     contractId?: string;
+    searchTerm?: string;
     functionName?: string;
     nonce?: number;
     order?: 'desc' | 'asc';
@@ -1468,6 +1472,23 @@ export class PgStore extends BasePgStore {
       const contractIdFilterSql = contractId
         ? sql`AND contract_call_contract_id = ${contractId}`
         : sql``;
+
+      const searchTermFilterSql = searchTerm
+        ? sql`
+          AND (
+        CASE 
+          WHEN EXISTS (
+            SELECT 1
+            FROM pg_extension
+            WHERE extname = 'pg_trgm'
+          ) 
+          THEN similarity(contract_call_function_name, ${searchTerm}) > ${TRGM_SIMILARITY_THRESHOLD}
+          ELSE contract_call_function_name ILIKE '%' || ${searchTerm} || '%'
+          END
+          )
+        `
+        : sql``;
+
       const contractFuncFilterSql = functionName
         ? sql`AND contract_call_function_name = ${functionName}`
         : sql``;
@@ -1479,6 +1500,7 @@ export class PgStore extends BasePgStore {
         !startTime &&
         !endTime &&
         !contractId &&
+        !searchTerm &&
         !functionName &&
         !nonce;
 
@@ -1497,6 +1519,7 @@ export class PgStore extends BasePgStore {
         ${startTimeFilterSql}
         ${endTimeFilterSql}
         ${contractIdFilterSql}
+        ${searchTermFilterSql}
         ${contractFuncFilterSql}
         ${nonceFilterSql}
       `;
@@ -1511,6 +1534,7 @@ export class PgStore extends BasePgStore {
         ${startTimeFilterSql}
         ${endTimeFilterSql}
         ${contractIdFilterSql}
+        ${searchTermFilterSql}
         ${contractFuncFilterSql}
         ${nonceFilterSql}
         ${orderBySql}
