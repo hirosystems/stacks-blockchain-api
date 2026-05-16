@@ -13,6 +13,13 @@ const TransactionType = {
 } as const;
 export const TransactionTypeSchema = Type.Enum(TransactionType);
 
+const TransactionStatus = {
+  success: 'success',
+  abort_by_response: 'abort_by_response',
+  abort_by_post_condition: 'abort_by_post_condition',
+} as const;
+export const TransactionStatusSchema = Type.Enum(TransactionStatus);
+
 export const BaseTransactionSchemaProperties = {
   tx_id: Type.String({
     description: 'Transaction ID',

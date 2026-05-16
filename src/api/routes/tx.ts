@@ -1,5 +1,6 @@
 import {
   parseTxTypeStrings,
+  parseStatusStrings,
   parseDbMempoolTx,
   searchTx,
   searchTxs,
@@ -42,6 +43,7 @@ import {
   Transaction,
   TransactionSchema,
   TransactionSearchResponseSchema,
+  TransactionStatusSchema,
   TransactionTypeSchema,
 } from '../schemas/entities/transactions';
 import { PaginatedResponse } from '../schemas/util';
@@ -68,6 +70,9 @@ export const TxRoutes: FastifyPluginAsync<
         if (typeof req.query.type === 'string') {
           req.query.type = (req.query.type as string).split(',') as typeof req.query.type;
         }
+        if (typeof req.query.status === 'string') {
+          req.query.status = (req.query.status as string).split(',') as typeof req.query.status;
+        }
         done();
       },
       schema: {
@@ -79,6 +84,7 @@ export const TxRoutes: FastifyPluginAsync<
           offset: OffsetParam(),
           limit: LimitParam(ResourceType.Tx),
           type: Type.Optional(Type.Array(TransactionTypeSchema)),
+          status: Type.Optional(Type.Array(TransactionStatusSchema)),
           unanchored: UnanchoredParamSchema,
           order: Type.Optional(Type.Enum({ asc: 'asc', desc: 'desc' })),
           sort_by: Type.Optional(
@@ -147,6 +153,7 @@ export const TxRoutes: FastifyPluginAsync<
       const excludeFunctionArgs = req.query.exclude_function_args ?? false;
 
       const txTypeFilter = parseTxTypeStrings(req.query.type ?? []);
+      const statusFilter = parseStatusStrings(req.query.status ?? []);
 
       let fromAddress: string | undefined;
       if (typeof req.query.from_address === 'string') {
@@ -185,6 +192,7 @@ export const TxRoutes: FastifyPluginAsync<
         offset,
         limit,
         txTypeFilter,
+        statusFilter,
         includeUnanchored: req.query.unanchored ?? false,
         fromAddress,
         toAddress,
