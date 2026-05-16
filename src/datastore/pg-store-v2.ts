@@ -898,7 +898,7 @@ export class PgStoreV2 extends BasePgStoreModule {
       const signerCheck = await sql`
         SELECT signing_key
         FROM pox_sets
-        WHERE cycle_number = ${cycleNumber} AND signing_key = ${args.signer_key}
+        WHERE cycle_number = ${cycleNumber} AND signing_key = ${signerKey}
         LIMIT 1
       `;
       if (signerCheck.count === 0)
