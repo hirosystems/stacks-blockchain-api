@@ -13,6 +13,12 @@
     },
     "block_identifier": {
       "$ref": "./rosetta-partial-block-identifier.schema.json"
+    },
+    "currencies": {
+      "type": "array",
+      "items": {
+        "$ref": "./rosetta-currency.schema.json"
+      }
     }
   }
 }
