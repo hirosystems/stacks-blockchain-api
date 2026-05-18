@@ -27,6 +27,30 @@ export const TransactionIdSchema = Type.String({
 });
 export type TransactionId = Static<typeof TransactionIdSchema>;
 
+export const BlockHashSchema = Type.String({
+  pattern: '^(0x)?[a-fA-F0-9]{64}$',
+  title: 'Block hash',
+  description: 'Block hash',
+  examples: ['0xdaf79950c5e8bb0c620751333967cdd62297137cdaf79950c5e8bb0c62075133'],
+});
+export type BlockHash = Static<typeof BlockHashSchema>;
+
+export const BlockHeightSchema = Type.Integer({
+  title: 'Block height',
+  description: 'Block height',
+  examples: [777678],
+});
+export type BlockHeight = Static<typeof BlockHeightSchema>;
+
+export const BlockHeightOrHashSchema = Type.Union([
+  Type.Literal('latest'),
+  // Hash must come before height so the AJV union matches a hex string before attempting
+  // integer coercion (which would otherwise turn '0x…deadbeef' into 3735928559).
+  BlockHashSchema,
+  BlockHeightSchema,
+]);
+export type BlockHeightOrHash = Static<typeof BlockHeightOrHashSchema>;
+
 export const DecodedClarityValueSchema = Type.Object({
   hex: Type.String(),
   repr: Type.String(),

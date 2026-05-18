@@ -52,6 +52,7 @@ import { BlockTenureRoutes } from './routes/v2/block-tenures.js';
 import { PrincipalsRoutes } from './routes/v3/principals.js';
 import { TransactionsRoutes } from './routes/v3/transactions.js';
 import { MempoolRoutes } from './routes/v3/mempool.js';
+import { BlocksRoutes } from './routes/v3/blocks.js';
 
 export interface ApiServer {
   fastifyApp: FastifyInstance;
@@ -107,6 +108,7 @@ export const StacksApiRoutes: FastifyPluginAsync<
       await fastify.register(PrincipalsRoutes);
       await fastify.register(TransactionsRoutes);
       await fastify.register(MempoolRoutes);
+      await fastify.register(BlocksRoutes);
     },
     { prefix: '/extended/v3' }
   );
