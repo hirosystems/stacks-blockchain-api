@@ -211,6 +211,10 @@ const schema = Type.Object({
   BTC_FAUCET_PK: Type.String({
     default: '29c028009a8331358adcc61bb6397377c995d327ac0343ed8e8f1d4d3ef85c27',
   }),
+  /** Enable the BTC regtest faucet endpoints on Stacks testnet. */
+  TESTNET_BTC_FAUCET_ENABLED: Type.Boolean({ default: true }),
+  /** Enable the STX faucet endpoints on Stacks testnet. */
+  TESTNET_STX_FAUCET_ENABLED: Type.Boolean({ default: true }),
   /**
    * A comma-separated list of STX private keys which will send faucet transactions to accounts that
    * request them. Attempts will always be made from the first account, only once transaction
