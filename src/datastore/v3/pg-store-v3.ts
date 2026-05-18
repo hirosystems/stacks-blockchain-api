@@ -7,6 +7,9 @@ import {
 } from './types.js';
 import { MEMPOOL_TX_SUMMARY_COLUMNS, TX_SUMMARY_COLUMNS } from './constants.js';
 import { prefixedCols } from '../helpers.js';
+import { Principal } from '../../api/schemas/v3/entities/common.js';
+import { normalizeHashString } from '../../helpers.js';
+import { BlockIdParam } from '../../api/routes/v2/schemas.js';
 
 export class PgStoreV3 extends BasePgStoreModule {
   /**
@@ -103,7 +106,7 @@ export class PgStoreV3 extends BasePgStoreModule {
    * @returns The summaries for the principal's transactions.
    */
   async getPrincipalTransactionSummaries(args: {
-    principal: string;
+    principal: Principal;
     limit: number;
     cursor?: string;
   }): Promise<DbCursorPaginatedResult<DbPrincipalTransactionSummary>> {
@@ -280,6 +283,59 @@ export class PgStoreV3 extends BasePgStoreModule {
         prev_cursor: prevCursor,
         current_cursor: firstResult ? encodeMempoolTxSummaryCursor(firstResult) : null,
         total,
+        results,
+      };
+    });
+  }
+
+  /**
+   * Gets the summaries for a block's transactions.
+   * @param args - The arguments for the query.
+   * @returns The summaries for the block's transactions.
+   */
+  async getBlockTransactionSummaries(args: {
+    block: BlockIdParam;
+    limit: number;
+    cursor?: string;
+  }): Promise<DbCursorPaginatedResult<DbTransactionSummary>> {
+    return await this.sqlTransaction(async sql => {
+      const blockFilter =
+        args.block.type === 'latest'
+          ? sql`canonical = TRUE ORDER BY block_height DESC`
+          : args.block.type === 'hash'
+            ? sql`(
+                block_hash = ${normalizeHashString(args.block.hash)}
+                OR index_block_hash = ${normalizeHashString(args.block.hash)}
+              ) AND canonical = TRUE`
+            : args.block.type === 'height'
+              ? sql`block_height = ${args.block.height} AND canonical = TRUE`
+              : sql`block_time = ${args.block.timestamp} AND canonical = TRUE`;
+      const results = await sql<
+        (DbTransactionSummary & { microblock_sequence: number; total: number })[]
+      >`
+        WITH block_ptr AS (
+          SELECT index_block_hash FROM blocks WHERE ${blockFilter} LIMIT 1
+        ),
+        tx_count AS (
+          SELECT tx_count AS total
+          FROM blocks
+          WHERE index_block_hash = (SELECT index_block_hash FROM block_ptr)
+        )
+        SELECT ${sql(TX_SUMMARY_COLUMNS)}, (SELECT total FROM tx_count)::int AS total
+        FROM txs
+        WHERE canonical = true
+          AND microblock_canonical = true
+          AND index_block_hash = (SELECT index_block_hash FROM block_ptr)
+        ORDER BY microblock_sequence ASC, tx_index ASC
+        LIMIT ${args.limit}
+      `;
+      return {
+        limit: args.limit,
+        offset: 0,
+        next_cursor: null,
+        prev_cursor: null,
+        current_cursor: null,
+        total: results[0]?.total ?? 0,
         results,
       };
     });
