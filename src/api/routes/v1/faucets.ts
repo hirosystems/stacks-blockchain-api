@@ -15,18 +15,18 @@ import {
   getBtcBalance,
   getRpcClient,
   isValidBtcAddress,
-} from '../../btc-faucet.js';
-import { DbFaucetRequestCurrency } from '../../datastore/common.js';
-import { getChainIDNetwork, getStxFaucetNetwork, stxToMicroStx } from '../../helpers.js';
-import { StacksCoreRpcClient } from '../../core-rpc/client.js';
+} from '../../../btc-faucet.js';
+import { DbFaucetRequestCurrency } from '../../../datastore/common.js';
+import { getChainIDNetwork, getStxFaucetNetwork, stxToMicroStx } from '../../../helpers.js';
+import { StacksCoreRpcClient } from '../../../core-rpc/client.js';
 import { isProdEnv, logger } from '@stacks/api-toolkit';
-import { ENV } from '../../env.js';
+import { ENV } from '../../../env.js';
 import { FastifyPluginAsync, preHandlerHookHandler } from 'fastify';
 import { Type, TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
 import { fastifyFormbody } from '@fastify/formbody';
 import { Server } from 'node:http';
-import { OptionalNullable } from '../schemas/util.js';
-import { RunFaucetResponseSchema } from '../schemas/responses/responses.js';
+import { OptionalNullable } from '../../schemas/v1/util.js';
+import { RunFaucetResponseSchema } from '../../schemas/v1/responses/responses.js';
 
 const testnetAccounts = [
   {

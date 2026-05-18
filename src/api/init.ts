@@ -1,30 +1,30 @@
 import { Server } from 'http';
 import { Socket } from 'net';
 
-import { TxRoutes } from './routes/tx.js';
-import { InfoRoutes } from './routes/info.js';
-import { ContractRoutes } from './routes/contract.js';
-import { CoreNodeRpcProxyRouter } from './routes/core-node-rpc-proxy.js';
-import { BlockRoutes } from './routes/block.js';
-import { FaucetRoutes } from './routes/faucets.js';
-import { AddressRoutes } from './routes/address.js';
-import { SearchRoutes } from './routes/search.js';
-import { StxSupplyRoutes } from './routes/stx-supply.js';
+import { TxRoutes } from './routes/v1/tx.js';
+import { InfoRoutes } from './routes/v1/info.js';
+import { ContractRoutes } from './routes/v1/contract.js';
+import { CoreNodeRpcProxyRouter } from './routes/v1/core-node-rpc-proxy.js';
+import { BlockRoutes } from './routes/v1/block.js';
+import { FaucetRoutes } from './routes/v1/faucets.js';
+import { AddressRoutes } from './routes/v1/address.js';
+import { SearchRoutes } from './routes/v1/search.js';
+import { StxSupplyRoutes } from './routes/v1/stx-supply.js';
 import { ChainID } from '../helpers.js';
-import { BurnchainRoutes } from './routes/burnchain.js';
-import { BnsNamespaceRoutes } from './routes/bns/namespaces.js';
-import { BnsPriceRoutes } from './routes/bns/pricing.js';
-import { BnsNameRoutes } from './routes/bns/names.js';
-import { BnsAddressRoutes } from './routes/bns/addresses.js';
-import { MicroblockRoutes } from './routes/microblock.js';
-import { StatusRoutes } from './routes/status.js';
-import { TokenRoutes } from './routes/tokens.js';
-import { FeeRateRoutes } from './routes/fee-rate.js';
+import { BurnchainRoutes } from './routes/v1/burnchain.js';
+import { BnsNamespaceRoutes } from './routes/v1/bns/namespaces.js';
+import { BnsPriceRoutes } from './routes/v1/bns/pricing.js';
+import { BnsNameRoutes } from './routes/v1/bns/names.js';
+import { BnsAddressRoutes } from './routes/v1/bns/addresses.js';
+import { MicroblockRoutes } from './routes/v1/microblock.js';
+import { StatusRoutes } from './routes/v1/status.js';
+import { TokenRoutes } from './routes/v1/tokens.js';
+import { FeeRateRoutes } from './routes/v1/fee-rate.js';
 
 import { PgStore } from '../datastore/pg-store.js';
 import { PgWriteStore } from '../datastore/pg-write-store.js';
 import { WebSocketTransmitter } from './routes/ws/web-socket-transmitter.js';
-import { PoxEventRoutes, PoxRoutes } from './routes/pox.js';
+import { PoxEventRoutes, PoxRoutes } from './routes/v1/pox.js';
 import { ENV } from '../env.js';
 import {
   PINO_LOGGER_CONFIG,

@@ -15,8 +15,8 @@ import assert from 'node:assert/strict';
 import { StackingClient } from '@stacks/stacking';
 import { getPublicKeyFromPrivate } from '@stacks/encryption';
 import { hexToBytes } from '@stacks/common';
-import { AddressStxBalance } from '../../../src/api/schemas/entities/addresses.ts';
-import { FAUCET_TESTNET_KEYS } from '../../../src/api/routes/faucets.ts';
+import { AddressStxBalance } from '../../../src/api/schemas/v1/entities/addresses.ts';
+import { FAUCET_TESTNET_KEYS } from '../../../src/api/routes/v1/faucets.ts';
 import {
   Account,
   accountFromKey,

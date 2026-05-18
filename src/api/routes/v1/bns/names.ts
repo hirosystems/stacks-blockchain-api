@@ -1,10 +1,10 @@
-import { parsePagingQueryInput } from '../../../api/pagination.js';
-import { bnsBlockchain, BnsErrors } from '../../../event-stream/bns/bns-constants.js';
-import { handleChainTipCache } from '../../../api/controllers/cache-controller.js';
+import { parsePagingQueryInput } from '../../../pagination.js';
+import { bnsBlockchain, BnsErrors } from '../../../../event-stream/bns/bns-constants.js';
+import { handleChainTipCache } from '../../../controllers/cache-controller.js';
 import { FastifyPluginAsync } from 'fastify';
 import { Type, TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
 import { Server } from 'node:http';
-import { UnanchoredParamSchema } from '../../schemas/params.js';
+import { UnanchoredParamSchema } from '../../../schemas/v1/params.js';
 
 class NameRedirectError extends Error {
   constructor(message: string) {

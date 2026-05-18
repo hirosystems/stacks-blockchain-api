@@ -2,19 +2,19 @@ import {
   getMicroblockFromDataStore,
   getMicroblocksFromDataStore,
   getUnanchoredTxsFromDataStore,
-} from '../controllers/db-controller.js';
-import { getPagingQueryLimit, parsePagingQueryInput, ResourceType } from '../pagination.js';
-import { validateRequestHexInput } from '../query-helpers.js';
+} from '../../controllers/db-controller.js';
+import { getPagingQueryLimit, parsePagingQueryInput, ResourceType } from '../../pagination.js';
+import { validateRequestHexInput } from '../../query-helpers.js';
 import { has0xPrefix } from '@stacks/api-toolkit';
 import { FastifyPluginAsync } from 'fastify';
 import { Type, TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
 import { Server } from 'node:http';
-import { handleChainTipCache } from '../controllers/cache-controller.js';
-import { LimitParam, OffsetParam } from '../schemas/params.js';
-import { MicroblockSchema } from '../schemas/entities/microblock.js';
-import { NotFoundError } from '../../errors.js';
-import { TransactionSchema } from '../schemas/entities/transactions.js';
-import { MicroblockListResponseSchema } from '../schemas/responses/responses.js';
+import { handleChainTipCache } from '../../controllers/cache-controller.js';
+import { LimitParam, OffsetParam } from '../../schemas/v1/params.js';
+import { MicroblockSchema } from '../../schemas/v1/entities/microblock.js';
+import { NotFoundError } from '../../../errors.js';
+import { TransactionSchema } from '../../schemas/v1/entities/transactions.js';
+import { MicroblockListResponseSchema } from '../../schemas/v1/responses/responses.js';
 
 export const MicroblockRoutes: FastifyPluginAsync<
   Record<never, never>,

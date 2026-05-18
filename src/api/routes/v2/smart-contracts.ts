@@ -4,12 +4,12 @@ import { parseDbSmartContractStatusArray } from './helpers.js';
 import { FastifyPluginAsync } from 'fastify';
 import { Type, TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
 import { Server } from 'node:http';
-import { SmartContractStatusListSchema } from '../../schemas/entities/smart-contracts.js';
-import { SmartContractLogEventListResponseSchema } from '../../schemas/responses/responses.js';
-import { CursorOffsetParam, LimitParam } from '../../schemas/params.js';
+import { SmartContractStatusListSchema } from '../../schemas/v1/entities/smart-contracts.js';
+import { SmartContractLogEventListResponseSchema } from '../../schemas/v1/responses/responses.js';
+import { CursorOffsetParam, LimitParam } from '../../schemas/v1/params.js';
 import { getPagingQueryLimit, ResourceType } from '../../pagination.js';
 import { NotFoundError } from '../../../errors.js';
-import { SmartContractLogTransactionEvent } from '../../schemas/entities/transaction-events.js';
+import { SmartContractLogTransactionEvent } from '../../schemas/v1/entities/transaction-events.js';
 import { decodeClarityValueToRepr } from '@stacks/codec';
 
 export const SmartContractRoutesV2: FastifyPluginAsync<

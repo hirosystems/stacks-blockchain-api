@@ -15,15 +15,15 @@ import { parseDbTx } from '../../../api/controllers/db-controller.js';
 import { FastifyPluginAsync } from 'fastify';
 import { Type, TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
 import { Server } from 'node:http';
-import { CursorOffsetParam, LimitParam, OffsetParam } from '../../schemas/params.js';
+import { CursorOffsetParam, LimitParam, OffsetParam } from '../../schemas/v1/params.js';
 import { getPagingQueryLimit, ResourceType } from '../../pagination.js';
-import { PaginatedResponse } from '../../schemas/util.js';
-import { NakamotoBlock, NakamotoBlockSchema } from '../../schemas/entities/block.js';
-import { TransactionSchema } from '../../schemas/entities/transactions.js';
+import { PaginatedResponse } from '../../schemas/v1/util.js';
+import { NakamotoBlock, NakamotoBlockSchema } from '../../schemas/v1/entities/block.js';
+import { TransactionSchema } from '../../schemas/v1/entities/transactions.js';
 import {
   BlockListV2ResponseSchema,
   BlockSignerSignatureResponseSchema,
-} from '../../schemas/responses/responses.js';
+} from '../../schemas/v1/responses/responses.js';
 
 export const BlockRoutesV2: FastifyPluginAsync<
   Record<never, never>,

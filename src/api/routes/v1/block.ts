@@ -1,16 +1,16 @@
-import { getBlockFromDataStore, getBlocksWithMetadata } from '../controllers/db-controller.js';
-import { NotFoundError } from '../../errors.js';
-import { getPagingQueryLimit, parsePagingQueryInput, ResourceType } from '../pagination.js';
-import { validateRequestHexInput } from '../query-helpers.js';
-import { handleChainTipCache } from '../controllers/cache-controller.js';
+import { getBlockFromDataStore, getBlocksWithMetadata } from '../../controllers/db-controller.js';
+import { NotFoundError } from '../../../errors.js';
+import { getPagingQueryLimit, parsePagingQueryInput, ResourceType } from '../../pagination.js';
+import { validateRequestHexInput } from '../../query-helpers.js';
+import { handleChainTipCache } from '../../controllers/cache-controller.js';
 import { has0xPrefix } from '@stacks/api-toolkit';
 
 import { FastifyPluginAsync } from 'fastify';
 import { Type, TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
 import { Server } from 'node:http';
-import { LimitParam, OffsetParam } from '../schemas/params.js';
-import { PaginatedResponse } from '../schemas/util.js';
-import { BlockSchema } from '../schemas/entities/block.js';
+import { LimitParam, OffsetParam } from '../../schemas/v1/params.js';
+import { PaginatedResponse } from '../../schemas/v1/util.js';
+import { BlockSchema } from '../../schemas/v1/entities/block.js';
 
 export const BlockRoutes: FastifyPluginAsync<
   Record<never, never>,

@@ -5,12 +5,12 @@ import { InvalidRequestError, NotFoundError } from '../../../errors.js';
 import { FastifyPluginAsync } from 'fastify';
 import { Type, TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
 import { Server } from 'node:http';
-import { LimitParam, OffsetParam } from '../../schemas/params.js';
+import { LimitParam, OffsetParam } from '../../schemas/v1/params.js';
 import { ResourceType } from '../../pagination.js';
-import { PaginatedResponse } from '../../schemas/util.js';
-import { BurnBlock, BurnBlockSchema } from '../../schemas/entities/burn-blocks.js';
-import { NakamotoBlockSchema } from '../../schemas/entities/block.js';
-import { BurnBlockPoxTxSchema } from '../../schemas/entities/pox-transaction.js';
+import { PaginatedResponse } from '../../schemas/v1/util.js';
+import { BurnBlock, BurnBlockSchema } from '../../schemas/v1/entities/burn-blocks.js';
+import { NakamotoBlockSchema } from '../../schemas/v1/entities/block.js';
+import { BurnBlockPoxTxSchema } from '../../schemas/v1/entities/pox-transaction.js';
 
 export const BurnBlockRoutesV2: FastifyPluginAsync<
   Record<never, never>,

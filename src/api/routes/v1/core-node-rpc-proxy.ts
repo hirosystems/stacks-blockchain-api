@@ -1,13 +1,13 @@
-import { REPO_DIR } from '../../helpers.js';
+import { REPO_DIR } from '../../../helpers.js';
 import * as fs from 'fs';
 import * as path from 'path';
 import { FastifyPluginAsync } from 'fastify';
 import { TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
 import { IncomingMessage, Server } from 'node:http';
 import { fastifyHttpProxy } from '@fastify/http-proxy';
-import { StacksCoreRpcClient } from '../../core-rpc/client.js';
+import { StacksCoreRpcClient } from '../../../core-rpc/client.js';
 import { logger } from '@stacks/api-toolkit';
-import { ENV } from '../../env.js';
+import { ENV } from '../../../env.js';
 
 function GetStacksNodeProxyEndpoint() {
   const proxyHost = ENV.STACKS_CORE_PROXY_HOST;

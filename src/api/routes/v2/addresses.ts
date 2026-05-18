@@ -21,9 +21,9 @@ import {
   PrincipalSchema,
   ExcludeFunctionArgsParamSchema,
   BurnchainAddressParamSchema,
-} from '../../schemas/params.js';
+} from '../../schemas/v1/params.js';
 import { getPagingQueryLimit, ResourceType } from '../../pagination.js';
-import { PaginatedCursorResponse, PaginatedResponse } from '../../schemas/util.js';
+import { PaginatedCursorResponse, PaginatedResponse } from '../../schemas/v1/util.js';
 import {
   AddressTransaction,
   AddressTransactionEvent,
@@ -31,10 +31,10 @@ import {
   AddressTransactionSchema,
   PrincipalFtBalance,
   PrincipalFtBalanceSchema,
-} from '../../schemas/entities/addresses.js';
+} from '../../schemas/v1/entities/addresses.js';
 import { validatePrincipal } from '../../query-helpers.js';
-import { StxBalance, StxBalanceSchema } from '../../schemas/entities/balances.js';
-import { BurnBlockPoxTxSchema } from '../../schemas/entities/pox-transaction.js';
+import { StxBalance, StxBalanceSchema } from '../../schemas/v1/entities/balances.js';
+import { BurnBlockPoxTxSchema } from '../../schemas/v1/entities/pox-transaction.js';
 
 export const AddressRoutesV2: FastifyPluginAsync<
   Record<never, never>,

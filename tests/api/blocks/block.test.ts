@@ -15,7 +15,7 @@ import { migrate } from '../../test-helpers.ts';
 import {
   BlockListV2Response,
   BlockSignerSignatureResponse,
-} from '../../../src/api/schemas/responses/responses.ts';
+} from '../../../src/api/schemas/v1/responses/responses.ts';
 import { beforeEach, afterEach, describe, test } from 'node:test';
 import assert from 'node:assert/strict';
 import { assertMatchesObject } from '../test-helpers.ts';

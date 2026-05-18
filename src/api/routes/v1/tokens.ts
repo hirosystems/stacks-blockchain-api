@@ -1,10 +1,10 @@
-import { getPagingQueryLimit, parsePagingQueryInput, ResourceType } from '../pagination.js';
-import { isValidPrincipal } from '../../helpers.js';
+import { getPagingQueryLimit, parsePagingQueryInput, ResourceType } from '../../pagination.js';
+import { isValidPrincipal } from '../../../helpers.js';
 import { decodeClarityValueToRepr } from '@stacks/codec';
-import { getAssetEventTypeString, parseDbTx } from '../controllers/db-controller.js';
-import { handleChainTipCache } from '../controllers/cache-controller.js';
+import { getAssetEventTypeString, parseDbTx } from '../../controllers/db-controller.js';
+import { handleChainTipCache } from '../../controllers/cache-controller.js';
 import { has0xPrefix } from '@stacks/api-toolkit';
-import { InvalidRequestError, InvalidRequestErrorType } from '../../errors.js';
+import { InvalidRequestError, InvalidRequestErrorType } from '../../../errors.js';
 
 import { FastifyPluginAsync } from 'fastify';
 import { Type, TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
@@ -14,8 +14,8 @@ import {
   OffsetParam,
   PrincipalSchema,
   UnanchoredParamSchema,
-} from '../schemas/params.js';
-import { PaginatedResponse } from '../schemas/util.js';
+} from '../../schemas/v1/params.js';
+import { PaginatedResponse } from '../../schemas/v1/util.js';
 import {
   NonFungibleTokenHistoryEventWithTxIdSchema,
   NonFungibleTokenHistoryEventWithTxMetadataSchema,
@@ -23,7 +23,7 @@ import {
   NonFungibleTokenHoldingWithTxMetadataSchema,
   NonFungibleTokenMintWithTxIdSchema,
   NonFungibleTokenMintWithTxMetadataSchema,
-} from '../schemas/entities/tokens.js';
+} from '../../schemas/v1/entities/tokens.js';
 
 export const TokenRoutes: FastifyPluginAsync<
   Record<never, never>,

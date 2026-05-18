@@ -4,7 +4,7 @@ import FastifySwagger from '@fastify/swagger';
 import { writeFileSync } from 'fs';
 import { OpenApiSchemaOptions } from './api/schemas/openapi.js';
 import { StacksApiRoutes } from './api/init.js';
-import { ErrorResponseSchema } from './api/schemas/responses/responses.js';
+import { ErrorResponseSchema } from './api/schemas/v1/responses/responses.js';
 
 /**
  * Generates `openapi.yaml` based on current Swagger definitions.
