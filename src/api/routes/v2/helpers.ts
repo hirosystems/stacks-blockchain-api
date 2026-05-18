@@ -20,7 +20,10 @@ import {
 import { decodeClarityValueToRepr } from '@stacks/codec';
 import { getAddressFromPublicKey } from '@stacks/transactions';
 import { SmartContractStatusList } from '../../schemas/v1/entities/smart-contracts.js';
-import { AddressTransaction, AddressTransactionEvent } from '../../schemas/v1/entities/addresses.js';
+import {
+  AddressTransaction,
+  AddressTransactionEvent,
+} from '../../schemas/v1/entities/addresses.js';
 import { NakamotoBlock } from '../../schemas/v1/entities/block.js';
 import { BurnBlock } from '../../schemas/v1/entities/burn-blocks.js';
 import { PoxCycle, PoxSigner, PoxStacker } from '../../schemas/v1/entities/pox.js';
