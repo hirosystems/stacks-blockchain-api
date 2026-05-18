@@ -17,7 +17,6 @@ describe('principals', () => {
   const testContractAddr = 'ST27W5M8BRKA7C5MZE2R1S1F4XTPHFWFRNHA9M04Y.hello-world';
   const testAddr4 = 'ST3DWSXBPYDB484QXFTR81K4AWG4ZB5XZNFF3H70C';
   const emptyPrincipal = 'SP466FNC0P7JWTNM2R9T199QRZN1MYEDTAR0KP2X';
-  const emptyTxId = '0x0000000000000000000000000000000000000000000000000000000000000000';
 
   beforeEach(async () => {
     await migrate('up');
@@ -189,7 +188,7 @@ describe('principals', () => {
             net: '-100050',
           },
         },
-        affected_asset_types: {
+        affected_balances: {
           stx: true,
           ft: true,
           nft: true,
@@ -229,7 +228,7 @@ describe('principals', () => {
             net: '-50',
           },
         },
-        affected_asset_types: {
+        affected_balances: {
           stx: true,
           ft: false,
           nft: false,
@@ -316,13 +315,95 @@ describe('principals', () => {
         current: '9:0:4',
       });
     });
+
+    test('should return 304 when ETag matches and refresh ETag on new principal activity', async () => {
+      // testAddr1 has confirmed activity from the setup, so the principal cache is populated.
+      const first = await api.fastifyApp.inject({
+        method: 'GET',
+        url: `/extended/v3/principals/${testAddr1}/transactions`,
+      });
+      assert.equal(first.statusCode, 200);
+      const etag = first.headers['etag'];
+      assert.ok(etag, 'expected ETag header to be set');
+
+      // Same ETag returns 304 with an empty body.
+      const cached = await api.fastifyApp.inject({
+        method: 'GET',
+        url: `/extended/v3/principals/${testAddr1}/transactions`,
+        headers: { 'if-none-match': etag as string },
+      });
+      assert.equal(cached.statusCode, 304);
+      assert.equal(cached.body, '');
+
+      // A stale ETag returns 200 with the current data and ETag.
+      const stale = await api.fastifyApp.inject({
+        method: 'GET',
+        url: `/extended/v3/principals/${testAddr1}/transactions`,
+        headers: { 'if-none-match': '"0xdeadbeef"' },
+      });
+      assert.equal(stale.statusCode, 200);
+      assert.equal(stale.headers['etag'], etag);
+
+      // A request for a different principal returns a different ETag (or none, if the
+      // principal has no activity), and does not collide with testAddr1's cache.
+      const otherPrincipal = await api.fastifyApp.inject({
+        method: 'GET',
+        url: `/extended/v3/principals/${testAddr2}/transactions`,
+        headers: { 'if-none-match': etag as string },
+      });
+      assert.equal(otherPrincipal.statusCode, 200);
+      assert.notEqual(otherPrincipal.headers['etag'], etag);
+
+      // New confirmed activity for testAddr1 invalidates its ETag.
+      await db.update(
+        new TestBlockBuilder({
+          block_height: 3,
+          block_hash: hex(3),
+          index_block_hash: hex(3),
+          parent_index_block_hash: hex(2),
+          parent_block_hash: hex(2),
+        })
+          .addTx({
+            tx_id: hex(0x1001),
+            fee_rate: 50n,
+            block_hash: hex(3),
+            index_block_hash: hex(3),
+            block_time: 3000,
+            burn_block_height: 3,
+            burn_block_time: 3000,
+            type_id: DbTxTypeId.TokenTransfer,
+            status: DbTxStatus.Success,
+            sender_address: testAddr1,
+            nonce: 100,
+          })
+          .build()
+      );
+
+      const afterActivity = await api.fastifyApp.inject({
+        method: 'GET',
+        url: `/extended/v3/principals/${testAddr1}/transactions`,
+        headers: { 'if-none-match': etag as string },
+      });
+      assert.equal(afterActivity.statusCode, 200);
+      const newEtag = afterActivity.headers['etag'];
+      assert.ok(newEtag);
+      assert.notEqual(newEtag, etag);
+
+      // The new ETag is now the cache key for 304s.
+      const refreshed = await api.fastifyApp.inject({
+        method: 'GET',
+        url: `/extended/v3/principals/${testAddr1}/transactions`,
+        headers: { 'if-none-match': newEtag as string },
+      });
+      assert.equal(refreshed.statusCode, 304);
+    });
   });
 
   describe('/v3/principals/:principal/transactions/:tx_id/balance-changes', () => {
     test('should return an empty list', async () => {
       const response = await api.fastifyApp.inject({
         method: 'GET',
-        url: `/extended/v3/principals/${emptyPrincipal}/transactions/${emptyTxId}/balance-changes`,
+        url: `/extended/v3/principals/${emptyPrincipal}/transactions/${hex(0xdeadbeef)}/balance-changes`,
       });
       assert.equal(response.statusCode, 200);
       const body = JSON.parse(response.body);
@@ -427,7 +508,8 @@ describe('principals', () => {
         url: `/extended/v3/principals/${testAddr1}/transactions/${hex(3)}/balance-changes`,
         query: {
           limit: '1',
-          cursor: '2:SP2H8PY27SEZ03MWRKS5XABZYQN17ETGQS3527SA5.newyorkcitycoin-token::newyorkcitycoin',
+          cursor:
+            '2:SP2H8PY27SEZ03MWRKS5XABZYQN17ETGQS3527SA5.newyorkcitycoin-token::newyorkcitycoin',
         },
       });
       assert.equal(response3.statusCode, 200);
@@ -438,7 +520,8 @@ describe('principals', () => {
         cursor: {
           next: '3:SP3D6PV2ACBPEKYJTCMH7HEN02KP87QSP8KTEH335.Candies::candy',
           previous: '1:stx',
-          current: '2:SP2H8PY27SEZ03MWRKS5XABZYQN17ETGQS3527SA5.newyorkcitycoin-token::newyorkcitycoin',
+          current:
+            '2:SP2H8PY27SEZ03MWRKS5XABZYQN17ETGQS3527SA5.newyorkcitycoin-token::newyorkcitycoin',
         },
         results: [
           {

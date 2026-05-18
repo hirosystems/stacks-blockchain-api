@@ -1,12 +1,28 @@
 import { SwaggerOptions } from '@fastify/swagger';
-import { SERVER_VERSION } from '@stacks/api-toolkit';
+import { isProdEnv, logger, SERVER_VERSION } from '@stacks/api-toolkit';
+import { readFileSync } from 'fs';
+import { dirname, resolve } from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+const openApiVersion = (() => {
+  if (isProdEnv) return SERVER_VERSION.tag;
+  try {
+    const packageJsonPath = resolve(__dirname, '../../../package.json');
+    return (JSON.parse(readFileSync(packageJsonPath, 'utf-8')) as { version: string }).version;
+  } catch (error) {
+    logger.error(error, 'Error reading version from package.json');
+    return SERVER_VERSION.tag;
+  }
+})();
 
 export const OpenApiSchemaOptions: SwaggerOptions = {
   openapi: {
     info: {
       title: 'Stacks Blockchain API',
       description: `Welcome to the API reference overview for the [Stacks Blockchain API](https://docs.hiro.so/stacks-blockchain-api). [Download Postman collection](https://hirosystems.github.io/stacks-blockchain-api/collection.json).`,
-      version: SERVER_VERSION.tag,
+      version: openApiVersion,
     },
     externalDocs: {
       url: 'https://github.com/hirosystems/stacks-blockchain-api',

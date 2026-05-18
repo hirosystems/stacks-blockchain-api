@@ -15,18 +15,18 @@ import {
   getBtcBalance,
   getRpcClient,
   isValidBtcAddress,
-} from '../../btc-faucet.js';
-import { DbFaucetRequestCurrency } from '../../datastore/common.js';
-import { getChainIDNetwork, getStxFaucetNetwork, stxToMicroStx } from '../../helpers.js';
-import { StacksCoreRpcClient } from '../../core-rpc/client.js';
+} from '../../../btc-faucet.js';
+import { DbFaucetRequestCurrency } from '../../../datastore/common.js';
+import { getChainIDNetwork, getStxFaucetNetwork, stxToMicroStx } from '../../../helpers.js';
+import { StacksCoreRpcClient } from '../../../core-rpc/client.js';
 import { isProdEnv, logger } from '@stacks/api-toolkit';
-import { ENV } from '../../env.js';
+import { ENV } from '../../../env.js';
 import { FastifyPluginAsync, preHandlerHookHandler } from 'fastify';
 import { Type, TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
 import { fastifyFormbody } from '@fastify/formbody';
 import { Server } from 'node:http';
-import { OptionalNullable } from '../schemas/util.js';
-import { RunFaucetResponseSchema } from '../schemas/responses/responses.js';
+import { OptionalNullable } from '../../schemas/v1/util.js';
+import { RunFaucetResponseSchema } from '../../schemas/v1/responses/responses.js';
 
 const testnetAccounts = [
   {
@@ -91,6 +91,26 @@ export const FaucetRoutes: FastifyPluginAsync<
     }
   });
 
+  const btcFaucetEnabledMiddleware: preHandlerHookHandler = (_req, reply, done) => {
+    if (!ENV.TESTNET_BTC_FAUCET_ENABLED) {
+      return reply.status(403).send({
+        error: 'BTC faucet is not enabled',
+        success: false,
+      });
+    }
+    done();
+  };
+
+  const stxFaucetEnabledMiddleware: preHandlerHookHandler = (_req, reply, done) => {
+    if (!ENV.TESTNET_STX_FAUCET_ENABLED) {
+      return reply.status(403).send({
+        error: 'STX faucet is not enabled',
+        success: false,
+      });
+    }
+    done();
+  };
+
   const missingBtcConfigMiddleware: preHandlerHookHandler = (_req, reply, done) => {
     try {
       getRpcClient();
@@ -108,7 +128,7 @@ export const FaucetRoutes: FastifyPluginAsync<
   fastify.post(
     '/btc',
     {
-      preHandler: missingBtcConfigMiddleware,
+      preHandler: [btcFaucetEnabledMiddleware, missingBtcConfigMiddleware],
       schema: {
         operationId: 'run_faucet_btc',
         summary: 'Add regtest BTC tokens to address',
@@ -243,7 +263,7 @@ export const FaucetRoutes: FastifyPluginAsync<
   fastify.get(
     '/btc/:address',
     {
-      preHandler: missingBtcConfigMiddleware,
+      preHandler: [btcFaucetEnabledMiddleware, missingBtcConfigMiddleware],
       schema: {
         operationId: 'get_btc_balance',
         summary: 'Get BTC balance for address',
@@ -351,6 +371,7 @@ export const FaucetRoutes: FastifyPluginAsync<
   fastify.post(
     '/stx',
     {
+      preHandler: stxFaucetEnabledMiddleware,
       schema: {
         operationId: 'run_faucet_stx',
         summary: 'Get STX testnet tokens',

@@ -4,20 +4,20 @@ import {
   DbMempoolTx,
   DbSearchResult,
   DbSearchResultWithMetadata,
-} from '../../datastore/common.js';
-import { isValidPrincipal, FoundOrNot } from '../../helpers.js';
+} from '../../../datastore/common.js';
+import { isValidPrincipal, FoundOrNot } from '../../../helpers.js';
 import {
   getTxTypeString,
   parseDbMempoolTx,
   parseDbTx,
   searchHashWithMetadata,
-} from '../controllers/db-controller.js';
+} from '../../controllers/db-controller.js';
 import { has0xPrefix } from '@stacks/api-toolkit';
 import { FastifyPluginAsync } from 'fastify';
 import { Type, TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
 import { Server } from 'node:http';
-import { AddressStxBalance } from '../schemas/entities/addresses.js';
-import { Block } from '../schemas/entities/block.js';
+import { AddressStxBalance } from '../../schemas/v1/entities/addresses.js';
+import { Block } from '../../schemas/v1/entities/block.js';
 import {
   AddressSearchResult,
   BlockSearchResult,
@@ -26,7 +26,7 @@ import {
   SearchResult,
   SearchResultSchema,
   TxSearchResult,
-} from '../schemas/entities/search.js';
+} from '../../schemas/v1/entities/search.js';
 
 enum SearchResultType {
   TxId = 'tx_id',

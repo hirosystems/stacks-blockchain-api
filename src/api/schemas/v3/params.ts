@@ -1,6 +1,6 @@
 import { ObjectOptions, TSchema, Type } from '@sinclair/typebox';
 import { pagingQueryLimits, ResourceType } from '../../pagination.js';
-import { Nullable } from '../util.js';
+import { Nullable } from '../v1/util.js';
 
 /**
  * Cursor pagination querystring

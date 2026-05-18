@@ -17,14 +17,17 @@ import {
   getTxStatusString,
   parseDbTx,
 } from '../../../api/controllers/db-controller.js';
-import codec from '@stacks/codec';
+import { decodeClarityValueToRepr } from '@stacks/codec';
 import { getAddressFromPublicKey } from '@stacks/transactions';
-import { SmartContractStatusList } from '../../schemas/entities/smart-contracts.js';
-import { AddressTransaction, AddressTransactionEvent } from '../../schemas/entities/addresses.js';
-import { NakamotoBlock } from '../../schemas/entities/block.js';
-import { BurnBlock } from '../../schemas/entities/burn-blocks.js';
-import { PoxCycle, PoxSigner, PoxStacker } from '../../schemas/entities/pox.js';
-import { BurnBlockPoxTx } from '../../schemas/entities/pox-transaction.js';
+import { SmartContractStatusList } from '../../schemas/v1/entities/smart-contracts.js';
+import {
+  AddressTransaction,
+  AddressTransactionEvent,
+} from '../../schemas/v1/entities/addresses.js';
+import { NakamotoBlock } from '../../schemas/v1/entities/block.js';
+import { BurnBlock } from '../../schemas/v1/entities/burn-blocks.js';
+import { PoxCycle, PoxSigner, PoxStacker } from '../../schemas/v1/entities/pox.js';
+import { BurnBlockPoxTx } from '../../schemas/v1/entities/pox-transaction.js';
 
 export function parseDbNakamotoBlock(block: DbBlock): NakamotoBlock {
   const apiBlock: NakamotoBlock = {
@@ -154,7 +157,7 @@ export function parseDbAddressTransactionTransfer(
           asset_identifier: transfer.asset_identifier ?? '',
           value: {
             hex: transfer.value ?? '',
-            repr: codec.decodeClarityValueToRepr(transfer.value ?? ''),
+            repr: decodeClarityValueToRepr(transfer.value ?? ''),
           },
           sender: transfer.sender ?? undefined,
           recipient: transfer.recipient ?? undefined,

@@ -1,4 +1,4 @@
-import { Block } from '../api/schemas/entities/block.js';
+import { Block } from '../api/schemas/v1/entities/block.js';
 import { SyntheticPoxEventName } from '../pox-helpers.js';
 import { PgBytea, PgJsonb, PgNumeric } from '@stacks/api-toolkit';
 

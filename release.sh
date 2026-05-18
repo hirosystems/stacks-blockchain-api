@@ -41,11 +41,11 @@ echo ""
 echo "Updating root package.json..."
 npm version "$VERSION" --no-git-tag-version
 echo "Updating client/package.json..."
-npm version "$VERSION" --no-git-tag-version --workspace=client
+npm version "$VERSION" --no-git-tag-version --prefix client
 
 # Regenerate OpenAPI spec with new version
 echo "Regenerating OpenAPI spec..."
-npm run generate:openapi --prefix packages/api
+npm run generate:openapi
 echo "Regenerating client types..."
 npm run generate:client
 

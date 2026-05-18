@@ -2,21 +2,23 @@ import { handlePrincipalCache } from '../../controllers/cache-controller.js';
 import { FastifyPluginAsync } from 'fastify';
 import { Type, TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
 import { Server } from 'node:http';
-import { getPagingQueryLimit, pagingQueryLimits, ResourceType } from '../../pagination.js';
+import { getPagingQueryLimit, ResourceType } from '../../pagination.js';
 import { PrincipalSchema, TransactionIdSchema } from '../../schemas/v3/entities/common.js';
 import {
   CursorPaginationQuerystring,
   CursorPaginatedResponse,
   TransactionCursorSchema,
-  PrincipalTransactionBalanceChangeCursorSchema,
-  PrincipalBalanceChangeCursorSchema,
-} from '../../schemas/v3/params.js';
+} from '../../schemas/v3/cursors.js';
 import { PrincipalTransactionSummarySchema } from '../../schemas/v3/entities/principal-transactions.js';
+import { serializePrincipalTransactionSummary } from '../../serializers/v3/transactions.js';
 import {
   serializePrincipalBalanceChange,
   serializePrincipalTransactionBalanceChange,
-  serializePrincipalTransactionSummary,
-} from '../../serializers/transactions.js';
+} from '../../serializers/v3/balance-changes.js';
+import {
+  PrincipalBalanceChangeCursorSchema,
+  PrincipalTransactionBalanceChangeCursorSchema,
+} from '../../schemas/v3/params.js';
 import {
   PrincipalBalanceChangeSchema,
   PrincipalTransactionBalanceChangeSchema,
@@ -34,12 +36,16 @@ export const PrincipalsRoutes: FastifyPluginAsync<
       schema: {
         operationId: 'get_principal_transactions',
         summary: 'Get principal transactions',
-        description: `Returns a list of confirmed transactions sent or received by a Stacks principal`,
+        description: `Returns a list of confirmed transactions sent or received by a Stacks principal, including the transaction summary, the involvement of the principal in the transaction, and the balances affected by the transaction.`,
         tags: ['Transactions'],
         params: Type.Object({ principal: PrincipalSchema }),
-        querystring: CursorPaginationQuerystring(ResourceType.Tx, TransactionCursorSchema),
+        querystring: CursorPaginationQuerystring(TransactionCursorSchema, ResourceType.Tx),
         response: {
-          200: CursorPaginatedResponse(PrincipalTransactionSummarySchema),
+          200: CursorPaginatedResponse(
+            PrincipalTransactionSummarySchema,
+            TransactionCursorSchema,
+            ResourceType.Tx
+          ),
         },
       },
     },
@@ -74,11 +80,15 @@ export const PrincipalsRoutes: FastifyPluginAsync<
         tags: ['Transactions'],
         params: Type.Object({ principal: PrincipalSchema, tx_id: TransactionIdSchema }),
         querystring: CursorPaginationQuerystring(
-          ResourceType.Tx,
-          PrincipalTransactionBalanceChangeCursorSchema
+          PrincipalTransactionBalanceChangeCursorSchema,
+          ResourceType.Tx
         ),
         response: {
-          200: CursorPaginatedResponse(PrincipalTransactionBalanceChangeSchema),
+          200: CursorPaginatedResponse(
+            PrincipalTransactionBalanceChangeSchema,
+            PrincipalTransactionBalanceChangeCursorSchema,
+            ResourceType.Tx
+          ),
         },
       },
     },
@@ -122,11 +132,11 @@ export const PrincipalsRoutes: FastifyPluginAsync<
         tags: ['Transactions'],
         params: Type.Object({ principal: PrincipalSchema }),
         querystring: Type.Composite([
-          CursorPaginationQuerystring(ResourceType.Tx, PrincipalBalanceChangeCursorSchema),
+          CursorPaginationQuerystring(PrincipalBalanceChangeCursorSchema, ResourceType.Tx),
           Type.Object({
             tx_id: Type.Array(TransactionIdSchema, {
               minItems: 1,
-              maxItems: pagingQueryLimits[ResourceType.Tx].maxLimit,
+              maxItems: getPagingQueryLimit(ResourceType.Tx),
               description:
                 'Transaction IDs to query balance changes for. Provide as repeated ' +
                 'querystring values (`?tx_id=A&tx_id=B`) or as a single comma-separated ' +
@@ -135,7 +145,11 @@ export const PrincipalsRoutes: FastifyPluginAsync<
           }),
         ]),
         response: {
-          200: CursorPaginatedResponse(PrincipalBalanceChangeSchema),
+          200: CursorPaginatedResponse(
+            PrincipalBalanceChangeSchema,
+            PrincipalBalanceChangeCursorSchema,
+            ResourceType.Tx
+          ),
         },
       },
     },

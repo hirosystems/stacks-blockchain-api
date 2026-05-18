@@ -1,5 +1,5 @@
 import { importV1TokenOfferingData } from '../../../src/import-v1/index.ts';
-import codec from '@stacks/codec';
+import { bitcoinToStacksAddress } from '@stacks/codec';
 import { PgWriteStore } from '../../../src/datastore/pg-write-store.ts';
 import { migrate } from '../../test-helpers.ts';
 import { beforeEach, afterEach, describe, test } from 'node:test';
@@ -56,7 +56,7 @@ describe('fast b58 to c32 address conversion', () => {
       ['3QuovALTyVTTvR1tBB1hrHLfAQrA61hPsZ', 'SM3ZBCHS6W603C6QJJPQFVC49QE9VQ1ZVFQY1DZX7'],
     ];
     addrs.forEach(([b58, c32]) => {
-      const converted = codec.bitcoinToStacksAddress(b58);
+      const converted = bitcoinToStacksAddress(b58);
       assert.deepEqual(converted, c32);
     });
   });

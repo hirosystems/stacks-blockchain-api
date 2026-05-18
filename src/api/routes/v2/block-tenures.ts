@@ -3,11 +3,11 @@ import { FastifyPluginAsync } from 'fastify';
 import { Server } from 'node:http';
 import { handleBlockCache } from '../../../api/controllers/cache-controller.js';
 import { getPagingQueryLimit, ResourceType } from '../../../api/pagination.js';
-import { CursorOffsetParam, LimitParam } from '../../../api/schemas/params.js';
-import { BlockListV2ResponseSchema } from '../../../api/schemas/responses/responses.js';
+import { CursorOffsetParam, LimitParam } from '../../schemas/v1/params.js';
+import { BlockListV2ResponseSchema } from '../../schemas/v1/responses/responses.js';
 import { BlockTenureParamsSchema, BlockCursorParamSchema } from './schemas.js';
 import { NotFoundError } from '../../../errors.js';
-import { NakamotoBlock } from '../../../api/schemas/entities/block.js';
+import { NakamotoBlock } from '../../../api/schemas/v1/entities/block.js';
 import { parseDbNakamotoBlock } from './helpers.js';
 
 export const BlockTenureRoutes: FastifyPluginAsync<

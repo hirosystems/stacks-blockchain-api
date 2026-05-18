@@ -8,7 +8,7 @@
       "type": "node",
       "request": "launch",
       "name": "start: api",
-      "runtimeVersion": "24",
+      "runtimeExecutable": "node",
       "runtimeArgs": ["--import", "tsx"],
       "args": ["${workspaceFolder}/src/index.ts"],
       "outputCapture": "std",
@@ -24,7 +24,7 @@
       "skipFiles": [
         "<node_internals>/**"
       ],
-      "runtimeVersion": "24",
+      "runtimeExecutable": "node",
       "runtimeArgs": ["--import", "tsx"],
       "args": ["${workspaceFolder}/src/index.ts"],
       "outputCapture": "std",
@@ -44,7 +44,7 @@
       "skipFiles": [
         "<node_internals>/**"
       ],
-      "runtimeVersion": "24",
+      "runtimeExecutable": "node",
       "runtimeArgs": ["--import", "tsx"],
       "args": ["${workspaceFolder}/src/index.ts"],
       "outputCapture": "std",
@@ -65,7 +65,7 @@
       "skipFiles": [
         "<node_internals>/**"
       ],
-      "runtimeVersion": "24",
+      "runtimeExecutable": "node",
       "runtimeArgs": ["--import", "tsx"],
       "args": [
         "${workspaceFolder}/src/index.ts"
@@ -84,14 +84,14 @@
       "type": "node",
       "request": "launch",
       "name": "test: api",
-      "runtimeVersion": "24",
+      "runtimeExecutable": "node",
       "args": [
         "--import",
         "tsx",
         "--test",
         "--test-global-setup=./tests/api/setup.ts",
         "--test-concurrency=1",
-        "./tests/api/v3/**/*.test.ts"
+        "./tests/api/**/*.test.ts"
       ],
       "outputCapture": "std",
       "console": "integratedTerminal",
@@ -103,7 +103,7 @@
       "type": "node",
       "request": "launch",
       "name": "test: krypton",
-      "runtimeVersion": "24",
+      "runtimeExecutable": "node",
       "args": [
         "--import",
         "tsx",
@@ -122,7 +122,7 @@
       "type": "node",
       "request": "launch",
       "name": "test: snp",
-      "runtimeVersion": "24",
+      "runtimeExecutable": "node",
       "args": [
         "--import",
         "tsx",

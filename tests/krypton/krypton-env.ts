@@ -15,11 +15,12 @@ import { coerceToBuffer, timeout } from '@stacks/api-toolkit';
 import { ChainId, createNetwork, STACKS_TESTNET } from '@stacks/network';
 import type { StacksNetwork } from '@stacks/network';
 import { RPCClient } from 'rpc-bitcoin';
-import codec from '@stacks/codec';
+import { ClarityTypeID, decodeClarityValue } from '@stacks/codec';
+import type { ClarityValue as DecodedClarityValue } from '@stacks/codec';
 import { decodeBtcAddress } from '@stacks/stacking';
-import { FAUCET_TESTNET_KEYS } from '../../src/api/routes/faucets.ts';
-import { AddressStxBalance } from '../../src/api/schemas/entities/addresses.ts';
-import { ServerStatusResponse } from '../../src/api/schemas/responses/responses.ts';
+import { FAUCET_TESTNET_KEYS } from '../../src/api/routes/v1/faucets.ts';
+import { AddressStxBalance } from '../../src/api/schemas/v1/entities/addresses.ts';
+import { ServerStatusResponse } from '../../src/api/schemas/v1/responses/responses.ts';
 import { DbBlock, DbTx, DbTxStatus } from '../../src/datastore/common.ts';
 import { BitcoinAddressFormat, ECPair, getBitcoinAddressFromKey } from './ec-helpers.ts';
 import { hexToBytes } from '@stacks/common';
@@ -207,7 +208,7 @@ export async function standByForTxSuccess(
 ): Promise<DbTx> {
   const tx = await standByForTx(expectedTxId, ctx);
   if (tx.status !== DbTxStatus.Success) {
-    const txResult = codec.decodeClarityValue(tx.raw_result);
+    const txResult = decodeClarityValue(tx.raw_result);
     const resultRepr = txResult.repr;
     throw new Error(`Tx failed with status ${tx.status}, result: ${resultRepr}`);
   }
@@ -270,7 +271,7 @@ export async function fetchGet<TRes>(endpoint: string, ctx: KryptonContext): Pro
   return result.body as TRes;
 }
 
-export async function readOnlyFnCall<T extends codec.ClarityValue>(
+export async function readOnlyFnCall<T extends DecodedClarityValue>(
   contract: string | [string, string],
   fnName: string,
   ctx: KryptonContext,
@@ -290,18 +291,18 @@ export async function readOnlyFnCall<T extends codec.ClarityValue>(
   if (!callResp.okay) {
     throw new Error(`Failed to call ${contract}::${fnName}`);
   }
-  const decodedVal = codec.decodeClarityValue<T>(callResp.result);
+  const decodedVal = decodeClarityValue<T>(callResp.result);
   if (unwrap) {
-    if (decodedVal.type_id === codec.ClarityTypeID.OptionalSome) {
+    if (decodedVal.type_id === ClarityTypeID.OptionalSome) {
       return decodedVal.value as T;
     }
-    if (decodedVal.type_id === codec.ClarityTypeID.ResponseOk) {
+    if (decodedVal.type_id === ClarityTypeID.ResponseOk) {
       return decodedVal.value as T;
     }
-    if (decodedVal.type_id === codec.ClarityTypeID.OptionalNone) {
+    if (decodedVal.type_id === ClarityTypeID.OptionalNone) {
       throw new Error(`OptionNone result for call to ${contract}::${fnName}`);
     }
-    if (decodedVal.type_id === codec.ClarityTypeID.ResponseError) {
+    if (decodedVal.type_id === ClarityTypeID.ResponseError) {
       throw new Error(`ResultError result for call to ${contract}::${fnName}: ${decodedVal.repr}`);
     }
   }

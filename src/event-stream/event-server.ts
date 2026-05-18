@@ -36,7 +36,7 @@ import {
   isPoxPrintEvent,
   newCoreNoreBlockEventCounts,
 } from './reader.js';
-import codec from '@stacks/codec';
+import { decodeClarityValue, decodeTransaction, TxPayloadTypeID } from '@stacks/codec';
 import type { ClarityValueBuffer, ClarityValueStringAscii, ClarityValueTuple } from '@stacks/codec';
 import { BnsContractIdentifier } from './bns/bns-constants.js';
 import {
@@ -139,7 +139,7 @@ async function handleMempoolTxsMessage(rawTxs: string[], db: PgWriteStore): Prom
   // TODO: mempool-tx receipt date should be sent from the core-node
   const receiptDate = Math.round(Date.now() / 1000);
   const decodedTxs = rawTxs.map(str => {
-    const parsedTx = codec.decodeTransaction(str);
+    const parsedTx = decodeTransaction(str);
     const txSender = getTxSenderAddress(parsedTx);
     const sponsorAddress = getTxSponsorAddress(parsedTx);
     return {
@@ -279,11 +279,11 @@ function parseDataStoreTxEventData(
       pox4Events: [],
     };
     switch (tx.parsed_tx.payload.type_id) {
-      case codec.TxPayloadTypeID.VersionedSmartContract:
-      case codec.TxPayloadTypeID.SmartContract: {
+      case TxPayloadTypeID.VersionedSmartContract:
+      case TxPayloadTypeID.SmartContract: {
         const contractId = `${tx.sender_address}.${tx.parsed_tx.payload.contract_name}`;
         const clarityVersion =
-          tx.parsed_tx.payload.type_id == codec.TxPayloadTypeID.VersionedSmartContract
+          tx.parsed_tx.payload.type_id == TxPayloadTypeID.VersionedSmartContract
             ? tx.parsed_tx.payload.clarity_version
             : null;
         dbTx.smartContracts.push({
@@ -297,7 +297,7 @@ function parseDataStoreTxEventData(
         });
         break;
       }
-      case codec.TxPayloadTypeID.ContractCall: {
+      case TxPayloadTypeID.ContractCall: {
         // Name renewals can happen without a zonefile_hash. In that case, the BNS contract does NOT
         // emit a `name-renewal` contract log, causing us to miss this event. This function catches
         // those cases.
@@ -329,7 +329,7 @@ function parseDataStoreTxEventData(
       if (event.type === NewBlockEventType.Contract) {
         let reprStr = '?';
         try {
-          reprStr = codec.decodeClarityValue(event.contract_event.raw_value).repr;
+          reprStr = decodeClarityValue(event.contract_event.raw_value).repr;
         } catch (_e) {
           logger.warn(`Failed to decode contract log event: ${event.contract_event.raw_value}`);
         }
@@ -585,7 +585,7 @@ async function handleNewAttachmentMessage(msg: AttachmentsNewMessage[], db: PgWr
         message.contract_id === BnsContractIdentifier.mainnet ||
         message.contract_id === BnsContractIdentifier.testnet
       ) {
-        const metadataCV = codec.decodeClarityValue<
+        const metadataCV = decodeClarityValue<
           ClarityValueTuple<{
             op: ClarityValueStringAscii;
             name: ClarityValueBuffer;
@@ -1010,31 +1010,31 @@ export function parseNewBlockMessage(
       parsedTxs.push(parsedTx);
       counts.tx_total += 1;
       switch (parsedTx.parsed_tx.payload.type_id) {
-        case codec.TxPayloadTypeID.Coinbase:
+        case TxPayloadTypeID.Coinbase:
           counts.txs.coinbase += 1;
           break;
-        case codec.TxPayloadTypeID.CoinbaseToAltRecipient:
+        case TxPayloadTypeID.CoinbaseToAltRecipient:
           counts.txs.coinbase_to_alt_recipient += 1;
           break;
-        case codec.TxPayloadTypeID.ContractCall:
+        case TxPayloadTypeID.ContractCall:
           counts.txs.contract_call += 1;
           break;
-        case codec.TxPayloadTypeID.NakamotoCoinbase:
+        case TxPayloadTypeID.NakamotoCoinbase:
           counts.txs.nakamoto_coinbase += 1;
           break;
-        case codec.TxPayloadTypeID.PoisonMicroblock:
+        case TxPayloadTypeID.PoisonMicroblock:
           counts.txs.poison_microblock += 1;
           break;
-        case codec.TxPayloadTypeID.SmartContract:
+        case TxPayloadTypeID.SmartContract:
           counts.txs.smart_contract += 1;
           break;
-        case codec.TxPayloadTypeID.TenureChange:
+        case TxPayloadTypeID.TenureChange:
           counts.txs.tenure_change += 1;
           break;
-        case codec.TxPayloadTypeID.TokenTransfer:
+        case TxPayloadTypeID.TokenTransfer:
           counts.txs.token_transfer += 1;
           break;
-        case codec.TxPayloadTypeID.VersionedSmartContract:
+        case TxPayloadTypeID.VersionedSmartContract:
           counts.txs.versioned_smart_contract += 1;
           break;
       }

@@ -5,9 +5,9 @@ import {
   NftEvent,
 } from '../../../../client/src/types.js';
 import { WebSocketPrometheus } from './web-socket-prometheus.js';
-import { Block } from '../../schemas/entities/block.js';
-import { Microblock } from '../../schemas/entities/microblock.js';
-import { Transaction, MempoolTransaction } from '../../schemas/entities/transactions.js';
+import { Block } from '../../schemas/v1/entities/block.js';
+import { Microblock } from '../../schemas/v1/entities/microblock.js';
+import { Transaction, MempoolTransaction } from '../../schemas/v1/entities/transactions.js';
 
 /**
  * Topics that external API users may subscribe to when looking for real time updates.

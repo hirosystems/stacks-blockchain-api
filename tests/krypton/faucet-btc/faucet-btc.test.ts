@@ -179,5 +179,17 @@ describe('btc faucet', () => {
       const resJson = JSON.parse(response.text);
       assert.equal(resJson.error, 'BTC Faucet is not configured.');
     });
+
+    test('faucet disabled', async () => {
+      ENV.TESTNET_BTC_FAUCET_ENABLED = false;
+      const addr = getKeyAddress(ECPair.makeRandom({ network: regtest }));
+      const response = await supertest(ctx.api.server).post(
+        `/extended/v1/faucets/btc?address=${addr}`
+      );
+      assert.equal(response.status, 403);
+      const resJson = JSON.parse(response.text);
+      assert.equal(resJson.error, 'BTC faucet is not enabled');
+      ENV.TESTNET_BTC_FAUCET_ENABLED = true;
+    });
   });
 });

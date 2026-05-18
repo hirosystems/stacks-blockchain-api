@@ -1,26 +1,26 @@
-import { BlockIdentifier } from '../../datastore/common.js';
-import { getPagingQueryLimit, parsePagingQueryInput, ResourceType } from '../pagination.js';
-import { getBlockParams, parseUntilBlockQuery, validatePrincipal } from '../query-helpers.js';
+import { BlockIdentifier } from '../../../datastore/common.js';
+import { getPagingQueryLimit, parsePagingQueryInput, ResourceType } from '../../pagination.js';
+import { getBlockParams, parseUntilBlockQuery, validatePrincipal } from '../../query-helpers.js';
 import {
   formatMapToObject,
   getSendManyContract,
   isValidPrincipal,
   mapSeriesAsync,
-} from '../../helpers.js';
+} from '../../../helpers.js';
 import {
   getTxFromDataStore,
   parseDbEvent,
   parseDbMempoolTx,
   parseDbTx,
-} from '../controllers/db-controller.js';
-import { InvalidRequestError, InvalidRequestErrorType, NotFoundError } from '../../errors.js';
-import codec from '@stacks/codec';
+} from '../../controllers/db-controller.js';
+import { InvalidRequestError, InvalidRequestErrorType, NotFoundError } from '../../../errors.js';
+import { decodeClarityValueToRepr } from '@stacks/codec';
 import {
   handlePrincipalCache,
   handlePrincipalMempoolCache,
   handleTransactionCache,
-} from '../controllers/cache-controller.js';
-import { PgStore } from '../../datastore/pg-store.js';
+} from '../../controllers/cache-controller.js';
+import { PgStore } from '../../../datastore/pg-store.js';
 import { has0xPrefix, logger } from '@stacks/api-toolkit';
 
 import { FastifyPluginAsync } from 'fastify';
@@ -33,7 +33,7 @@ import {
   UnanchoredParamSchema,
   UntilBlockSchema,
   ExcludeFunctionArgsParamSchema,
-} from '../schemas/params.js';
+} from '../../schemas/v1/params.js';
 import {
   AddressBalance,
   AddressBalanceSchema,
@@ -44,18 +44,21 @@ import {
   AddressTransactionWithTransfers,
   AddressTransactionWithTransfersSchema,
   InboundStxTransfer,
-} from '../schemas/entities/addresses.js';
-import { PaginatedResponse } from '../schemas/util.js';
-import { MempoolTransaction, MempoolTransactionSchema } from '../schemas/entities/transactions.js';
+} from '../../schemas/v1/entities/addresses.js';
+import { PaginatedResponse } from '../../schemas/v1/util.js';
+import {
+  MempoolTransaction,
+  MempoolTransactionSchema,
+} from '../../schemas/v1/entities/transactions.js';
 import {
   TransactionEvent,
   TransactionEventSchema,
-} from '../schemas/entities/transaction-events.js';
+} from '../../schemas/v1/entities/transaction-events.js';
 import {
   AddressStxInboundListResponseSchema,
   AddressTransactionsListResponseSchema,
   AddressTransactionsWithTransfersListResponseSchema,
-} from '../schemas/responses/responses.js';
+} from '../../schemas/v1/responses/responses.js';
 
 async function getBlockHeight(
   untilBlock: number | string | undefined,
@@ -493,7 +496,7 @@ export const AddressRoutes: FastifyPluginAsync<
               recipient: transfer.recipient,
             })),
             nft_transfers: entry.nft_transfers.map(transfer => {
-              const parsedClarityValue = codec.decodeClarityValueToRepr(transfer.value);
+              const parsedClarityValue = decodeClarityValueToRepr(transfer.value);
               const nftTransfer = {
                 asset_identifier: transfer.asset_identifier,
                 value: {

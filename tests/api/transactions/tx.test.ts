@@ -15,7 +15,8 @@ import {
   stringAsciiCV,
 } from '@stacks/transactions';
 import { createClarityValueArray } from '../../test-helpers.ts';
-import codec from '@stacks/codec';
+import { decodeTransaction } from '@stacks/codec';
+import type { TxPayloadVersionedSmartContract } from '@stacks/codec';
 import { getTxFromDataStore, TransactionType } from '../../../src/api/controllers/db-controller.ts';
 import {
   DbBlock,
@@ -41,7 +42,7 @@ import { PgSqlClient, bufferToHex } from '@stacks/api-toolkit';
 import { migrate } from '../../test-helpers.ts';
 import { beforeEach, afterEach, describe, test } from 'node:test';
 import assert from 'node:assert/strict';
-import { Transaction } from '../../../src/api/schemas/entities/transactions.ts';
+import { Transaction } from '../../../src/api/schemas/v1/entities/transactions.ts';
 import { assertMatchesObject } from '../test-helpers.ts';
 import { STACKS_TESTNET } from '@stacks/network';
 
@@ -385,8 +386,8 @@ describe('tx tests', () => {
       fungible_tokens: [],
       non_fungible_tokens: [],
     };
-    const tx = codec.decodeTransaction(versionedSmartContractTx);
-    const txPayload = tx.payload as codec.TxPayloadVersionedSmartContract;
+    const tx = decodeTransaction(versionedSmartContractTx);
+    const txPayload = tx.payload as TxPayloadVersionedSmartContract;
     const dbTx = createDbTxFromCoreMsg({
       core_tx: {
         raw_tx: bufferToHex(versionedSmartContractTx),
@@ -620,7 +621,7 @@ describe('tx tests', () => {
       '80800000000400fd3cd910d78fe7c4cd697d5228e51a912ff2ba740000000000000004000000000000000001008d36064b250dba5d3221ac235a9320adb072cfc23cd63511e6d814f97f0302e66c2ece80d7512df1b3e90ca6dce18179cb67b447973c739825ce6c6756bc247d010200000000050000000000000000000000000000000000000000000000000000000000000000051aba27f99e007c7f605a8305e318c1abde3cd220ac',
       'hex'
     );
-    const tx = codec.decodeTransaction(versionedSmartContractTx);
+    const tx = decodeTransaction(versionedSmartContractTx);
     const dbTx = createDbTxFromCoreMsg({
       core_tx: {
         raw_tx: bufferToHex(versionedSmartContractTx),
@@ -773,7 +774,7 @@ describe('tx tests', () => {
       '8080000000040055a0a92720d20398211cd4c7663d65d018efcc1f00000000000000030000000000000000010118da31f542913e8c56961b87ee4794924e655a28a2034e37ef4823eeddf074747285bd6efdfbd84eecdf62cffa7c1864e683c688f4c105f4db7429066735b4e2010200000000050000000000000000000000000000000000000000000000000000000000000000061aba27f99e007c7f605a8305e318c1abde3cd220ac0b68656c6c6f5f776f726c64',
       'hex'
     );
-    const tx = codec.decodeTransaction(versionedSmartContractTx);
+    const tx = decodeTransaction(versionedSmartContractTx);
     const dbTx = createDbTxFromCoreMsg({
       core_tx: {
         raw_tx: bufferToHex(versionedSmartContractTx),
@@ -938,7 +939,7 @@ describe('tx tests', () => {
     });
     const serializedHex = sponsoredTx.serialize();
     const serialized = Buffer.from(serializedHex, 'hex');
-    const tx = codec.decodeTransaction(serializedHex);
+    const tx = decodeTransaction(serializedHex);
     const dbTx = createDbTxFromCoreMsg({
       core_tx: {
         raw_tx: '0x' + serializedHex,
@@ -1167,7 +1168,7 @@ describe('tx tests', () => {
     });
     const serializedHex = sponsoredTx.serialize();
     const serialized = Buffer.from(serializedHex, 'hex');
-    const tx = codec.decodeTransaction(serializedHex);
+    const tx = decodeTransaction(serializedHex);
     const dbTx = createDbTxFromCoreMsg({
       core_tx: {
         raw_tx: '0x' + serializedHex,
@@ -1570,7 +1571,7 @@ describe('tx tests', () => {
     });
     const serializedHex = txBuilder.serialize();
     const serialized = Buffer.from(serializedHex, 'hex');
-    const tx = codec.decodeTransaction(serializedHex);
+    const tx = decodeTransaction(serializedHex);
     const dbTx = createDbTxFromCoreMsg({
       core_tx: {
         raw_tx: '0x' + serializedHex,
@@ -1804,7 +1805,7 @@ describe('tx tests', () => {
     });
     const serializedHex = txBuilder.serialize();
     const serialized = Buffer.from(serializedHex, 'hex');
-    const tx = codec.decodeTransaction(serializedHex);
+    const tx = decodeTransaction(serializedHex);
     const dbTx = createDbTxFromCoreMsg({
       core_tx: {
         raw_tx: '0x' + serializedHex,
@@ -1962,7 +1963,7 @@ describe('tx tests', () => {
     });
     const serializedHex = txBuilder.serialize();
     const serialized = Buffer.from(serializedHex, 'hex');
-    const tx = codec.decodeTransaction(serializedHex);
+    const tx = decodeTransaction(serializedHex);
     const dbTx = createDbTxFromCoreMsg({
       core_tx: {
         raw_tx: '0x' + serializedHex,

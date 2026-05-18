@@ -5,9 +5,9 @@ import { getChainIDNetwork } from '../../../helpers.js';
 import { FastifyPluginAsync } from 'fastify';
 import { Type, TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
 import { Server } from 'node:http';
-import { LimitParam, OffsetParam } from '../../schemas/params.js';
+import { LimitParam, OffsetParam } from '../../schemas/v1/params.js';
 import { getPagingQueryLimit, ResourceType } from '../../pagination.js';
-import { PaginatedResponse } from '../../schemas/util.js';
+import { PaginatedResponse } from '../../schemas/v1/util.js';
 import {
   PoxCycle,
   PoxCycleSchema,
@@ -15,7 +15,7 @@ import {
   PoxSignerSchema,
   PoxStacker,
   PoxStackerSchema,
-} from '../../schemas/entities/pox.js';
+} from '../../schemas/v1/entities/pox.js';
 
 export const PoxRoutesV2: FastifyPluginAsync<
   Record<never, never>,

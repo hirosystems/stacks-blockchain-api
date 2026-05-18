@@ -13,17 +13,18 @@ import * as btc from 'bitcoinjs-lib';
 import { b58ToC32, c32ToB58 } from 'c32check';
 import supertest from 'supertest';
 import { PoxContractIdentifier } from '../../../src/pox-helpers.ts';
-import codec from '@stacks/codec';
+import { decodeClarityValue } from '@stacks/codec';
+import type { ClarityValueUInt } from '@stacks/codec';
 import { decodeBtcAddress, poxAddressToBtcAddress } from '@stacks/stacking';
 import { timeout } from '@stacks/api-toolkit';
-import { AddressStxBalance } from '../../../src/api/schemas/entities/addresses.ts';
-import { ContractCallTransaction } from '../../../src/api/schemas/entities/transactions.ts';
+import { AddressStxBalance } from '../../../src/api/schemas/v1/entities/addresses.ts';
+import { ContractCallTransaction } from '../../../src/api/schemas/v1/entities/transactions.ts';
 import {
   AddressTransactionsListResponse,
   TransactionEventsResponse,
-} from '../../../src/api/schemas/responses/responses.ts';
-import { StxLockTransactionEvent } from '../../../src/api/schemas/entities/transaction-events.ts';
-import { FAUCET_TESTNET_KEYS } from '../../../src/api/routes/faucets.ts';
+} from '../../../src/api/schemas/v1/responses/responses.ts';
+import { StxLockTransactionEvent } from '../../../src/api/schemas/v1/entities/transaction-events.ts';
+import { FAUCET_TESTNET_KEYS } from '../../../src/api/routes/v1/faucets.ts';
 import {
   Account,
   accountFromKey,
@@ -470,7 +471,7 @@ describe('PoX-4 - Stack using Bitcoin-chain delegate ops', () => {
     const callArg1 = txObj.contract_call.function_args![0];
     assert.equal(callArg1.name, 'amount-ustx');
     assert.equal(
-      BigInt(codec.decodeClarityValue<codec.ClarityValueUInt>(callArg1.hex).value),
+      BigInt(decodeClarityValue<ClarityValueUInt>(callArg1.hex).value),
       testStackAmount
     );
 
