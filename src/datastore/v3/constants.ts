@@ -49,3 +49,41 @@ export const TX_COLUMNS = [
   'tenure_change_previous_tenure_blocks',
   'tenure_change_pubkey_hash',
 ];
+
+export const MEMPOOL_TX_SUMMARY_COLUMNS = [
+  'tx_id',
+  'type_id',
+  'status',
+  'sender_address',
+  'nonce',
+  'sponsor_address',
+  'sponsor_nonce',
+  'fee_rate',
+  'receipt_time',
+  'receipt_block_height',
+  'token_transfer_recipient_address',
+  'token_transfer_amount',
+  'token_transfer_memo',
+  'smart_contract_clarity_version',
+  'smart_contract_contract_id',
+  'contract_call_contract_id',
+  'contract_call_function_name',
+  'coinbase_alt_recipient',
+  'tenure_change_cause',
+];
+
+export const MEMPOOL_TX_COLUMNS = [
+  ...MEMPOOL_TX_SUMMARY_COLUMNS,
+  'replaced_by_tx_id',
+  'post_conditions',
+  'smart_contract_source_code',
+  'contract_call_function_args',
+  'coinbase_payload',
+  'coinbase_vrf_proof',
+  'tenure_change_tenure_consensus_hash',
+  'tenure_change_prev_tenure_consensus_hash',
+  'tenure_change_burn_view_consensus_hash',
+  'tenure_change_previous_tenure_end',
+  'tenure_change_previous_tenure_blocks',
+  'tenure_change_pubkey_hash',
+];

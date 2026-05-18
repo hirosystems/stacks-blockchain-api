@@ -8,9 +8,9 @@ import {
   CursorPaginationQuerystring,
   CursorPaginatedResponse,
   TransactionCursorSchema,
-} from '../../schemas/v3/params.js';
+} from '../../schemas/v3/cursors.js';
 import { PrincipalTransactionSummarySchema } from '../../schemas/v3/entities/principal-transactions.js';
-import { serializePrincipalTransactionSummary } from '../../serializers/transactions.js';
+import { serializePrincipalTransactionSummary } from '../../serializers/v3/transactions.js';
 
 export const PrincipalsRoutes: FastifyPluginAsync<
   Record<never, never>,
