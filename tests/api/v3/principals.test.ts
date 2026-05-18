@@ -5,7 +5,7 @@ import { migrate } from '../../test-helpers.ts';
 import { STACKS_TESTNET } from '@stacks/network';
 import * as assert from 'node:assert/strict';
 import { TestBlockBuilder } from '../test-builders.ts';
-import { DbTxStatus, DbTxTypeId } from 'src/datastore/common.ts';
+import { DbTxStatus, DbTxTypeId } from '../../../src/datastore/common.ts';
 import { hex } from '../test-helpers.ts';
 
 describe('principals', () => {

@@ -10,7 +10,7 @@ import {
   CursorPaginationQuerystring,
   TransactionCursorSchema,
 } from '../../schemas/v3/cursors.js';
-import { BlockHeightOrHashSchema } from 'src/api/schemas/v3/entities/common.js';
+import { BlockHeightOrHashSchema } from '../../schemas/v3/entities/common.js';
 import { parseBlockParam } from '../v2/schemas.js';
 import { InvalidRequestError, NotFoundError } from '../../../errors.js';
 

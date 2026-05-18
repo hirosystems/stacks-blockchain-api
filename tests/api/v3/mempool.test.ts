@@ -5,7 +5,7 @@ import { migrate } from '../../test-helpers.ts';
 import { STACKS_TESTNET } from '@stacks/network';
 import * as assert from 'node:assert/strict';
 import { TestBlockBuilder, testMempoolTx } from '../test-builders.ts';
-import { DbTxStatus, DbTxTypeId } from 'src/datastore/common.ts';
+import { DbTxStatus, DbTxTypeId } from '../../../src/datastore/common.ts';
 import { hex } from '../test-helpers.ts';
 
 // Distinct from the default mempool tx sender to avoid replace-by-fee collisions during inserts.
