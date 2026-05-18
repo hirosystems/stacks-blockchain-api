@@ -1,5 +1,5 @@
 import { Static, Type } from '@sinclair/typebox';
-import { Nullable } from '../util.js';
+import { Nullable } from '../../v1/util.js';
 import { PostConditionModeSchema, PostConditionSchema } from './post-conditions.js';
 import { TransactionEventSchema } from './transaction-events.js';
 

@@ -15,13 +15,13 @@ import { getBitcoinAddressFromKey, privateToPublicKey } from '../ec-helpers.ts';
 import { RPCClient } from 'rpc-bitcoin';
 import { hexToBytes } from '@stacks/common';
 import { getPublicKeyFromPrivate } from '@stacks/encryption';
-import { AddressStxBalance } from '../../../src/api/schemas/entities/addresses.ts';
+import { AddressStxBalance } from '../../../src/api/schemas/v1/entities/addresses.ts';
 import {
   BurnchainRewardListResponse,
   BurnchainRewardSlotHolderListResponse,
-} from '../../../src/api/schemas/responses/responses.ts';
-import { BurnchainRewardsTotal } from '../../../src/api/schemas/entities/burnchain-rewards.ts';
-import { FAUCET_TESTNET_KEYS } from '../../../src/api/routes/faucets.ts';
+} from '../../../src/api/schemas/v1/responses/responses.ts';
+import { BurnchainRewardsTotal } from '../../../src/api/schemas/v1/entities/burnchain-rewards.ts';
+import { FAUCET_TESTNET_KEYS } from '../../../src/api/routes/v1/faucets.ts';
 import { ENV } from '../../../src/env.ts';
 import assert from 'node:assert/strict';
 import { after, before, describe, test } from 'node:test';

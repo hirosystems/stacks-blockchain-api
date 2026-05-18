@@ -1,7 +1,7 @@
 import { Static, Type } from '@sinclair/typebox';
 import { BaseTransactionSummarySchema, TenureChangeCauseSchema } from './transaction-summaries.js';
 import { PostConditionSchema } from './post-conditions.js';
-import { Nullable } from '../../util.js';
+import { Nullable } from '../../v1/util.js';
 import { DecodedClarityValueSchema, ExecutionCostSchema } from './common.js';
 
 const BaseTransactionSchema = Type.Composite([

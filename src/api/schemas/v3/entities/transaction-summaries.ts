@@ -1,5 +1,5 @@
 import { Static, Type } from '@sinclair/typebox';
-import { Nullable } from '../../util.js';
+import { Nullable } from '../../v1/util.js';
 
 export const TransactionSenderSchema = Type.Object({
   address: Type.String({

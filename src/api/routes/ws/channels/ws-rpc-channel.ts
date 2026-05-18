@@ -35,10 +35,10 @@ import type {
 import { getWsMessageTimeoutMs, getWsPingIntervalMs } from '../web-socket-transmitter.js';
 import { isProdEnv, logger, resolveOrTimeout } from '@stacks/api-toolkit';
 
-import { Transaction, MempoolTransaction } from '../../../schemas/entities/transactions.js';
-import { Block } from '../../..//schemas/entities/block.js';
-import { Microblock } from '../../..//schemas/entities/microblock.js';
-import { AddressTransactionWithTransfers } from '../../../schemas/entities/addresses.js';
+import { Transaction, MempoolTransaction } from '../../../schemas/v1/entities/transactions.js';
+import { Block } from '../../..//schemas/v1/entities/block.js';
+import { Microblock } from '../../..//schemas/v1/entities/microblock.js';
+import { AddressTransactionWithTransfers } from '../../../schemas/v1/entities/addresses.js';
 
 type Subscription =
   | RpcTxUpdateSubscriptionParams

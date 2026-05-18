@@ -5,13 +5,13 @@ import {
   fetchCallReadOnlyFunction,
   ClarityType,
 } from '@stacks/transactions';
-import { getChainIDNetwork, isValidPrincipal } from './../../../helpers.js';
-import { getBnsContractID, GetStacksNetwork } from '../../../event-stream/bns/bns-helpers.js';
+import { getChainIDNetwork, isValidPrincipal } from '../../../../helpers.js';
+import { getBnsContractID, GetStacksNetwork } from '../../../../event-stream/bns/bns-helpers.js';
 import { logger } from '@stacks/api-toolkit';
 import { FastifyPluginAsync } from 'fastify';
 import { Type, TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
 import { Server } from 'node:http';
-import { handleChainTipCache } from '../../controllers/cache-controller.js';
+import { handleChainTipCache } from '../../../controllers/cache-controller.js';
 
 export const BnsPriceRoutes: FastifyPluginAsync<
   Record<never, never>,

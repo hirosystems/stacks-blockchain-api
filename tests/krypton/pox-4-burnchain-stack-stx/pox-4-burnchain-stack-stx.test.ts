@@ -17,11 +17,11 @@ import type { ClarityValueUInt } from '@stacks/codec';
 import { decodeBtcAddress, poxAddressToTuple } from '@stacks/stacking';
 import { timeout } from '@stacks/api-toolkit';
 import { hexToBytes } from '@stacks/common';
-import { AddressStxBalance } from '../../../src/api/schemas/entities/addresses.ts';
-import { TransactionEventsResponse } from '../../../src/api/schemas/responses/responses.ts';
-import { StxLockTransactionEvent } from '../../../src/api/schemas/entities/transaction-events.ts';
-import { ContractCallTransaction } from '../../../src/api/schemas/entities/transactions.ts';
-import { FAUCET_TESTNET_KEYS } from '../../../src/api/routes/faucets.ts';
+import { AddressStxBalance } from '../../../src/api/schemas/v1/entities/addresses.ts';
+import { TransactionEventsResponse } from '../../../src/api/schemas/v1/responses/responses.ts';
+import { StxLockTransactionEvent } from '../../../src/api/schemas/v1/entities/transaction-events.ts';
+import { ContractCallTransaction } from '../../../src/api/schemas/v1/entities/transactions.ts';
+import { FAUCET_TESTNET_KEYS } from '../../../src/api/routes/v1/faucets.ts';
 import {
   Account,
   accountFromKey,

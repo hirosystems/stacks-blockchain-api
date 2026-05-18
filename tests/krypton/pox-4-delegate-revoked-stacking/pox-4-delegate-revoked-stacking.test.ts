@@ -17,8 +17,8 @@ import { DbTxStatus } from '../../../src/datastore/common.ts';
 import { stxToMicroStx } from '../../../src/helpers.ts';
 import { hexToBytes } from '@stacks/common';
 import { getPublicKeyFromPrivate } from '@stacks/encryption';
-import { AddressStxBalance } from '../../../src/api/schemas/entities/addresses.ts';
-import { FAUCET_TESTNET_KEYS } from '../../../src/api/routes/faucets.ts';
+import { AddressStxBalance } from '../../../src/api/schemas/v1/entities/addresses.ts';
+import { FAUCET_TESTNET_KEYS } from '../../../src/api/routes/v1/faucets.ts';
 import {
   Account,
   accountFromKey,

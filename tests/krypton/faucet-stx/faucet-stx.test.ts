@@ -1,7 +1,7 @@
 import supertest from 'supertest';
 import { ENV } from '../../../src/env.ts';
-import { RunFaucetResponse } from '../../../src/api/schemas/responses/responses.ts';
-import { AddressStxBalance } from '../../../src/api/schemas/entities/addresses.ts';
+import { RunFaucetResponse } from '../../../src/api/schemas/v1/responses/responses.ts';
+import { AddressStxBalance } from '../../../src/api/schemas/v1/entities/addresses.ts';
 import {
   Account,
   accountFromKey,

@@ -42,7 +42,7 @@ import { PgSqlClient, bufferToHex } from '@stacks/api-toolkit';
 import { migrate } from '../../test-helpers.ts';
 import { beforeEach, afterEach, describe, test } from 'node:test';
 import assert from 'node:assert/strict';
-import { Transaction } from '../../../src/api/schemas/entities/transactions.ts';
+import { Transaction } from '../../../src/api/schemas/v1/entities/transactions.ts';
 import { assertMatchesObject } from '../test-helpers.ts';
 import { STACKS_TESTNET } from '@stacks/network';
 

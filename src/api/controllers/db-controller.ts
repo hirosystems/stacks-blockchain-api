@@ -29,7 +29,7 @@ import { unwrapOptional, FoundOrNot, unixEpochToIso, EMPTY_HASH_256 } from '../.
 import {
   serializePostCondition,
   serializePostConditionMode,
-} from '../serializers/post-conditions.js';
+} from '../serializers/v1/post-conditions.js';
 import { PgStore } from '../../datastore/pg-store.js';
 import { SyntheticPoxEventName } from '../../pox-helpers.js';
 import { logger } from '@stacks/api-toolkit';
@@ -49,7 +49,7 @@ import {
   TransactionMetadata,
   TransactionNotFound,
   TransactionSearchResponse,
-} from '../schemas/entities/transactions.js';
+} from '../schemas/v1/entities/transactions.js';
 import {
   FungibleTokenAssetTransactionEvent,
   NonFungibleTokenAssetTransactionEvent,
@@ -57,9 +57,9 @@ import {
   StxAssetTransactionEvent,
   StxLockTransactionEvent,
   TransactionEvent,
-} from '../schemas/entities/transaction-events.js';
-import { Microblock } from '../schemas/entities/microblock.js';
-import { Block } from '../schemas/entities/block.js';
+} from '../schemas/v1/entities/transaction-events.js';
+import { Microblock } from '../schemas/v1/entities/microblock.js';
+import { Block } from '../schemas/v1/entities/block.js';
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 const TransactionTypes = [
@@ -745,6 +745,7 @@ function parseDbTxTypeMetadata(
           data: unwrapOptional(dbTx.coinbase_payload, () => 'Unexpected nullish coinbase_payload'),
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           alt_recipient: null as any,
+          vrf_proof: undefined,
         },
       };
       return metadata;
@@ -758,6 +759,7 @@ function parseDbTxTypeMetadata(
             dbTx.coinbase_alt_recipient,
             () => 'Unexpected nullish coinbase_alt_recipient'
           ),
+          vrf_proof: undefined,
         },
       };
       return metadata;

@@ -1,6 +1,6 @@
 import { Static, Type } from '@sinclair/typebox';
 import { TransactionSenderSchema } from './transaction-summaries.js';
-import { Nullable } from '../../util.js';
+import { Nullable } from '../../v1/util.js';
 
 const MempoolTransactionStatusSchema = Type.Union(
   [

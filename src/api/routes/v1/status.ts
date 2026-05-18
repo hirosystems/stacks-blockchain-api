@@ -4,8 +4,8 @@ import { Server } from 'node:http';
 import {
   ServerStatusResponse,
   ServerStatusResponseSchema,
-} from '../schemas/responses/responses.js';
-import { handleChainTipCache } from '../controllers/cache-controller.js';
+} from '../../schemas/v1/responses/responses.js';
+import { handleChainTipCache } from '../../controllers/cache-controller.js';
 import { SERVER_VERSION } from '@stacks/api-toolkit';
 
 export const StatusRoutes: FastifyPluginAsync<
