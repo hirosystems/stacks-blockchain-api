@@ -10,6 +10,7 @@ import { prefixedCols } from '../helpers.js';
 import { Principal } from '../../api/schemas/v3/entities/common.js';
 import { normalizeHashString } from '../../helpers.js';
 import { BlockIdParam } from '../../api/routes/v2/schemas.js';
+import { InvalidRequestError, InvalidRequestErrorType } from '../../errors.js';
 
 export class PgStoreV3 extends BasePgStoreModule {
   /**
@@ -311,6 +312,16 @@ export class PgStoreV3 extends BasePgStoreModule {
               ? sql`block_height = ${args.block.height} AND canonical = TRUE`
               : sql`block_time = ${args.block.timestamp} AND canonical = TRUE`;
 
+      // Resolve the target block up-front so a missing block surfaces a distinct error
+      // (vs. a valid cursor that simply yields zero rows).
+      const blockPtr = await sql<{ index_block_hash: string; tx_count: number }[]>`
+        SELECT index_block_hash, tx_count FROM blocks WHERE ${blockFilter} LIMIT 1
+      `;
+      if (blockPtr.count === 0) {
+        throw new InvalidRequestError('Block not found', InvalidRequestErrorType.invalid_param);
+      }
+      const { index_block_hash, tx_count } = blockPtr[0];
+
       let cursorFilter = sql``;
       if (args.cursor) {
         const parts = args.cursor.split(':');
@@ -324,22 +335,12 @@ export class PgStoreV3 extends BasePgStoreModule {
         `;
       }
 
-      const resultQuery = await sql<
-        (DbTransactionSummary & { microblock_sequence: number; total: number })[]
-      >`
-        WITH block_ptr AS (
-          SELECT index_block_hash FROM blocks WHERE ${blockFilter} LIMIT 1
-        ),
-        tx_count AS (
-          SELECT tx_count AS total
-          FROM blocks
-          WHERE index_block_hash = (SELECT index_block_hash FROM block_ptr)
-        )
-        SELECT ${sql(TX_SUMMARY_COLUMNS)}, (SELECT total FROM tx_count)::int AS total
+      const resultQuery = await sql<(DbTransactionSummary & { microblock_sequence: number })[]>`
+        SELECT ${sql(TX_SUMMARY_COLUMNS)}
         FROM txs
         WHERE canonical = true
           AND microblock_canonical = true
-          AND index_block_hash = (SELECT index_block_hash FROM block_ptr)
+          AND index_block_hash = ${index_block_hash}
           ${cursorFilter}
         ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC
         LIMIT ${args.limit + 1}
@@ -347,7 +348,6 @@ export class PgStoreV3 extends BasePgStoreModule {
 
       const hasNextPage = resultQuery.count > args.limit;
       const results = hasNextPage ? resultQuery.slice(0, args.limit) : resultQuery;
-      const total = resultQuery.count > 0 ? resultQuery[0].total : 0;
 
       const nextResult = resultQuery[resultQuery.length - 1];
       const nextCursor =
@@ -369,7 +369,7 @@ export class PgStoreV3 extends BasePgStoreModule {
           FROM txs
           WHERE canonical = true
             AND microblock_canonical = true
-            AND index_block_hash = ${firstResult.index_block_hash}
+            AND index_block_hash = ${index_block_hash}
             AND (block_height, microblock_sequence, tx_index)
                 > (
                   ${firstResult.block_height},
@@ -392,7 +392,7 @@ export class PgStoreV3 extends BasePgStoreModule {
         next_cursor: nextCursor,
         prev_cursor: prevCursor,
         current_cursor: currentCursor,
-        total,
+        total: tx_count,
         results,
       };
     });

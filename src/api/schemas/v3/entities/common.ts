@@ -44,8 +44,10 @@ export type BlockHeight = Static<typeof BlockHeightSchema>;
 
 export const BlockHeightOrHashSchema = Type.Union([
   Type.Literal('latest'),
-  BlockHeightSchema,
+  // Hash must come before height so the AJV union matches a hex string before attempting
+  // integer coercion (which would otherwise turn '0x…deadbeef' into 3735928559).
   BlockHashSchema,
+  BlockHeightSchema,
 ]);
 export type BlockHeightOrHash = Static<typeof BlockHeightOrHashSchema>;
 

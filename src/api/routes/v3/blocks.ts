@@ -12,6 +12,7 @@ import {
 } from '../../schemas/v3/cursors.js';
 import { BlockHeightOrHashSchema } from 'src/api/schemas/v3/entities/common.js';
 import { parseBlockParam } from '../v2/schemas.js';
+import { InvalidRequestError, NotFoundError } from '../../../errors.js';
 
 export const BlocksRoutes: FastifyPluginAsync<
   Record<never, never>,
@@ -41,21 +42,28 @@ export const BlocksRoutes: FastifyPluginAsync<
       },
     },
     async (req, reply) => {
-      const results = await fastify.db.v3.getBlockTransactionSummaries({
-        block: parseBlockParam(req.params.height_or_hash),
-        limit: req.query.limit ?? getPagingQueryLimit(ResourceType.Tx),
-        cursor: req.query.cursor,
-      });
-      await reply.send({
-        limit: results.limit,
-        total: results.total,
-        cursor: {
-          next: results.next_cursor,
-          previous: results.prev_cursor,
-          current: results.current_cursor,
-        },
-        results: results.results.map(r => serializeDbTransactionSummary(r)),
-      });
+      try {
+        const results = await fastify.db.v3.getBlockTransactionSummaries({
+          block: parseBlockParam(req.params.height_or_hash),
+          limit: req.query.limit ?? getPagingQueryLimit(ResourceType.Tx),
+          cursor: req.query.cursor,
+        });
+        await reply.send({
+          limit: results.limit,
+          total: results.total,
+          cursor: {
+            next: results.next_cursor,
+            previous: results.prev_cursor,
+            current: results.current_cursor,
+          },
+          results: results.results.map(r => serializeDbTransactionSummary(r)),
+        });
+      } catch (error) {
+        if (error instanceof InvalidRequestError) {
+          throw new NotFoundError('Block not found');
+        }
+        throw error;
+      }
     }
   );
 
