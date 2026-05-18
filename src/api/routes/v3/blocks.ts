@@ -11,6 +11,7 @@ import {
   TransactionCursorSchema,
 } from '../../schemas/v3/cursors.js';
 import { BlockHeightOrHashSchema } from 'src/api/schemas/v3/entities/common.js';
+import { parseBlockParam } from '../v2/schemas.js';
 
 export const BlocksRoutes: FastifyPluginAsync<
   Record<never, never>,
@@ -40,7 +41,8 @@ export const BlocksRoutes: FastifyPluginAsync<
       },
     },
     async (req, reply) => {
-      const results = await fastify.db.v3.getTransactionSummaries({
+      const results = await fastify.db.v3.getBlockTransactionSummaries({
+        block: parseBlockParam(req.params.height_or_hash),
         limit: req.query.limit ?? getPagingQueryLimit(ResourceType.Tx),
         cursor: req.query.cursor,
       });

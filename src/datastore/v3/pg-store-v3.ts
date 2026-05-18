@@ -310,7 +310,21 @@ export class PgStoreV3 extends BasePgStoreModule {
             : args.block.type === 'height'
               ? sql`block_height = ${args.block.height} AND canonical = TRUE`
               : sql`block_time = ${args.block.timestamp} AND canonical = TRUE`;
-      const results = await sql<
+
+      let cursorFilter = sql``;
+      if (args.cursor) {
+        const parts = args.cursor.split(':');
+        const [blockHeightStr, microblockSequenceStr, txIndexStr] = parts;
+        const blockHeight = parseInt(blockHeightStr, 10);
+        const microblockSequence = parseInt(microblockSequenceStr, 10);
+        const txIndex = parseInt(txIndexStr, 10);
+        cursorFilter = sql`
+          AND (block_height, microblock_sequence, tx_index)
+              <= (${blockHeight}, ${microblockSequence}, ${txIndex})
+        `;
+      }
+
+      const resultQuery = await sql<
         (DbTransactionSummary & { microblock_sequence: number; total: number })[]
       >`
         WITH block_ptr AS (
@@ -326,16 +340,59 @@ export class PgStoreV3 extends BasePgStoreModule {
         WHERE canonical = true
           AND microblock_canonical = true
           AND index_block_hash = (SELECT index_block_hash FROM block_ptr)
-        ORDER BY microblock_sequence ASC, tx_index ASC
-        LIMIT ${args.limit}
+          ${cursorFilter}
+        ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC
+        LIMIT ${args.limit + 1}
       `;
+
+      const hasNextPage = resultQuery.count > args.limit;
+      const results = hasNextPage ? resultQuery.slice(0, args.limit) : resultQuery;
+      const total = resultQuery.count > 0 ? resultQuery[0].total : 0;
+
+      const nextResult = resultQuery[resultQuery.length - 1];
+      const nextCursor =
+        hasNextPage && nextResult
+          ? `${nextResult.block_height}:${nextResult.microblock_sequence}:${nextResult.tx_index}`
+          : null;
+
+      const firstResult = results[0];
+      const currentCursor = firstResult
+        ? `${firstResult.block_height}:${firstResult.microblock_sequence}:${firstResult.tx_index}`
+        : null;
+
+      let prevCursor: string | null = null;
+      if (firstResult) {
+        const prevPageQuery = await sql<
+          { block_height: number; microblock_sequence: number; tx_index: number }[]
+        >`
+          SELECT block_height, microblock_sequence, tx_index
+          FROM txs
+          WHERE canonical = true
+            AND microblock_canonical = true
+            AND index_block_hash = ${firstResult.index_block_hash}
+            AND (block_height, microblock_sequence, tx_index)
+                > (
+                  ${firstResult.block_height},
+                  ${firstResult.microblock_sequence},
+                  ${firstResult.tx_index}
+                )
+          ORDER BY block_height ASC, microblock_sequence ASC, tx_index ASC
+          OFFSET ${args.limit - 1}
+          LIMIT 1
+        `;
+        if (prevPageQuery.length > 0) {
+          const prevPage = prevPageQuery[0];
+          prevCursor = `${prevPage.block_height}:${prevPage.microblock_sequence}:${prevPage.tx_index}`;
+        }
+      }
+
       return {
         limit: args.limit,
         offset: 0,
-        next_cursor: null,
-        prev_cursor: null,
-        current_cursor: null,
-        total: results[0]?.total ?? 0,
+        next_cursor: nextCursor,
+        prev_cursor: prevCursor,
+        current_cursor: currentCursor,
+        total,
         results,
       };
     });
