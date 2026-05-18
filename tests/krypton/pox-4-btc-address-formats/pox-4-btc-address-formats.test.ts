@@ -150,7 +150,7 @@ for (const addressSetup of ADDRESS_SETUPS) {
         validateWithAbi: false,
       });
       const expectedTxId = '0x' + tx.txid();
-      const sendResult = await ctx.client.sendTransaction(Buffer.from(tx.serialize()));
+      const sendResult = await ctx.client.sendTransaction(Buffer.from(tx.serializeBytes()));
       assert.equal(sendResult.txId, expectedTxId);
 
       // Wait for API to receive and ingest tx
@@ -344,8 +344,8 @@ function P2SH_P2WPKH() {
   const btcAddrDecoded = decodeBtcAddress(btcAddr);
   assert.deepEqual(
     {
-    data: Buffer.from(btcAddrDecoded.data).toString('hex'),
-    version: btcAddrDecoded.version,
+      data: btcAddrDecoded.data,
+      version: btcAddrDecoded.version,
     },
     { data: '978a0121f9a24de65a13bab0c43c3a48be074eae', version: 1 }
   );
@@ -383,8 +383,8 @@ function P2WSH() {
   const btcAddrDecoded = decodeBtcAddress(btcAddr);
   assert.deepEqual(
     {
-    data: Buffer.from(btcAddrDecoded.data).toString('hex'),
-    version: btcAddrDecoded.version,
+      data: btcAddrDecoded.data,
+      version: btcAddrDecoded.version,
     },
     {
       data: 'a802f89df647a9803154b5443e3ba7f3b29709fcca59e3cb36ea36a91e9a38dc',
@@ -425,8 +425,8 @@ function P2WPKH() {
   const btcAddrDecoded = decodeBtcAddress(btcAddr);
   assert.deepEqual(
     {
-    data: Buffer.from(btcAddrDecoded.data).toString('hex'),
-    version: btcAddrDecoded.version,
+      data: btcAddrDecoded.data,
+      version: btcAddrDecoded.version,
     },
     { data: '06afd46bcdfd22ef94ac122aa11f241244a37ecc', version: 4 }
   );
@@ -464,8 +464,8 @@ function P2TR() {
   const btcAddrDecoded = decodeBtcAddress(btcAddr);
   assert.deepEqual(
     {
-    data: Buffer.from(btcAddrDecoded.data).toString('hex'),
-    version: btcAddrDecoded.version,
+      data: btcAddrDecoded.data,
+      version: btcAddrDecoded.version,
     },
     {
       data: 'cafd90c7026f0b6ab98df89490d02732881f2f4b5900856358dddff4679c2ffb',
