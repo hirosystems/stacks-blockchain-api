@@ -10,7 +10,7 @@ import {
 } from '../../../src/datastore/common.ts';
 import { startApiServer, ApiServer } from '../../../src/api/init.ts';
 import { I32_MAX, microStxToStx, STACKS_DECIMAL_PLACES } from '../../../src/helpers.ts';
-import { FEE_RATE } from '../../../src/api/routes/fee-rate.ts';
+import { FEE_RATE } from '../../../src/api/routes/v1/fee-rate.ts';
 import { PgWriteStore } from '../../../src/datastore/pg-write-store.ts';
 import { getPagingQueryLimit, ResourceType } from '../../../src/api/pagination.ts';
 import { PgSqlClient, bufferToHex } from '@stacks/api-toolkit';

@@ -17,7 +17,7 @@ import {
   ContractCallTransaction,
   MempoolTransaction,
   Transaction,
-} from '../../../src/api/schemas/entities/transactions.ts';
+} from '../../../src/api/schemas/v1/entities/transactions.ts';
 import {
   AddressStxInboundListResponse,
   AddressTransactionsListResponse,
@@ -25,9 +25,9 @@ import {
   MempoolTransactionListResponse,
   MicroblockListResponse,
   TransactionResults,
-} from '../../../src/api/schemas/responses/responses.ts';
-import { Microblock } from '../../../src/api/schemas/entities/microblock.ts';
-import { AddressStxBalance } from '../../../src/api/schemas/entities/addresses.ts';
+} from '../../../src/api/schemas/v1/responses/responses.ts';
+import { Microblock } from '../../../src/api/schemas/v1/entities/microblock.ts';
+import { AddressStxBalance } from '../../../src/api/schemas/v1/entities/addresses.ts';
 import { useWithCleanup } from '../test-helpers.ts';
 import { startEventServer } from '../../../src/event-stream/event-server.ts';
 import * as fs from 'fs';

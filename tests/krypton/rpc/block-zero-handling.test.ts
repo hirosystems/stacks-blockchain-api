@@ -6,8 +6,8 @@ import {
   CoinbaseTransaction,
   SmartContractTransaction,
   Transaction,
-} from '../../../src/api/schemas/entities/transactions.ts';
-import { Block } from '../../../src/api/schemas/entities/block.ts';
+} from '../../../src/api/schemas/v1/entities/transactions.ts';
+import { Block } from '../../../src/api/schemas/v1/entities/block.ts';
 import {
   getKryptonContext,
   KryptonContext,

@@ -1,6 +1,7 @@
 import supertest from 'supertest';
-import { RunFaucetResponse } from '../../../src/api/schemas/responses/responses.ts';
-import { AddressStxBalance } from '../../../src/api/schemas/entities/addresses.ts';
+import { ENV } from '../../../src/env.ts';
+import { RunFaucetResponse } from '../../../src/api/schemas/v1/responses/responses.ts';
+import { AddressStxBalance } from '../../../src/api/schemas/v1/entities/addresses.ts';
 import {
   Account,
   accountFromKey,
@@ -64,5 +65,15 @@ describe('STX Faucet', () => {
     // Validate account has balance from RPC endpoint
     const coreBalance = await ctx.client.getAccount(reqAccount.stxAddr);
     assert.ok(BigInt(coreBalance.balance) > 0n);
+  });
+
+  test('STX faucet disabled', async () => {
+    ENV.TESTNET_STX_FAUCET_ENABLED = false;
+    const response = await supertest(ctx.api.server).post(
+      `/extended/v1/faucets/stx?address=${reqAccount.stxAddr}`
+    );
+    assert.equal(response.status, 403);
+    assert.equal(response.body.error, 'STX faucet is not enabled');
+    ENV.TESTNET_STX_FAUCET_ENABLED = true;
   });
 });

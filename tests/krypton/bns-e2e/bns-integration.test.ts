@@ -15,7 +15,7 @@ import {
   noneCV,
   StacksTransactionWire,
 } from '@stacks/transactions';
-import { FAUCET_TESTNET_KEYS } from '../../../src/api/routes/faucets.js';
+import { FAUCET_TESTNET_KEYS } from '../../../src/api/routes/v1/faucets.js';
 import { logger } from '@stacks/api-toolkit';
 import { getKryptonContext, stopKryptonContext, KryptonContext, standByForTx } from '../krypton-env.ts';
 import { after, before, describe, test } from 'node:test';
