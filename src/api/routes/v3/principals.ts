@@ -1,4 +1,7 @@
-import { handlePrincipalCache } from '../../controllers/cache-controller.js';
+import {
+  handlePrincipalCache,
+  handleTransactionCache,
+} from '../../controllers/cache-controller.js';
 import { FastifyPluginAsync } from 'fastify';
 import { Type, TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
 import { Server } from 'node:http';
@@ -71,8 +74,7 @@ export const PrincipalsRoutes: FastifyPluginAsync<
   fastify.get(
     '/principals/:principal/transactions/:tx_id/balance-changes',
     {
-      // TODO: Etag should really be based on both the transaction id and principal.
-      preHandler: handlePrincipalCache,
+      preHandler: handleTransactionCache,
       schema: {
         operationId: 'get_principal_transaction_balance_changes',
         summary: 'Get principal transaction balance changes',
