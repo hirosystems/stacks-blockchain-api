@@ -1,4 +1,4 @@
-import { DbMempoolTransactionSummary } from '../../../datastore/v3/types.js';
+import { DbMempoolTransaction, DbMempoolTransactionSummary } from '../../../datastore/v3/types.js';
 import { DbTxStatus, DbTxTypeId } from '../../../datastore/common.js';
 import {
   BaseMempoolTransactionSummary,
@@ -11,6 +11,18 @@ import {
   TenureChangeMempoolTransactionSummary,
   TokenTransferMempoolTransactionSummary,
 } from '../../schemas/v3/entities/mempool-transaction-summaries.js';
+import {
+  BaseMempoolTransaction,
+  CoinbaseMempoolTransaction,
+  ContractCallMempoolTransaction,
+  MempoolTransaction,
+  PoisonMicroblockMempoolTransaction,
+  SmartContractMempoolTransaction,
+  TenureChangeMempoolTransaction,
+  TokenTransferMempoolTransaction,
+} from '../../schemas/v3/entities/mempool-transactions.js';
+import { serializePostCondition } from './post-conditions.js';
+import { decodeClarityValueList, decodePostConditions } from '@stacks/codec';
 
 /**
  * Parses a database mempool transaction summary status into a mempool transaction summary status.
@@ -120,5 +132,88 @@ export function serializeDbMempoolTransactionSummary(
     }
     default:
       throw new Error(`Unexpected DbTxTypeId: ${summary.type_id}`);
+  }
+}
+
+/**
+ * Parses a database mempool transaction into a mempool transaction.
+ * @param transaction - The database mempool transaction to parse.
+ * @returns The parsed mempool transaction.
+ */
+export function serializeDbMempoolTransaction(
+  transaction: DbMempoolTransaction
+): MempoolTransaction {
+  const summary = serializeDbMempoolTransactionSummary(transaction);
+  const decodedPostConditions = decodePostConditions(transaction.post_conditions);
+  const result: BaseMempoolTransaction = {
+    ...summary,
+    post_conditions: decodedPostConditions.post_conditions.map(pc => serializePostCondition(pc)),
+    replaced_by_tx_id: transaction.replaced_by_tx_id,
+  };
+  switch (transaction.type_id) {
+    case DbTxTypeId.TokenTransfer: {
+      const tokenTransfer: TokenTransferMempoolTransaction = {
+        ...result,
+        type: 'token_transfer',
+        token_transfer: {
+          recipient: transaction.token_transfer_recipient_address!,
+          amount: transaction.token_transfer_amount!,
+          memo: transaction.token_transfer_memo,
+        },
+      };
+      return tokenTransfer;
+    }
+    case DbTxTypeId.SmartContract: {
+      const smartContract: SmartContractMempoolTransaction = {
+        ...result,
+        type: 'smart_contract',
+        smart_contract: {
+          clarity_version: transaction.smart_contract_clarity_version,
+          contract_id: transaction.smart_contract_contract_id!,
+          source_code: transaction.smart_contract_source_code!,
+        },
+      };
+      return smartContract;
+    }
+    case DbTxTypeId.ContractCall: {
+      const contractCall: ContractCallMempoolTransaction = {
+        ...result,
+        type: 'contract_call',
+        contract_call: {
+          contract_id: transaction.contract_call_contract_id!,
+          function_name: transaction.contract_call_function_name!,
+          function_args: decodeClarityValueList(transaction.contract_call_function_args!).map(
+            c => ({
+              hex: c.hex,
+              repr: c.repr,
+            })
+          ),
+        },
+      };
+      return contractCall;
+    }
+    case DbTxTypeId.PoisonMicroblock: {
+      const poisonMicroblock: PoisonMicroblockMempoolTransaction = {
+        ...result,
+        type: 'poison_microblock',
+      };
+      return poisonMicroblock;
+    }
+    case DbTxTypeId.Coinbase: {
+      const coinbase: CoinbaseMempoolTransaction = {
+        ...result,
+        type: 'coinbase',
+      };
+      return coinbase;
+    }
+    case DbTxTypeId.TenureChange: {
+      const tenureChange: TenureChangeMempoolTransaction = {
+        ...result,
+        type: 'tenure_change',
+      };
+      return tenureChange;
+    }
+    default:
+      throw new Error(`Unexpected DbTxTypeId: ${transaction.type_id}`);
   }
 }

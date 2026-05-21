@@ -1,11 +1,13 @@
 import { BasePgStoreModule } from '@stacks/api-toolkit';
 import {
   DbCursorPaginatedResult,
+  DbMempoolTransaction,
   DbMempoolTransactionSummary,
   DbPrincipalTransactionSummary,
+  DbTransaction,
   DbTransactionSummary,
 } from './types.js';
-import { MEMPOOL_TX_SUMMARY_COLUMNS, TX_SUMMARY_COLUMNS } from './constants.js';
+import { MEMPOOL_TX_COLUMNS, MEMPOOL_TX_SUMMARY_COLUMNS, TX_COLUMNS, TX_SUMMARY_COLUMNS } from './constants.js';
 import { prefixedCols } from '../helpers.js';
 import { Principal } from '../../api/schemas/v3/entities/common.js';
 import { normalizeHashString } from '../../helpers.js';
@@ -395,6 +397,35 @@ export class PgStoreV3 extends BasePgStoreModule {
         total: tx_count,
         results,
       };
+    });
+  }
+
+  /**
+   * Gets the transaction by ID. Looks up in the canonical chain first, then the mempool.
+   * @param args - The arguments for the query.
+   * @returns The transaction by ID.
+   */
+  async getTransaction(args: {
+    txId: string;
+  }): Promise<DbTransaction | DbMempoolTransaction | null> {
+    return await this.sqlTransaction(async sql => {
+      const result = await sql<DbTransaction[]>`
+        SELECT ${this.sql(TX_COLUMNS)}
+        FROM txs
+        WHERE tx_id = ${args.txId} AND canonical = true AND microblock_canonical = true
+      `;
+      if (result.count > 0) {
+        return result[0];
+      }
+      const mempoolResult = await sql<DbMempoolTransaction[]>`
+        SELECT ${this.sql(MEMPOOL_TX_COLUMNS)}
+        FROM mempool_txs
+        WHERE tx_id = ${args.txId} AND pruned = false
+      `;
+      if (mempoolResult.count > 0) {
+        return mempoolResult[0];
+      }
+      return null;
     });
   }
 }
