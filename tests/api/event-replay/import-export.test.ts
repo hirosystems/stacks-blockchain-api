@@ -159,12 +159,4 @@ describe('import/export tests', () => {
     assert.equal(configState.bns_subdomains_imported, true);
   });
 
-  test('BNS import should be skipped for Stacks subnet nodes', async () => {
-    ENV.STACKS_NODE_TYPE = 'subnet';
-    ENV.BNS_IMPORT_DIR = 'tests/api/bns/import-test-files';
-    await importEventsFromTsv('tests/api/event-replay/tsv/mocknet.tsv', 'archival', true, true);
-    const configState = await db.getConfigState();
-    assert.equal(configState.bns_names_onchain_imported, false);
-    assert.equal(configState.bns_subdomains_imported, false);
-  });
 });

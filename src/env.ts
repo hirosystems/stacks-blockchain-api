@@ -130,17 +130,7 @@ const schema = Type.Object({
   STACKS_CORE_PROXY_BODY_LIMIT: Type.Integer({ default: 10000000, minimum: 0 }),
   /** Configure the chainID/networkID; testnet: 0x80000000, mainnet: 0x00000001 */
   STACKS_CHAIN_ID: Type.String({ default: '0x80000000' }),
-  /**
-   * Configure custom testnet and mainnet chainIDs for other networks such as subnets, multiple
-   * values can be set using comma-separated key-value pairs.
-   */
-  CUSTOM_CHAIN_IDS: Type.Optional(Type.String()),
   SKIP_STACKS_CHAIN_ID_CHECK: Type.Boolean({ default: true }),
-  /**
-   * Stacks blockchain node type (L1 or subnet). L1 by default. If STACKS_NODE_TYPE is set to
-   * subnet, BNS importer is skipped.
-   */
-  STACKS_NODE_TYPE: Type.Enum({ L1: 'L1', subnet: 'subnet' }, { default: 'L1' }),
   /**
    * If specified, an http server providing profiling capability endpoints will be opened on the
    * given host. This host should not be publicly exposed.
