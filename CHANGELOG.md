@@ -1,3 +1,9 @@
+## [8.15.4](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.15.3...v8.15.4) (2026-05-21)
+
+### Bug Fixes
+
+* upgrade snp client to 2.1.3 ([#2547](https://github.com/hirosystems/stacks-blockchain-api/issues/2547)) ([130a8f7](https://github.com/hirosystems/stacks-blockchain-api/commit/130a8f744075543527d3a06c80d5aafd57b2734e))
+
 ## [8.15.3](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.15.2...v8.15.3) (2026-04-22)
 
 ### Bug Fixes
