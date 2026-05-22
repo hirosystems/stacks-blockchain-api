@@ -104,7 +104,10 @@ export const TransactionsRoutes: FastifyPluginAsync<
     },
     async (req, reply) => {
       const { tx_id } = req.params;
-      const transaction = await fastify.db.v3.getTransaction({ txId: tx_id });
+      const transaction = await fastify.db.v3.getTransaction({
+        txId: tx_id,
+        include: req.query.include,
+      });
       if (!transaction) {
         throw new NotFoundError('Transaction not found');
       }

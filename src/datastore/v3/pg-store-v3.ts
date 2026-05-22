@@ -18,6 +18,7 @@ import { Principal } from '../../api/schemas/v3/entities/common.js';
 import { normalizeHashString } from '../../helpers.js';
 import { BlockIdParam } from '../../api/routes/v2/schemas.js';
 import { InvalidRequestError, InvalidRequestErrorType } from '../../errors.js';
+import { TransactionIncludeField } from '../../api/schemas/v3/entities/transactions.js';
 
 export class PgStoreV3 extends BasePgStoreModule {
   /**
@@ -407,23 +408,72 @@ export class PgStoreV3 extends BasePgStoreModule {
 
   /**
    * Gets the transaction by ID. Looks up in the canonical chain first, then the mempool.
+   * Heavy columns (post conditions, contract source, decoded clarity inputs, raw result)
+   * are only pulled from Postgres when the caller opts in via `include`, so the DB doesn't
+   * pay to read/serialize them when the route is going to drop them anyway.
    * @param args - The arguments for the query.
    * @returns The transaction by ID.
    */
   async getTransaction(args: {
     txId: string;
+    include?: readonly TransactionIncludeField[];
   }): Promise<DbTransaction | DbMempoolTransaction | null> {
+    /**
+     * Columns that are expensive for Postgres to read/serialize across the wire — large blobs
+     * (contract source code, post conditions) or values that aren't useful without further
+     * decoding work on the JS side. Kept out of {@link TX_COLUMNS} / {@link MEMPOOL_TX_COLUMNS}
+     * by default and tacked on per-query when the caller opts in via `?include=`.
+     *
+     * Split per table because `raw_result` only exists on `txs`; opting into `include=result`
+     * on a mempool lookup is silently ignored.
+     */
+    const TX_HEAVY_COLUMNS: Partial<Record<TransactionIncludeField, string>> = {
+      post_conditions: 'post_conditions',
+      source_code: 'smart_contract_source_code',
+      function_args: 'contract_call_function_args',
+      result: 'raw_result',
+    };
+    const MEMPOOL_TX_HEAVY_COLUMNS: Partial<Record<TransactionIncludeField, string>> = {
+      post_conditions: 'post_conditions',
+      source_code: 'smart_contract_source_code',
+      function_args: 'contract_call_function_args',
+    };
+    /**
+     * Appends any heavy columns the caller opted into via `include` to the base column list.
+     * Unknown / non-applicable include fields (e.g. `result` against a mempool query) are
+     * dropped.
+     */
+    const withHeavyColumns = (
+      base: readonly string[],
+      heavy: Partial<Record<TransactionIncludeField, string>>,
+      include?: readonly TransactionIncludeField[]
+    ): string[] => {
+      if (!include?.length) return [...base];
+      const extras: string[] = [];
+      for (const field of include) {
+        const col = heavy[field];
+        if (col) extras.push(col);
+      }
+      return extras.length ? [...base, ...extras] : [...base];
+    };
+
     return await this.sqlTransaction(async sql => {
+      const txColumns = withHeavyColumns(TX_COLUMNS, TX_HEAVY_COLUMNS, args.include);
       const result = await sql<DbTransaction[]>`
-        SELECT ${this.sql(TX_COLUMNS)}
+        SELECT ${sql(txColumns)}
         FROM txs
         WHERE tx_id = ${args.txId} AND canonical = true AND microblock_canonical = true
       `;
       if (result.count > 0) {
         return result[0];
       }
+      const mempoolColumns = withHeavyColumns(
+        MEMPOOL_TX_COLUMNS,
+        MEMPOOL_TX_HEAVY_COLUMNS,
+        args.include
+      );
       const mempoolResult = await sql<DbMempoolTransaction[]>`
-        SELECT ${this.sql(MEMPOOL_TX_COLUMNS)}
+        SELECT ${sql(mempoolColumns)}
         FROM mempool_txs
         WHERE tx_id = ${args.txId} AND pruned = false
       `;
