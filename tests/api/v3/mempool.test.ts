@@ -1,12 +1,14 @@
 import { describe, test, beforeEach, afterEach } from 'node:test';
 import { PgWriteStore } from '../../../src/datastore/pg-write-store.ts';
 import { ApiServer, startApiServer } from '../../../src/api/init.ts';
-import { migrate } from '../../test-helpers.ts';
+import { createClarityValueArray, migrate } from '../../test-helpers.ts';
 import { STACKS_TESTNET } from '@stacks/network';
 import * as assert from 'node:assert/strict';
 import { TestBlockBuilder, testMempoolTx } from '../test-builders.ts';
 import { DbTxStatus, DbTxTypeId } from '../../../src/datastore/common.ts';
 import { hex } from '../test-helpers.ts';
+import { stringAsciiCV, uintCV } from '@stacks/transactions';
+import { bufferToHex } from '@stacks/api-toolkit';
 
 // Distinct from the default mempool tx sender to avoid replace-by-fee collisions during inserts.
 const BLOCK_SENDER = 'SP3SBQ9PZEMBNBAWTR7FRPE3XK0EFW9JWVX4G80S2';
@@ -390,6 +392,174 @@ describe('mempool', () => {
         headers: { 'if-none-match': newEtag as string },
       });
       assert.equal(refreshed.statusCode, 304);
+    });
+  });
+
+  describe('/v3/transactions/:tx_id (mempool path)', () => {
+    const SENDER = 'SP466FNC0P7JWTNM2R9T199QRZN1MYEDTAR0KP27';
+
+    test('should return a mempool transaction by tx_id with lean defaults', async () => {
+      const txId = hex(0x4001);
+      await db.update(
+        new TestBlockBuilder({
+          block_height: 1,
+          index_block_hash: hex(1),
+          parent_index_block_hash: hex(0),
+          parent_block_hash: hex(0),
+        })
+          .addTx({ tx_id: hex(0xaa), sender_address: BLOCK_SENDER, nonce: 0 })
+          .build()
+      );
+      await db.updateMempoolTxs({
+        mempoolTxs: [
+          testMempoolTx({
+            tx_id: txId,
+            receipt_time: 1000,
+            type_id: DbTxTypeId.ContractCall,
+            sender_address: SENDER,
+            contract_call_contract_id: 'SP000000000000000000002Q6VF78.pox-4',
+            contract_call_function_name: 'stack-stx',
+            contract_call_function_args: bufferToHex(
+              createClarityValueArray(uintCV(123456), stringAsciiCV('hello'))
+            ),
+            fee_rate: 100n,
+            nonce: 4,
+          }),
+        ],
+      });
+
+      const response = await api.fastifyApp.inject({
+        method: 'GET',
+        url: `/extended/v3/transactions/${txId}`,
+      });
+      assert.equal(response.statusCode, 200);
+      const body = JSON.parse(response.body);
+      assert.equal(body.tx_id, txId);
+      assert.equal(body.type, 'contract_call');
+      assert.equal(body.status, 'pending');
+      assert.equal(body.receipt_time, 1000);
+      assert.equal(body.contract_call.contract_id, 'SP000000000000000000002Q6VF78.pox-4');
+      assert.equal(body.contract_call.function_name, 'stack-stx');
+      // Heavy fields omitted by default.
+      assert.equal(body.contract_call.function_args, undefined);
+      assert.equal(body.post_conditions, undefined);
+      // `result` does not apply to mempool transactions (they have not executed) — the
+      // schema doesn't even declare it on the mempool type, so it must stay absent
+      // regardless of include.
+      assert.equal(body.result, undefined);
+    });
+
+    test('should populate function_args and post_conditions when requested', async () => {
+      const txId = hex(0x4002);
+      await db.update(
+        new TestBlockBuilder({
+          block_height: 1,
+          index_block_hash: hex(1),
+          parent_index_block_hash: hex(0),
+          parent_block_hash: hex(0),
+        })
+          .addTx({ tx_id: hex(0xaa), sender_address: BLOCK_SENDER, nonce: 0 })
+          .build()
+      );
+      await db.updateMempoolTxs({
+        mempoolTxs: [
+          testMempoolTx({
+            tx_id: txId,
+            receipt_time: 2000,
+            type_id: DbTxTypeId.ContractCall,
+            sender_address: SENDER,
+            contract_call_contract_id: 'SP000000000000000000002Q6VF78.pox-4',
+            contract_call_function_name: 'stack-stx',
+            contract_call_function_args: bufferToHex(
+              createClarityValueArray(uintCV(123456), stringAsciiCV('hello'))
+            ),
+            fee_rate: 100n,
+            nonce: 5,
+          }),
+        ],
+      });
+
+      const response = await api.fastifyApp.inject({
+        method: 'GET',
+        url: `/extended/v3/transactions/${txId}`,
+        query: { include: 'function_args,post_conditions' },
+      });
+      assert.equal(response.statusCode, 200);
+      const body = JSON.parse(response.body);
+      assert.deepEqual(body.contract_call.function_args, [
+        { hex: '0x010000000000000000000000000001e240', repr: 'u123456' },
+        { hex: '0x0d0000000568656c6c6f', repr: '"hello"' },
+      ]);
+      assert.deepEqual(body.post_conditions, []);
+    });
+
+    test('should return 304 when ETag matches and refresh ETag when the mempool tx is confirmed', async () => {
+      const txId = hex(0x4003);
+      await db.update(
+        new TestBlockBuilder({
+          block_height: 1,
+          index_block_hash: hex(1),
+          parent_index_block_hash: hex(0),
+          parent_block_hash: hex(0),
+        })
+          .addTx({ tx_id: hex(0xaa), sender_address: BLOCK_SENDER, nonce: 0 })
+          .build()
+      );
+      await db.updateMempoolTxs({
+        mempoolTxs: [
+          testMempoolTx({ tx_id: txId, receipt_time: 1000, sender_address: SENDER, nonce: 1 }),
+        ],
+      });
+
+      // First request returns 200 + ETag derived from the mempool status.
+      const first = await api.fastifyApp.inject({
+        method: 'GET',
+        url: `/extended/v3/transactions/${txId}`,
+      });
+      assert.equal(first.statusCode, 200);
+      const etag = first.headers['etag'];
+      assert.ok(etag, 'expected ETag header to be set');
+
+      // Same ETag returns 304.
+      const cached = await api.fastifyApp.inject({
+        method: 'GET',
+        url: `/extended/v3/transactions/${txId}`,
+        headers: { 'if-none-match': etag as string },
+      });
+      assert.equal(cached.statusCode, 304);
+      assert.equal(cached.body, '');
+
+      // Confirm the tx in a block — status moves from Pending to Success and the row gains
+      // an index_block_hash, so the ETag must change. Use TokenTransfer to mirror the
+      // mempool tx's shape (the default `testMempoolTx` builds a TokenTransfer).
+      await db.update(
+        new TestBlockBuilder({
+          block_height: 2,
+          index_block_hash: hex(2),
+          parent_index_block_hash: hex(1),
+          parent_block_hash: hex(1),
+        })
+          .addTx({
+            tx_id: txId,
+            sender_address: SENDER,
+            nonce: 1,
+            type_id: DbTxTypeId.TokenTransfer,
+          })
+          .build()
+      );
+
+      const afterConfirm = await api.fastifyApp.inject({
+        method: 'GET',
+        url: `/extended/v3/transactions/${txId}`,
+        headers: { 'if-none-match': etag as string },
+      });
+      assert.equal(afterConfirm.statusCode, 200);
+      const newEtag = afterConfirm.headers['etag'];
+      assert.ok(newEtag);
+      assert.notEqual(newEtag, etag);
+      // The response is now the canonical shape — status is `success`, not `pending`.
+      const afterBody = JSON.parse(afterConfirm.body);
+      assert.equal(afterBody.status, 'success');
     });
   });
 });

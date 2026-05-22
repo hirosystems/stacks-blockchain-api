@@ -228,12 +228,14 @@ export function serializeDbTransaction(
       index_hash: transaction.parent_index_block_hash,
     },
     event_count: transaction.event_count,
+    // execution_cost_* arrive as decimal strings from Postgres (BIGINT). Coerce to ints
+    // to match the response schema; v1/v2 do the same in `datastore/helpers.ts`.
     execution_cost: {
-      read_count: transaction.execution_cost_read_count,
-      read_length: transaction.execution_cost_read_length,
-      runtime: transaction.execution_cost_runtime,
-      write_count: transaction.execution_cost_write_count,
-      write_length: transaction.execution_cost_write_length,
+      read_count: Number(transaction.execution_cost_read_count),
+      read_length: Number(transaction.execution_cost_read_length),
+      runtime: Number(transaction.execution_cost_runtime),
+      write_count: Number(transaction.execution_cost_write_count),
+      write_length: Number(transaction.execution_cost_write_length),
     },
     vm_error: transaction.vm_error,
   };
