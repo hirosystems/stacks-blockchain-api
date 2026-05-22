@@ -14,7 +14,10 @@ import {
   TransactionCursorSchema,
 } from '../../schemas/v3/cursors.js';
 import { TransactionIdSchema } from '../../schemas/v3/entities/common.js';
-import { TransactionSchema } from '../../schemas/v3/entities/transactions.js';
+import {
+  TransactionIncludeFieldSchema,
+  TransactionSchema,
+} from '../../schemas/v3/entities/transactions.js';
 import { MempoolTransactionSchema } from '../../schemas/v3/entities/mempool-transactions.js';
 import { NotFoundError } from '../../../errors.js';
 
@@ -64,6 +67,16 @@ export const TransactionsRoutes: FastifyPluginAsync<
     '/transactions/:tx_id',
     {
       preHandler: handleTransactionCache,
+      // Accept both repeated (`?include=A&include=B`) and comma-separated (`?include=A,B`)
+      // forms. The repeated form is already an array via Fastify's qs parser; this hook
+      // normalizes the comma-separated form. Mirrors the convention used by
+      // `/principals/:principal/balance-changes`.
+      preValidation: (req, _reply, done) => {
+        if (typeof req.query.include === 'string') {
+          req.query.include = (req.query.include as string).split(',') as typeof req.query.include;
+        }
+        done();
+      },
       schema: {
         operationId: 'get_transaction',
         summary: 'Get transaction',
@@ -71,6 +84,18 @@ export const TransactionsRoutes: FastifyPluginAsync<
         tags: ['Transactions'],
         params: Type.Object({
           tx_id: TransactionIdSchema,
+        }),
+        querystring: Type.Object({
+          include: Type.Optional(
+            Type.Array(TransactionIncludeFieldSchema, {
+              uniqueItems: true,
+              description:
+                'Heavy fields to include in the response. Omitted by default to keep the ' +
+                'payload lean. Provide as repeated querystring values ' +
+                '(`?include=A&include=B`) or as a single comma-separated value ' +
+                '(`?include=A,B`).',
+            })
+          ),
         }),
         response: {
           200: Type.Union([TransactionSchema, MempoolTransactionSchema]),
@@ -83,7 +108,7 @@ export const TransactionsRoutes: FastifyPluginAsync<
       if (!transaction) {
         throw new NotFoundError('Transaction not found');
       }
-      const result = serializeDbTransactionOrMempoolTransaction(transaction);
+      const result = serializeDbTransactionOrMempoolTransaction(transaction, req.query.include);
       await reply.send(result);
     }
   );

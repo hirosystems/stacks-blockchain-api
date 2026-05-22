@@ -27,6 +27,7 @@ import {
   TenureChangeTransaction,
   TokenTransferTransaction,
   Transaction,
+  TransactionIncludeField,
 } from '../../schemas/v3/entities/transactions.js';
 import { MempoolTransaction } from '../../schemas/v3/entities/mempool-transactions.js';
 import { decodeClarityValueList, decodePostConditions } from '@stacks/codec';
@@ -206,18 +207,22 @@ export function serializePrincipalTransactionSummary(
 /**
  * Parses a database transaction into a transaction.
  * @param transaction - The database transaction to parse.
+ * @param include - Heavy fields to populate. Omitted fields skip their decode entirely
+ *   (clarity-value parsing, post-condition decode) so callers pay nothing for what they
+ *   don't ask for.
  * @returns The parsed transaction.
  */
-export function serializeDbTransaction(transaction: DbTransaction): Transaction {
+export function serializeDbTransaction(
+  transaction: DbTransaction,
+  include?: readonly TransactionIncludeField[]
+): Transaction {
   const summary = serializeDbTransactionSummary(transaction);
-  const decodedPostConditions = decodePostConditions(transaction.post_conditions);
   const result: BaseTransaction = {
     ...summary,
     parent_block: {
       hash: transaction.parent_block_hash,
       index_hash: transaction.parent_index_block_hash,
     },
-    post_conditions: decodedPostConditions.post_conditions.map(pc => serializePostCondition(pc)),
     event_count: transaction.event_count,
     execution_cost: {
       read_count: transaction.execution_cost_read_count,
@@ -228,6 +233,11 @@ export function serializeDbTransaction(transaction: DbTransaction): Transaction 
     },
     vm_error: transaction.vm_error,
   };
+  if (include?.includes('post_conditions')) {
+    result.post_conditions = decodePostConditions(
+      transaction.post_conditions
+    ).post_conditions.map(pc => serializePostCondition(pc));
+  }
   switch (transaction.type_id) {
     case DbTxTypeId.TokenTransfer: {
       const tokenTransfer: TokenTransferTransaction = {
@@ -248,7 +258,9 @@ export function serializeDbTransaction(transaction: DbTransaction): Transaction 
         smart_contract: {
           clarity_version: transaction.smart_contract_clarity_version,
           contract_id: transaction.smart_contract_contract_id!,
-          source_code: transaction.smart_contract_source_code!,
+          ...(include?.includes('source_code')
+            ? { source_code: transaction.smart_contract_source_code! }
+            : {}),
         },
       };
       return smartContract;
@@ -260,12 +272,13 @@ export function serializeDbTransaction(transaction: DbTransaction): Transaction 
         contract_call: {
           contract_id: transaction.contract_call_contract_id!,
           function_name: transaction.contract_call_function_name!,
-          function_args: decodeClarityValueList(transaction.contract_call_function_args!).map(
-            c => ({
-              hex: c.hex,
-              repr: c.repr,
-            })
-          ),
+          ...(include?.includes('function_args')
+            ? {
+                function_args: decodeClarityValueList(
+                  transaction.contract_call_function_args!
+                ).map(c => ({ hex: c.hex, repr: c.repr })),
+              }
+            : {}),
         },
       };
       return contractCall;
@@ -314,13 +327,15 @@ export function serializeDbTransaction(transaction: DbTransaction): Transaction 
  * Serializes a database transaction or mempool transaction into a transaction or mempool
  * transaction.
  * @param transaction - The database transaction or mempool transaction to serialize.
+ * @param include - Heavy fields to populate. See {@link serializeDbTransaction}.
  * @returns The serialized transaction or mempool transaction.
  */
 export function serializeDbTransactionOrMempoolTransaction(
-  transaction: DbTransaction | DbMempoolTransaction
+  transaction: DbTransaction | DbMempoolTransaction,
+  include?: readonly TransactionIncludeField[]
 ): Transaction | MempoolTransaction {
   if ('index_block_hash' in transaction) {
-    return serializeDbTransaction(transaction);
+    return serializeDbTransaction(transaction, include);
   }
-  return serializeDbMempoolTransaction(transaction);
+  return serializeDbMempoolTransaction(transaction, include);
 }

@@ -21,6 +21,7 @@ import {
   TenureChangeMempoolTransaction,
   TokenTransferMempoolTransaction,
 } from '../../schemas/v3/entities/mempool-transactions.js';
+import { TransactionIncludeField } from '../../schemas/v3/entities/transactions.js';
 import { serializePostCondition } from './post-conditions.js';
 import { decodeClarityValueList, decodePostConditions } from '@stacks/codec';
 
@@ -138,18 +139,25 @@ export function serializeDbMempoolTransactionSummary(
 /**
  * Parses a database mempool transaction into a mempool transaction.
  * @param transaction - The database mempool transaction to parse.
+ * @param include - Heavy fields to populate. Omitted fields skip their decode entirely
+ *   (clarity-value parsing, post-condition decode) so callers pay nothing for what they
+ *   don't ask for.
  * @returns The parsed mempool transaction.
  */
 export function serializeDbMempoolTransaction(
-  transaction: DbMempoolTransaction
+  transaction: DbMempoolTransaction,
+  include?: readonly TransactionIncludeField[]
 ): MempoolTransaction {
   const summary = serializeDbMempoolTransactionSummary(transaction);
-  const decodedPostConditions = decodePostConditions(transaction.post_conditions);
   const result: BaseMempoolTransaction = {
     ...summary,
-    post_conditions: decodedPostConditions.post_conditions.map(pc => serializePostCondition(pc)),
     replaced_by_tx_id: transaction.replaced_by_tx_id,
   };
+  if (include?.includes('post_conditions')) {
+    result.post_conditions = decodePostConditions(
+      transaction.post_conditions
+    ).post_conditions.map(pc => serializePostCondition(pc));
+  }
   switch (transaction.type_id) {
     case DbTxTypeId.TokenTransfer: {
       const tokenTransfer: TokenTransferMempoolTransaction = {
@@ -170,7 +178,9 @@ export function serializeDbMempoolTransaction(
         smart_contract: {
           clarity_version: transaction.smart_contract_clarity_version,
           contract_id: transaction.smart_contract_contract_id!,
-          source_code: transaction.smart_contract_source_code!,
+          ...(include?.includes('source_code')
+            ? { source_code: transaction.smart_contract_source_code! }
+            : {}),
         },
       };
       return smartContract;
@@ -182,12 +192,13 @@ export function serializeDbMempoolTransaction(
         contract_call: {
           contract_id: transaction.contract_call_contract_id!,
           function_name: transaction.contract_call_function_name!,
-          function_args: decodeClarityValueList(transaction.contract_call_function_args!).map(
-            c => ({
-              hex: c.hex,
-              repr: c.repr,
-            })
-          ),
+          ...(include?.includes('function_args')
+            ? {
+                function_args: decodeClarityValueList(
+                  transaction.contract_call_function_args!
+                ).map(c => ({ hex: c.hex, repr: c.repr })),
+              }
+            : {}),
         },
       };
       return contractCall;

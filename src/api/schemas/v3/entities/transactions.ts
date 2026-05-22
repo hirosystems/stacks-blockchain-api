@@ -15,7 +15,11 @@ const BaseTransactionSchema = Type.Composite([
         description: 'Index block hash of the parent block',
       }),
     }),
-    post_conditions: Type.Array(PostConditionSchema),
+    post_conditions: Type.Optional(
+      Type.Array(PostConditionSchema, {
+        description: 'Only present when requested via the `include=post_conditions` query param.',
+      })
+    ),
     event_count: Type.Integer({
       description: 'Number of events in the transaction',
     }),
@@ -63,9 +67,13 @@ const SmartContractTransactionSchema = Type.Composite([
           description: 'Clarity version of the smart contract',
         })
       ),
-      source_code: Type.String({
-        description: 'Source code of the smart contract',
-      }),
+      source_code: Type.Optional(
+        Type.String({
+          description:
+            'Source code of the smart contract. Only present when requested via the ' +
+            '`include=source_code` query param.',
+        })
+      ),
     }),
   }),
 ]);
@@ -84,7 +92,9 @@ const ContractCallTransactionSchema = Type.Composite([
       }),
       function_args: Type.Optional(
         Type.Array(DecodedClarityValueSchema, {
-          description: 'List of arguments used to invoke the function',
+          description:
+            'List of arguments used to invoke the function. Only present when requested ' +
+            'via the `include=function_args` query param.',
         })
       ),
     }),
@@ -164,3 +174,15 @@ export const TransactionSchema = Type.Union([
   CoinbaseTransactionSchema,
 ]);
 export type Transaction = Static<typeof TransactionSchema>;
+
+/**
+ * Heavy fields that callers can opt into on the single-transaction endpoints via
+ * `?include=...`. Omitted by default to keep the response lean and avoid the clarity
+ * decode / post-condition decode / large-string read costs.
+ */
+export const TransactionIncludeFieldSchema = Type.Union([
+  Type.Literal('function_args'),
+  Type.Literal('source_code'),
+  Type.Literal('post_conditions'),
+]);
+export type TransactionIncludeField = Static<typeof TransactionIncludeFieldSchema>;
