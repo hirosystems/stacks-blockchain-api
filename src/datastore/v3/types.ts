@@ -47,6 +47,7 @@ export interface DbTransaction extends DbTransactionSummary {
   execution_cost_write_count: number;
   execution_cost_write_length: number;
   vm_error: string | null;
+  raw_result: string;
   smart_contract_source_code: string | null;
   contract_call_function_args: string | null;
   coinbase_payload: string | null;

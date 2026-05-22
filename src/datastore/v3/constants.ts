@@ -38,6 +38,7 @@ export const TX_COLUMNS = [
   'execution_cost_write_count',
   'execution_cost_write_length',
   'vm_error',
+  'raw_result',
   'smart_contract_source_code',
   'contract_call_function_args',
   'coinbase_payload',

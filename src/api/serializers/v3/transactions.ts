@@ -30,7 +30,11 @@ import {
   TransactionIncludeField,
 } from '../../schemas/v3/entities/transactions.js';
 import { MempoolTransaction } from '../../schemas/v3/entities/mempool-transactions.js';
-import { decodeClarityValueList, decodePostConditions } from '@stacks/codec';
+import {
+  decodeClarityValueList,
+  decodeClarityValueToRepr,
+  decodePostConditions,
+} from '@stacks/codec';
 import { serializePostCondition } from './post-conditions.js';
 import { serializeDbMempoolTransaction } from './mempool-transactions.js';
 
@@ -237,6 +241,12 @@ export function serializeDbTransaction(
     result.post_conditions = decodePostConditions(
       transaction.post_conditions
     ).post_conditions.map(pc => serializePostCondition(pc));
+  }
+  if (include?.includes('result')) {
+    result.result = {
+      hex: transaction.raw_result,
+      repr: decodeClarityValueToRepr(transaction.raw_result),
+    };
   }
   switch (transaction.type_id) {
     case DbTxTypeId.TokenTransfer: {

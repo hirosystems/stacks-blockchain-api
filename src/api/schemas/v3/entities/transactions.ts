@@ -29,6 +29,7 @@ const BaseTransactionSchema = Type.Composite([
         description: 'VM error of the transaction',
       })
     ),
+    result: Type.Optional(DecodedClarityValueSchema),
   }),
 ]);
 export type BaseTransaction = Static<typeof BaseTransactionSchema>;
@@ -184,5 +185,6 @@ export const TransactionIncludeFieldSchema = Type.Union([
   Type.Literal('function_args'),
   Type.Literal('source_code'),
   Type.Literal('post_conditions'),
+  Type.Literal('result'),
 ]);
 export type TransactionIncludeField = Static<typeof TransactionIncludeFieldSchema>;
