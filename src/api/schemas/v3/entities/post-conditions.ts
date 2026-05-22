@@ -21,6 +21,7 @@ const PostConditionPrincipalSchema = Type.Union([
     contract_name: Type.String(),
   }),
 ]);
+export type PostConditionPrincipal = Static<typeof PostConditionPrincipalSchema>;
 
 const PostConditionFungibleConditionCodeSchema = Type.Union([
   Type.Literal('sent_equal_to'),

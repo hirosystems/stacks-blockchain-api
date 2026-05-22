@@ -26,11 +26,13 @@ export const TX_SUMMARY_COLUMNS = [
   'tenure_change_cause',
 ];
 
+// Heavy columns (post_conditions, raw_result, smart_contract_source_code,
+// contract_call_function_args) live in TX_HEAVY_COLUMNS in `pg-store-v3.ts` and are
+// opted in per-query via `include`, so they're omitted from the base list.
 export const TX_COLUMNS = [
   ...TX_SUMMARY_COLUMNS,
   'parent_block_hash',
   'parent_index_block_hash',
-  'post_conditions',
   'event_count',
   'execution_cost_read_count',
   'execution_cost_read_length',
@@ -38,8 +40,6 @@ export const TX_COLUMNS = [
   'execution_cost_write_count',
   'execution_cost_write_length',
   'vm_error',
-  'smart_contract_source_code',
-  'contract_call_function_args',
   'coinbase_payload',
   'coinbase_vrf_proof',
   'tenure_change_tenure_consensus_hash',
@@ -72,12 +72,12 @@ export const MEMPOOL_TX_SUMMARY_COLUMNS = [
   'tenure_change_cause',
 ];
 
+// Heavy columns (post_conditions, smart_contract_source_code,
+// contract_call_function_args) live in MEMPOOL_TX_HEAVY_COLUMNS in `pg-store-v3.ts` and
+// are opted in per-query via `include`, so they're omitted from the base list.
 export const MEMPOOL_TX_COLUMNS = [
   ...MEMPOOL_TX_SUMMARY_COLUMNS,
   'replaced_by_tx_id',
-  'post_conditions',
-  'smart_contract_source_code',
-  'contract_call_function_args',
   'coinbase_payload',
   'coinbase_vrf_proof',
   'tenure_change_tenure_consensus_hash',

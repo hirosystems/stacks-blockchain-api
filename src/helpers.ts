@@ -415,7 +415,6 @@ export function normalizeHashString(input: string): string | false {
  * Unsigned 32-bit integer.
  *  - Mainnet: 0x00000001
  *  - Testnet: 0x80000000
- *  - Subnets: _dynamic_
  */
 export type ChainID = number;
 
@@ -426,8 +425,6 @@ const enum NETWORK_CHAIN_ID {
 
 /**
  * Checks if the given chain_id is a mainnet or testnet chain id.
- * First checks the L1 network IDs (mainnet=0x00000001 and testnet=0x80000000), then checks
- * the `CUSTOM_CHAIN_IDS` env var for any configured custom chain ids (used for subnets).
  */
 export function getChainIDNetwork(chainID: ChainID): 'mainnet' | 'testnet' {
   if (chainID === NETWORK_CHAIN_ID.mainnet) {
@@ -435,32 +432,8 @@ export function getChainIDNetwork(chainID: ChainID): 'mainnet' | 'testnet' {
   } else if (chainID === NETWORK_CHAIN_ID.testnet) {
     return 'testnet';
   }
-  const chainIDHex = numberToHex(chainID);
-  const customChainIDEnv = 'CUSTOM_CHAIN_IDS';
-  const customChainIDs = ENV.CUSTOM_CHAIN_IDS;
-  if (!customChainIDs) {
-    throw new Error(
-      `Unknown chain_id ${chainIDHex}, use ${customChainIDEnv} to specify custom testnet or mainnet chain_ids (for example for subnets)`
-    );
-  }
-
-  const customIdMap = new Map<number, string>(
-    customChainIDs
-      .split(',')
-      .map(pair => pair.split('='))
-      .map(([k, v]) => [parseInt(v), k.trim().toLowerCase()])
-  );
-  const customIdNetwork = customIdMap.get(chainID);
-  if (customIdNetwork) {
-    if (customIdNetwork === 'testnet' || customIdNetwork === 'mainnet') {
-      return customIdNetwork;
-    }
-    throw new Error(
-      `Error parsing ${customChainIDEnv} chain_id network "${customIdNetwork}", should be either 'testnet' or 'mainnet'`
-    );
-  }
   throw new Error(
-    `Unknown chain_id ${chainIDHex}, does not match mainnet=0x00000001, testnet=0x80000000, or any configured custom IDs: ${customChainIDEnv}=${customChainIDs}`
+    `Unknown chain_id ${numberToHex(chainID)}, does not match mainnet=0x00000001 or testnet=0x80000000`
   );
 }
 
@@ -474,7 +447,7 @@ export function chainIdConfigurationCheck() {
     const mainnetHex = numberToHex(NETWORK_CHAIN_ID.mainnet);
     const testnetHex = numberToHex(NETWORK_CHAIN_ID.testnet);
     logger.error(
-      `Oops! The configuration for STACKS_CHAIN_ID=${chainIdHex} does not match mainnet=${mainnetHex}, testnet=${testnetHex}, or custom chain IDs: CUSTOM_CHAIN_IDS=${ENV.CUSTOM_CHAIN_IDS}`
+      `Oops! The configuration for STACKS_CHAIN_ID=${chainIdHex} does not match mainnet=${mainnetHex} or testnet=${testnetHex}`
     );
   }
 }
@@ -521,11 +494,6 @@ export function getBnsSmartContractId(chainId: ChainID): string {
   return getChainIDNetwork(chainId) === 'mainnet'
     ? 'SP000000000000000000002Q6VF78.bns::names'
     : 'ST000000000000000000002AMW42H.bns::names';
-}
-
-export const enum SubnetContractIdentifer {
-  mainnet = 'SP000000000000000000002Q6VF78.subnet',
-  testnet = 'ST000000000000000000002AMW42H.subnet',
 }
 
 export function getSendManyContract(chainId: ChainID) {
