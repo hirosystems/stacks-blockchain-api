@@ -7,7 +7,11 @@ import { DecodedClarityValueSchema } from './common.js';
 const BaseMempoolTransactionSchema = Type.Composite([
   BaseMempoolTransactionSummarySchema,
   Type.Object({
-    post_conditions: Type.Array(PostConditionSchema),
+    post_conditions: Type.Optional(
+      Type.Array(PostConditionSchema, {
+        description: 'Only present when requested via the `include=post_conditions` query param.',
+      })
+    ),
     replaced_by_tx_id: Nullable(
       Type.String({
         description: 'ID of another transaction which replaced this one',
@@ -51,9 +55,13 @@ const SmartContractMempoolTransactionSchema = Type.Composite([
           description: 'Clarity version of the smart contract',
         })
       ),
-      source_code: Type.String({
-        description: 'Source code of the smart contract',
-      }),
+      source_code: Type.Optional(
+        Type.String({
+          description:
+            'Source code of the smart contract. Only present when requested via the ' +
+            '`include=source_code` query param.',
+        })
+      ),
     }),
   }),
 ]);
@@ -70,9 +78,13 @@ const ContractCallMempoolTransactionSchema = Type.Composite([
       function_name: Type.String({
         description: 'Function name of the contract call',
       }),
-      function_args: Type.Array(DecodedClarityValueSchema, {
-        description: 'List of arguments used to invoke the function',
-      }),
+      function_args: Type.Optional(
+        Type.Array(DecodedClarityValueSchema, {
+          description:
+            'List of arguments used to invoke the function. Only present when requested ' +
+            'via the `include=function_args` query param.',
+        })
+      ),
     }),
   }),
 ]);
