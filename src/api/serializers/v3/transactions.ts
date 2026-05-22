@@ -240,9 +240,9 @@ export function serializeDbTransaction(
     vm_error: transaction.vm_error,
   };
   if (include?.includes('post_conditions')) {
-    result.post_conditions = decodePostConditions(
-      transaction.post_conditions
-    ).post_conditions.map(pc => serializePostCondition(pc));
+    result.post_conditions = decodePostConditions(transaction.post_conditions).post_conditions.map(
+      pc => serializePostCondition(pc)
+    );
   }
   if (include?.includes('result')) {
     result.result = {
@@ -286,9 +286,9 @@ export function serializeDbTransaction(
           function_name: transaction.contract_call_function_name!,
           ...(include?.includes('function_args')
             ? {
-                function_args: decodeClarityValueList(
-                  transaction.contract_call_function_args!
-                ).map(c => ({ hex: c.hex, repr: c.repr })),
+                function_args: decodeClarityValueList(transaction.contract_call_function_args!).map(
+                  c => ({ hex: c.hex, repr: c.repr })
+                ),
               }
             : {}),
         },

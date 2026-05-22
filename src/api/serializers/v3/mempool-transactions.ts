@@ -154,9 +154,9 @@ export function serializeDbMempoolTransaction(
     replaced_by_tx_id: transaction.replaced_by_tx_id,
   };
   if (include?.includes('post_conditions')) {
-    result.post_conditions = decodePostConditions(
-      transaction.post_conditions
-    ).post_conditions.map(pc => serializePostCondition(pc));
+    result.post_conditions = decodePostConditions(transaction.post_conditions).post_conditions.map(
+      pc => serializePostCondition(pc)
+    );
   }
   switch (transaction.type_id) {
     case DbTxTypeId.TokenTransfer: {
@@ -194,9 +194,9 @@ export function serializeDbMempoolTransaction(
           function_name: transaction.contract_call_function_name!,
           ...(include?.includes('function_args')
             ? {
-                function_args: decodeClarityValueList(
-                  transaction.contract_call_function_args!
-                ).map(c => ({ hex: c.hex, repr: c.repr })),
+                function_args: decodeClarityValueList(transaction.contract_call_function_args!).map(
+                  c => ({ hex: c.hex, repr: c.repr })
+                ),
               }
             : {}),
         },
