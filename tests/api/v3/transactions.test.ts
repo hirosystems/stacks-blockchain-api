@@ -1,11 +1,14 @@
 import { describe, test, beforeEach, afterEach } from 'node:test';
 import { PgWriteStore } from '../../../src/datastore/pg-write-store.ts';
 import { ApiServer, startApiServer } from '../../../src/api/init.ts';
-import { migrate } from '../../test-helpers.ts';
+import { createClarityValueArray, migrate } from '../../test-helpers.ts';
 import { STACKS_TESTNET } from '@stacks/network';
 import * as assert from 'node:assert/strict';
 import { TestBlockBuilder } from '../test-builders.ts';
-import { DbTxStatus, DbTxTypeId } from 'src/datastore/common.ts';
+import { DbTxStatus, DbTxTypeId } from '../../../src/datastore/common.ts';
+import { stringAsciiCV, uintCV } from '@stacks/transactions';
+import { bufferToHex } from '@stacks/api-toolkit';
+import { hex } from '../test-helpers.ts';
 
 describe('transactions', () => {
   let db: PgWriteStore;
@@ -291,6 +294,189 @@ describe('transactions', () => {
         headers: { 'if-none-match': newEtag as string },
       });
       assert.equal(refreshed.statusCode, 304);
+    });
+  });
+
+  describe('/v3/transactions/:tx_id', () => {
+    const SENDER = 'SP466FNC0P7JWTNM2R9T199QRZN1MYEDTAR0KP27';
+    const CONTRACT_ID = 'SP000000000000000000002Q6VF78.pox-4';
+    const SOURCE_CODE = '(define-public (test) (ok true))';
+    const txCall = hex(0x5001);
+    const txDeploy = hex(0x5002);
+
+    // Seed one ContractCall (txCall) and one SmartContract (txDeploy). The ContractCall
+    // carries function_args for the include test; the SmartContract carries source_code.
+    // Both inherit the test-builder defaults for raw_result ('0x0703' → (ok true)) and
+    // post_conditions ('0x01f5' → empty list).
+    const seedTxs = async () => {
+      await db.update(
+        new TestBlockBuilder({
+          block_height: 1,
+          index_block_hash: hex(1),
+          parent_index_block_hash: hex(0),
+          parent_block_hash: hex(0),
+        })
+          .addTx({
+            tx_id: txCall,
+            block_hash: hex(1),
+            index_block_hash: hex(1),
+            block_time: 1000,
+            burn_block_height: 1,
+            burn_block_time: 1000,
+            tx_index: 0,
+            fee_rate: 50n,
+            type_id: DbTxTypeId.ContractCall,
+            status: DbTxStatus.Success,
+            sender_address: SENDER,
+            contract_call_contract_id: CONTRACT_ID,
+            contract_call_function_name: 'stack-stx',
+            contract_call_function_args: bufferToHex(
+              createClarityValueArray(uintCV(123456), stringAsciiCV('hello'))
+            ),
+          })
+          .addTx({
+            tx_id: txDeploy,
+            block_hash: hex(1),
+            index_block_hash: hex(1),
+            block_time: 1000,
+            burn_block_height: 1,
+            burn_block_time: 1000,
+            tx_index: 1,
+            fee_rate: 50n,
+            type_id: DbTxTypeId.SmartContract,
+            status: DbTxStatus.Success,
+            sender_address: SENDER,
+            smart_contract_contract_id: `${SENDER}.test`,
+            smart_contract_clarity_version: 2,
+            smart_contract_source_code: SOURCE_CODE,
+          })
+          .build()
+      );
+    };
+
+    test('should return 404 for an unknown tx_id', async () => {
+      const response = await api.fastifyApp.inject({
+        method: 'GET',
+        url: `/extended/v3/transactions/${hex(0xdead)}`,
+      });
+      assert.equal(response.statusCode, 404);
+    });
+
+    test('should return a lean response by default — heavy fields omitted', async () => {
+      await seedTxs();
+      const response = await api.fastifyApp.inject({
+        method: 'GET',
+        url: `/extended/v3/transactions/${txCall}`,
+      });
+      assert.equal(response.statusCode, 200);
+      const body = JSON.parse(response.body);
+      assert.equal(body.tx_id, txCall);
+      assert.equal(body.type, 'contract_call');
+      assert.equal(body.contract_call.contract_id, CONTRACT_ID);
+      assert.equal(body.contract_call.function_name, 'stack-stx');
+      // None of the opt-in fields should be present.
+      assert.equal(body.contract_call.function_args, undefined);
+      assert.equal(body.post_conditions, undefined);
+      assert.equal(body.result, undefined);
+    });
+
+    test('should populate function_args, post_conditions, and result when requested', async () => {
+      await seedTxs();
+      const response = await api.fastifyApp.inject({
+        method: 'GET',
+        url: `/extended/v3/transactions/${txCall}`,
+        query: { include: 'function_args,post_conditions,result' },
+      });
+      assert.equal(response.statusCode, 200);
+      const body = JSON.parse(response.body);
+      assert.equal(body.tx_id, txCall);
+      assert.deepEqual(body.contract_call.function_args, [
+        { hex: '0x010000000000000000000000000001e240', repr: 'u123456' },
+        { hex: '0x0d0000000568656c6c6f', repr: '"hello"' },
+      ]);
+      assert.deepEqual(body.post_conditions, []);
+      assert.deepEqual(body.result, { hex: '0x0703', repr: '(ok true)' });
+    });
+
+    test('should populate source_code when requested', async () => {
+      await seedTxs();
+      const response = await api.fastifyApp.inject({
+        method: 'GET',
+        url: `/extended/v3/transactions/${txDeploy}`,
+        query: { include: 'source_code' },
+      });
+      assert.equal(response.statusCode, 200);
+      const body = JSON.parse(response.body);
+      assert.equal(body.tx_id, txDeploy);
+      assert.equal(body.type, 'smart_contract');
+      assert.equal(body.smart_contract.source_code, SOURCE_CODE);
+      // The other heavy fields stay omitted.
+      assert.equal(body.post_conditions, undefined);
+      assert.equal(body.result, undefined);
+    });
+
+    test('should accept the repeated `?include=A&include=B` form', async () => {
+      await seedTxs();
+      const response = await api.fastifyApp.inject({
+        method: 'GET',
+        url: `/extended/v3/transactions/${txCall}`,
+        query: { include: ['result', 'post_conditions'] },
+      });
+      assert.equal(response.statusCode, 200);
+      const body = JSON.parse(response.body);
+      assert.ok(body.result);
+      assert.ok(body.post_conditions);
+      // function_args was not requested → still omitted.
+      assert.equal(body.contract_call.function_args, undefined);
+    });
+
+    test('should reject an unknown include value', async () => {
+      await seedTxs();
+      const response = await api.fastifyApp.inject({
+        method: 'GET',
+        url: `/extended/v3/transactions/${txCall}`,
+        query: { include: 'function_args,events' },
+      });
+      assert.equal(response.statusCode, 400);
+    });
+
+    test('should return 304 when ETag matches and refresh ETag per transaction', async () => {
+      await seedTxs();
+      const first = await api.fastifyApp.inject({
+        method: 'GET',
+        url: `/extended/v3/transactions/${txCall}`,
+      });
+      assert.equal(first.statusCode, 200);
+      const etag = first.headers['etag'];
+      assert.ok(etag, 'expected ETag header to be set');
+
+      // Same ETag returns 304 with an empty body.
+      const cached = await api.fastifyApp.inject({
+        method: 'GET',
+        url: `/extended/v3/transactions/${txCall}`,
+        headers: { 'if-none-match': etag as string },
+      });
+      assert.equal(cached.statusCode, 304);
+      assert.equal(cached.body, '');
+
+      // A stale ETag returns 200 with the current data.
+      const stale = await api.fastifyApp.inject({
+        method: 'GET',
+        url: `/extended/v3/transactions/${txCall}`,
+        headers: { 'if-none-match': '"0xdeadbeef"' },
+      });
+      assert.equal(stale.statusCode, 200);
+      assert.equal(stale.headers['etag'], etag);
+
+      // A different tx_id returns a distinct ETag and does not 304 against txCall's ETag.
+      const otherTx = await api.fastifyApp.inject({
+        method: 'GET',
+        url: `/extended/v3/transactions/${txDeploy}`,
+        headers: { 'if-none-match': etag as string },
+      });
+      assert.equal(otherTx.statusCode, 200);
+      assert.ok(otherTx.headers['etag']);
+      assert.notEqual(otherTx.headers['etag'], etag);
     });
   });
 });
