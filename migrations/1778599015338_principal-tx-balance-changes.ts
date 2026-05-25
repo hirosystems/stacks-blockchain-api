@@ -66,193 +66,223 @@ export function up(pgm: MigrationBuilder) {
     },
   });
 
-  // Create the unique constraint *before* the backfill. Two reasons:
-  //   1. The per-source backfill INSERTs below use ON CONFLICT to merge rows when the same
-  //      (principal, tx, asset) is touched by multiple sources (e.g. the fee payer also
-  //      appears as an STX sender for the same tx). This avoids the single huge UNION ALL
-  //      + GROUP BY across every source table, whose hash aggregate was blowing past
-  //      work_mem and getting cancelled.
-  //   2. (principal, tx_id, index_block_hash, microblock_hash, ...) is a leading prefix of
-  //      what the balance_change_count update at the bottom GROUPs by, so that final
-  //      COUNT(*) UPDATE can use this index instead of a seq scan + hash aggregate.
+  // Unique constraint created before the backfill so each per-source INSERT below can use
+  // ON CONFLICT to merge with rows already produced by earlier sources (e.g. the fee row
+  // for a principal that also appears as an STX event participant).
   pgm.addConstraint(
     'principal_tx_balance_changes',
     'unique_principal_tx_balance_changes',
     'UNIQUE(principal, tx_id, index_block_hash, microblock_hash, asset_type, asset_identifier)'
   );
 
-  // Backfill `principal_tx_balance_changes` from existing event/tx tables. Must mirror the
-  // write path in `PgWriteStore.updatePrincipalTxs`:
-  //   - The tx fee always contributes an STX `sent` row from the fee payer
-  //     (sponsor if sponsored, otherwise the sender).
-  //   - For STX/FT/NFT events, the sender contributes `sent` and the recipient contributes
-  //     `received`. NFT events count tokens moved (1 per event), matching the `numeric`
-  //     `sent`/`received` semantics of this table.
-  // The event-table CHECK constraints guarantee `sender IS NULL` on mints and
-  // `recipient IS NULL` on burns, so the `IS NOT NULL` filters are sufficient — no need to
-  // also gate on `asset_event_type_id`.
+  // Staging table for balance_change_count deltas. Each per-source INSERT captures the
+  // rows it actually created (via the xmax = 0 idiom on its RETURNING set — true for fresh
+  // inserts, false when ON CONFLICT triggered a merge) and writes one partial-count row per
+  // (principal, tx, index_block_hash, microblock_hash) here. A final UPDATE rolls these into
+  // principal_txs.balance_change_count.
   //
-  // Each source is its own INSERT so that the hash aggregate stays bounded by a single
-  // table's cardinality. Within each statement we still GROUP BY so the rows we hand to
-  // Postgres are already unique on the conflict key (Postgres rejects ON CONFLICT DO UPDATE
-  // when the same row is affected twice by a single statement). Across statements,
-  // ON CONFLICT merges sent/received from the prior source.
-  const conflictMerge = `
-    ON CONFLICT ON CONSTRAINT unique_principal_tx_balance_changes DO UPDATE SET
-      sent     = principal_tx_balance_changes.sent     + EXCLUDED.sent,
-      received = principal_tx_balance_changes.received + EXCLUDED.received
+  // Why a staging table instead of either:
+  //   (a) One COUNT(*) over the finished principal_tx_balance_changes (the previous design):
+  //       that aggregate spans billions of rows, its hash exceeds work_mem and spills to
+  //       disk, and the job never finishes.
+  //   (b) Inline UPDATE-per-source against principal_txs: each principal_txs row could be
+  //       touched by up to 7 sources, meaning up to 7 heap rewrites + index updates per row.
+  //       Staging lets the end-of-migration UPDATE touch each row exactly once.
+  //
+  // TEMP + ON COMMIT DROP: no WAL for the staging rows, table is gone when the migration's
+  // transaction commits.
+  pgm.sql(`
+    CREATE TEMP TABLE balance_count_deltas (
+      principal text NOT NULL,
+      tx_id bytea NOT NULL,
+      index_block_hash bytea NOT NULL,
+      microblock_hash bytea NOT NULL,
+      delta integer NOT NULL
+    ) ON COMMIT DROP
+  `);
+
+  // ===== Per-source backfill =====
+  //
+  // Mirrors PgWriteStore.updatePrincipalTxs:
+  //   - Tx fee always contributes an STX `sent` row from the fee payer (sponsor || sender).
+  //   - STX/FT events: sender contributes `sent`, recipient contributes `received`.
+  //   - NFT events count 1 token per event.
+  // Event-table CHECK constraints guarantee sender IS NULL on mints and recipient IS NULL on
+  // burns, so the IS NOT NULL filters are sufficient.
+  //
+  // Each source is its own INSERT so per-statement memory stays bounded by one source table.
+  // The wrapping CTE feeds RETURNING into the deltas staging table — only `is_new` rows
+  // (newly inserted rather than merged via ON CONFLICT) count as +1 toward
+  // balance_change_count.
+  const writeDeltas = (sourceInsert: string) => `
+    WITH ins AS (
+      ${sourceInsert}
+      ON CONFLICT ON CONSTRAINT unique_principal_tx_balance_changes DO UPDATE SET
+        sent     = principal_tx_balance_changes.sent     + EXCLUDED.sent,
+        received = principal_tx_balance_changes.received + EXCLUDED.received
+      RETURNING principal, tx_id, index_block_hash, microblock_hash, (xmax = 0) AS is_new
+    )
+    INSERT INTO balance_count_deltas (principal, tx_id, index_block_hash, microblock_hash, delta)
+    SELECT principal, tx_id, index_block_hash, microblock_hash, COUNT(*)::int
+    FROM ins
+    WHERE is_new
+    GROUP BY principal, tx_id, index_block_hash, microblock_hash
   `;
 
-  // Tx fee paid by sponsor (if sponsored) or sender. One row per tx — no GROUP BY needed.
-  pgm.sql(`
-    INSERT INTO principal_tx_balance_changes (
-      principal, tx_id, block_height, index_block_hash, microblock_hash,
-      microblock_sequence, tx_index, canonical, microblock_canonical,
-      asset_type, asset_identifier, sent, received
-    )
-    SELECT
-      COALESCE(sponsor_address, sender_address),
-      tx_id, block_height, index_block_hash, microblock_hash,
-      microblock_sequence, tx_index, canonical, microblock_canonical,
-      1::smallint, 'stx'::text,
-      fee_rate::numeric, 0::numeric
-    FROM txs
-    ${conflictMerge}
-  `);
+  // Tx fees: one row per tx, no source-side GROUP BY needed.
+  pgm.sql(
+    writeDeltas(`
+      INSERT INTO principal_tx_balance_changes (
+        principal, tx_id, block_height, index_block_hash, microblock_hash,
+        microblock_sequence, tx_index, canonical, microblock_canonical,
+        asset_type, asset_identifier, sent, received
+      )
+      SELECT
+        COALESCE(sponsor_address, sender_address),
+        tx_id, block_height, index_block_hash, microblock_hash,
+        microblock_sequence, tx_index, canonical, microblock_canonical,
+        1::smallint, 'stx'::text,
+        fee_rate::numeric, 0::numeric
+      FROM txs
+    `)
+  );
 
   // STX sender side (transfer + burn).
-  pgm.sql(`
-    INSERT INTO principal_tx_balance_changes (
-      principal, tx_id, block_height, index_block_hash, microblock_hash,
-      microblock_sequence, tx_index, canonical, microblock_canonical,
-      asset_type, asset_identifier, sent, received
-    )
-    SELECT
-      sender,
-      tx_id, block_height, index_block_hash, microblock_hash,
-      microblock_sequence, tx_index, canonical, microblock_canonical,
-      1::smallint, 'stx'::text,
-      SUM(amount)::numeric, 0::numeric
-    FROM stx_events
-    WHERE sender IS NOT NULL
-    GROUP BY sender, tx_id, block_height, index_block_hash, microblock_hash,
-             microblock_sequence, tx_index, canonical, microblock_canonical
-    ${conflictMerge}
-  `);
+  pgm.sql(
+    writeDeltas(`
+      INSERT INTO principal_tx_balance_changes (
+        principal, tx_id, block_height, index_block_hash, microblock_hash,
+        microblock_sequence, tx_index, canonical, microblock_canonical,
+        asset_type, asset_identifier, sent, received
+      )
+      SELECT
+        sender,
+        tx_id, block_height, index_block_hash, microblock_hash,
+        microblock_sequence, tx_index, canonical, microblock_canonical,
+        1::smallint, 'stx'::text,
+        SUM(amount)::numeric, 0::numeric
+      FROM stx_events
+      WHERE sender IS NOT NULL
+      GROUP BY sender, tx_id, block_height, index_block_hash, microblock_hash,
+               microblock_sequence, tx_index, canonical, microblock_canonical
+    `)
+  );
 
   // STX recipient side (transfer + mint).
-  pgm.sql(`
-    INSERT INTO principal_tx_balance_changes (
-      principal, tx_id, block_height, index_block_hash, microblock_hash,
-      microblock_sequence, tx_index, canonical, microblock_canonical,
-      asset_type, asset_identifier, sent, received
-    )
-    SELECT
-      recipient,
-      tx_id, block_height, index_block_hash, microblock_hash,
-      microblock_sequence, tx_index, canonical, microblock_canonical,
-      1::smallint, 'stx'::text,
-      0::numeric, SUM(amount)::numeric
-    FROM stx_events
-    WHERE recipient IS NOT NULL
-    GROUP BY recipient, tx_id, block_height, index_block_hash, microblock_hash,
-             microblock_sequence, tx_index, canonical, microblock_canonical
-    ${conflictMerge}
-  `);
+  pgm.sql(
+    writeDeltas(`
+      INSERT INTO principal_tx_balance_changes (
+        principal, tx_id, block_height, index_block_hash, microblock_hash,
+        microblock_sequence, tx_index, canonical, microblock_canonical,
+        asset_type, asset_identifier, sent, received
+      )
+      SELECT
+        recipient,
+        tx_id, block_height, index_block_hash, microblock_hash,
+        microblock_sequence, tx_index, canonical, microblock_canonical,
+        1::smallint, 'stx'::text,
+        0::numeric, SUM(amount)::numeric
+      FROM stx_events
+      WHERE recipient IS NOT NULL
+      GROUP BY recipient, tx_id, block_height, index_block_hash, microblock_hash,
+               microblock_sequence, tx_index, canonical, microblock_canonical
+    `)
+  );
 
   // FT sender side.
-  pgm.sql(`
-    INSERT INTO principal_tx_balance_changes (
-      principal, tx_id, block_height, index_block_hash, microblock_hash,
-      microblock_sequence, tx_index, canonical, microblock_canonical,
-      asset_type, asset_identifier, sent, received
-    )
-    SELECT
-      sender,
-      tx_id, block_height, index_block_hash, microblock_hash,
-      microblock_sequence, tx_index, canonical, microblock_canonical,
-      2::smallint, asset_identifier,
-      SUM(amount)::numeric, 0::numeric
-    FROM ft_events
-    WHERE sender IS NOT NULL
-    GROUP BY sender, asset_identifier, tx_id, block_height, index_block_hash,
-             microblock_hash, microblock_sequence, tx_index, canonical, microblock_canonical
-    ${conflictMerge}
-  `);
+  pgm.sql(
+    writeDeltas(`
+      INSERT INTO principal_tx_balance_changes (
+        principal, tx_id, block_height, index_block_hash, microblock_hash,
+        microblock_sequence, tx_index, canonical, microblock_canonical,
+        asset_type, asset_identifier, sent, received
+      )
+      SELECT
+        sender,
+        tx_id, block_height, index_block_hash, microblock_hash,
+        microblock_sequence, tx_index, canonical, microblock_canonical,
+        2::smallint, asset_identifier,
+        SUM(amount)::numeric, 0::numeric
+      FROM ft_events
+      WHERE sender IS NOT NULL
+      GROUP BY sender, asset_identifier, tx_id, block_height, index_block_hash,
+               microblock_hash, microblock_sequence, tx_index, canonical, microblock_canonical
+    `)
+  );
 
   // FT recipient side.
-  pgm.sql(`
-    INSERT INTO principal_tx_balance_changes (
-      principal, tx_id, block_height, index_block_hash, microblock_hash,
-      microblock_sequence, tx_index, canonical, microblock_canonical,
-      asset_type, asset_identifier, sent, received
-    )
-    SELECT
-      recipient,
-      tx_id, block_height, index_block_hash, microblock_hash,
-      microblock_sequence, tx_index, canonical, microblock_canonical,
-      2::smallint, asset_identifier,
-      0::numeric, SUM(amount)::numeric
-    FROM ft_events
-    WHERE recipient IS NOT NULL
-    GROUP BY recipient, asset_identifier, tx_id, block_height, index_block_hash,
-             microblock_hash, microblock_sequence, tx_index, canonical, microblock_canonical
-    ${conflictMerge}
-  `);
+  pgm.sql(
+    writeDeltas(`
+      INSERT INTO principal_tx_balance_changes (
+        principal, tx_id, block_height, index_block_hash, microblock_hash,
+        microblock_sequence, tx_index, canonical, microblock_canonical,
+        asset_type, asset_identifier, sent, received
+      )
+      SELECT
+        recipient,
+        tx_id, block_height, index_block_hash, microblock_hash,
+        microblock_sequence, tx_index, canonical, microblock_canonical,
+        2::smallint, asset_identifier,
+        0::numeric, SUM(amount)::numeric
+      FROM ft_events
+      WHERE recipient IS NOT NULL
+      GROUP BY recipient, asset_identifier, tx_id, block_height, index_block_hash,
+               microblock_hash, microblock_sequence, tx_index, canonical, microblock_canonical
+    `)
+  );
 
   // NFT sender side, counted as 1 token per event.
-  pgm.sql(`
-    INSERT INTO principal_tx_balance_changes (
-      principal, tx_id, block_height, index_block_hash, microblock_hash,
-      microblock_sequence, tx_index, canonical, microblock_canonical,
-      asset_type, asset_identifier, sent, received
-    )
-    SELECT
-      sender,
-      tx_id, block_height, index_block_hash, microblock_hash,
-      microblock_sequence, tx_index, canonical, microblock_canonical,
-      3::smallint, asset_identifier,
-      COUNT(*)::numeric, 0::numeric
-    FROM nft_events
-    WHERE sender IS NOT NULL
-    GROUP BY sender, asset_identifier, tx_id, block_height, index_block_hash,
-             microblock_hash, microblock_sequence, tx_index, canonical, microblock_canonical
-    ${conflictMerge}
-  `);
+  pgm.sql(
+    writeDeltas(`
+      INSERT INTO principal_tx_balance_changes (
+        principal, tx_id, block_height, index_block_hash, microblock_hash,
+        microblock_sequence, tx_index, canonical, microblock_canonical,
+        asset_type, asset_identifier, sent, received
+      )
+      SELECT
+        sender,
+        tx_id, block_height, index_block_hash, microblock_hash,
+        microblock_sequence, tx_index, canonical, microblock_canonical,
+        3::smallint, asset_identifier,
+        COUNT(*)::numeric, 0::numeric
+      FROM nft_events
+      WHERE sender IS NOT NULL
+      GROUP BY sender, asset_identifier, tx_id, block_height, index_block_hash,
+               microblock_hash, microblock_sequence, tx_index, canonical, microblock_canonical
+    `)
+  );
 
   // NFT recipient side, counted as 1 token per event.
-  pgm.sql(`
-    INSERT INTO principal_tx_balance_changes (
-      principal, tx_id, block_height, index_block_hash, microblock_hash,
-      microblock_sequence, tx_index, canonical, microblock_canonical,
-      asset_type, asset_identifier, sent, received
-    )
-    SELECT
-      recipient,
-      tx_id, block_height, index_block_hash, microblock_hash,
-      microblock_sequence, tx_index, canonical, microblock_canonical,
-      3::smallint, asset_identifier,
-      0::numeric, COUNT(*)::numeric
-    FROM nft_events
-    WHERE recipient IS NOT NULL
-    GROUP BY recipient, asset_identifier, tx_id, block_height, index_block_hash,
-             microblock_hash, microblock_sequence, tx_index, canonical, microblock_canonical
-    ${conflictMerge}
-  `);
+  pgm.sql(
+    writeDeltas(`
+      INSERT INTO principal_tx_balance_changes (
+        principal, tx_id, block_height, index_block_hash, microblock_hash,
+        microblock_sequence, tx_index, canonical, microblock_canonical,
+        asset_type, asset_identifier, sent, received
+      )
+      SELECT
+        recipient,
+        tx_id, block_height, index_block_hash, microblock_hash,
+        microblock_sequence, tx_index, canonical, microblock_canonical,
+        3::smallint, asset_identifier,
+        0::numeric, COUNT(*)::numeric
+      FROM nft_events
+      WHERE recipient IS NOT NULL
+      GROUP BY recipient, asset_identifier, tx_id, block_height, index_block_hash,
+               microblock_hash, microblock_sequence, tx_index, canonical, microblock_canonical
+    `)
+  );
 
-  // Refresh stats so the planner picks the unique index for the COUNT(*) below instead of
-  // falling back to a seq scan based on stale (empty-table) statistics.
-  pgm.sql(`ANALYZE principal_tx_balance_changes`);
-
-  // Backfill `principal_txs.balance_change_count` from the rows just inserted. The GROUP BY
-  // columns are the leading prefix of `unique_principal_tx_balance_changes`, so the planner
-  // can satisfy the aggregate via that index (sort/group rather than seq scan + hash). The
-  // join target's `principal_txs_unique` covers the same key on the UPDATE side.
+  // Roll the staged deltas into principal_txs.balance_change_count. The deltas table holds
+  // at most one row per (source, principal, tx, block, mblock) — orders of magnitude smaller
+  // than principal_tx_balance_changes itself — so the SUM aggregation is bounded and the
+  // join lookups hit principal_txs_unique directly. This is the work that the previous
+  // COUNT(*) over the full balance_changes table tried (and failed) to do.
   pgm.sql(`
     WITH counts AS (
       SELECT principal, tx_id, index_block_hash, microblock_hash,
-             COUNT(*)::integer AS cnt
-      FROM principal_tx_balance_changes
+             SUM(delta)::int AS cnt
+      FROM balance_count_deltas
       GROUP BY principal, tx_id, index_block_hash, microblock_hash
     )
     UPDATE principal_txs AS pt
@@ -261,7 +291,7 @@ export function up(pgm: MigrationBuilder) {
     WHERE pt.principal        = c.principal
       AND pt.tx_id            = c.tx_id
       AND pt.index_block_hash = c.index_block_hash
-      AND pt.microblock_hash  = c.microblock_hash;
+      AND pt.microblock_hash  = c.microblock_hash
   `);
 
   pgm.createIndex('principal_tx_balance_changes', 'tx_id');
