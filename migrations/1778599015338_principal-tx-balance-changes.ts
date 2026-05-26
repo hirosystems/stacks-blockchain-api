@@ -273,21 +273,38 @@ export function up(pgm: MigrationBuilder) {
     `)
   );
 
-  // Roll the staged deltas into principal_txs.balance_change_count. The deltas table holds
-  // at most one row per (source, principal, tx, block, mblock) — orders of magnitude smaller
-  // than principal_tx_balance_changes itself — so the SUM aggregation is bounded and the
-  // join lookups hit principal_txs_unique directly. This is the work that the previous
-  // COUNT(*) over the full balance_changes table tried (and failed) to do.
+  // Materialize the aggregated counts into a separate, indexed temp table BEFORE running
+  // the UPDATE. This splits "aggregate" from "join + update" so each step gets a clean plan:
+  //   1. SUM / GROUP BY runs once as a standalone scan of balance_count_deltas into
+  //      balance_count_final. The result is one row per UPDATE target — orders of magnitude
+  //      smaller than balance_count_deltas itself.
+  //   2. The wrapping UPDATE then has an indexed driver on its left side, so the planner
+  //      can pick a merge join or index nested loop along `principal_txs_unique` (which
+  //      covers exactly this key) instead of hash-joining principal_txs — a multi-billion-
+  //      row table — against an unindexed CTE. That converts random heap probes across all
+  //      of principal_txs into ordered ones, which is the fix for the DataFileRead-bound
+  //      UPDATE that took >24h on the prior attempt.
   pgm.sql(`
-    WITH counts AS (
-      SELECT principal, tx_id, index_block_hash, microblock_hash,
-             SUM(delta)::int AS cnt
-      FROM balance_count_deltas
-      GROUP BY principal, tx_id, index_block_hash, microblock_hash
-    )
+    CREATE TEMP TABLE balance_count_final ON COMMIT DROP AS
+    SELECT principal, tx_id, index_block_hash, microblock_hash,
+           SUM(delta)::int AS cnt
+    FROM balance_count_deltas
+    GROUP BY principal, tx_id, index_block_hash, microblock_hash
+  `);
+  // The deltas staging table is no longer needed and is the larger of the two; drop it now
+  // to free temp space and reduce buffer-cache pressure during the UPDATE.
+  pgm.sql(`DROP TABLE balance_count_deltas`);
+
+  pgm.sql(`
+    CREATE INDEX ON balance_count_final
+      (principal, tx_id, index_block_hash, microblock_hash)
+  `);
+  pgm.sql(`ANALYZE balance_count_final`);
+
+  pgm.sql(`
     UPDATE principal_txs AS pt
     SET balance_change_count = c.cnt
-    FROM counts AS c
+    FROM balance_count_final AS c
     WHERE pt.principal        = c.principal
       AND pt.tx_id            = c.tx_id
       AND pt.index_block_hash = c.index_block_hash
