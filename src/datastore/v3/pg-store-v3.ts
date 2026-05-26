@@ -19,6 +19,8 @@ import { normalizeHashString } from '../../helpers.js';
 import { BlockIdParam } from '../../api/routes/v2/schemas.js';
 import { InvalidRequestError, InvalidRequestErrorType } from '../../errors.js';
 import { TransactionIncludeField } from '../../api/schemas/v3/entities/transactions.js';
+import type { TransactionCursor } from '../../api/schemas/v3/cursors.js';
+import { encodeTransactionCursor, resolveTransactionCursor } from './helpers.js';
 
 export class PgStoreV3 extends BasePgStoreModule {
   /**
@@ -28,19 +30,27 @@ export class PgStoreV3 extends BasePgStoreModule {
    */
   async getTransactionSummaries(args: {
     limit: number;
-    cursor?: string;
+    cursor?: TransactionCursor;
   }): Promise<DbCursorPaginatedResult<DbTransactionSummary>> {
     return await this.sqlTransaction(async sql => {
       let cursorFilter = sql``;
       if (args.cursor) {
-        const parts = args.cursor.split(':');
-        const [blockHeightStr, microblockSequenceStr, txIndexStr] = parts;
-        const blockHeight = parseInt(blockHeightStr, 10);
-        const microblockSequence = parseInt(microblockSequenceStr, 10);
-        const txIndex = parseInt(txIndexStr, 10);
+        const cursor = await resolveTransactionCursor(args.cursor, async cursor => {
+          const exactCursorQuery = await sql<{ exists: boolean }[]>`
+            SELECT EXISTS (
+              SELECT 1
+              FROM txs
+              WHERE canonical = true
+                AND microblock_canonical = true
+                AND (block_height, microblock_sequence, tx_index)
+                    = (${cursor.block_height}, ${cursor.microblock_sequence}, ${cursor.tx_index})
+            ) AS exists
+          `;
+          return exactCursorQuery[0]?.exists ?? false;
+        });
         cursorFilter = sql`
           AND (block_height, microblock_sequence, tx_index)
-              <= (${blockHeight}, ${microblockSequence}, ${txIndex})
+              <= (${cursor.block_height}, ${cursor.microblock_sequence}, ${cursor.tx_index})
         `;
       }
       const resultQuery = await sql<
@@ -62,15 +72,10 @@ export class PgStoreV3 extends BasePgStoreModule {
       const total = resultQuery.count > 0 ? resultQuery[0].total : 0;
 
       const nextResult = resultQuery[resultQuery.length - 1];
-      const nextCursor =
-        hasNextPage && nextResult
-          ? `${nextResult.block_height}:${nextResult.microblock_sequence}:${nextResult.tx_index}`
-          : null;
+      const nextCursor = hasNextPage && nextResult ? encodeTransactionCursor(nextResult) : null;
 
       const firstResult = results[0];
-      const currentCursor = firstResult
-        ? `${firstResult.block_height}:${firstResult.microblock_sequence}:${firstResult.tx_index}`
-        : null;
+      const currentCursor = firstResult ? encodeTransactionCursor(firstResult) : null;
 
       let prevCursor: string | null = null;
       if (firstResult) {
@@ -88,12 +93,11 @@ export class PgStoreV3 extends BasePgStoreModule {
                   ${firstResult.tx_index}
                 )
           ORDER BY block_height ASC, microblock_sequence ASC, tx_index ASC
-          OFFSET ${args.limit - 1}
-          LIMIT 1
+          LIMIT ${args.limit}
         `;
         if (prevPageQuery.length > 0) {
-          const prevPage = prevPageQuery[0];
-          prevCursor = `${prevPage.block_height}:${prevPage.microblock_sequence}:${prevPage.tx_index}`;
+          const prevPage = prevPageQuery[prevPageQuery.length - 1];
+          prevCursor = encodeTransactionCursor(prevPage);
         }
       }
 
@@ -117,19 +121,28 @@ export class PgStoreV3 extends BasePgStoreModule {
   async getPrincipalTransactionSummaries(args: {
     principal: Principal;
     limit: number;
-    cursor?: string;
+    cursor?: TransactionCursor;
   }): Promise<DbCursorPaginatedResult<DbPrincipalTransactionSummary>> {
     return await this.sqlTransaction(async sql => {
       let cursorFilter = sql``;
       if (args.cursor) {
-        const parts = args.cursor.split(':');
-        const [blockHeightStr, microblockSequenceStr, txIndexStr] = parts;
-        const blockHeight = parseInt(blockHeightStr, 10);
-        const microblockSequence = parseInt(microblockSequenceStr, 10);
-        const txIndex = parseInt(txIndexStr, 10);
+        const cursor = await resolveTransactionCursor(args.cursor, async cursor => {
+          const exactCursorQuery = await sql<{ exists: boolean }[]>`
+            SELECT EXISTS (
+              SELECT 1
+              FROM principal_txs
+              WHERE canonical = true
+                AND microblock_canonical = true
+                AND principal = ${args.principal}
+                AND (block_height, microblock_sequence, tx_index)
+                    = (${cursor.block_height}, ${cursor.microblock_sequence}, ${cursor.tx_index})
+            ) AS exists
+          `;
+          return exactCursorQuery[0]?.exists ?? false;
+        });
         cursorFilter = sql`
           AND (block_height, microblock_sequence, tx_index)
-              <= (${blockHeight}, ${microblockSequence}, ${txIndex})
+              <= (${cursor.block_height}, ${cursor.microblock_sequence}, ${cursor.tx_index})
         `;
       }
       const resultQuery = await sql<
@@ -182,15 +195,10 @@ export class PgStoreV3 extends BasePgStoreModule {
       const total = resultQuery.count > 0 ? resultQuery[0].total : 0;
 
       const nextResult = resultQuery[resultQuery.length - 1];
-      const nextCursor =
-        hasNextPage && nextResult
-          ? `${nextResult.block_height}:${nextResult.microblock_sequence}:${nextResult.tx_index}`
-          : null;
+      const nextCursor = hasNextPage && nextResult ? encodeTransactionCursor(nextResult) : null;
 
       const firstResult = results[0];
-      const currentCursor = firstResult
-        ? `${firstResult.block_height}:${firstResult.microblock_sequence}:${firstResult.tx_index}`
-        : null;
+      const currentCursor = firstResult ? encodeTransactionCursor(firstResult) : null;
 
       let prevCursor: string | null = null;
       if (firstResult) {
@@ -209,12 +217,11 @@ export class PgStoreV3 extends BasePgStoreModule {
                   ${firstResult.tx_index}
                 )
           ORDER BY block_height ASC, microblock_sequence ASC, tx_index ASC
-          OFFSET ${args.limit - 1}
-          LIMIT 1
+          LIMIT ${args.limit}
         `;
         if (prevPageQuery.length > 0) {
-          const prevPage = prevPageQuery[0];
-          prevCursor = `${prevPage.block_height}:${prevPage.microblock_sequence}:${prevPage.tx_index}`;
+          const prevPage = prevPageQuery[prevPageQuery.length - 1];
+          prevCursor = encodeTransactionCursor(prevPage);
         }
       }
 
@@ -278,11 +285,12 @@ export class PgStoreV3 extends BasePgStoreModule {
           WHERE pruned = false
             AND (receipt_time, tx_id) > (${firstResult.receipt_time}, ${firstResult.tx_id})
           ORDER BY receipt_time ASC, tx_id ASC
-          OFFSET ${args.limit - 1}
-          LIMIT 1
+          LIMIT ${args.limit}
         `;
         prevCursor =
-          prevPageQuery.length > 0 ? encodeMempoolTxSummaryCursor(prevPageQuery[0]) : null;
+          prevPageQuery.length > 0
+            ? encodeMempoolTxSummaryCursor(prevPageQuery[prevPageQuery.length - 1])
+            : null;
       }
 
       return {
@@ -305,7 +313,7 @@ export class PgStoreV3 extends BasePgStoreModule {
   async getBlockTransactionSummaries(args: {
     block: BlockIdParam;
     limit: number;
-    cursor?: string;
+    cursor?: TransactionCursor;
   }): Promise<DbCursorPaginatedResult<DbTransactionSummary>> {
     return await this.sqlTransaction(async sql => {
       const blockFilter =
@@ -332,14 +340,23 @@ export class PgStoreV3 extends BasePgStoreModule {
 
       let cursorFilter = sql``;
       if (args.cursor) {
-        const parts = args.cursor.split(':');
-        const [blockHeightStr, microblockSequenceStr, txIndexStr] = parts;
-        const blockHeight = parseInt(blockHeightStr, 10);
-        const microblockSequence = parseInt(microblockSequenceStr, 10);
-        const txIndex = parseInt(txIndexStr, 10);
+        const cursor = await resolveTransactionCursor(args.cursor, async cursor => {
+          const exactCursorQuery = await sql<{ exists: boolean }[]>`
+            SELECT EXISTS (
+              SELECT 1
+              FROM txs
+              WHERE canonical = true
+                AND microblock_canonical = true
+                AND index_block_hash = ${index_block_hash}
+                AND (block_height, microblock_sequence, tx_index)
+                    = (${cursor.block_height}, ${cursor.microblock_sequence}, ${cursor.tx_index})
+            ) AS exists
+          `;
+          return exactCursorQuery[0]?.exists ?? false;
+        });
         cursorFilter = sql`
           AND (block_height, microblock_sequence, tx_index)
-              <= (${blockHeight}, ${microblockSequence}, ${txIndex})
+              <= (${cursor.block_height}, ${cursor.microblock_sequence}, ${cursor.tx_index})
         `;
       }
 
@@ -358,15 +375,10 @@ export class PgStoreV3 extends BasePgStoreModule {
       const results = hasNextPage ? resultQuery.slice(0, args.limit) : resultQuery;
 
       const nextResult = resultQuery[resultQuery.length - 1];
-      const nextCursor =
-        hasNextPage && nextResult
-          ? `${nextResult.block_height}:${nextResult.microblock_sequence}:${nextResult.tx_index}`
-          : null;
+      const nextCursor = hasNextPage && nextResult ? encodeTransactionCursor(nextResult) : null;
 
       const firstResult = results[0];
-      const currentCursor = firstResult
-        ? `${firstResult.block_height}:${firstResult.microblock_sequence}:${firstResult.tx_index}`
-        : null;
+      const currentCursor = firstResult ? encodeTransactionCursor(firstResult) : null;
 
       let prevCursor: string | null = null;
       if (firstResult) {
@@ -385,12 +397,11 @@ export class PgStoreV3 extends BasePgStoreModule {
                   ${firstResult.tx_index}
                 )
           ORDER BY block_height ASC, microblock_sequence ASC, tx_index ASC
-          OFFSET ${args.limit - 1}
-          LIMIT 1
+          LIMIT ${args.limit}
         `;
         if (prevPageQuery.length > 0) {
-          const prevPage = prevPageQuery[0];
-          prevCursor = `${prevPage.block_height}:${prevPage.microblock_sequence}:${prevPage.tx_index}`;
+          const prevPage = prevPageQuery[prevPageQuery.length - 1];
+          prevCursor = encodeTransactionCursor(prevPage);
         }
       }
 
