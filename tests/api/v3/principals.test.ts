@@ -7,6 +7,7 @@ import * as assert from 'node:assert/strict';
 import { TestBlockBuilder } from '../test-builders.ts';
 import { DbTxStatus, DbTxTypeId } from '../../../src/datastore/common.ts';
 import { hex } from '../test-helpers.ts';
+import { I32_MAX } from '../../../src/helpers.ts';
 
 describe('principals', () => {
   let db: PgWriteStore;
@@ -313,6 +314,67 @@ describe('principals', () => {
         next: '8:0:4',
         previous: '10:0:4',
         current: '9:0:4',
+      });
+
+      // Fetch a partial page that has fewer than `limit` newer rows. The previous
+      // cursor should still point back to the first available row.
+      const partialPreviousPage = await api.fastifyApp.inject({
+        method: 'GET',
+        url: `/extended/v3/principals/${emptyPrincipal}/transactions`,
+        query: {
+          limit: '5',
+          cursor: '12:0:2',
+        },
+      });
+      assert.equal(partialPreviousPage.statusCode, 200);
+      const partialPreviousBody = JSON.parse(partialPreviousPage.body);
+      assert.equal(partialPreviousBody.results.length, 5);
+      assert.deepEqual(partialPreviousBody.cursor, {
+        next: '11:0:2',
+        previous: '12:0:4',
+        current: '12:0:2',
+      });
+    });
+
+    test('should allow block-boundary cursors for anchored transactions', async () => {
+      await db.update(
+        new TestBlockBuilder({
+          block_height: 3,
+          block_hash: hex(3),
+          index_block_hash: hex(3),
+          parent_index_block_hash: hex(2),
+          parent_block_hash: hex(2),
+        })
+          .addTx({
+            tx_id: hex(0x3001),
+            block_hash: hex(3),
+            index_block_hash: hex(3),
+            block_time: 3000,
+            burn_block_height: 3,
+            burn_block_time: 3000,
+            tx_index: 0,
+            microblock_sequence: I32_MAX,
+            sender_address: emptyPrincipal,
+          })
+          .build()
+      );
+
+      const response = await api.fastifyApp.inject({
+        method: 'GET',
+        url: `/extended/v3/principals/${emptyPrincipal}/transactions`,
+        query: {
+          limit: '1',
+          cursor: '3:0:0',
+        },
+      });
+      assert.equal(response.statusCode, 200);
+      const body = JSON.parse(response.body);
+      assert.equal(body.results.length, 1);
+      assert.equal(body.results[0].transaction.tx_id, hex(0x3001));
+      assert.deepEqual(body.cursor, {
+        next: null,
+        previous: null,
+        current: `3:${I32_MAX}:0`,
       });
     });
 

@@ -9,6 +9,7 @@ import { DbTxStatus, DbTxTypeId } from '../../../src/datastore/common.ts';
 import { stringAsciiCV, uintCV } from '@stacks/transactions';
 import { bufferToHex } from '@stacks/api-toolkit';
 import { hex } from '../test-helpers.ts';
+import { I32_MAX } from '../../../src/helpers.ts';
 
 describe('transactions', () => {
   let db: PgWriteStore;
@@ -221,6 +222,40 @@ describe('transactions', () => {
         next: '8:0:4',
         previous: '10:0:4',
         current: '9:0:4',
+      });
+    });
+
+    test('should allow block-boundary cursors for anchored transactions', async () => {
+      await db.update(
+        new TestBlockBuilder({
+          block_height: 1,
+          index_block_hash: hex(1),
+          parent_index_block_hash: hex(0),
+          parent_block_hash: hex(0),
+        })
+          .addTx({
+            tx_id: hex(0x1001),
+            microblock_sequence: I32_MAX,
+          })
+          .build()
+      );
+
+      const response = await api.fastifyApp.inject({
+        method: 'GET',
+        url: '/extended/v3/transactions',
+        query: {
+          limit: '1',
+          cursor: '1:0:0',
+        },
+      });
+      assert.equal(response.statusCode, 200);
+      const body = JSON.parse(response.body);
+      assert.equal(body.results.length, 1);
+      assert.equal(body.results[0].tx_id, hex(0x1001));
+      assert.deepEqual(body.cursor, {
+        next: null,
+        previous: null,
+        current: `1:${I32_MAX}:0`,
       });
     });
 
