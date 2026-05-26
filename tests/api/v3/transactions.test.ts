@@ -259,6 +259,46 @@ describe('transactions', () => {
       });
     });
 
+    test('should preserve exact height:0:0 transaction cursors', async () => {
+      await db.update(
+        new TestBlockBuilder({
+          block_height: 1,
+          index_block_hash: hex(1),
+          parent_index_block_hash: hex(0),
+          parent_block_hash: hex(0),
+        })
+          .addTx({
+            tx_id: hex(0x1001),
+            tx_index: 0,
+            microblock_sequence: 0,
+          })
+          .addTx({
+            tx_id: hex(0x1002),
+            tx_index: 1,
+            microblock_sequence: I32_MAX,
+          })
+          .build()
+      );
+
+      const response = await api.fastifyApp.inject({
+        method: 'GET',
+        url: '/extended/v3/transactions',
+        query: {
+          limit: '1',
+          cursor: '1:0:0',
+        },
+      });
+      assert.equal(response.statusCode, 200);
+      const body = JSON.parse(response.body);
+      assert.equal(body.results.length, 1);
+      assert.equal(body.results[0].tx_id, hex(0x1001));
+      assert.deepEqual(body.cursor, {
+        next: null,
+        previous: `1:${I32_MAX}:1`,
+        current: '1:0:0',
+      });
+    });
+
     test('should return 304 when ETag matches and refresh ETag when chain tip changes', async () => {
       await db.update(
         new TestBlockBuilder({

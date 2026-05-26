@@ -378,6 +378,59 @@ describe('principals', () => {
       });
     });
 
+    test('should preserve exact height:0:0 transaction cursors', async () => {
+      await db.update(
+        new TestBlockBuilder({
+          block_height: 3,
+          block_hash: hex(3),
+          index_block_hash: hex(3),
+          parent_index_block_hash: hex(2),
+          parent_block_hash: hex(2),
+        })
+          .addTx({
+            tx_id: hex(0x3001),
+            block_hash: hex(3),
+            index_block_hash: hex(3),
+            block_time: 3000,
+            burn_block_height: 3,
+            burn_block_time: 3000,
+            tx_index: 0,
+            microblock_sequence: 0,
+            sender_address: emptyPrincipal,
+          })
+          .addTx({
+            tx_id: hex(0x3002),
+            block_hash: hex(3),
+            index_block_hash: hex(3),
+            block_time: 3000,
+            burn_block_height: 3,
+            burn_block_time: 3000,
+            tx_index: 1,
+            microblock_sequence: I32_MAX,
+            sender_address: emptyPrincipal,
+          })
+          .build()
+      );
+
+      const response = await api.fastifyApp.inject({
+        method: 'GET',
+        url: `/extended/v3/principals/${emptyPrincipal}/transactions`,
+        query: {
+          limit: '1',
+          cursor: '3:0:0',
+        },
+      });
+      assert.equal(response.statusCode, 200);
+      const body = JSON.parse(response.body);
+      assert.equal(body.results.length, 1);
+      assert.equal(body.results[0].transaction.tx_id, hex(0x3001));
+      assert.deepEqual(body.cursor, {
+        next: null,
+        previous: `3:${I32_MAX}:1`,
+        current: '3:0:0',
+      });
+    });
+
     test('should return 304 when ETag matches and refresh ETag on new principal activity', async () => {
       // testAddr1 has confirmed activity from the setup, so the principal cache is populated.
       const first = await api.fastifyApp.inject({
