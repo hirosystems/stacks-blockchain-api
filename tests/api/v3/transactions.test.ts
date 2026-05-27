@@ -91,7 +91,7 @@ describe('transactions', () => {
             sender_address: 'SP466FNC0P7JWTNM2R9T199QRZN1MYEDTAR0KP27',
             token_transfer_recipient_address: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
             token_transfer_amount: 100n,
-            token_transfer_memo: '0x',
+            token_transfer_memo: '0x0d0000000568656c6c6f',
           })
           .build()
       );
@@ -132,7 +132,10 @@ describe('transactions', () => {
         token_transfer: {
           recipient: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
           amount: '100',
-          memo: '0x',
+          memo: {
+            hex: '0x0d0000000568656c6c6f',
+            repr: '"hello"',
+          },
         },
       });
       assert.deepEqual(body.results[1], {
