@@ -1,5 +1,6 @@
 import { Static, Type } from '@sinclair/typebox';
 import { Nullable } from '../../v1/util.js';
+import { DecodedClarityValueSchema } from './common.js';
 
 export const TransactionSenderSchema = Type.Object({
   address: Type.String({
@@ -87,12 +88,7 @@ export const TokenTransferTransactionSummarySchema = Type.Composite(
         amount: Type.String({
           description: 'Transfer amount as Integer string (64-bit unsigned integer)',
         }),
-        memo: Nullable(
-          Type.String({
-            description:
-              'Hex encoded arbitrary message, up to 34 bytes length (should try decoding to an ASCII string)',
-          })
-        ),
+        memo: Nullable(DecodedClarityValueSchema),
       }),
     }),
   ],

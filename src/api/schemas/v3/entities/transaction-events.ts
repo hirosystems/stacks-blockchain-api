@@ -9,13 +9,6 @@ import {
 } from './common.js';
 import { Nullable } from '../../v1/util.js';
 
-export const TokenTransactionEventTypeSchema = Type.Union([
-  Type.Literal('transfer'),
-  Type.Literal('mint'),
-  Type.Literal('burn'),
-]);
-export type TokenTransactionEventType = Static<typeof TokenTransactionEventTypeSchema>;
-
 const BaseTransactionEventSchema = Type.Object({
   event_index: Type.Integer(),
 });
@@ -50,55 +43,85 @@ const StxTransactionEventSchema = Type.Composite([
   BaseTransactionEventSchema,
   Type.Object({
     type: Type.Literal('stx_asset'),
-    stx_asset: Type.Object({
-      type: TokenTransactionEventTypeSchema,
-      sender: PrincipalSchema,
-      recipient: PrincipalSchema,
-      amount: AmountSchema,
-      memo: Nullable(DecodedClarityValueSchema),
-    }),
+    stx_asset: Type.Union([
+      Type.Object({
+        type: Type.Literal('transfer'),
+        sender: PrincipalSchema,
+        recipient: PrincipalSchema,
+        amount: AmountSchema,
+        memo: Nullable(DecodedClarityValueSchema),
+      }),
+      Type.Object({
+        type: Type.Literal('mint'),
+        recipient: PrincipalSchema,
+        amount: AmountSchema,
+      }),
+      Type.Object({
+        type: Type.Literal('burn'),
+        sender: PrincipalSchema,
+        amount: AmountSchema,
+      }),
+    ]),
   }),
 ]);
 export type StxTransactionEvent = Static<typeof StxTransactionEventSchema>;
 
-export const FtTransactionEventSchema = Type.Composite(
-  [
-    BaseTransactionEventSchema,
-    Type.Object({
-      type: Type.Literal('ft_asset'),
-      ft_asset: Type.Object({
-        type: TokenTransactionEventTypeSchema,
+export const FtTransactionEventSchema = Type.Composite([
+  BaseTransactionEventSchema,
+  Type.Object({
+    type: Type.Literal('ft_asset'),
+    ft_asset: Type.Union([
+      Type.Object({
+        type: Type.Literal('transfer'),
         asset_identifier: AssetIdentifierSchema,
         sender: PrincipalSchema,
         recipient: PrincipalSchema,
         amount: AmountSchema,
       }),
-    }),
-  ],
-  {
-    title: 'FtTransactionEvent',
-  }
-);
+      Type.Object({
+        type: Type.Literal('mint'),
+        recipient: PrincipalSchema,
+        asset_identifier: AssetIdentifierSchema,
+        amount: AmountSchema,
+      }),
+      Type.Object({
+        type: Type.Literal('burn'),
+        sender: PrincipalSchema,
+        asset_identifier: AssetIdentifierSchema,
+        amount: AmountSchema,
+      }),
+    ]),
+  }),
+]);
 export type FtTransactionEvent = Static<typeof FtTransactionEventSchema>;
 
-export const NftTransactionEventSchema = Type.Composite(
-  [
-    BaseTransactionEventSchema,
-    Type.Object({
-      type: Type.Literal('nft_asset'),
-      nft_asset: Type.Object({
-        type: TokenTransactionEventTypeSchema,
+export const NftTransactionEventSchema = Type.Composite([
+  BaseTransactionEventSchema,
+  Type.Object({
+    type: Type.Literal('nft_asset'),
+    nft_asset: Type.Union([
+      Type.Object({
+        type: Type.Literal('transfer'),
         asset_identifier: AssetIdentifierSchema,
         sender: PrincipalSchema,
         recipient: PrincipalSchema,
         value: DecodedClarityValueSchema,
       }),
-    }),
-  ],
-  {
-    title: 'NftTransactionEvent',
-  }
-);
+      Type.Object({
+        type: Type.Literal('mint'),
+        recipient: PrincipalSchema,
+        asset_identifier: AssetIdentifierSchema,
+        value: DecodedClarityValueSchema,
+      }),
+      Type.Object({
+        type: Type.Literal('burn'),
+        sender: PrincipalSchema,
+        asset_identifier: AssetIdentifierSchema,
+        value: DecodedClarityValueSchema,
+      }),
+    ]),
+  }),
+]);
 export type NftTransactionEvent = Static<typeof NftTransactionEventSchema>;
 
 export const TransactionEventSchema = Type.Union([
