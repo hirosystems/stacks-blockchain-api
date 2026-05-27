@@ -6,6 +6,7 @@ import {
   DbPrincipalTransactionBalanceChange,
   DbPrincipalTransactionSummary,
   DbTransaction,
+  DbTransactionEvent,
   DbTransactionSummary,
 } from './types.js';
 import {
@@ -21,6 +22,9 @@ import { normalizeHashString } from '../../helpers.js';
 import { BlockIdParam } from '../../api/routes/v2/schemas.js';
 import { InvalidRequestError, InvalidRequestErrorType } from '../../errors.js';
 import { TransactionIncludeField } from '../../api/schemas/v3/entities/transactions.js';
+import type { TransactionCursor, TransactionEventCursor } from '../../api/schemas/v3/cursors.js';
+import { encodeTransactionCursor, resolveTransactionCursor } from './helpers.js';
+import { DbEventTypeId } from '../common.js';
 
 export class PgStoreV3 extends BasePgStoreModule {
   /**
@@ -30,19 +34,27 @@ export class PgStoreV3 extends BasePgStoreModule {
    */
   async getTransactionSummaries(args: {
     limit: number;
-    cursor?: string;
+    cursor?: TransactionCursor;
   }): Promise<DbCursorPaginatedResult<DbTransactionSummary>> {
     return await this.sqlTransaction(async sql => {
       let cursorFilter = sql``;
       if (args.cursor) {
-        const parts = args.cursor.split(':');
-        const [blockHeightStr, microblockSequenceStr, txIndexStr] = parts;
-        const blockHeight = parseInt(blockHeightStr, 10);
-        const microblockSequence = parseInt(microblockSequenceStr, 10);
-        const txIndex = parseInt(txIndexStr, 10);
+        const cursor = await resolveTransactionCursor(args.cursor, async cursor => {
+          const exactCursorQuery = await sql<{ exists: boolean }[]>`
+            SELECT EXISTS (
+              SELECT 1
+              FROM txs
+              WHERE canonical = true
+                AND microblock_canonical = true
+                AND (block_height, microblock_sequence, tx_index)
+                    = (${cursor.block_height}, ${cursor.microblock_sequence}, ${cursor.tx_index})
+            ) AS exists
+          `;
+          return exactCursorQuery[0]?.exists ?? false;
+        });
         cursorFilter = sql`
           AND (block_height, microblock_sequence, tx_index)
-              <= (${blockHeight}, ${microblockSequence}, ${txIndex})
+              <= (${cursor.block_height}, ${cursor.microblock_sequence}, ${cursor.tx_index})
         `;
       }
       const resultQuery = await sql<
@@ -64,15 +76,10 @@ export class PgStoreV3 extends BasePgStoreModule {
       const total = resultQuery.count > 0 ? resultQuery[0].total : 0;
 
       const nextResult = resultQuery[resultQuery.length - 1];
-      const nextCursor =
-        hasNextPage && nextResult
-          ? `${nextResult.block_height}:${nextResult.microblock_sequence}:${nextResult.tx_index}`
-          : null;
+      const nextCursor = hasNextPage && nextResult ? encodeTransactionCursor(nextResult) : null;
 
       const firstResult = results[0];
-      const currentCursor = firstResult
-        ? `${firstResult.block_height}:${firstResult.microblock_sequence}:${firstResult.tx_index}`
-        : null;
+      const currentCursor = firstResult ? encodeTransactionCursor(firstResult) : null;
 
       let prevCursor: string | null = null;
       if (firstResult) {
@@ -90,12 +97,11 @@ export class PgStoreV3 extends BasePgStoreModule {
                   ${firstResult.tx_index}
                 )
           ORDER BY block_height ASC, microblock_sequence ASC, tx_index ASC
-          OFFSET ${args.limit - 1}
-          LIMIT 1
+          LIMIT ${args.limit}
         `;
         if (prevPageQuery.length > 0) {
-          const prevPage = prevPageQuery[0];
-          prevCursor = `${prevPage.block_height}:${prevPage.microblock_sequence}:${prevPage.tx_index}`;
+          const prevPage = prevPageQuery[prevPageQuery.length - 1];
+          prevCursor = encodeTransactionCursor(prevPage);
         }
       }
 
@@ -119,19 +125,28 @@ export class PgStoreV3 extends BasePgStoreModule {
   async getPrincipalTransactionSummaries(args: {
     principal: Principal;
     limit: number;
-    cursor?: string;
+    cursor?: TransactionCursor;
   }): Promise<DbCursorPaginatedResult<DbPrincipalTransactionSummary>> {
     return await this.sqlTransaction(async sql => {
       let cursorFilter = sql``;
       if (args.cursor) {
-        const parts = args.cursor.split(':');
-        const [blockHeightStr, microblockSequenceStr, txIndexStr] = parts;
-        const blockHeight = parseInt(blockHeightStr, 10);
-        const microblockSequence = parseInt(microblockSequenceStr, 10);
-        const txIndex = parseInt(txIndexStr, 10);
+        const cursor = await resolveTransactionCursor(args.cursor, async cursor => {
+          const exactCursorQuery = await sql<{ exists: boolean }[]>`
+            SELECT EXISTS (
+              SELECT 1
+              FROM principal_txs
+              WHERE canonical = true
+                AND microblock_canonical = true
+                AND principal = ${args.principal}
+                AND (block_height, microblock_sequence, tx_index)
+                    = (${cursor.block_height}, ${cursor.microblock_sequence}, ${cursor.tx_index})
+            ) AS exists
+          `;
+          return exactCursorQuery[0]?.exists ?? false;
+        });
         cursorFilter = sql`
           AND (block_height, microblock_sequence, tx_index)
-              <= (${blockHeight}, ${microblockSequence}, ${txIndex})
+              <= (${cursor.block_height}, ${cursor.microblock_sequence}, ${cursor.tx_index})
         `;
       }
       const resultQuery = await sql<
@@ -184,15 +199,10 @@ export class PgStoreV3 extends BasePgStoreModule {
       const total = resultQuery.count > 0 ? resultQuery[0].total : 0;
 
       const nextResult = resultQuery[resultQuery.length - 1];
-      const nextCursor =
-        hasNextPage && nextResult
-          ? `${nextResult.block_height}:${nextResult.microblock_sequence}:${nextResult.tx_index}`
-          : null;
+      const nextCursor = hasNextPage && nextResult ? encodeTransactionCursor(nextResult) : null;
 
       const firstResult = results[0];
-      const currentCursor = firstResult
-        ? `${firstResult.block_height}:${firstResult.microblock_sequence}:${firstResult.tx_index}`
-        : null;
+      const currentCursor = firstResult ? encodeTransactionCursor(firstResult) : null;
 
       let prevCursor: string | null = null;
       if (firstResult) {
@@ -211,12 +221,11 @@ export class PgStoreV3 extends BasePgStoreModule {
                   ${firstResult.tx_index}
                 )
           ORDER BY block_height ASC, microblock_sequence ASC, tx_index ASC
-          OFFSET ${args.limit - 1}
-          LIMIT 1
+          LIMIT ${args.limit}
         `;
         if (prevPageQuery.length > 0) {
-          const prevPage = prevPageQuery[0];
-          prevCursor = `${prevPage.block_height}:${prevPage.microblock_sequence}:${prevPage.tx_index}`;
+          const prevPage = prevPageQuery[prevPageQuery.length - 1];
+          prevCursor = encodeTransactionCursor(prevPage);
         }
       }
 
@@ -280,11 +289,12 @@ export class PgStoreV3 extends BasePgStoreModule {
           WHERE pruned = false
             AND (receipt_time, tx_id) > (${firstResult.receipt_time}, ${firstResult.tx_id})
           ORDER BY receipt_time ASC, tx_id ASC
-          OFFSET ${args.limit - 1}
-          LIMIT 1
+          LIMIT ${args.limit}
         `;
         prevCursor =
-          prevPageQuery.length > 0 ? encodeMempoolTxSummaryCursor(prevPageQuery[0]) : null;
+          prevPageQuery.length > 0
+            ? encodeMempoolTxSummaryCursor(prevPageQuery[prevPageQuery.length - 1])
+            : null;
       }
 
       return {
@@ -307,7 +317,7 @@ export class PgStoreV3 extends BasePgStoreModule {
   async getBlockTransactionSummaries(args: {
     block: BlockIdParam;
     limit: number;
-    cursor?: string;
+    cursor?: TransactionCursor;
   }): Promise<DbCursorPaginatedResult<DbTransactionSummary>> {
     return await this.sqlTransaction(async sql => {
       const blockFilter =
@@ -334,14 +344,23 @@ export class PgStoreV3 extends BasePgStoreModule {
 
       let cursorFilter = sql``;
       if (args.cursor) {
-        const parts = args.cursor.split(':');
-        const [blockHeightStr, microblockSequenceStr, txIndexStr] = parts;
-        const blockHeight = parseInt(blockHeightStr, 10);
-        const microblockSequence = parseInt(microblockSequenceStr, 10);
-        const txIndex = parseInt(txIndexStr, 10);
+        const cursor = await resolveTransactionCursor(args.cursor, async cursor => {
+          const exactCursorQuery = await sql<{ exists: boolean }[]>`
+            SELECT EXISTS (
+              SELECT 1
+              FROM txs
+              WHERE canonical = true
+                AND microblock_canonical = true
+                AND index_block_hash = ${index_block_hash}
+                AND (block_height, microblock_sequence, tx_index)
+                    = (${cursor.block_height}, ${cursor.microblock_sequence}, ${cursor.tx_index})
+            ) AS exists
+          `;
+          return exactCursorQuery[0]?.exists ?? false;
+        });
         cursorFilter = sql`
           AND (block_height, microblock_sequence, tx_index)
-              <= (${blockHeight}, ${microblockSequence}, ${txIndex})
+              <= (${cursor.block_height}, ${cursor.microblock_sequence}, ${cursor.tx_index})
         `;
       }
 
@@ -360,15 +379,10 @@ export class PgStoreV3 extends BasePgStoreModule {
       const results = hasNextPage ? resultQuery.slice(0, args.limit) : resultQuery;
 
       const nextResult = resultQuery[resultQuery.length - 1];
-      const nextCursor =
-        hasNextPage && nextResult
-          ? `${nextResult.block_height}:${nextResult.microblock_sequence}:${nextResult.tx_index}`
-          : null;
+      const nextCursor = hasNextPage && nextResult ? encodeTransactionCursor(nextResult) : null;
 
       const firstResult = results[0];
-      const currentCursor = firstResult
-        ? `${firstResult.block_height}:${firstResult.microblock_sequence}:${firstResult.tx_index}`
-        : null;
+      const currentCursor = firstResult ? encodeTransactionCursor(firstResult) : null;
 
       let prevCursor: string | null = null;
       if (firstResult) {
@@ -387,12 +401,11 @@ export class PgStoreV3 extends BasePgStoreModule {
                   ${firstResult.tx_index}
                 )
           ORDER BY block_height ASC, microblock_sequence ASC, tx_index ASC
-          OFFSET ${args.limit - 1}
-          LIMIT 1
+          LIMIT ${args.limit}
         `;
         if (prevPageQuery.length > 0) {
-          const prevPage = prevPageQuery[0];
-          prevCursor = `${prevPage.block_height}:${prevPage.microblock_sequence}:${prevPage.tx_index}`;
+          const prevPage = prevPageQuery[prevPageQuery.length - 1];
+          prevCursor = encodeTransactionCursor(prevPage);
         }
       }
 
@@ -731,6 +744,151 @@ export class PgStoreV3 extends BasePgStoreModule {
         return mempoolResult[0];
       }
       return null;
+    });
+  }
+
+  async getTransactionEvents(args: {
+    txId: string;
+    limit: number;
+    cursor?: TransactionEventCursor;
+  }): Promise<DbCursorPaginatedResult<DbTransactionEvent>> {
+    return await this.sqlTransaction(async sql => {
+      const limit = args.limit;
+      const txCheck = await sql<{ event_count: number }[]>`
+        SELECT event_count
+        FROM txs
+        WHERE tx_id = ${args.txId} AND canonical = true AND microblock_canonical = true
+        LIMIT 1
+      `;
+      if (txCheck.count === 0)
+        throw new InvalidRequestError(
+          `Transaction not found`,
+          InvalidRequestErrorType.invalid_param
+        );
+
+      let cursorFilter = sql``;
+      if (args.cursor) {
+        cursorFilter = sql`AND event_index >= ${parseInt(args.cursor, 10)}`;
+      }
+
+      const eventCond = sql`
+        canonical = true AND microblock_canonical = true AND tx_id = ${args.txId} ${cursorFilter}
+      `;
+      const resultQuery = await sql<DbTransactionEvent[]>`
+        WITH events AS (
+          (
+            SELECT
+              sender,
+              recipient,
+              event_index,
+              amount,
+              NULL as asset_identifier,
+              NULL as contract_identifier,
+              NULL as topic,
+              NULL::bytea as value,
+              ${DbEventTypeId.StxAsset}::int as event_type_id,
+              asset_event_type_id,
+              memo,
+              NULL::int as unlock_height
+            FROM stx_events
+            WHERE ${eventCond}
+          )
+          UNION ALL
+          (
+            SELECT
+              sender,
+              recipient,
+              event_index,
+              amount,
+              asset_identifier,
+              NULL as contract_identifier,
+              NULL as topic,
+              NULL::bytea as value,
+              ${DbEventTypeId.FungibleTokenAsset}::int as event_type_id,
+              asset_event_type_id,
+              NULL::bytea as memo,
+              NULL::int as unlock_height
+            FROM ft_events
+            WHERE ${eventCond}
+          )
+          UNION ALL
+          (
+            SELECT
+              sender,
+              recipient,
+              event_index,
+              0 as amount,
+              asset_identifier,
+              NULL as contract_identifier,
+              NULL as topic,
+              value,
+              ${DbEventTypeId.NonFungibleTokenAsset}::int as event_type_id,
+              asset_event_type_id,
+              NULL::bytea as memo,
+              NULL::int as unlock_height
+            FROM nft_events
+            WHERE ${eventCond}
+          )
+          UNION ALL
+          (
+            SELECT
+              locked_address as sender,
+              NULL as recipient,
+              event_index,
+              locked_amount as amount,
+              NULL as asset_identifier,
+              NULL as contract_identifier,
+              NULL as topic,
+              NULL::bytea as value,
+              ${DbEventTypeId.StxLock}::int as event_type_id,
+              0 as asset_event_type_id,
+              NULL::bytea as memo,
+              unlock_height
+            FROM stx_lock_events
+            WHERE ${eventCond}
+          )
+          UNION ALL
+          (
+            SELECT
+              NULL as sender,
+              NULL as recipient,
+              event_index,
+              0 as amount,
+              NULL as asset_identifier,
+              contract_identifier,
+              topic,
+              value,
+              ${DbEventTypeId.SmartContractLog}::int as event_type_id,
+              0 as asset_event_type_id,
+              NULL::bytea as memo,
+              NULL::int as unlock_height
+            FROM contract_logs
+            WHERE ${eventCond}
+          )
+        )
+        SELECT *
+        FROM events
+        ORDER BY event_index ASC
+        LIMIT ${limit + 1}
+      `;
+      const hasNextPage = resultQuery.count > limit;
+      const results = hasNextPage ? resultQuery.slice(0, limit) : resultQuery;
+      const firstResult = results[0];
+      const extraResult = hasNextPage ? resultQuery[limit] : null;
+      const prevCursor =
+        firstResult && firstResult.event_index > 0
+          ? Math.max(firstResult.event_index - limit, 0).toString()
+          : null;
+
+      return {
+        total: txCheck[0].event_count,
+        limit,
+        offset: 0,
+        next_cursor: extraResult ? extraResult.event_index.toString() : null,
+        prev_cursor: prevCursor,
+        current_cursor: firstResult ? firstResult.event_index.toString() : null,
+        results,
+      };
     });
   }
 }

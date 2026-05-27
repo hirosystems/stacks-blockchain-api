@@ -1,4 +1,10 @@
-import { DbAssetType, DbTxStatus, DbTxTypeId } from '../common.js';
+import {
+  DbAssetEventTypeId,
+  DbAssetType,
+  DbEventTypeId,
+  DbTxStatus,
+  DbTxTypeId,
+} from '../common.js';
 
 export type DbCursorPaginatedResult<T> = {
   limit: number;
@@ -124,4 +130,19 @@ export interface DbMempoolTransaction extends DbMempoolTransactionSummary {
   tenure_change_previous_tenure_end: string | null;
   tenure_change_previous_tenure_blocks: number | null;
   tenure_change_pubkey_hash: string | null;
+}
+
+export interface DbTransactionEvent {
+  event_index: number;
+  amount: string;
+  event_type_id: DbEventTypeId;
+  asset_event_type_id: DbAssetEventTypeId;
+  sender: string | null;
+  recipient: string | null;
+  asset_identifier: string | null;
+  contract_identifier: string | null;
+  topic: string | null;
+  value: string | null;
+  memo: string | null;
+  unlock_height: number | null;
 }

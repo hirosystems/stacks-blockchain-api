@@ -12,6 +12,7 @@ import {
   CursorPaginatedResponse,
   CursorPaginationQuerystring,
   TransactionCursorSchema,
+  TransactionEventCursorSchema,
 } from '../../schemas/v3/cursors.js';
 import { TransactionIdSchema } from '../../schemas/v3/entities/common.js';
 import {
@@ -20,6 +21,8 @@ import {
 } from '../../schemas/v3/entities/transactions.js';
 import { MempoolTransactionSchema } from '../../schemas/v3/entities/mempool-transactions.js';
 import { NotFoundError } from '../../../errors.js';
+import { TransactionEventSchema } from '../../schemas/v3/entities/transaction-events.js';
+import { serializeDbTransactionEvent } from '../../serializers/v3/transaction-events.js';
 
 export const TransactionsRoutes: FastifyPluginAsync<
   Record<never, never>,
@@ -113,6 +116,47 @@ export const TransactionsRoutes: FastifyPluginAsync<
       }
       const result = serializeDbTransactionOrMempoolTransaction(transaction, req.query.include);
       await reply.send(result);
+    }
+  );
+
+  fastify.get(
+    '/transactions/:tx_id/events',
+    {
+      preHandler: handleTransactionCache,
+      schema: {
+        operationId: 'get_transaction_events',
+        summary: 'Get transaction events',
+        description: `Retrieves events for a given transaction ID`,
+        tags: ['Transactions'],
+        params: Type.Object({
+          tx_id: TransactionIdSchema,
+        }),
+        querystring: CursorPaginationQuerystring(TransactionEventCursorSchema, ResourceType.Event),
+        response: {
+          200: CursorPaginatedResponse(
+            TransactionEventSchema,
+            TransactionEventCursorSchema,
+            ResourceType.Event
+          ),
+        },
+      },
+    },
+    async (req, reply) => {
+      const events = await fastify.db.v3.getTransactionEvents({
+        txId: req.params.tx_id,
+        limit: getPagingQueryLimit(ResourceType.Event, req.query.limit),
+        cursor: req.query.cursor,
+      });
+      await reply.send({
+        total: events.total,
+        limit: events.limit,
+        cursor: {
+          next: events.next_cursor,
+          previous: events.prev_cursor,
+          current: events.current_cursor,
+        },
+        results: events.results.map(r => serializeDbTransactionEvent(r)),
+      });
     }
   );
 

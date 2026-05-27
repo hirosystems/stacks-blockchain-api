@@ -1730,6 +1730,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/extended/v3/transactions/{tx_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get transaction
+         * @description Retrieves details for a given transaction, including both mined and mempool transactions
+         */
+        get: operations["get_transaction"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/extended/v3/mempool/transactions": {
         parameters: {
             query?: never;
@@ -32372,6 +32392,1489 @@ export interface operations {
                             };
                         })[];
                     };
+                };
+            };
+            /** @description Default Response */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: string;
+                        message?: string;
+                    } & {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
+    get_transaction: {
+        parameters: {
+            query?: {
+                /** @description Heavy fields to include in the response. Omitted by default to keep the payload lean. Provide as repeated querystring values (`?include=A&include=B`) or as a single comma-separated value (`?include=A,B`). */
+                include?: ("function_args" | "source_code" | "post_conditions" | "result")[];
+            };
+            header?: never;
+            path: {
+                /**
+                 * @description Transaction ID
+                 * @example 0xf6bd5f4a7b26184a3466340b2e99fd003b4962c0e382a7e4b6a13df3dd7a91c6
+                 */
+                tx_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": ({
+                        /** @description Transaction ID */
+                        tx_id: string;
+                        sender: {
+                            /** @description Address of the transaction initiator */
+                            address: string;
+                            /** @description Nonce of the transaction initiator */
+                            nonce: number;
+                        };
+                        sponsor: {
+                            /** @description Address of the transaction initiator */
+                            address: string;
+                            /** @description Nonce of the transaction initiator */
+                            nonce: number;
+                        } | null;
+                        /** @description Transaction fee as Integer string (64-bit unsigned integer). */
+                        fee_rate: string;
+                        block: {
+                            /** @description Height of the block this transactions was associated with */
+                            height: number;
+                            /** @description Hash of the blocked this transactions was associated with */
+                            hash: string;
+                            /** @description Hash of the index block this transactions was associated with */
+                            index_hash: string;
+                            /** @description Unix timestamp (in seconds) indicating when this block was mined. */
+                            time: number;
+                            /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
+                            tx_index: number;
+                        };
+                        bitcoin_block: {
+                            /** @description Height of the anchor burn block. */
+                            height: number;
+                            /** @description Unix timestamp (in seconds) indicating when this block was mined. */
+                            time: number;
+                        };
+                        /** @description Status of the transaction */
+                        status: "success" | "abort_by_response" | "abort_by_post_condition";
+                        parent_block: {
+                            /** @description Hash of the parent block */
+                            hash: string;
+                            /** @description Index block hash of the parent block */
+                            index_hash: string;
+                        };
+                        /** @description Only present when requested via the `include=post_conditions` query param. */
+                        post_conditions?: ({
+                            principal: {
+                                /** @enum {string} */
+                                type_id: "principal_origin";
+                            } | {
+                                /** @enum {string} */
+                                type_id: "principal_standard";
+                                address: string;
+                            } | {
+                                /** @enum {string} */
+                                type_id: "principal_contract";
+                                address: string;
+                                contract_name: string;
+                            };
+                            condition_code: "sent_equal_to" | "sent_greater_than" | "sent_greater_than_or_equal_to" | "sent_less_than" | "sent_less_than_or_equal_to";
+                            amount: string;
+                            /** @enum {string} */
+                            type: "stx";
+                        } | {
+                            principal: {
+                                /** @enum {string} */
+                                type_id: "principal_origin";
+                            } | {
+                                /** @enum {string} */
+                                type_id: "principal_standard";
+                                address: string;
+                            } | {
+                                /** @enum {string} */
+                                type_id: "principal_contract";
+                                address: string;
+                                contract_name: string;
+                            };
+                            condition_code: "sent_equal_to" | "sent_greater_than" | "sent_greater_than_or_equal_to" | "sent_less_than" | "sent_less_than_or_equal_to";
+                            amount: string;
+                            /** @enum {string} */
+                            type: "fungible";
+                            asset: {
+                                asset_name: string;
+                                contract_address: string;
+                                contract_name: string;
+                            };
+                        } | {
+                            principal: {
+                                /** @enum {string} */
+                                type_id: "principal_origin";
+                            } | {
+                                /** @enum {string} */
+                                type_id: "principal_standard";
+                                address: string;
+                            } | {
+                                /** @enum {string} */
+                                type_id: "principal_contract";
+                                address: string;
+                                contract_name: string;
+                            };
+                            condition_code: "sent" | "not_sent" | "maybe_sent";
+                            /** @enum {string} */
+                            type: "non_fungible";
+                            asset_value: {
+                                hex: string;
+                                repr: string;
+                            };
+                            asset: {
+                                asset_name: string;
+                                contract_address: string;
+                                contract_name: string;
+                            };
+                        })[];
+                        /** @description Number of events in the transaction */
+                        event_count: number;
+                        execution_cost: {
+                            /** @description Number of reads in the transaction */
+                            read_count: number;
+                            /** @description Length of reads in the transaction */
+                            read_length: number;
+                            /** @description Runtime of the transaction */
+                            runtime: number;
+                            /** @description Number of writes in the transaction */
+                            write_count: number;
+                            /** @description Length of writes in the transaction */
+                            write_length: number;
+                        };
+                        vm_error: string | null;
+                        result?: {
+                            hex: string;
+                            repr: string;
+                        };
+                        /** @enum {string} */
+                        type: "token_transfer";
+                        token_transfer: {
+                            /** @description Recipient of the token transfer */
+                            recipient: string;
+                            /** @description Amount of the token transfer */
+                            amount: string;
+                            memo: string | null;
+                        };
+                    } | {
+                        /** @description Transaction ID */
+                        tx_id: string;
+                        sender: {
+                            /** @description Address of the transaction initiator */
+                            address: string;
+                            /** @description Nonce of the transaction initiator */
+                            nonce: number;
+                        };
+                        sponsor: {
+                            /** @description Address of the transaction initiator */
+                            address: string;
+                            /** @description Nonce of the transaction initiator */
+                            nonce: number;
+                        } | null;
+                        /** @description Transaction fee as Integer string (64-bit unsigned integer). */
+                        fee_rate: string;
+                        block: {
+                            /** @description Height of the block this transactions was associated with */
+                            height: number;
+                            /** @description Hash of the blocked this transactions was associated with */
+                            hash: string;
+                            /** @description Hash of the index block this transactions was associated with */
+                            index_hash: string;
+                            /** @description Unix timestamp (in seconds) indicating when this block was mined. */
+                            time: number;
+                            /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
+                            tx_index: number;
+                        };
+                        bitcoin_block: {
+                            /** @description Height of the anchor burn block. */
+                            height: number;
+                            /** @description Unix timestamp (in seconds) indicating when this block was mined. */
+                            time: number;
+                        };
+                        /** @description Status of the transaction */
+                        status: "success" | "abort_by_response" | "abort_by_post_condition";
+                        parent_block: {
+                            /** @description Hash of the parent block */
+                            hash: string;
+                            /** @description Index block hash of the parent block */
+                            index_hash: string;
+                        };
+                        /** @description Only present when requested via the `include=post_conditions` query param. */
+                        post_conditions?: ({
+                            principal: {
+                                /** @enum {string} */
+                                type_id: "principal_origin";
+                            } | {
+                                /** @enum {string} */
+                                type_id: "principal_standard";
+                                address: string;
+                            } | {
+                                /** @enum {string} */
+                                type_id: "principal_contract";
+                                address: string;
+                                contract_name: string;
+                            };
+                            condition_code: "sent_equal_to" | "sent_greater_than" | "sent_greater_than_or_equal_to" | "sent_less_than" | "sent_less_than_or_equal_to";
+                            amount: string;
+                            /** @enum {string} */
+                            type: "stx";
+                        } | {
+                            principal: {
+                                /** @enum {string} */
+                                type_id: "principal_origin";
+                            } | {
+                                /** @enum {string} */
+                                type_id: "principal_standard";
+                                address: string;
+                            } | {
+                                /** @enum {string} */
+                                type_id: "principal_contract";
+                                address: string;
+                                contract_name: string;
+                            };
+                            condition_code: "sent_equal_to" | "sent_greater_than" | "sent_greater_than_or_equal_to" | "sent_less_than" | "sent_less_than_or_equal_to";
+                            amount: string;
+                            /** @enum {string} */
+                            type: "fungible";
+                            asset: {
+                                asset_name: string;
+                                contract_address: string;
+                                contract_name: string;
+                            };
+                        } | {
+                            principal: {
+                                /** @enum {string} */
+                                type_id: "principal_origin";
+                            } | {
+                                /** @enum {string} */
+                                type_id: "principal_standard";
+                                address: string;
+                            } | {
+                                /** @enum {string} */
+                                type_id: "principal_contract";
+                                address: string;
+                                contract_name: string;
+                            };
+                            condition_code: "sent" | "not_sent" | "maybe_sent";
+                            /** @enum {string} */
+                            type: "non_fungible";
+                            asset_value: {
+                                hex: string;
+                                repr: string;
+                            };
+                            asset: {
+                                asset_name: string;
+                                contract_address: string;
+                                contract_name: string;
+                            };
+                        })[];
+                        /** @description Number of events in the transaction */
+                        event_count: number;
+                        execution_cost: {
+                            /** @description Number of reads in the transaction */
+                            read_count: number;
+                            /** @description Length of reads in the transaction */
+                            read_length: number;
+                            /** @description Runtime of the transaction */
+                            runtime: number;
+                            /** @description Number of writes in the transaction */
+                            write_count: number;
+                            /** @description Length of writes in the transaction */
+                            write_length: number;
+                        };
+                        vm_error: string | null;
+                        result?: {
+                            hex: string;
+                            repr: string;
+                        };
+                        /** @enum {string} */
+                        type: "smart_contract";
+                        smart_contract: {
+                            /** @description Contract ID of the smart contract */
+                            contract_id: string;
+                            clarity_version: number | null;
+                            /** @description Source code of the smart contract. Only present when requested via the `include=source_code` query param. */
+                            source_code?: string;
+                        };
+                    } | {
+                        /** @description Transaction ID */
+                        tx_id: string;
+                        sender: {
+                            /** @description Address of the transaction initiator */
+                            address: string;
+                            /** @description Nonce of the transaction initiator */
+                            nonce: number;
+                        };
+                        sponsor: {
+                            /** @description Address of the transaction initiator */
+                            address: string;
+                            /** @description Nonce of the transaction initiator */
+                            nonce: number;
+                        } | null;
+                        /** @description Transaction fee as Integer string (64-bit unsigned integer). */
+                        fee_rate: string;
+                        block: {
+                            /** @description Height of the block this transactions was associated with */
+                            height: number;
+                            /** @description Hash of the blocked this transactions was associated with */
+                            hash: string;
+                            /** @description Hash of the index block this transactions was associated with */
+                            index_hash: string;
+                            /** @description Unix timestamp (in seconds) indicating when this block was mined. */
+                            time: number;
+                            /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
+                            tx_index: number;
+                        };
+                        bitcoin_block: {
+                            /** @description Height of the anchor burn block. */
+                            height: number;
+                            /** @description Unix timestamp (in seconds) indicating when this block was mined. */
+                            time: number;
+                        };
+                        /** @description Status of the transaction */
+                        status: "success" | "abort_by_response" | "abort_by_post_condition";
+                        parent_block: {
+                            /** @description Hash of the parent block */
+                            hash: string;
+                            /** @description Index block hash of the parent block */
+                            index_hash: string;
+                        };
+                        /** @description Only present when requested via the `include=post_conditions` query param. */
+                        post_conditions?: ({
+                            principal: {
+                                /** @enum {string} */
+                                type_id: "principal_origin";
+                            } | {
+                                /** @enum {string} */
+                                type_id: "principal_standard";
+                                address: string;
+                            } | {
+                                /** @enum {string} */
+                                type_id: "principal_contract";
+                                address: string;
+                                contract_name: string;
+                            };
+                            condition_code: "sent_equal_to" | "sent_greater_than" | "sent_greater_than_or_equal_to" | "sent_less_than" | "sent_less_than_or_equal_to";
+                            amount: string;
+                            /** @enum {string} */
+                            type: "stx";
+                        } | {
+                            principal: {
+                                /** @enum {string} */
+                                type_id: "principal_origin";
+                            } | {
+                                /** @enum {string} */
+                                type_id: "principal_standard";
+                                address: string;
+                            } | {
+                                /** @enum {string} */
+                                type_id: "principal_contract";
+                                address: string;
+                                contract_name: string;
+                            };
+                            condition_code: "sent_equal_to" | "sent_greater_than" | "sent_greater_than_or_equal_to" | "sent_less_than" | "sent_less_than_or_equal_to";
+                            amount: string;
+                            /** @enum {string} */
+                            type: "fungible";
+                            asset: {
+                                asset_name: string;
+                                contract_address: string;
+                                contract_name: string;
+                            };
+                        } | {
+                            principal: {
+                                /** @enum {string} */
+                                type_id: "principal_origin";
+                            } | {
+                                /** @enum {string} */
+                                type_id: "principal_standard";
+                                address: string;
+                            } | {
+                                /** @enum {string} */
+                                type_id: "principal_contract";
+                                address: string;
+                                contract_name: string;
+                            };
+                            condition_code: "sent" | "not_sent" | "maybe_sent";
+                            /** @enum {string} */
+                            type: "non_fungible";
+                            asset_value: {
+                                hex: string;
+                                repr: string;
+                            };
+                            asset: {
+                                asset_name: string;
+                                contract_address: string;
+                                contract_name: string;
+                            };
+                        })[];
+                        /** @description Number of events in the transaction */
+                        event_count: number;
+                        execution_cost: {
+                            /** @description Number of reads in the transaction */
+                            read_count: number;
+                            /** @description Length of reads in the transaction */
+                            read_length: number;
+                            /** @description Runtime of the transaction */
+                            runtime: number;
+                            /** @description Number of writes in the transaction */
+                            write_count: number;
+                            /** @description Length of writes in the transaction */
+                            write_length: number;
+                        };
+                        vm_error: string | null;
+                        result?: {
+                            hex: string;
+                            repr: string;
+                        };
+                        /** @enum {string} */
+                        type: "contract_call";
+                        contract_call: {
+                            /** @description Contract ID of the contract call */
+                            contract_id: string;
+                            /** @description Function name of the contract call */
+                            function_name: string;
+                            /** @description List of arguments used to invoke the function. Only present when requested via the `include=function_args` query param. */
+                            function_args?: {
+                                hex: string;
+                                repr: string;
+                            }[];
+                        };
+                    } | {
+                        /** @description Transaction ID */
+                        tx_id: string;
+                        sender: {
+                            /** @description Address of the transaction initiator */
+                            address: string;
+                            /** @description Nonce of the transaction initiator */
+                            nonce: number;
+                        };
+                        sponsor: {
+                            /** @description Address of the transaction initiator */
+                            address: string;
+                            /** @description Nonce of the transaction initiator */
+                            nonce: number;
+                        } | null;
+                        /** @description Transaction fee as Integer string (64-bit unsigned integer). */
+                        fee_rate: string;
+                        block: {
+                            /** @description Height of the block this transactions was associated with */
+                            height: number;
+                            /** @description Hash of the blocked this transactions was associated with */
+                            hash: string;
+                            /** @description Hash of the index block this transactions was associated with */
+                            index_hash: string;
+                            /** @description Unix timestamp (in seconds) indicating when this block was mined. */
+                            time: number;
+                            /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
+                            tx_index: number;
+                        };
+                        bitcoin_block: {
+                            /** @description Height of the anchor burn block. */
+                            height: number;
+                            /** @description Unix timestamp (in seconds) indicating when this block was mined. */
+                            time: number;
+                        };
+                        /** @description Status of the transaction */
+                        status: "success" | "abort_by_response" | "abort_by_post_condition";
+                        parent_block: {
+                            /** @description Hash of the parent block */
+                            hash: string;
+                            /** @description Index block hash of the parent block */
+                            index_hash: string;
+                        };
+                        /** @description Only present when requested via the `include=post_conditions` query param. */
+                        post_conditions?: ({
+                            principal: {
+                                /** @enum {string} */
+                                type_id: "principal_origin";
+                            } | {
+                                /** @enum {string} */
+                                type_id: "principal_standard";
+                                address: string;
+                            } | {
+                                /** @enum {string} */
+                                type_id: "principal_contract";
+                                address: string;
+                                contract_name: string;
+                            };
+                            condition_code: "sent_equal_to" | "sent_greater_than" | "sent_greater_than_or_equal_to" | "sent_less_than" | "sent_less_than_or_equal_to";
+                            amount: string;
+                            /** @enum {string} */
+                            type: "stx";
+                        } | {
+                            principal: {
+                                /** @enum {string} */
+                                type_id: "principal_origin";
+                            } | {
+                                /** @enum {string} */
+                                type_id: "principal_standard";
+                                address: string;
+                            } | {
+                                /** @enum {string} */
+                                type_id: "principal_contract";
+                                address: string;
+                                contract_name: string;
+                            };
+                            condition_code: "sent_equal_to" | "sent_greater_than" | "sent_greater_than_or_equal_to" | "sent_less_than" | "sent_less_than_or_equal_to";
+                            amount: string;
+                            /** @enum {string} */
+                            type: "fungible";
+                            asset: {
+                                asset_name: string;
+                                contract_address: string;
+                                contract_name: string;
+                            };
+                        } | {
+                            principal: {
+                                /** @enum {string} */
+                                type_id: "principal_origin";
+                            } | {
+                                /** @enum {string} */
+                                type_id: "principal_standard";
+                                address: string;
+                            } | {
+                                /** @enum {string} */
+                                type_id: "principal_contract";
+                                address: string;
+                                contract_name: string;
+                            };
+                            condition_code: "sent" | "not_sent" | "maybe_sent";
+                            /** @enum {string} */
+                            type: "non_fungible";
+                            asset_value: {
+                                hex: string;
+                                repr: string;
+                            };
+                            asset: {
+                                asset_name: string;
+                                contract_address: string;
+                                contract_name: string;
+                            };
+                        })[];
+                        /** @description Number of events in the transaction */
+                        event_count: number;
+                        execution_cost: {
+                            /** @description Number of reads in the transaction */
+                            read_count: number;
+                            /** @description Length of reads in the transaction */
+                            read_length: number;
+                            /** @description Runtime of the transaction */
+                            runtime: number;
+                            /** @description Number of writes in the transaction */
+                            write_count: number;
+                            /** @description Length of writes in the transaction */
+                            write_length: number;
+                        };
+                        vm_error: string | null;
+                        result?: {
+                            hex: string;
+                            repr: string;
+                        };
+                        /** @enum {string} */
+                        type: "poison_microblock";
+                    } | {
+                        /** @description Transaction ID */
+                        tx_id: string;
+                        sender: {
+                            /** @description Address of the transaction initiator */
+                            address: string;
+                            /** @description Nonce of the transaction initiator */
+                            nonce: number;
+                        };
+                        sponsor: {
+                            /** @description Address of the transaction initiator */
+                            address: string;
+                            /** @description Nonce of the transaction initiator */
+                            nonce: number;
+                        } | null;
+                        /** @description Transaction fee as Integer string (64-bit unsigned integer). */
+                        fee_rate: string;
+                        block: {
+                            /** @description Height of the block this transactions was associated with */
+                            height: number;
+                            /** @description Hash of the blocked this transactions was associated with */
+                            hash: string;
+                            /** @description Hash of the index block this transactions was associated with */
+                            index_hash: string;
+                            /** @description Unix timestamp (in seconds) indicating when this block was mined. */
+                            time: number;
+                            /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
+                            tx_index: number;
+                        };
+                        bitcoin_block: {
+                            /** @description Height of the anchor burn block. */
+                            height: number;
+                            /** @description Unix timestamp (in seconds) indicating when this block was mined. */
+                            time: number;
+                        };
+                        /** @description Status of the transaction */
+                        status: "success" | "abort_by_response" | "abort_by_post_condition";
+                        parent_block: {
+                            /** @description Hash of the parent block */
+                            hash: string;
+                            /** @description Index block hash of the parent block */
+                            index_hash: string;
+                        };
+                        /** @description Only present when requested via the `include=post_conditions` query param. */
+                        post_conditions?: ({
+                            principal: {
+                                /** @enum {string} */
+                                type_id: "principal_origin";
+                            } | {
+                                /** @enum {string} */
+                                type_id: "principal_standard";
+                                address: string;
+                            } | {
+                                /** @enum {string} */
+                                type_id: "principal_contract";
+                                address: string;
+                                contract_name: string;
+                            };
+                            condition_code: "sent_equal_to" | "sent_greater_than" | "sent_greater_than_or_equal_to" | "sent_less_than" | "sent_less_than_or_equal_to";
+                            amount: string;
+                            /** @enum {string} */
+                            type: "stx";
+                        } | {
+                            principal: {
+                                /** @enum {string} */
+                                type_id: "principal_origin";
+                            } | {
+                                /** @enum {string} */
+                                type_id: "principal_standard";
+                                address: string;
+                            } | {
+                                /** @enum {string} */
+                                type_id: "principal_contract";
+                                address: string;
+                                contract_name: string;
+                            };
+                            condition_code: "sent_equal_to" | "sent_greater_than" | "sent_greater_than_or_equal_to" | "sent_less_than" | "sent_less_than_or_equal_to";
+                            amount: string;
+                            /** @enum {string} */
+                            type: "fungible";
+                            asset: {
+                                asset_name: string;
+                                contract_address: string;
+                                contract_name: string;
+                            };
+                        } | {
+                            principal: {
+                                /** @enum {string} */
+                                type_id: "principal_origin";
+                            } | {
+                                /** @enum {string} */
+                                type_id: "principal_standard";
+                                address: string;
+                            } | {
+                                /** @enum {string} */
+                                type_id: "principal_contract";
+                                address: string;
+                                contract_name: string;
+                            };
+                            condition_code: "sent" | "not_sent" | "maybe_sent";
+                            /** @enum {string} */
+                            type: "non_fungible";
+                            asset_value: {
+                                hex: string;
+                                repr: string;
+                            };
+                            asset: {
+                                asset_name: string;
+                                contract_address: string;
+                                contract_name: string;
+                            };
+                        })[];
+                        /** @description Number of events in the transaction */
+                        event_count: number;
+                        execution_cost: {
+                            /** @description Number of reads in the transaction */
+                            read_count: number;
+                            /** @description Length of reads in the transaction */
+                            read_length: number;
+                            /** @description Runtime of the transaction */
+                            runtime: number;
+                            /** @description Number of writes in the transaction */
+                            write_count: number;
+                            /** @description Length of writes in the transaction */
+                            write_length: number;
+                        };
+                        vm_error: string | null;
+                        result?: {
+                            hex: string;
+                            repr: string;
+                        };
+                        /** @enum {string} */
+                        type: "tenure_change";
+                        tenure_change: {
+                            /** @description Consensus hash of this tenure. Corresponds to the sortition in which the miner of this block was chosen. */
+                            tenure_consensus_hash: string;
+                            /** @description Consensus hash of the previous tenure. Corresponds to the sortition of the previous winning block-commit. */
+                            prev_tenure_consensus_hash: string;
+                            /** @description Current consensus hash on the underlying burnchain. Corresponds to the last-seen sortition. */
+                            burn_view_consensus_hash: string;
+                            /** @description (Hex string) Stacks Block hash */
+                            previous_tenure_end: string;
+                            /** @description The number of blocks produced in the previous tenure. */
+                            previous_tenure_blocks: number;
+                            /** @description Cause of change in mining tenure. Depending on cause, tenure can be ended or extended. */
+                            cause: "block_found" | "extended" | "extended_runtime" | "extended_read_count" | "extended_read_length" | "extended_write_count" | "extended_write_length";
+                            /** @description (Hex string) The ECDSA public key hash of the current tenure. */
+                            pubkey_hash: string;
+                        };
+                    } | {
+                        /** @description Transaction ID */
+                        tx_id: string;
+                        sender: {
+                            /** @description Address of the transaction initiator */
+                            address: string;
+                            /** @description Nonce of the transaction initiator */
+                            nonce: number;
+                        };
+                        sponsor: {
+                            /** @description Address of the transaction initiator */
+                            address: string;
+                            /** @description Nonce of the transaction initiator */
+                            nonce: number;
+                        } | null;
+                        /** @description Transaction fee as Integer string (64-bit unsigned integer). */
+                        fee_rate: string;
+                        block: {
+                            /** @description Height of the block this transactions was associated with */
+                            height: number;
+                            /** @description Hash of the blocked this transactions was associated with */
+                            hash: string;
+                            /** @description Hash of the index block this transactions was associated with */
+                            index_hash: string;
+                            /** @description Unix timestamp (in seconds) indicating when this block was mined. */
+                            time: number;
+                            /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
+                            tx_index: number;
+                        };
+                        bitcoin_block: {
+                            /** @description Height of the anchor burn block. */
+                            height: number;
+                            /** @description Unix timestamp (in seconds) indicating when this block was mined. */
+                            time: number;
+                        };
+                        /** @description Status of the transaction */
+                        status: "success" | "abort_by_response" | "abort_by_post_condition";
+                        parent_block: {
+                            /** @description Hash of the parent block */
+                            hash: string;
+                            /** @description Index block hash of the parent block */
+                            index_hash: string;
+                        };
+                        /** @description Only present when requested via the `include=post_conditions` query param. */
+                        post_conditions?: ({
+                            principal: {
+                                /** @enum {string} */
+                                type_id: "principal_origin";
+                            } | {
+                                /** @enum {string} */
+                                type_id: "principal_standard";
+                                address: string;
+                            } | {
+                                /** @enum {string} */
+                                type_id: "principal_contract";
+                                address: string;
+                                contract_name: string;
+                            };
+                            condition_code: "sent_equal_to" | "sent_greater_than" | "sent_greater_than_or_equal_to" | "sent_less_than" | "sent_less_than_or_equal_to";
+                            amount: string;
+                            /** @enum {string} */
+                            type: "stx";
+                        } | {
+                            principal: {
+                                /** @enum {string} */
+                                type_id: "principal_origin";
+                            } | {
+                                /** @enum {string} */
+                                type_id: "principal_standard";
+                                address: string;
+                            } | {
+                                /** @enum {string} */
+                                type_id: "principal_contract";
+                                address: string;
+                                contract_name: string;
+                            };
+                            condition_code: "sent_equal_to" | "sent_greater_than" | "sent_greater_than_or_equal_to" | "sent_less_than" | "sent_less_than_or_equal_to";
+                            amount: string;
+                            /** @enum {string} */
+                            type: "fungible";
+                            asset: {
+                                asset_name: string;
+                                contract_address: string;
+                                contract_name: string;
+                            };
+                        } | {
+                            principal: {
+                                /** @enum {string} */
+                                type_id: "principal_origin";
+                            } | {
+                                /** @enum {string} */
+                                type_id: "principal_standard";
+                                address: string;
+                            } | {
+                                /** @enum {string} */
+                                type_id: "principal_contract";
+                                address: string;
+                                contract_name: string;
+                            };
+                            condition_code: "sent" | "not_sent" | "maybe_sent";
+                            /** @enum {string} */
+                            type: "non_fungible";
+                            asset_value: {
+                                hex: string;
+                                repr: string;
+                            };
+                            asset: {
+                                asset_name: string;
+                                contract_address: string;
+                                contract_name: string;
+                            };
+                        })[];
+                        /** @description Number of events in the transaction */
+                        event_count: number;
+                        execution_cost: {
+                            /** @description Number of reads in the transaction */
+                            read_count: number;
+                            /** @description Length of reads in the transaction */
+                            read_length: number;
+                            /** @description Runtime of the transaction */
+                            runtime: number;
+                            /** @description Number of writes in the transaction */
+                            write_count: number;
+                            /** @description Length of writes in the transaction */
+                            write_length: number;
+                        };
+                        vm_error: string | null;
+                        result?: {
+                            hex: string;
+                            repr: string;
+                        };
+                        /** @enum {string} */
+                        type: "coinbase";
+                        coinbase: {
+                            /** @description Payload of the coinbase transaction */
+                            payload: string;
+                            alt_recipient: string | null;
+                            vrf_proof: string | null;
+                        };
+                    }) | ({
+                        /** @description Transaction ID */
+                        tx_id: string;
+                        sender: {
+                            /** @description Address of the transaction initiator */
+                            address: string;
+                            /** @description Nonce of the transaction initiator */
+                            nonce: number;
+                        };
+                        sponsor: {
+                            /** @description Address of the transaction initiator */
+                            address: string;
+                            /** @description Nonce of the transaction initiator */
+                            nonce: number;
+                        } | null;
+                        /** @description Transaction fee as Integer string (64-bit unsigned integer). */
+                        fee_rate: string;
+                        /** @description A unix timestamp (in seconds) indicating when the transaction broadcast was received by the node. */
+                        receipt_time: number;
+                        /** @description Height of the block this transaction was received by the node */
+                        receipt_block_height: number;
+                        /** @description Status of the mempool transaction */
+                        status: "pending" | "dropped_replace_by_fee" | "dropped_replace_across_fork" | "dropped_too_expensive" | "dropped_stale_garbage_collect" | "dropped_problematic";
+                        /** @description Only present when requested via the `include=post_conditions` query param. */
+                        post_conditions?: ({
+                            principal: {
+                                /** @enum {string} */
+                                type_id: "principal_origin";
+                            } | {
+                                /** @enum {string} */
+                                type_id: "principal_standard";
+                                address: string;
+                            } | {
+                                /** @enum {string} */
+                                type_id: "principal_contract";
+                                address: string;
+                                contract_name: string;
+                            };
+                            condition_code: "sent_equal_to" | "sent_greater_than" | "sent_greater_than_or_equal_to" | "sent_less_than" | "sent_less_than_or_equal_to";
+                            amount: string;
+                            /** @enum {string} */
+                            type: "stx";
+                        } | {
+                            principal: {
+                                /** @enum {string} */
+                                type_id: "principal_origin";
+                            } | {
+                                /** @enum {string} */
+                                type_id: "principal_standard";
+                                address: string;
+                            } | {
+                                /** @enum {string} */
+                                type_id: "principal_contract";
+                                address: string;
+                                contract_name: string;
+                            };
+                            condition_code: "sent_equal_to" | "sent_greater_than" | "sent_greater_than_or_equal_to" | "sent_less_than" | "sent_less_than_or_equal_to";
+                            amount: string;
+                            /** @enum {string} */
+                            type: "fungible";
+                            asset: {
+                                asset_name: string;
+                                contract_address: string;
+                                contract_name: string;
+                            };
+                        } | {
+                            principal: {
+                                /** @enum {string} */
+                                type_id: "principal_origin";
+                            } | {
+                                /** @enum {string} */
+                                type_id: "principal_standard";
+                                address: string;
+                            } | {
+                                /** @enum {string} */
+                                type_id: "principal_contract";
+                                address: string;
+                                contract_name: string;
+                            };
+                            condition_code: "sent" | "not_sent" | "maybe_sent";
+                            /** @enum {string} */
+                            type: "non_fungible";
+                            asset_value: {
+                                hex: string;
+                                repr: string;
+                            };
+                            asset: {
+                                asset_name: string;
+                                contract_address: string;
+                                contract_name: string;
+                            };
+                        })[];
+                        replaced_by_tx_id: string | null;
+                        /** @enum {string} */
+                        type: "token_transfer";
+                        token_transfer: {
+                            /** @description Recipient of the token transfer */
+                            recipient: string;
+                            /** @description Amount of the token transfer */
+                            amount: string;
+                            memo: string | null;
+                        };
+                    } | {
+                        /** @description Transaction ID */
+                        tx_id: string;
+                        sender: {
+                            /** @description Address of the transaction initiator */
+                            address: string;
+                            /** @description Nonce of the transaction initiator */
+                            nonce: number;
+                        };
+                        sponsor: {
+                            /** @description Address of the transaction initiator */
+                            address: string;
+                            /** @description Nonce of the transaction initiator */
+                            nonce: number;
+                        } | null;
+                        /** @description Transaction fee as Integer string (64-bit unsigned integer). */
+                        fee_rate: string;
+                        /** @description A unix timestamp (in seconds) indicating when the transaction broadcast was received by the node. */
+                        receipt_time: number;
+                        /** @description Height of the block this transaction was received by the node */
+                        receipt_block_height: number;
+                        /** @description Status of the mempool transaction */
+                        status: "pending" | "dropped_replace_by_fee" | "dropped_replace_across_fork" | "dropped_too_expensive" | "dropped_stale_garbage_collect" | "dropped_problematic";
+                        /** @description Only present when requested via the `include=post_conditions` query param. */
+                        post_conditions?: ({
+                            principal: {
+                                /** @enum {string} */
+                                type_id: "principal_origin";
+                            } | {
+                                /** @enum {string} */
+                                type_id: "principal_standard";
+                                address: string;
+                            } | {
+                                /** @enum {string} */
+                                type_id: "principal_contract";
+                                address: string;
+                                contract_name: string;
+                            };
+                            condition_code: "sent_equal_to" | "sent_greater_than" | "sent_greater_than_or_equal_to" | "sent_less_than" | "sent_less_than_or_equal_to";
+                            amount: string;
+                            /** @enum {string} */
+                            type: "stx";
+                        } | {
+                            principal: {
+                                /** @enum {string} */
+                                type_id: "principal_origin";
+                            } | {
+                                /** @enum {string} */
+                                type_id: "principal_standard";
+                                address: string;
+                            } | {
+                                /** @enum {string} */
+                                type_id: "principal_contract";
+                                address: string;
+                                contract_name: string;
+                            };
+                            condition_code: "sent_equal_to" | "sent_greater_than" | "sent_greater_than_or_equal_to" | "sent_less_than" | "sent_less_than_or_equal_to";
+                            amount: string;
+                            /** @enum {string} */
+                            type: "fungible";
+                            asset: {
+                                asset_name: string;
+                                contract_address: string;
+                                contract_name: string;
+                            };
+                        } | {
+                            principal: {
+                                /** @enum {string} */
+                                type_id: "principal_origin";
+                            } | {
+                                /** @enum {string} */
+                                type_id: "principal_standard";
+                                address: string;
+                            } | {
+                                /** @enum {string} */
+                                type_id: "principal_contract";
+                                address: string;
+                                contract_name: string;
+                            };
+                            condition_code: "sent" | "not_sent" | "maybe_sent";
+                            /** @enum {string} */
+                            type: "non_fungible";
+                            asset_value: {
+                                hex: string;
+                                repr: string;
+                            };
+                            asset: {
+                                asset_name: string;
+                                contract_address: string;
+                                contract_name: string;
+                            };
+                        })[];
+                        replaced_by_tx_id: string | null;
+                        /** @enum {string} */
+                        type: "smart_contract";
+                        smart_contract: {
+                            /** @description Contract ID of the smart contract */
+                            contract_id: string;
+                            clarity_version: number | null;
+                            /** @description Source code of the smart contract. Only present when requested via the `include=source_code` query param. */
+                            source_code?: string;
+                        };
+                    } | {
+                        /** @description Transaction ID */
+                        tx_id: string;
+                        sender: {
+                            /** @description Address of the transaction initiator */
+                            address: string;
+                            /** @description Nonce of the transaction initiator */
+                            nonce: number;
+                        };
+                        sponsor: {
+                            /** @description Address of the transaction initiator */
+                            address: string;
+                            /** @description Nonce of the transaction initiator */
+                            nonce: number;
+                        } | null;
+                        /** @description Transaction fee as Integer string (64-bit unsigned integer). */
+                        fee_rate: string;
+                        /** @description A unix timestamp (in seconds) indicating when the transaction broadcast was received by the node. */
+                        receipt_time: number;
+                        /** @description Height of the block this transaction was received by the node */
+                        receipt_block_height: number;
+                        /** @description Status of the mempool transaction */
+                        status: "pending" | "dropped_replace_by_fee" | "dropped_replace_across_fork" | "dropped_too_expensive" | "dropped_stale_garbage_collect" | "dropped_problematic";
+                        /** @description Only present when requested via the `include=post_conditions` query param. */
+                        post_conditions?: ({
+                            principal: {
+                                /** @enum {string} */
+                                type_id: "principal_origin";
+                            } | {
+                                /** @enum {string} */
+                                type_id: "principal_standard";
+                                address: string;
+                            } | {
+                                /** @enum {string} */
+                                type_id: "principal_contract";
+                                address: string;
+                                contract_name: string;
+                            };
+                            condition_code: "sent_equal_to" | "sent_greater_than" | "sent_greater_than_or_equal_to" | "sent_less_than" | "sent_less_than_or_equal_to";
+                            amount: string;
+                            /** @enum {string} */
+                            type: "stx";
+                        } | {
+                            principal: {
+                                /** @enum {string} */
+                                type_id: "principal_origin";
+                            } | {
+                                /** @enum {string} */
+                                type_id: "principal_standard";
+                                address: string;
+                            } | {
+                                /** @enum {string} */
+                                type_id: "principal_contract";
+                                address: string;
+                                contract_name: string;
+                            };
+                            condition_code: "sent_equal_to" | "sent_greater_than" | "sent_greater_than_or_equal_to" | "sent_less_than" | "sent_less_than_or_equal_to";
+                            amount: string;
+                            /** @enum {string} */
+                            type: "fungible";
+                            asset: {
+                                asset_name: string;
+                                contract_address: string;
+                                contract_name: string;
+                            };
+                        } | {
+                            principal: {
+                                /** @enum {string} */
+                                type_id: "principal_origin";
+                            } | {
+                                /** @enum {string} */
+                                type_id: "principal_standard";
+                                address: string;
+                            } | {
+                                /** @enum {string} */
+                                type_id: "principal_contract";
+                                address: string;
+                                contract_name: string;
+                            };
+                            condition_code: "sent" | "not_sent" | "maybe_sent";
+                            /** @enum {string} */
+                            type: "non_fungible";
+                            asset_value: {
+                                hex: string;
+                                repr: string;
+                            };
+                            asset: {
+                                asset_name: string;
+                                contract_address: string;
+                                contract_name: string;
+                            };
+                        })[];
+                        replaced_by_tx_id: string | null;
+                        /** @enum {string} */
+                        type: "contract_call";
+                        contract_call: {
+                            /** @description Contract ID of the contract call */
+                            contract_id: string;
+                            /** @description Function name of the contract call */
+                            function_name: string;
+                            /** @description List of arguments used to invoke the function. Only present when requested via the `include=function_args` query param. */
+                            function_args?: {
+                                hex: string;
+                                repr: string;
+                            }[];
+                        };
+                    } | {
+                        /** @description Transaction ID */
+                        tx_id: string;
+                        sender: {
+                            /** @description Address of the transaction initiator */
+                            address: string;
+                            /** @description Nonce of the transaction initiator */
+                            nonce: number;
+                        };
+                        sponsor: {
+                            /** @description Address of the transaction initiator */
+                            address: string;
+                            /** @description Nonce of the transaction initiator */
+                            nonce: number;
+                        } | null;
+                        /** @description Transaction fee as Integer string (64-bit unsigned integer). */
+                        fee_rate: string;
+                        /** @description A unix timestamp (in seconds) indicating when the transaction broadcast was received by the node. */
+                        receipt_time: number;
+                        /** @description Height of the block this transaction was received by the node */
+                        receipt_block_height: number;
+                        /** @description Status of the mempool transaction */
+                        status: "pending" | "dropped_replace_by_fee" | "dropped_replace_across_fork" | "dropped_too_expensive" | "dropped_stale_garbage_collect" | "dropped_problematic";
+                        /** @description Only present when requested via the `include=post_conditions` query param. */
+                        post_conditions?: ({
+                            principal: {
+                                /** @enum {string} */
+                                type_id: "principal_origin";
+                            } | {
+                                /** @enum {string} */
+                                type_id: "principal_standard";
+                                address: string;
+                            } | {
+                                /** @enum {string} */
+                                type_id: "principal_contract";
+                                address: string;
+                                contract_name: string;
+                            };
+                            condition_code: "sent_equal_to" | "sent_greater_than" | "sent_greater_than_or_equal_to" | "sent_less_than" | "sent_less_than_or_equal_to";
+                            amount: string;
+                            /** @enum {string} */
+                            type: "stx";
+                        } | {
+                            principal: {
+                                /** @enum {string} */
+                                type_id: "principal_origin";
+                            } | {
+                                /** @enum {string} */
+                                type_id: "principal_standard";
+                                address: string;
+                            } | {
+                                /** @enum {string} */
+                                type_id: "principal_contract";
+                                address: string;
+                                contract_name: string;
+                            };
+                            condition_code: "sent_equal_to" | "sent_greater_than" | "sent_greater_than_or_equal_to" | "sent_less_than" | "sent_less_than_or_equal_to";
+                            amount: string;
+                            /** @enum {string} */
+                            type: "fungible";
+                            asset: {
+                                asset_name: string;
+                                contract_address: string;
+                                contract_name: string;
+                            };
+                        } | {
+                            principal: {
+                                /** @enum {string} */
+                                type_id: "principal_origin";
+                            } | {
+                                /** @enum {string} */
+                                type_id: "principal_standard";
+                                address: string;
+                            } | {
+                                /** @enum {string} */
+                                type_id: "principal_contract";
+                                address: string;
+                                contract_name: string;
+                            };
+                            condition_code: "sent" | "not_sent" | "maybe_sent";
+                            /** @enum {string} */
+                            type: "non_fungible";
+                            asset_value: {
+                                hex: string;
+                                repr: string;
+                            };
+                            asset: {
+                                asset_name: string;
+                                contract_address: string;
+                                contract_name: string;
+                            };
+                        })[];
+                        replaced_by_tx_id: string | null;
+                        /** @enum {string} */
+                        type: "poison_microblock";
+                    } | {
+                        /** @description Transaction ID */
+                        tx_id: string;
+                        sender: {
+                            /** @description Address of the transaction initiator */
+                            address: string;
+                            /** @description Nonce of the transaction initiator */
+                            nonce: number;
+                        };
+                        sponsor: {
+                            /** @description Address of the transaction initiator */
+                            address: string;
+                            /** @description Nonce of the transaction initiator */
+                            nonce: number;
+                        } | null;
+                        /** @description Transaction fee as Integer string (64-bit unsigned integer). */
+                        fee_rate: string;
+                        /** @description A unix timestamp (in seconds) indicating when the transaction broadcast was received by the node. */
+                        receipt_time: number;
+                        /** @description Height of the block this transaction was received by the node */
+                        receipt_block_height: number;
+                        /** @description Status of the mempool transaction */
+                        status: "pending" | "dropped_replace_by_fee" | "dropped_replace_across_fork" | "dropped_too_expensive" | "dropped_stale_garbage_collect" | "dropped_problematic";
+                        /** @description Only present when requested via the `include=post_conditions` query param. */
+                        post_conditions?: ({
+                            principal: {
+                                /** @enum {string} */
+                                type_id: "principal_origin";
+                            } | {
+                                /** @enum {string} */
+                                type_id: "principal_standard";
+                                address: string;
+                            } | {
+                                /** @enum {string} */
+                                type_id: "principal_contract";
+                                address: string;
+                                contract_name: string;
+                            };
+                            condition_code: "sent_equal_to" | "sent_greater_than" | "sent_greater_than_or_equal_to" | "sent_less_than" | "sent_less_than_or_equal_to";
+                            amount: string;
+                            /** @enum {string} */
+                            type: "stx";
+                        } | {
+                            principal: {
+                                /** @enum {string} */
+                                type_id: "principal_origin";
+                            } | {
+                                /** @enum {string} */
+                                type_id: "principal_standard";
+                                address: string;
+                            } | {
+                                /** @enum {string} */
+                                type_id: "principal_contract";
+                                address: string;
+                                contract_name: string;
+                            };
+                            condition_code: "sent_equal_to" | "sent_greater_than" | "sent_greater_than_or_equal_to" | "sent_less_than" | "sent_less_than_or_equal_to";
+                            amount: string;
+                            /** @enum {string} */
+                            type: "fungible";
+                            asset: {
+                                asset_name: string;
+                                contract_address: string;
+                                contract_name: string;
+                            };
+                        } | {
+                            principal: {
+                                /** @enum {string} */
+                                type_id: "principal_origin";
+                            } | {
+                                /** @enum {string} */
+                                type_id: "principal_standard";
+                                address: string;
+                            } | {
+                                /** @enum {string} */
+                                type_id: "principal_contract";
+                                address: string;
+                                contract_name: string;
+                            };
+                            condition_code: "sent" | "not_sent" | "maybe_sent";
+                            /** @enum {string} */
+                            type: "non_fungible";
+                            asset_value: {
+                                hex: string;
+                                repr: string;
+                            };
+                            asset: {
+                                asset_name: string;
+                                contract_address: string;
+                                contract_name: string;
+                            };
+                        })[];
+                        replaced_by_tx_id: string | null;
+                        /** @enum {string} */
+                        type: "tenure_change";
+                    } | {
+                        /** @description Transaction ID */
+                        tx_id: string;
+                        sender: {
+                            /** @description Address of the transaction initiator */
+                            address: string;
+                            /** @description Nonce of the transaction initiator */
+                            nonce: number;
+                        };
+                        sponsor: {
+                            /** @description Address of the transaction initiator */
+                            address: string;
+                            /** @description Nonce of the transaction initiator */
+                            nonce: number;
+                        } | null;
+                        /** @description Transaction fee as Integer string (64-bit unsigned integer). */
+                        fee_rate: string;
+                        /** @description A unix timestamp (in seconds) indicating when the transaction broadcast was received by the node. */
+                        receipt_time: number;
+                        /** @description Height of the block this transaction was received by the node */
+                        receipt_block_height: number;
+                        /** @description Status of the mempool transaction */
+                        status: "pending" | "dropped_replace_by_fee" | "dropped_replace_across_fork" | "dropped_too_expensive" | "dropped_stale_garbage_collect" | "dropped_problematic";
+                        /** @description Only present when requested via the `include=post_conditions` query param. */
+                        post_conditions?: ({
+                            principal: {
+                                /** @enum {string} */
+                                type_id: "principal_origin";
+                            } | {
+                                /** @enum {string} */
+                                type_id: "principal_standard";
+                                address: string;
+                            } | {
+                                /** @enum {string} */
+                                type_id: "principal_contract";
+                                address: string;
+                                contract_name: string;
+                            };
+                            condition_code: "sent_equal_to" | "sent_greater_than" | "sent_greater_than_or_equal_to" | "sent_less_than" | "sent_less_than_or_equal_to";
+                            amount: string;
+                            /** @enum {string} */
+                            type: "stx";
+                        } | {
+                            principal: {
+                                /** @enum {string} */
+                                type_id: "principal_origin";
+                            } | {
+                                /** @enum {string} */
+                                type_id: "principal_standard";
+                                address: string;
+                            } | {
+                                /** @enum {string} */
+                                type_id: "principal_contract";
+                                address: string;
+                                contract_name: string;
+                            };
+                            condition_code: "sent_equal_to" | "sent_greater_than" | "sent_greater_than_or_equal_to" | "sent_less_than" | "sent_less_than_or_equal_to";
+                            amount: string;
+                            /** @enum {string} */
+                            type: "fungible";
+                            asset: {
+                                asset_name: string;
+                                contract_address: string;
+                                contract_name: string;
+                            };
+                        } | {
+                            principal: {
+                                /** @enum {string} */
+                                type_id: "principal_origin";
+                            } | {
+                                /** @enum {string} */
+                                type_id: "principal_standard";
+                                address: string;
+                            } | {
+                                /** @enum {string} */
+                                type_id: "principal_contract";
+                                address: string;
+                                contract_name: string;
+                            };
+                            condition_code: "sent" | "not_sent" | "maybe_sent";
+                            /** @enum {string} */
+                            type: "non_fungible";
+                            asset_value: {
+                                hex: string;
+                                repr: string;
+                            };
+                            asset: {
+                                asset_name: string;
+                                contract_address: string;
+                                contract_name: string;
+                            };
+                        })[];
+                        replaced_by_tx_id: string | null;
+                        /** @enum {string} */
+                        type: "coinbase";
+                    });
                 };
             };
             /** @description Default Response */
