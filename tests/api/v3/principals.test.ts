@@ -518,4 +518,393 @@ describe('principals', () => {
       assert.equal(refreshed.statusCode, 304);
     });
   });
+
+  describe('/v3/principals/:principal/transactions/:tx_id/balance-changes', () => {
+    test('should return an empty list', async () => {
+      const response = await api.fastifyApp.inject({
+        method: 'GET',
+        url: `/extended/v3/principals/${emptyPrincipal}/transactions/${hex(0xdeadbeef)}/balance-changes`,
+      });
+      assert.equal(response.statusCode, 200);
+      const body = JSON.parse(response.body);
+      assert.deepEqual(body, {
+        limit: 20,
+        total: 0,
+        cursor: {
+          next: null,
+          previous: null,
+          current: null,
+        },
+        results: [],
+      });
+    });
+
+    test('should return a list of balance changes with cursor pagination', async () => {
+      const response1 = await api.fastifyApp.inject({
+        method: 'GET',
+        url: `/extended/v3/principals/${testAddr1}/transactions/${hex(3)}/balance-changes`,
+      });
+      assert.equal(response1.statusCode, 200);
+      const body1 = JSON.parse(response1.body);
+      assert.deepEqual(body1, {
+        limit: 20,
+        total: 3,
+        cursor: {
+          next: null,
+          previous: null,
+          current: '1:stx',
+        },
+        results: [
+          {
+            asset: {
+              type: 'stx',
+            },
+            balance_change: {
+              sent: '100050',
+              received: '0',
+              net: '-100050',
+            },
+          },
+          {
+            asset: {
+              type: 'ft',
+              identifier:
+                'SP2H8PY27SEZ03MWRKS5XABZYQN17ETGQS3527SA5.newyorkcitycoin-token::newyorkcitycoin',
+            },
+            balance_change: {
+              sent: '100000',
+              received: '0',
+              net: '-100000',
+            },
+          },
+          {
+            asset: {
+              type: 'nft',
+              identifier: 'SP3D6PV2ACBPEKYJTCMH7HEN02KP87QSP8KTEH335.Candies::candy',
+            },
+            balance_change: {
+              sent: '1',
+              received: '0',
+              net: '-1',
+            },
+          },
+        ],
+      });
+
+      const response2 = await api.fastifyApp.inject({
+        method: 'GET',
+        url: `/extended/v3/principals/${testAddr1}/transactions/${hex(3)}/balance-changes`,
+        query: {
+          limit: '1',
+          cursor: '1:stx',
+        },
+      });
+      assert.equal(response2.statusCode, 200);
+      const body2 = JSON.parse(response2.body);
+      assert.deepEqual(body2, {
+        limit: 1,
+        total: 3,
+        cursor: {
+          next: '2:SP2H8PY27SEZ03MWRKS5XABZYQN17ETGQS3527SA5.newyorkcitycoin-token::newyorkcitycoin',
+          previous: null,
+          current: '1:stx',
+        },
+        results: [
+          {
+            asset: {
+              type: 'stx',
+            },
+            balance_change: {
+              sent: '100050',
+              received: '0',
+              net: '-100050',
+            },
+          },
+        ],
+      });
+
+      const response3 = await api.fastifyApp.inject({
+        method: 'GET',
+        url: `/extended/v3/principals/${testAddr1}/transactions/${hex(3)}/balance-changes`,
+        query: {
+          limit: '1',
+          cursor:
+            '2:SP2H8PY27SEZ03MWRKS5XABZYQN17ETGQS3527SA5.newyorkcitycoin-token::newyorkcitycoin',
+        },
+      });
+      assert.equal(response3.statusCode, 200);
+      const body3 = JSON.parse(response3.body);
+      assert.deepEqual(body3, {
+        limit: 1,
+        total: 3,
+        cursor: {
+          next: '3:SP3D6PV2ACBPEKYJTCMH7HEN02KP87QSP8KTEH335.Candies::candy',
+          previous: '1:stx',
+          current:
+            '2:SP2H8PY27SEZ03MWRKS5XABZYQN17ETGQS3527SA5.newyorkcitycoin-token::newyorkcitycoin',
+        },
+        results: [
+          {
+            asset: {
+              type: 'ft',
+              identifier:
+                'SP2H8PY27SEZ03MWRKS5XABZYQN17ETGQS3527SA5.newyorkcitycoin-token::newyorkcitycoin',
+            },
+            balance_change: {
+              sent: '100000',
+              received: '0',
+              net: '-100000',
+            },
+          },
+        ],
+      });
+    });
+
+    test('should return 304 when ETag matches and refresh ETag per transaction', async () => {
+      // The balance-changes-by-tx endpoint uses the per-transaction ETag, so the cache key
+      // is scoped to (principal, tx_id).
+      const first = await api.fastifyApp.inject({
+        method: 'GET',
+        url: `/extended/v3/principals/${testAddr1}/transactions/${hex(3)}/balance-changes`,
+      });
+      assert.equal(first.statusCode, 200);
+      const etag = first.headers['etag'];
+      assert.ok(etag, 'expected ETag header to be set');
+
+      // Same ETag returns 304 with an empty body.
+      const cached = await api.fastifyApp.inject({
+        method: 'GET',
+        url: `/extended/v3/principals/${testAddr1}/transactions/${hex(3)}/balance-changes`,
+        headers: { 'if-none-match': etag as string },
+      });
+      assert.equal(cached.statusCode, 304);
+      assert.equal(cached.body, '');
+
+      // A stale ETag returns 200 with the current data and ETag.
+      const stale = await api.fastifyApp.inject({
+        method: 'GET',
+        url: `/extended/v3/principals/${testAddr1}/transactions/${hex(3)}/balance-changes`,
+        headers: { 'if-none-match': '"0xdeadbeef"' },
+      });
+      assert.equal(stale.statusCode, 200);
+      assert.equal(stale.headers['etag'], etag);
+
+      // A different tx_id returns a distinct ETag and does not 304 against tx hex(3)'s ETag.
+      const otherTx = await api.fastifyApp.inject({
+        method: 'GET',
+        url: `/extended/v3/principals/${testAddr1}/transactions/${hex(1)}/balance-changes`,
+        headers: { 'if-none-match': etag as string },
+      });
+      assert.equal(otherTx.statusCode, 200);
+      assert.ok(otherTx.headers['etag']);
+      assert.notEqual(otherTx.headers['etag'], etag);
+    });
+  });
+
+  describe('/v3/principals/:principal/balance-changes', () => {
+    test('should require at least one tx_id', async () => {
+      const response = await api.fastifyApp.inject({
+        method: 'GET',
+        url: `/extended/v3/principals/${testAddr1}/balance-changes`,
+      });
+      assert.equal(response.statusCode, 400);
+    });
+
+    test('should return an empty list when the principal has no activity on the requested txs', async () => {
+      const response = await api.fastifyApp.inject({
+        method: 'GET',
+        url: `/extended/v3/principals/${emptyPrincipal}/balance-changes`,
+        query: { tx_id: hex(3) },
+      });
+      assert.equal(response.statusCode, 200);
+      const body = JSON.parse(response.body);
+      assert.deepEqual(body, {
+        limit: 20,
+        total: 0,
+        cursor: {
+          next: null,
+          previous: null,
+          current: null,
+        },
+        results: [],
+      });
+    });
+
+    test('should return balance changes across multiple txs ordered by chain position desc then asset asc', async () => {
+      // testAddr1 has activity on:
+      //   - hex(1): coinbase in block 1 → stx fee only
+      //   - hex(3): token transfer in block 2 → stx + ft + nft
+      const response = await api.fastifyApp.inject({
+        method: 'GET',
+        url: `/extended/v3/principals/${testAddr1}/balance-changes`,
+        query: { tx_id: [hex(1), hex(3)] },
+      });
+      assert.equal(response.statusCode, 200);
+      const body = JSON.parse(response.body);
+      assert.equal(body.limit, 20);
+      assert.equal(body.total, 4);
+      assert.equal(body.results.length, 4);
+      assert.deepEqual(body.cursor, {
+        next: null,
+        previous: null,
+        current: '2:0:3:1:stx',
+      });
+      assert.deepEqual(body.results, [
+        {
+          tx_id: hex(3),
+          asset: { type: 'stx' },
+          balance_change: { sent: '100050', received: '0', net: '-100050' },
+        },
+        {
+          tx_id: hex(3),
+          asset: {
+            type: 'ft',
+            identifier:
+              'SP2H8PY27SEZ03MWRKS5XABZYQN17ETGQS3527SA5.newyorkcitycoin-token::newyorkcitycoin',
+          },
+          balance_change: { sent: '100000', received: '0', net: '-100000' },
+        },
+        {
+          tx_id: hex(3),
+          asset: {
+            type: 'nft',
+            identifier: 'SP3D6PV2ACBPEKYJTCMH7HEN02KP87QSP8KTEH335.Candies::candy',
+          },
+          balance_change: { sent: '1', received: '0', net: '-1' },
+        },
+        {
+          tx_id: hex(1),
+          asset: { type: 'stx' },
+          balance_change: { sent: '50', received: '0', net: '-50' },
+        },
+      ]);
+    });
+
+    test('should accept comma-separated tx_id values', async () => {
+      const response = await api.fastifyApp.inject({
+        method: 'GET',
+        url: `/extended/v3/principals/${testAddr1}/balance-changes`,
+        query: { tx_id: `${hex(1)},${hex(3)}` },
+      });
+      assert.equal(response.statusCode, 200);
+      const body = JSON.parse(response.body);
+      assert.equal(body.total, 4);
+      assert.equal(body.results.length, 4);
+      assert.equal(body.results[0].tx_id, hex(3));
+      assert.equal(body.results[3].tx_id, hex(1));
+    });
+
+    test('should allow cursor pagination', async () => {
+      // First page: limit 2 → first two entries of tx hex(3).
+      const page1 = await api.fastifyApp.inject({
+        method: 'GET',
+        url: `/extended/v3/principals/${testAddr1}/balance-changes`,
+        query: { tx_id: [hex(1), hex(3)], limit: '2' },
+      });
+      assert.equal(page1.statusCode, 200);
+      const body1 = JSON.parse(page1.body);
+      assert.equal(body1.total, 4);
+      assert.equal(body1.limit, 2);
+      assert.equal(body1.results.length, 2);
+      assert.equal(body1.results[0].tx_id, hex(3));
+      assert.equal(body1.results[0].asset.type, 'stx');
+      assert.equal(body1.results[1].asset.type, 'ft');
+      assert.deepEqual(body1.cursor, {
+        next: '2:0:3:3:SP3D6PV2ACBPEKYJTCMH7HEN02KP87QSP8KTEH335.Candies::candy',
+        previous: null,
+        current: '2:0:3:1:stx',
+      });
+
+      // Second page: starts at the nft of hex(3), then crosses over to the stx of hex(1).
+      const page2 = await api.fastifyApp.inject({
+        method: 'GET',
+        url: `/extended/v3/principals/${testAddr1}/balance-changes`,
+        query: {
+          tx_id: [hex(1), hex(3)],
+          limit: '2',
+          cursor: '2:0:3:3:SP3D6PV2ACBPEKYJTCMH7HEN02KP87QSP8KTEH335.Candies::candy',
+        },
+      });
+      assert.equal(page2.statusCode, 200);
+      const body2 = JSON.parse(page2.body);
+      assert.equal(body2.results.length, 2);
+      assert.equal(body2.results[0].tx_id, hex(3));
+      assert.equal(body2.results[0].asset.type, 'nft');
+      assert.equal(body2.results[1].tx_id, hex(1));
+      assert.equal(body2.results[1].asset.type, 'stx');
+      assert.deepEqual(body2.cursor, {
+        next: null,
+        previous: '2:0:3:1:stx',
+        current: '2:0:3:3:SP3D6PV2ACBPEKYJTCMH7HEN02KP87QSP8KTEH335.Candies::candy',
+      });
+    });
+
+    test('should return 304 when ETag matches and refresh ETag on new principal activity', async () => {
+      // This endpoint uses the principal cache, so the ETag tracks the principal's last
+      // confirmed activity — independent of the requested tx_id batch.
+      const first = await api.fastifyApp.inject({
+        method: 'GET',
+        url: `/extended/v3/principals/${testAddr1}/balance-changes`,
+        query: { tx_id: hex(3) },
+      });
+      assert.equal(first.statusCode, 200);
+      const etag = first.headers['etag'];
+      assert.ok(etag, 'expected ETag header to be set');
+
+      // Same ETag returns 304 with an empty body.
+      const cached = await api.fastifyApp.inject({
+        method: 'GET',
+        url: `/extended/v3/principals/${testAddr1}/balance-changes`,
+        query: { tx_id: hex(3) },
+        headers: { 'if-none-match': etag as string },
+      });
+      assert.equal(cached.statusCode, 304);
+      assert.equal(cached.body, '');
+
+      // A stale ETag returns 200 with the current data and ETag.
+      const stale = await api.fastifyApp.inject({
+        method: 'GET',
+        url: `/extended/v3/principals/${testAddr1}/balance-changes`,
+        query: { tx_id: hex(3) },
+        headers: { 'if-none-match': '"0xdeadbeef"' },
+      });
+      assert.equal(stale.statusCode, 200);
+      assert.equal(stale.headers['etag'], etag);
+
+      // New confirmed activity for testAddr1 invalidates its ETag.
+      await db.update(
+        new TestBlockBuilder({
+          block_height: 3,
+          block_hash: hex(3),
+          index_block_hash: hex(3),
+          parent_index_block_hash: hex(2),
+          parent_block_hash: hex(2),
+        })
+          .addTx({
+            tx_id: hex(0x1001),
+            fee_rate: 50n,
+            block_hash: hex(3),
+            index_block_hash: hex(3),
+            block_time: 3000,
+            burn_block_height: 3,
+            burn_block_time: 3000,
+            type_id: DbTxTypeId.TokenTransfer,
+            status: DbTxStatus.Success,
+            sender_address: testAddr1,
+            nonce: 100,
+          })
+          .build()
+      );
+      const afterActivity = await api.fastifyApp.inject({
+        method: 'GET',
+        url: `/extended/v3/principals/${testAddr1}/balance-changes`,
+        query: { tx_id: hex(3) },
+        headers: { 'if-none-match': etag as string },
+      });
+      assert.equal(afterActivity.statusCode, 200);
+      const newEtag = afterActivity.headers['etag'];
+      assert.ok(newEtag);
+      assert.notEqual(newEtag, etag);
+    });
+  });
 });

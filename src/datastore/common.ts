@@ -576,6 +576,12 @@ export enum DbAssetEventTypeId {
   Burn = 3,
 }
 
+export enum DbAssetType {
+  Stx = 1,
+  Ft = 2,
+  Nft = 3,
+}
+
 interface DbAssetEvent extends DbEventBase {
   asset_event_type_id: DbAssetEventTypeId;
   sender?: string;
@@ -1683,8 +1689,8 @@ export interface PrincipalTxsInsertValues {
   microblock_sequence: number;
   tx_index: number;
   canonical: boolean;
-  stx_sent: bigint;
-  stx_received: bigint;
+  stx_sent: PgNumeric;
+  stx_received: PgNumeric;
   microblock_canonical: boolean;
   stx_balance_affected: boolean;
   ft_balance_affected: boolean;
@@ -1698,6 +1704,23 @@ export interface PrincipalTxsInsertValues {
   nft_mint_event_count: number;
   nft_burn_event_count: number;
   nft_transfer_event_count: number;
+  balance_change_count: number;
+}
+
+export interface PrincipalTxBalanceChangeInsertValues {
+  principal: string;
+  tx_id: PgBytea;
+  block_height: number;
+  index_block_hash: PgBytea;
+  microblock_hash: PgBytea;
+  microblock_sequence: number;
+  tx_index: number;
+  canonical: boolean;
+  microblock_canonical: boolean;
+  asset_type: DbAssetType;
+  asset_identifier: string;
+  sent: PgNumeric;
+  received: PgNumeric;
 }
 
 export interface RewardSlotHolderInsertValues {

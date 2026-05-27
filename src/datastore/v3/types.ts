@@ -1,4 +1,10 @@
-import { DbAssetEventTypeId, DbEventTypeId, DbTxStatus, DbTxTypeId } from '../common.js';
+import {
+  DbAssetEventTypeId,
+  DbAssetType,
+  DbEventTypeId,
+  DbTxStatus,
+  DbTxTypeId,
+} from '../common.js';
 
 export type DbCursorPaginatedResult<T> = {
   limit: number;
@@ -70,6 +76,23 @@ export interface DbPrincipalTransactionSummary extends DbTransactionSummary {
   ft_balance_affected: boolean;
   nft_balance_affected: boolean;
   involvement: DbPrincipalTransactionInvolvement;
+}
+
+export interface DbPrincipalTransactionBalanceChange {
+  principal: string;
+  tx_id: string;
+  block_height: number;
+  index_block_hash: string;
+  microblock_hash: string;
+  microblock_sequence: number;
+  tx_index: number;
+  canonical: boolean;
+  microblock_canonical: boolean;
+  asset_type: DbAssetType;
+  asset_identifier: string;
+  sent: string;
+  received: string;
+  net: string;
 }
 
 export interface DbMempoolTransactionSummary {

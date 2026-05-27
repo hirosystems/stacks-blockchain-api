@@ -63,7 +63,9 @@ import {
   PoxSetSignerValues,
   PoxCycleInsertValues,
   DbAssetEventTypeId,
+  DbAssetType,
   DbBurnBlockPoxTx,
+  PrincipalTxBalanceChangeInsertValues,
 } from './common.js';
 import {
   BLOCK_COLUMNS,
@@ -1394,6 +1396,8 @@ export class PgWriteStore extends PgStore {
   /**
    * Update the `principal_txs` table with the latest `tx_id`s that resulted in activity for a
    * principal (contract or address), and mark the type of token balance that was affected.
+   * Also populates the `principal_tx_balance_changes` table with one row per
+   * (principal, asset_type, asset_identifier) touched by each tx.
    * @param sql - DB client
    * @param txs - list of transactions
    */
@@ -1402,8 +1406,8 @@ export class PgWriteStore extends PgStore {
       stx: boolean;
       ft: boolean;
       nft: boolean;
-      stx_sent: bigint;
-      stx_received: bigint;
+      stx_sent: BigNumber;
+      stx_received: BigNumber;
       stx_mints: number;
       stx_burns: number;
       stx_transfers: number;
@@ -1414,7 +1418,16 @@ export class PgWriteStore extends PgStore {
       nft_burns: number;
       nft_transfers: number;
     };
+    type BalanceChangeRow = {
+      principal: string;
+      asset_type: DbAssetType;
+      asset_identifier: string;
+      sent: BigNumber;
+      received: BigNumber;
+    };
+    const STX_ASSET_IDENTIFIER = 'stx';
     const values: PrincipalTxsInsertValues[] = [];
+    const balanceChangeValues: PrincipalTxBalanceChangeInsertValues[] = [];
     for (const { tx, stxEvents, ftEvents, nftEvents } of txs) {
       // Mark principals who participated in this transaction, along with the type of token balance
       // they affected.
@@ -1425,8 +1438,8 @@ export class PgWriteStore extends PgStore {
           stx: entry?.stx || data?.stx || false,
           ft: entry?.ft || data?.ft || false,
           nft: entry?.nft || data?.nft || false,
-          stx_sent: (entry?.stx_sent ?? 0n) + (data?.stx_sent ?? 0n),
-          stx_received: (entry?.stx_received ?? 0n) + (data?.stx_received ?? 0n),
+          stx_sent: (entry?.stx_sent ?? new BigNumber(0)).plus(data?.stx_sent ?? 0n),
+          stx_received: (entry?.stx_received ?? new BigNumber(0)).plus(data?.stx_received ?? 0n),
           stx_mints: (entry?.stx_mints ?? 0) + (data?.stx_mints ?? 0),
           stx_burns: (entry?.stx_burns ?? 0) + (data?.stx_burns ?? 0),
           stx_transfers: (entry?.stx_transfers ?? 0) + (data?.stx_transfers ?? 0),
@@ -1439,6 +1452,28 @@ export class PgWriteStore extends PgStore {
         });
       };
 
+      // Per-asset balance changes for this tx, keyed by `${principal}|${asset_type}|${asset_id}`.
+      // Note: for NFTs we count tokens moved (each event contributes 1 to sent/received) since
+      // the schema stores numeric counts rather than the underlying token values.
+      const balanceChanges = new Map<string, BalanceChangeRow>();
+      const addBalanceChange = (
+        principal: string,
+        asset_type: DbAssetType,
+        asset_identifier: string,
+        sent: BigNumber,
+        received: BigNumber
+      ) => {
+        const key = `${principal}|${asset_type}|${asset_identifier}`;
+        const entry = balanceChanges.get(key);
+        balanceChanges.set(key, {
+          principal,
+          asset_type,
+          asset_identifier,
+          sent: (entry?.sent ?? new BigNumber(0)).plus(sent),
+          received: (entry?.received ?? new BigNumber(0)).plus(received),
+        });
+      };
+
       // Record participating principals. No amounts yet, that will be included in stx_events below.
       addPrincipal(tx.sender_address);
       if (tx.token_transfer_recipient_address)
@@ -1447,70 +1482,194 @@ export class PgWriteStore extends PgStore {
       if (tx.smart_contract_contract_id) addPrincipal(tx.smart_contract_contract_id);
 
       // Record fee paid.
-      if (tx.sponsor_address) {
-        addPrincipal(tx.sponsor_address, { stx: true, stx_sent: BigInt(tx.fee_rate) });
-      } else {
-        addPrincipal(tx.sender_address, { stx: true, stx_sent: BigInt(tx.fee_rate) });
-      }
+      const feePayer = tx.sponsor_address ?? tx.sender_address;
+      const feeAmount = new BigNumber(tx.fee_rate);
+      addPrincipal(feePayer, { stx: true, stx_sent: feeAmount });
+      addBalanceChange(
+        feePayer,
+        DbAssetType.Stx,
+        STX_ASSET_IDENTIFIER,
+        feeAmount,
+        new BigNumber(0)
+      );
 
       // Record token amounts and event counts.
       for (const event of stxEvents) {
         switch (event.asset_event_type_id) {
           case DbAssetEventTypeId.Mint:
-            if (event.recipient)
+            if (event.recipient) {
               addPrincipal(event.recipient, {
                 stx: true,
-                stx_received: event.amount,
+                stx_received: new BigNumber(event.amount),
                 stx_mints: 1,
               });
+              addBalanceChange(
+                event.recipient,
+                DbAssetType.Stx,
+                STX_ASSET_IDENTIFIER,
+                new BigNumber(0),
+                new BigNumber(event.amount)
+              );
+            }
             break;
           case DbAssetEventTypeId.Burn:
-            if (event.sender)
-              addPrincipal(event.sender, { stx: true, stx_sent: event.amount, stx_burns: 1 });
+            if (event.sender) {
+              addPrincipal(event.sender, {
+                stx: true,
+                stx_sent: new BigNumber(event.amount),
+                stx_burns: 1,
+              });
+              addBalanceChange(
+                event.sender,
+                DbAssetType.Stx,
+                STX_ASSET_IDENTIFIER,
+                new BigNumber(event.amount),
+                new BigNumber(0)
+              );
+            }
             break;
           case DbAssetEventTypeId.Transfer:
-            if (event.sender)
-              addPrincipal(event.sender, { stx: true, stx_sent: event.amount, stx_transfers: 1 });
-            if (event.recipient)
-              addPrincipal(event.recipient, {
+            if (event.sender) {
+              addPrincipal(event.sender, {
                 stx: true,
-                stx_received: event.amount,
+                stx_sent: new BigNumber(event.amount),
                 stx_transfers: 1,
               });
+              addBalanceChange(
+                event.sender,
+                DbAssetType.Stx,
+                STX_ASSET_IDENTIFIER,
+                new BigNumber(event.amount),
+                new BigNumber(0)
+              );
+            }
+            if (event.recipient) {
+              addPrincipal(event.recipient, {
+                stx: true,
+                stx_received: new BigNumber(event.amount),
+                stx_transfers: 1,
+              });
+              addBalanceChange(
+                event.recipient,
+                DbAssetType.Stx,
+                STX_ASSET_IDENTIFIER,
+                new BigNumber(0),
+                new BigNumber(event.amount)
+              );
+            }
             break;
         }
       }
       for (const event of ftEvents) {
         switch (event.asset_event_type_id) {
           case DbAssetEventTypeId.Mint:
-            if (event.recipient) addPrincipal(event.recipient, { ft: true, ft_mints: 1 });
+            if (event.recipient) {
+              addPrincipal(event.recipient, { ft: true, ft_mints: 1 });
+              addBalanceChange(
+                event.recipient,
+                DbAssetType.Ft,
+                event.asset_identifier,
+                new BigNumber(0),
+                new BigNumber(event.amount)
+              );
+            }
             break;
           case DbAssetEventTypeId.Burn:
-            if (event.sender) addPrincipal(event.sender, { ft: true, ft_burns: 1 });
+            if (event.sender) {
+              addPrincipal(event.sender, { ft: true, ft_burns: 1 });
+              addBalanceChange(
+                event.sender,
+                DbAssetType.Ft,
+                event.asset_identifier,
+                new BigNumber(event.amount),
+                new BigNumber(0)
+              );
+            }
             break;
           case DbAssetEventTypeId.Transfer:
-            if (event.sender) addPrincipal(event.sender, { ft: true, ft_transfers: 1 });
-            if (event.recipient)
+            if (event.sender) {
+              addPrincipal(event.sender, { ft: true, ft_transfers: 1 });
+              addBalanceChange(
+                event.sender,
+                DbAssetType.Ft,
+                event.asset_identifier,
+                new BigNumber(event.amount),
+                new BigNumber(0)
+              );
+            }
+            if (event.recipient) {
               addPrincipal(event.recipient, {
                 ft: true,
                 ft_transfers: 1,
               });
+              addBalanceChange(
+                event.recipient,
+                DbAssetType.Ft,
+                event.asset_identifier,
+                new BigNumber(0),
+                new BigNumber(event.amount)
+              );
+            }
             break;
         }
       }
       for (const event of nftEvents) {
         switch (event.asset_event_type_id) {
           case DbAssetEventTypeId.Mint:
-            if (event.recipient) addPrincipal(event.recipient, { nft: true, nft_mints: 1 });
+            if (event.recipient) {
+              addPrincipal(event.recipient, { nft: true, nft_mints: 1 });
+              addBalanceChange(
+                event.recipient,
+                DbAssetType.Nft,
+                event.asset_identifier,
+                new BigNumber(0),
+                new BigNumber(1)
+              );
+            }
             break;
           case DbAssetEventTypeId.Burn:
-            if (event.sender) addPrincipal(event.sender, { nft: true, nft_burns: 1 });
+            if (event.sender) {
+              addPrincipal(event.sender, { nft: true, nft_burns: 1 });
+              addBalanceChange(
+                event.sender,
+                DbAssetType.Nft,
+                event.asset_identifier,
+                new BigNumber(1),
+                new BigNumber(0)
+              );
+            }
             break;
           case DbAssetEventTypeId.Transfer:
-            if (event.sender) addPrincipal(event.sender, { nft: true, nft_transfers: 1 });
-            if (event.recipient) addPrincipal(event.recipient, { nft: true, nft_transfers: 1 });
+            if (event.sender) {
+              addPrincipal(event.sender, { nft: true, nft_transfers: 1 });
+              addBalanceChange(
+                event.sender,
+                DbAssetType.Nft,
+                event.asset_identifier,
+                new BigNumber(1),
+                new BigNumber(0)
+              );
+            }
+            if (event.recipient) {
+              addPrincipal(event.recipient, { nft: true, nft_transfers: 1 });
+              addBalanceChange(
+                event.recipient,
+                DbAssetType.Nft,
+                event.asset_identifier,
+                new BigNumber(0),
+                new BigNumber(1)
+              );
+            }
             break;
         }
+      }
+
+      // Count balance change rows per principal so the principal_txs row carries
+      // `balance_change_count` — used by the API to know how many rows to expect from
+      // the drill-in endpoint without an extra COUNT(*) query.
+      const balanceChangeCounts = new Map<string, number>();
+      for (const row of balanceChanges.values()) {
+        balanceChangeCounts.set(row.principal, (balanceChangeCounts.get(row.principal) ?? 0) + 1);
       }
 
       for (const [principal, data] of principals.entries()) {
@@ -1527,8 +1686,8 @@ export class PgWriteStore extends PgStore {
           stx_balance_affected: data.stx,
           ft_balance_affected: data.ft,
           nft_balance_affected: data.nft,
-          stx_sent: data.stx_sent,
-          stx_received: data.stx_received,
+          stx_sent: data.stx_sent.toFixed(),
+          stx_received: data.stx_received.toFixed(),
           stx_mint_event_count: data.stx_mints,
           stx_burn_event_count: data.stx_burns,
           stx_transfer_event_count: data.stx_transfers,
@@ -1538,6 +1697,25 @@ export class PgWriteStore extends PgStore {
           nft_mint_event_count: data.nft_mints,
           nft_burn_event_count: data.nft_burns,
           nft_transfer_event_count: data.nft_transfers,
+          balance_change_count: balanceChangeCounts.get(principal) ?? 0,
+        });
+      }
+
+      for (const change of balanceChanges.values()) {
+        balanceChangeValues.push({
+          principal: change.principal,
+          tx_id: tx.tx_id,
+          block_height: tx.block_height,
+          index_block_hash: tx.index_block_hash,
+          microblock_hash: tx.microblock_hash,
+          microblock_sequence: tx.microblock_sequence,
+          tx_index: tx.tx_index,
+          canonical: tx.canonical,
+          microblock_canonical: tx.microblock_canonical,
+          asset_type: change.asset_type,
+          asset_identifier: change.asset_identifier,
+          sent: change.sent.toFixed(),
+          received: change.received.toFixed(),
         });
       }
     }
@@ -1557,6 +1735,12 @@ export class PgWriteStore extends PgStore {
         INSERT INTO principal_tx_counts (principal, count)
         (SELECT principal, count FROM count_deltas)
         ON CONFLICT (principal) DO UPDATE SET count = principal_tx_counts.count + EXCLUDED.count
+      `;
+    }
+    for (const batch of batchIterate(balanceChangeValues, INSERT_BATCH_SIZE)) {
+      await sql`
+        INSERT INTO principal_tx_balance_changes ${sql(batch)}
+        ON CONFLICT ON CONSTRAINT unique_principal_tx_balance_changes DO NOTHING
       `;
     }
   }
@@ -3014,6 +3198,14 @@ export class PgWriteStore extends PgStore {
           AND (index_block_hash = ${args.indexBlockHash} OR index_block_hash = '\\x'::bytea)
           AND tx_id IN ${sql(txIds)}
       `;
+      await sql`
+        UPDATE principal_tx_balance_changes
+        SET microblock_canonical = ${args.isMicroCanonical},
+          canonical = ${args.isCanonical}, index_block_hash = ${args.indexBlockHash}
+        WHERE microblock_hash IN ${sql(args.microblocks)}
+          AND (index_block_hash = ${args.indexBlockHash} OR index_block_hash = '\\x'::bytea)
+          AND tx_id IN ${sql(txIds)}
+      `;
     }
 
     // Update unanchored tx count in `chain_tip` table
@@ -3466,6 +3658,13 @@ export class PgWriteStore extends PgStore {
           SET count = ${canonical ? sql`pc.count + cd.count` : sql`pc.count - cd.count`}
           FROM count_deltas AS cd
           WHERE pc.principal = cd.principal
+        `;
+        await sql`
+          UPDATE principal_tx_balance_changes
+          SET canonical = ${canonical}
+          WHERE tx_id IN ${sql(txs.map(t => t.txId))}
+            AND index_block_hash = ${indexBlockHash}
+            AND canonical != ${canonical}
         `;
       }
     });

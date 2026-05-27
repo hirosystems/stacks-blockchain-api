@@ -1,6 +1,6 @@
 import { TransactionEvent } from '../../schemas/v3/entities/transaction-events.js';
 import { DbTransactionEvent } from '../../../datastore/v3/types.js';
-import { DbAssetEventTypeId, DbEventTypeId } from 'src/datastore/common.js';
+import { DbAssetEventTypeId, DbEventTypeId } from '../../../datastore/common.js';
 import { decodeClarityValueToRepr } from '@stacks/codec';
 
 /**
