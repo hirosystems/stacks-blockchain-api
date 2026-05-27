@@ -123,7 +123,12 @@ export function serializeDbTransactionSummary(summary: DbTransactionSummary): Tr
         token_transfer: {
           recipient: summary.token_transfer_recipient_address!,
           amount: summary.token_transfer_amount!,
-          memo: summary.token_transfer_memo,
+          memo: summary.token_transfer_memo
+            ? {
+                hex: summary.token_transfer_memo,
+                repr: decodeClarityValueToRepr(summary.token_transfer_memo),
+              }
+            : null,
         },
       };
       return tokenTransfer;

@@ -82,6 +82,7 @@ describe('principals', () => {
         status: DbTxStatus.Success,
         sender_address: sender,
         nonce: indexIdIndex,
+        token_transfer_memo: '0x0d0000000568656c6c6f',
       });
       for (let i = 0; i < stxEventCount; i++) {
         block.addTxStxEvent({
@@ -178,7 +179,10 @@ describe('principals', () => {
           token_transfer: {
             recipient: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
             amount: '100',
-            memo: '0x',
+            memo: {
+              hex: '0x0d0000000568656c6c6f',
+              repr: '"hello"',
+            },
           },
         },
         involvement: 'sender',
@@ -490,6 +494,7 @@ describe('principals', () => {
             status: DbTxStatus.Success,
             sender_address: testAddr1,
             nonce: 100,
+            token_transfer_memo: '0x0d0000000568656c6c6f',
           })
           .build()
       );

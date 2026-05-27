@@ -123,7 +123,7 @@ describe('blocks', () => {
             sender_address: SENDER,
             token_transfer_recipient_address: RECIPIENT,
             token_transfer_amount: 100n,
-            token_transfer_memo: '0x',
+            token_transfer_memo: '0x0d0000000568656c6c6f',
           })
           .build()
       );
@@ -167,7 +167,10 @@ describe('blocks', () => {
         token_transfer: {
           recipient: RECIPIENT,
           amount: '100',
-          memo: '0x',
+          memo: {
+            hex: '0x0d0000000568656c6c6f',
+            repr: '"hello"',
+          },
         },
       });
       assert.deepEqual(body.results[1], {

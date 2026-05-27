@@ -91,7 +91,7 @@ describe('transactions', () => {
             sender_address: 'SP466FNC0P7JWTNM2R9T199QRZN1MYEDTAR0KP27',
             token_transfer_recipient_address: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
             token_transfer_amount: 100n,
-            token_transfer_memo: '0x',
+            token_transfer_memo: '0x0d0000000568656c6c6f',
           })
           .build()
       );
@@ -132,7 +132,10 @@ describe('transactions', () => {
         token_transfer: {
           recipient: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
           amount: '100',
-          memo: '0x',
+          memo: {
+            hex: '0x0d0000000568656c6c6f',
+            repr: '"hello"',
+          },
         },
       });
       assert.deepEqual(body.results[1], {
@@ -552,6 +555,146 @@ describe('transactions', () => {
       assert.equal(otherTx.statusCode, 200);
       assert.ok(otherTx.headers['etag']);
       assert.notEqual(otherTx.headers['etag'], etag);
+    });
+  });
+
+  describe('/v3/transactions/:tx_id/events', () => {
+    const sender = 'SP466FNC0P7JWTNM2R9T199QRZN1MYEDTAR0KP27';
+    const recipient = 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6';
+
+    test('should return transaction events sorted by event_index across event tables', async () => {
+      const txId = hex(0x7001);
+      await db.update(
+        new TestBlockBuilder({
+          block_height: 1,
+          index_block_hash: hex(1),
+          parent_index_block_hash: hex(0),
+          parent_block_hash: hex(0),
+        })
+          .addTx({
+            tx_id: txId,
+            tx_index: 0,
+            event_count: 5,
+          })
+          .addTxStxEvent({ amount: 101n })
+          .addTxFtEvent({ amount: 202n, sender, recipient })
+          .addTxNftEvent({ sender, recipient })
+          .addTxStxLockEvent({ locked_amount: 303, unlock_height: 555, locked_address: sender })
+          .addTxContractLogEvent()
+          .build()
+      );
+
+      const response = await api.fastifyApp.inject({
+        method: 'GET',
+        url: `/extended/v3/transactions/${txId}/events`,
+      });
+      assert.equal(response.statusCode, 200);
+      const body = JSON.parse(response.body);
+
+      assert.equal(body.total, 5);
+      assert.equal(body.limit, 20);
+      assert.deepEqual(body.cursor, {
+        next: null,
+        previous: null,
+        current: '0',
+      });
+      assert.equal(body.results.length, 5);
+      assert.deepEqual(
+        body.results.map((event: { event_index: number }) => event.event_index),
+        [0, 1, 2, 3, 4]
+      );
+      assert.deepEqual(
+        body.results.map((event: { type: string }) => event.type),
+        ['stx_asset', 'ft_asset', 'nft_asset', 'stx_lock', 'contract_log']
+      );
+    });
+
+    test('should cursor paginate transaction events by event_index', async () => {
+      const txId = hex(0x7002);
+      await db.update(
+        new TestBlockBuilder({
+          block_height: 1,
+          index_block_hash: hex(1),
+          parent_index_block_hash: hex(0),
+          parent_block_hash: hex(0),
+        })
+          .addTx({
+            tx_id: txId,
+            tx_index: 0,
+            event_count: 5,
+          })
+          .addTxStxEvent()
+          .addTxFtEvent({ sender, recipient })
+          .addTxNftEvent({ sender, recipient })
+          .addTxStxLockEvent({ locked_address: sender })
+          .addTxContractLogEvent()
+          .build()
+      );
+
+      const page1 = await api.fastifyApp.inject({
+        method: 'GET',
+        url: `/extended/v3/transactions/${txId}/events`,
+        query: {
+          limit: '2',
+        },
+      });
+      assert.equal(page1.statusCode, 200);
+      const body1 = JSON.parse(page1.body);
+      assert.equal(body1.total, 5);
+      assert.equal(body1.results.length, 2);
+      assert.deepEqual(
+        body1.results.map((event: { event_index: number }) => event.event_index),
+        [0, 1]
+      );
+      assert.deepEqual(body1.cursor, {
+        next: '2',
+        previous: null,
+        current: '0',
+      });
+
+      const page2 = await api.fastifyApp.inject({
+        method: 'GET',
+        url: `/extended/v3/transactions/${txId}/events`,
+        query: {
+          limit: '2',
+          cursor: '2',
+        },
+      });
+      assert.equal(page2.statusCode, 200);
+      const body2 = JSON.parse(page2.body);
+      assert.equal(body2.total, 5);
+      assert.equal(body2.results.length, 2);
+      assert.deepEqual(
+        body2.results.map((event: { event_index: number }) => event.event_index),
+        [2, 3]
+      );
+      assert.deepEqual(body2.cursor, {
+        next: '4',
+        previous: '0',
+        current: '2',
+      });
+
+      const page3 = await api.fastifyApp.inject({
+        method: 'GET',
+        url: `/extended/v3/transactions/${txId}/events`,
+        query: {
+          limit: '2',
+          cursor: '4',
+        },
+      });
+      assert.equal(page3.statusCode, 200);
+      const body3 = JSON.parse(page3.body);
+      assert.equal(body3.total, 5);
+      assert.equal(body3.results.length, 1);
+      assert.deepEqual(
+        body3.results.map((event: { event_index: number }) => event.event_index),
+        [4]
+      );
+      assert.deepEqual(body3.cursor, {
+        next: null,
+        previous: '2',
+        current: '4',
+      });
     });
   });
 });

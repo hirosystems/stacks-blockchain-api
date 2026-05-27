@@ -72,7 +72,7 @@ describe('mempool', () => {
             sender_address: 'SP466FNC0P7JWTNM2R9T199QRZN1MYEDTAR0KP27',
             token_transfer_recipient_address: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
             token_transfer_amount: 500n,
-            token_transfer_memo: '0x',
+            token_transfer_memo: '0x0d0000000568656c6c6f',
             fee_rate: 250n,
             nonce: 3,
           }),
@@ -133,7 +133,7 @@ describe('mempool', () => {
         token_transfer: {
           recipient: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
           amount: '500',
-          memo: '0x',
+          memo: '0x0d0000000568656c6c6f',
         },
       });
     });
@@ -544,6 +544,7 @@ describe('mempool', () => {
             sender_address: SENDER,
             nonce: 1,
             type_id: DbTxTypeId.TokenTransfer,
+            token_transfer_memo: '0x0d0000000568656c6c6f',
           })
           .build()
       );
