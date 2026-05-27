@@ -1689,8 +1689,8 @@ export interface PrincipalTxsInsertValues {
   microblock_sequence: number;
   tx_index: number;
   canonical: boolean;
-  stx_sent: bigint;
-  stx_received: bigint;
+  stx_sent: PgNumeric;
+  stx_received: PgNumeric;
   microblock_canonical: boolean;
   stx_balance_affected: boolean;
   ft_balance_affected: boolean;
@@ -1719,8 +1719,8 @@ export interface PrincipalTxBalanceChangeInsertValues {
   microblock_canonical: boolean;
   asset_type: DbAssetType;
   asset_identifier: string;
-  sent: bigint;
-  received: bigint;
+  sent: PgNumeric;
+  received: PgNumeric;
 }
 
 export interface RewardSlotHolderInsertValues {

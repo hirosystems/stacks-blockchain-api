@@ -1406,8 +1406,8 @@ export class PgWriteStore extends PgStore {
       stx: boolean;
       ft: boolean;
       nft: boolean;
-      stx_sent: bigint;
-      stx_received: bigint;
+      stx_sent: BigNumber;
+      stx_received: BigNumber;
       stx_mints: number;
       stx_burns: number;
       stx_transfers: number;
@@ -1422,8 +1422,8 @@ export class PgWriteStore extends PgStore {
       principal: string;
       asset_type: DbAssetType;
       asset_identifier: string;
-      sent: bigint;
-      received: bigint;
+      sent: BigNumber;
+      received: BigNumber;
     };
     const STX_ASSET_IDENTIFIER = 'stx';
     const values: PrincipalTxsInsertValues[] = [];
@@ -1438,8 +1438,8 @@ export class PgWriteStore extends PgStore {
           stx: entry?.stx || data?.stx || false,
           ft: entry?.ft || data?.ft || false,
           nft: entry?.nft || data?.nft || false,
-          stx_sent: (entry?.stx_sent ?? 0n) + (data?.stx_sent ?? 0n),
-          stx_received: (entry?.stx_received ?? 0n) + (data?.stx_received ?? 0n),
+          stx_sent: (entry?.stx_sent ?? new BigNumber(0)).plus(data?.stx_sent ?? 0n),
+          stx_received: (entry?.stx_received ?? new BigNumber(0)).plus(data?.stx_received ?? 0n),
           stx_mints: (entry?.stx_mints ?? 0) + (data?.stx_mints ?? 0),
           stx_burns: (entry?.stx_burns ?? 0) + (data?.stx_burns ?? 0),
           stx_transfers: (entry?.stx_transfers ?? 0) + (data?.stx_transfers ?? 0),
@@ -1460,8 +1460,8 @@ export class PgWriteStore extends PgStore {
         principal: string,
         asset_type: DbAssetType,
         asset_identifier: string,
-        sent: bigint,
-        received: bigint
+        sent: BigNumber,
+        received: BigNumber
       ) => {
         const key = `${principal}|${asset_type}|${asset_identifier}`;
         const entry = balanceChanges.get(key);
@@ -1469,8 +1469,8 @@ export class PgWriteStore extends PgStore {
           principal,
           asset_type,
           asset_identifier,
-          sent: (entry?.sent ?? 0n) + sent,
-          received: (entry?.received ?? 0n) + received,
+          sent: (entry?.sent ?? new BigNumber(0)).plus(sent),
+          received: (entry?.received ?? new BigNumber(0)).plus(received),
         });
       };
 
@@ -1483,9 +1483,15 @@ export class PgWriteStore extends PgStore {
 
       // Record fee paid.
       const feePayer = tx.sponsor_address ?? tx.sender_address;
-      const feeAmount = BigInt(tx.fee_rate);
+      const feeAmount = new BigNumber(tx.fee_rate);
       addPrincipal(feePayer, { stx: true, stx_sent: feeAmount });
-      addBalanceChange(feePayer, DbAssetType.Stx, STX_ASSET_IDENTIFIER, feeAmount, 0n);
+      addBalanceChange(
+        feePayer,
+        DbAssetType.Stx,
+        STX_ASSET_IDENTIFIER,
+        feeAmount,
+        new BigNumber(0)
+      );
 
       // Record token amounts and event counts.
       for (const event of stxEvents) {
@@ -1494,53 +1500,61 @@ export class PgWriteStore extends PgStore {
             if (event.recipient) {
               addPrincipal(event.recipient, {
                 stx: true,
-                stx_received: event.amount,
+                stx_received: new BigNumber(event.amount),
                 stx_mints: 1,
               });
               addBalanceChange(
                 event.recipient,
                 DbAssetType.Stx,
                 STX_ASSET_IDENTIFIER,
-                0n,
-                event.amount
+                new BigNumber(0),
+                new BigNumber(event.amount)
               );
             }
             break;
           case DbAssetEventTypeId.Burn:
             if (event.sender) {
-              addPrincipal(event.sender, { stx: true, stx_sent: event.amount, stx_burns: 1 });
+              addPrincipal(event.sender, {
+                stx: true,
+                stx_sent: new BigNumber(event.amount),
+                stx_burns: 1,
+              });
               addBalanceChange(
                 event.sender,
                 DbAssetType.Stx,
                 STX_ASSET_IDENTIFIER,
-                event.amount,
-                0n
+                new BigNumber(event.amount),
+                new BigNumber(0)
               );
             }
             break;
           case DbAssetEventTypeId.Transfer:
             if (event.sender) {
-              addPrincipal(event.sender, { stx: true, stx_sent: event.amount, stx_transfers: 1 });
+              addPrincipal(event.sender, {
+                stx: true,
+                stx_sent: new BigNumber(event.amount),
+                stx_transfers: 1,
+              });
               addBalanceChange(
                 event.sender,
                 DbAssetType.Stx,
                 STX_ASSET_IDENTIFIER,
-                event.amount,
-                0n
+                new BigNumber(event.amount),
+                new BigNumber(0)
               );
             }
             if (event.recipient) {
               addPrincipal(event.recipient, {
                 stx: true,
-                stx_received: event.amount,
+                stx_received: new BigNumber(event.amount),
                 stx_transfers: 1,
               });
               addBalanceChange(
                 event.recipient,
                 DbAssetType.Stx,
                 STX_ASSET_IDENTIFIER,
-                0n,
-                event.amount
+                new BigNumber(0),
+                new BigNumber(event.amount)
               );
             }
             break;
@@ -1555,8 +1569,8 @@ export class PgWriteStore extends PgStore {
                 event.recipient,
                 DbAssetType.Ft,
                 event.asset_identifier,
-                0n,
-                event.amount
+                new BigNumber(0),
+                new BigNumber(event.amount)
               );
             }
             break;
@@ -1567,8 +1581,8 @@ export class PgWriteStore extends PgStore {
                 event.sender,
                 DbAssetType.Ft,
                 event.asset_identifier,
-                event.amount,
-                0n
+                new BigNumber(event.amount),
+                new BigNumber(0)
               );
             }
             break;
@@ -1579,8 +1593,8 @@ export class PgWriteStore extends PgStore {
                 event.sender,
                 DbAssetType.Ft,
                 event.asset_identifier,
-                event.amount,
-                0n
+                new BigNumber(event.amount),
+                new BigNumber(0)
               );
             }
             if (event.recipient) {
@@ -1592,8 +1606,8 @@ export class PgWriteStore extends PgStore {
                 event.recipient,
                 DbAssetType.Ft,
                 event.asset_identifier,
-                0n,
-                event.amount
+                new BigNumber(0),
+                new BigNumber(event.amount)
               );
             }
             break;
@@ -1604,23 +1618,47 @@ export class PgWriteStore extends PgStore {
           case DbAssetEventTypeId.Mint:
             if (event.recipient) {
               addPrincipal(event.recipient, { nft: true, nft_mints: 1 });
-              addBalanceChange(event.recipient, DbAssetType.Nft, event.asset_identifier, 0n, 1n);
+              addBalanceChange(
+                event.recipient,
+                DbAssetType.Nft,
+                event.asset_identifier,
+                new BigNumber(0),
+                new BigNumber(1)
+              );
             }
             break;
           case DbAssetEventTypeId.Burn:
             if (event.sender) {
               addPrincipal(event.sender, { nft: true, nft_burns: 1 });
-              addBalanceChange(event.sender, DbAssetType.Nft, event.asset_identifier, 1n, 0n);
+              addBalanceChange(
+                event.sender,
+                DbAssetType.Nft,
+                event.asset_identifier,
+                new BigNumber(1),
+                new BigNumber(0)
+              );
             }
             break;
           case DbAssetEventTypeId.Transfer:
             if (event.sender) {
               addPrincipal(event.sender, { nft: true, nft_transfers: 1 });
-              addBalanceChange(event.sender, DbAssetType.Nft, event.asset_identifier, 1n, 0n);
+              addBalanceChange(
+                event.sender,
+                DbAssetType.Nft,
+                event.asset_identifier,
+                new BigNumber(1),
+                new BigNumber(0)
+              );
             }
             if (event.recipient) {
               addPrincipal(event.recipient, { nft: true, nft_transfers: 1 });
-              addBalanceChange(event.recipient, DbAssetType.Nft, event.asset_identifier, 0n, 1n);
+              addBalanceChange(
+                event.recipient,
+                DbAssetType.Nft,
+                event.asset_identifier,
+                new BigNumber(0),
+                new BigNumber(1)
+              );
             }
             break;
         }
@@ -1648,8 +1686,8 @@ export class PgWriteStore extends PgStore {
           stx_balance_affected: data.stx,
           ft_balance_affected: data.ft,
           nft_balance_affected: data.nft,
-          stx_sent: data.stx_sent,
-          stx_received: data.stx_received,
+          stx_sent: data.stx_sent.toFixed(),
+          stx_received: data.stx_received.toFixed(),
           stx_mint_event_count: data.stx_mints,
           stx_burn_event_count: data.stx_burns,
           stx_transfer_event_count: data.stx_transfers,
@@ -1676,8 +1714,8 @@ export class PgWriteStore extends PgStore {
           microblock_canonical: tx.microblock_canonical,
           asset_type: change.asset_type,
           asset_identifier: change.asset_identifier,
-          sent: change.sent,
-          received: change.received,
+          sent: change.sent.toFixed(),
+          received: change.received.toFixed(),
         });
       }
     }
