@@ -65,3 +65,9 @@ export const MempoolTransactionCursorSchema = Type.String({
   description: 'Cursor for paginating mempool transactions. Format: receipt_time:tx_id',
 });
 export type MempoolTransactionCursor = Static<typeof MempoolTransactionCursorSchema>;
+
+export const TransactionEventCursorSchema = Type.String({
+  pattern: '^[0-9]+$',
+  description: 'Cursor for paginating transaction events. Format: event_index',
+});
+export type TransactionEventCursor = Static<typeof TransactionEventCursorSchema>;

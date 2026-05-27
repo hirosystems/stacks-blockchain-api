@@ -5,6 +5,7 @@ import {
   DbMempoolTransactionSummary,
   DbPrincipalTransactionSummary,
   DbTransaction,
+  DbTransactionEvent,
   DbTransactionSummary,
 } from './types.js';
 import {
@@ -19,8 +20,9 @@ import { normalizeHashString } from '../../helpers.js';
 import { BlockIdParam } from '../../api/routes/v2/schemas.js';
 import { InvalidRequestError, InvalidRequestErrorType } from '../../errors.js';
 import { TransactionIncludeField } from '../../api/schemas/v3/entities/transactions.js';
-import type { TransactionCursor } from '../../api/schemas/v3/cursors.js';
+import type { TransactionCursor, TransactionEventCursor } from '../../api/schemas/v3/cursors.js';
 import { encodeTransactionCursor, resolveTransactionCursor } from './helpers.js';
+import { DbEventTypeId } from '../common.js';
 
 export class PgStoreV3 extends BasePgStoreModule {
   /**
@@ -492,6 +494,86 @@ export class PgStoreV3 extends BasePgStoreModule {
         return mempoolResult[0];
       }
       return null;
+    });
+  }
+
+  async getTransactionEvents(args: {
+    txId: string;
+    limit: number;
+    cursor?: TransactionEventCursor;
+  }): Promise<DbCursorPaginatedResult<DbTransactionEvent>> {
+    return await this.sqlTransaction(async sql => {
+      const limit = args.limit;
+      const txCheck = await sql<{ event_count: number }[]>`
+        SELECT event_count
+        FROM txs
+        WHERE tx_id = ${args.txId} AND canonical = true AND microblock_canonical = true
+        LIMIT 1
+      `;
+      if (txCheck.count === 0)
+        throw new InvalidRequestError(
+          `Transaction not found`,
+          InvalidRequestErrorType.invalid_param
+        );
+
+      let cursorFilter = sql``;
+      if (args.cursor) {
+        cursorFilter = sql`AND event_index >= ${parseInt(args.cursor, 10)}`;
+      }
+
+      const eventCond = sql`
+        canonical = true AND microblock_canonical = true AND tx_id = ${args.txId} ${cursorFilter}
+      `;
+      const resultQuery = await sql<DbTransactionEvent[]>`
+        WITH events AS (
+          (
+            SELECT
+              sender, recipient, event_index, amount, NULL as asset_identifier,
+              NULL::bytea as value, ${DbEventTypeId.StxAsset}::int as event_type_id,
+              asset_event_type_id
+            FROM stx_events
+            WHERE ${eventCond}
+          )
+          UNION
+          (
+            SELECT
+              sender, recipient, event_index, amount, asset_identifier, NULL::bytea as value,
+              ${DbEventTypeId.FungibleTokenAsset}::int as event_type_id, asset_event_type_id
+            FROM ft_events
+            WHERE ${eventCond}
+          )
+          UNION
+          (
+            SELECT
+              sender, recipient, event_index, 0 as amount, asset_identifier, value,
+              ${DbEventTypeId.NonFungibleTokenAsset}::int as event_type_id, asset_event_type_id
+            FROM nft_events
+            WHERE ${eventCond}
+          )
+        )
+        SELECT *
+        FROM events
+        ORDER BY event_index ASC
+        LIMIT ${limit + 1}
+      `;
+      const hasNextPage = resultQuery.count > limit;
+      const results = hasNextPage ? resultQuery.slice(0, limit) : resultQuery;
+      const firstResult = results[0];
+      const extraResult = hasNextPage ? resultQuery[limit] : null;
+      const prevCursor =
+        firstResult && firstResult.event_index > 0
+          ? Math.max(firstResult.event_index - limit, 0).toString()
+          : null;
+
+      return {
+        total: txCheck[0].event_count,
+        limit,
+        offset: 0,
+        next_cursor: extraResult ? extraResult.event_index.toString() : null,
+        prev_cursor: prevCursor,
+        current_cursor: firstResult ? firstResult.event_index.toString() : null,
+        results,
+      };
     });
   }
 }
