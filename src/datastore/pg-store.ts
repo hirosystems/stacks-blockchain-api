@@ -1676,7 +1676,7 @@ export class PgStore extends BasePgStore {
           event_index, tx_id, tx_index, block_height, canonical, locked_amount, unlock_height, locked_address, contract_name
         FROM stx_lock_events
         WHERE tx_id = ${args.txId} AND index_block_hash = ${args.indexBlockHash}
-          AND microblock_canonical = true AND event_index BETWEEN ${eventIndexStart} AND ${eventIndexEnd}
+          AND canonical = true AND microblock_canonical = true AND event_index BETWEEN ${eventIndexStart} AND ${eventIndexEnd}
       `;
       const stxResults = await sql<
         {
@@ -1696,7 +1696,7 @@ export class PgStore extends BasePgStore {
           event_index, tx_id, tx_index, block_height, canonical, asset_event_type_id, sender, recipient, amount, memo
         FROM stx_events
         WHERE tx_id = ${args.txId} AND index_block_hash = ${args.indexBlockHash}
-          AND microblock_canonical = true AND event_index BETWEEN ${eventIndexStart} AND ${eventIndexEnd}
+          AND canonical = true AND microblock_canonical = true AND event_index BETWEEN ${eventIndexStart} AND ${eventIndexEnd}
         `;
       const ftResults = await sql<
         {
@@ -1716,7 +1716,7 @@ export class PgStore extends BasePgStore {
           event_index, tx_id, tx_index, block_height, canonical, asset_event_type_id, sender, recipient, asset_identifier, amount
         FROM ft_events
         WHERE tx_id = ${args.txId} AND index_block_hash = ${args.indexBlockHash}
-          AND microblock_canonical = true AND event_index BETWEEN ${eventIndexStart} AND ${eventIndexEnd}
+          AND canonical = true AND microblock_canonical = true AND event_index BETWEEN ${eventIndexStart} AND ${eventIndexEnd}
       `;
       const nftResults = await sql<
         {
@@ -1736,7 +1736,7 @@ export class PgStore extends BasePgStore {
           event_index, tx_id, tx_index, block_height, canonical, asset_event_type_id, sender, recipient, asset_identifier, value
         FROM nft_events
         WHERE tx_id = ${args.txId} AND index_block_hash = ${args.indexBlockHash}
-          AND microblock_canonical = true AND event_index BETWEEN ${eventIndexStart} AND ${eventIndexEnd}
+          AND canonical = true AND microblock_canonical = true AND event_index BETWEEN ${eventIndexStart} AND ${eventIndexEnd}
       `;
       const logResults = await sql<
         {
@@ -1754,7 +1754,7 @@ export class PgStore extends BasePgStore {
           event_index, tx_id, tx_index, block_height, canonical, contract_identifier, topic, value
         FROM contract_logs
         WHERE tx_id = ${args.txId} AND index_block_hash = ${args.indexBlockHash}
-          AND microblock_canonical = true AND event_index BETWEEN ${eventIndexStart} AND ${eventIndexEnd}
+          AND canonical = true AND microblock_canonical = true AND event_index BETWEEN ${eventIndexStart} AND ${eventIndexEnd}
       `;
       return {
         results: parseDbEvents(stxLockResults, stxResults, ftResults, nftResults, logResults),
