@@ -528,26 +528,91 @@ export class PgStoreV3 extends BasePgStoreModule {
         WITH events AS (
           (
             SELECT
-              sender, recipient, event_index, amount, NULL as asset_identifier,
-              NULL::bytea as value, ${DbEventTypeId.StxAsset}::int as event_type_id,
-              asset_event_type_id
+              sender,
+              recipient,
+              event_index,
+              amount,
+              NULL as asset_identifier,
+              NULL as contract_identifier,
+              NULL as topic,
+              NULL::bytea as value,
+              ${DbEventTypeId.StxAsset}::int as event_type_id,
+              asset_event_type_id,
+              memo,
+              NULL::int as unlock_height
             FROM stx_events
             WHERE ${eventCond}
           )
-          UNION
+          UNION ALL
           (
             SELECT
-              sender, recipient, event_index, amount, asset_identifier, NULL::bytea as value,
-              ${DbEventTypeId.FungibleTokenAsset}::int as event_type_id, asset_event_type_id
+              sender,
+              recipient,
+              event_index,
+              amount,
+              asset_identifier,
+              NULL as contract_identifier,
+              NULL as topic,
+              NULL::bytea as value,
+              ${DbEventTypeId.FungibleTokenAsset}::int as event_type_id,
+              asset_event_type_id,
+              NULL::bytea as memo,
+              NULL::int as unlock_height
             FROM ft_events
             WHERE ${eventCond}
           )
-          UNION
+          UNION ALL
           (
             SELECT
-              sender, recipient, event_index, 0 as amount, asset_identifier, value,
-              ${DbEventTypeId.NonFungibleTokenAsset}::int as event_type_id, asset_event_type_id
+              sender,
+              recipient,
+              event_index,
+              0 as amount,
+              asset_identifier,
+              NULL as contract_identifier,
+              NULL as topic,
+              value,
+              ${DbEventTypeId.NonFungibleTokenAsset}::int as event_type_id,
+              asset_event_type_id,
+              NULL::bytea as memo,
+              NULL::int as unlock_height
             FROM nft_events
+            WHERE ${eventCond}
+          )
+          UNION ALL
+          (
+            SELECT
+              locked_address as sender,
+              NULL as recipient,
+              event_index,
+              locked_amount as amount,
+              NULL as asset_identifier,
+              NULL as contract_identifier,
+              NULL as topic,
+              NULL::bytea as value,
+              ${DbEventTypeId.StxLock}::int as event_type_id,
+              0 as asset_event_type_id,
+              NULL::bytea as memo,
+              unlock_height
+            FROM stx_lock_events
+            WHERE ${eventCond}
+          )
+          UNION ALL
+          (
+            SELECT
+              NULL as sender,
+              NULL as recipient,
+              event_index,
+              0 as amount,
+              NULL as asset_identifier,
+              contract_identifier,
+              topic,
+              value,
+              ${DbEventTypeId.SmartContractLog}::int as event_type_id,
+              0 as asset_event_type_id,
+              NULL::bytea as memo,
+              NULL::int as unlock_height
+            FROM contract_logs
             WHERE ${eventCond}
           )
         )
