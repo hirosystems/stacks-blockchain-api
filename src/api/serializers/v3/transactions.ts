@@ -34,6 +34,7 @@ import {
   decodeClarityValueList,
   decodeClarityValueToRepr,
   decodePostConditions,
+  memoToString,
 } from '@stacks/codec';
 import { serializePostCondition } from './post-conditions.js';
 import { serializeDbMempoolTransaction } from './mempool-transactions.js';
@@ -126,7 +127,7 @@ export function serializeDbTransactionSummary(summary: DbTransactionSummary): Tr
           memo: summary.token_transfer_memo
             ? {
                 hex: summary.token_transfer_memo,
-                repr: decodeClarityValueToRepr(summary.token_transfer_memo),
+                repr: memoToString(summary.token_transfer_memo),
               }
             : null,
         },
@@ -263,7 +264,12 @@ export function serializeDbTransaction(
         token_transfer: {
           recipient: transaction.token_transfer_recipient_address!,
           amount: transaction.token_transfer_amount!,
-          memo: transaction.token_transfer_memo,
+          memo: transaction.token_transfer_memo
+            ? {
+                hex: transaction.token_transfer_memo,
+                repr: memoToString(transaction.token_transfer_memo),
+              }
+            : null,
         },
       };
       return tokenTransfer;

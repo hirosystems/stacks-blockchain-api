@@ -66,6 +66,12 @@ export const DecodedClarityValueSchema = Type.Object({
 });
 export type DecodedClarityValue = Static<typeof DecodedClarityValueSchema>;
 
+export const DecodedStxTransferMemoSchema = Type.Object({
+  hex: Type.String(),
+  repr: Type.String(),
+});
+export type DecodedStxTransferMemo = Static<typeof DecodedStxTransferMemoSchema>;
+
 export const ExecutionCostSchema = Type.Object({
   read_count: Type.Integer({
     description: 'Number of reads in the transaction',

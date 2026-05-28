@@ -133,7 +133,10 @@ describe('mempool', () => {
         token_transfer: {
           recipient: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
           amount: '500',
-          memo: '0x0d0000000568656c6c6f',
+          memo: {
+            hex: '0x0d0000000568656c6c6f',
+            repr: 'hello',
+          },
         },
       });
     });

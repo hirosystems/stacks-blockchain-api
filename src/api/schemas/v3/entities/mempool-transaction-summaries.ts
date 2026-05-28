@@ -1,6 +1,7 @@
 import { Static, Type } from '@sinclair/typebox';
 import { TransactionSenderSchema } from './transaction-summaries.js';
 import { Nullable } from '../../v1/util.js';
+import { DecodedStxTransferMemoSchema } from './common.js';
 
 const MempoolTransactionStatusSchema = Type.Union(
   [
@@ -45,12 +46,7 @@ export const TokenTransferMempoolTransactionSummarySchema = Type.Composite(
         amount: Type.String({
           description: 'Transfer amount as Integer string (64-bit unsigned integer)',
         }),
-        memo: Nullable(
-          Type.String({
-            description:
-              'Hex encoded arbitrary message, up to 34 bytes length (should try decoding to an ASCII string)',
-          })
-        ),
+        memo: Nullable(DecodedStxTransferMemoSchema),
       }),
     }),
   ],

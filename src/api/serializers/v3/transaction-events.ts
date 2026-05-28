@@ -1,7 +1,7 @@
 import { TransactionEvent } from '../../schemas/v3/entities/transaction-events.js';
 import { DbTransactionEvent } from '../../../datastore/v3/types.js';
 import { DbAssetEventTypeId, DbEventTypeId } from '../../../datastore/common.js';
-import { decodeClarityValueToRepr } from '@stacks/codec';
+import { decodeClarityValueToRepr, memoToString } from '@stacks/codec';
 
 /**
  * Serializes a database transaction event into a transaction event.
@@ -38,7 +38,7 @@ export function serializeDbTransactionEvent(event: DbTransactionEvent): Transact
               memo: event.memo
                 ? {
                     hex: event.memo,
-                    repr: decodeClarityValueToRepr(event.memo),
+                    repr: memoToString(event.memo),
                   }
                 : null,
             },
