@@ -1750,6 +1750,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/extended/v3/transactions/{tx_id}/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get transaction events
+         * @description Retrieves events for a given transaction ID
+         */
+        get: operations["get_transaction_events"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/extended/v3/mempool/transactions": {
         parameters: {
             query?: never;
@@ -31843,7 +31863,10 @@ export interface operations {
                                     recipient: string;
                                     /** @description Transfer amount as Integer string (64-bit unsigned integer) */
                                     amount: string;
-                                    memo: string | null;
+                                    memo: {
+                                        hex: string;
+                                        repr: string;
+                                    } | null;
                                 };
                             } | {
                                 /** @description Transaction ID */
@@ -32175,7 +32198,10 @@ export interface operations {
                                 recipient: string;
                                 /** @description Transfer amount as Integer string (64-bit unsigned integer) */
                                 amount: string;
-                                memo: string | null;
+                                memo: {
+                                    hex: string;
+                                    repr: string;
+                                } | null;
                             };
                         } | {
                             /** @description Transaction ID */
@@ -33893,6 +33919,229 @@ export interface operations {
             };
         };
     };
+    get_transaction_events: {
+        parameters: {
+            query?: {
+                /** @description Number of results per page */
+                limit?: number;
+                /** @description Cursor for paginating transaction events. Format: event_index */
+                cursor?: string;
+            };
+            header?: never;
+            path: {
+                /**
+                 * @description Transaction ID
+                 * @example 0xf6bd5f4a7b26184a3466340b2e99fd003b4962c0e382a7e4b6a13df3dd7a91c6
+                 */
+                tx_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @example 1 */
+                        total: number;
+                        /**
+                         * @description Number of results per page
+                         * @default 20
+                         */
+                        limit: number;
+                        cursor: {
+                            next: string | null;
+                            previous: string | null;
+                            current: string | null;
+                        };
+                        results: ({
+                            event_index: number;
+                            /** @enum {string} */
+                            type: "contract_log";
+                            contract_log: {
+                                /**
+                                 * Smart Contract ID
+                                 * @description Smart Contract ID
+                                 */
+                                contract_id: string;
+                                /** @enum {string} */
+                                topic: "print";
+                                value: {
+                                    hex: string;
+                                    repr: string;
+                                };
+                            };
+                        } | {
+                            event_index: number;
+                            /** @enum {string} */
+                            type: "stx_lock";
+                            stx_lock: {
+                                /**
+                                 * Amount
+                                 * @description Amount
+                                 */
+                                amount: string;
+                                /**
+                                 * Block height
+                                 * @description Block height
+                                 */
+                                unlock_bitcoin_height: number;
+                                address: string;
+                            };
+                        } | {
+                            event_index: number;
+                            /** @enum {string} */
+                            type: "stx_asset";
+                            stx_asset: {
+                                /** @enum {string} */
+                                type: "transfer";
+                                sender: string;
+                                recipient: string;
+                                /**
+                                 * Amount
+                                 * @description Amount
+                                 */
+                                amount: string;
+                                memo: {
+                                    hex: string;
+                                    repr: string;
+                                } | null;
+                            } | {
+                                /** @enum {string} */
+                                type: "mint";
+                                recipient: string;
+                                /**
+                                 * Amount
+                                 * @description Amount
+                                 */
+                                amount: string;
+                            } | {
+                                /** @enum {string} */
+                                type: "burn";
+                                sender: string;
+                                /**
+                                 * Amount
+                                 * @description Amount
+                                 */
+                                amount: string;
+                            };
+                        } | {
+                            event_index: number;
+                            /** @enum {string} */
+                            type: "ft_asset";
+                            ft_asset: {
+                                /** @enum {string} */
+                                type: "transfer";
+                                /**
+                                 * Asset Identifier
+                                 * @description Asset Identifier
+                                 */
+                                asset_identifier: string;
+                                sender: string;
+                                recipient: string;
+                                /**
+                                 * Amount
+                                 * @description Amount
+                                 */
+                                amount: string;
+                            } | {
+                                /** @enum {string} */
+                                type: "mint";
+                                recipient: string;
+                                /**
+                                 * Asset Identifier
+                                 * @description Asset Identifier
+                                 */
+                                asset_identifier: string;
+                                /**
+                                 * Amount
+                                 * @description Amount
+                                 */
+                                amount: string;
+                            } | {
+                                /** @enum {string} */
+                                type: "burn";
+                                sender: string;
+                                /**
+                                 * Asset Identifier
+                                 * @description Asset Identifier
+                                 */
+                                asset_identifier: string;
+                                /**
+                                 * Amount
+                                 * @description Amount
+                                 */
+                                amount: string;
+                            };
+                        } | {
+                            event_index: number;
+                            /** @enum {string} */
+                            type: "nft_asset";
+                            nft_asset: {
+                                /** @enum {string} */
+                                type: "transfer";
+                                /**
+                                 * Asset Identifier
+                                 * @description Asset Identifier
+                                 */
+                                asset_identifier: string;
+                                sender: string;
+                                recipient: string;
+                                value: {
+                                    hex: string;
+                                    repr: string;
+                                };
+                            } | {
+                                /** @enum {string} */
+                                type: "mint";
+                                recipient: string;
+                                /**
+                                 * Asset Identifier
+                                 * @description Asset Identifier
+                                 */
+                                asset_identifier: string;
+                                value: {
+                                    hex: string;
+                                    repr: string;
+                                };
+                            } | {
+                                /** @enum {string} */
+                                type: "burn";
+                                sender: string;
+                                /**
+                                 * Asset Identifier
+                                 * @description Asset Identifier
+                                 */
+                                asset_identifier: string;
+                                value: {
+                                    hex: string;
+                                    repr: string;
+                                };
+                            };
+                        })[];
+                    };
+                };
+            };
+            /** @description Default Response */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: string;
+                        message?: string;
+                    } & {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
     get_mempool_transactions: {
         parameters: {
             query?: {
@@ -34191,7 +34440,10 @@ export interface operations {
                                 recipient: string;
                                 /** @description Transfer amount as Integer string (64-bit unsigned integer) */
                                 amount: string;
-                                memo: string | null;
+                                memo: {
+                                    hex: string;
+                                    repr: string;
+                                } | null;
                             };
                         } | {
                             /** @description Transaction ID */
