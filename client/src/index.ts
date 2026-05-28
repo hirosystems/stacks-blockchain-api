@@ -11,3 +11,4 @@ export * from './socket-io';
 export * from './ws';
 export type * from './types';
 export * from 'openapi-fetch';
+export type { paths };
