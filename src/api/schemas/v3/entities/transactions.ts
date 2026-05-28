@@ -2,7 +2,11 @@ import { Static, Type } from '@sinclair/typebox';
 import { BaseTransactionSummarySchema, TenureChangeCauseSchema } from './transaction-summaries.js';
 import { PostConditionSchema } from './post-conditions.js';
 import { Nullable } from '../../v1/util.js';
-import { DecodedClarityValueSchema, ExecutionCostSchema } from './common.js';
+import {
+  DecodedClarityValueSchema,
+  DecodedStxTransferMemoSchema,
+  ExecutionCostSchema,
+} from './common.js';
 
 const BaseTransactionSchema = Type.Composite([
   BaseTransactionSummarySchema,
@@ -45,11 +49,7 @@ const TokenTransferTransactionSchema = Type.Composite([
       amount: Type.String({
         description: 'Amount of the token transfer',
       }),
-      memo: Nullable(
-        Type.String({
-          description: 'Memo of the token transfer',
-        })
-      ),
+      memo: Nullable(DecodedStxTransferMemoSchema),
     }),
   }),
 ]);

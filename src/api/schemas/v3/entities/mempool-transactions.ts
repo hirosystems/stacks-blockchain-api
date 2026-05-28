@@ -2,7 +2,7 @@ import { Static, Type } from '@sinclair/typebox';
 import { BaseMempoolTransactionSummarySchema } from './mempool-transaction-summaries.js';
 import { PostConditionSchema } from './post-conditions.js';
 import { Nullable } from '../../v1/util.js';
-import { DecodedClarityValueSchema } from './common.js';
+import { DecodedClarityValueSchema, DecodedStxTransferMemoSchema } from './common.js';
 
 const BaseMempoolTransactionSchema = Type.Composite([
   BaseMempoolTransactionSummarySchema,
@@ -32,11 +32,7 @@ const TokenTransferMempoolTransactionSchema = Type.Composite([
       amount: Type.String({
         description: 'Amount of the token transfer',
       }),
-      memo: Nullable(
-        Type.String({
-          description: 'Memo of the token transfer',
-        })
-      ),
+      memo: Nullable(DecodedStxTransferMemoSchema),
     }),
   }),
 ]);

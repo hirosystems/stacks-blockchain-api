@@ -181,7 +181,7 @@ describe('principals', () => {
             amount: '100',
             memo: {
               hex: '0x0d0000000568656c6c6f',
-              repr: '"hello"',
+              repr: 'hello',
             },
           },
         },
