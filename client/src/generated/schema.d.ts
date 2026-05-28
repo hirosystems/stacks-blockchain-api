@@ -32598,7 +32598,10 @@ export interface operations {
                             recipient: string;
                             /** @description Amount of the token transfer */
                             amount: string;
-                            memo: string | null;
+                            memo: {
+                                hex: string;
+                                repr: string;
+                            } | null;
                         };
                     } | {
                         /** @description Transaction ID */
@@ -33405,7 +33408,10 @@ export interface operations {
                             recipient: string;
                             /** @description Amount of the token transfer */
                             amount: string;
-                            memo: string | null;
+                            memo: {
+                                hex: string;
+                                repr: string;
+                            } | null;
                         };
                     } | {
                         /** @description Transaction ID */
@@ -34204,7 +34210,10 @@ export interface operations {
                                 recipient: string;
                                 /** @description Transfer amount as Integer string (64-bit unsigned integer) */
                                 amount: string;
-                                memo: string | null;
+                                memo: {
+                                    hex: string;
+                                    repr: string;
+                                } | null;
                             };
                         } | {
                             /** @description Transaction ID */
