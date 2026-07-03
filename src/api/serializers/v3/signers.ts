@@ -17,12 +17,13 @@ export function serializeDbStakingSigner(signer: DbStakingSigner): StakingSigner
 }
 
 export function serializeDbSignerStaker(staker: DbSignerStaker): SignerStaker {
-  const staking_types: ('stx' | 'bond')[] = [];
-  if (staker.stx) staking_types.push('stx');
-  if (staker.bond) staking_types.push('bond');
+  const types: ('stx' | 'btc')[] = [];
+  if (staker.stx) types.push('stx');
+  // `bond` (bond_registrations, BTC/sBTC-backed) is surfaced as `btc` in the API.
+  if (staker.bond) types.push('btc');
   return {
     staker: staker.staker,
-    staking_types,
+    types,
   };
 }
 

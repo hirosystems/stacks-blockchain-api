@@ -63,7 +63,7 @@ const SETUP_BOND_DATA = {
 
 interface SignerStakerItem {
   staker: string;
-  staking_types: ('stx' | 'bond')[];
+  types: ('stx' | 'btc')[];
 }
 interface StakersPage {
   total: number;
@@ -137,9 +137,9 @@ describe('pox-5 signer stakers', () => {
     assert.equal(page.total, 3);
     // Sorted by staker principal ascending: ALICE < CAROL < BOB.
     assert.deepEqual(page.results, [
-      { staker: ALICE, staking_types: ['stx'] },
-      { staker: CAROL, staking_types: ['stx', 'bond'] },
-      { staker: BOB, staking_types: ['bond'] },
+      { staker: ALICE, types: ['stx'] },
+      { staker: CAROL, types: ['stx', 'btc'] },
+      { staker: BOB, types: ['btc'] },
     ]);
     // DAVE staked under SIGNER_B, so must not appear here.
     assert.ok(!page.results.some(r => r.staker === DAVE));
@@ -149,18 +149,18 @@ describe('pox-5 signer stakers', () => {
     await seed();
     const page = await getStakers(SIGNER_B);
     assert.equal(page.total, 1);
-    assert.deepEqual(page.results, [{ staker: DAVE, staking_types: ['stx'] }]);
+    assert.deepEqual(page.results, [{ staker: DAVE, types: ['stx'] }]);
   });
 
   test('paginates stakers by staker principal', async () => {
     await seed();
     const page1 = await getStakers(SIGNER_A, { limit: '1' });
     assert.equal(page1.total, 3);
-    assert.deepEqual(page1.results, [{ staker: ALICE, staking_types: ['stx'] }]);
+    assert.deepEqual(page1.results, [{ staker: ALICE, types: ['stx'] }]);
     assert.equal(page1.cursor.next, CAROL);
 
     const page2 = await getStakers(SIGNER_A, { limit: '1', cursor: page1.cursor.next as string });
-    assert.deepEqual(page2.results, [{ staker: CAROL, staking_types: ['stx', 'bond'] }]);
+    assert.deepEqual(page2.results, [{ staker: CAROL, types: ['stx', 'btc'] }]);
     assert.equal(page2.cursor.next, BOB);
   });
 });

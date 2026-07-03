@@ -22,10 +22,10 @@ export type StakingSigner = Static<typeof StakingSignerSchema>;
 export const SignerStakerSchema = Type.Object(
   {
     staker: PrincipalSchema,
-    staking_types: Type.Array(Type.Union([Type.Literal('stx'), Type.Literal('bond')]), {
+    types: Type.Array(Type.Union([Type.Literal('stx'), Type.Literal('btc')]), {
       description:
-        'The staking types this staker participates in under this signer: `stx` for direct pox-5 STX staking, `bond` for BTC/sBTC bond staking. A staker doing both has both entries.',
-      examples: [['stx'], ['bond'], ['stx', 'bond']],
+        'The staking types this staker participates in under this signer: `stx` for direct pox-5 STX staking, `btc` for BTC/sBTC bond staking. A staker doing both has both entries.',
+      examples: [['stx'], ['btc'], ['stx', 'btc']],
     }),
   },
   { title: 'SignerStaker' }
