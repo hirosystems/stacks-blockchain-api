@@ -102,7 +102,11 @@ export const StakingSignersRoutes: FastifyPluginAsync<
         params: Type.Object({ principal: PrincipalSchema }),
         querystring: CursorPaginationQuerystring(StakerCursorSchema, ResourceType.Stacker),
         response: {
-          200: CursorPaginatedResponse(SignerStakerSchema, StakerCursorSchema, ResourceType.Stacker),
+          200: CursorPaginatedResponse(
+            SignerStakerSchema,
+            StakerCursorSchema,
+            ResourceType.Stacker
+          ),
         },
       },
     },
