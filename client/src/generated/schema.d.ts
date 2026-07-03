@@ -2159,6 +2159,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/extended/v3/staking/signers/{principal}/stakers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get staking signer stakers
+         * @description List the stakers that belong to a pox-5 signer, across both direct STX staking and BTC/sBTC bond staking. Each entry indicates which staking type(s) the staker participates in under this signer.
+         */
+        get: operations["get_staking_signer_stakers"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/extended/v3/transactions": {
         parameters: {
             query?: never;
@@ -39161,6 +39181,70 @@ export interface operations {
                                 time: number;
                             };
                         };
+                    };
+                };
+            };
+            /** @description Default Response */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: string;
+                        message?: string;
+                    } & {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
+    get_staking_signer_stakers: {
+        parameters: {
+            query?: {
+                /** @description Number of results per page */
+                limit?: number;
+                /** @description Cursor for paginating a signer's stakers (sorted by staker). Format: staker principal */
+                cursor?: string;
+            };
+            header?: never;
+            path: {
+                principal: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @example 1 */
+                        total: number;
+                        /**
+                         * @description Number of results per page
+                         * @default 100
+                         */
+                        limit: number;
+                        cursor: {
+                            next: string | null;
+                            previous: string | null;
+                            current: string | null;
+                        };
+                        results: {
+                            staker: string;
+                            /**
+                             * @description The staking types this staker participates in under this signer: `stx` for direct pox-5 STX staking, `btc` for BTC/sBTC bond staking. A staker doing both has both entries.
+                             * @example [
+                             *       "stx"
+                             *     ]
+                             */
+                            types: ("stx" | "btc")[];
+                        }[];
                     };
                 };
             };

@@ -4,7 +4,7 @@ info:
   description: Welcome to the API reference overview for the [Stacks Blockchain
     API](https://docs.hiro.so/stacks-blockchain-api). [Download Postman
     collection](https://hirosystems.github.io/stacks-blockchain-api/collection.json).
-  version: 9.0.0-pox5.14
+  version: 9.0.0-pox5.15
 components:
   schemas: {}
 paths:
@@ -49200,6 +49200,154 @@ paths:
                           time:
                             description: Unix timestamp (in seconds) indicating when this block was mined.
                             type: number
+        4XX:
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                title: Error Response
+                additionalProperties: true
+                type: object
+                required:
+                  - error
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+  /extended/v3/staking/signers/{principal}/stakers:
+    get:
+      operationId: get_staking_signer_stakers
+      summary: Get staking signer stakers
+      tags:
+        - Staking
+      description: List the stakers that belong to a pox-5 signer, across both direct
+        STX staking and BTC/sBTC bond staking. Each entry indicates which
+        staking type(s) the staker participates in under this signer.
+      parameters:
+        - schema:
+            minimum: 1
+            default: 100
+            maximum: 200
+            type: integer
+          in: query
+          name: limit
+          required: false
+          description: Number of results per page
+        - schema:
+            pattern: ^[0123456789ABCDEFGHJKMNPQRSTVWXYZ]{28,41}(\.[a-zA-Z]([a-zA-Z0-9]|[-_]){0,39})?$
+            type: string
+          in: query
+          name: cursor
+          required: false
+          description: "Cursor for paginating a signer's stakers (sorted by staker).
+            Format: staker principal"
+        - schema:
+            anyOf:
+              - pattern: ^[0123456789ABCDEFGHJKMNPQRSTVWXYZ]{28,41}$
+                title: Stacks Address
+                description: Stacks Address
+                examples:
+                  - SP318Q55DEKHRXJK696033DQN5C54D9K2EE6DHRWP
+                type: string
+              - pattern: ^[0123456789ABCDEFGHJKMNPQRSTVWXYZ]{28,41}.[a-zA-Z]([a-zA-Z0-9]|[-_]){0,39}$
+                title: Smart Contract ID
+                description: Smart Contract ID
+                examples:
+                  - SP000000000000000000002Q6VF78.pox-3
+                type: string
+          in: path
+          name: principal
+          required: true
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - total
+                  - limit
+                  - cursor
+                  - results
+                properties:
+                  total:
+                    type: integer
+                    example: 1
+                  limit:
+                    minimum: 1
+                    default: 100
+                    maximum: 200
+                    description: Number of results per page
+                    type: integer
+                  cursor:
+                    type: object
+                    required:
+                      - next
+                      - previous
+                      - current
+                    properties:
+                      next:
+                        anyOf:
+                          - pattern: ^[0123456789ABCDEFGHJKMNPQRSTVWXYZ]{28,41}(\.[a-zA-Z]([a-zA-Z0-9]|[-_]){0,39})?$
+                            description: "Cursor for paginating a signer's stakers (sorted by staker).
+                              Format: staker principal"
+                            type: string
+                          - type: "null"
+                      previous:
+                        anyOf:
+                          - pattern: ^[0123456789ABCDEFGHJKMNPQRSTVWXYZ]{28,41}(\.[a-zA-Z]([a-zA-Z0-9]|[-_]){0,39})?$
+                            description: "Cursor for paginating a signer's stakers (sorted by staker).
+                              Format: staker principal"
+                            type: string
+                          - type: "null"
+                      current:
+                        anyOf:
+                          - pattern: ^[0123456789ABCDEFGHJKMNPQRSTVWXYZ]{28,41}(\.[a-zA-Z]([a-zA-Z0-9]|[-_]){0,39})?$
+                            description: "Cursor for paginating a signer's stakers (sorted by staker).
+                              Format: staker principal"
+                            type: string
+                          - type: "null"
+                  results:
+                    type: array
+                    items:
+                      title: SignerStaker
+                      type: object
+                      required:
+                        - staker
+                        - types
+                      properties:
+                        staker:
+                          anyOf:
+                            - pattern: ^[0123456789ABCDEFGHJKMNPQRSTVWXYZ]{28,41}$
+                              title: Stacks Address
+                              description: Stacks Address
+                              examples:
+                                - SP318Q55DEKHRXJK696033DQN5C54D9K2EE6DHRWP
+                              type: string
+                            - pattern: ^[0123456789ABCDEFGHJKMNPQRSTVWXYZ]{28,41}.[a-zA-Z]([a-zA-Z0-9]|[-_]){0,39}$
+                              title: Smart Contract ID
+                              description: Smart Contract ID
+                              examples:
+                                - SP000000000000000000002Q6VF78.pox-3
+                              type: string
+                        types:
+                          description: "The staking types this staker participates in under this signer:
+                            `stx` for direct pox-5 STX staking, `btc` for
+                            BTC/sBTC bond staking. A staker doing both has both
+                            entries."
+                          type: array
+                          items:
+                            anyOf:
+                              - type: string
+                                enum:
+                                  - stx
+                              - type: string
+                                enum:
+                                  - btc
+                          example:
+                            - stx
         4XX:
           description: Default Response
           content:

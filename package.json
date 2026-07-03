@@ -1,6 +1,6 @@
 {
   "name": "@stx-labs/stacks-blockchain-api",
-  "version": "9.0.0-pox5.14",
+  "version": "9.0.0-pox5.15",
   "type": "module",
   "main": "./lib/index.js",
   "scripts": {

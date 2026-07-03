@@ -1,6 +1,6 @@
 {
   "name": "@stacks/blockchain-api-client",
-  "version": "9.0.0-pox5.14",
+  "version": "9.0.0-pox5.15",
   "access": "public",
   "description": "Client for the Stacks Blockchain API",
   "homepage": "https://github.com/stx-labs/stacks-blockchain-api/tree/master/client#readme",
