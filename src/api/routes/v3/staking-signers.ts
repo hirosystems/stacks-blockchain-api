@@ -7,13 +7,16 @@ import {
   CursorPaginatedResponse,
   CursorPaginationQuerystring,
   SignerCursorSchema,
+  StakerCursorSchema,
 } from '../../schemas/v3/cursors.js';
 import {
+  SignerStakerSchema,
   StakingSignerDetailSchema,
   StakingSignerSchema,
 } from '../../schemas/v3/entities/staking-signers.js';
 import { PrincipalSchema } from '../../schemas/v3/entities/common.js';
 import {
+  serializeDbSignerStaker,
   serializeDbStakingSigner,
   serializeDbStakingSignerDetail,
 } from '../../serializers/v3/signers.js';
@@ -83,6 +86,42 @@ export const StakingSignersRoutes: FastifyPluginAsync<
         throw new NotFoundError('Staking signer not found');
       }
       await reply.send(serializeDbStakingSignerDetail(signer));
+    }
+  );
+
+  fastify.get(
+    '/staking/signers/:principal/stakers',
+    {
+      preHandler: handleChainTipCache,
+      schema: {
+        operationId: 'get_staking_signer_stakers',
+        summary: 'Get staking signer stakers',
+        description:
+          'List the stakers that belong to a pox-5 signer, across both direct STX staking and BTC/sBTC bond staking. Each entry indicates which staking type(s) the staker participates in under this signer.',
+        tags: ['Staking'],
+        params: Type.Object({ principal: PrincipalSchema }),
+        querystring: CursorPaginationQuerystring(StakerCursorSchema, ResourceType.Signer),
+        response: {
+          200: CursorPaginatedResponse(SignerStakerSchema, StakerCursorSchema, ResourceType.Signer),
+        },
+      },
+    },
+    async (req, reply) => {
+      const results = await fastify.db.v3.getSignerStakers({
+        signer: req.params.principal,
+        limit: req.query.limit ?? getPagingQueryLimit(ResourceType.Signer),
+        cursor: req.query.cursor,
+      });
+      await reply.send({
+        limit: results.limit,
+        total: results.total,
+        cursor: {
+          next: results.next_cursor,
+          previous: results.prev_cursor,
+          current: results.current_cursor,
+        },
+        results: results.results.map(serializeDbSignerStaker),
+      });
     }
   );
 
