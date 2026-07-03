@@ -1090,6 +1090,8 @@ export class PgWriteStore extends PgStore {
       lockTxId: string;
       lockBlockHeight: number;
       burnchainLockHeight: string | number;
+      /** The pox-5 signer the staker staked under, or null for pox-1..4 locks. */
+      signer?: string | null;
     }
   ) {
     const insertValues = {
@@ -1100,6 +1102,7 @@ export class PgWriteStore extends PgStore {
       lock_tx_id: values.lockTxId,
       lock_block_height: values.lockBlockHeight,
       burnchain_lock_height: values.burnchainLockHeight,
+      signer: values.signer ?? null,
     };
     await sql`
       INSERT INTO stx_locked_balances ${sql(insertValues)}
@@ -1109,7 +1112,8 @@ export class PgWriteStore extends PgStore {
         pox_version = EXCLUDED.pox_version,
         lock_tx_id = EXCLUDED.lock_tx_id,
         lock_block_height = EXCLUDED.lock_block_height,
-        burnchain_lock_height = EXCLUDED.burnchain_lock_height
+        burnchain_lock_height = EXCLUDED.burnchain_lock_height,
+        signer = EXCLUDED.signer
     `;
   }
 
@@ -1133,6 +1137,8 @@ export class PgWriteStore extends PgStore {
       lockTxId: txLocation.tx_id,
       lockBlockHeight: txLocation.block_height,
       burnchainLockHeight: txLocation.burn_block_height,
+      // pox-5 stake/stake-update/unstake all carry the signer the staker staked under.
+      signer: event.data.signer,
     });
   }
 
@@ -1242,14 +1248,14 @@ export class PgWriteStore extends PgStore {
       await sql`
         INSERT INTO stx_locked_balances (
           principal, locked_amount, unlock_burn_height, pox_version,
-          lock_tx_id, lock_block_height, burnchain_lock_height
+          lock_tx_id, lock_block_height, burnchain_lock_height, signer
         )
         SELECT principal, locked_amount, unlock_burn_height, pox_version,
-          lock_tx_id, lock_block_height, burnchain_lock_height
+          lock_tx_id, lock_block_height, burnchain_lock_height, signer
         FROM (
           SELECT DISTINCT ON (principal)
             principal, is_set, locked_amount, unlock_burn_height, pox_version,
-            lock_tx_id, lock_block_height, burnchain_lock_height
+            lock_tx_id, lock_block_height, burnchain_lock_height, signer
           FROM (
             -- pox-1..4 lock events (locked_amount = 0 means the lock was cleared)
             SELECT
@@ -1263,7 +1269,8 @@ export class PgWriteStore extends PgStore {
               END AS pox_version,
               e.tx_id AS lock_tx_id,
               e.block_height AS lock_block_height,
-              b.burn_block_height AS burnchain_lock_height
+              b.burn_block_height AS burnchain_lock_height,
+              NULL AS signer
             FROM stx_lock_events e
             JOIN blocks b ON b.index_block_hash = e.index_block_hash
             WHERE e.canonical = true AND e.microblock_canonical = true
@@ -1283,7 +1290,8 @@ export class PgWriteStore extends PgStore {
               5 AS pox_version,
               p.tx_id AS lock_tx_id,
               p.block_height AS lock_block_height,
-              p.burn_block_height AS burnchain_lock_height
+              p.burn_block_height AS burnchain_lock_height,
+              p.data->>'signer' AS signer
             FROM pox5_events p
             WHERE p.canonical = true AND p.microblock_canonical = true
               AND p.name IN ('stake', 'stake-update', 'unstake')

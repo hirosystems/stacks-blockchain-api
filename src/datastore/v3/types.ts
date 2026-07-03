@@ -262,6 +262,15 @@ export interface DbStakingSignerDetail extends DbStakingSigner {
   burn_block_time: number;
 }
 
+/** A staker that belongs to a signer, with the staking type(s) it participates in. */
+export interface DbSignerStaker {
+  staker: string;
+  /** True if the staker has an active pox-5 STX stake under this signer. */
+  stx: boolean;
+  /** True if the staker has a bond registration under this signer. */
+  bond: boolean;
+}
+
 export interface DbPrincipalFtBalance {
   /** The fungible token asset identifier (the `ft_balances.token` column). */
   token: string;

@@ -14,6 +14,7 @@ import {
   DbPrincipalStakingSummary,
   DbPrincipalTransactionBalanceChange,
   DbPrincipalTransactionSummary,
+  DbSignerStaker,
   DbStakingSigner,
   DbStakingSignerDetail,
   DbTransaction,
@@ -1731,6 +1732,93 @@ export class PgStoreV3 extends BasePgStoreModule {
         LIMIT 1
       `;
       return result ?? null;
+    });
+  }
+
+  /**
+   * Lists the stakers that belong to a signer, unioned across pox-5 STX staking
+   * (`stx_locked_balances.signer`, active locks) and bond staking
+   * (`bond_registrations.signer`), deduplicated by staker with a flag per
+   * staking type. Keyset-paginated by staker principal ascending.
+   * @param args - The arguments for the query.
+   * @returns The signer's stakers.
+   */
+  async getSignerStakers(args: {
+    signer: Principal;
+    limit: number;
+    cursor?: string;
+  }): Promise<DbCursorPaginatedResult<DbSignerStaker>> {
+    return await this.sqlTransaction(async sql => {
+      // A staker belongs to the signer if it has an active pox-5 STX stake under
+      // it (`stx_locked_balances`) or a bond registration under it
+      // (`bond_registrations`). A staker may do both, so the flags are OR-ed.
+      //
+      // `stx_locked_balances.locked_amount` stays positive after a lock naturally
+      // expires (expiry is applied on read against the current burn tip — see
+      // `resolveMaterializedStxLock`), so the STX half must also exclude expired
+      // locks: a lock is active while `unlock_burn_height >= burn tip` (pox-5 has
+      // no force-unlock height, so natural expiry is the only condition).
+      const [tip] = await sql<{ burn_block_height: number }[]>`
+        SELECT burn_block_height FROM chain_tip
+      `;
+      const burnBlockHeight = tip?.burn_block_height ?? 0;
+      const stakerSet = sql`
+        SELECT staker, bool_or(is_stx) AS stx, bool_or(is_bond) AS bond
+        FROM (
+          SELECT principal AS staker, true AS is_stx, false AS is_bond
+          FROM stx_locked_balances
+          WHERE signer = ${args.signer}
+            AND locked_amount > 0
+            AND unlock_burn_height >= ${burnBlockHeight}
+          UNION ALL
+          SELECT staker, false AS is_stx, true AS is_bond
+          FROM bond_registrations
+          WHERE signer = ${args.signer} AND canonical = true AND microblock_canonical = true
+        ) s
+        GROUP BY staker
+      `;
+
+      const cursorFilter = args.cursor ? sql`WHERE staker >= ${args.cursor}` : sql``;
+      const resultQuery = await sql<(DbSignerStaker & { total: number })[]>`
+        WITH stakers AS (${stakerSet})
+        SELECT staker, stx, bond, (SELECT COUNT(*)::int FROM stakers) AS total
+        FROM stakers
+        ${cursorFilter}
+        ORDER BY staker ASC
+        LIMIT ${args.limit + 1}
+      `;
+
+      const hasNextPage = resultQuery.count > args.limit;
+      const results = hasNextPage ? resultQuery.slice(0, args.limit) : resultQuery;
+      const total = resultQuery.count > 0 ? resultQuery[0].total : 0;
+
+      const nextResult = resultQuery[resultQuery.length - 1];
+      const nextCursor = hasNextPage && nextResult ? nextResult.staker : null;
+      const firstResult = results[0];
+      const currentCursor = firstResult ? firstResult.staker : null;
+
+      let prevCursor: string | null = null;
+      if (firstResult) {
+        const prevPageQuery = await sql<{ staker: string }[]>`
+          WITH stakers AS (${stakerSet})
+          SELECT staker FROM stakers
+          WHERE staker < ${firstResult.staker}
+          ORDER BY staker DESC
+          LIMIT ${args.limit}
+        `;
+        if (prevPageQuery.length > 0) {
+          prevCursor = prevPageQuery[prevPageQuery.length - 1].staker;
+        }
+      }
+
+      return {
+        limit: args.limit,
+        next_cursor: nextCursor,
+        prev_cursor: prevCursor,
+        current_cursor: currentCursor,
+        total,
+        results: results.map(r => ({ staker: r.staker, stx: r.stx, bond: r.bond })),
+      };
     });
   }
 }
