@@ -21,6 +21,7 @@ export function up(pgm: MigrationBuilder): void {
   });
   pgm.createIndex('bond_registrations', ['signer', 'staker'], {
     name: 'bond_registrations_signer_staker_idx',
+    where: 'canonical = TRUE AND microblock_canonical = TRUE',
   });
 
   // Backfill signer for existing pox-5 STX locks from each staker's latest

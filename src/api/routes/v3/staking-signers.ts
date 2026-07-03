@@ -100,9 +100,9 @@ export const StakingSignersRoutes: FastifyPluginAsync<
           'List the stakers that belong to a pox-5 signer, across both direct STX staking and BTC/sBTC bond staking. Each entry indicates which staking type(s) the staker participates in under this signer.',
         tags: ['Staking'],
         params: Type.Object({ principal: PrincipalSchema }),
-        querystring: CursorPaginationQuerystring(StakerCursorSchema, ResourceType.Signer),
+        querystring: CursorPaginationQuerystring(StakerCursorSchema, ResourceType.Stacker),
         response: {
-          200: CursorPaginatedResponse(SignerStakerSchema, StakerCursorSchema, ResourceType.Signer),
+          200: CursorPaginatedResponse(SignerStakerSchema, StakerCursorSchema, ResourceType.Stacker),
         },
       },
     },
