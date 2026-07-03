@@ -32,7 +32,9 @@ const stakeData = (signer: string, staker: string, amount_ustx: string) => ({
   amount_ustx,
   num_cycles: '6',
   first_reward_cycle: '8',
-  unlock_burn_height: '10000',
+  // Above the test block builder's default burn height (713000) so the lock is
+  // active; the expiry test overrides this explicitly.
+  unlock_burn_height: '800000',
   unlock_cycle: '20',
 });
 
@@ -162,5 +164,32 @@ describe('pox-5 signer stakers', () => {
     const page2 = await getStakers(SIGNER_A, { limit: '1', cursor: page1.cursor.next as string });
     assert.deepEqual(page2.results, [{ staker: CAROL, types: ['stx', 'btc'] }]);
     assert.equal(page2.cursor.next, BOB);
+  });
+
+  test('excludes stakers whose pox-5 STX lock has already expired', async () => {
+    // Burn tip is 500. ALICE's lock unlocks at 10000 (active); BOB's at 100
+    // (already expired) — `locked_amount` stays positive, so expiry must be
+    // applied against the burn tip, matching the read path.
+    await db.update(
+      new TestBlockBuilder({
+        block_height: 1,
+        block_hash: '0x01',
+        index_block_hash: '0x01',
+        burn_block_height: 500,
+      })
+        .addTx({ tx_id: '0x' + 'b1'.repeat(32) })
+        .addTxPox5Event({
+          name: Pox5EventName.Stake,
+          data: { ...stakeData(SIGNER_A, ALICE, '5000000'), unlock_burn_height: '10000' },
+        })
+        .addTxPox5Event({
+          name: Pox5EventName.Stake,
+          data: { ...stakeData(SIGNER_A, BOB, '7000000'), unlock_burn_height: '100' },
+        })
+        .build()
+    );
+    const page = await getStakers(SIGNER_A);
+    assert.equal(page.total, 1);
+    assert.deepEqual(page.results, [{ staker: ALICE, types: ['stx'] }]);
   });
 });

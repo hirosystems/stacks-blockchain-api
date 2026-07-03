@@ -1752,12 +1752,24 @@ export class PgStoreV3 extends BasePgStoreModule {
       // A staker belongs to the signer if it has an active pox-5 STX stake under
       // it (`stx_locked_balances`) or a bond registration under it
       // (`bond_registrations`). A staker may do both, so the flags are OR-ed.
+      //
+      // `stx_locked_balances.locked_amount` stays positive after a lock naturally
+      // expires (expiry is applied on read against the current burn tip — see
+      // `resolveMaterializedStxLock`), so the STX half must also exclude expired
+      // locks: a lock is active while `unlock_burn_height >= burn tip` (pox-5 has
+      // no force-unlock height, so natural expiry is the only condition).
+      const [tip] = await sql<{ burn_block_height: number }[]>`
+        SELECT burn_block_height FROM chain_tip
+      `;
+      const burnBlockHeight = tip?.burn_block_height ?? 0;
       const stakerSet = sql`
         SELECT staker, bool_or(is_stx) AS stx, bool_or(is_bond) AS bond
         FROM (
           SELECT principal AS staker, true AS is_stx, false AS is_bond
           FROM stx_locked_balances
-          WHERE signer = ${args.signer} AND locked_amount > 0
+          WHERE signer = ${args.signer}
+            AND locked_amount > 0
+            AND unlock_burn_height >= ${burnBlockHeight}
           UNION ALL
           SELECT staker, false AS is_stx, true AS is_bond
           FROM bond_registrations
