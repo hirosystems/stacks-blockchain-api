@@ -4,7 +4,7 @@ info:
   description: Welcome to the API reference overview for the [Stacks Blockchain
     API](https://docs.hiro.so/stacks-blockchain-api). [Download Postman
     collection](https://hirosystems.github.io/stacks-blockchain-api/collection.json).
-  version: 9.0.0-pox5.15
+  version: 9.0.0
 components:
   schemas: {}
 paths:
