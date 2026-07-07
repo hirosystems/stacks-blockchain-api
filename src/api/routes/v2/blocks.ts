@@ -1,25 +1,29 @@
-import { handleBlockCache, handleChainTipCache } from '../../../api/controllers/cache-controller';
+import {
+  handleBlockCache,
+  handleChainTipCache,
+} from '../../../api/controllers/cache-controller.js';
 import {
   BlockParamsSchema,
+  BlockTimestampParamsSchema,
   cleanBlockHeightOrHashParam,
   BlockCursorParamSchema,
   parseBlockParam,
-} from './schemas';
-import { parseDbNakamotoBlock } from './helpers';
-import { InvalidRequestError, NotFoundError } from '../../../errors';
-import { parseDbTx } from '../../../api/controllers/db-controller';
+} from './schemas.js';
+import { parseDbNakamotoBlock } from './helpers.js';
+import { InvalidRequestError, NotFoundError } from '../../../errors.js';
+import { parseDbTx } from '../../../api/controllers/db-controller.js';
 import { FastifyPluginAsync } from 'fastify';
 import { Type, TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
 import { Server } from 'node:http';
-import { CursorOffsetParam, LimitParam, OffsetParam } from '../../schemas/params';
-import { getPagingQueryLimit, ResourceType } from '../../pagination';
-import { PaginatedResponse } from '../../schemas/util';
-import { NakamotoBlock, NakamotoBlockSchema } from '../../schemas/entities/block';
-import { TransactionSchema } from '../../schemas/entities/transactions';
+import { CursorOffsetParam, LimitParam, OffsetParam } from '../../schemas/v1/params.js';
+import { getPagingQueryLimit, ResourceType } from '../../pagination.js';
+import { PaginatedResponse } from '../../schemas/v1/util.js';
+import { NakamotoBlock, NakamotoBlockSchema } from '../../schemas/v1/entities/block.js';
+import { TransactionSchema } from '../../schemas/v1/entities/transactions.js';
 import {
   BlockListV2ResponseSchema,
   BlockSignerSignatureResponseSchema,
-} from '../../schemas/responses/responses';
+} from '../../schemas/v1/responses/responses.js';
 
 export const BlockRoutesV2: FastifyPluginAsync<
   Record<never, never>,
@@ -106,6 +110,32 @@ export const BlockRoutesV2: FastifyPluginAsync<
   );
 
   fastify.get(
+    '/by-block-time/:timestamp',
+    {
+      preHandler: handleBlockCache,
+      schema: {
+        operationId: 'get_block_by_block_time',
+        summary: 'Get block by block time',
+        description: `Retrieves the most recent block mined at or before a given Unix timestamp (in seconds)`,
+        tags: ['Blocks'],
+        params: BlockTimestampParamsSchema,
+        response: {
+          200: NakamotoBlockSchema,
+        },
+      },
+    },
+    async (req, reply) => {
+      const block = await fastify.db.v2.getBlockAtTimestamp({
+        timestamp: req.params.timestamp,
+      });
+      if (!block) {
+        throw new NotFoundError('No block found at or before the given timestamp');
+      }
+      await reply.send(parseDbNakamotoBlock(block));
+    }
+  );
+
+  fastify.get(
     '/:height_or_hash',
     {
       preHandler: handleBlockCache,
@@ -144,8 +174,9 @@ export const BlockRoutesV2: FastifyPluginAsync<
       },
       schema: {
         operationId: 'get_transactions_by_block',
+        deprecated: true,
         summary: 'Get transactions by block',
-        description: `Retrieves transactions confirmed in a single block`,
+        description: `Retrieves transactions confirmed in a single block. **Deprecated:** use \`GET /extended/v3/blocks/{height_or_hash}/transactions\` instead.`,
         tags: ['Transactions'],
         params: BlockParamsSchema,
         querystring: Type.Object({

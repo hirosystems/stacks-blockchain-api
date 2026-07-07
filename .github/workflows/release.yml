@@ -8,7 +8,73 @@ on:
         type: string
 
 jobs:
+  publish-docker:
+    runs-on: ubuntu-latest
+    environment: Production
+    permissions:
+      id-token: write
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout tag
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          ref: v${{ inputs.version }}
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@96fe6ef7f33517b61c61be40b68a1882f3264fb8 # v4.2.0
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
+
+      - name: Configure AWS Credentials via OIDC
+        uses: aws-actions/configure-aws-credentials@254c19bd240aabef8777f48595e9d2d7b972184b # v6.2.1
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION || 'us-east-2' }}
+
+      - name: Login to Amazon ECR
+        id: ecr_login
+        uses: aws-actions/amazon-ecr-login@b040164c4934333d597f3f9c67502ff28f814e9c # v2.1.6
+
+      - name: Docker meta
+        id: docker_meta
+        uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6.2.0
+        with:
+          images: |
+            ghcr.io/${{ github.repository }}
+            hirosystems/${{ github.event.repository.name }}
+            ${{ steps.ecr_login.outputs.registry }}/${{ vars.AWS_ECR_REPOSITORY }}
+          tags: |
+            type=semver,pattern={{version}},value=${{ inputs.version }}
+            type=semver,pattern={{major}}.{{minor}},value=${{ inputs.version }}
+            type=semver,pattern={{major}},value=${{ inputs.version }}
+            type=raw,value=latest,enable=${{ !contains(inputs.version, '-') }}
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@af1e73f918a031802d376d3c8bbc3fe56130a9b0 # v4.4.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Login to DockerHub
+        uses: docker/login-action@af1e73f918a031802d376d3c8bbc3fe56130a9b0 # v4.4.0
+        with:
+          username: ${{ secrets.HIROSYSTEMS_DOCKERHUB_USERNAME }}
+          password: ${{ secrets.HIROSYSTEMS_DOCKERHUB_TOKEN }}
+
+      - name: Build/Tag/Push Image
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          tags: ${{ steps.docker_meta.outputs.tags }}
+          labels: ${{ steps.docker_meta.outputs.labels }}
+          push: true
+
   publish-npm:
+    needs: publish-docker
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -23,11 +89,6 @@ jobs:
         uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
         with:
           node-version-file: '.nvmrc'
-
-      - name: Upgrade to latest npm
-        run: |
-          npm install -g npm@~11.10.0
-          npm -v
 
       - name: Install deps
         run: npm ci --audit=false
@@ -49,61 +110,11 @@ jobs:
             npm publish --provenance --access public
           fi
 
-  publish-docker:
+  github-release:
+    needs: publish-npm
+    if: github.ref == 'refs/heads/master'
     runs-on: ubuntu-latest
     environment: Production
-    permissions:
-      contents: read
-      packages: write
-    steps:
-      - name: Checkout tag
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-        with:
-          ref: v${{ inputs.version }}
-
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@06116385d9baf250c9f4dcb4858b16962ea869c3 # v4.1.0
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@d7f5e7f509e45cec5c76c4d5afdd7de93d0b3df5 # v4.1.0
-
-      - name: Docker meta
-        id: docker_meta
-        uses: docker/metadata-action@80c7e94dd9b9319bd5eb7a0e0fe9291e23a2a2e9 # v6.1.0
-        with:
-          images: |
-            ghcr.io/${{ github.repository }}
-            hirosystems/${{ github.event.repository.name }}
-          tags: |
-            type=semver,pattern={{version}},value=${{ inputs.version }}
-            type=semver,pattern={{major}}.{{minor}},value=${{ inputs.version }}
-            type=semver,pattern={{major}},value=${{ inputs.version }}
-            type=raw,value=latest,enable=${{ !contains(inputs.version, '-') }}
-
-      - name: Log in to GitHub Container Registry
-        uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee # v4.2.0
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Login to DockerHub
-        uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee # v4.2.0
-        with:
-          username: ${{ secrets.HIROSYSTEMS_DOCKERHUB_USERNAME }}
-          password: ${{ secrets.HIROSYSTEMS_DOCKERHUB_TOKEN }}
-
-      - name: Build/Tag/Push Image
-        uses: docker/build-push-action@f9f3042f7e2789586610d6e8b85c8f03e5195baf # v7.2.0
-        with:
-          context: .
-          platforms: linux/amd64,linux/arm64
-          tags: ${{ steps.docker_meta.outputs.tags }}
-          labels: ${{ steps.docker_meta.outputs.labels }}
-          push: true
-
-  github-release:
-    runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
@@ -116,11 +127,23 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          VERSION="${{ inputs.version }}"
           PRERELEASE_FLAG=""
-          if echo "${{ inputs.version }}" | grep -q "-"; then
+          if echo "$VERSION" | grep -q "-"; then
             PRERELEASE_FLAG="--prerelease"
           fi
-          gh release create "v${{ inputs.version }}" \
+
+          # Fill the template: VERSION, date, and the auto-generated changelog
+          # (the API computes the previous tag automatically).
+          export VERSION
+          export RELEASE_DATE="$(date -u +%Y-%m-%d)"
+          export CHANGELOG="$(gh api "repos/${{ github.repository }}/releases/generate-notes" \
+            -f tag_name="v$VERSION" --jq '.body')"
+
+          envsubst '${VERSION} ${RELEASE_DATE} ${CHANGELOG}' \
+            < .github/RELEASE_TEMPLATE.md > release-notes.md
+
+          gh release create "v$VERSION" \
             --draft \
-            --generate-notes \
+            --notes-file release-notes.md \
             $PRERELEASE_FLAG

@@ -1,18 +1,18 @@
 {
   "name": "@stacks/blockchain-api-client",
-  "version": "0.1.2",
+  "version": "9.0.0-pox5.15",
   "access": "public",
   "description": "Client for the Stacks Blockchain API",
-  "homepage": "https://github.com/hirosystems/stacks-blockchain-api/tree/master/client#readme",
-  "author": "Hiro Systems PBC <engineering@hiro.so> (https://hiro.so)",
+  "homepage": "https://github.com/stx-labs/stacks-blockchain-api/tree/master/client#readme",
+  "author": "Stacks Labs",
   "license": "GPL-3.0",
   "repository": {
     "type": "git",
-    "url": "https://github.com/hirosystems/stacks-blockchain-api.git",
+    "url": "https://github.com/stx-labs/stacks-blockchain-api.git",
     "directory": "client"
   },
   "bugs": {
-    "url": "https://github.com/hirosystems/stacks-blockchain-api/issues"
+    "url": "https://github.com/stx-labs/stacks-blockchain-api/issues"
   },
   "main": "lib/index.js",
   "unpkg": "lib/index.umd.js",

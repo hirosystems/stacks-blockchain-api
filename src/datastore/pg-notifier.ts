@@ -1,8 +1,7 @@
 import * as postgres from 'postgres';
-import { logger } from '../logger';
-import { DbConfigState } from './common';
-import { PgSqlClient, connectPostgres } from '@hirosystems/api-toolkit';
-import { PgServer, getConnectionArgs, getConnectionConfig } from './connection';
+import { DbConfigState } from './common.js';
+import { PgSqlClient, connectPostgres, logger } from '@stacks/api-toolkit';
+import { PgServer, getConnectionArgs, getConnectionConfig } from './connection.js';
 
 type PgTxNotificationPayload = {
   txId: string;

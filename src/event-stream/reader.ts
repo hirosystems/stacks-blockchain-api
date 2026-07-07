@@ -1,76 +1,66 @@
+import { CoreNodeParsedTxMessage, isTxWithMicroblockInfo } from './core-node-message.js';
 import {
-  BurnchainOpDelegateStx,
-  BurnchainOpRegisterAssetFt,
-  BurnchainOpRegisterAssetNft,
-  BurnchainOpStackStx,
-  CoreNodeEvent,
-  CoreNodeEventType,
-  CoreNodeParsedTxMessage,
-  CoreNodeTxMessage,
-  FtMintEvent,
-  isTxWithMicroblockInfo,
-  NftMintEvent,
-  SmartContractEvent,
-  StxLockEvent,
-  StxMintEvent,
-  StxTransferEvent,
-} from './core-node-message';
-import {
-  decodeClarityValue,
-  decodeTransaction,
-  decodeStacksAddress,
+  AnchorModeID,
   ClarityTypeID,
+  decodeClarityValue,
+  decodeClarityValueList,
+  decodePoxSyntheticEvent,
+  decodeStacksAddress,
+  decodeTransaction,
+  PostConditionAuthFlag,
+  PostConditionModeID,
+  Pox4EventName,
+  PrincipalTypeID,
+  TransactionVersion,
+  TxPayloadTypeID,
+  TxPublicKeyEncoding,
+  TxSpendingConditionSingleSigHashMode,
+} from '@stacks/codec';
+import type {
   ClarityValuePrincipalStandard,
   ClarityValueResponse,
   ClarityValueTuple,
   ClarityValueUInt,
-  AnchorModeID,
   DecodedTxResult,
-  PostConditionModeID,
-  PrincipalTypeID,
-  TxPayloadTypeID,
-  PostConditionAuthFlag,
-  TxPublicKeyEncoding,
-  TxSpendingConditionSingleSigHashMode,
-  decodeClarityValueList,
-  ClarityValueBuffer,
+  Pox4EventStackStx,
+  Pox4EventDelegateStx,
 } from '@stacks/codec';
-import {
-  DbMicroblockPartial,
-  DbPoxSyntheticDelegateStxEvent,
-  DbPoxSyntheticStackStxEvent,
-} from '../datastore/common';
-import { NotImplementedError } from '../errors';
+import { DbMicroblockPartial } from '../datastore/common.js';
+import { NotImplementedError } from '../errors.js';
 import {
   getEnumDescription,
   I32_MAX,
-  SubnetContractIdentifer,
   getChainIDNetwork,
   ChainID,
   BootContractAddress,
-} from '../helpers';
+} from '../helpers.js';
 import {
-  TransactionVersion,
   uintCV,
   bufferCV,
-  serializeCV,
+  serializeCVBytes,
   noneCV,
   someCV,
   OptionalCV,
   TupleCV,
   NoneCV,
   UIntCV,
-  stringAsciiCV,
-  hexToCV,
+  principalCV,
 } from '@stacks/transactions';
 import { poxAddressToTuple } from '@stacks/stacking';
 import { c32ToB58 } from 'c32check';
-import { decodePoxSyntheticPrintEvent } from './pox-event-parsing';
-import { PoxContractIdentifiers, SyntheticPoxEventName } from '../pox-helpers';
-import { principalCV } from '@stacks/transactions/dist/clarity/types/principalCV';
-import { logger } from '../logger';
-import { bufferToHex, hexToBuffer } from '@hirosystems/api-toolkit';
+import { PoxContractIdentifiers } from './pox-constants.js';
+import { bufferToHex, logger } from '@stacks/api-toolkit';
 import { hexToBytes } from '@stacks/common';
+import {
+  BurnchainOpDelegateStx,
+  BurnchainOpStackStx,
+  NewBlockContractEvent,
+  NewBlockEvent,
+  NewBlockEventType,
+  NewBlockStxLockEvent,
+  NewBlockStxTransferEvent,
+  NewBlockTransaction,
+} from '@stacks/node-publisher-client';
 
 export function getTxSenderAddress(tx: DecodedTxResult): string {
   const txSender = tx.auth.origin_condition.signer.address;
@@ -85,271 +75,14 @@ export function getTxSponsorAddress(tx: DecodedTxResult): string | undefined {
   return sponsorAddress;
 }
 
-function createSubnetTransactionFromL1RegisterAsset(
-  chainId: ChainID,
-  burnchainOp: BurnchainOpRegisterAssetNft | BurnchainOpRegisterAssetFt,
-  subnetEvent: SmartContractEvent,
-  txId: string
-): DecodedTxResult {
-  if (
-    burnchainOp.register_asset.asset_type !== 'ft' &&
-    burnchainOp.register_asset.asset_type !== 'nft'
-  ) {
-    throw new Error(
-      `Unexpected L1 register asset type: ${JSON.stringify(burnchainOp.register_asset)}`
-    );
-  }
-
-  const [contractAddress, contractName] = subnetEvent.contract_event.contract_identifier
-    .split('::')[0]
-    .split('.');
-  const decContractAddress = decodeStacksAddress(contractAddress);
-
-  const decodedLogEvent = decodeClarityValue<
-    ClarityValueTuple<{
-      'burnchain-txid': ClarityValueBuffer;
-    }>
-  >(subnetEvent.contract_event.raw_value);
-
-  // (define-public (register-asset-contract
-  //   (asset-type (string-ascii 3))
-  //   (l1-contract principal)
-  //   (l2-contract principal)
-  //   (burnchain-txid (buff 32))
-  const fnName = 'register-asset-contract';
-  const legacyClarityVals = [
-    stringAsciiCV(burnchainOp.register_asset.asset_type),
-    principalCV(burnchainOp.register_asset.l1_contract_id),
-    principalCV(burnchainOp.register_asset.l2_contract_id),
-    bufferCV(hexToBuffer(decodedLogEvent.data['burnchain-txid'].buffer)),
-  ];
-  const fnLenBuffer = Buffer.alloc(4);
-  fnLenBuffer.writeUInt32BE(legacyClarityVals.length);
-  const serializedClarityValues = legacyClarityVals.map(c => serializeCV(c));
-  const rawFnArgs = bufferToHex(Buffer.concat([fnLenBuffer, ...serializedClarityValues]));
-  const clarityFnArgs = decodeClarityValueList(rawFnArgs);
-
-  const tx: DecodedTxResult = {
-    tx_id: txId,
-    version:
-      getChainIDNetwork(chainId) === 'mainnet'
-        ? TransactionVersion.Mainnet
-        : TransactionVersion.Testnet,
-    chain_id: chainId,
-    auth: {
-      type_id: PostConditionAuthFlag.Standard,
-      origin_condition: {
-        hash_mode: TxSpendingConditionSingleSigHashMode.P2PKH,
-        signer: {
-          address_version: decContractAddress[0],
-          address_hash_bytes: decContractAddress[1],
-          address: contractAddress,
-        },
-        nonce: '0',
-        tx_fee: '0',
-        key_encoding: TxPublicKeyEncoding.Compressed,
-        signature: '0x',
-      },
-    },
-    anchor_mode: AnchorModeID.Any,
-    post_condition_mode: PostConditionModeID.Allow,
-    post_conditions: [],
-    post_conditions_buffer: '0x0100000000',
-    payload: {
-      type_id: TxPayloadTypeID.ContractCall,
-      address_version: decContractAddress[0],
-      address_hash_bytes: decContractAddress[1],
-      address: contractAddress,
-      contract_name: contractName,
-      function_name: fnName,
-      function_args: clarityFnArgs,
-      function_args_buffer: rawFnArgs,
-    },
-  };
-  return tx;
-}
-
-function createSubnetTransactionFromL1NftDeposit(
-  chainId: ChainID,
-  event: NftMintEvent,
-  txId: string
-): DecodedTxResult {
-  const decRecipientAddress = decodeStacksAddress(event.nft_mint_event.recipient);
-  const [contractAddress, contractName] = event.nft_mint_event.asset_identifier
-    .split('::')[0]
-    .split('.');
-  const decContractAddress = decodeStacksAddress(contractAddress);
-  const legacyClarityVals = [
-    hexToCV(event.nft_mint_event.raw_value),
-    principalCV(event.nft_mint_event.recipient),
-  ];
-  const fnLenBuffer = Buffer.alloc(4);
-  fnLenBuffer.writeUInt32BE(legacyClarityVals.length);
-  const serializedClarityValues = legacyClarityVals.map(c => serializeCV(c));
-  const rawFnArgs = bufferToHex(Buffer.concat([fnLenBuffer, ...serializedClarityValues]));
-  const clarityFnArgs = decodeClarityValueList(rawFnArgs);
-
-  const tx: DecodedTxResult = {
-    tx_id: txId,
-    version:
-      getChainIDNetwork(chainId) === 'mainnet'
-        ? TransactionVersion.Mainnet
-        : TransactionVersion.Testnet,
-    chain_id: chainId,
-    auth: {
-      type_id: PostConditionAuthFlag.Standard,
-      origin_condition: {
-        hash_mode: TxSpendingConditionSingleSigHashMode.P2PKH,
-        signer: {
-          address_version: decRecipientAddress[0],
-          address_hash_bytes: decRecipientAddress[1],
-          address: event.nft_mint_event.recipient,
-        },
-        nonce: '0',
-        tx_fee: '0',
-        key_encoding: TxPublicKeyEncoding.Compressed,
-        signature: '0x',
-      },
-    },
-    anchor_mode: AnchorModeID.Any,
-    post_condition_mode: PostConditionModeID.Allow,
-    post_conditions: [],
-    post_conditions_buffer: '0x0100000000',
-    payload: {
-      type_id: TxPayloadTypeID.ContractCall,
-      address_version: decContractAddress[0],
-      address_hash_bytes: decContractAddress[1],
-      address: contractAddress,
-      contract_name: contractName,
-      function_name: 'deposit-from-burnchain',
-      function_args: clarityFnArgs,
-      function_args_buffer: rawFnArgs,
-    },
-  };
-  return tx;
-}
-
-function createSubnetTransactionFromL1FtDeposit(
-  chainId: ChainID,
-  event: FtMintEvent,
-  txId: string
-): DecodedTxResult {
-  const decRecipientAddress = decodeStacksAddress(event.ft_mint_event.recipient);
-  const [contractAddress, contractName] = event.ft_mint_event.asset_identifier
-    .split('::')[0]
-    .split('.');
-  const decContractAddress = decodeStacksAddress(contractAddress);
-  const legacyClarityVals = [
-    uintCV(event.ft_mint_event.amount),
-    principalCV(event.ft_mint_event.recipient),
-  ];
-  const fnLenBuffer = Buffer.alloc(4);
-  fnLenBuffer.writeUInt32BE(legacyClarityVals.length);
-  const serializedClarityValues = legacyClarityVals.map(c => serializeCV(c));
-  const rawFnArgs = bufferToHex(Buffer.concat([fnLenBuffer, ...serializedClarityValues]));
-  const clarityFnArgs = decodeClarityValueList(rawFnArgs);
-
-  const tx: DecodedTxResult = {
-    tx_id: txId,
-    version:
-      getChainIDNetwork(chainId) === 'mainnet'
-        ? TransactionVersion.Mainnet
-        : TransactionVersion.Testnet,
-    chain_id: chainId,
-    auth: {
-      type_id: PostConditionAuthFlag.Standard,
-      origin_condition: {
-        hash_mode: TxSpendingConditionSingleSigHashMode.P2PKH,
-        signer: {
-          address_version: decRecipientAddress[0],
-          address_hash_bytes: decRecipientAddress[1],
-          address: event.ft_mint_event.recipient,
-        },
-        nonce: '0',
-        tx_fee: '0',
-        key_encoding: TxPublicKeyEncoding.Compressed,
-        signature: '0x',
-      },
-    },
-    anchor_mode: AnchorModeID.Any,
-    post_condition_mode: PostConditionModeID.Allow,
-    post_conditions: [],
-    post_conditions_buffer: '0x0100000000',
-    payload: {
-      type_id: TxPayloadTypeID.ContractCall,
-      address_version: decContractAddress[0],
-      address_hash_bytes: decContractAddress[1],
-      address: contractAddress,
-      contract_name: contractName,
-      function_name: 'deposit-from-burnchain',
-      function_args: clarityFnArgs,
-      function_args_buffer: rawFnArgs,
-    },
-  };
-  return tx;
-}
-
-function createSubnetTransactionFromL1StxDeposit(
-  chainId: ChainID,
-  event: StxMintEvent,
-  txId: string
-): DecodedTxResult {
-  const recipientAddress = decodeStacksAddress(event.stx_mint_event.recipient);
-  const bootAddressString =
-    getChainIDNetwork(chainId) === 'mainnet'
-      ? 'SP000000000000000000002Q6VF78'
-      : 'ST000000000000000000002AMW42H';
-  const bootAddress = decodeStacksAddress(bootAddressString);
-
-  const tx: DecodedTxResult = {
-    tx_id: txId,
-    version:
-      getChainIDNetwork(chainId) === 'mainnet'
-        ? TransactionVersion.Mainnet
-        : TransactionVersion.Testnet,
-    chain_id: chainId,
-    auth: {
-      type_id: PostConditionAuthFlag.Standard,
-      origin_condition: {
-        hash_mode: TxSpendingConditionSingleSigHashMode.P2PKH,
-        signer: {
-          address_version: bootAddress[0],
-          address_hash_bytes: bootAddress[1],
-          address: bootAddressString,
-        },
-        nonce: '0',
-        tx_fee: '0',
-        key_encoding: TxPublicKeyEncoding.Compressed,
-        signature: '0x',
-      },
-    },
-    anchor_mode: AnchorModeID.Any,
-    post_condition_mode: PostConditionModeID.Allow,
-    post_conditions: [],
-    post_conditions_buffer: '0x0100000000',
-    payload: {
-      type_id: TxPayloadTypeID.TokenTransfer,
-      recipient: {
-        type_id: PrincipalTypeID.Standard,
-        address_version: recipientAddress[0],
-        address_hash_bytes: recipientAddress[1],
-        address: event.stx_mint_event.recipient,
-      },
-      amount: BigInt(event.stx_mint_event.amount).toString(),
-      memo_hex: '0x',
-    },
-  };
-  return tx;
-}
-
 function createTransactionFromCoreBtcStxLockEvent(
   chainId: ChainID,
-  event: StxLockEvent,
+  event: NewBlockStxLockEvent,
   burnBlockHeight: number,
   txResult: string,
   txId: string,
   /** also pox-3 compatible */
-  stxStacksPox2Event: DbPoxSyntheticStackStxEvent | undefined
+  stxStacksPox2Event: Pox4EventStackStx | undefined
 ): DecodedTxResult {
   const resultCv = decodeClarityValue<
     ClarityValueResponse<
@@ -393,7 +126,7 @@ function createTransactionFromCoreBtcStxLockEvent(
   ];
   const fnLenBuffer = Buffer.alloc(4);
   fnLenBuffer.writeUInt32BE(legacyClarityVals.length);
-  const serializedClarityValues = legacyClarityVals.map(c => serializeCV(c));
+  const serializedClarityValues = legacyClarityVals.map(c => Buffer.from(serializeCVBytes(c)));
   const rawFnArgs = bufferToHex(Buffer.concat([fnLenBuffer, ...serializedClarityValues]));
   const clarityFnArgs = decodeClarityValueList(rawFnArgs);
 
@@ -475,7 +208,7 @@ function createTransactionFromCoreBtcStxLockEventPox4(
   ];
   const fnLenBuffer = Buffer.alloc(4);
   fnLenBuffer.writeUInt32BE(legacyClarityVals.length);
-  const serializedClarityValues = legacyClarityVals.map(c => serializeCV(c));
+  const serializedClarityValues = legacyClarityVals.map(c => Buffer.from(serializeCVBytes(c)));
   const rawFnArgs = bufferToHex(Buffer.concat([fnLenBuffer, ...serializedClarityValues]));
   const clarityFnArgs = decodeClarityValueList(rawFnArgs);
 
@@ -521,8 +254,8 @@ function createTransactionFromCoreBtcStxLockEventPox4(
 
 function createTransactionFromCoreBtcDelegateStxEventPox4(
   chainId: ChainID,
-  contractEvent: SmartContractEvent,
-  decodedEvent: DbPoxSyntheticDelegateStxEvent,
+  contractEvent: NewBlockContractEvent,
+  decodedEvent: Pox4EventDelegateStx,
   burnOpData: BurnchainOpDelegateStx,
   txResult: string,
   txId: string
@@ -547,7 +280,7 @@ function createTransactionFromCoreBtcDelegateStxEventPox4(
   ];
   const fnLenBuffer = Buffer.alloc(4);
   fnLenBuffer.writeUInt32BE(legacyClarityVals.length);
-  const serializedClarityValues = legacyClarityVals.map(c => serializeCV(c));
+  const serializedClarityValues = legacyClarityVals.map(c => Buffer.from(serializeCVBytes(c)));
   const rawFnArgs = bufferToHex(Buffer.concat([fnLenBuffer, ...serializedClarityValues]));
   const clarityFnArgs = decodeClarityValueList(rawFnArgs);
 
@@ -607,8 +340,8 @@ function createTransactionFromCoreBtcDelegateStxEventPox4(
 */
 function createTransactionFromCoreBtcDelegateStxEvent(
   chainId: ChainID,
-  contractEvent: SmartContractEvent,
-  decodedEvent: DbPoxSyntheticDelegateStxEvent,
+  contractEvent: NewBlockContractEvent,
+  decodedEvent: Pox4EventDelegateStx,
   txResult: string,
   txId: string
 ): DecodedTxResult {
@@ -643,7 +376,7 @@ function createTransactionFromCoreBtcDelegateStxEvent(
   ];
   const fnLenBuffer = Buffer.alloc(4);
   fnLenBuffer.writeUInt32BE(legacyClarityVals.length);
-  const serializedClarityValues = legacyClarityVals.map(c => serializeCV(c));
+  const serializedClarityValues = legacyClarityVals.map(c => Buffer.from(serializeCVBytes(c)));
   const rawFnArgs = bufferToHex(Buffer.concat([fnLenBuffer, ...serializedClarityValues]));
   const clarityFnArgs = decodeClarityValueList(rawFnArgs);
 
@@ -689,7 +422,7 @@ function createTransactionFromCoreBtcDelegateStxEvent(
 
 function createTransactionFromCoreBtcTxEvent(
   chainId: ChainID,
-  event: StxTransferEvent,
+  event: NewBlockStxTransferEvent,
   txId: string
 ): DecodedTxResult {
   const recipientAddress = decodeStacksAddress(event.stx_transfer_event.recipient);
@@ -751,7 +484,7 @@ export interface CoreNodeMsgBlockData {
 
 export function parseMicroblocksFromTxs(args: {
   parentIndexBlockHash: string;
-  txs: CoreNodeTxMessage[];
+  txs: NewBlockTransaction[];
   parentBurnBlock: {
     hash: string;
     time: number;
@@ -781,14 +514,16 @@ export function parseMicroblocksFromTxs(args: {
 
 export function parseMessageTransaction(
   chainId: ChainID,
-  coreTx: CoreNodeTxMessage,
+  coreTx: NewBlockTransaction,
   blockData: CoreNodeMsgBlockData,
-  allEvents: CoreNodeEvent[]
+  allEvents: NewBlockEvent[]
 ): CoreNodeParsedTxMessage | null {
   try {
     let rawTx: DecodedTxResult;
     let txSender: string;
     let sponsorAddress: string | undefined = undefined;
+
+    // BTC transactions
     if (coreTx.raw_tx === '0x00') {
       const events = allEvents.filter(event => event.txid === coreTx.txid);
       if (events.length === 0) {
@@ -796,30 +531,21 @@ export function parseMessageTransaction(
         return null;
       }
       const stxTransferEvent = events.find(
-        (e): e is StxTransferEvent => e.type === CoreNodeEventType.StxTransferEvent
+        (e): e is NewBlockStxTransferEvent => e.type === NewBlockEventType.StxTransfer
       );
       const stxLockEvent = events.find(
-        (e): e is StxLockEvent => e.type === CoreNodeEventType.StxLockEvent
-      );
-      const nftMintEvent = events.find(
-        (e): e is NftMintEvent => e.type === CoreNodeEventType.NftMintEvent
-      );
-      const ftMintEvent = events.find(
-        (e): e is FtMintEvent => e.type === CoreNodeEventType.FtMintEvent
-      );
-      const stxMintEvent = events.find(
-        (e): e is StxMintEvent => e.type === CoreNodeEventType.StxMintEvent
+        (e): e is NewBlockStxLockEvent => e.type === NewBlockEventType.StxLock
       );
 
       // pox-2, pox-3, and pox-4 compatible events
       const poxEvent = events
         .filter(
-          (e): e is SmartContractEvent =>
-            e.type === CoreNodeEventType.ContractEvent && isPoxPrintEvent(e)
+          (e): e is NewBlockContractEvent =>
+            e.type === NewBlockEventType.Contract && isPoxPrintEvent(e)
         )
         .map(e => {
           const network = getChainIDNetwork(chainId);
-          const decodedEvent = decodePoxSyntheticPrintEvent(e.contract_event.raw_value, network);
+          const decodedEvent = decodePoxSyntheticEvent(e.contract_event.raw_value, network);
           if (decodedEvent) {
             return {
               contractEvent: e,
@@ -828,14 +554,6 @@ export function parseMessageTransaction(
           }
         })
         .find(e => !!e);
-
-      const subnetEvents = events.filter(
-        (e): e is SmartContractEvent =>
-          e.type === CoreNodeEventType.ContractEvent &&
-          e.contract_event.topic === 'print' &&
-          (e.contract_event.contract_identifier === SubnetContractIdentifer.mainnet ||
-            e.contract_event.contract_identifier === SubnetContractIdentifer.testnet)
-      );
 
       if (stxTransferEvent) {
         rawTx = createTransactionFromCoreBtcTxEvent(chainId, stxTransferEvent, coreTx.txid);
@@ -856,7 +574,7 @@ export function parseMessageTransaction(
         txSender = burnOpData.sender.address;
       } else if (stxLockEvent) {
         const stxStacksPoxEvent =
-          poxEvent?.decodedEvent.name === SyntheticPoxEventName.StackStx
+          poxEvent?.decodedEvent.name === Pox4EventName.StackStx
             ? poxEvent.decodedEvent
             : undefined;
         rawTx = createTransactionFromCoreBtcStxLockEvent(
@@ -870,7 +588,7 @@ export function parseMessageTransaction(
         txSender = stxLockEvent.stx_lock_event.locked_address;
       } else if (
         poxEvent &&
-        poxEvent.decodedEvent.name === SyntheticPoxEventName.DelegateStx &&
+        poxEvent.decodedEvent.name === Pox4EventName.DelegateStx &&
         poxEvent.contractEvent.contract_event.contract_identifier?.split('.')?.[1] === 'pox-4' &&
         coreTx.burnchain_op &&
         'delegate_stx' in coreTx.burnchain_op
@@ -884,7 +602,7 @@ export function parseMessageTransaction(
           coreTx.txid
         );
         txSender = coreTx.burnchain_op.delegate_stx.sender.address;
-      } else if (poxEvent && poxEvent.decodedEvent.name === SyntheticPoxEventName.DelegateStx) {
+      } else if (poxEvent && poxEvent.decodedEvent.name === Pox4EventName.DelegateStx) {
         rawTx = createTransactionFromCoreBtcDelegateStxEvent(
           chainId,
           poxEvent.contractEvent,
@@ -893,28 +611,6 @@ export function parseMessageTransaction(
           coreTx.txid
         );
         txSender = poxEvent.decodedEvent.stacker;
-      } else if (nftMintEvent) {
-        rawTx = createSubnetTransactionFromL1NftDeposit(chainId, nftMintEvent, coreTx.txid);
-        txSender = nftMintEvent.nft_mint_event.recipient;
-      } else if (ftMintEvent) {
-        rawTx = createSubnetTransactionFromL1FtDeposit(chainId, ftMintEvent, coreTx.txid);
-        txSender = ftMintEvent.ft_mint_event.recipient;
-      } else if (stxMintEvent) {
-        rawTx = createSubnetTransactionFromL1StxDeposit(chainId, stxMintEvent, coreTx.txid);
-        txSender = getTxSenderAddress(rawTx);
-      } else if (
-        subnetEvents.length > 0 &&
-        coreTx.burnchain_op &&
-        'register_asset' in coreTx.burnchain_op &&
-        coreTx.burnchain_op.register_asset
-      ) {
-        rawTx = createSubnetTransactionFromL1RegisterAsset(
-          chainId,
-          coreTx.burnchain_op,
-          subnetEvents[0],
-          coreTx.txid
-        );
-        txSender = getTxSenderAddress(rawTx);
       } else {
         logger.error(
           `BTC transaction found, but no STX transfer event available to recreate transaction. TX: ${JSON.stringify(
@@ -1035,7 +731,7 @@ export function parseMessageTransaction(
   }
 }
 
-export function isPoxPrintEvent(event: SmartContractEvent): boolean {
+export function isPoxPrintEvent(event: NewBlockContractEvent): boolean {
   if (event.contract_event.topic !== 'print') return false;
   return PoxContractIdentifiers.includes(event.contract_event.contract_identifier);
 }

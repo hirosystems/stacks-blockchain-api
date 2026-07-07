@@ -1,13 +1,13 @@
 {
   "compilerOptions": {
-    "target": "es2020",
-    "module": "commonjs",
-    "moduleResolution": "node",
+    "target": "es2022",
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
     "declaration": false,
     "strict": true,
     "sourceMap": true,
-    "esModuleInterop": false,
-    "allowSyntheticDefaultImports": false,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
     "resolveJsonModule": true,
     "skipLibCheck": true,
     "outDir": "lib",
@@ -15,6 +15,6 @@
     "baseUrl": ".",
     "typeRoots": ["./src/@types", "./node_modules/@types"]
   },
-  "include": ["src/**/*", "tests/**/*"],
+  "include": ["src/**/*"],
   "exclude": ["lib", "node_modules"]
 }

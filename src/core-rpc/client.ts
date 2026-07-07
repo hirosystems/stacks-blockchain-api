@@ -1,9 +1,6 @@
-/* eslint-disable @typescript-eslint/no-non-null-assertion */
-import fetch, { RequestInit } from 'node-fetch';
-import { parsePort } from '../helpers';
 import { ClarityValue, cvToHex } from '@stacks/transactions';
-import { logger } from '../logger';
-import { stopwatch, timeout } from '@hirosystems/api-toolkit';
+import { stopwatch, timeout, logger } from '@stacks/api-toolkit';
+import { ENV } from '../env.js';
 
 interface CoreRpcAccountInfo {
   /** Hex-prefixed uint128. */
@@ -95,7 +92,7 @@ export interface CoreRpcPoxInfo {
   }[];
 }
 
-export interface Neighbor {
+interface Neighbor {
   network_id: number;
   peer_version: number;
   ip: string;
@@ -114,7 +111,7 @@ interface ReadOnlyContractCallFailResponse {
   cause: string;
 }
 
-export type ReadOnlyContractCallResponse =
+type ReadOnlyContractCallResponse =
   | ReadOnlyContractCallSuccessResponse
   | ReadOnlyContractCallFailResponse;
 
@@ -127,14 +124,8 @@ interface CoreRpcNeighbors {
 type RequestOpts = RequestInit & { queryParams?: Record<string, string> };
 
 export function getCoreNodeEndpoint(opts?: { host?: string; port?: number | string }) {
-  const host = opts?.host ?? process.env['STACKS_CORE_RPC_HOST'];
-  if (!host) {
-    throw new Error(`STACKS_CORE_RPC_HOST is not defined`);
-  }
-  const port = parsePort(opts?.port ?? process.env['STACKS_CORE_RPC_PORT']);
-  if (!port) {
-    throw new Error(`STACKS_CORE_RPC_PORT is not defined`);
-  }
+  const host = opts?.host ?? ENV.STACKS_CORE_RPC_HOST;
+  const port = opts?.port ?? ENV.STACKS_CORE_RPC_PORT;
   return `${host}:${port}`;
 }
 
@@ -169,6 +160,7 @@ export class StacksCoreRpcClient {
           throw new Error(`stacks_tip_height not >= 1`);
         }
         return;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
       } catch (error: any) {
         lastError = error;
         await timeout(retryInterval);
@@ -181,7 +173,7 @@ export class StacksCoreRpcClient {
     const resultString = await this.fetchText(path, init);
     try {
       const resultJson = JSON.parse(resultString);
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-return
+
       return resultJson;
     } catch (error) {
       logger.error(error, `Error parsing json: "${resultString}"`);
@@ -196,7 +188,7 @@ export class StacksCoreRpcClient {
       let msg = '';
       try {
         msg = await result.text();
-      } catch (error) {
+      } catch (_error) {
         // ignore error
       }
       throw new Error(`Response ${result.status}: ${result.statusText} fetching ${url} - ${msg}`);
@@ -270,7 +262,7 @@ export class StacksCoreRpcClient {
     const result = await this.fetchJson<string>('v2/transactions', {
       method: 'POST',
       headers: { 'Content-Type': 'application/octet-stream' },
-      body: serializedTx,
+      body: new Uint8Array(serializedTx),
     });
     return {
       txId: '0x' + result,

@@ -1,3 +1,5 @@
+import assert from 'node:assert/strict';
+
 type Disposable<T> = () =>
   | readonly [item: T, dispose: () => any | Promise<any>]
   | Promise<readonly [item: T, dispose: () => any | Promise<any>]>;
@@ -34,31 +36,49 @@ export async function useWithCleanup<T extends [...Disposable<any>[]]>(
   }
 }
 
-type TestEnvVar = [EnvVarKey: string, EnvVarValue: string];
+export function assertObjectContaining(actual: unknown, expected: unknown): void {
+  if (expected === null || typeof expected !== 'object') {
+    assert.deepEqual(actual, expected);
+    return;
+  }
+  if (Array.isArray(expected)) {
+    assert.deepEqual(actual, expected);
+    return;
+  }
+  assert.ok(actual !== null && typeof actual === 'object');
+  for (const [key, value] of Object.entries(expected)) {
+    assertObjectContaining((actual as Record<string, unknown>)[key], value);
+  }
+}
 
-/**
- * Helper function for tests.
- * Sets local process environment variables, and returns a function that restores them to the original values.
- */
-export function withEnvVars(...envVars: TestEnvVar[]) {
-  const original: { exists: boolean; key: string; value: string | undefined }[] = [];
-  envVars.forEach(([k, v]) => {
-    original.push({
-      exists: k in process.env,
-      key: k,
-      value: v,
-    });
-  });
-  envVars.forEach(([k, v]) => {
-    process.env[k] = v;
-  });
-  return () => {
-    original.forEach(orig => {
-      if (!orig.exists) {
-        delete process.env[orig.key];
-      } else {
-        process.env[orig.key] = orig.value;
-      }
-    });
-  };
+export function assertMatchesObject(actual: any, expected: any): void {
+  if (expected === Number) {
+    assert.equal(typeof actual, 'number');
+    return;
+  }
+  if (expected === String) {
+    assert.equal(typeof actual, 'string');
+    return;
+  }
+  if (Array.isArray(expected)) {
+    assert.ok(Array.isArray(actual));
+    assert.equal(actual.length, expected.length);
+    for (let i = 0; i < expected.length; i++) {
+      assertMatchesObject(actual[i], expected[i]);
+    }
+    return;
+  }
+  if (expected !== null && typeof expected === 'object') {
+    assert.notEqual(actual, null);
+    assert.equal(typeof actual, 'object');
+    for (const [key, value] of Object.entries(expected)) {
+      assertMatchesObject(actual[key], value);
+    }
+    return;
+  }
+  assert.deepEqual(actual, expected);
+}
+
+export function hex(value: number): string {
+  return `0x${value.toString(16).padStart(64, '0')}`;
 }

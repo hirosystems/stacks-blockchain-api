@@ -2,27 +2,32 @@ import {
   DbAddressTransactionEvent,
   DbBlock,
   DbBurnBlock,
+  DbBurnBlockPoxTx,
   DbEventTypeId,
   DbPoxCycle,
   DbPoxCycleSigner,
   DbPoxCycleSignerStacker,
   DbSmartContractStatus,
   DbTxWithAddressTransfers,
-} from '../../../datastore/common';
-import { unixEpochToIso } from '../../../helpers';
-import { SmartContractStatusParams } from './schemas';
+} from '../../../datastore/common.js';
+import { unixEpochToIso } from '../../../helpers.js';
+import { SmartContractStatusParams } from './schemas.js';
 import {
   getAssetEventTypeString,
   getTxStatusString,
   parseDbTx,
-} from '../../../api/controllers/db-controller';
+} from '../../../api/controllers/db-controller.js';
 import { decodeClarityValueToRepr } from '@stacks/codec';
-import { TransactionVersion, getAddressFromPublicKey } from '@stacks/transactions';
-import { SmartContractStatusList } from '../../schemas/entities/smart-contracts';
-import { AddressTransaction, AddressTransactionEvent } from '../../schemas/entities/addresses';
-import { NakamotoBlock } from '../../schemas/entities/block';
-import { BurnBlock } from '../../schemas/entities/burn-blocks';
-import { PoxCycle, PoxSigner, PoxStacker } from '../../schemas/entities/pox';
+import { getAddressFromPublicKey } from '@stacks/transactions';
+import { SmartContractStatusList } from '../../schemas/v1/entities/smart-contracts.js';
+import {
+  AddressTransaction,
+  AddressTransactionEvent,
+} from '../../schemas/v1/entities/addresses.js';
+import { NakamotoBlock } from '../../schemas/v1/entities/block.js';
+import { BurnBlock } from '../../schemas/v1/entities/burn-blocks.js';
+import { PoxCycle, PoxSigner, PoxStacker } from '../../schemas/v1/entities/pox.js';
+import { BurnBlockPoxTx } from '../../schemas/v1/entities/pox-transaction.js';
 
 export function parseDbNakamotoBlock(block: DbBlock): NakamotoBlock {
   const apiBlock: NakamotoBlock = {
@@ -49,6 +54,17 @@ export function parseDbNakamotoBlock(block: DbBlock): NakamotoBlock {
     execution_cost_write_length: block.execution_cost_write_length,
   };
   return apiBlock;
+}
+
+export function parseDbBurnBlockPoxTx(tx: DbBurnBlockPoxTx): BurnBlockPoxTx {
+  return {
+    burn_block_height: tx.burn_block_height,
+    burn_block_hash: tx.burn_block_hash,
+    tx_id: tx.tx_id,
+    recipient: tx.recipient,
+    utxo_idx: tx.utxo_idx,
+    amount: tx.amount.toString(),
+  };
 }
 
 export function parseDbBurnBlock(block: DbBurnBlock): BurnBlock {
@@ -177,7 +193,7 @@ export function parseDbPoxCycle(cycle: DbPoxCycle): PoxCycle {
 export function parseDbPoxSigner(signer: DbPoxCycleSigner, isMainnet: boolean): PoxSigner {
   const signerAddress = getAddressFromPublicKey(
     Buffer.from(signer.signing_key.slice(2), 'hex'),
-    isMainnet ? TransactionVersion.Mainnet : TransactionVersion.Testnet
+    isMainnet ? 'mainnet' : 'testnet'
   );
   const result: PoxSigner = {
     signing_key: signer.signing_key,

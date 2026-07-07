@@ -1,0 +1,184 @@
+export const TX_LOCATION_COLUMNS = [
+  'tx_id',
+  'tx_index',
+  'block_height',
+  'block_hash',
+  'block_time',
+  'burn_block_height',
+  'burn_block_time',
+  'parent_block_hash',
+  'index_block_hash',
+  'parent_index_block_hash',
+  'microblock_hash',
+  'microblock_sequence',
+  'microblock_canonical',
+  'canonical',
+];
+
+export const TX_SUMMARY_COLUMNS = [
+  ...TX_LOCATION_COLUMNS,
+  'sender_address',
+  'sponsor_address',
+  'sponsor_nonce',
+  'nonce',
+  'fee_rate',
+  'block_hash',
+  'block_time',
+  'burn_block_height',
+  'burn_block_time',
+  'status',
+  'type_id',
+  'token_transfer_recipient_address',
+  'token_transfer_amount',
+  'token_transfer_memo',
+  'smart_contract_clarity_version',
+  'smart_contract_contract_id',
+  'contract_call_contract_id',
+  'contract_call_function_name',
+  'coinbase_alt_recipient',
+  'tenure_change_cause',
+];
+
+// Heavy columns (post_conditions, raw_result, smart_contract_source_code,
+// contract_call_function_args) live in TX_HEAVY_COLUMNS in `pg-store-v3.ts` and are
+// opted in per-query via `include`, so they're omitted from the base list.
+export const TX_COLUMNS = [
+  ...TX_SUMMARY_COLUMNS,
+  'parent_block_hash',
+  'parent_index_block_hash',
+  'event_count',
+  'execution_cost_read_count',
+  'execution_cost_read_length',
+  'execution_cost_runtime',
+  'execution_cost_write_count',
+  'execution_cost_write_length',
+  'vm_error',
+  'coinbase_payload',
+  'coinbase_vrf_proof',
+  'tenure_change_tenure_consensus_hash',
+  'tenure_change_prev_tenure_consensus_hash',
+  'tenure_change_burn_view_consensus_hash',
+  'tenure_change_previous_tenure_end',
+  'tenure_change_previous_tenure_blocks',
+  'tenure_change_pubkey_hash',
+];
+
+export const PRINCIPAL_TRANSACTION_BALANCE_CHANGE_COLUMNS = [
+  'principal',
+  'tx_id',
+  'block_height',
+  'index_block_hash',
+  'microblock_hash',
+  'microblock_sequence',
+  'tx_index',
+  'canonical',
+  'microblock_canonical',
+  'asset_type',
+  'asset_identifier',
+  'sent',
+  'received',
+];
+
+export const MEMPOOL_TX_SUMMARY_COLUMNS = [
+  'tx_id',
+  'type_id',
+  'status',
+  'sender_address',
+  'nonce',
+  'sponsor_address',
+  'sponsor_nonce',
+  'fee_rate',
+  'receipt_time',
+  'receipt_block_height',
+  'token_transfer_recipient_address',
+  'token_transfer_amount',
+  'token_transfer_memo',
+  'smart_contract_clarity_version',
+  'smart_contract_contract_id',
+  'contract_call_contract_id',
+  'contract_call_function_name',
+  'coinbase_alt_recipient',
+  'tenure_change_cause',
+];
+
+// Heavy columns (post_conditions, smart_contract_source_code,
+// contract_call_function_args) live in MEMPOOL_TX_HEAVY_COLUMNS in `pg-store-v3.ts` and
+// are opted in per-query via `include`, so they're omitted from the base list.
+export const MEMPOOL_TX_COLUMNS = [
+  ...MEMPOOL_TX_SUMMARY_COLUMNS,
+  'replaced_by_tx_id',
+  'coinbase_payload',
+  'coinbase_vrf_proof',
+  'tenure_change_tenure_consensus_hash',
+  'tenure_change_prev_tenure_consensus_hash',
+  'tenure_change_burn_view_consensus_hash',
+  'tenure_change_previous_tenure_end',
+  'tenure_change_previous_tenure_blocks',
+  'tenure_change_pubkey_hash',
+];
+
+export const BOND_SUMMARY_COLUMNS = [
+  'bond_index',
+  'target_rate',
+  'stx_value_ratio',
+  'min_ustx_ratio',
+  'first_reward_cycle',
+  'bond_start_height',
+  'unlock_cycle',
+  'unlock_burn_height',
+  'btc_capacity',
+  'btc_locked',
+  'stx_locked',
+  'btc_paid_out',
+  'allowed_count',
+  'registered_count',
+];
+
+export const BOND_COLUMNS = [
+  ...BOND_SUMMARY_COLUMNS,
+  ...TX_LOCATION_COLUMNS,
+  'early_unlock_bytes',
+  'early_unlock_admin',
+];
+
+export const BOND_ALLOWLIST_ENTRY_COLUMNS = [
+  'staker',
+  'max_sats',
+  'block_height',
+  'microblock_sequence',
+  'tx_index',
+];
+
+export const BOND_REGISTRATION_SUMMARY_COLUMNS = [
+  'signer',
+  'staker',
+  'amount_ustx',
+  'sats_total',
+  'btc_lockup_type',
+];
+
+export const BOND_REGISTRATION_COLUMNS = [
+  ...BOND_REGISTRATION_SUMMARY_COLUMNS,
+  'btc_lockup_txs',
+  'tx_id',
+];
+
+export const PRINCIPAL_BOND_POSITION_COLUMNS = [
+  'bond_index',
+  'status',
+  'active',
+  'btc_locked',
+  'stx_locked',
+  'btc_paid_out',
+  'accrued_rewards',
+  'claimed_rewards',
+  'tx_id',
+];
+
+export const STAKING_SIGNER_COLUMNS = [
+  'signer',
+  'signer_key',
+  'tx_id',
+  'block_height',
+  'burn_block_height',
+];

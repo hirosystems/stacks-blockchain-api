@@ -1,5 +1,5 @@
 import { ClarityAbi } from '@stacks/transactions';
-import { getTxTypeId, getTxTypeString, TransactionType } from '../api/controllers/db-controller';
+import { getTxTypeId, getTxTypeString, TransactionType } from '../api/controllers/db-controller.js';
 import {
   unwrapNotNullish,
   FoundOrNot,
@@ -10,8 +10,8 @@ import {
   bnsNameFromSubdomain,
   ChainID,
   REPO_DIR,
-} from '../helpers';
-import { PgStoreEventEmitter } from './pg-store-event-emitter';
+} from '../helpers.js';
+import { PgStoreEventEmitter } from './pg-store-event-emitter.js';
 import {
   BlockIdentifier,
   BlockQueryResult,
@@ -61,10 +61,10 @@ import {
   RawTxQueryResult,
   StxUnlockEvent,
   TransferQueryResult,
-  PoxSyntheticEventTable,
+  Pox4SyntheticEventTable,
   DbPoxStacker,
-  DbPoxSyntheticEvent,
-} from './common';
+  DbPox4SyntheticEvent,
+} from './common.js';
 import {
   abiColumn,
   BLOCK_COLUMNS,
@@ -82,22 +82,20 @@ import {
   POX4_SYNTHETIC_EVENT_COLUMNS,
   POX_SYNTHETIC_EVENT_COLUMNS,
   prefixedCols,
+  resolveMaterializedStxLock,
+  MaterializedStxLockRow,
   TX_COLUMNS,
   validateZonefileHash,
-} from './helpers';
-import { PgNotifier } from './pg-notifier';
-import { SyntheticPoxEventName } from '../pox-helpers';
-import { BasePgStore, PgSqlClient, PgSqlQuery, connectPostgres } from '@hirosystems/api-toolkit';
-import {
-  PgServer,
-  getConnectionArgs,
-  getConnectionConfig,
-  getPgConnectionEnvValue,
-} from './connection';
+} from './helpers.js';
+import { PgNotifier } from './pg-notifier.js';
+import { BasePgStore, PgSqlClient, PgSqlQuery, connectPostgres } from '@stacks/api-toolkit';
+import { getConnectionArgs, getConnectionConfig } from './connection.js';
 import * as path from 'path';
-import { PgStoreV2 } from './pg-store-v2';
-import { Fragment } from 'postgres';
-import { parseBlockParam } from '../api/routes/v2/schemas';
+import { PgStoreV2 } from './pg-store-v2.js';
+import { ENV } from '../env.js';
+import { BlockIdParam } from '../api/routes/v2/schemas.js';
+import { PgStoreV3 } from './v3/pg-store-v3.js';
+import { Pox4EventName } from '@stacks/codec';
 
 export const MIGRATIONS_DIR = path.join(REPO_DIR, 'migrations');
 
@@ -109,6 +107,7 @@ export const MIGRATIONS_DIR = path.join(REPO_DIR, 'migrations');
  */
 export class PgStore extends BasePgStore {
   readonly v2: PgStoreV2;
+  readonly v3: PgStoreV3;
   readonly eventEmitter: PgStoreEventEmitter;
   readonly notifier?: PgNotifier;
 
@@ -117,6 +116,7 @@ export class PgStore extends BasePgStore {
     this.notifier = notifier;
     this.eventEmitter = new PgStoreEventEmitter();
     this.v2 = new PgStoreV2(this);
+    this.v3 = new PgStoreV3(this);
   }
 
   static async connect({
@@ -140,9 +140,7 @@ export class PgStore extends BasePgStore {
   async close(args?: { timeout?: number }): Promise<void> {
     await this.notifier?.close();
     await super.close({
-      timeout:
-        args?.timeout ??
-        parseInt(getPgConnectionEnvValue('CLOSE_TIMEOUT', PgServer.default) ?? '5'),
+      timeout: args?.timeout ?? ENV.PG_CLOSE_TIMEOUT,
     });
   }
 
@@ -217,6 +215,7 @@ export class PgStore extends BasePgStore {
       tx_count: tip?.tx_count ?? 0,
       tx_count_unanchored: tip?.tx_count_unanchored ?? 0,
       mempool_tx_count: tip?.mempool_tx_count ?? 0,
+      bond_count: tip?.bond_count ?? 0,
     };
   }
 
@@ -293,14 +292,20 @@ export class PgStore extends BasePgStore {
       pox1UnlockHeight: number | null;
       pox2UnlockHeight: number | null;
       pox3UnlockHeight: number | null;
+      pox4UnlockHeight: number | null;
     }>
   > {
     const query = await sql<
-      { pox_v1_unlock_height: string; pox_v2_unlock_height: string; pox_v3_unlock_height: string }[]
+      {
+        pox_v1_unlock_height: string;
+        pox_v2_unlock_height: string;
+        pox_v3_unlock_height: string;
+        pox_v4_unlock_height: string;
+      }[]
     >`
-      SELECT pox_v1_unlock_height, pox_v2_unlock_height, pox_v3_unlock_height
+      SELECT pox_v1_unlock_height, pox_v2_unlock_height, pox_v3_unlock_height, pox_v4_unlock_height
       FROM pox_state
-      LIMIt 1
+      LIMIT 1
     `;
     if (query.length === 0) {
       return { found: false };
@@ -308,10 +313,14 @@ export class PgStore extends BasePgStore {
     const pox1UnlockHeight = parseInt(query[0].pox_v1_unlock_height) || null;
     const pox2UnlockHeight = parseInt(query[0].pox_v2_unlock_height) || null;
     const pox3UnlockHeight = parseInt(query[0].pox_v3_unlock_height) || null;
+    const pox4UnlockHeight = parseInt(query[0].pox_v4_unlock_height) || null;
     if (pox2UnlockHeight === 0) {
       return { found: false };
     }
-    return { found: true, result: { pox1UnlockHeight, pox2UnlockHeight, pox3UnlockHeight } };
+    return {
+      found: true,
+      result: { pox1UnlockHeight, pox2UnlockHeight, pox3UnlockHeight, pox4UnlockHeight },
+    };
   }
 
   async getPoxForceUnlockHeights() {
@@ -640,6 +649,7 @@ export class PgStore extends BasePgStore {
         AND block_height <= ${dbBlock.result.block_height}
       `;
       let lastExecutedTxNonce: number | null = null;
+      // eslint-disable-next-line no-useless-assignment
       let possibleNextNonce = 0;
       if (nonceQuery.length > 0 && typeof nonceQuery[0].nonce === 'number') {
         lastExecutedTxNonce = nonceQuery[0].nonce;
@@ -1439,7 +1449,7 @@ export class PgStore extends BasePgStore {
       const maxHeight = await this.getMaxBlockHeight(sql, { includeUnanchored });
       const orderSql = order === 'asc' ? sql`ASC` : sql`DESC`;
 
-      let orderBySql: Fragment;
+      let orderBySql: PgSqlQuery;
       switch (sortBy) {
         case undefined:
         case 'block_height':
@@ -1679,7 +1689,7 @@ export class PgStore extends BasePgStore {
           event_index, tx_id, tx_index, block_height, canonical, locked_amount, unlock_height, locked_address, contract_name
         FROM stx_lock_events
         WHERE tx_id = ${args.txId} AND index_block_hash = ${args.indexBlockHash}
-          AND microblock_canonical = true AND event_index BETWEEN ${eventIndexStart} AND ${eventIndexEnd}
+          AND canonical = true AND microblock_canonical = true AND event_index BETWEEN ${eventIndexStart} AND ${eventIndexEnd}
       `;
       const stxResults = await sql<
         {
@@ -1699,7 +1709,7 @@ export class PgStore extends BasePgStore {
           event_index, tx_id, tx_index, block_height, canonical, asset_event_type_id, sender, recipient, amount, memo
         FROM stx_events
         WHERE tx_id = ${args.txId} AND index_block_hash = ${args.indexBlockHash}
-          AND microblock_canonical = true AND event_index BETWEEN ${eventIndexStart} AND ${eventIndexEnd}
+          AND canonical = true AND microblock_canonical = true AND event_index BETWEEN ${eventIndexStart} AND ${eventIndexEnd}
         `;
       const ftResults = await sql<
         {
@@ -1719,7 +1729,7 @@ export class PgStore extends BasePgStore {
           event_index, tx_id, tx_index, block_height, canonical, asset_event_type_id, sender, recipient, asset_identifier, amount
         FROM ft_events
         WHERE tx_id = ${args.txId} AND index_block_hash = ${args.indexBlockHash}
-          AND microblock_canonical = true AND event_index BETWEEN ${eventIndexStart} AND ${eventIndexEnd}
+          AND canonical = true AND microblock_canonical = true AND event_index BETWEEN ${eventIndexStart} AND ${eventIndexEnd}
       `;
       const nftResults = await sql<
         {
@@ -1739,7 +1749,7 @@ export class PgStore extends BasePgStore {
           event_index, tx_id, tx_index, block_height, canonical, asset_event_type_id, sender, recipient, asset_identifier, value
         FROM nft_events
         WHERE tx_id = ${args.txId} AND index_block_hash = ${args.indexBlockHash}
-          AND microblock_canonical = true AND event_index BETWEEN ${eventIndexStart} AND ${eventIndexEnd}
+          AND canonical = true AND microblock_canonical = true AND event_index BETWEEN ${eventIndexStart} AND ${eventIndexEnd}
       `;
       const logResults = await sql<
         {
@@ -1757,7 +1767,7 @@ export class PgStore extends BasePgStore {
           event_index, tx_id, tx_index, block_height, canonical, contract_identifier, topic, value
         FROM contract_logs
         WHERE tx_id = ${args.txId} AND index_block_hash = ${args.indexBlockHash}
-          AND microblock_canonical = true AND event_index BETWEEN ${eventIndexStart} AND ${eventIndexEnd}
+          AND canonical = true AND microblock_canonical = true AND event_index BETWEEN ${eventIndexStart} AND ${eventIndexEnd}
       `;
       return {
         results: parseDbEvents(stxLockResults, stxResults, ftResults, nftResults, logResults),
@@ -1964,8 +1974,8 @@ export class PgStore extends BasePgStore {
   }: {
     limit: number;
     offset: number;
-    poxTable: PoxSyntheticEventTable;
-  }): Promise<DbPoxSyntheticEvent[]> {
+    poxTable: Pox4SyntheticEventTable;
+  }): Promise<DbPox4SyntheticEvent[]> {
     return await this.sqlTransaction(async sql => {
       const cols =
         poxTable === 'pox4_events' ? POX4_SYNTHETIC_EVENT_COLUMNS : POX_SYNTHETIC_EVENT_COLUMNS;
@@ -1987,8 +1997,8 @@ export class PgStore extends BasePgStore {
     poxTable,
   }: {
     txId: string;
-    poxTable: PoxSyntheticEventTable;
-  }): Promise<FoundOrNot<DbPoxSyntheticEvent[]>> {
+    poxTable: Pox4SyntheticEventTable;
+  }): Promise<FoundOrNot<DbPox4SyntheticEvent[]>> {
     return await this.sqlTransaction(async sql => {
       const dbTx = await this.getTx({ txId, includeUnanchored: true });
       if (!dbTx.found) {
@@ -2012,8 +2022,8 @@ export class PgStore extends BasePgStore {
     poxTable,
   }: {
     principal: string;
-    poxTable: PoxSyntheticEventTable;
-  }): Promise<FoundOrNot<DbPoxSyntheticEvent[]>> {
+    poxTable: Pox4SyntheticEventTable;
+  }): Promise<FoundOrNot<DbPox4SyntheticEvent[]>> {
     return await this.sqlTransaction(async sql => {
       const cols =
         poxTable === 'pox4_events' ? POX4_SYNTHETIC_EVENT_COLUMNS : POX_SYNTHETIC_EVENT_COLUMNS;
@@ -2035,7 +2045,7 @@ export class PgStore extends BasePgStore {
     afterBlockHeight: number;
     limit: number;
     offset: number;
-    poxTable: PoxSyntheticEventTable;
+    poxTable: Pox4SyntheticEventTable;
   }): Promise<FoundOrNot<{ stackers: DbPoxStacker[]; total: number }>> {
     return await this.sqlTransaction(async sql => {
       const queryResults = await sql<
@@ -2059,8 +2069,8 @@ export class PgStore extends BasePgStore {
             AND microblock_canonical = true
             AND delegate_to = ${args.delegator}
             AND name IN (
-              ${SyntheticPoxEventName.DelegateStx},
-              ${SyntheticPoxEventName.RevokeDelegateStx}
+              ${Pox4EventName.DelegateStx},
+              ${Pox4EventName.RevokeDelegateStx}
             )
             AND block_height <= ${args.blockHeight}
             AND block_height > ${args.afterBlockHeight}
@@ -2078,7 +2088,7 @@ export class PgStore extends BasePgStore {
           stacker, pox_addr, amount_ustx, unlock_burn_height, block_height::integer, tx_id,
           COUNT(*) OVER()::integer AS total_rows
         FROM distinct_rows
-        WHERE name = ${SyntheticPoxEventName.DelegateStx}
+        WHERE name = ${Pox4EventName.DelegateStx}
         ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
         LIMIT ${args.limit}
         OFFSET ${args.offset}
@@ -2172,7 +2182,10 @@ export class PgStore extends BasePgStore {
     >`
       SELECT tx_id, canonical, contract_id, block_height, clarity_version, source_code, abi
       FROM smart_contracts
-      WHERE abi->'functions' @> ${traitFunctionList as any}::jsonb
+      WHERE abi->'functions' @> ${
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        traitFunctionList as any
+      }::jsonb
         AND canonical = true AND microblock_canonical = true
       ORDER BY block_height DESC
       LIMIT ${args.limit} OFFSET ${args.offset}
@@ -2270,187 +2283,208 @@ export class PgStore extends BasePgStore {
     let burnchainLockHeight = 0;
     let burnchainUnlockHeight = 0;
 
-    let includePox1State = true;
-    let includePox2State = true;
-    let includePox3State = true;
     const poxForceUnlockHeights = await this.getPoxForcedUnlockHeightsInternal(sql);
-    if (poxForceUnlockHeights.found) {
-      if (
-        poxForceUnlockHeights.result.pox1UnlockHeight &&
-        burnBlockHeight > poxForceUnlockHeights.result.pox1UnlockHeight
-      ) {
-        includePox1State = false;
-      }
-      if (
-        poxForceUnlockHeights.result.pox2UnlockHeight &&
-        burnBlockHeight > poxForceUnlockHeights.result.pox2UnlockHeight
-      ) {
-        includePox2State = false;
-      }
-      if (
-        poxForceUnlockHeights.result.pox3UnlockHeight &&
-        burnBlockHeight > poxForceUnlockHeights.result.pox3UnlockHeight
-      ) {
-        includePox3State = false;
-      }
-    }
 
-    // Once the pox_v1_unlock_height is reached, stop using `stx_lock_events` to determinel locked state,
-    // because it includes pox-v1 entries. We only care about pox-v2, so only need to query `pox2_events`.
-    if (includePox1State) {
-      const lockQuery = await sql<
-        {
-          locked_amount: string;
-          unlock_height: string;
-          block_height: string;
-          tx_id: string;
-        }[]
-      >`
-        SELECT locked_amount, unlock_height, block_height, tx_id
-        FROM stx_lock_events
-        WHERE canonical = true AND microblock_canonical = true AND locked_address = ${stxAddress}
-        AND block_height <= ${blockHeight} AND unlock_height >= ${burnBlockHeight}
-        ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
+    // The materialized `stx_locked_balances` table only reflects the current
+    // canonical tip, so it can only answer current-tip reads. Historical
+    // (`until_block`) reads must still derive the lock from the per-version
+    // event tables below.
+    const lockChainTip = await this.getChainTip(sql);
+    const isCurrentTip = blockHeight >= lockChainTip.block_height;
+
+    if (isCurrentTip) {
+      const [lockRow] = await sql<MaterializedStxLockRow[]>`
+        SELECT locked_amount, unlock_burn_height, pox_version, lock_tx_id,
+          lock_block_height, burnchain_lock_height
+        FROM stx_locked_balances
+        WHERE principal = ${stxAddress}
         LIMIT 1
       `;
-      if (lockQuery.length > 1) {
-        throw new Error(
-          `stx_lock_events event query for ${stxAddress} should return zero or one rows but returned ${lockQuery.length}`
-        );
-      } else if (lockQuery.length === 1) {
-        lockTxId = lockQuery[0].tx_id;
-        locked = BigInt(lockQuery[0].locked_amount);
-        burnchainUnlockHeight = parseInt(lockQuery[0].unlock_height);
-        lockHeight = parseInt(lockQuery[0].block_height);
-        const blockQuery = await this.getBlockByHeightInternal(sql, lockHeight);
-        burnchainLockHeight = blockQuery.found ? blockQuery.result.burn_block_height : 0;
+      const resolved = resolveMaterializedStxLock(
+        lockRow,
+        burnBlockHeight,
+        poxForceUnlockHeights.found ? poxForceUnlockHeights.result : null
+      );
+      lockTxId = resolved.lockTxId;
+      locked = resolved.locked;
+      lockHeight = resolved.lockHeight;
+      burnchainLockHeight = resolved.burnchainLockHeight;
+      burnchainUnlockHeight = resolved.burnchainUnlockHeight;
+    } else {
+      let includePox1State = true;
+      let includePox2State = true;
+      let includePox3State = true;
+      let includePox4State = true;
+      if (poxForceUnlockHeights.found) {
+        if (
+          poxForceUnlockHeights.result.pox1UnlockHeight &&
+          burnBlockHeight > poxForceUnlockHeights.result.pox1UnlockHeight
+        ) {
+          includePox1State = false;
+        }
+        if (
+          poxForceUnlockHeights.result.pox2UnlockHeight &&
+          burnBlockHeight > poxForceUnlockHeights.result.pox2UnlockHeight
+        ) {
+          includePox2State = false;
+        }
+        if (
+          poxForceUnlockHeights.result.pox3UnlockHeight &&
+          burnBlockHeight > poxForceUnlockHeights.result.pox3UnlockHeight
+        ) {
+          includePox3State = false;
+        }
+        if (
+          poxForceUnlockHeights.result.pox4UnlockHeight &&
+          burnBlockHeight > poxForceUnlockHeights.result.pox4UnlockHeight
+        ) {
+          includePox4State = false;
+        }
       }
-    }
 
-    // Once the pox_v2_unlock_height is reached, stop using `pox2_events` to determinel locked state.
-    if (includePox2State) {
-      // Query for the latest lock event that still applies to the current burn block height.
-      // Special case for `handle-unlock` which should be returned if it is the last received event.
-      const pox2EventQuery = await sql<PoxSyntheticEventQueryResult[]>`
-        SELECT ${sql(POX_SYNTHETIC_EVENT_COLUMNS)}
-        FROM pox2_events
-        WHERE canonical = true AND microblock_canonical = true AND stacker = ${stxAddress}
-        AND block_height <= ${blockHeight}
-        AND (
-          (name != ${
-            SyntheticPoxEventName.HandleUnlock
-          } AND burnchain_unlock_height >= ${burnBlockHeight})
-          OR
-          (name = ${
-            SyntheticPoxEventName.HandleUnlock
-          } AND burnchain_unlock_height < ${burnBlockHeight})
-        )
-        ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
-        LIMIT 1
-      `;
-      if (pox2EventQuery.length > 0) {
-        const pox2Event = parseDbPoxSyntheticEvent(pox2EventQuery[0]);
-        if (pox2Event.name === SyntheticPoxEventName.HandleUnlock) {
-          // on a handle-unlock, set all of the locked stx related property to empty/default
-          lockTxId = '';
-          locked = 0n;
-          burnchainUnlockHeight = 0;
-          lockHeight = 0;
-          burnchainLockHeight = 0;
-        } else {
-          lockTxId = pox2Event.tx_id;
-          locked = pox2Event.locked;
-          burnchainUnlockHeight = Number(pox2Event.burnchain_unlock_height);
-          lockHeight = pox2Event.block_height;
+      // Once the pox_v1_unlock_height is reached, stop using `stx_lock_events` to determinel locked state,
+      // because it includes pox-v1 entries. We only care about pox-v2, so only need to query `pox2_events`.
+      if (includePox1State) {
+        const lockQuery = await sql<
+          {
+            locked_amount: string;
+            unlock_height: string;
+            block_height: string;
+            tx_id: string;
+          }[]
+        >`
+          SELECT locked_amount, unlock_height, block_height, tx_id
+          FROM stx_lock_events
+          WHERE canonical = true AND microblock_canonical = true AND locked_address = ${stxAddress}
+          AND block_height <= ${blockHeight} AND unlock_height >= ${burnBlockHeight}
+          ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
+          LIMIT 1
+        `;
+        if (lockQuery.length > 1) {
+          throw new Error(
+            `stx_lock_events event query for ${stxAddress} should return zero or one rows but returned ${lockQuery.length}`
+          );
+        } else if (lockQuery.length === 1) {
+          lockTxId = lockQuery[0].tx_id;
+          locked = BigInt(lockQuery[0].locked_amount);
+          burnchainUnlockHeight = parseInt(lockQuery[0].unlock_height);
+          lockHeight = parseInt(lockQuery[0].block_height);
           const blockQuery = await this.getBlockByHeightInternal(sql, lockHeight);
           burnchainLockHeight = blockQuery.found ? blockQuery.result.burn_block_height : 0;
         }
       }
-    }
 
-    // Once the pox_v3_unlock_height is reached, stop using `pox3_events` to determine locked state.
-    if (includePox3State) {
-      // Query for the latest lock event that still applies to the current burn block height.
-      // Special case for `handle-unlock` which should be returned if it is the last received event.
-      const pox3EventQuery = await sql<PoxSyntheticEventQueryResult[]>`
-        SELECT ${sql(POX_SYNTHETIC_EVENT_COLUMNS)}
-        FROM pox3_events
-        WHERE canonical = true AND microblock_canonical = true AND stacker = ${stxAddress}
-        AND block_height <= ${blockHeight}
-        AND (
-          (name != ${
-            SyntheticPoxEventName.HandleUnlock
-          } AND burnchain_unlock_height >= ${burnBlockHeight})
-          OR
-          (name = ${
-            SyntheticPoxEventName.HandleUnlock
-          } AND burnchain_unlock_height < ${burnBlockHeight})
-        )
-        ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
-        LIMIT 1
-      `;
-      if (pox3EventQuery.length > 0) {
-        const pox3Event = parseDbPoxSyntheticEvent(pox3EventQuery[0]);
-        if (pox3Event.name === SyntheticPoxEventName.HandleUnlock) {
-          // on a handle-unlock, set all of the locked stx related property to empty/default
-          lockTxId = '';
-          locked = 0n;
-          burnchainUnlockHeight = 0;
-          lockHeight = 0;
-          burnchainLockHeight = 0;
-        } else {
-          lockTxId = pox3Event.tx_id;
-          locked = pox3Event.locked;
-          burnchainUnlockHeight = Number(pox3Event.burnchain_unlock_height);
-          lockHeight = pox3Event.block_height;
-          const blockQuery = await this.getBlockByHeightInternal(sql, lockHeight);
-          burnchainLockHeight = blockQuery.found ? blockQuery.result.burn_block_height : 0;
+      // Once the pox_v2_unlock_height is reached, stop using `pox2_events` to determinel locked state.
+      if (includePox2State) {
+        // Query for the latest lock event that still applies to the current burn block height.
+        // Special case for `handle-unlock` which should be returned if it is the last received event.
+        const pox2EventQuery = await sql<PoxSyntheticEventQueryResult[]>`
+          SELECT ${sql(POX_SYNTHETIC_EVENT_COLUMNS)}
+          FROM pox2_events
+          WHERE canonical = true AND microblock_canonical = true AND stacker = ${stxAddress}
+          AND block_height <= ${blockHeight}
+          AND (
+            (name != ${Pox4EventName.HandleUnlock} AND burnchain_unlock_height >= ${burnBlockHeight})
+            OR
+            (name = ${Pox4EventName.HandleUnlock} AND burnchain_unlock_height < ${burnBlockHeight})
+          )
+          ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
+          LIMIT 1
+        `;
+        if (pox2EventQuery.length > 0) {
+          const pox2Event = parseDbPoxSyntheticEvent(pox2EventQuery[0]);
+          if (pox2Event.name === Pox4EventName.HandleUnlock) {
+            // on a handle-unlock, set all of the locked stx related property to empty/default
+            lockTxId = '';
+            locked = 0n;
+            burnchainUnlockHeight = 0;
+            lockHeight = 0;
+            burnchainLockHeight = 0;
+          } else {
+            lockTxId = pox2Event.tx_id;
+            locked = BigInt(pox2Event.locked);
+            burnchainUnlockHeight = Number(pox2Event.burnchain_unlock_height);
+            lockHeight = pox2Event.block_height;
+            const blockQuery = await this.getBlockByHeightInternal(sql, lockHeight);
+            burnchainLockHeight = blockQuery.found ? blockQuery.result.burn_block_height : 0;
+          }
+        }
+      }
+
+      // Once the pox_v3_unlock_height is reached, stop using `pox3_events` to determine locked state.
+      if (includePox3State) {
+        // Query for the latest lock event that still applies to the current burn block height.
+        // Special case for `handle-unlock` which should be returned if it is the last received event.
+        const pox3EventQuery = await sql<PoxSyntheticEventQueryResult[]>`
+          SELECT ${sql(POX_SYNTHETIC_EVENT_COLUMNS)}
+          FROM pox3_events
+          WHERE canonical = true AND microblock_canonical = true AND stacker = ${stxAddress}
+          AND block_height <= ${blockHeight}
+          AND (
+            (name != ${Pox4EventName.HandleUnlock} AND burnchain_unlock_height >= ${burnBlockHeight})
+            OR
+            (name = ${Pox4EventName.HandleUnlock} AND burnchain_unlock_height < ${burnBlockHeight})
+          )
+          ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
+          LIMIT 1
+        `;
+        if (pox3EventQuery.length > 0) {
+          const pox3Event = parseDbPoxSyntheticEvent(pox3EventQuery[0]);
+          if (pox3Event.name === Pox4EventName.HandleUnlock) {
+            // on a handle-unlock, set all of the locked stx related property to empty/default
+            lockTxId = '';
+            locked = 0n;
+            burnchainUnlockHeight = 0;
+            lockHeight = 0;
+            burnchainLockHeight = 0;
+          } else {
+            lockTxId = pox3Event.tx_id;
+            locked = BigInt(pox3Event.locked);
+            burnchainUnlockHeight = Number(pox3Event.burnchain_unlock_height);
+            lockHeight = pox3Event.block_height;
+            const blockQuery = await this.getBlockByHeightInternal(sql, lockHeight);
+            burnchainLockHeight = blockQuery.found ? blockQuery.result.burn_block_height : 0;
+          }
+        }
+      }
+
+      // Once the pox_v4_unlock_height is reached, stop using `pox4_events` to determine locked state.
+      if (includePox4State) {
+        // Query for the latest lock event that still applies to the current burn block height.
+        // Special case for `handle-unlock` which should be returned if it is the last received event.
+        const pox4EventQuery = await sql<PoxSyntheticEventQueryResult[]>`
+            SELECT ${sql(POX4_SYNTHETIC_EVENT_COLUMNS)}
+            FROM pox4_events
+            WHERE canonical = true AND microblock_canonical = true AND stacker = ${stxAddress}
+            AND block_height <= ${blockHeight}
+            AND (
+              (name != ${Pox4EventName.HandleUnlock} AND burnchain_unlock_height >= ${burnBlockHeight})
+              OR
+              (name = ${Pox4EventName.HandleUnlock} AND burnchain_unlock_height < ${burnBlockHeight})
+            )
+            ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
+            LIMIT 1
+          `;
+        if (pox4EventQuery.length > 0) {
+          const pox4Event = parseDbPoxSyntheticEvent(pox4EventQuery[0]);
+          if (pox4Event.name === Pox4EventName.HandleUnlock) {
+            // on a handle-unlock, set all of the locked stx related property to empty/default
+            lockTxId = '';
+            locked = 0n;
+            burnchainUnlockHeight = 0;
+            lockHeight = 0;
+            burnchainLockHeight = 0;
+          } else {
+            lockTxId = pox4Event.tx_id;
+            locked = BigInt(pox4Event.locked);
+            burnchainUnlockHeight = Number(pox4Event.burnchain_unlock_height);
+            lockHeight = pox4Event.block_height;
+            const blockQuery = await this.getBlockByHeightInternal(sql, lockHeight);
+            burnchainLockHeight = blockQuery.found ? blockQuery.result.burn_block_height : 0;
+          }
         }
       }
     }
-
-    // == PoX-4 ================================================================
-    // Assuming includePox3State = true; since there is no unlock height for pox4 (yet)
-
-    // Query for the latest lock event that still applies to the current burn block height.
-    // Special case for `handle-unlock` which should be returned if it is the last received event.
-
-    const pox4EventQuery = await sql<PoxSyntheticEventQueryResult[]>`
-        SELECT ${sql(POX4_SYNTHETIC_EVENT_COLUMNS)}
-        FROM pox4_events
-        WHERE canonical = true AND microblock_canonical = true AND stacker = ${stxAddress}
-        AND block_height <= ${blockHeight}
-        AND (
-          (name != ${
-            SyntheticPoxEventName.HandleUnlock
-          } AND burnchain_unlock_height >= ${burnBlockHeight})
-          OR
-          (name = ${
-            SyntheticPoxEventName.HandleUnlock
-          } AND burnchain_unlock_height < ${burnBlockHeight})
-        )
-        ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
-        LIMIT 1
-      `;
-    if (pox4EventQuery.length > 0) {
-      const pox4Event = parseDbPoxSyntheticEvent(pox4EventQuery[0]);
-      if (pox4Event.name === SyntheticPoxEventName.HandleUnlock) {
-        // on a handle-unlock, set all of the locked stx related property to empty/default
-        lockTxId = '';
-        locked = 0n;
-        burnchainUnlockHeight = 0;
-        lockHeight = 0;
-        burnchainLockHeight = 0;
-      } else {
-        lockTxId = pox4Event.tx_id;
-        locked = pox4Event.locked;
-        burnchainUnlockHeight = Number(pox4Event.burnchain_unlock_height);
-        lockHeight = pox4Event.block_height;
-        const blockQuery = await this.getBlockByHeightInternal(sql, lockHeight);
-        burnchainLockHeight = blockQuery.found ? blockQuery.result.burn_block_height : 0;
-      }
-    }
-    // =========================================================================
 
     const minerRewardQuery = await sql<{ amount: string }[]>`
       SELECT sum(
@@ -2830,12 +2864,12 @@ export class PgStore extends BasePgStore {
     limit: number;
     offset: number;
   }): Promise<{ results: DbTx[]; total: number }> {
-    // Query the `principal_stx_txs` table first to get the results page we want and then
+    // Query the `principal_txs` table first to get the results page we want and then
     // join against `txs` to get the full transaction objects only for that page.
     const resultQuery = await this.sql<(ContractTxQueryResult & { count: number })[]>`
       WITH stx_txs AS (
         SELECT tx_id, index_block_hash, microblock_hash, (COUNT(*) OVER())::INTEGER AS count
-        FROM principal_stx_txs
+        FROM principal_txs
         WHERE principal = ${args.stxAddress}
           AND ${
             args.atSingleBlock
@@ -3295,6 +3329,18 @@ export class PgStore extends BasePgStore {
       SELECT ip, address, currency, occurred_at
       FROM faucet_requests
       WHERE address = ${address} AND currency = 'stx'
+      ORDER BY occurred_at DESC
+      LIMIT 5
+    `;
+    const results = queryResult.map(r => parseFaucetRequestQueryResult(r));
+    return { results };
+  }
+
+  async getSBTCFaucetRequests(address: string) {
+    const queryResult = await this.sql<FaucetRequestQueryResult[]>`
+      SELECT ip, address, currency, occurred_at
+      FROM faucet_requests
+      WHERE address = ${address} AND currency = 'sbtc'
       ORDER BY occurred_at DESC
       LIMIT 5
     `;
@@ -3939,7 +3985,7 @@ export class PgStore extends BasePgStore {
   async getSubdomainsListInName({
     name,
     includeUnanchored,
-    chainId,
+    chainId: _chainId,
   }: {
     name: string;
     includeUnanchored: boolean;
@@ -4020,7 +4066,7 @@ export class PgStore extends BasePgStore {
   async getSubdomain({
     subdomain,
     includeUnanchored,
-    chainId,
+    chainId: _chainId,
   }: {
     subdomain: string;
     includeUnanchored: boolean;
@@ -4157,11 +4203,13 @@ export class PgStore extends BasePgStore {
     let v1UnlockHeight: number | null = null;
     let v2UnlockHeight: number | null = null;
     let v3UnlockHeight: number | null = null;
+    let v4UnlockHeight: number | null = null;
     const poxUnlockHeights = await this.getPoxForcedUnlockHeightsInternal(sql);
     if (poxUnlockHeights.found) {
       v1UnlockHeight = poxUnlockHeights.result.pox1UnlockHeight;
       v2UnlockHeight = poxUnlockHeights.result.pox2UnlockHeight;
       v3UnlockHeight = poxUnlockHeights.result.pox3UnlockHeight;
+      v4UnlockHeight = poxUnlockHeights.result.pox4UnlockHeight;
     }
 
     type StxLockEventResult = {
@@ -4230,15 +4278,15 @@ export class PgStore extends BasePgStore {
             burnchain_unlock_height <= ${current_burn_height}
             AND burnchain_unlock_height > ${previous_burn_height}
             AND name IN ${sql([
-              SyntheticPoxEventName.StackStx,
-              SyntheticPoxEventName.StackIncrease,
-              SyntheticPoxEventName.StackExtend,
-              SyntheticPoxEventName.DelegateStackStx,
-              SyntheticPoxEventName.DelegateStackIncrease,
-              SyntheticPoxEventName.DelegateStackExtend,
+              Pox4EventName.StackStx,
+              Pox4EventName.StackIncrease,
+              Pox4EventName.StackExtend,
+              Pox4EventName.DelegateStackStx,
+              Pox4EventName.DelegateStackIncrease,
+              Pox4EventName.DelegateStackExtend,
             ])}
           ) OR (
-            name = ${SyntheticPoxEventName.HandleUnlock}
+            name = ${Pox4EventName.HandleUnlock}
             AND burnchain_unlock_height < ${current_burn_height}
             AND burnchain_unlock_height >= ${previous_burn_height}
           )
@@ -4271,17 +4319,17 @@ export class PgStore extends BasePgStore {
         WHERE canonical = true AND microblock_canonical = true
         AND block_height <= ${block.block_height}
         AND (
-          ( name != ${SyntheticPoxEventName.HandleUnlock} AND
+          ( name != ${Pox4EventName.HandleUnlock} AND
             burnchain_unlock_height >= ${current_burn_height})
           OR
-          ( name = ${SyntheticPoxEventName.HandleUnlock} AND
+          ( name = ${Pox4EventName.HandleUnlock} AND
             burnchain_unlock_height < ${current_burn_height})
         )
         ORDER BY stacker, block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
       `;
       for (const row of pox2EventQuery) {
         const pox2Event = parseDbPoxSyntheticEvent(row);
-        if (pox2Event.name !== SyntheticPoxEventName.HandleUnlock) {
+        if (pox2Event.name !== Pox4EventName.HandleUnlock) {
           const unlockEvent: StxLockEventResult = {
             locked_amount: pox2Event.locked.toString(),
             unlock_height: Number(pox2Event.burnchain_unlock_height),
@@ -4308,15 +4356,15 @@ export class PgStore extends BasePgStore {
             burnchain_unlock_height <= ${current_burn_height}
             AND burnchain_unlock_height > ${previous_burn_height}
             AND name IN ${sql([
-              SyntheticPoxEventName.StackStx,
-              SyntheticPoxEventName.StackIncrease,
-              SyntheticPoxEventName.StackExtend,
-              SyntheticPoxEventName.DelegateStackStx,
-              SyntheticPoxEventName.DelegateStackIncrease,
-              SyntheticPoxEventName.DelegateStackExtend,
+              Pox4EventName.StackStx,
+              Pox4EventName.StackIncrease,
+              Pox4EventName.StackExtend,
+              Pox4EventName.DelegateStackStx,
+              Pox4EventName.DelegateStackIncrease,
+              Pox4EventName.DelegateStackExtend,
             ])}
           ) OR (
-            name = ${SyntheticPoxEventName.HandleUnlock}
+            name = ${Pox4EventName.HandleUnlock}
             AND burnchain_unlock_height < ${current_burn_height}
             AND burnchain_unlock_height >= ${previous_burn_height}
           )
@@ -4350,17 +4398,17 @@ export class PgStore extends BasePgStore {
         WHERE canonical = true AND microblock_canonical = true
         AND block_height <= ${block.block_height}
         AND (
-          ( name != ${SyntheticPoxEventName.HandleUnlock} AND
+          ( name != ${Pox4EventName.HandleUnlock} AND
             burnchain_unlock_height >= ${current_burn_height})
           OR
-          ( name = ${SyntheticPoxEventName.HandleUnlock} AND
+          ( name = ${Pox4EventName.HandleUnlock} AND
             burnchain_unlock_height < ${current_burn_height})
         )
         ORDER BY stacker, block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
       `;
       for (const row of pox3EventQuery) {
         const pox3Event = parseDbPoxSyntheticEvent(row);
-        if (pox3Event.name !== SyntheticPoxEventName.HandleUnlock) {
+        if (pox3Event.name !== Pox4EventName.HandleUnlock) {
           const unlockEvent: StxLockEventResult = {
             locked_amount: pox3Event.locked.toString(),
             unlock_height: Number(pox3Event.burnchain_unlock_height),
@@ -4375,43 +4423,82 @@ export class PgStore extends BasePgStore {
     }
 
     let poxV4Unlocks: StxLockEventResult[] = [];
-    const pox4EventQuery = await sql<PoxSyntheticEventQueryResult[]>`
-        SELECT DISTINCT ON (stacker) stacker, ${sql(POX4_SYNTHETIC_EVENT_COLUMNS)}
-        FROM pox4_events
-        WHERE canonical = true AND microblock_canonical = true
-        AND block_height <= ${block.block_height}
-        AND (
-          (
-            burnchain_unlock_height <= ${current_burn_height}
-            AND burnchain_unlock_height > ${previous_burn_height}
-            AND name IN ${sql([
-              SyntheticPoxEventName.StackStx,
-              SyntheticPoxEventName.StackIncrease,
-              SyntheticPoxEventName.StackExtend,
-              SyntheticPoxEventName.DelegateStackStx,
-              SyntheticPoxEventName.DelegateStackIncrease,
-              SyntheticPoxEventName.DelegateStackExtend,
-            ])}
-          ) OR (
-            name = ${SyntheticPoxEventName.HandleUnlock}
-            AND burnchain_unlock_height < ${current_burn_height}
-            AND burnchain_unlock_height >= ${previous_burn_height}
+    const checkPox4Unlocks = v4UnlockHeight === null || current_burn_height < v4UnlockHeight;
+    if (checkPox4Unlocks) {
+      const pox4EventQuery = await sql<PoxSyntheticEventQueryResult[]>`
+          SELECT DISTINCT ON (stacker) stacker, ${sql(POX4_SYNTHETIC_EVENT_COLUMNS)}
+          FROM pox4_events
+          WHERE canonical = true AND microblock_canonical = true
+          AND block_height <= ${block.block_height}
+          AND (
+            (
+              burnchain_unlock_height <= ${current_burn_height}
+              AND burnchain_unlock_height > ${previous_burn_height}
+              AND name IN ${sql([
+                Pox4EventName.StackStx,
+                Pox4EventName.StackIncrease,
+                Pox4EventName.StackExtend,
+                Pox4EventName.DelegateStackStx,
+                Pox4EventName.DelegateStackIncrease,
+                Pox4EventName.DelegateStackExtend,
+              ])}
+            ) OR (
+              name = ${Pox4EventName.HandleUnlock}
+              AND burnchain_unlock_height < ${current_burn_height}
+              AND burnchain_unlock_height >= ${previous_burn_height}
+            )
           )
-        )
-        ORDER BY stacker, block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
-      `;
-    poxV4Unlocks = pox4EventQuery.map(row => {
-      const pox4Event = parseDbPoxSyntheticEvent(row);
-      const unlockEvent: StxLockEventResult = {
-        locked_amount: pox4Event.locked.toString(),
-        unlock_height: Number(pox4Event.burnchain_unlock_height),
-        locked_address: pox4Event.stacker,
-        block_height: pox4Event.block_height,
-        tx_index: pox4Event.tx_index,
-        event_index: pox4Event.event_index,
-      };
-      return unlockEvent;
-    });
+          ORDER BY stacker, block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
+        `;
+      poxV4Unlocks = pox4EventQuery.map(row => {
+        const pox4Event = parseDbPoxSyntheticEvent(row);
+        const unlockEvent: StxLockEventResult = {
+          locked_amount: pox4Event.locked.toString(),
+          unlock_height: Number(pox4Event.burnchain_unlock_height),
+          locked_address: pox4Event.stacker,
+          block_height: pox4Event.block_height,
+          tx_index: pox4Event.tx_index,
+          event_index: pox4Event.event_index,
+        };
+        return unlockEvent;
+      });
+    }
+
+    const poxV4ForceUnlocks: StxLockEventResult[] = [];
+    const generatePoxV4ForceUnlocks =
+      v4UnlockHeight !== null &&
+      current_burn_height > v4UnlockHeight &&
+      previous_burn_height <= v4UnlockHeight;
+    if (generatePoxV4ForceUnlocks) {
+      const pox4EventQuery = await sql<PoxSyntheticEventQueryResult[]>`
+          SELECT DISTINCT ON (stacker) stacker, ${sql(POX4_SYNTHETIC_EVENT_COLUMNS)}
+          FROM pox4_events
+          WHERE canonical = true AND microblock_canonical = true
+          AND block_height <= ${block.block_height}
+          AND (
+            ( name != ${Pox4EventName.HandleUnlock} AND
+              burnchain_unlock_height >= ${current_burn_height})
+            OR
+            ( name = ${Pox4EventName.HandleUnlock} AND
+              burnchain_unlock_height < ${current_burn_height})
+          )
+          ORDER BY stacker, block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
+        `;
+      for (const row of pox4EventQuery) {
+        const pox4Event = parseDbPoxSyntheticEvent(row);
+        if (pox4Event.name !== Pox4EventName.HandleUnlock) {
+          const unlockEvent: StxLockEventResult = {
+            locked_amount: pox4Event.locked.toString(),
+            unlock_height: Number(pox4Event.burnchain_unlock_height),
+            locked_address: pox4Event.stacker,
+            block_height: pox4Event.block_height,
+            tx_index: pox4Event.tx_index,
+            event_index: pox4Event.event_index,
+          };
+          poxV4ForceUnlocks.push(unlockEvent);
+        }
+      }
+    }
 
     const txIdQuery = await sql<{ tx_id: string }[]>`
       SELECT tx_id
@@ -4430,6 +4517,7 @@ export class PgStore extends BasePgStore {
       poxV3Unlocks,
       poxV3ForceUnlocks,
       poxV4Unlocks,
+      poxV4ForceUnlocks,
     ]) {
       unlocks.forEach(row => {
         const unlockEvent: StxUnlockEvent = {
@@ -4443,79 +4531,32 @@ export class PgStore extends BasePgStore {
     return result;
   }
 
-  /** Retrieves the last transaction IDs with STX, FT and NFT activity for a principal */
+  /**
+   * Retrieves the last transaction IDs with STX, FT or NFT activity for a principal, with or
+   * without mempool transactions. Also returns the current PoX lock state so that ETags
+   * invalidate when STX unlock at a PoX cycle boundary (no transaction is emitted for unlocks).
+   * @param includeMempool - include mempool transactions
+   * @returns the last confirmed and mempool transaction IDs for the principal, plus PoX lock state
+   */
   async getPrincipalLastActivityTxIds(
     principal: string,
     includeMempool: boolean = false
-  ): Promise<string[]> {
-    const result = await this.sql<{ tx_id: string }[]>`
-      WITH activity AS (
-        (
+  ): Promise<{ confirmed: string | null; mempool: string | null; pox_state: string | null }> {
+    const result = await this.sql<
+      { confirmed: string | null; mempool: string | null; pox_state: string | null }[]
+    >`
+      SELECT (
           SELECT '0x' || encode(tx_id, 'hex') AS tx_id
-          FROM principal_stx_txs
+          FROM principal_txs
           WHERE principal = ${principal} AND canonical = true AND microblock_canonical = true
           ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC
           LIMIT 1
-        )
-        UNION
-        (
-          SELECT '0x' || encode(tx_id, 'hex') AS tx_id
-          FROM (
-            (
-              SELECT tx_id, block_height, microblock_sequence, tx_index, event_index
-              FROM ft_events
-              WHERE sender = ${principal}
-                AND canonical = true
-                AND microblock_canonical = true
-              ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
-              LIMIT 1
-            )
-            UNION ALL
-            (
-              SELECT tx_id, block_height, microblock_sequence, tx_index, event_index
-              FROM ft_events
-              WHERE recipient = ${principal}
-                AND canonical = true
-                AND microblock_canonical = true
-              ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
-              LIMIT 1
-            )
-          ) AS combined
-          ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
-          LIMIT 1
-        )
-        UNION
-        (
-          SELECT '0x' || encode(tx_id, 'hex') AS tx_id
-          FROM (
-            (
-              SELECT tx_id, block_height, microblock_sequence, tx_index, event_index
-              FROM nft_events
-              WHERE sender = ${principal}
-                AND canonical = true
-                AND microblock_canonical = true
-              ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
-              LIMIT 1
-            )
-            UNION ALL
-            (
-              SELECT tx_id, block_height, microblock_sequence, tx_index, event_index
-              FROM nft_events
-              WHERE recipient = ${principal}
-                AND canonical = true
-                AND microblock_canonical = true
-              ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
-              LIMIT 1
-            )
-          ) AS combined
-          ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
-          LIMIT 1
-        )
+        ) AS confirmed,
         ${
           includeMempool
-            ? this.sql`UNION
+            ? this.sql`
             (
-              SELECT 'mempool-' || '0x' || encode(tx_id, 'hex') AS tx_id
+              SELECT '0x' || encode(tx_id, 'hex') AS tx_id
               FROM mempool_txs
               WHERE pruned = false AND
                 (sender_address = ${principal}
@@ -4524,19 +4565,31 @@ export class PgStore extends BasePgStore {
               ORDER BY receipt_time DESC
               LIMIT 1
             )`
-            : this.sql``
+            : this.sql`NULL`
         }
-      )
-      SELECT tx_id FROM activity WHERE tx_id IS NOT NULL
+        AS mempool,
+        (
+          SELECT CASE
+            WHEN burnchain_unlock_height >= (SELECT burn_block_height FROM chain_tip)
+              AND name != ${Pox4EventName.HandleUnlock}
+            THEN 'locked'
+            ELSE 'unlocked'
+          END
+          FROM pox4_events
+          WHERE stacker = ${principal}
+            AND canonical = true AND microblock_canonical = true
+          ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
+          LIMIT 1
+        ) AS pox_state
     `;
-    return result.map(r => r.tx_id);
+    return result[0];
   }
 
   /** Returns the `index_block_hash` and canonical status of a single block */
   async getBlockCanonicalStatus(
-    height_or_hash: string | number
+    blockId: BlockIdParam
   ): Promise<{ index_block_hash: string; canonical: boolean } | undefined> {
-    const param = parseBlockParam(height_or_hash);
+    const param = blockId;
     const result = await this.sql<{ index_block_hash: string; canonical: boolean }[]>`
       SELECT index_block_hash, canonical
       FROM blocks
@@ -4546,8 +4599,11 @@ export class PgStore extends BasePgStore {
             ? this.sql`index_block_hash = (SELECT index_block_hash FROM chain_tip)`
             : param.type == 'hash'
               ? this.sql`index_block_hash = ${param.hash}`
-              : this.sql`block_height = ${param.height} AND canonical = true`
+              : param.type == 'timestamp'
+                ? this.sql`canonical = true AND block_time <= ${param.timestamp}`
+                : this.sql`block_height = ${param.height} AND canonical = true`
         }
+      ${param.type == 'timestamp' ? this.sql`ORDER BY block_time DESC` : this.sql``}
       LIMIT 1
     `;
     if (result.count) return result[0];
@@ -4630,6 +4686,7 @@ export class PgStore extends BasePgStore {
     // Group blocks by tenure.
     let tenureCond = sql``;
     let low = firstTenureBlock;
+    // eslint-disable-next-line no-useless-assignment
     let high = low;
     for (let i = 1; i < tenureChanges.length; i++) {
       high = tenureChanges[i].block_height - 1;

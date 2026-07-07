@@ -1,25 +1,6 @@
 import { Type, Static, TSchema } from '@sinclair/typebox';
-import { ResourceType, pagingQueryLimits } from '../../../api/pagination';
-import Ajv from 'ajv';
-import addFormats from 'ajv-formats';
-import { has0xPrefix, isTestEnv } from '@hirosystems/api-toolkit';
-
-const ajv = addFormats(new Ajv({ coerceTypes: true }), [
-  'date-time',
-  'time',
-  'date',
-  'email',
-  'hostname',
-  'ipv4',
-  'ipv6',
-  'uri',
-  'uri-reference',
-  'uuid',
-  'uri-template',
-  'json-pointer',
-  'relative-json-pointer',
-  'regex',
-]);
+import { ResourceType, pagingQueryLimits } from '../../../api/pagination.js';
+import { has0xPrefix, isTestEnv } from '@stacks/api-toolkit';
 
 // ==========================
 // Parameters
@@ -76,10 +57,36 @@ export const BlockCursorParamSchema = Type.String({
   description: 'Cursor for block pagination',
 });
 
+export const TransactionEventCursorParamSchema = Type.String({
+  pattern: '^[0-9]+:[0-9]+:[0-9]+:[0-9]+$',
+  description:
+    'Cursor for transaction event pagination (block_height:microblock_sequence:tx_index:event_index)',
+});
+
+export function parseEventCursor(cursor: string): {
+  block_height: number;
+  microblock_sequence: number;
+  tx_index: number;
+  event_index: number;
+} {
+  const [block_height, microblock_sequence, tx_index, event_index] = cursor.split(':').map(Number);
+  return { block_height, microblock_sequence, tx_index, event_index };
+}
+
+export function buildEventCursor(row: {
+  block_height: number;
+  microblock_sequence: number;
+  tx_index: number;
+  event_index: number;
+}): string {
+  return `${row.block_height}:${row.microblock_sequence}:${row.tx_index}:${row.event_index}`;
+}
+
 export type BlockIdParam =
   | { type: 'height'; height: number }
   | { type: 'hash'; hash: string }
-  | { type: 'latest'; latest: true };
+  | { type: 'latest'; latest: true }
+  | { type: 'timestamp'; timestamp: number };
 
 export function parseBlockParam(value: string | number): BlockIdParam {
   if (value === 'latest') {
@@ -178,9 +185,11 @@ const PaginationQueryParamsSchema = <T extends TSchema>(t: T) =>
     { additionalProperties: false }
   );
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const BlockPaginationQueryParamsSchema = PaginationQueryParamsSchema(BlockLimitParamSchema);
 export type BlockPaginationQueryParams = Static<typeof BlockPaginationQueryParamsSchema>;
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const TransactionPaginationQueryParamsSchema = PaginationQueryParamsSchema(
   TransactionLimitParamSchema
 );
@@ -188,6 +197,7 @@ export type TransactionPaginationQueryParams = Static<
   typeof TransactionPaginationQueryParamsSchema
 >;
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const PoxCyclePaginationQueryParamsSchema = PaginationQueryParamsSchema(PoxCycleLimitParamSchema);
 export type PoxCyclePaginationQueryParams = Static<typeof PoxCyclePaginationQueryParamsSchema>;
 
@@ -234,6 +244,18 @@ export const AddressParamsSchema = Type.Object(
   { additionalProperties: false }
 );
 export type AddressParams = Static<typeof AddressParamsSchema>;
+
+export const BlockTimestampParamsSchema = Type.Object(
+  {
+    timestamp: Type.Integer({
+      minimum: 0,
+      title: 'Block timestamp',
+      description: 'Unix timestamp (in seconds)',
+      examples: [1677731361],
+    }),
+  },
+  { additionalProperties: false }
+);
 
 export const AddressTransactionParamsSchema = Type.Object(
   {

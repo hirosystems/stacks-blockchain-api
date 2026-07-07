@@ -1,5 +1,6 @@
-import { InvalidRequestError, InvalidRequestErrorType } from '../errors';
+import { InvalidRequestError, InvalidRequestErrorType } from '../errors.js';
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function parsePagingQueryInput(val: any) {
   if (typeof val === 'number') {
     return val;
@@ -41,6 +42,7 @@ export enum ResourceType {
   TokenHolders,
   BlockSignerSignature,
   FtBalance,
+  NftBalance,
 }
 
 export const pagingQueryLimits: Record<ResourceType, { defaultLimit: number; maxLimit: number }> = {
@@ -104,10 +106,15 @@ export const pagingQueryLimits: Record<ResourceType, { defaultLimit: number; max
     defaultLimit: 100,
     maxLimit: 200,
   },
+  [ResourceType.NftBalance]: {
+    defaultLimit: 100,
+    maxLimit: 200,
+  },
 };
 
 export function getPagingQueryLimit(
   resourceType: ResourceType,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   limitOverride?: any,
   maxLimitOverride?: number
 ) {

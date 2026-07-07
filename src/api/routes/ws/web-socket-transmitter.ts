@@ -1,34 +1,38 @@
 import * as http from 'http';
 import PQueue from 'p-queue';
-import type { AddressStxBalanceResponse, AddressTransactionWithTransfers } from 'client/src/types';
+import type {
+  AddressStxBalanceResponse,
+  AddressTransactionWithTransfers,
+} from '../../../../client/src/types.js';
 import {
   getBlockFromDataStore,
   getMempoolTxsFromDataStore,
   getMicroblockFromDataStore,
   getTxFromDataStore,
   parseDbTx,
-} from '../../controllers/db-controller';
-import { PgStore } from '../../../datastore/pg-store';
-import { ListenerType, WebSocketChannel, WebSocketPayload } from './web-socket-channel';
-import { SocketIOChannel } from './channels/socket-io-channel';
-import { WsRpcChannel } from './channels/ws-rpc-channel';
-import { parseNftEvent } from '../../../datastore/helpers';
-import { logger } from '../../../logger';
+} from '../../controllers/db-controller.js';
+import { PgStore } from '../../../datastore/pg-store.js';
+import { ListenerType, WebSocketChannel, WebSocketPayload } from './web-socket-channel.js';
+import { SocketIOChannel } from './channels/socket-io-channel.js';
+import { WsRpcChannel } from './channels/ws-rpc-channel.js';
+import { parseNftEvent } from '../../../datastore/helpers.js';
+import { logger } from '@stacks/api-toolkit';
+import { ENV } from '../../../env.js';
 
 export function getWsPingIntervalMs(): number {
-  return parseInt(process.env['STACKS_API_WS_PING_INTERVAL'] ?? '5') * 1000;
+  return ENV.STACKS_API_WS_PING_INTERVAL * 1000;
 }
 
 export function getWsPingTimeoutMs(): number {
-  return parseInt(process.env['STACKS_API_WS_PING_TIMEOUT'] ?? '5') * 1000;
+  return ENV.STACKS_API_WS_PING_TIMEOUT * 1000;
 }
 
 export function getWsMessageTimeoutMs(): number {
-  return parseInt(process.env['STACKS_API_WS_MESSAGE_TIMEOUT'] ?? '5') * 1000;
+  return ENV.STACKS_API_WS_MESSAGE_TIMEOUT * 1000;
 }
 
 function getWsUpdateQueueTimeoutMs(): number {
-  return parseInt(process.env['STACKS_API_WS_UPDATE_QUEUE_TIMEOUT'] ?? '5') * 1000;
+  return ENV.STACKS_API_WS_UPDATE_QUEUE_TIMEOUT * 1000;
 }
 
 /**
@@ -50,7 +54,6 @@ export class WebSocketTransmitter {
       autoStart: true,
       concurrency: 1,
       timeout: getWsUpdateQueueTimeoutMs(),
-      throwOnTimeout: true,
     });
   }
 
@@ -103,7 +106,7 @@ export class WebSocketTransmitter {
           })
       )
     )
-      .then(_ => callback())
+      .then(_result => callback())
       .catch(error => callback(error));
   }
 
@@ -164,7 +167,7 @@ export class WebSocketTransmitter {
 
     if (this.channels.find(c => c.hasListeners('transaction', txId))) {
       try {
-        const result = await this.db.sqlTransaction(async sql => {
+        const result = await this.db.sqlTransaction(async _sql => {
           // Look at the `txs` table first so we always prefer the confirmed transaction.
           const txQuery = await getTxFromDataStore(this.db, {
             txId: txId,
@@ -253,7 +256,7 @@ export class WebSocketTransmitter {
 
     if (this.channels.find(c => c.hasListeners('principalStxBalance', address))) {
       try {
-        const balance = await this.db.sqlTransaction(async sql => {
+        const balance = await this.db.sqlTransaction(async _sql => {
           const stxBalanceResult = await this.db.getStxBalanceAtBlock(address, blockHeight);
           const tokenOfferingLocked = await this.db.getTokenOfferingLocked(address, blockHeight);
           const balance: AddressStxBalanceResponse = {

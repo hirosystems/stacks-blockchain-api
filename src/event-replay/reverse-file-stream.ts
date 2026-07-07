@@ -104,6 +104,7 @@ export function readLinesReversed(
       if (last) {
         try {
           transformStream.push(last.toString('utf8'));
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
         } catch (error: any) {
           callback(error);
           return;
@@ -123,6 +124,7 @@ export function readLinesReversed(
       for (let i = list.length - 1; i >= 0; i--) {
         try {
           transformStream.push(list[i].toString('utf8'));
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
         } catch (error: any) {
           callback(error);
           return;

@@ -6,7 +6,7 @@ import * as readline from 'readline';
 import * as path from 'path';
 import * as zlib from 'zlib';
 import { bitcoinToStacksAddress } from '@stacks/codec';
-import * as split2 from 'split2';
+import split2 from 'split2';
 import {
   DataStoreBnsBlockTxData,
   DbBnsName,
@@ -14,12 +14,17 @@ import {
   DbBnsSubdomain,
   DbConfigState,
   DbTokenOfferingLocked,
-} from '../datastore/common';
-import { REPO_DIR } from '../helpers';
-import { getBnsGenesisBlockFromBlockMessage } from '../event-replay/helpers';
-import { PgWriteStore } from '../datastore/pg-write-store';
-import { logger } from '../logger';
-import { PgSqlClient, asyncBatchIterate, asyncIterableToGenerator } from '@hirosystems/api-toolkit';
+} from '../datastore/common.js';
+import { REPO_DIR } from '../helpers.js';
+import { getBnsGenesisBlockFromBlockMessage } from '../event-replay/helpers.js';
+import { PgWriteStore } from '../datastore/pg-write-store.js';
+import {
+  PgSqlClient,
+  asyncBatchIterate,
+  asyncIterableToGenerator,
+  logger,
+} from '@stacks/api-toolkit';
+import { ENV } from '../env.js';
 
 const finished = util.promisify(stream.finished);
 const pipeline = util.promisify(stream.pipeline);
@@ -28,11 +33,6 @@ const readFile = util.promisify(fs.readFile);
 
 const SUBDOMAIN_BATCH_SIZE = 2000;
 const STX_VESTING_BATCH_SIZE = 2000;
-
-const enum StacksNodeType {
-  L1 = 'L1',
-  Subnet = 'subnet',
-}
 
 class LineReaderStream extends stream.Duplex {
   asyncGen: AsyncGenerator<string, void, unknown>;
@@ -58,9 +58,11 @@ class LineReaderStream extends stream.Duplex {
       }
     }
   }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   _write(chunk: any, encoding: BufferEncoding, callback: (error?: Error | null) => void) {
     this.passthrough.write(chunk, encoding, callback);
   }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   _destroy(error: any, callback: (error: Error | null) => void) {
     this.passthrough.destroy(error);
     this.readlineInstance.close();
@@ -101,7 +103,8 @@ class ChainProcessor extends stream.Writable {
     done();
   }
 
-  async _write(chunk: any, encoding: string, next: (error?: Error) => void) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  async _write(chunk: any, _encoding: string, next: (error?: Error) => void) {
     const line = (chunk as Buffer).toString();
 
     /*
@@ -225,7 +228,7 @@ class SubdomainZonefileParser extends stream.Transform {
 function btcToStxAddress(btcAddress: string) {
   try {
     return bitcoinToStacksAddress(btcAddress);
-  } catch (error) {
+  } catch (_error) {
     return btcAddress;
   }
 }
@@ -548,13 +551,7 @@ export async function importV1TokenOfferingData(db: PgWriteStore) {
 }
 
 export async function handleBnsImport(db: PgWriteStore) {
-  const stacksNodeType = process.env.STACKS_NODE_TYPE;
-  if (stacksNodeType === StacksNodeType.Subnet) {
-    logger.warn('BNS imports should not be enabled for a Subnet. Skipping...');
-    return;
-  }
-
-  const bnsDir = process.env.BNS_IMPORT_DIR;
+  const bnsDir = ENV.BNS_IMPORT_DIR;
   if (!bnsDir) {
     console.log(`BNS_IMPORT_DIR not configured, will not import BNS data`);
     return;

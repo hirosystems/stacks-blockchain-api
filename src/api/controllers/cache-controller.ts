@@ -1,14 +1,14 @@
 import * as prom from 'prom-client';
-import { normalizeHashString } from '../../helpers';
-import { PgStore } from '../../datastore/pg-store';
-import { logger } from '../../logger';
+import { normalizeHashString } from '../../helpers.js';
+import { PgStore } from '../../datastore/pg-store.js';
 import {
   CACHE_CONTROL_MUST_REVALIDATE,
   parseIfNoneMatchHeader,
   sha256,
-} from '@hirosystems/api-toolkit';
+  logger,
+} from '@stacks/api-toolkit';
 import { FastifyReply, FastifyRequest } from 'fastify';
-import { BlockParams } from '../routes/v2/schemas';
+import { BlockIdParam, parseBlockParam } from '../routes/v2/schemas.js';
 
 /**
  * Describes a key-value to be saved into a request's locals, representing the current
@@ -85,7 +85,7 @@ async function calculateETag(
 ): Promise<ETag | undefined> {
   try {
     switch (etagType) {
-      case ETagType.chainTip:
+      case ETagType.chainTip: {
         const chainTip = await db.getChainTip(db.sql);
         if (chainTip.block_height === 0) {
           // This should never happen unless the API is serving requests before it has synced any
@@ -93,8 +93,9 @@ async function calculateETag(
           return;
         }
         return chainTip.microblock_hash ?? chainTip.index_block_hash;
+      }
 
-      case ETagType.mempool:
+      case ETagType.mempool: {
         const digest = await db.getMempoolTxDigest();
         if (!digest.found) {
           // This should never happen unless the API is serving requests before it has synced any
@@ -106,8 +107,9 @@ async function calculateETag(
           return ETAG_EMPTY;
         }
         return digest.result.digest;
+      }
 
-      case ETagType.transaction:
+      case ETagType.transaction: {
         const tx_id = (req.params as { tx_id: string }).tx_id;
         const normalizedTxId = normalizeHashString(tx_id);
         if (normalizedTxId === false) {
@@ -124,16 +126,21 @@ async function calculateETag(
           status.result.status.toString(),
         ];
         return sha256(elements.join(':'));
+      }
 
       case ETagType.block: {
-        const params = req.params as BlockParams;
-        const status = await db.getBlockCanonicalStatus(params.height_or_hash);
+        const params = req.params as { height_or_hash?: string | number; timestamp?: number };
+        const blockId: BlockIdParam =
+          params.timestamp !== undefined
+            ? { type: 'timestamp', timestamp: params.timestamp }
+            : parseBlockParam(params.height_or_hash as string | number);
+        const status = await db.getBlockCanonicalStatus(blockId);
         if (!status) return ETAG_EMPTY;
         return `${status.index_block_hash}:${status.canonical}`;
       }
 
       case ETagType.principal:
-      case ETagType.principalMempool:
+      case ETagType.principalMempool: {
         const params = req.params as { address?: string; principal?: string };
         const principal = params.address ?? params.principal;
         if (!principal) return ETAG_EMPTY;
@@ -141,8 +148,11 @@ async function calculateETag(
           principal,
           etagType == ETagType.principalMempool
         );
-        if (!activity.length) return ETAG_EMPTY;
-        return sha256(activity.join(':'));
+        if (!activity.confirmed && !activity.mempool) return ETAG_EMPTY;
+        return sha256(
+          `${activity.confirmed ?? ''}:${activity.mempool ?? ''}:${activity.pox_state ?? ''}`
+        );
+      }
     }
   } catch (error) {
     logger.error(error, `Unable to calculate ${etagType} etag`);

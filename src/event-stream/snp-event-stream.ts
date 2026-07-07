@@ -1,9 +1,10 @@
-import { parseBoolean, SERVER_VERSION } from '@hirosystems/api-toolkit';
-import { logger as defaultLogger } from '@hirosystems/api-toolkit';
+import { SERVER_VERSION } from '@stacks/api-toolkit';
+import { logger as defaultLogger } from '@stacks/api-toolkit';
 import { EventEmitter } from 'node:events';
-import { EventStreamServer } from './event-server';
-import { PgWriteStore } from '../datastore/pg-write-store';
-import { MessagePath, StacksMessageStream } from '@stacks/node-publisher-client';
+import { EventStreamServer } from './event-server.js';
+import { PgWriteStore } from '../datastore/pg-write-store.js';
+import { StacksMessageStream, MessagePath } from '@stacks/node-publisher-client';
+import { ENV } from '../env.js';
 
 export class SnpEventStreamHandler {
   db: PgWriteStore;
@@ -21,16 +22,10 @@ export class SnpEventStreamHandler {
     this.db = opts.db;
     this.eventServer = opts.eventServer;
 
-    this.redisUrl = process.env.SNP_REDIS_URL as string;
-    if (!this.redisUrl) {
-      throw new Error('SNP_REDIS_URL environment variable is not set');
-    }
+    this.redisUrl = ENV.SNP_REDIS_URL;
+    this.redisStreamPrefix = ENV.SNP_REDIS_STREAM_KEY_PREFIX;
 
-    this.redisStreamPrefix = process.env.SNP_REDIS_STREAM_KEY_PREFIX;
-
-    const blocksOnly = process.env.SNP_BLOCKS_ONLY_STREAMING
-      ? parseBoolean(process.env.SNP_BLOCKS_ONLY_STREAMING)
-      : false;
+    const blocksOnly = ENV.SNP_BLOCKS_ONLY_STREAMING;
     const selectedMessagePaths: MessagePath[] = [MessagePath.NewBlock, MessagePath.NewBurnBlock];
     if (!blocksOnly) {
       selectedMessagePaths.push(MessagePath.NewMempoolTx);
@@ -74,16 +69,24 @@ export class SnpEventStreamHandler {
     );
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   async handleMsg(messageId: string, _timestamp: string, path: string, body: any) {
     this.logger.debug(`Received SNP stream event ${path}, msgId: ${messageId}`);
+    let response;
 
-    const response = await this.eventServer.fastifyInstance.inject({
-      method: 'POST',
-      url: path,
-      payload: body,
-    });
+    try {
+      response = await this.eventServer.fastifyInstance.inject({
+        method: 'POST',
+        url: path,
+        payload: body,
+      });
+    } catch (error) {
+      const errorMessage = `Failed to process SNP message ${messageId} at path ${path}: ${error}`;
+      this.logger.error(error, errorMessage);
+      throw new Error(errorMessage, { cause: error });
+    }
 
-    if (response.statusCode < 200 || response.statusCode > 299) {
+    if (response?.statusCode < 200 || response?.statusCode > 299) {
       const errorMessage = `Failed to process SNP message ${messageId} at path ${path}, status: ${response.statusCode}, body: ${response.body}`;
       this.logger.error(errorMessage);
       throw new Error(errorMessage);

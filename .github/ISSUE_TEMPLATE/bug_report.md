@@ -1,8 +1,8 @@
 ---
 name: Bug report
-about: Create a report to help us improve
+about: Report a problem with the Stacks Blockchain API
 title: ''
-labels: ''
+labels: bug
 assignees: ''
 
 ---
@@ -10,32 +10,19 @@ assignees: ''
 **Describe the bug**
 A clear and concise description of what the bug is.
 
-**To Reproduce**
-Steps to reproduce the behavior:
-1. Go to '...'
-2. Click on '....'
-3. Scroll down to '....'
-4. See error
+**To reproduce**
+Steps to reproduce, including the API endpoint and request (e.g. `curl` command) where applicable.
 
 **Expected behavior**
-A clear and concise description of what you expected to happen.
+What you expected to happen.
 
-**Screenshots**
-If applicable, add screenshots to help explain your problem.
+**Environment**
+- API version: <!-- e.g. 8.15.4, or the docker image tag -->
+- Network: <!-- mainnet / testnet -->
+- Deployment: <!-- docker / source / hosted (api.hiro.so) -->
 
-**Console log**
-If applicable, add console log to help explain your problem.
-
-**Desktop (please complete the following information):**
- - OS: [e.g. iOS]
- - Browser [e.g. chrome, safari]
- - Version [e.g. 22]
-
-**Smartphone (please complete the following information):**
- - Device: [e.g. iPhone6]
- - OS: [e.g. iOS8.1]
- - Browser [e.g. stock browser, safari]
- - Version [e.g. 22]
+**Logs / response**
+Relevant API response body, status code, or server logs.
 
 **Additional context**
-Add any other context about the problem here.
+Anything else that might help.

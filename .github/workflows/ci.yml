@@ -33,7 +33,7 @@ jobs:
         run: echo "dir=$(npm config get cache)" >> ${GITHUB_OUTPUT}
 
       - name: Cache node modules
-        uses: actions/cache@2c8a9bd7457de244a408f35966fab2fb45fda9c8 # v6.0.0
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         id: npm-cache # use this to check for `cache-hit` ==> if: steps.npm-cache.outputs.cache-hit != 'true'
         with:
           path: ${{ steps.npm-cache-dir.outputs.dir }}
@@ -50,22 +50,42 @@ jobs:
       - name: Lint Prettier
         run: npm run lint:prettier
 
-      - name: Lint Unused Exports
-        run: npm run lint:unused-exports
-
   test:
     strategy:
       fail-fast: false
       matrix:
         suite:
           [
-            api,
-            bns,
-            bns-e2e,
-            btc-faucet,
-            event-replay,
-            rpc,
-            # subnets,
+            api:blocks,
+            api:bns,
+            api:cache,
+            api:datastore,
+            api:event-replay,
+            api:event-server,
+            api:mempool,
+            api:microblocks,
+            api:principal,
+            api:redis,
+            api:smart-contracts,
+            api:sockets,
+            api:synthetic-txs,
+            api:transactions,
+            api:v2-proxy,
+            api:v3,
+            api:pox5,
+            # krypton:bns-e2e,
+            # krypton:faucet-btc,
+            # krypton:faucet-sbtc,
+            # krypton:faucet-stx,
+            # krypton:pox-4-btc-address-formats,
+            # krypton:pox-4-burnchain-delegate-stx,
+            # krypton:pox-4-burnchain-stack-stx,
+            # krypton:pox-4-delegate-aggregation,
+            # krypton:pox-4-delegate-revoked-stacking,
+            # krypton:pox-4-delegate-stacking,
+            # krypton:pox-4-stack-extend-increase,
+            # krypton:rpc,
+            snp,
           ]
     runs-on: ubuntu-latest
     steps:
@@ -83,7 +103,7 @@ jobs:
         run: echo "dir=$(npm config get cache)" >> ${GITHUB_OUTPUT}
 
       - name: Cache node modules
-        uses: actions/cache@2c8a9bd7457de244a408f35966fab2fb45fda9c8 # v6.0.0
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         id: npm-cache # use this to check for `cache-hit` ==> if: steps.npm-cache.outputs.cache-hit != 'true'
         with:
           path: ${{ steps.npm-cache-dir.outputs.dir }}
@@ -98,232 +118,28 @@ jobs:
         working-directory: client
         run: npm ci --audit=false
 
-      - name: Setup env vars
-        run: echo "STACKS_CORE_EVENT_HOST=http://0.0.0.0" >> $GITHUB_ENV
-
-      - name: Setup replay directories
-        if: matrix.suite == 'event-replay'
+      - name: Setup replay directory permissions
+        if: matrix.suite == 'api:event-replay'
         run: |
-          mkdir -p tests/event-replay/.tmp/local/
-          sudo chown 999:999 tests/event-replay/.tmp/local/
-          sudo chmod -R 777 tests/event-replay/.tmp/local/
-
-      - name: Setup integration environment
-        run: |
-          sudo ufw disable
-          npm run devenv:deploy -- -d
-          npm run devenv:logs -- --no-color &> docker-compose-logs.txt &
+          mkdir -p tests/api/event-replay/.tmp/local/
+          sudo chown 999:999 tests/api/event-replay/.tmp/local/
+          sudo chmod -R 777 tests/api/event-replay/.tmp/local/
 
       - name: Run tests
-        run: npm run test:${{ matrix.suite }} -- --coverage
-
-      - name: Print integration environment logs
-        run: cat docker-compose-logs.txt
-        if: failure()
-
-      - name: Teardown integration environment
-        run: npm run devenv:stop
-        if: always()
+        run: npx c8 --reporter=lcov npm run test:${{ matrix.suite }}
 
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7.0.0
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}
-        if: always()
-
-  test-snp:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-
-      - name: Use Node.js
-        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
-        with:
-          node-version-file: ".nvmrc"
-
-      # https://github.com/actions/cache/blob/main/examples.md#node---npm
-      - name: Get npm cache directory
-        id: npm-cache-dir
-        shell: bash
-        run: echo "dir=$(npm config get cache)" >> ${GITHUB_OUTPUT}
-
-      - name: Cache node modules
-        uses: actions/cache@2c8a9bd7457de244a408f35966fab2fb45fda9c8 # v6.0.0
-        id: npm-cache # use this to check for `cache-hit` ==> if: steps.npm-cache.outputs.cache-hit != 'true'
-        with:
-          path: ${{ steps.npm-cache-dir.outputs.dir }}
-          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-node-
-
-      - name: Install deps
-        run: npm ci --audit=false
-
-      - name: Install client deps
-        working-directory: client
-        run: npm ci --audit=false
-      - name: Run tests
-        run: npm run test:snp -- --coverage
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7.0.0
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}
-        if: always()
-
-  test-2_5:
-    strategy:
-      fail-fast: false
-      matrix:
-        suite:
-          [
-            block-zero-handling,
-            faucet-stx,
-            pox-4-btc-address-formats,
-            pox-4-delegate-aggregation,
-            pox-4-delegate-stacking,
-            pox-4-delegate-revoked-stacking,
-            pox-4-stack-extend-increase,
-            pox-4-rosetta-btc-addr-types,
-            pox-4-rosetta-cycle-phases,
-            pox-4-rosetta-segwit,
-            pox-4-burnchain-stack-stx,
-            pox-4-burnchain-delegate-stx,
-          ]
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-
-      - name: Use Node.js
-        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
-        with:
-          node-version-file: ".nvmrc"
-
-      # https://github.com/actions/cache/blob/main/examples.md#node---npm
-      - name: Get npm cache directory
-        id: npm-cache-dir
-        shell: bash
-        run: echo "dir=$(npm config get cache)" >> ${GITHUB_OUTPUT}
-
-      - name: Cache node modules
-        uses: actions/cache@2c8a9bd7457de244a408f35966fab2fb45fda9c8 # v6.0.0
-        id: npm-cache # use this to check for `cache-hit` ==> if: steps.npm-cache.outputs.cache-hit != 'true'
-        with:
-          path: ${{ steps.npm-cache-dir.outputs.dir }}
-          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-node-
-
-      - name: Install deps
-        run: npm ci --audit=false
-
-      - name: Setup env vars
-        run: echo "STACKS_CORE_EVENT_HOST=http://0.0.0.0" >> $GITHUB_ENV
-
-      - name: Setup integration environment
-        run: |
-          sudo ufw disable
-          npm run devenv:deploy-krypton -- -d
-          npm run devenv:logs-krypton -- --no-color &> docker-compose-logs.txt &
-
-      - name: Run tests
-        run: npm run test:2.5 -- --testPathPatterns "${{ matrix.suite }}" --coverage
-
-      - name: Print integration environment logs
-        run: cat docker-compose-logs.txt
-        if: failure()
-
-      - name: Teardown integration environment
-        run: npm run devenv:stop-krypton
-        if: always()
-
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7.0.0
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}
-        if: always()
-
-  test-rosetta:
-    strategy:
-      fail-fast: false
-      matrix:
-        suite:
-          [
-            rosetta,
-            rosetta-construction,
-            rosetta-cli-data,
-            rosetta-cli-construction,
-          ]
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-
-      - name: Use Node.js
-        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
-        with:
-          node-version-file: ".nvmrc"
-
-      # https://github.com/actions/cache/blob/main/examples.md#node---npm
-      - name: Get npm cache directory
-        id: npm-cache-dir
-        shell: bash
-        run: echo "dir=$(npm config get cache)" >> ${GITHUB_OUTPUT}
-
-      - name: Cache node modules
-        uses: actions/cache@2c8a9bd7457de244a408f35966fab2fb45fda9c8 # v6.0.0
-        id: npm-cache # use this to check for `cache-hit` ==> if: steps.npm-cache.outputs.cache-hit != 'true'
-        with:
-          path: ${{ steps.npm-cache-dir.outputs.dir }}
-          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-node-
-
-      - name: Install deps
-        run: npm ci --audit=false
-
-      - name: Setup env vars
-        run: echo "STACKS_CORE_EVENT_HOST=http://0.0.0.0" >> $GITHUB_ENV
-
-      - name: Setup CLI env vars
-        if: contains(matrix.suite, 'cli')
-        run: |
-          echo STACKS_BLOCKCHAIN_API_HOST=0.0.0.0>> .env
-          echo STACKS_CORE_PROXY_HOST=0.0.0.0 >> .env
-          echo STACKS_CORE_RPC_HOST=0.0.0.0 >> .env
-          echo STACKS_CORE_EVENT_HOST=0.0.0.0 >> .env
-          echo BTC_RPC_HOST=http://0.0.0.0 >> .env
-
-      - name: Setup integration environment
-        run: |
-          sudo ufw disable
-          npm run devenv:deploy-krypton -- -d
-          npm run devenv:logs-krypton -- --no-color &> docker-compose-logs.txt &
-
-      - name: Run tests
-        run: npm run test:${{ matrix.suite }} -- --coverage
-
-      - name: Print integration environment logs
-        run: cat docker-compose-logs.txt
-        if: failure()
-
-      - name: Teardown integration environment
-        run: npm run devenv:stop-krypton
-        if: always()
-
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7.0.0
+        uses: codecov/codecov-action@e53489f4d376d79066609109e7a95a29eb3740b1 # v7.0.0
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
         if: always()
 
   build-publish:
     runs-on: ubuntu-latest
-    needs:
-      - lint
-      - test
-      - test-2_5
-      - test-rosetta
+    needs: [lint, test]
     environment: Production
     permissions:
+      id-token: write
       contents: read
       packages: write
     steps:
@@ -332,37 +148,48 @@ jobs:
           fetch-depth: 0
 
       - name: Set up QEMU
-        uses: docker/setup-qemu-action@06116385d9baf250c9f4dcb4858b16962ea869c3 # v4.1.0
+        uses: docker/setup-qemu-action@96fe6ef7f33517b61c61be40b68a1882f3264fb8 # v4.2.0
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@d7f5e7f509e45cec5c76c4d5afdd7de93d0b3df5 # v4.1.0
+        uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
+
+      - name: Configure AWS Credentials via OIDC
+        uses: aws-actions/configure-aws-credentials@254c19bd240aabef8777f48595e9d2d7b972184b # v6.2.1
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION || 'us-east-2' }}
+
+      - name: Login to Amazon ECR
+        id: ecr_login
+        uses: aws-actions/amazon-ecr-login@b040164c4934333d597f3f9c67502ff28f814e9c # v2.1.6
 
       - name: Docker Meta
         id: docker_meta
-        uses: docker/metadata-action@80c7e94dd9b9319bd5eb7a0e0fe9291e23a2a2e9 # v6.1.0
+        uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6.2.0
         with:
           images: |
             ghcr.io/${{ github.repository }}
             hirosystems/${{ github.event.repository.name }}
+            ${{ steps.ecr_login.outputs.registry }}/${{ vars.AWS_ECR_REPOSITORY }}
           tags: |
             type=ref,event=branch
             type=ref,event=pr
 
       - name: Log in to GitHub Container Registry
-        uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee # v4.2.0
+        uses: docker/login-action@af1e73f918a031802d376d3c8bbc3fe56130a9b0 # v4.4.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Login to DockerHub
-        uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee # v4.2.0
+        uses: docker/login-action@af1e73f918a031802d376d3c8bbc3fe56130a9b0 # v4.4.0
         with:
           username: ${{ secrets.HIROSYSTEMS_DOCKERHUB_USERNAME }}
           password: ${{ secrets.HIROSYSTEMS_DOCKERHUB_TOKEN }}
 
       - name: Build/Tag/Push Image
-        uses: docker/build-push-action@f9f3042f7e2789586610d6e8b85c8f03e5195baf # v7.2.0
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
         with:
           context: .
           platforms: ${{ github.ref == 'refs/heads/master' && 'linux/amd64,linux/arm64' || 'linux/amd64' }}

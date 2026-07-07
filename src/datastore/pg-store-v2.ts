@@ -1,4 +1,4 @@
-import { BasePgStoreModule, PgSqlClient, has0xPrefix } from '@hirosystems/api-toolkit';
+import { BasePgStoreModule, PgSqlClient, has0xPrefix } from '@stacks/api-toolkit';
 import {
   BlockLimitParamSchema,
   TransactionPaginationQueryParams,
@@ -11,9 +11,11 @@ import {
   PoxSignerLimitParamSchema,
   BlockIdParam,
   BlockSignerSignatureLimitParamSchema,
-} from '../api/routes/v2/schemas';
-import { InvalidRequestError, InvalidRequestErrorType } from '../errors';
-import { FoundOrNot, normalizeHashString } from '../helpers';
+  parseEventCursor,
+  buildEventCursor,
+} from '../api/routes/v2/schemas.js';
+import { InvalidRequestError, InvalidRequestErrorType } from '../errors.js';
+import { FoundOrNot, normalizeHashString } from '../helpers.js';
 import {
   DbPaginatedResult,
   DbBlock,
@@ -27,24 +29,24 @@ import {
   DbTxWithAddressTransfers,
   DbEventTypeId,
   DbAddressTransactionEvent,
-  DbAssetEventTypeId,
   DbPoxCycle,
   PoxCycleQueryResult,
   DbPoxCycleSigner,
   DbPoxCycleSignerStacker,
   DbCursorPaginatedResult,
-  PoxSyntheticEventQueryResult,
-} from './common';
+  DbBurnBlockPoxTx,
+  DbSmartContractEvent,
+} from './common.js';
 import {
   BLOCK_COLUMNS,
   parseBlockQueryResult,
   TX_COLUMNS,
   parseTxQueryResult,
   parseAccountTransferSummaryTxQueryResult,
-  POX4_SYNTHETIC_EVENT_COLUMNS,
-  parseDbPoxSyntheticEvent,
-} from './helpers';
-import { SyntheticPoxEventName } from '../pox-helpers';
+  prefixedCols,
+  resolveMaterializedStxLock,
+  MaterializedStxLockRow,
+} from './helpers.js';
 
 async function assertTxIdExists(sql: PgSqlClient, tx_id: string) {
   const txCheck = await sql`SELECT tx_id FROM txs WHERE tx_id = ${tx_id} LIMIT 1`;
@@ -174,7 +176,9 @@ export class PgStoreV2 extends BasePgStoreModule {
           ? sql`burn_block_hash = (SELECT burn_block_hash FROM blocks WHERE canonical = TRUE ORDER BY block_height DESC LIMIT 1)`
           : args.block.type === 'hash'
             ? sql`burn_block_hash = ${normalizeHashString(args.block.hash)}`
-            : sql`burn_block_height = ${args.block.height}`;
+            : args.block.type === 'height'
+              ? sql`burn_block_height = ${args.block.height}`
+              : sql`burn_block_time = ${args.block.timestamp}`;
       const blockCheck = await sql`SELECT burn_block_hash FROM blocks WHERE ${filter} LIMIT 1`;
       if (blockCheck.count === 0)
         throw new InvalidRequestError(
@@ -212,6 +216,57 @@ export class PgStoreV2 extends BasePgStoreModule {
     });
   }
 
+  async getBurnBlockPoxTransactions(args: {
+    block?: BlockIdParam;
+    recipient?: string;
+    limit?: number;
+    offset?: number;
+  }): Promise<DbPaginatedResult<DbBurnBlockPoxTx>> {
+    return await this.sqlTransaction(async sql => {
+      const limit = args.limit ?? BlockLimitParamSchema.default;
+      const offset = args.offset ?? 0;
+      const blockFilter = args.block
+        ? args.block.type === 'latest'
+          ? sql`burn_block_hash = (SELECT burn_block_hash FROM burn_block_pox_txs WHERE canonical = true ORDER BY burn_block_height DESC LIMIT 1)`
+          : args.block.type === 'hash'
+            ? sql`burn_block_hash = ${normalizeHashString(args.block.hash)}`
+            : args.block.type === 'height'
+              ? sql`burn_block_height = ${args.block.height}`
+              : sql`burn_block_time = ${args.block.timestamp}`
+        : sql`TRUE`;
+      const recipientFilter = args.recipient ? sql`recipient = ${args.recipient}` : sql`TRUE`;
+      const countQuery =
+        args.recipient && !args.block
+          ? sql`
+            SELECT COALESCE(count, 0)::int AS count
+            FROM burn_block_pox_tx_counts
+            WHERE recipient = ${args.recipient}
+          `
+          : sql`
+            SELECT COUNT(*)::int AS count
+            FROM burn_block_pox_txs
+            WHERE ${blockFilter} AND ${recipientFilter}
+          `;
+      const results = await sql<(DbBurnBlockPoxTx & { total: number })[]>`
+        WITH total_count AS (
+          ${countQuery}
+        )
+        SELECT *, (SELECT count FROM total_count) AS total
+        FROM burn_block_pox_txs
+        WHERE ${blockFilter} AND ${recipientFilter}
+        ORDER BY burn_block_height DESC, tx_id ASC
+        LIMIT ${limit}
+        OFFSET ${offset}
+      `;
+      return {
+        limit,
+        offset,
+        results,
+        total: results[0]?.total ?? 0,
+      };
+    });
+  }
+
   async getBlock(args: BlockIdParam): Promise<DbBlock | undefined> {
     return await this.sqlTransaction(async sql => {
       const filter =
@@ -222,7 +277,9 @@ export class PgStoreV2 extends BasePgStoreModule {
               block_hash = ${normalizeHashString(args.hash)}
               OR index_block_hash = ${normalizeHashString(args.hash)}
             )`
-            : sql`block_height = ${args.height}`;
+            : args.type === 'height'
+              ? sql`block_height = ${args.height}`
+              : sql`block_time = ${args.timestamp}`;
       const blockQuery = await sql<BlockQueryResult[]>`
         SELECT ${sql(BLOCK_COLUMNS)}
         FROM blocks
@@ -250,7 +307,9 @@ export class PgStoreV2 extends BasePgStoreModule {
               block_hash = ${normalizeHashString(blockId.hash)}
               OR index_block_hash = ${normalizeHashString(blockId.hash)}
             )`
-            : sql`block_height = ${blockId.height}`;
+            : blockId.type === 'height'
+              ? sql`block_height = ${blockId.height}`
+              : sql`block_time = ${blockId.timestamp}`;
       const blockQuery = await sql<{ signer_signatures: string[]; total: number }[]>`
         SELECT
           signer_signatures[${offset + 1}:${offset + limit}] as signer_signatures,
@@ -273,6 +332,18 @@ export class PgStoreV2 extends BasePgStoreModule {
         total: blockQuery[0].total,
       };
     });
+  }
+
+  async getBlockAtTimestamp(args: { timestamp: number }): Promise<DbBlock | null> {
+    const result = await this.sql<BlockQueryResult[]>`
+      SELECT ${this.sql(BLOCK_COLUMNS)}
+      FROM blocks
+      WHERE canonical = true AND block_time <= ${args.timestamp}
+      ORDER BY block_time DESC
+      LIMIT 1
+    `;
+    if (result.count > 0) return parseBlockQueryResult(result[0]);
+    return null;
   }
 
   async getAverageBlockTimes(): Promise<{
@@ -348,7 +419,9 @@ export class PgStoreV2 extends BasePgStoreModule {
                   block_hash = ${normalizeHashString(args.block.hash)}
                   OR index_block_hash = ${normalizeHashString(args.block.hash)}
                 ) AND canonical = TRUE`
-                : sql`block_height = ${args.block.height} AND canonical = TRUE`
+                : args.block.type === 'height'
+                  ? sql`block_height = ${args.block.height} AND canonical = TRUE`
+                  : sql`block_time = ${args.block.timestamp} AND canonical = TRUE`
           }
           LIMIT 1
         ),
@@ -449,7 +522,9 @@ export class PgStoreV2 extends BasePgStoreModule {
           ? sql`burn_block_hash = (SELECT burn_block_hash FROM blocks WHERE canonical = TRUE ORDER BY block_height DESC LIMIT 1)`
           : args.type === 'hash'
             ? sql`burn_block_hash = ${args.hash}`
-            : sql`burn_block_height = ${args.height}`;
+            : args.type === 'height'
+              ? sql`burn_block_height = ${args.height}`
+              : sql`burn_block_time = ${args.timestamp}`;
       const blockQuery = await sql<DbBurnBlock[]>`
         WITH BlocksWithPrevTime AS (
           SELECT
@@ -527,120 +602,134 @@ export class PgStoreV2 extends BasePgStoreModule {
   }
 
   async getAddressTransactions(
-    args: AddressParams & TransactionPaginationQueryParams
-  ): Promise<DbPaginatedResult<DbTxWithAddressTransfers>> {
+    args: AddressParams & TransactionPaginationQueryParams & { cursor?: string }
+  ): Promise<DbCursorPaginatedResult<DbTxWithAddressTransfers>> {
     return await this.sqlTransaction(async sql => {
       const limit = args.limit ?? TransactionLimitParamSchema.default;
       const offset = args.offset ?? 0;
 
-      const eventCond = sql`
-        tx_id = address_txs.tx_id
-        AND index_block_hash = address_txs.index_block_hash
-        AND microblock_hash = address_txs.microblock_hash
-      `;
-      const eventAcctCond = sql`
-        ${eventCond} AND (sender = ${args.address} OR recipient = ${args.address})
-      `;
+      // Parse cursor if provided (format: "indexBlockHash:microblockSequence:txIndex")
+      let cursorFilter = sql``;
+      if (args.cursor) {
+        const parts = args.cursor.split(':');
+        if (parts.length !== 3) {
+          throw new InvalidRequestError(
+            'Invalid cursor format',
+            InvalidRequestErrorType.invalid_param
+          );
+        }
+        const [indexBlockHash, microblockSequenceStr, txIndexStr] = parts;
+        const microblockSequence = parseInt(microblockSequenceStr, 10);
+        const txIndex = parseInt(txIndexStr, 10);
+        if (!indexBlockHash || isNaN(microblockSequence) || isNaN(txIndex)) {
+          throw new InvalidRequestError(
+            'Invalid cursor format',
+            InvalidRequestErrorType.invalid_param
+          );
+        }
+        // Look up block_height from index_block_hash for the row-value comparison
+        const blockHeightQuery = await sql<{ block_height: number }[]>`
+          SELECT block_height FROM blocks WHERE index_block_hash = ${indexBlockHash} LIMIT 1
+        `;
+        if (blockHeightQuery.length === 0) {
+          throw new InvalidRequestError(
+            'Invalid cursor: block not found',
+            InvalidRequestErrorType.invalid_param
+          );
+        }
+        const blockHeight = blockHeightQuery[0].block_height;
+
+        cursorFilter = sql`
+          AND (p.block_height, p.microblock_sequence, p.tx_index)
+              <= (${blockHeight}, ${microblockSequence}, ${txIndex})
+        `;
+      }
+
       const resultQuery = await sql<(AddressTransfersTxQueryResult & { count: number })[]>`
-        WITH address_txs AS (
-          (
-            SELECT tx_id, index_block_hash, microblock_hash
-            FROM principal_stx_txs
-            WHERE principal = ${args.address}
-          )
-          UNION
-          (
-            SELECT tx_id, index_block_hash, microblock_hash
-            FROM stx_events
-            WHERE sender = ${args.address} OR recipient = ${args.address}
-          )
-          UNION
-          (
-            SELECT tx_id, index_block_hash, microblock_hash
-            FROM ft_events
-            WHERE sender = ${args.address} OR recipient = ${args.address}
-          )
-          UNION
-          (
-            SELECT tx_id, index_block_hash, microblock_hash
-            FROM nft_events
-            WHERE sender = ${args.address} OR recipient = ${args.address}
-          )
-        ),
-        count AS (
-          SELECT COUNT(*)::int AS total_count
-          FROM address_txs
-          INNER JOIN txs USING (tx_id, index_block_hash, microblock_hash)
-          WHERE canonical = TRUE AND microblock_canonical = TRUE
-        )
         SELECT
-          ${sql(TX_COLUMNS)},
+          ${sql(prefixedCols(TX_COLUMNS, 't'))},
+          p.stx_transfer_event_count AS stx_transfer,
+          p.stx_mint_event_count AS stx_mint,
+          p.stx_burn_event_count AS stx_burn,
+          p.ft_transfer_event_count AS ft_transfer,
+          p.ft_mint_event_count AS ft_mint,
+          p.ft_burn_event_count AS ft_burn,
+          p.nft_transfer_event_count AS nft_transfer,
+          p.nft_mint_event_count AS nft_mint,
+          p.nft_burn_event_count AS nft_burn,
+          p.stx_sent,
+          p.stx_received,
           (
-            SELECT COALESCE(SUM(amount), 0)
-            FROM stx_events
-            WHERE ${eventCond} AND sender = ${args.address}
-          ) +
-          CASE
-            WHEN (txs.sponsored = false AND txs.sender_address = ${args.address})
-              OR (txs.sponsored = true AND txs.sponsor_address = ${args.address})
-            THEN txs.fee_rate ELSE 0
-          END AS stx_sent,
-          (
-            SELECT COALESCE(SUM(amount), 0)
-            FROM stx_events
-            WHERE ${eventCond} AND recipient = ${args.address}
-          ) AS stx_received,
-          (
-            SELECT COUNT(*)::int FROM stx_events
-            WHERE ${eventAcctCond} AND asset_event_type_id = ${DbAssetEventTypeId.Transfer}
-          ) AS stx_transfer,
-          (
-            SELECT COUNT(*)::int FROM stx_events
-            WHERE ${eventAcctCond} AND asset_event_type_id = ${DbAssetEventTypeId.Mint}
-          ) AS stx_mint,
-          (
-            SELECT COUNT(*)::int FROM stx_events
-            WHERE ${eventAcctCond} AND asset_event_type_id = ${DbAssetEventTypeId.Burn}
-          ) AS stx_burn,
-          (
-            SELECT COUNT(*)::int FROM ft_events
-            WHERE ${eventAcctCond} AND asset_event_type_id = ${DbAssetEventTypeId.Transfer}
-          ) AS ft_transfer,
-          (
-            SELECT COUNT(*)::int FROM ft_events
-            WHERE ${eventAcctCond} AND asset_event_type_id = ${DbAssetEventTypeId.Mint}
-          ) AS ft_mint,
-          (
-            SELECT COUNT(*)::int FROM ft_events
-            WHERE ${eventAcctCond} AND asset_event_type_id = ${DbAssetEventTypeId.Burn}
-          ) AS ft_burn,
-          (
-            SELECT COUNT(*)::int FROM nft_events
-            WHERE ${eventAcctCond} AND asset_event_type_id = ${DbAssetEventTypeId.Transfer}
-          ) AS nft_transfer,
-          (
-            SELECT COUNT(*)::int FROM nft_events
-            WHERE ${eventAcctCond} AND asset_event_type_id = ${DbAssetEventTypeId.Mint}
-          ) AS nft_mint,
-          (
-            SELECT COUNT(*)::int FROM nft_events
-            WHERE ${eventAcctCond} AND asset_event_type_id = ${DbAssetEventTypeId.Burn}
-          ) AS nft_burn,
-          (SELECT total_count FROM count) AS count
-        FROM address_txs
-        INNER JOIN txs USING (tx_id, index_block_hash, microblock_hash)
-        WHERE canonical = TRUE AND microblock_canonical = TRUE
-        ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC
-        LIMIT ${limit}
+            SELECT COALESCE(count, 0) FROM principal_tx_counts WHERE principal = ${args.address}
+          ) AS count
+        FROM principal_txs AS p
+        INNER JOIN txs AS t USING (tx_id, index_block_hash, microblock_hash)
+        WHERE p.principal = ${args.address}
+          AND p.canonical = TRUE
+          AND p.microblock_canonical = TRUE
+          ${cursorFilter}
+        ORDER BY p.block_height DESC, p.microblock_sequence DESC, p.tx_index DESC
+        LIMIT ${limit + 1}
         OFFSET ${offset}
       `;
-      const total = resultQuery.length > 0 ? resultQuery[0].count : 0;
-      const parsed = resultQuery.map(r => parseAccountTransferSummaryTxQueryResult(r));
+
+      const hasNextPage = resultQuery.count > limit;
+      const results = hasNextPage ? resultQuery.slice(0, limit) : resultQuery;
+
+      const total = resultQuery.count > 0 ? resultQuery[0].count : 0;
+      const parsed = results.map(r => parseAccountTransferSummaryTxQueryResult(r));
+
+      // Generate prev cursor from the last result
+      const lastResult = resultQuery[resultQuery.length - 1];
+      const prevCursor =
+        hasNextPage && lastResult
+          ? `${lastResult.index_block_hash}:${lastResult.microblock_sequence}:${lastResult.tx_index}`
+          : null;
+
+      // Generate current cursor from first result
+      const firstResult = results[0];
+      const currentCursor = firstResult
+        ? `${firstResult.index_block_hash}:${firstResult.microblock_sequence}:${firstResult.tx_index}`
+        : null;
+
+      // Generate next cursor by looking for the first item of the previous page
+      let nextCursor: string | null = null;
+      if (firstResult) {
+        // Find the item that would start the previous page
+        // We look for items "before" our current first result (greater in DESC order)
+        // and skip (limit - 1) to find the start of that page
+        const prevQuery = await sql<
+          { index_block_hash: string; microblock_sequence: number; tx_index: number }[]
+        >`
+          SELECT p.index_block_hash, p.microblock_sequence, p.tx_index
+          FROM principal_txs AS p
+          WHERE p.principal = ${args.address}
+            AND p.canonical = TRUE
+            AND p.microblock_canonical = TRUE
+            AND (p.block_height, p.microblock_sequence, p.tx_index)
+                > (
+                  ${firstResult.block_height},
+                  ${firstResult.microblock_sequence},
+                  ${firstResult.tx_index}
+                )
+          ORDER BY p.block_height ASC, p.microblock_sequence ASC, p.tx_index ASC
+          OFFSET ${limit - 1}
+          LIMIT 1
+        `;
+        if (prevQuery.length > 0) {
+          const prev = prevQuery[0];
+          nextCursor = `${prev.index_block_hash}:${prev.microblock_sequence}:${prev.tx_index}`;
+        }
+      }
+
       return {
         total,
         limit,
         offset,
         results: parsed,
+        next_cursor: nextCursor,
+        prev_cursor: prevCursor,
+        current_cursor: currentCursor,
       };
     });
   }
@@ -1078,64 +1167,220 @@ export class PgStoreV2 extends BasePgStoreModule {
   async getStxPoxLockedAtBlock({
     sql,
     stxAddress,
-    blockHeight,
     burnBlockHeight,
   }: {
     sql: PgSqlClient;
     stxAddress: string;
-    blockHeight: number;
     burnBlockHeight: number;
   }) {
-    let lockTxId: string = '';
-    let locked: bigint = 0n;
-    let lockHeight = 0;
-    let burnchainLockHeight = 0;
-    let burnchainUnlockHeight = 0;
+    // This endpoint is always queried at the current canonical tip, so the
+    // locked balance is read straight from the materialized `stx_locked_balances`
+    // table (covering all pox versions, including pox-5) rather than re-derived
+    // from the per-version event tables.
+    const [poxState] = await sql<
+      {
+        pox_v1_unlock_height: string;
+        pox_v2_unlock_height: string;
+        pox_v3_unlock_height: string;
+        pox_v4_unlock_height: string;
+      }[]
+    >`
+      SELECT pox_v1_unlock_height, pox_v2_unlock_height, pox_v3_unlock_height, pox_v4_unlock_height
+      FROM pox_state
+      LIMIT 1
+    `;
+    const forceUnlockHeights = poxState
+      ? {
+          pox1UnlockHeight: parseInt(poxState.pox_v1_unlock_height) || null,
+          pox2UnlockHeight: parseInt(poxState.pox_v2_unlock_height) || null,
+          pox3UnlockHeight: parseInt(poxState.pox_v3_unlock_height) || null,
+          pox4UnlockHeight: parseInt(poxState.pox_v4_unlock_height) || null,
+        }
+      : null;
 
-    // == PoX-4 ================================================================
-    // Query for the latest lock event that still applies to the current burn block height.
-    // Special case for `handle-unlock` which should be returned if it is the last received event.
+    const [lockRow] = await sql<MaterializedStxLockRow[]>`
+      SELECT locked_amount, unlock_burn_height, pox_version, lock_tx_id,
+        lock_block_height, burnchain_lock_height
+      FROM stx_locked_balances
+      WHERE principal = ${stxAddress}
+      LIMIT 1
+    `;
+    return resolveMaterializedStxLock(lockRow, burnBlockHeight, forceUnlockHeights);
+  }
 
-    const pox4EventQuery = await sql<PoxSyntheticEventQueryResult[]>`
-          SELECT ${sql(POX4_SYNTHETIC_EVENT_COLUMNS)}
-          FROM pox4_events
-          WHERE canonical = true AND microblock_canonical = true AND stacker = ${stxAddress}
-          AND block_height <= ${blockHeight}
-          AND (
-            (name != ${
-              SyntheticPoxEventName.HandleUnlock
-            } AND burnchain_unlock_height >= ${burnBlockHeight})
-            OR
-            (name = ${
-              SyntheticPoxEventName.HandleUnlock
-            } AND burnchain_unlock_height < ${burnBlockHeight})
-          )
-          ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
-          LIMIT 1
-        `;
-    if (pox4EventQuery.length > 0) {
-      const pox4Event = parseDbPoxSyntheticEvent(pox4EventQuery[0]);
-      if (pox4Event.name !== SyntheticPoxEventName.HandleUnlock) {
-        lockTxId = pox4Event.tx_id;
-        locked = pox4Event.locked;
-        burnchainUnlockHeight = Number(pox4Event.burnchain_unlock_height);
-        lockHeight = pox4Event.block_height;
+  async getSmartContractEvents(args: {
+    contractId: string;
+    limit: number;
+    offset?: number;
+    cursor?: string;
+  }): Promise<DbCursorPaginatedResult<DbSmartContractEvent>> {
+    return await this.sqlTransaction(async sql => {
+      const limit = args.limit;
+      const offset = args.offset ?? 0;
+      const contractId = args.contractId;
 
-        const [burnBlockQuery] = await sql<{ burn_block_height: string }[]>`
-          SELECT burn_block_height FROM blocks
-          WHERE block_height = ${blockHeight} AND canonical = true
-          LIMIT 1
-        `;
-        burnchainLockHeight = parseInt(burnBlockQuery?.burn_block_height ?? '0');
+      // Resolve cursor components or default to the latest event for this contract
+      let cursorValues: {
+        block_height: number;
+        microblock_sequence: number;
+        tx_index: number;
+        event_index: number;
+      } | null = null;
+      if (args.cursor) {
+        cursorValues = parseEventCursor(args.cursor);
       }
-    }
 
-    return {
-      lockTxId,
-      locked,
-      lockHeight,
-      burnchainLockHeight,
-      burnchainUnlockHeight,
-    };
+      const orderCols = sql`block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC`;
+      const canonicalFilter = sql`canonical = true AND microblock_canonical = true AND contract_identifier = ${contractId}`;
+
+      const cursorFilter = cursorValues
+        ? sql`AND (block_height, microblock_sequence, tx_index, event_index) <= (${cursorValues.block_height}, ${cursorValues.microblock_sequence}, ${cursorValues.tx_index}, ${cursorValues.event_index})`
+        : sql``;
+
+      type EventRow = {
+        event_index: number;
+        tx_id: string;
+        tx_index: number;
+        block_height: number;
+        microblock_sequence: number;
+        canonical: boolean;
+        contract_identifier: string;
+        topic: string;
+        value: string;
+        total: number;
+        next_block_height: number | null;
+        next_microblock_sequence: number | null;
+        next_tx_index: number | null;
+        next_event_index: number | null;
+        prev_block_height: number | null;
+        prev_microblock_sequence: number | null;
+        prev_tx_index: number | null;
+        prev_event_index: number | null;
+      };
+
+      const eventsQuery = await sql<EventRow[]>`
+        WITH cursor_event AS (
+          SELECT block_height, microblock_sequence, tx_index, event_index
+          FROM contract_logs
+          WHERE ${canonicalFilter} ${cursorFilter}
+          ORDER BY ${orderCols}
+          OFFSET ${offset}
+          LIMIT 1
+        ),
+        selected_events AS (
+          SELECT event_index, tx_id, tx_index, block_height, microblock_sequence,
+                 canonical, contract_identifier, topic, value
+          FROM contract_logs
+          WHERE ${canonicalFilter}
+            AND (block_height, microblock_sequence, tx_index, event_index) <= (
+              SELECT block_height, microblock_sequence, tx_index, event_index FROM cursor_event
+            )
+          ORDER BY ${orderCols}
+          LIMIT ${limit}
+        ),
+        top_of_page AS (
+          SELECT block_height, microblock_sequence, tx_index, event_index
+          FROM selected_events
+          ORDER BY ${orderCols}
+          LIMIT 1
+        ),
+        next_page AS (
+          SELECT block_height, microblock_sequence, tx_index, event_index
+          FROM contract_logs
+          WHERE ${canonicalFilter}
+            AND (block_height, microblock_sequence, tx_index, event_index) > (
+              SELECT block_height, microblock_sequence, tx_index, event_index FROM top_of_page
+            )
+          ORDER BY block_height ASC, microblock_sequence ASC, tx_index ASC, event_index ASC
+          OFFSET ${limit - 1}
+          LIMIT 1
+        ),
+        prev_page AS (
+          SELECT block_height, microblock_sequence, tx_index, event_index
+          FROM contract_logs
+          WHERE ${canonicalFilter}
+            AND (block_height, microblock_sequence, tx_index, event_index) < (
+              SELECT block_height, microblock_sequence, tx_index, event_index FROM top_of_page
+            )
+          ORDER BY ${orderCols}
+          OFFSET ${limit - 1}
+          LIMIT 1
+        ),
+        event_count AS (
+          SELECT COALESCE(count, 0)::int AS total
+          FROM contract_log_counts
+          WHERE contract_identifier = ${contractId}
+        )
+        SELECT
+          (SELECT total FROM event_count) AS total,
+          se.*,
+          np.block_height AS next_block_height,
+          np.microblock_sequence AS next_microblock_sequence,
+          np.tx_index AS next_tx_index,
+          np.event_index AS next_event_index,
+          pp.block_height AS prev_block_height,
+          pp.microblock_sequence AS prev_microblock_sequence,
+          pp.tx_index AS prev_tx_index,
+          pp.event_index AS prev_event_index
+        FROM selected_events se
+        LEFT JOIN next_page np ON true
+        LEFT JOIN prev_page pp ON true
+        ORDER BY se.block_height DESC, se.microblock_sequence DESC, se.tx_index DESC, se.event_index DESC
+      `;
+
+      const events: DbSmartContractEvent[] = eventsQuery.map(r => ({
+        event_index: r.event_index,
+        tx_id: r.tx_id,
+        tx_index: r.tx_index,
+        block_height: r.block_height,
+        canonical: r.canonical,
+        event_type: DbEventTypeId.SmartContractLog,
+        contract_identifier: r.contract_identifier,
+        topic: r.topic,
+        value: r.value,
+      }));
+
+      const total = eventsQuery[0]?.total ?? 0;
+
+      const nextCursor =
+        eventsQuery[0]?.next_block_height != null
+          ? buildEventCursor({
+              block_height: eventsQuery[0].next_block_height,
+              microblock_sequence: eventsQuery[0].next_microblock_sequence!,
+              tx_index: eventsQuery[0].next_tx_index!,
+              event_index: eventsQuery[0].next_event_index!,
+            })
+          : null;
+
+      const prevCursor =
+        eventsQuery[0]?.prev_block_height != null
+          ? buildEventCursor({
+              block_height: eventsQuery[0].prev_block_height,
+              microblock_sequence: eventsQuery[0].prev_microblock_sequence!,
+              tx_index: eventsQuery[0].prev_tx_index!,
+              event_index: eventsQuery[0].prev_event_index!,
+            })
+          : null;
+
+      const firstRow = eventsQuery[0];
+      const currentCursor = firstRow
+        ? buildEventCursor({
+            block_height: firstRow.block_height,
+            microblock_sequence: firstRow.microblock_sequence,
+            tx_index: firstRow.tx_index,
+            event_index: firstRow.event_index,
+          })
+        : null;
+
+      return {
+        limit,
+        offset,
+        results: events,
+        total,
+        next_cursor: nextCursor,
+        prev_cursor: prevCursor,
+        current_cursor: currentCursor,
+      };
+    });
   }
 }

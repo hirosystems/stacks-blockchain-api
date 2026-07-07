@@ -3,12 +3,15 @@ import {
   handleCache,
   handleChainTipCache,
   handlePrincipalCache,
-  handlePrincipalMempoolCache,
   handleTransactionCache,
-} from '../../../api/controllers/cache-controller';
-import { AddressParamsSchema, AddressTransactionParamsSchema } from './schemas';
-import { parseDbAddressTransactionTransfer, parseDbTxWithAccountTransferSummary } from './helpers';
-import { InvalidRequestError, NotFoundError } from '../../../errors';
+} from '../../../api/controllers/cache-controller.js';
+import { AddressParamsSchema, AddressTransactionParamsSchema } from './schemas.js';
+import {
+  parseDbAddressTransactionTransfer,
+  parseDbBurnBlockPoxTx,
+  parseDbTxWithAccountTransferSummary,
+} from './helpers.js';
+import { InvalidRequestError, NotFoundError } from '../../../errors.js';
 import { FastifyPluginAsync } from 'fastify';
 import { Type, TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
 import { Server } from 'node:http';
@@ -17,9 +20,10 @@ import {
   OffsetParam,
   PrincipalSchema,
   ExcludeFunctionArgsParamSchema,
-} from '../../schemas/params';
-import { getPagingQueryLimit, ResourceType } from '../../pagination';
-import { PaginatedResponse } from '../../schemas/util';
+  BurnchainAddressParamSchema,
+} from '../../schemas/v1/params.js';
+import { getPagingQueryLimit, ResourceType } from '../../pagination.js';
+import { PaginatedCursorResponse, PaginatedResponse } from '../../schemas/v1/util.js';
 import {
   AddressTransaction,
   AddressTransactionEvent,
@@ -27,9 +31,10 @@ import {
   AddressTransactionSchema,
   PrincipalFtBalance,
   PrincipalFtBalanceSchema,
-} from '../../schemas/entities/addresses';
-import { validatePrincipal } from '../../query-helpers';
-import { StxBalance, StxBalanceSchema } from '../../schemas/entities/balances';
+} from '../../schemas/v1/entities/addresses.js';
+import { validatePrincipal } from '../../query-helpers.js';
+import { StxBalance, StxBalanceSchema } from '../../schemas/v1/entities/balances.js';
+import { BurnBlockPoxTxSchema } from '../../schemas/v1/entities/pox-transaction.js';
 
 export const AddressRoutesV2: FastifyPluginAsync<
   Record<never, never>,
@@ -42,10 +47,13 @@ export const AddressRoutesV2: FastifyPluginAsync<
       preHandler: handlePrincipalCache,
       schema: {
         operationId: 'get_address_transactions',
+        deprecated: true,
         summary: 'Get address transactions',
         description: `Retrieves a paginated list of confirmed transactions sent or received by a STX address or Smart Contract ID, alongside the total amount of STX sent or received and the number of STX, FT and NFT transfers contained within each transaction.
 
-        More information on Transaction types can be found [here](https://docs.stacks.co/transactions/how-transactions-work#types).`,
+        More information on Transaction types can be found [here](https://docs.stacks.co/transactions/how-transactions-work#types).
+
+        **Deprecated:** use \`GET /extended/v3/principals/{principal}/transactions\` instead.`,
         tags: ['Transactions'],
         params: AddressParamsSchema,
         querystring: Type.Object({
@@ -54,7 +62,7 @@ export const AddressRoutesV2: FastifyPluginAsync<
           exclude_function_args: ExcludeFunctionArgsParamSchema,
         }),
         response: {
-          200: PaginatedResponse(AddressTransactionSchema),
+          200: PaginatedCursorResponse(AddressTransactionSchema),
         },
       },
     },
@@ -64,7 +72,15 @@ export const AddressRoutesV2: FastifyPluginAsync<
       const excludeFunctionArgs = req.query.exclude_function_args ?? false;
 
       try {
-        const { limit, offset, results, total } = await fastify.db.v2.getAddressTransactions({
+        const {
+          limit,
+          offset,
+          results,
+          total,
+          next_cursor,
+          prev_cursor,
+          current_cursor: cursor,
+        } = await fastify.db.v2.getAddressTransactions({
           ...params,
           ...query,
         });
@@ -75,6 +91,9 @@ export const AddressRoutesV2: FastifyPluginAsync<
           limit,
           offset,
           total,
+          next_cursor,
+          prev_cursor,
+          cursor,
           results: transfers,
         });
       } catch (error) {
@@ -92,8 +111,9 @@ export const AddressRoutesV2: FastifyPluginAsync<
       preHandler: handleTransactionCache,
       schema: {
         operationId: 'get_address_transaction_events',
+        deprecated: true,
         summary: 'Get events for an address transaction',
-        description: `Retrieves a paginated list of all STX, FT and NFT events concerning a STX address or Smart Contract ID within a specific transaction.`,
+        description: `Retrieves a paginated list of all STX, FT and NFT events concerning a STX address or Smart Contract ID within a specific transaction. **Deprecated:** use \`GET /extended/v3/principals/{principal}/transactions/{tx_id}/balance-changes\` instead.`,
         tags: ['Transactions'],
         params: AddressTransactionParamsSchema,
         querystring: Type.Object({
@@ -137,14 +157,14 @@ export const AddressRoutesV2: FastifyPluginAsync<
     '/:principal/balances/stx',
     {
       preHandler: (req, reply) => {
-        // TODO: use `ETagType.principal` instead of chaintip cache type when it's optimized
-        const etagType = req.query.include_mempool ? ETagType.principalMempool : ETagType.chainTip;
+        const etagType = req.query.include_mempool ? ETagType.principalMempool : ETagType.principal;
         return handleCache(etagType, req, reply);
       },
       schema: {
         operationId: 'get_principal_stx_balance',
+        deprecated: true,
         summary: 'Get principal STX balance',
-        description: `Retrieves STX account balance information for a given Address or Contract Identifier.`,
+        description: `Retrieves STX account balance information for a given Address or Contract Identifier. **Deprecated:** use \`GET /extended/v3/principals/{principal}/balances/stx\` instead.`,
         tags: ['Accounts'],
         params: Type.Object({
           principal: PrincipalSchema,
@@ -180,7 +200,6 @@ export const AddressRoutesV2: FastifyPluginAsync<
         const stxPoxLockedResult = await fastify.db.v2.getStxPoxLockedAtBlock({
           sql,
           stxAddress,
-          blockHeight: chainTip.block_height,
           burnBlockHeight: chainTip.burn_block_height,
         });
 
@@ -221,11 +240,12 @@ export const AddressRoutesV2: FastifyPluginAsync<
   fastify.get(
     '/:principal/balances/ft',
     {
-      preHandler: handleChainTipCache, // TODO: use handlePrincipalCache once it's optimized
+      preHandler: handlePrincipalCache,
       schema: {
         operationId: 'get_principal_ft_balances',
+        deprecated: true,
         summary: 'Get principal FT balances',
-        description: `Retrieves Fungible-token account balance information for a given Address or Contract Identifier.`,
+        description: `Retrieves Fungible-token account balance information for a given Address or Contract Identifier. **Deprecated:** use \`GET /extended/v3/principals/{principal}/balances/ft\` instead.`,
         tags: ['Accounts'],
         params: Type.Object({
           principal: PrincipalSchema,
@@ -273,11 +293,12 @@ export const AddressRoutesV2: FastifyPluginAsync<
   fastify.get(
     '/:principal/balances/ft/:token',
     {
-      preHandler: handleChainTipCache, // TODO: use handlePrincipalCache once it's optimized
+      preHandler: handlePrincipalCache,
       schema: {
         operationId: 'get_principal_ft_balance',
+        deprecated: true,
         summary: 'Get principal FT balance',
-        description: `Retrieves a specific fungible-token balance for a given principal.`,
+        description: `Retrieves a specific fungible-token balance for a given principal. **Deprecated:** use \`GET /extended/v3/principals/{principal}/balances/ft/{asset_identifier}\` instead.`,
         tags: ['Accounts'],
         params: Type.Object({
           principal: PrincipalSchema,
@@ -313,6 +334,50 @@ export const AddressRoutesV2: FastifyPluginAsync<
         return result;
       });
       await reply.send(result);
+    }
+  );
+
+  fastify.get(
+    '/:burnchain_address/pox-transactions',
+    {
+      preHandler: handleChainTipCache,
+      schema: {
+        operationId: 'get_burnchain_address_pox_transactions',
+        summary: 'Get PoX transactions for a burnchain address',
+        description: `Retrieves a list of PoX transactions`,
+        tags: ['Proof of Transfer'],
+        params: Type.Object({
+          burnchain_address: BurnchainAddressParamSchema,
+        }),
+        querystring: Type.Object({
+          limit: LimitParam(ResourceType.BurnBlock),
+          offset: OffsetParam(),
+        }),
+        response: {
+          200: PaginatedResponse(BurnBlockPoxTxSchema),
+        },
+      },
+    },
+    async (req, reply) => {
+      const query = req.query;
+
+      try {
+        const { limit, offset, results, total } = await fastify.db.v2.getBurnBlockPoxTransactions({
+          recipient: req.params.burnchain_address,
+          ...query,
+        });
+        await reply.send({
+          limit,
+          offset,
+          total,
+          results: results.map(r => parseDbBurnBlockPoxTx(r)),
+        });
+      } catch (error) {
+        if (error instanceof InvalidRequestError) {
+          throw new NotFoundError(error.message);
+        }
+        throw error;
+      }
     }
   );
 

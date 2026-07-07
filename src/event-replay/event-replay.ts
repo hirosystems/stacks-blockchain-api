@@ -1,15 +1,19 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import { exportRawEventRequests, getRawEventRequests } from './event-requests';
-import { PgWriteStore } from '../datastore/pg-write-store';
-import { startEventServer } from '../event-stream/event-server';
-import { getApiConfiguredChainID, HttpClientResponse, httpPostRequest } from '../helpers';
-import { importV1TokenOfferingData } from '../import-v1';
-import { findTsvBlockHeight, getDbBlockHeight } from './helpers';
-import { logger } from '../logger';
-import { cycleMigrations, dangerousDropAllTables, databaseHasData } from '@hirosystems/api-toolkit';
-import { MIGRATIONS_DIR } from '../datastore/pg-store';
-import { PgServer, getConnectionArgs } from '../datastore/connection';
+import { exportRawEventRequests, getRawEventRequests } from './event-requests.js';
+import { PgWriteStore } from '../datastore/pg-write-store.js';
+import { startEventServer } from '../event-stream/event-server.js';
+import { getApiConfiguredChainID, HttpClientResponse, httpPostRequest } from '../helpers.js';
+import { importV1TokenOfferingData } from '../import-v1/index.js';
+import { findTsvBlockHeight, getDbBlockHeight } from './helpers.js';
+import {
+  cycleMigrations,
+  dangerousDropAllTables,
+  databaseHasData,
+  logger,
+} from '@stacks/api-toolkit';
+import { MIGRATIONS_DIR } from '../datastore/pg-store.js';
+import { PgServer, getConnectionArgs } from '../datastore/connection.js';
 
 enum EventImportMode {
   /**
@@ -111,22 +115,20 @@ export async function importEventsFromTsv(
   } catch (error) {
     logger.error(error);
     throw new Error(
-      `DB migration cycle failed, possibly due to an incompatible API version upgrade. Add --wipe-db --force or perform a manual DB wipe before importing.`
+      `DB migration cycle failed, possibly due to an incompatible API version upgrade. Add --wipe-db --force or perform a manual DB wipe before importing.`,
+      { cause: error }
     );
   }
 
   // Look for the TSV's block height and determine the prunable block window.
   const tsvBlockHeight = await findTsvBlockHeight(resolvedFilePath);
-  const blockWindowSize = parseInt(
-    process.env['STACKS_MEMPOOL_TX_GARBAGE_COLLECTION_THRESHOLD'] ?? '256'
-  );
+  const blockWindowSize = 256;
   const prunedBlockHeight =
     prunedBlockHeightOption ?? Math.max(tsvBlockHeight - blockWindowSize, 0);
   console.log(`Event file's block height: ${tsvBlockHeight}`);
   console.log(`Starting event import and playback in ${eventImportMode} mode`);
   if (eventImportMode === EventImportMode.pruned) {
     console.log(`Ignoring all prunable events before block height: ${prunedBlockHeight}`);
-    process.env.IBD_MODE_UNTIL_BLOCK = `${prunedBlockHeight}`;
   }
 
   const db = await PgWriteStore.connect({

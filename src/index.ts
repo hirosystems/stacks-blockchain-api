@@ -1,88 +1,36 @@
 import {
-  loadDotEnv,
   getApiConfiguredChainID,
   getStacksNodeChainID,
   chainIdConfigurationCheck,
-} from './helpers';
+} from './helpers.js';
 import * as sourceMapSupport from 'source-map-support';
-import { startApiServer } from './api/init';
-import { startProfilerServer } from './inspector-util';
-import { startEventServer } from './event-stream/event-server';
-import { StacksCoreRpcClient } from './core-rpc/client';
+import { startApiServer } from './api/init.js';
+import { startEventServer } from './event-stream/event-server.js';
+import { StacksCoreRpcClient } from './core-rpc/client.js';
 import * as promClient from 'prom-client';
-import { OfflineDummyStore } from './datastore/offline-dummy-store';
-import * as getopts from 'getopts';
+import getopts from 'getopts';
 import * as fs from 'fs';
-import { injectC32addressEncodeCache } from './c32-addr-cache';
-import { exportEventsAsTsv, importEventsFromTsv } from './event-replay/event-replay';
-import { PgStore } from './datastore/pg-store';
-import { PgWriteStore } from './datastore/pg-write-store';
-import { registerMempoolPromStats } from './datastore/helpers';
-import { logger } from './logger';
+import { exportEventsAsTsv, importEventsFromTsv } from './event-replay/event-replay.js';
+import { PgStore } from './datastore/pg-store.js';
+import { PgWriteStore } from './datastore/pg-write-store.js';
+import { registerMempoolPromStats } from './datastore/helpers.js';
 import {
+  buildProfilerServer,
   isProdEnv,
+  logger,
   numberToHex,
-  parseBoolean,
   PINO_LOGGER_CONFIG,
   registerShutdownConfig,
   timeout,
-} from '@hirosystems/api-toolkit';
+} from '@stacks/api-toolkit';
 import Fastify from 'fastify';
-import { SnpEventStreamHandler } from './event-stream/snp-event-stream';
-
-enum StacksApiMode {
-  /**
-   * Default mode. Runs both the Event Server and API endpoints. AKA read-write mode.
-   */
-  default = 'default',
-  /**
-   * Runs the API endpoints without an Event Server. A connection to a `default`
-   * or `writeOnly` API's postgres DB is required.
-   */
-  readOnly = 'readonly',
-  /**
-   * Runs the Event Server only.
-   */
-  writeOnly = 'writeonly',
-  /**
-   * Runs without an Event Server or API endpoints. Used for Rosetta only.
-   */
-  offline = 'offline',
-}
-
-/**
- * Determines the current API execution mode based on .env values.
- * @returns detected StacksApiMode
- */
-function getApiMode(): StacksApiMode {
-  switch (process.env['STACKS_API_MODE']) {
-    case 'readonly':
-      return StacksApiMode.readOnly;
-    case 'writeonly':
-      return StacksApiMode.writeOnly;
-    case 'offline':
-      return StacksApiMode.offline;
-    default:
-      break;
-  }
-  // Make sure we're backwards compatible if `STACKS_API_MODE` is not specified.
-  if (parseBoolean(process.env['STACKS_READ_ONLY_MODE'])) {
-    return StacksApiMode.readOnly;
-  }
-  if (parseBoolean(process.env['STACKS_API_OFFLINE_MODE'])) {
-    return StacksApiMode.offline;
-  }
-  return StacksApiMode.default;
-}
-
-loadDotEnv();
+import { SnpEventStreamHandler } from './event-stream/snp-event-stream.js';
+import { ENV } from './env.js';
 
 // ts-node has automatic source map support, avoid clobbering
 if (!process.execArgv.some(r => r.includes('ts-node'))) {
   sourceMapSupport.install({ handleUncaughtExceptions: false });
 }
-
-injectC32addressEncodeCache();
 
 registerShutdownConfig();
 
@@ -117,25 +65,18 @@ async function init(): Promise<void> {
   }
   promClient.collectDefaultMetrics();
   chainIdConfigurationCheck();
-  const apiMode = getApiMode();
-  let dbStore: PgStore;
-  let dbWriteStore: PgWriteStore;
-  if (apiMode === StacksApiMode.offline) {
-    dbStore = OfflineDummyStore;
-    dbWriteStore = OfflineDummyStore;
-  } else {
-    dbStore = await PgStore.connect({
-      usageName: `datastore-${apiMode}`,
-    });
-    dbWriteStore = await PgWriteStore.connect({
-      usageName: `write-datastore-${apiMode}`,
-      skipMigrations: apiMode === StacksApiMode.readOnly,
-      withRedisNotifier: parseBoolean(process.env['REDIS_NOTIFIER_ENABLED']) ?? false,
-    });
-    registerMempoolPromStats(dbWriteStore.eventEmitter);
-  }
+  const apiMode = ENV.STACKS_API_MODE;
+  const dbStore = await PgStore.connect({
+    usageName: `datastore-${apiMode}`,
+  });
+  const dbWriteStore = await PgWriteStore.connect({
+    usageName: `write-datastore-${apiMode}`,
+    skipMigrations: apiMode === 'readonly',
+    withRedisNotifier: ENV.REDIS_NOTIFIER_ENABLED,
+  });
+  registerMempoolPromStats(dbWriteStore.eventEmitter);
 
-  if (apiMode === StacksApiMode.default || apiMode === StacksApiMode.writeOnly) {
+  if (apiMode === 'default' || apiMode === 'writeonly') {
     const configuredChainID = getApiConfiguredChainID();
     const eventServer = await startEventServer({
       datastore: dbWriteStore,
@@ -147,8 +88,8 @@ async function init(): Promise<void> {
       forceKillable: true,
     });
 
-    const skipChainIdCheck = parseBoolean(process.env['SKIP_STACKS_CHAIN_ID_CHECK']);
-    const snpEnabled = parseBoolean(process.env['SNP_EVENT_STREAMING']);
+    const skipChainIdCheck = ENV.SKIP_STACKS_CHAIN_ID_CHECK;
+    const snpEnabled = ENV.SNP_EVENT_STREAMING;
     if (!skipChainIdCheck && !snpEnabled) {
       const networkChainId = await getStacksNodeChainID();
       if (networkChainId !== configuredChainID) {
@@ -181,11 +122,7 @@ async function init(): Promise<void> {
     }
   }
 
-  if (
-    apiMode === StacksApiMode.default ||
-    apiMode === StacksApiMode.readOnly ||
-    apiMode === StacksApiMode.offline
-  ) {
+  if (apiMode === 'default' || apiMode === 'readonly') {
     const apiServer = await startApiServer({
       datastore: dbStore,
       writeDatastore: dbWriteStore,
@@ -200,26 +137,27 @@ async function init(): Promise<void> {
     });
   }
 
-  const profilerHttpServerPort = process.env['STACKS_PROFILER_PORT'];
-  if (profilerHttpServerPort) {
-    const profilerServer = await startProfilerServer(profilerHttpServerPort);
+  if (ENV.STACKS_PROFILER_PORT) {
+    const profilerServer = await buildProfilerServer();
     registerShutdownConfig({
       name: 'Profiler server',
       handler: () => profilerServer.close(),
       forceKillable: true,
     });
-  }
-
-  if (apiMode !== StacksApiMode.offline) {
-    registerShutdownConfig({
-      name: 'DB',
-      handler: async () => {
-        await dbStore.close();
-        await dbWriteStore.close();
-      },
-      forceKillable: true,
+    await profilerServer.listen({
+      host: ENV.STACKS_PROFILER_HOST ?? '0.0.0.0',
+      port: ENV.STACKS_PROFILER_PORT,
     });
   }
+
+  registerShutdownConfig({
+    name: 'DB',
+    handler: async () => {
+      await dbStore.close();
+      await dbWriteStore.close();
+    },
+    forceKillable: true,
+  });
 
   if (isProdEnv) {
     const promServer = Fastify({
@@ -281,15 +219,6 @@ function getProgramArgs() {
           ['wipe-db']?: boolean;
           ['force']?: boolean;
         };
-      }
-    | {
-        operand: 'from-parquet-events';
-        options: {
-          ['new-burn-block']?: boolean;
-          ['attachment-new']?: boolean;
-          ['new-block']?: boolean;
-          ['ids-path']?: string;
-        };
       };
   return { args, parsedOpts };
 }
@@ -305,12 +234,6 @@ async function handleProgramArgs() {
       args.options['wipe-db'],
       args.options.force
     );
-  } else if (args.operand === 'from-parquet-events') {
-    const { ReplayController } = await import('./event-replay/parquet-based/replay-controller');
-    const replay = await ReplayController.init();
-    await replay.prepare();
-    await replay.do();
-    await replay.finalize();
   } else if (parsedOpts._[0]) {
     throw new Error(`Unexpected program argument: ${parsedOpts._[0]}`);
   } else {
