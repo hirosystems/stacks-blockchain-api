@@ -108,13 +108,15 @@ function isNodeConnectionError(error: unknown): boolean {
 }
 
 /**
- * Detects a transaction rejection caused by the faucet's own account running out of funds. The
- * Stacks node rejects these with a `NotEnoughFunds` reason. This is an operational condition (the
- * faucet account needs refilling) rather than a client error.
+ * Detects a failure caused by the faucet's own account running out of funds. This is an operational
+ * condition (the faucet account needs refilling) rather than a client error. It surfaces as:
+ *  - `NotEnoughFunds`: the Stacks node rejecting an STX/sBTC faucet transaction, and
+ *  - `not enough total amount in utxo set`: the BTC faucet having no spendable UTXOs to build a tx
+ *    (note the funds may be present but not yet spendable, e.g. immature coinbase or unconfirmed).
  */
 function isInsufficientFundsError(error: unknown): boolean {
   const message = (error as Error | undefined)?.message ?? '';
-  return message.includes('NotEnoughFunds');
+  return message.includes('NotEnoughFunds') || message.includes('not enough total amount in utxo');
 }
 
 export const FaucetRoutes: FastifyPluginAsync<
@@ -129,6 +131,12 @@ export const FaucetRoutes: FastifyPluginAsync<
   // global handler as a generic `500` that leaks internal details (e.g. the node's host/port).
   // Here we translate those into sanitized responses with appropriate status codes.
   fastify.setErrorHandler(async (error, req, reply) => {
+    // If the response was already flushed, we can't change its status or body -- attempting to do
+    // so would leave the client with a mismatched status line and error body. Just log and bail.
+    if (reply.sent) {
+      logger.error(error, `Faucet request to ${req.method} ${req.url} failed after response sent`);
+      return;
+    }
     // Preserve validation errors and any explicit client (4xx) errors as-is.
     const statusCode = (error as { statusCode?: number }).statusCode;
     if (statusCode && statusCode >= 400 && statusCode < 500) {
