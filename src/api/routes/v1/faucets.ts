@@ -241,7 +241,7 @@ export const FaucetRoutes: FastifyPluginAsync<
       preHandler: [btcFaucetEnabledMiddleware, missingBtcConfigMiddleware],
       schema: {
         operationId: 'run_faucet_btc',
-        summary: 'Get BTC testnet tokens',
+summary: 'Get BTC regtest tokens',
         description: `Add 0.01 BTC token to the specified regtest BTC address.
 
         The endpoint returns the transaction ID, which you can use to view the transaction in a regtest Bitcoin block
