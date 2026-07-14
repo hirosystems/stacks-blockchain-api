@@ -148,7 +148,7 @@ export const FaucetRoutes: FastifyPluginAsync<
       preHandler: [btcFaucetEnabledMiddleware, missingBtcConfigMiddleware],
       schema: {
         operationId: 'run_faucet_btc',
-        summary: 'Add regtest BTC tokens to address',
+        summary: 'Get BTC testnet tokens',
         description: `Add 0.01 BTC token to the specified regtest BTC address.
 
         The endpoint returns the transaction ID, which you can use to view the transaction in a regtest Bitcoin block
@@ -284,8 +284,10 @@ export const FaucetRoutes: FastifyPluginAsync<
     {
       preHandler: [btcFaucetEnabledMiddleware, missingBtcConfigMiddleware],
       schema: {
+        deprecated: true,
         operationId: 'get_btc_balance',
         summary: 'Get BTC balance for address',
+        description: 'Get the BTC balance for an address. **This endpoint is deprecated.**',
         tags: ['Faucets'],
         params: Type.Object({
           address: Type.String({
