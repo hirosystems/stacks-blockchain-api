@@ -26,9 +26,10 @@ export const MicroblockRoutes: FastifyPluginAsync<
     {
       preHandler: handleChainTipCache,
       schema: {
+        deprecated: true,
         operationId: 'get_microblock_list',
         summary: 'Get recent microblocks',
-        description: `Retrieves a list of microblocks.
+        description: `Retrieves a list of microblocks. **This endpoint is deprecated.** Microblocks were removed in the Stacks Nakamoto upgrade and are no longer produced.
 
           If you need to actively monitor new microblocks, we highly recommend subscribing to [WebSockets or Socket.io](https://github.com/hirosystems/stacks-blockchain-api/tree/master/client) for real-time updates.`,
         tags: ['Microblocks'],
@@ -61,9 +62,11 @@ export const MicroblockRoutes: FastifyPluginAsync<
     {
       preHandler: handleChainTipCache,
       schema: {
+        deprecated: true,
         operationId: 'get_microblock_by_hash',
         summary: 'Get microblock',
-        description: 'Retrieves a specific microblock by `hash`',
+        description:
+          'Retrieves a specific microblock by `hash`. **This endpoint is deprecated.** Microblocks were removed in the Stacks Nakamoto upgrade and are no longer produced.',
         tags: ['Microblocks'],
         params: Type.Object({
           hash: Type.String({
@@ -99,10 +102,11 @@ export const MicroblockRoutes: FastifyPluginAsync<
     {
       preHandler: handleChainTipCache,
       schema: {
+        deprecated: true,
         operationId: 'get_unanchored_txs',
         summary: 'Get the list of current transactions that belong to unanchored microblocks',
         description:
-          'Retrieves transactions that have been streamed in microblocks but not yet accepted or rejected in an anchor block',
+          'Retrieves transactions that have been streamed in microblocks but not yet accepted or rejected in an anchor block. **This endpoint is deprecated.** Microblocks were removed in the Stacks Nakamoto upgrade and are no longer produced.',
         tags: ['Microblocks'],
         response: {
           200: Type.Object({
