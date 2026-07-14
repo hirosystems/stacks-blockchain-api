@@ -26,7 +26,7 @@ import {
 import { DbFaucetRequestCurrency } from '../../../datastore/common.js';
 import { getChainIDNetwork, getStxFaucetNetwork, stxToMicroStx } from '../../../helpers.js';
 import { StacksCoreRpcClient } from '../../../core-rpc/client.js';
-import { logger } from '@stacks/api-toolkit';
+import { isPgConnectionError, logger } from '@stacks/api-toolkit';
 import { ENV } from '../../../env.js';
 import { FastifyPluginAsync, preHandlerHookHandler } from 'fastify';
 import { Type, TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
@@ -79,6 +79,34 @@ function clientFromNetwork(network: StacksNetwork): StacksCoreRpcClient {
   return new StacksCoreRpcClient({ host: coreUrl.hostname, port: coreUrl.port });
 }
 
+// Low-level socket error codes thrown when a backing node (bitcoind RPC or the Stacks core node
+// RPC) that a faucet depends on is down or unreachable.
+const NODE_CONNECTION_ERROR_CODES = [
+  'ECONNREFUSED',
+  'ECONNRESET',
+  'ETIMEDOUT',
+  'EHOSTUNREACH',
+  'ENOTFOUND',
+  'EAI_AGAIN',
+];
+
+/**
+ * Detects whether an error was caused by an unreachable backing node. Node's socket errors expose a
+ * `code`, but some HTTP clients (e.g. undici/`fetch`) nest the original error under `cause`, so we
+ * check both, plus the message text as a last resort.
+ */
+function isNodeConnectionError(error: unknown): boolean {
+  const err = error as (Error & { code?: string; cause?: { code?: string } }) | undefined;
+  const code = err?.code ?? err?.cause?.code;
+  if (code && NODE_CONNECTION_ERROR_CODES.includes(code)) {
+    return true;
+  }
+  const message = err?.message ?? '';
+  return (
+    NODE_CONNECTION_ERROR_CODES.some(c => message.includes(c)) || /fetch failed/i.test(message)
+  );
+}
+
 export const FaucetRoutes: FastifyPluginAsync<
   Record<never, never>,
   Server,
@@ -86,13 +114,50 @@ export const FaucetRoutes: FastifyPluginAsync<
 > = async fastify => {
   await fastify.register(fastifyFormbody);
 
+  // Encapsulated error handler for all faucet routes. Faucet handlers talk to backing nodes
+  // (bitcoind RPC, the Stacks core node RPC) whose failures would otherwise bubble up to the
+  // global handler as a generic `500` that leaks internal details (e.g. the node's host/port).
+  // Here we translate those into sanitized responses with appropriate status codes.
+  fastify.setErrorHandler(async (error, req, reply) => {
+    // Preserve validation errors and any explicit client (4xx) errors as-is.
+    const statusCode = (error as { statusCode?: number }).statusCode;
+    if (statusCode && statusCode >= 400 && statusCode < 500) {
+      return reply.send(error);
+    }
+    if (isPgConnectionError(error)) {
+      logger.error(
+        error,
+        `Faucet request to ${req.method} ${req.url} failed: database unavailable`
+      );
+      return reply.status(503).send({
+        error: 'Faucet is temporarily unavailable, please try again later',
+        success: false,
+      });
+    }
+    if (isNodeConnectionError(error)) {
+      logger.error(
+        error,
+        `Faucet request to ${req.method} ${req.url} failed: backing node is unreachable`
+      );
+      return reply.status(503).send({
+        error: 'Faucet is temporarily unavailable, please try again later',
+        success: false,
+      });
+    }
+    logger.error(error, `Faucet request to ${req.method} ${req.url} failed`);
+    return reply.status(500).send({
+      error: 'Faucet request failed, please try again later',
+      success: false,
+    });
+  });
+
   // Middleware to ensure faucet is enabled
   fastify.addHook('preHandler', (_req, reply, done) => {
     if (getChainIDNetwork(fastify.chainId) === 'testnet' && fastify.writeDb) {
       done();
     } else {
       return reply.status(403).send({
-        error: 'Faucet is not enabled',
+        error: 'Faucet is not available',
         success: false,
       });
     }
@@ -101,7 +166,7 @@ export const FaucetRoutes: FastifyPluginAsync<
   const btcFaucetEnabledMiddleware: preHandlerHookHandler = (_req, reply, done) => {
     if (!ENV.TESTNET_BTC_FAUCET_ENABLED) {
       return reply.status(403).send({
-        error: 'BTC faucet is not enabled',
+        error: 'BTC faucet is not available',
         success: false,
       });
     }
@@ -111,7 +176,7 @@ export const FaucetRoutes: FastifyPluginAsync<
   const stxFaucetEnabledMiddleware: preHandlerHookHandler = (_req, reply, done) => {
     if (!ENV.TESTNET_STX_FAUCET_ENABLED) {
       return reply.status(403).send({
-        error: 'STX faucet is not enabled',
+        error: 'STX faucet is not available',
         success: false,
       });
     }
@@ -121,7 +186,7 @@ export const FaucetRoutes: FastifyPluginAsync<
   const sbtcFaucetEnabledMiddleware: preHandlerHookHandler = (_req, reply, done) => {
     if (!ENV.TESTNET_SBTC_FAUCET_ENABLED) {
       return reply.status(403).send({
-        error: 'sBTC faucet is not enabled',
+        error: 'sBTC faucet is not available',
         success: false,
       });
     }
