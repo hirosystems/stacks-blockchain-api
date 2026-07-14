@@ -10,8 +10,9 @@ import { logger } from '@stacks/api-toolkit';
 import { ENV } from '../../../env.js';
 
 function GetStacksNodeProxyEndpoint() {
-  const proxyHost = ENV.STACKS_CORE_PROXY_HOST;
-  const proxyPort = ENV.STACKS_CORE_PROXY_PORT;
+  // Proxy host/port are optional and fall back to the core node RPC host/port when unset.
+  const proxyHost = ENV.STACKS_CORE_PROXY_HOST ?? ENV.STACKS_CORE_RPC_HOST;
+  const proxyPort = ENV.STACKS_CORE_PROXY_PORT ?? ENV.STACKS_CORE_RPC_PORT;
   return `${proxyHost}:${proxyPort}`;
 }
 

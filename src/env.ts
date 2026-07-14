@@ -128,8 +128,16 @@ const schema = Type.Object({
   STACKS_CORE_EVENT_BODY_LIMIT: Type.Integer({ default: 500000000, minimum: 0 }),
   STACKS_CORE_RPC_HOST: Type.String({ default: '127.0.0.1' }),
   STACKS_CORE_RPC_PORT: Type.Integer({ default: 20443, minimum: 0, maximum: 65535 }),
-  STACKS_CORE_PROXY_HOST: Type.String({ default: '127.0.0.1' }),
-  STACKS_CORE_PROXY_PORT: Type.Integer({ default: 20443, minimum: 0, maximum: 65535 }),
+  /**
+   * Host of the Stacks core node to proxy `/v2` RPC requests to. Defaults to
+   * `STACKS_CORE_RPC_HOST`.
+   */
+  STACKS_CORE_PROXY_HOST: Type.Optional(Type.String()),
+  /**
+   * Port of the Stacks core node to proxy `/v2` RPC requests to. Defaults to
+   * `STACKS_CORE_RPC_PORT`.
+   */
+  STACKS_CORE_PROXY_PORT: Type.Optional(Type.Integer({ minimum: 0, maximum: 65535 })),
   /**
    * Stacks core RPC proxy body size limit. Defaults to 10MB.
    */
