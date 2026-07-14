@@ -527,7 +527,8 @@ export interface paths {
         };
         /**
          * Get recent microblocks
-         * @description Retrieves a list of microblocks.
+         * @deprecated
+         * @description Retrieves a list of microblocks. **This endpoint is deprecated.** Microblocks were removed in the Stacks Nakamoto upgrade and are no longer produced.
          *
          *               If you need to actively monitor new microblocks, we highly recommend subscribing to [WebSockets or Socket.io](https://github.com/hirosystems/stacks-blockchain-api/tree/master/client) for real-time updates.
          */
@@ -549,7 +550,8 @@ export interface paths {
         };
         /**
          * Get microblock
-         * @description Retrieves a specific microblock by `hash`
+         * @deprecated
+         * @description Retrieves a specific microblock by `hash`. **This endpoint is deprecated.** Microblocks were removed in the Stacks Nakamoto upgrade and are no longer produced.
          */
         get: operations["get_microblock_by_hash"];
         put?: never;
@@ -569,7 +571,8 @@ export interface paths {
         };
         /**
          * Get the list of current transactions that belong to unanchored microblocks
-         * @description Retrieves transactions that have been streamed in microblocks but not yet accepted or rejected in an anchor block
+         * @deprecated
+         * @description Retrieves transactions that have been streamed in microblocks but not yet accepted or rejected in an anchor block. **This endpoint is deprecated.** Microblocks were removed in the Stacks Nakamoto upgrade and are no longer produced.
          */
         get: operations["get_unanchored_txs"];
         put?: never;
@@ -1139,7 +1142,7 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Add regtest BTC tokens to address
+         * Get BTC regtest tokens
          * @description Add 0.01 BTC token to the specified regtest BTC address.
          *
          *             The endpoint returns the transaction ID, which you can use to view the transaction in a regtest Bitcoin block
@@ -1161,7 +1164,11 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Get BTC balance for address */
+        /**
+         * Get BTC balance for address
+         * @deprecated
+         * @description Get the BTC balance for an address. **This endpoint is deprecated.**
+         */
         get: operations["get_btc_balance"];
         put?: never;
         post?: never;
