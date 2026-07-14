@@ -107,6 +107,16 @@ function isNodeConnectionError(error: unknown): boolean {
   );
 }
 
+/**
+ * Detects a transaction rejection caused by the faucet's own account running out of funds. The
+ * Stacks node rejects these with a `NotEnoughFunds` reason. This is an operational condition (the
+ * faucet account needs refilling) rather than a client error.
+ */
+function isInsufficientFundsError(error: unknown): boolean {
+  const message = (error as Error | undefined)?.message ?? '';
+  return message.includes('NotEnoughFunds');
+}
+
 export const FaucetRoutes: FastifyPluginAsync<
   Record<never, never>,
   Server,
@@ -141,6 +151,16 @@ export const FaucetRoutes: FastifyPluginAsync<
       );
       return reply.status(503).send({
         error: 'Faucet is temporarily unavailable, please try again later',
+        success: false,
+      });
+    }
+    if (isInsufficientFundsError(error)) {
+      logger.error(
+        error,
+        `Faucet request to ${req.method} ${req.url} failed: faucet account is out of funds`
+      );
+      return reply.status(503).send({
+        error: 'The faucet is temporarily out of funds, please try again later',
         success: false,
       });
     }
@@ -590,7 +610,8 @@ export const FaucetRoutes: FastifyPluginAsync<
           } catch (error) {
             if (
               (error as Error).message?.includes('ConflictingNonceInMempool') ||
-              (error as Error).message?.includes('TooMuchChaining')
+              (error as Error).message?.includes('TooMuchChaining') ||
+              (error as Error).message?.includes('NotEnoughFunds')
             ) {
               if (keysAttempted == STX_FAUCET_KEYS.length) {
                 logger.warn(
