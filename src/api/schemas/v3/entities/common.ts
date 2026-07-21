@@ -21,7 +21,7 @@ export type Principal = Static<typeof PrincipalSchema>;
 
 export const AssetIdentifierSchema = Type.String({
   pattern:
-    '^[0123456789ABCDEFGHJKMNPQRSTVWXYZ]{28,41}\\.[a-zA-Z]([a-zA-Z0-9]|[-_]){0,39}::[a-zA-Z-]+$',
+    '^[0123456789ABCDEFGHJKMNPQRSTVWXYZ]{28,41}\\.[a-zA-Z]([a-zA-Z0-9]|[-_]){0,39}::[a-zA-Z]([a-zA-Z0-9]|[-_!?+<>=/*]){0,127}$',
   title: 'Asset Identifier',
   description: 'Asset Identifier',
   examples: ['SP000000000000000000002Q6VF78.pox-3::stx-token'],

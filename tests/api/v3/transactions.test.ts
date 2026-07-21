@@ -609,6 +609,40 @@ describe('transactions', () => {
       );
     });
 
+    test('should serialize NFT and FT events whose asset name contains a digit', async () => {
+      // Regression for #2612: `AssetIdentifierSchema` rejected asset names with digits (e.g.
+      // `BNS-V2`), causing response serialization to fail with HTTP 500.
+      const txId = hex(0x7005);
+      const nftAssetId = 'SP2QEZ06AGJ3RKJPBV14SY1V5BBFNAW33D96YPGZF.BNS-V2::BNS-V2';
+      const ftAssetId = 'SP2QEZ06AGJ3RKJPBV14SY1V5BBFNAW33D96YPGZF.token-v2::wrapped-btc-2';
+      await db.update(
+        new TestBlockBuilder({
+          block_height: 1,
+          index_block_hash: hex(1),
+          parent_index_block_hash: hex(0),
+          parent_block_hash: hex(0),
+        })
+          .addTx({ tx_id: txId, tx_index: 0, event_count: 2 })
+          .addTxNftEvent({ sender, recipient, asset_identifier: nftAssetId })
+          .addTxFtEvent({ amount: 202n, sender, recipient, asset_identifier: ftAssetId })
+          .build()
+      );
+
+      const response = await api.fastifyApp.inject({
+        method: 'GET',
+        url: `/extended/v3/transactions/${txId}/events`,
+      });
+      assert.equal(response.statusCode, 200);
+      const body = JSON.parse(response.body);
+      assert.equal(body.total, 2);
+      assert.deepEqual(
+        body.results.map((event: { type: string }) => event.type),
+        ['nft_asset', 'ft_asset']
+      );
+      assert.equal(body.results[0].nft_asset.asset_identifier, nftAssetId);
+      assert.equal(body.results[1].ft_asset.asset_identifier, ftAssetId);
+    });
+
     test('should cursor paginate transaction events by event_index', async () => {
       const txId = hex(0x7002);
       await db.update(
