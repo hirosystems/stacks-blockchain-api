@@ -32,4 +32,36 @@ describe('eventErrorResponse', () => {
     const error = new Error('outer', { cause: 'just a string cause' });
     assert.deepEqual(eventErrorResponse(error), { error: 'outer' });
   });
+
+  test('terminates on a self-referential (cyclic) cause chain', () => {
+    const error = new Error('cyclic');
+    (error as { cause?: unknown }).cause = error;
+    assert.deepEqual(eventErrorResponse(error), { error: 'cyclic' });
+  });
+
+  test('terminates on a two-node cause cycle', () => {
+    const a = new Error('a');
+    const b = new Error('b');
+    (a as { cause?: unknown }).cause = b;
+    (b as { cause?: unknown }).cause = a;
+    // Each error is visited once; the cycle back to `a` stops the walk.
+    assert.deepEqual(eventErrorResponse(a), { error: 'a: b' });
+  });
+
+  test('caps a very deep cause chain instead of looping unbounded', () => {
+    let error = new Error('level-0');
+    for (let i = 1; i < 1000; i++) {
+      error = new Error(`level-${i}`, { cause: error });
+    }
+    // Only the first 10 links (the outermost errors) are included.
+    assert.deepEqual(eventErrorResponse(error), {
+      error:
+        'level-999: level-998: level-997: level-996: level-995: level-994: level-993: level-992: level-991: level-990',
+    });
+  });
+
+  test('normalizes whitespace so multi-line messages stay on one line', () => {
+    const error = new Error('line one\n\tline two   with   spaces\n');
+    assert.deepEqual(eventErrorResponse(error), { error: 'line one line two with spaces' });
+  });
 });

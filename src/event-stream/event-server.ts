@@ -71,23 +71,41 @@ import {
 } from '@stacks/node-publisher-client';
 import { CoreNodeParsedTxMessage } from './core-node-message.js';
 
+// Max number of `cause`-chain links to include, as a backstop against pathologically deep chains.
+const EVENT_ERROR_MAX_CAUSE_DEPTH = 10;
+
 /**
  * Build the body for a failed event-ingestion response. A raw `Error` serializes to `{}` (its
  * `message`/`stack` are non-enumerable), which is why the stacks-node's event dispatcher logs an
  * empty `{"error": {}}`. This extracts the message and unwinds the `cause` chain so the underlying
  * reason (e.g. the failing DB operation) is surfaced in the response the node logs.
+ *
+ * The walk is bounded by both a depth cap and a seen-set, since a `cause` chain can be cyclic
+ * (e.g. `error.cause === error`) or arbitrarily deep. Messages are whitespace-normalized to a
+ * single line so multi-line errors don't bloat the node's logs.
  */
 export function eventErrorResponse(error: unknown): { error: string } {
   if (!(error instanceof Error)) {
-    return { error: String(error) };
+    return { error: normalizeErrorMessage(String(error)) };
   }
   const messages: string[] = [];
+  const seen = new Set<unknown>();
   let current: unknown = error;
-  while (current instanceof Error) {
+  while (
+    current instanceof Error &&
+    !seen.has(current) &&
+    messages.length < EVENT_ERROR_MAX_CAUSE_DEPTH
+  ) {
+    seen.add(current);
     messages.push(current.message);
     current = (current as { cause?: unknown }).cause;
   }
-  return { error: messages.join(': ') };
+  return { error: normalizeErrorMessage(messages.join(': ')) };
+}
+
+/** Collapse all runs of whitespace (incl. newlines) to single spaces and trim. */
+function normalizeErrorMessage(message: string): string {
+  return message.replace(/\s+/g, ' ').trim();
 }
 
 async function handleRawEventRequest(
