@@ -71,6 +71,25 @@ import {
 } from '@stacks/node-publisher-client';
 import { CoreNodeParsedTxMessage } from './core-node-message.js';
 
+/**
+ * Build the body for a failed event-ingestion response. A raw `Error` serializes to `{}` (its
+ * `message`/`stack` are non-enumerable), which is why the stacks-node's event dispatcher logs an
+ * empty `{"error": {}}`. This extracts the message and unwinds the `cause` chain so the underlying
+ * reason (e.g. the failing DB operation) is surfaced in the response the node logs.
+ */
+export function eventErrorResponse(error: unknown): { error: string } {
+  if (!(error instanceof Error)) {
+    return { error: String(error) };
+  }
+  const messages: string[] = [];
+  let current: unknown = error;
+  while (current instanceof Error) {
+    messages.push(current.message);
+    current = (current as { cause?: unknown }).cause;
+  }
+  return { error: messages.join(': ') };
+}
+
 async function handleRawEventRequest(
   eventPath: string,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -879,7 +898,7 @@ export async function startEventServer(opts: {
       await res.status(200).send({ result: 'ok' });
     } catch (error) {
       logger.error(error, 'error processing core-node /new_block');
-      await res.status(500).send({ error: error });
+      await res.status(500).send(eventErrorResponse(error));
     }
   });
 
@@ -891,7 +910,7 @@ export async function startEventServer(opts: {
       await res.status(200).send({ result: 'ok' });
     } catch (error) {
       logger.error(error, 'error processing core-node /new_burn_block');
-      await res.status(500).send({ error: error });
+      await res.status(500).send(eventErrorResponse(error));
     }
   });
 
@@ -903,7 +922,7 @@ export async function startEventServer(opts: {
       await res.status(200).send({ result: 'ok' });
     } catch (error) {
       logger.error(error, 'error processing core-node /new_mempool_tx');
-      await res.status(500).send({ error: error });
+      await res.status(500).send(eventErrorResponse(error));
     }
   });
 
@@ -915,7 +934,7 @@ export async function startEventServer(opts: {
       await res.status(200).send({ result: 'ok' });
     } catch (error) {
       logger.error(error, 'error processing core-node /drop_mempool_tx');
-      await res.status(500).send({ error: error });
+      await res.status(500).send(eventErrorResponse(error));
     }
   });
 
@@ -927,7 +946,7 @@ export async function startEventServer(opts: {
       await res.status(200).send({ result: 'ok' });
     } catch (error) {
       logger.error(error, 'error processing core-node /attachments/new');
-      await res.status(500).send({ error: error });
+      await res.status(500).send(eventErrorResponse(error));
     }
   });
 
@@ -939,7 +958,7 @@ export async function startEventServer(opts: {
       await res.status(200).send({ result: 'ok' });
     } catch (error) {
       logger.error(error, 'error processing core-node /new_microblocks');
-      await res.status(500).send({ error: error });
+      await res.status(500).send(eventErrorResponse(error));
     }
   });
 
@@ -954,7 +973,7 @@ export async function startEventServer(opts: {
       await res.status(200).send({ result: 'ok' });
     } catch (error) {
       logger.error(error, 'error processing core-node /stackerdb_chunks');
-      await res.status(500).send({ error: error });
+      await res.status(500).send(eventErrorResponse(error));
     }
   });
 
@@ -969,7 +988,7 @@ export async function startEventServer(opts: {
       await res.status(200).send({ result: 'ok' });
     } catch (error) {
       logger.error(error, 'error processing core-node /proposal_response');
-      await res.status(500).send({ error: error });
+      await res.status(500).send(eventErrorResponse(error));
     }
   });
 
