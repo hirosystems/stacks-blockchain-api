@@ -71,6 +71,37 @@ import {
 } from '@stacks/node-publisher-client';
 import { CoreNodeParsedTxMessage } from './core-node-message.js';
 
+/**
+ * Build the body for a failed event-ingestion response. This extracts the message and unwinds the
+ * `cause` chain so the underlying reason (e.g. the failing DB operation) is surfaced in the
+ * response the node logs.
+ *
+ * The walk is bounded by both a depth cap and a seen-set, since a `cause` chain can be cyclic (e.g.
+ * `error.cause === error`) or arbitrarily deep. Messages are whitespace-normalized to a single line
+ * so multi-line errors don't bloat the node's logs.
+ */
+export function eventErrorResponse(error: unknown): { error: string } {
+  if (!(error instanceof Error)) {
+    return { error: normalizeErrorMessage(String(error)) };
+  }
+  // Max number of `cause`-chain links to include, as a backstop against pathologically deep chains.
+  const MAX_CAUSE_DEPTH = 10;
+  const messages: string[] = [];
+  const seen = new Set<unknown>();
+  let current: unknown = error;
+  while (current instanceof Error && !seen.has(current) && messages.length < MAX_CAUSE_DEPTH) {
+    seen.add(current);
+    messages.push(current.message);
+    current = (current as { cause?: unknown }).cause;
+  }
+  return { error: normalizeErrorMessage(messages.join(': ')) };
+}
+
+/** Collapse all runs of whitespace (incl. newlines) to single spaces and trim. */
+function normalizeErrorMessage(message: string): string {
+  return message.replace(/\s+/g, ' ').trim();
+}
+
 async function handleRawEventRequest(
   eventPath: string,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -879,7 +910,7 @@ export async function startEventServer(opts: {
       await res.status(200).send({ result: 'ok' });
     } catch (error) {
       logger.error(error, 'error processing core-node /new_block');
-      await res.status(500).send({ error: error });
+      await res.status(500).send(eventErrorResponse(error));
     }
   });
 
@@ -891,7 +922,7 @@ export async function startEventServer(opts: {
       await res.status(200).send({ result: 'ok' });
     } catch (error) {
       logger.error(error, 'error processing core-node /new_burn_block');
-      await res.status(500).send({ error: error });
+      await res.status(500).send(eventErrorResponse(error));
     }
   });
 
@@ -903,7 +934,7 @@ export async function startEventServer(opts: {
       await res.status(200).send({ result: 'ok' });
     } catch (error) {
       logger.error(error, 'error processing core-node /new_mempool_tx');
-      await res.status(500).send({ error: error });
+      await res.status(500).send(eventErrorResponse(error));
     }
   });
 
@@ -915,7 +946,7 @@ export async function startEventServer(opts: {
       await res.status(200).send({ result: 'ok' });
     } catch (error) {
       logger.error(error, 'error processing core-node /drop_mempool_tx');
-      await res.status(500).send({ error: error });
+      await res.status(500).send(eventErrorResponse(error));
     }
   });
 
@@ -927,7 +958,7 @@ export async function startEventServer(opts: {
       await res.status(200).send({ result: 'ok' });
     } catch (error) {
       logger.error(error, 'error processing core-node /attachments/new');
-      await res.status(500).send({ error: error });
+      await res.status(500).send(eventErrorResponse(error));
     }
   });
 
@@ -939,7 +970,7 @@ export async function startEventServer(opts: {
       await res.status(200).send({ result: 'ok' });
     } catch (error) {
       logger.error(error, 'error processing core-node /new_microblocks');
-      await res.status(500).send({ error: error });
+      await res.status(500).send(eventErrorResponse(error));
     }
   });
 
@@ -954,7 +985,7 @@ export async function startEventServer(opts: {
       await res.status(200).send({ result: 'ok' });
     } catch (error) {
       logger.error(error, 'error processing core-node /stackerdb_chunks');
-      await res.status(500).send({ error: error });
+      await res.status(500).send(eventErrorResponse(error));
     }
   });
 
@@ -969,7 +1000,7 @@ export async function startEventServer(opts: {
       await res.status(200).send({ result: 'ok' });
     } catch (error) {
       logger.error(error, 'error processing core-node /proposal_response');
-      await res.status(500).send({ error: error });
+      await res.status(500).send(eventErrorResponse(error));
     }
   });
 
