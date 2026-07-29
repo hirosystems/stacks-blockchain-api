@@ -121,7 +121,7 @@
     "ts-node": "10.9.2",
     "tsx": "4.20.3",
     "typescript": "5.9.3",
-    "undici": "6.23.0"
+    "undici": "6.28.0"
   },
   "overrides": {
     "form-data": "4.0.5",
