@@ -88,8 +88,12 @@ import {
   validateZonefileHash,
 } from './helpers.js';
 import { PgNotifier } from './pg-notifier.js';
-import { BasePgStore, PgSqlClient, PgSqlQuery, connectPostgres } from '@stacks/api-toolkit';
-import { getConnectionArgs, getConnectionConfig } from './connection.js';
+import { BasePgStore, PgSqlClient, PgSqlQuery, connectPostgres, logger } from '@stacks/api-toolkit';
+import {
+  getConnectionArgs,
+  getConnectionConfig,
+  getPgConnectionDescription,
+} from './connection.js';
 import * as path from 'path';
 import { PgStoreV2 } from './pg-store-v2.js';
 import { ENV } from '../env.js';
@@ -126,6 +130,7 @@ export class PgStore extends BasePgStore {
     usageName: string;
     withNotifier?: boolean;
   }): Promise<PgStore> {
+    logger.info(`Connecting to postgres at ${getPgConnectionDescription()} [${usageName}]`);
     const sql = await connectPostgres({
       usageName: usageName,
       connectionArgs: getConnectionArgs(),

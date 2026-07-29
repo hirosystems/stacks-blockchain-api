@@ -31,6 +31,22 @@ export function getConnectionArgs(server: PgServer = PgServer.default): PgConnec
 }
 
 /**
+ * Human-readable description of a server's connection target for logging, e.g.
+ * `db:5432/stacks_blockchain_api (schema: stacks_blockchain_api)`. Never includes credentials.
+ * @param server - The server to describe.
+ * @returns The connection target description.
+ */
+export function getPgConnectionDescription(server: PgServer = PgServer.default): string {
+  const args = getConnectionArgs(server) as {
+    host?: string;
+    port?: number;
+    database?: string;
+    schema?: string;
+  };
+  return `${args.host}:${args.port}/${args.database} (schema: ${args.schema})`;
+}
+
+/**
  * Get the connection config for a particular server.
  * @param server - The server to get the connection config for.
  * @returns The connection config.

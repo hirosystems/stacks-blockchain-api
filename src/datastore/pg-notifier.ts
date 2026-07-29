@@ -1,7 +1,12 @@
 import * as postgres from 'postgres';
 import { DbConfigState } from './common.js';
 import { PgSqlClient, connectPostgres, logger } from '@stacks/api-toolkit';
-import { PgServer, getConnectionArgs, getConnectionConfig } from './connection.js';
+import {
+  PgServer,
+  getConnectionArgs,
+  getConnectionConfig,
+  getPgConnectionDescription,
+} from './connection.js';
 
 type PgTxNotificationPayload = {
   txId: string;
@@ -79,6 +84,9 @@ export class PgNotifier {
   listener?: postgres.ListenMeta;
 
   static async create(usageName: string) {
+    logger.info(
+      `Connecting to postgres at ${getPgConnectionDescription(PgServer.primary)} [${usageName}]`
+    );
     const sql = await connectPostgres({
       usageName: usageName,
       connectionArgs: getConnectionArgs(PgServer.primary),
