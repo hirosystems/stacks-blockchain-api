@@ -172,7 +172,6 @@ async function handleBurnBlockMessage(
 
 async function handleMempoolTxsMessage(rawTxs: string[], db: PgWriteStore): Promise<void> {
   logger.debug(`Received ${rawTxs.length} mempool transactions`);
-  // TODO: mempool-tx receipt date should be sent from the core-node
   const receiptDate = Math.round(Date.now() / 1000);
   const decodedTxs = rawTxs.map(str => {
     const parsedTx = decodeTransaction(str);
@@ -264,7 +263,7 @@ async function handleMicroblockMessage(
       parsedTxs,
       msg.events,
       {
-        block_height: -1, // TODO: fill during initial db insert
+        block_height: -1,
         index_block_hash: '',
         block_time: stacksBlockReceiptDate,
       },
@@ -865,7 +864,7 @@ export async function startEventServer(opts: {
     bodyLimit: ENV.STACKS_CORE_EVENT_BODY_LIMIT,
     trustProxy: true,
     logger: loggerOpts,
-    ignoreTrailingSlash: true,
+    routerOptions: { ignoreTrailingSlash: true },
   });
 
   app.addHook('onRequest', (req, _reply, done) => {

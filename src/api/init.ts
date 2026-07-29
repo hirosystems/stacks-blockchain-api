@@ -139,7 +139,7 @@ export async function startApiServer(opts: {
   const fastify = Fastify({
     trustProxy: true,
     logger: PINO_LOGGER_CONFIG,
-    ignoreTrailingSlash: true,
+    routerOptions: { ignoreTrailingSlash: true },
   }).withTypeProvider<TypeBoxTypeProvider>();
 
   fastify.decorate('db', datastore);
