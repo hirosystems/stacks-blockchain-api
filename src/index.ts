@@ -76,6 +76,15 @@ async function init(): Promise<void> {
   });
   registerMempoolPromStats(dbWriteStore.eventEmitter);
 
+  const chainTip = await dbStore.sqlTransaction(sql => dbStore.getChainTip(sql), true);
+  if (chainTip.block_height > 0) {
+    logger.info(
+      `Chainstate is at block height ${chainTip.block_height} (${chainTip.index_block_hash})`
+    );
+  } else {
+    logger.info('Chainstate is empty');
+  }
+
   if (apiMode === 'default' || apiMode === 'writeonly') {
     const configuredChainID = getApiConfiguredChainID();
     const eventServer = await startEventServer({
