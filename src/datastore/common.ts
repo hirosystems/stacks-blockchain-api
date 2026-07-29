@@ -134,6 +134,12 @@ export enum DbTxStatus {
   Success = 1,
   AbortByResponse = -1,
   AbortByPostCondition = -2,
+  /**
+   * Mined but skipped: the transaction was marked problematic by the block's `problematic_txs`
+   * list (Epoch 4.0+). Its payload was not executed, but the fee was debited and the origin
+   * (and sponsor) nonces were bumped.
+   */
+  ProblematicSkipped = -3,
   /** Replaced by a transaction with the same nonce, but a higher fee. */
   DroppedReplaceByFee = -10,
   /** Replaced by a transaction with the same nonce but in the canonical fork. */

@@ -2720,7 +2720,7 @@ export interface operations {
                             /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                             tx_index: number;
                             /** @description Status of the transaction */
-                            tx_status: "success" | "abort_by_response" | "abort_by_post_condition";
+                            tx_status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
                             /** @description Result of the transaction. For contract calls, this will show the value returned by the call. For other transaction types, this will return a boolean indicating the success of the transaction. */
                             tx_result: {
                                 /** @description Hex string representing the value fo the transaction result */
@@ -2970,7 +2970,7 @@ export interface operations {
                             /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                             tx_index: number;
                             /** @description Status of the transaction */
-                            tx_status: "success" | "abort_by_response" | "abort_by_post_condition";
+                            tx_status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
                             /** @description Result of the transaction. For contract calls, this will show the value returned by the call. For other transaction types, this will return a boolean indicating the success of the transaction. */
                             tx_result: {
                                 /** @description Hex string representing the value fo the transaction result */
@@ -3220,7 +3220,7 @@ export interface operations {
                             /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                             tx_index: number;
                             /** @description Status of the transaction */
-                            tx_status: "success" | "abort_by_response" | "abort_by_post_condition";
+                            tx_status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
                             /** @description Result of the transaction. For contract calls, this will show the value returned by the call. For other transaction types, this will return a boolean indicating the success of the transaction. */
                             tx_result: {
                                 /** @description Hex string representing the value fo the transaction result */
@@ -3477,7 +3477,7 @@ export interface operations {
                             /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                             tx_index: number;
                             /** @description Status of the transaction */
-                            tx_status: "success" | "abort_by_response" | "abort_by_post_condition";
+                            tx_status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
                             /** @description Result of the transaction. For contract calls, this will show the value returned by the call. For other transaction types, this will return a boolean indicating the success of the transaction. */
                             tx_result: {
                                 /** @description Hex string representing the value fo the transaction result */
@@ -3726,7 +3726,7 @@ export interface operations {
                             /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                             tx_index: number;
                             /** @description Status of the transaction */
-                            tx_status: "success" | "abort_by_response" | "abort_by_post_condition";
+                            tx_status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
                             /** @description Result of the transaction. For contract calls, this will show the value returned by the call. For other transaction types, this will return a boolean indicating the success of the transaction. */
                             tx_result: {
                                 /** @description Hex string representing the value fo the transaction result */
@@ -3975,7 +3975,7 @@ export interface operations {
                             /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                             tx_index: number;
                             /** @description Status of the transaction */
-                            tx_status: "success" | "abort_by_response" | "abort_by_post_condition";
+                            tx_status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
                             /** @description Result of the transaction. For contract calls, this will show the value returned by the call. For other transaction types, this will return a boolean indicating the success of the transaction. */
                             tx_result: {
                                 /** @description Hex string representing the value fo the transaction result */
@@ -4286,7 +4286,7 @@ export interface operations {
                                 /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                                 tx_index: number;
                                 /** @description Status of the transaction */
-                                tx_status: "success" | "abort_by_response" | "abort_by_post_condition";
+                                tx_status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
                                 /** @description Result of the transaction. For contract calls, this will show the value returned by the call. For other transaction types, this will return a boolean indicating the success of the transaction. */
                                 tx_result: {
                                     /** @description Hex string representing the value fo the transaction result */
@@ -4536,7 +4536,7 @@ export interface operations {
                                 /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                                 tx_index: number;
                                 /** @description Status of the transaction */
-                                tx_status: "success" | "abort_by_response" | "abort_by_post_condition";
+                                tx_status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
                                 /** @description Result of the transaction. For contract calls, this will show the value returned by the call. For other transaction types, this will return a boolean indicating the success of the transaction. */
                                 tx_result: {
                                     /** @description Hex string representing the value fo the transaction result */
@@ -4786,7 +4786,7 @@ export interface operations {
                                 /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                                 tx_index: number;
                                 /** @description Status of the transaction */
-                                tx_status: "success" | "abort_by_response" | "abort_by_post_condition";
+                                tx_status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
                                 /** @description Result of the transaction. For contract calls, this will show the value returned by the call. For other transaction types, this will return a boolean indicating the success of the transaction. */
                                 tx_result: {
                                     /** @description Hex string representing the value fo the transaction result */
@@ -5043,7 +5043,7 @@ export interface operations {
                                 /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                                 tx_index: number;
                                 /** @description Status of the transaction */
-                                tx_status: "success" | "abort_by_response" | "abort_by_post_condition";
+                                tx_status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
                                 /** @description Result of the transaction. For contract calls, this will show the value returned by the call. For other transaction types, this will return a boolean indicating the success of the transaction. */
                                 tx_result: {
                                     /** @description Hex string representing the value fo the transaction result */
@@ -5292,7 +5292,7 @@ export interface operations {
                                 /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                                 tx_index: number;
                                 /** @description Status of the transaction */
-                                tx_status: "success" | "abort_by_response" | "abort_by_post_condition";
+                                tx_status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
                                 /** @description Result of the transaction. For contract calls, this will show the value returned by the call. For other transaction types, this will return a boolean indicating the success of the transaction. */
                                 tx_result: {
                                     /** @description Hex string representing the value fo the transaction result */
@@ -5541,7 +5541,7 @@ export interface operations {
                                 /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                                 tx_index: number;
                                 /** @description Status of the transaction */
-                                tx_status: "success" | "abort_by_response" | "abort_by_post_condition";
+                                tx_status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
                                 /** @description Result of the transaction. For contract calls, this will show the value returned by the call. For other transaction types, this will return a boolean indicating the success of the transaction. */
                                 tx_result: {
                                     /** @description Hex string representing the value fo the transaction result */
@@ -7772,7 +7772,7 @@ export interface operations {
                         /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                         tx_index: number;
                         /** @description Status of the transaction */
-                        tx_status: "success" | "abort_by_response" | "abort_by_post_condition";
+                        tx_status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
                         /** @description Result of the transaction. For contract calls, this will show the value returned by the call. For other transaction types, this will return a boolean indicating the success of the transaction. */
                         tx_result: {
                             /** @description Hex string representing the value fo the transaction result */
@@ -8022,7 +8022,7 @@ export interface operations {
                         /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                         tx_index: number;
                         /** @description Status of the transaction */
-                        tx_status: "success" | "abort_by_response" | "abort_by_post_condition";
+                        tx_status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
                         /** @description Result of the transaction. For contract calls, this will show the value returned by the call. For other transaction types, this will return a boolean indicating the success of the transaction. */
                         tx_result: {
                             /** @description Hex string representing the value fo the transaction result */
@@ -8272,7 +8272,7 @@ export interface operations {
                         /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                         tx_index: number;
                         /** @description Status of the transaction */
-                        tx_status: "success" | "abort_by_response" | "abort_by_post_condition";
+                        tx_status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
                         /** @description Result of the transaction. For contract calls, this will show the value returned by the call. For other transaction types, this will return a boolean indicating the success of the transaction. */
                         tx_result: {
                             /** @description Hex string representing the value fo the transaction result */
@@ -8529,7 +8529,7 @@ export interface operations {
                         /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                         tx_index: number;
                         /** @description Status of the transaction */
-                        tx_status: "success" | "abort_by_response" | "abort_by_post_condition";
+                        tx_status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
                         /** @description Result of the transaction. For contract calls, this will show the value returned by the call. For other transaction types, this will return a boolean indicating the success of the transaction. */
                         tx_result: {
                             /** @description Hex string representing the value fo the transaction result */
@@ -8778,7 +8778,7 @@ export interface operations {
                         /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                         tx_index: number;
                         /** @description Status of the transaction */
-                        tx_status: "success" | "abort_by_response" | "abort_by_post_condition";
+                        tx_status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
                         /** @description Result of the transaction. For contract calls, this will show the value returned by the call. For other transaction types, this will return a boolean indicating the success of the transaction. */
                         tx_result: {
                             /** @description Hex string representing the value fo the transaction result */
@@ -9027,7 +9027,7 @@ export interface operations {
                         /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                         tx_index: number;
                         /** @description Status of the transaction */
-                        tx_status: "success" | "abort_by_response" | "abort_by_post_condition";
+                        tx_status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
                         /** @description Result of the transaction. For contract calls, this will show the value returned by the call. For other transaction types, this will return a boolean indicating the success of the transaction. */
                         tx_result: {
                             /** @description Hex string representing the value fo the transaction result */
@@ -10207,7 +10207,7 @@ export interface operations {
                             /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                             tx_index: number;
                             /** @description Status of the transaction */
-                            tx_status: "success" | "abort_by_response" | "abort_by_post_condition";
+                            tx_status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
                             /** @description Result of the transaction. For contract calls, this will show the value returned by the call. For other transaction types, this will return a boolean indicating the success of the transaction. */
                             tx_result: {
                                 /** @description Hex string representing the value fo the transaction result */
@@ -10457,7 +10457,7 @@ export interface operations {
                             /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                             tx_index: number;
                             /** @description Status of the transaction */
-                            tx_status: "success" | "abort_by_response" | "abort_by_post_condition";
+                            tx_status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
                             /** @description Result of the transaction. For contract calls, this will show the value returned by the call. For other transaction types, this will return a boolean indicating the success of the transaction. */
                             tx_result: {
                                 /** @description Hex string representing the value fo the transaction result */
@@ -10707,7 +10707,7 @@ export interface operations {
                             /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                             tx_index: number;
                             /** @description Status of the transaction */
-                            tx_status: "success" | "abort_by_response" | "abort_by_post_condition";
+                            tx_status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
                             /** @description Result of the transaction. For contract calls, this will show the value returned by the call. For other transaction types, this will return a boolean indicating the success of the transaction. */
                             tx_result: {
                                 /** @description Hex string representing the value fo the transaction result */
@@ -10964,7 +10964,7 @@ export interface operations {
                             /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                             tx_index: number;
                             /** @description Status of the transaction */
-                            tx_status: "success" | "abort_by_response" | "abort_by_post_condition";
+                            tx_status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
                             /** @description Result of the transaction. For contract calls, this will show the value returned by the call. For other transaction types, this will return a boolean indicating the success of the transaction. */
                             tx_result: {
                                 /** @description Hex string representing the value fo the transaction result */
@@ -11213,7 +11213,7 @@ export interface operations {
                             /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                             tx_index: number;
                             /** @description Status of the transaction */
-                            tx_status: "success" | "abort_by_response" | "abort_by_post_condition";
+                            tx_status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
                             /** @description Result of the transaction. For contract calls, this will show the value returned by the call. For other transaction types, this will return a boolean indicating the success of the transaction. */
                             tx_result: {
                                 /** @description Hex string representing the value fo the transaction result */
@@ -11462,7 +11462,7 @@ export interface operations {
                             /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                             tx_index: number;
                             /** @description Status of the transaction */
-                            tx_status: "success" | "abort_by_response" | "abort_by_post_condition";
+                            tx_status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
                             /** @description Result of the transaction. For contract calls, this will show the value returned by the call. For other transaction types, this will return a boolean indicating the success of the transaction. */
                             tx_result: {
                                 /** @description Hex string representing the value fo the transaction result */
@@ -11776,7 +11776,7 @@ export interface operations {
                             /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                             tx_index: number;
                             /** @description Status of the transaction */
-                            tx_status: "success" | "abort_by_response" | "abort_by_post_condition";
+                            tx_status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
                             /** @description Result of the transaction. For contract calls, this will show the value returned by the call. For other transaction types, this will return a boolean indicating the success of the transaction. */
                             tx_result: {
                                 /** @description Hex string representing the value fo the transaction result */
@@ -12026,7 +12026,7 @@ export interface operations {
                             /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                             tx_index: number;
                             /** @description Status of the transaction */
-                            tx_status: "success" | "abort_by_response" | "abort_by_post_condition";
+                            tx_status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
                             /** @description Result of the transaction. For contract calls, this will show the value returned by the call. For other transaction types, this will return a boolean indicating the success of the transaction. */
                             tx_result: {
                                 /** @description Hex string representing the value fo the transaction result */
@@ -12276,7 +12276,7 @@ export interface operations {
                             /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                             tx_index: number;
                             /** @description Status of the transaction */
-                            tx_status: "success" | "abort_by_response" | "abort_by_post_condition";
+                            tx_status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
                             /** @description Result of the transaction. For contract calls, this will show the value returned by the call. For other transaction types, this will return a boolean indicating the success of the transaction. */
                             tx_result: {
                                 /** @description Hex string representing the value fo the transaction result */
@@ -12533,7 +12533,7 @@ export interface operations {
                             /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                             tx_index: number;
                             /** @description Status of the transaction */
-                            tx_status: "success" | "abort_by_response" | "abort_by_post_condition";
+                            tx_status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
                             /** @description Result of the transaction. For contract calls, this will show the value returned by the call. For other transaction types, this will return a boolean indicating the success of the transaction. */
                             tx_result: {
                                 /** @description Hex string representing the value fo the transaction result */
@@ -12782,7 +12782,7 @@ export interface operations {
                             /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                             tx_index: number;
                             /** @description Status of the transaction */
-                            tx_status: "success" | "abort_by_response" | "abort_by_post_condition";
+                            tx_status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
                             /** @description Result of the transaction. For contract calls, this will show the value returned by the call. For other transaction types, this will return a boolean indicating the success of the transaction. */
                             tx_result: {
                                 /** @description Hex string representing the value fo the transaction result */
@@ -13031,7 +13031,7 @@ export interface operations {
                             /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                             tx_index: number;
                             /** @description Status of the transaction */
-                            tx_status: "success" | "abort_by_response" | "abort_by_post_condition";
+                            tx_status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
                             /** @description Result of the transaction. For contract calls, this will show the value returned by the call. For other transaction types, this will return a boolean indicating the success of the transaction. */
                             tx_result: {
                                 /** @description Hex string representing the value fo the transaction result */
@@ -13627,7 +13627,7 @@ export interface operations {
                                 /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                                 tx_index: number;
                                 /** @description Status of the transaction */
-                                tx_status: "success" | "abort_by_response" | "abort_by_post_condition";
+                                tx_status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
                                 /** @description Result of the transaction. For contract calls, this will show the value returned by the call. For other transaction types, this will return a boolean indicating the success of the transaction. */
                                 tx_result: {
                                     /** @description Hex string representing the value fo the transaction result */
@@ -13877,7 +13877,7 @@ export interface operations {
                                 /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                                 tx_index: number;
                                 /** @description Status of the transaction */
-                                tx_status: "success" | "abort_by_response" | "abort_by_post_condition";
+                                tx_status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
                                 /** @description Result of the transaction. For contract calls, this will show the value returned by the call. For other transaction types, this will return a boolean indicating the success of the transaction. */
                                 tx_result: {
                                     /** @description Hex string representing the value fo the transaction result */
@@ -14127,7 +14127,7 @@ export interface operations {
                                 /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                                 tx_index: number;
                                 /** @description Status of the transaction */
-                                tx_status: "success" | "abort_by_response" | "abort_by_post_condition";
+                                tx_status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
                                 /** @description Result of the transaction. For contract calls, this will show the value returned by the call. For other transaction types, this will return a boolean indicating the success of the transaction. */
                                 tx_result: {
                                     /** @description Hex string representing the value fo the transaction result */
@@ -14384,7 +14384,7 @@ export interface operations {
                                 /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                                 tx_index: number;
                                 /** @description Status of the transaction */
-                                tx_status: "success" | "abort_by_response" | "abort_by_post_condition";
+                                tx_status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
                                 /** @description Result of the transaction. For contract calls, this will show the value returned by the call. For other transaction types, this will return a boolean indicating the success of the transaction. */
                                 tx_result: {
                                     /** @description Hex string representing the value fo the transaction result */
@@ -14633,7 +14633,7 @@ export interface operations {
                                 /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                                 tx_index: number;
                                 /** @description Status of the transaction */
-                                tx_status: "success" | "abort_by_response" | "abort_by_post_condition";
+                                tx_status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
                                 /** @description Result of the transaction. For contract calls, this will show the value returned by the call. For other transaction types, this will return a boolean indicating the success of the transaction. */
                                 tx_result: {
                                     /** @description Hex string representing the value fo the transaction result */
@@ -14882,7 +14882,7 @@ export interface operations {
                                 /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                                 tx_index: number;
                                 /** @description Status of the transaction */
-                                tx_status: "success" | "abort_by_response" | "abort_by_post_condition";
+                                tx_status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
                                 /** @description Result of the transaction. For contract calls, this will show the value returned by the call. For other transaction types, this will return a boolean indicating the success of the transaction. */
                                 tx_result: {
                                     /** @description Hex string representing the value fo the transaction result */
@@ -15217,7 +15217,7 @@ export interface operations {
                                 /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                                 tx_index: number;
                                 /** @description Status of the transaction */
-                                tx_status: "success" | "abort_by_response" | "abort_by_post_condition";
+                                tx_status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
                                 /** @description Result of the transaction. For contract calls, this will show the value returned by the call. For other transaction types, this will return a boolean indicating the success of the transaction. */
                                 tx_result: {
                                     /** @description Hex string representing the value fo the transaction result */
@@ -15467,7 +15467,7 @@ export interface operations {
                                 /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                                 tx_index: number;
                                 /** @description Status of the transaction */
-                                tx_status: "success" | "abort_by_response" | "abort_by_post_condition";
+                                tx_status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
                                 /** @description Result of the transaction. For contract calls, this will show the value returned by the call. For other transaction types, this will return a boolean indicating the success of the transaction. */
                                 tx_result: {
                                     /** @description Hex string representing the value fo the transaction result */
@@ -15717,7 +15717,7 @@ export interface operations {
                                 /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                                 tx_index: number;
                                 /** @description Status of the transaction */
-                                tx_status: "success" | "abort_by_response" | "abort_by_post_condition";
+                                tx_status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
                                 /** @description Result of the transaction. For contract calls, this will show the value returned by the call. For other transaction types, this will return a boolean indicating the success of the transaction. */
                                 tx_result: {
                                     /** @description Hex string representing the value fo the transaction result */
@@ -15974,7 +15974,7 @@ export interface operations {
                                 /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                                 tx_index: number;
                                 /** @description Status of the transaction */
-                                tx_status: "success" | "abort_by_response" | "abort_by_post_condition";
+                                tx_status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
                                 /** @description Result of the transaction. For contract calls, this will show the value returned by the call. For other transaction types, this will return a boolean indicating the success of the transaction. */
                                 tx_result: {
                                     /** @description Hex string representing the value fo the transaction result */
@@ -16223,7 +16223,7 @@ export interface operations {
                                 /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                                 tx_index: number;
                                 /** @description Status of the transaction */
-                                tx_status: "success" | "abort_by_response" | "abort_by_post_condition";
+                                tx_status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
                                 /** @description Result of the transaction. For contract calls, this will show the value returned by the call. For other transaction types, this will return a boolean indicating the success of the transaction. */
                                 tx_result: {
                                     /** @description Hex string representing the value fo the transaction result */
@@ -16472,7 +16472,7 @@ export interface operations {
                                 /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                                 tx_index: number;
                                 /** @description Status of the transaction */
-                                tx_status: "success" | "abort_by_response" | "abort_by_post_condition";
+                                tx_status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
                                 /** @description Result of the transaction. For contract calls, this will show the value returned by the call. For other transaction types, this will return a boolean indicating the success of the transaction. */
                                 tx_result: {
                                     /** @description Hex string representing the value fo the transaction result */
@@ -16812,7 +16812,7 @@ export interface operations {
                                 /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                                 tx_index: number;
                                 /** @description Status of the transaction */
-                                tx_status: "success" | "abort_by_response" | "abort_by_post_condition";
+                                tx_status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
                                 /** @description Result of the transaction. For contract calls, this will show the value returned by the call. For other transaction types, this will return a boolean indicating the success of the transaction. */
                                 tx_result: {
                                     /** @description Hex string representing the value fo the transaction result */
@@ -17062,7 +17062,7 @@ export interface operations {
                                 /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                                 tx_index: number;
                                 /** @description Status of the transaction */
-                                tx_status: "success" | "abort_by_response" | "abort_by_post_condition";
+                                tx_status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
                                 /** @description Result of the transaction. For contract calls, this will show the value returned by the call. For other transaction types, this will return a boolean indicating the success of the transaction. */
                                 tx_result: {
                                     /** @description Hex string representing the value fo the transaction result */
@@ -17312,7 +17312,7 @@ export interface operations {
                                 /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                                 tx_index: number;
                                 /** @description Status of the transaction */
-                                tx_status: "success" | "abort_by_response" | "abort_by_post_condition";
+                                tx_status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
                                 /** @description Result of the transaction. For contract calls, this will show the value returned by the call. For other transaction types, this will return a boolean indicating the success of the transaction. */
                                 tx_result: {
                                     /** @description Hex string representing the value fo the transaction result */
@@ -17569,7 +17569,7 @@ export interface operations {
                                 /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                                 tx_index: number;
                                 /** @description Status of the transaction */
-                                tx_status: "success" | "abort_by_response" | "abort_by_post_condition";
+                                tx_status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
                                 /** @description Result of the transaction. For contract calls, this will show the value returned by the call. For other transaction types, this will return a boolean indicating the success of the transaction. */
                                 tx_result: {
                                     /** @description Hex string representing the value fo the transaction result */
@@ -17818,7 +17818,7 @@ export interface operations {
                                 /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                                 tx_index: number;
                                 /** @description Status of the transaction */
-                                tx_status: "success" | "abort_by_response" | "abort_by_post_condition";
+                                tx_status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
                                 /** @description Result of the transaction. For contract calls, this will show the value returned by the call. For other transaction types, this will return a boolean indicating the success of the transaction. */
                                 tx_result: {
                                     /** @description Hex string representing the value fo the transaction result */
@@ -18067,7 +18067,7 @@ export interface operations {
                                 /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                                 tx_index: number;
                                 /** @description Status of the transaction */
-                                tx_status: "success" | "abort_by_response" | "abort_by_post_condition";
+                                tx_status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
                                 /** @description Result of the transaction. For contract calls, this will show the value returned by the call. For other transaction types, this will return a boolean indicating the success of the transaction. */
                                 tx_result: {
                                     /** @description Hex string representing the value fo the transaction result */
@@ -18836,7 +18836,7 @@ export interface operations {
                             /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                             tx_index: number;
                             /** @description Status of the transaction */
-                            tx_status: "success" | "abort_by_response" | "abort_by_post_condition";
+                            tx_status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
                             /** @description Result of the transaction. For contract calls, this will show the value returned by the call. For other transaction types, this will return a boolean indicating the success of the transaction. */
                             tx_result: {
                                 /** @description Hex string representing the value fo the transaction result */
@@ -19086,7 +19086,7 @@ export interface operations {
                             /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                             tx_index: number;
                             /** @description Status of the transaction */
-                            tx_status: "success" | "abort_by_response" | "abort_by_post_condition";
+                            tx_status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
                             /** @description Result of the transaction. For contract calls, this will show the value returned by the call. For other transaction types, this will return a boolean indicating the success of the transaction. */
                             tx_result: {
                                 /** @description Hex string representing the value fo the transaction result */
@@ -19336,7 +19336,7 @@ export interface operations {
                             /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                             tx_index: number;
                             /** @description Status of the transaction */
-                            tx_status: "success" | "abort_by_response" | "abort_by_post_condition";
+                            tx_status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
                             /** @description Result of the transaction. For contract calls, this will show the value returned by the call. For other transaction types, this will return a boolean indicating the success of the transaction. */
                             tx_result: {
                                 /** @description Hex string representing the value fo the transaction result */
@@ -19593,7 +19593,7 @@ export interface operations {
                             /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                             tx_index: number;
                             /** @description Status of the transaction */
-                            tx_status: "success" | "abort_by_response" | "abort_by_post_condition";
+                            tx_status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
                             /** @description Result of the transaction. For contract calls, this will show the value returned by the call. For other transaction types, this will return a boolean indicating the success of the transaction. */
                             tx_result: {
                                 /** @description Hex string representing the value fo the transaction result */
@@ -19842,7 +19842,7 @@ export interface operations {
                             /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                             tx_index: number;
                             /** @description Status of the transaction */
-                            tx_status: "success" | "abort_by_response" | "abort_by_post_condition";
+                            tx_status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
                             /** @description Result of the transaction. For contract calls, this will show the value returned by the call. For other transaction types, this will return a boolean indicating the success of the transaction. */
                             tx_result: {
                                 /** @description Hex string representing the value fo the transaction result */
@@ -20091,7 +20091,7 @@ export interface operations {
                             /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                             tx_index: number;
                             /** @description Status of the transaction */
-                            tx_status: "success" | "abort_by_response" | "abort_by_post_condition";
+                            tx_status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
                             /** @description Result of the transaction. For contract calls, this will show the value returned by the call. For other transaction types, this will return a boolean indicating the success of the transaction. */
                             tx_result: {
                                 /** @description Hex string representing the value fo the transaction result */
@@ -21341,7 +21341,7 @@ export interface operations {
                             /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                             tx_index: number;
                             /** @description Status of the transaction */
-                            tx_status: "success" | "abort_by_response" | "abort_by_post_condition";
+                            tx_status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
                             /** @description Result of the transaction. For contract calls, this will show the value returned by the call. For other transaction types, this will return a boolean indicating the success of the transaction. */
                             tx_result: {
                                 /** @description Hex string representing the value fo the transaction result */
@@ -21591,7 +21591,7 @@ export interface operations {
                             /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                             tx_index: number;
                             /** @description Status of the transaction */
-                            tx_status: "success" | "abort_by_response" | "abort_by_post_condition";
+                            tx_status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
                             /** @description Result of the transaction. For contract calls, this will show the value returned by the call. For other transaction types, this will return a boolean indicating the success of the transaction. */
                             tx_result: {
                                 /** @description Hex string representing the value fo the transaction result */
@@ -21841,7 +21841,7 @@ export interface operations {
                             /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                             tx_index: number;
                             /** @description Status of the transaction */
-                            tx_status: "success" | "abort_by_response" | "abort_by_post_condition";
+                            tx_status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
                             /** @description Result of the transaction. For contract calls, this will show the value returned by the call. For other transaction types, this will return a boolean indicating the success of the transaction. */
                             tx_result: {
                                 /** @description Hex string representing the value fo the transaction result */
@@ -22098,7 +22098,7 @@ export interface operations {
                             /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                             tx_index: number;
                             /** @description Status of the transaction */
-                            tx_status: "success" | "abort_by_response" | "abort_by_post_condition";
+                            tx_status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
                             /** @description Result of the transaction. For contract calls, this will show the value returned by the call. For other transaction types, this will return a boolean indicating the success of the transaction. */
                             tx_result: {
                                 /** @description Hex string representing the value fo the transaction result */
@@ -22347,7 +22347,7 @@ export interface operations {
                             /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                             tx_index: number;
                             /** @description Status of the transaction */
-                            tx_status: "success" | "abort_by_response" | "abort_by_post_condition";
+                            tx_status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
                             /** @description Result of the transaction. For contract calls, this will show the value returned by the call. For other transaction types, this will return a boolean indicating the success of the transaction. */
                             tx_result: {
                                 /** @description Hex string representing the value fo the transaction result */
@@ -22596,7 +22596,7 @@ export interface operations {
                             /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                             tx_index: number;
                             /** @description Status of the transaction */
-                            tx_status: "success" | "abort_by_response" | "abort_by_post_condition";
+                            tx_status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
                             /** @description Result of the transaction. For contract calls, this will show the value returned by the call. For other transaction types, this will return a boolean indicating the success of the transaction. */
                             tx_result: {
                                 /** @description Hex string representing the value fo the transaction result */
@@ -22898,7 +22898,7 @@ export interface operations {
                             /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                             tx_index: number;
                             /** @description Status of the transaction */
-                            tx_status: "success" | "abort_by_response" | "abort_by_post_condition";
+                            tx_status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
                             /** @description Result of the transaction. For contract calls, this will show the value returned by the call. For other transaction types, this will return a boolean indicating the success of the transaction. */
                             tx_result: {
                                 /** @description Hex string representing the value fo the transaction result */
@@ -23148,7 +23148,7 @@ export interface operations {
                             /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                             tx_index: number;
                             /** @description Status of the transaction */
-                            tx_status: "success" | "abort_by_response" | "abort_by_post_condition";
+                            tx_status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
                             /** @description Result of the transaction. For contract calls, this will show the value returned by the call. For other transaction types, this will return a boolean indicating the success of the transaction. */
                             tx_result: {
                                 /** @description Hex string representing the value fo the transaction result */
@@ -23398,7 +23398,7 @@ export interface operations {
                             /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                             tx_index: number;
                             /** @description Status of the transaction */
-                            tx_status: "success" | "abort_by_response" | "abort_by_post_condition";
+                            tx_status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
                             /** @description Result of the transaction. For contract calls, this will show the value returned by the call. For other transaction types, this will return a boolean indicating the success of the transaction. */
                             tx_result: {
                                 /** @description Hex string representing the value fo the transaction result */
@@ -23655,7 +23655,7 @@ export interface operations {
                             /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                             tx_index: number;
                             /** @description Status of the transaction */
-                            tx_status: "success" | "abort_by_response" | "abort_by_post_condition";
+                            tx_status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
                             /** @description Result of the transaction. For contract calls, this will show the value returned by the call. For other transaction types, this will return a boolean indicating the success of the transaction. */
                             tx_result: {
                                 /** @description Hex string representing the value fo the transaction result */
@@ -23904,7 +23904,7 @@ export interface operations {
                             /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                             tx_index: number;
                             /** @description Status of the transaction */
-                            tx_status: "success" | "abort_by_response" | "abort_by_post_condition";
+                            tx_status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
                             /** @description Result of the transaction. For contract calls, this will show the value returned by the call. For other transaction types, this will return a boolean indicating the success of the transaction. */
                             tx_result: {
                                 /** @description Hex string representing the value fo the transaction result */
@@ -24153,7 +24153,7 @@ export interface operations {
                             /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                             tx_index: number;
                             /** @description Status of the transaction */
-                            tx_status: "success" | "abort_by_response" | "abort_by_post_condition";
+                            tx_status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
                             /** @description Result of the transaction. For contract calls, this will show the value returned by the call. For other transaction types, this will return a boolean indicating the success of the transaction. */
                             tx_result: {
                                 /** @description Hex string representing the value fo the transaction result */
@@ -24506,7 +24506,7 @@ export interface operations {
                                 /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                                 tx_index: number;
                                 /** @description Status of the transaction */
-                                tx_status: "success" | "abort_by_response" | "abort_by_post_condition";
+                                tx_status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
                                 /** @description Result of the transaction. For contract calls, this will show the value returned by the call. For other transaction types, this will return a boolean indicating the success of the transaction. */
                                 tx_result: {
                                     /** @description Hex string representing the value fo the transaction result */
@@ -24756,7 +24756,7 @@ export interface operations {
                                 /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                                 tx_index: number;
                                 /** @description Status of the transaction */
-                                tx_status: "success" | "abort_by_response" | "abort_by_post_condition";
+                                tx_status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
                                 /** @description Result of the transaction. For contract calls, this will show the value returned by the call. For other transaction types, this will return a boolean indicating the success of the transaction. */
                                 tx_result: {
                                     /** @description Hex string representing the value fo the transaction result */
@@ -25006,7 +25006,7 @@ export interface operations {
                                 /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                                 tx_index: number;
                                 /** @description Status of the transaction */
-                                tx_status: "success" | "abort_by_response" | "abort_by_post_condition";
+                                tx_status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
                                 /** @description Result of the transaction. For contract calls, this will show the value returned by the call. For other transaction types, this will return a boolean indicating the success of the transaction. */
                                 tx_result: {
                                     /** @description Hex string representing the value fo the transaction result */
@@ -25263,7 +25263,7 @@ export interface operations {
                                 /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                                 tx_index: number;
                                 /** @description Status of the transaction */
-                                tx_status: "success" | "abort_by_response" | "abort_by_post_condition";
+                                tx_status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
                                 /** @description Result of the transaction. For contract calls, this will show the value returned by the call. For other transaction types, this will return a boolean indicating the success of the transaction. */
                                 tx_result: {
                                     /** @description Hex string representing the value fo the transaction result */
@@ -25512,7 +25512,7 @@ export interface operations {
                                 /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                                 tx_index: number;
                                 /** @description Status of the transaction */
-                                tx_status: "success" | "abort_by_response" | "abort_by_post_condition";
+                                tx_status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
                                 /** @description Result of the transaction. For contract calls, this will show the value returned by the call. For other transaction types, this will return a boolean indicating the success of the transaction. */
                                 tx_result: {
                                     /** @description Hex string representing the value fo the transaction result */
@@ -25761,7 +25761,7 @@ export interface operations {
                                 /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                                 tx_index: number;
                                 /** @description Status of the transaction */
-                                tx_status: "success" | "abort_by_response" | "abort_by_post_condition";
+                                tx_status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
                                 /** @description Result of the transaction. For contract calls, this will show the value returned by the call. For other transaction types, this will return a boolean indicating the success of the transaction. */
                                 tx_result: {
                                     /** @description Hex string representing the value fo the transaction result */
@@ -27364,7 +27364,7 @@ export interface operations {
                                 /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                                 tx_index: number;
                                 /** @description Status of the transaction */
-                                tx_status: "success" | "abort_by_response" | "abort_by_post_condition";
+                                tx_status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
                                 /** @description Result of the transaction. For contract calls, this will show the value returned by the call. For other transaction types, this will return a boolean indicating the success of the transaction. */
                                 tx_result: {
                                     /** @description Hex string representing the value fo the transaction result */
@@ -27614,7 +27614,7 @@ export interface operations {
                                 /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                                 tx_index: number;
                                 /** @description Status of the transaction */
-                                tx_status: "success" | "abort_by_response" | "abort_by_post_condition";
+                                tx_status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
                                 /** @description Result of the transaction. For contract calls, this will show the value returned by the call. For other transaction types, this will return a boolean indicating the success of the transaction. */
                                 tx_result: {
                                     /** @description Hex string representing the value fo the transaction result */
@@ -27864,7 +27864,7 @@ export interface operations {
                                 /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                                 tx_index: number;
                                 /** @description Status of the transaction */
-                                tx_status: "success" | "abort_by_response" | "abort_by_post_condition";
+                                tx_status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
                                 /** @description Result of the transaction. For contract calls, this will show the value returned by the call. For other transaction types, this will return a boolean indicating the success of the transaction. */
                                 tx_result: {
                                     /** @description Hex string representing the value fo the transaction result */
@@ -28121,7 +28121,7 @@ export interface operations {
                                 /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                                 tx_index: number;
                                 /** @description Status of the transaction */
-                                tx_status: "success" | "abort_by_response" | "abort_by_post_condition";
+                                tx_status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
                                 /** @description Result of the transaction. For contract calls, this will show the value returned by the call. For other transaction types, this will return a boolean indicating the success of the transaction. */
                                 tx_result: {
                                     /** @description Hex string representing the value fo the transaction result */
@@ -28370,7 +28370,7 @@ export interface operations {
                                 /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                                 tx_index: number;
                                 /** @description Status of the transaction */
-                                tx_status: "success" | "abort_by_response" | "abort_by_post_condition";
+                                tx_status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
                                 /** @description Result of the transaction. For contract calls, this will show the value returned by the call. For other transaction types, this will return a boolean indicating the success of the transaction. */
                                 tx_result: {
                                     /** @description Hex string representing the value fo the transaction result */
@@ -28619,7 +28619,7 @@ export interface operations {
                                 /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                                 tx_index: number;
                                 /** @description Status of the transaction */
-                                tx_status: "success" | "abort_by_response" | "abort_by_post_condition";
+                                tx_status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
                                 /** @description Result of the transaction. For contract calls, this will show the value returned by the call. For other transaction types, this will return a boolean indicating the success of the transaction. */
                                 tx_result: {
                                     /** @description Hex string representing the value fo the transaction result */
@@ -30548,7 +30548,7 @@ export interface operations {
                                 /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                                 tx_index: number;
                                 /** @description Status of the transaction */
-                                tx_status: "success" | "abort_by_response" | "abort_by_post_condition";
+                                tx_status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
                                 /** @description Result of the transaction. For contract calls, this will show the value returned by the call. For other transaction types, this will return a boolean indicating the success of the transaction. */
                                 tx_result: {
                                     /** @description Hex string representing the value fo the transaction result */
@@ -30798,7 +30798,7 @@ export interface operations {
                                 /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                                 tx_index: number;
                                 /** @description Status of the transaction */
-                                tx_status: "success" | "abort_by_response" | "abort_by_post_condition";
+                                tx_status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
                                 /** @description Result of the transaction. For contract calls, this will show the value returned by the call. For other transaction types, this will return a boolean indicating the success of the transaction. */
                                 tx_result: {
                                     /** @description Hex string representing the value fo the transaction result */
@@ -31048,7 +31048,7 @@ export interface operations {
                                 /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                                 tx_index: number;
                                 /** @description Status of the transaction */
-                                tx_status: "success" | "abort_by_response" | "abort_by_post_condition";
+                                tx_status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
                                 /** @description Result of the transaction. For contract calls, this will show the value returned by the call. For other transaction types, this will return a boolean indicating the success of the transaction. */
                                 tx_result: {
                                     /** @description Hex string representing the value fo the transaction result */
@@ -31305,7 +31305,7 @@ export interface operations {
                                 /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                                 tx_index: number;
                                 /** @description Status of the transaction */
-                                tx_status: "success" | "abort_by_response" | "abort_by_post_condition";
+                                tx_status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
                                 /** @description Result of the transaction. For contract calls, this will show the value returned by the call. For other transaction types, this will return a boolean indicating the success of the transaction. */
                                 tx_result: {
                                     /** @description Hex string representing the value fo the transaction result */
@@ -31554,7 +31554,7 @@ export interface operations {
                                 /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                                 tx_index: number;
                                 /** @description Status of the transaction */
-                                tx_status: "success" | "abort_by_response" | "abort_by_post_condition";
+                                tx_status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
                                 /** @description Result of the transaction. For contract calls, this will show the value returned by the call. For other transaction types, this will return a boolean indicating the success of the transaction. */
                                 tx_result: {
                                     /** @description Hex string representing the value fo the transaction result */
@@ -31803,7 +31803,7 @@ export interface operations {
                                 /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                                 tx_index: number;
                                 /** @description Status of the transaction */
-                                tx_status: "success" | "abort_by_response" | "abort_by_post_condition";
+                                tx_status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
                                 /** @description Result of the transaction. For contract calls, this will show the value returned by the call. For other transaction types, this will return a boolean indicating the success of the transaction. */
                                 tx_result: {
                                     /** @description Hex string representing the value fo the transaction result */
@@ -32717,7 +32717,7 @@ export interface operations {
                             /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                             tx_index: number;
                             /** @description Status of the transaction */
-                            tx_status: "success" | "abort_by_response" | "abort_by_post_condition";
+                            tx_status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
                             /** @description Result of the transaction. For contract calls, this will show the value returned by the call. For other transaction types, this will return a boolean indicating the success of the transaction. */
                             tx_result: {
                                 /** @description Hex string representing the value fo the transaction result */
@@ -32967,7 +32967,7 @@ export interface operations {
                             /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                             tx_index: number;
                             /** @description Status of the transaction */
-                            tx_status: "success" | "abort_by_response" | "abort_by_post_condition";
+                            tx_status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
                             /** @description Result of the transaction. For contract calls, this will show the value returned by the call. For other transaction types, this will return a boolean indicating the success of the transaction. */
                             tx_result: {
                                 /** @description Hex string representing the value fo the transaction result */
@@ -33217,7 +33217,7 @@ export interface operations {
                             /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                             tx_index: number;
                             /** @description Status of the transaction */
-                            tx_status: "success" | "abort_by_response" | "abort_by_post_condition";
+                            tx_status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
                             /** @description Result of the transaction. For contract calls, this will show the value returned by the call. For other transaction types, this will return a boolean indicating the success of the transaction. */
                             tx_result: {
                                 /** @description Hex string representing the value fo the transaction result */
@@ -33474,7 +33474,7 @@ export interface operations {
                             /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                             tx_index: number;
                             /** @description Status of the transaction */
-                            tx_status: "success" | "abort_by_response" | "abort_by_post_condition";
+                            tx_status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
                             /** @description Result of the transaction. For contract calls, this will show the value returned by the call. For other transaction types, this will return a boolean indicating the success of the transaction. */
                             tx_result: {
                                 /** @description Hex string representing the value fo the transaction result */
@@ -33723,7 +33723,7 @@ export interface operations {
                             /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                             tx_index: number;
                             /** @description Status of the transaction */
-                            tx_status: "success" | "abort_by_response" | "abort_by_post_condition";
+                            tx_status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
                             /** @description Result of the transaction. For contract calls, this will show the value returned by the call. For other transaction types, this will return a boolean indicating the success of the transaction. */
                             tx_result: {
                                 /** @description Hex string representing the value fo the transaction result */
@@ -33972,7 +33972,7 @@ export interface operations {
                             /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                             tx_index: number;
                             /** @description Status of the transaction */
-                            tx_status: "success" | "abort_by_response" | "abort_by_post_condition";
+                            tx_status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
                             /** @description Result of the transaction. For contract calls, this will show the value returned by the call. For other transaction types, this will return a boolean indicating the success of the transaction. */
                             tx_result: {
                                 /** @description Hex string representing the value fo the transaction result */
@@ -35158,7 +35158,7 @@ export interface operations {
                                 /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                                 tx_index: number;
                                 /** @description Status of the transaction */
-                                tx_status: "success" | "abort_by_response" | "abort_by_post_condition";
+                                tx_status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
                                 /** @description Result of the transaction. For contract calls, this will show the value returned by the call. For other transaction types, this will return a boolean indicating the success of the transaction. */
                                 tx_result: {
                                     /** @description Hex string representing the value fo the transaction result */
@@ -35408,7 +35408,7 @@ export interface operations {
                                 /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                                 tx_index: number;
                                 /** @description Status of the transaction */
-                                tx_status: "success" | "abort_by_response" | "abort_by_post_condition";
+                                tx_status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
                                 /** @description Result of the transaction. For contract calls, this will show the value returned by the call. For other transaction types, this will return a boolean indicating the success of the transaction. */
                                 tx_result: {
                                     /** @description Hex string representing the value fo the transaction result */
@@ -35658,7 +35658,7 @@ export interface operations {
                                 /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                                 tx_index: number;
                                 /** @description Status of the transaction */
-                                tx_status: "success" | "abort_by_response" | "abort_by_post_condition";
+                                tx_status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
                                 /** @description Result of the transaction. For contract calls, this will show the value returned by the call. For other transaction types, this will return a boolean indicating the success of the transaction. */
                                 tx_result: {
                                     /** @description Hex string representing the value fo the transaction result */
@@ -35915,7 +35915,7 @@ export interface operations {
                                 /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                                 tx_index: number;
                                 /** @description Status of the transaction */
-                                tx_status: "success" | "abort_by_response" | "abort_by_post_condition";
+                                tx_status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
                                 /** @description Result of the transaction. For contract calls, this will show the value returned by the call. For other transaction types, this will return a boolean indicating the success of the transaction. */
                                 tx_result: {
                                     /** @description Hex string representing the value fo the transaction result */
@@ -36164,7 +36164,7 @@ export interface operations {
                                 /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                                 tx_index: number;
                                 /** @description Status of the transaction */
-                                tx_status: "success" | "abort_by_response" | "abort_by_post_condition";
+                                tx_status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
                                 /** @description Result of the transaction. For contract calls, this will show the value returned by the call. For other transaction types, this will return a boolean indicating the success of the transaction. */
                                 tx_result: {
                                     /** @description Hex string representing the value fo the transaction result */
@@ -36413,7 +36413,7 @@ export interface operations {
                                 /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                                 tx_index: number;
                                 /** @description Status of the transaction */
-                                tx_status: "success" | "abort_by_response" | "abort_by_post_condition";
+                                tx_status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
                                 /** @description Result of the transaction. For contract calls, this will show the value returned by the call. For other transaction types, this will return a boolean indicating the success of the transaction. */
                                 tx_result: {
                                     /** @description Hex string representing the value fo the transaction result */
@@ -36961,7 +36961,7 @@ export interface operations {
                                 time: number;
                             };
                             /** @description Status of the transaction */
-                            status: "success" | "abort_by_response" | "abort_by_post_condition";
+                            status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
                             /** @enum {string} */
                             type: "token_transfer";
                             token_transfer: {
@@ -37009,7 +37009,7 @@ export interface operations {
                                 time: number;
                             };
                             /** @description Status of the transaction */
-                            status: "success" | "abort_by_response" | "abort_by_post_condition";
+                            status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
                             /** @enum {string} */
                             type: "smart_contract";
                             smart_contract: {
@@ -37053,7 +37053,7 @@ export interface operations {
                                 time: number;
                             };
                             /** @description Status of the transaction */
-                            status: "success" | "abort_by_response" | "abort_by_post_condition";
+                            status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
                             /** @enum {string} */
                             type: "contract_call";
                             contract_call: {
@@ -37098,7 +37098,7 @@ export interface operations {
                                 time: number;
                             };
                             /** @description Status of the transaction */
-                            status: "success" | "abort_by_response" | "abort_by_post_condition";
+                            status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
                             /** @enum {string} */
                             type: "poison_microblock";
                         } | {
@@ -37137,7 +37137,7 @@ export interface operations {
                                 time: number;
                             };
                             /** @description Status of the transaction */
-                            status: "success" | "abort_by_response" | "abort_by_post_condition";
+                            status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
                             /** @enum {string} */
                             type: "coinbase";
                             coinbase: {
@@ -37179,7 +37179,7 @@ export interface operations {
                                 time: number;
                             };
                             /** @description Status of the transaction */
-                            status: "success" | "abort_by_response" | "abort_by_post_condition";
+                            status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
                             /** @enum {string} */
                             type: "tenure_change";
                             tenure_change: {
@@ -37501,7 +37501,7 @@ export interface operations {
                                     time: number;
                                 };
                                 /** @description Status of the transaction */
-                                status: "success" | "abort_by_response" | "abort_by_post_condition";
+                                status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
                                 /** @enum {string} */
                                 type: "token_transfer";
                                 token_transfer: {
@@ -37549,7 +37549,7 @@ export interface operations {
                                     time: number;
                                 };
                                 /** @description Status of the transaction */
-                                status: "success" | "abort_by_response" | "abort_by_post_condition";
+                                status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
                                 /** @enum {string} */
                                 type: "smart_contract";
                                 smart_contract: {
@@ -37593,7 +37593,7 @@ export interface operations {
                                     time: number;
                                 };
                                 /** @description Status of the transaction */
-                                status: "success" | "abort_by_response" | "abort_by_post_condition";
+                                status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
                                 /** @enum {string} */
                                 type: "contract_call";
                                 contract_call: {
@@ -37638,7 +37638,7 @@ export interface operations {
                                     time: number;
                                 };
                                 /** @description Status of the transaction */
-                                status: "success" | "abort_by_response" | "abort_by_post_condition";
+                                status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
                                 /** @enum {string} */
                                 type: "poison_microblock";
                             } | {
@@ -37677,7 +37677,7 @@ export interface operations {
                                     time: number;
                                 };
                                 /** @description Status of the transaction */
-                                status: "success" | "abort_by_response" | "abort_by_post_condition";
+                                status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
                                 /** @enum {string} */
                                 type: "coinbase";
                                 coinbase: {
@@ -37719,7 +37719,7 @@ export interface operations {
                                     time: number;
                                 };
                                 /** @description Status of the transaction */
-                                status: "success" | "abort_by_response" | "abort_by_post_condition";
+                                status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
                                 /** @enum {string} */
                                 type: "tenure_change";
                                 tenure_change: {
@@ -39340,7 +39340,7 @@ export interface operations {
                                 time: number;
                             };
                             /** @description Status of the transaction */
-                            status: "success" | "abort_by_response" | "abort_by_post_condition";
+                            status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
                             /** @enum {string} */
                             type: "token_transfer";
                             token_transfer: {
@@ -39388,7 +39388,7 @@ export interface operations {
                                 time: number;
                             };
                             /** @description Status of the transaction */
-                            status: "success" | "abort_by_response" | "abort_by_post_condition";
+                            status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
                             /** @enum {string} */
                             type: "smart_contract";
                             smart_contract: {
@@ -39432,7 +39432,7 @@ export interface operations {
                                 time: number;
                             };
                             /** @description Status of the transaction */
-                            status: "success" | "abort_by_response" | "abort_by_post_condition";
+                            status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
                             /** @enum {string} */
                             type: "contract_call";
                             contract_call: {
@@ -39477,7 +39477,7 @@ export interface operations {
                                 time: number;
                             };
                             /** @description Status of the transaction */
-                            status: "success" | "abort_by_response" | "abort_by_post_condition";
+                            status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
                             /** @enum {string} */
                             type: "poison_microblock";
                         } | {
@@ -39516,7 +39516,7 @@ export interface operations {
                                 time: number;
                             };
                             /** @description Status of the transaction */
-                            status: "success" | "abort_by_response" | "abort_by_post_condition";
+                            status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
                             /** @enum {string} */
                             type: "coinbase";
                             coinbase: {
@@ -39558,7 +39558,7 @@ export interface operations {
                                 time: number;
                             };
                             /** @description Status of the transaction */
-                            status: "success" | "abort_by_response" | "abort_by_post_condition";
+                            status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
                             /** @enum {string} */
                             type: "tenure_change";
                             tenure_change: {
@@ -39645,7 +39645,7 @@ export interface operations {
                             time: number;
                         };
                         /** @description Status of the transaction */
-                        status: "success" | "abort_by_response" | "abort_by_post_condition";
+                        status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
                         parent_block: {
                             /** @description Hash of the parent block */
                             hash: string;
@@ -39823,7 +39823,7 @@ export interface operations {
                             time: number;
                         };
                         /** @description Status of the transaction */
-                        status: "success" | "abort_by_response" | "abort_by_post_condition";
+                        status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
                         parent_block: {
                             /** @description Hash of the parent block */
                             hash: string;
@@ -39998,7 +39998,7 @@ export interface operations {
                             time: number;
                         };
                         /** @description Status of the transaction */
-                        status: "success" | "abort_by_response" | "abort_by_post_condition";
+                        status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
                         parent_block: {
                             /** @description Hash of the parent block */
                             hash: string;
@@ -40177,7 +40177,7 @@ export interface operations {
                             time: number;
                         };
                         /** @description Status of the transaction */
-                        status: "success" | "abort_by_response" | "abort_by_post_condition";
+                        status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
                         parent_block: {
                             /** @description Hash of the parent block */
                             hash: string;
@@ -40345,7 +40345,7 @@ export interface operations {
                             time: number;
                         };
                         /** @description Status of the transaction */
-                        status: "success" | "abort_by_response" | "abort_by_post_condition";
+                        status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
                         parent_block: {
                             /** @description Hash of the parent block */
                             hash: string;
@@ -40529,7 +40529,7 @@ export interface operations {
                             time: number;
                         };
                         /** @description Status of the transaction */
-                        status: "success" | "abort_by_response" | "abort_by_post_condition";
+                        status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
                         parent_block: {
                             /** @description Hash of the parent block */
                             hash: string;

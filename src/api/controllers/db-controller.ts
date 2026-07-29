@@ -77,7 +77,12 @@ const TransactionAnchorModeTypes = ['on_chain_only', 'off_chain_only', 'any'] as
 type TransactionAnchorModeType = (typeof TransactionAnchorModeTypes)[number];
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-const TransactionStatuses = ['success', 'abort_by_response', 'abort_by_post_condition'] as const;
+const TransactionStatuses = [
+  'success',
+  'abort_by_response',
+  'abort_by_post_condition',
+  'problematic_skipped',
+] as const;
 type TransactionStatus = (typeof TransactionStatuses)[number];
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -194,6 +199,8 @@ export function getTxStatusString(
       return 'abort_by_response';
     case DbTxStatus.AbortByPostCondition:
       return 'abort_by_post_condition';
+    case DbTxStatus.ProblematicSkipped:
+      return 'problematic_skipped';
     case DbTxStatus.DroppedReplaceByFee:
       return 'dropped_replace_by_fee';
     case DbTxStatus.DroppedReplaceAcrossFork:

@@ -1131,6 +1131,8 @@ export function getTxDbStatus(
       return DbTxStatus.AbortByResponse;
     case 'abort_by_post_condition':
       return DbTxStatus.AbortByPostCondition;
+    case 'problematic_skipped':
+      return DbTxStatus.ProblematicSkipped;
     case 'ReplaceByFee':
       return DbTxStatus.DroppedReplaceByFee;
     case 'ReplaceAcrossFork':
