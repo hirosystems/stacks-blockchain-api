@@ -165,6 +165,54 @@ describe('transactions', () => {
       });
     });
 
+    test('should return problematic_skipped status', async () => {
+      const txId = '0x' + '1'.padStart(64, '0');
+      await db.update(
+        new TestBlockBuilder({
+          block_height: 1,
+          index_block_hash: '0x0001',
+          parent_index_block_hash: '0x0000',
+          parent_block_hash: '0x0000',
+        })
+          .addTx({
+            tx_id: txId,
+            block_hash: '0x0001',
+            index_block_hash: '0x0001',
+            block_time: 1000,
+            burn_block_height: 1,
+            burn_block_time: 1000,
+            tx_index: 0,
+            fee_rate: 50n,
+            type_id: DbTxTypeId.TokenTransfer,
+            status: DbTxStatus.ProblematicSkipped,
+            sender_address: 'SP466FNC0P7JWTNM2R9T199QRZN1MYEDTAR0KP27',
+            token_transfer_recipient_address: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
+            token_transfer_amount: 100n,
+            token_transfer_memo: '0x0d0000000568656c6c6f',
+          })
+          .build()
+      );
+
+      const listResponse = await api.fastifyApp.inject({
+        method: 'GET',
+        url: '/extended/v3/transactions',
+      });
+      assert.equal(listResponse.statusCode, 200);
+      const listBody = JSON.parse(listResponse.body);
+      assert.equal(listBody.total, 1);
+      assert.equal(listBody.results[0].tx_id, txId);
+      assert.equal(listBody.results[0].status, 'problematic_skipped');
+
+      const detailResponse = await api.fastifyApp.inject({
+        method: 'GET',
+        url: `/extended/v3/transactions/${txId}`,
+      });
+      assert.equal(detailResponse.statusCode, 200);
+      const detailBody = JSON.parse(detailResponse.body);
+      assert.equal(detailBody.tx_id, txId);
+      assert.equal(detailBody.status, 'problematic_skipped');
+    });
+
     test('should allow cursor pagination', async () => {
       for (let i = 1; i <= 10; i++) {
         const hex = i.toString(16).padStart(64, '0');
