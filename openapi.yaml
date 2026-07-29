@@ -4,7 +4,7 @@ info:
   description: Welcome to the API reference overview for the [Stacks Blockchain
     API](https://docs.hiro.so/stacks-blockchain-api). [Download Postman
     collection](https://hirosystems.github.io/stacks-blockchain-api/collection.json).
-  version: 9.0.1
+  version: 9.0.2
 components:
   schemas: {}
 paths:
@@ -656,6 +656,9 @@ paths:
                                         - type: string
                                           enum:
                                             - abort_by_post_condition
+                                        - type: string
+                                          enum:
+                                            - problematic_skipped
                                     tx_result:
                                       description: Result of the transaction. For contract calls, this will show the
                                         value returned by the call. For other
@@ -1482,6 +1485,9 @@ paths:
                                         - type: string
                                           enum:
                                             - abort_by_post_condition
+                                        - type: string
+                                          enum:
+                                            - problematic_skipped
                                     tx_result:
                                       description: Result of the transaction. For contract calls, this will show the
                                         value returned by the call. For other
@@ -2313,6 +2319,9 @@ paths:
                                         - type: string
                                           enum:
                                             - abort_by_post_condition
+                                        - type: string
+                                          enum:
+                                            - problematic_skipped
                                     tx_result:
                                       description: Result of the transaction. For contract calls, this will show the
                                         value returned by the call. For other
@@ -3161,6 +3170,9 @@ paths:
                                         - type: string
                                           enum:
                                             - abort_by_post_condition
+                                        - type: string
+                                          enum:
+                                            - problematic_skipped
                                     tx_result:
                                       description: Result of the transaction. For contract calls, this will show the
                                         value returned by the call. For other
@@ -3983,6 +3995,9 @@ paths:
                                         - type: string
                                           enum:
                                             - abort_by_post_condition
+                                        - type: string
+                                          enum:
+                                            - problematic_skipped
                                     tx_result:
                                       description: Result of the transaction. For contract calls, this will show the
                                         value returned by the call. For other
@@ -4817,6 +4832,9 @@ paths:
                                         - type: string
                                           enum:
                                             - abort_by_post_condition
+                                        - type: string
+                                          enum:
+                                            - problematic_skipped
                                     tx_result:
                                       description: Result of the transaction. For contract calls, this will show the
                                         value returned by the call. For other
@@ -9115,6 +9133,9 @@ paths:
                                         - type: string
                                           enum:
                                             - abort_by_post_condition
+                                        - type: string
+                                          enum:
+                                            - problematic_skipped
                                     tx_result:
                                       description: Result of the transaction. For contract calls, this will show the
                                         value returned by the call. For other
@@ -9941,6 +9962,9 @@ paths:
                                         - type: string
                                           enum:
                                             - abort_by_post_condition
+                                        - type: string
+                                          enum:
+                                            - problematic_skipped
                                     tx_result:
                                       description: Result of the transaction. For contract calls, this will show the
                                         value returned by the call. For other
@@ -10772,6 +10796,9 @@ paths:
                                         - type: string
                                           enum:
                                             - abort_by_post_condition
+                                        - type: string
+                                          enum:
+                                            - problematic_skipped
                                     tx_result:
                                       description: Result of the transaction. For contract calls, this will show the
                                         value returned by the call. For other
@@ -11620,6 +11647,9 @@ paths:
                                         - type: string
                                           enum:
                                             - abort_by_post_condition
+                                        - type: string
+                                          enum:
+                                            - problematic_skipped
                                     tx_result:
                                       description: Result of the transaction. For contract calls, this will show the
                                         value returned by the call. For other
@@ -12442,6 +12472,9 @@ paths:
                                         - type: string
                                           enum:
                                             - abort_by_post_condition
+                                        - type: string
+                                          enum:
+                                            - problematic_skipped
                                     tx_result:
                                       description: Result of the transaction. For contract calls, this will show the
                                         value returned by the call. For other
@@ -13276,6 +13309,9 @@ paths:
                                         - type: string
                                           enum:
                                             - abort_by_post_condition
+                                        - type: string
+                                          enum:
+                                            - problematic_skipped
                                     tx_result:
                                       description: Result of the transaction. For contract calls, this will show the
                                         value returned by the call. For other
@@ -14297,6 +14333,9 @@ paths:
                                         - type: string
                                           enum:
                                             - abort_by_post_condition
+                                        - type: string
+                                          enum:
+                                            - problematic_skipped
                                     tx_result:
                                       description: Result of the transaction. For contract calls, this will show the
                                         value returned by the call. For other
@@ -15123,6 +15162,9 @@ paths:
                                         - type: string
                                           enum:
                                             - abort_by_post_condition
+                                        - type: string
+                                          enum:
+                                            - problematic_skipped
                                     tx_result:
                                       description: Result of the transaction. For contract calls, this will show the
                                         value returned by the call. For other
@@ -15954,6 +15996,9 @@ paths:
                                         - type: string
                                           enum:
                                             - abort_by_post_condition
+                                        - type: string
+                                          enum:
+                                            - problematic_skipped
                                     tx_result:
                                       description: Result of the transaction. For contract calls, this will show the
                                         value returned by the call. For other
@@ -16802,6 +16847,9 @@ paths:
                                         - type: string
                                           enum:
                                             - abort_by_post_condition
+                                        - type: string
+                                          enum:
+                                            - problematic_skipped
                                     tx_result:
                                       description: Result of the transaction. For contract calls, this will show the
                                         value returned by the call. For other
@@ -17624,6 +17672,9 @@ paths:
                                         - type: string
                                           enum:
                                             - abort_by_post_condition
+                                        - type: string
+                                          enum:
+                                            - problematic_skipped
                                     tx_result:
                                       description: Result of the transaction. For contract calls, this will show the
                                         value returned by the call. For other
@@ -18458,6 +18509,9 @@ paths:
                                         - type: string
                                           enum:
                                             - abort_by_post_condition
+                                        - type: string
+                                          enum:
+                                            - problematic_skipped
                                     tx_result:
                                       description: Result of the transaction. For contract calls, this will show the
                                         value returned by the call. For other
@@ -20434,6 +20488,9 @@ paths:
                                           - type: string
                                             enum:
                                               - abort_by_post_condition
+                                          - type: string
+                                            enum:
+                                              - problematic_skipped
                                       tx_result:
                                         description: Result of the transaction. For contract calls, this will show the
                                           value returned by the call. For other
@@ -21262,6 +21319,9 @@ paths:
                                           - type: string
                                             enum:
                                               - abort_by_post_condition
+                                          - type: string
+                                            enum:
+                                              - problematic_skipped
                                       tx_result:
                                         description: Result of the transaction. For contract calls, this will show the
                                           value returned by the call. For other
@@ -22095,6 +22155,9 @@ paths:
                                           - type: string
                                             enum:
                                               - abort_by_post_condition
+                                          - type: string
+                                            enum:
+                                              - problematic_skipped
                                       tx_result:
                                         description: Result of the transaction. For contract calls, this will show the
                                           value returned by the call. For other
@@ -22945,6 +23008,9 @@ paths:
                                           - type: string
                                             enum:
                                               - abort_by_post_condition
+                                          - type: string
+                                            enum:
+                                              - problematic_skipped
                                       tx_result:
                                         description: Result of the transaction. For contract calls, this will show the
                                           value returned by the call. For other
@@ -23769,6 +23835,9 @@ paths:
                                           - type: string
                                             enum:
                                               - abort_by_post_condition
+                                          - type: string
+                                            enum:
+                                              - problematic_skipped
                                       tx_result:
                                         description: Result of the transaction. For contract calls, this will show the
                                           value returned by the call. For other
@@ -24605,6 +24674,9 @@ paths:
                                           - type: string
                                             enum:
                                               - abort_by_post_condition
+                                          - type: string
+                                            enum:
+                                              - problematic_skipped
                                       tx_result:
                                         description: Result of the transaction. For contract calls, this will show the
                                           value returned by the call. For other
@@ -31424,6 +31496,9 @@ paths:
                                       - type: string
                                         enum:
                                           - abort_by_post_condition
+                                      - type: string
+                                        enum:
+                                          - problematic_skipped
                                   tx_result:
                                     description: Result of the transaction. For contract calls, this will show the
                                       value returned by the call. For other
@@ -32250,6 +32325,9 @@ paths:
                                       - type: string
                                         enum:
                                           - abort_by_post_condition
+                                      - type: string
+                                        enum:
+                                          - problematic_skipped
                                   tx_result:
                                     description: Result of the transaction. For contract calls, this will show the
                                       value returned by the call. For other
@@ -33081,6 +33159,9 @@ paths:
                                       - type: string
                                         enum:
                                           - abort_by_post_condition
+                                      - type: string
+                                        enum:
+                                          - problematic_skipped
                                   tx_result:
                                     description: Result of the transaction. For contract calls, this will show the
                                       value returned by the call. For other
@@ -33929,6 +34010,9 @@ paths:
                                       - type: string
                                         enum:
                                           - abort_by_post_condition
+                                      - type: string
+                                        enum:
+                                          - problematic_skipped
                                   tx_result:
                                     description: Result of the transaction. For contract calls, this will show the
                                       value returned by the call. For other
@@ -34751,6 +34835,9 @@ paths:
                                       - type: string
                                         enum:
                                           - abort_by_post_condition
+                                      - type: string
+                                        enum:
+                                          - problematic_skipped
                                   tx_result:
                                     description: Result of the transaction. For contract calls, this will show the
                                       value returned by the call. For other
@@ -35584,6 +35671,9 @@ paths:
                                       - type: string
                                         enum:
                                           - abort_by_post_condition
+                                      - type: string
+                                        enum:
+                                          - problematic_skipped
                                   tx_result:
                                     description: Result of the transaction. For contract calls, this will show the
                                       value returned by the call. For other
@@ -38806,6 +38896,9 @@ paths:
                                 - type: string
                                   enum:
                                     - abort_by_post_condition
+                                - type: string
+                                  enum:
+                                    - problematic_skipped
                             type:
                               type: string
                               enum:
@@ -38929,6 +39022,9 @@ paths:
                                 - type: string
                                   enum:
                                     - abort_by_post_condition
+                                - type: string
+                                  enum:
+                                    - problematic_skipped
                             type:
                               type: string
                               enum:
@@ -39044,6 +39140,9 @@ paths:
                                 - type: string
                                   enum:
                                     - abort_by_post_condition
+                                - type: string
+                                  enum:
+                                    - problematic_skipped
                             type:
                               type: string
                               enum:
@@ -39155,6 +39254,9 @@ paths:
                                 - type: string
                                   enum:
                                     - abort_by_post_condition
+                                - type: string
+                                  enum:
+                                    - problematic_skipped
                             type:
                               type: string
                               enum:
@@ -39254,6 +39356,9 @@ paths:
                                 - type: string
                                   enum:
                                     - abort_by_post_condition
+                                - type: string
+                                  enum:
+                                    - problematic_skipped
                             type:
                               type: string
                               enum:
@@ -39368,6 +39473,9 @@ paths:
                                 - type: string
                                   enum:
                                     - abort_by_post_condition
+                                - type: string
+                                  enum:
+                                    - problematic_skipped
                             type:
                               type: string
                               enum:
@@ -40231,6 +40339,9 @@ paths:
                                     - type: string
                                       enum:
                                         - abort_by_post_condition
+                                    - type: string
+                                      enum:
+                                        - problematic_skipped
                                 type:
                                   type: string
                                   enum:
@@ -40354,6 +40465,9 @@ paths:
                                     - type: string
                                       enum:
                                         - abort_by_post_condition
+                                    - type: string
+                                      enum:
+                                        - problematic_skipped
                                 type:
                                   type: string
                                   enum:
@@ -40470,6 +40584,9 @@ paths:
                                     - type: string
                                       enum:
                                         - abort_by_post_condition
+                                    - type: string
+                                      enum:
+                                        - problematic_skipped
                                 type:
                                   type: string
                                   enum:
@@ -40581,6 +40698,9 @@ paths:
                                     - type: string
                                       enum:
                                         - abort_by_post_condition
+                                    - type: string
+                                      enum:
+                                        - problematic_skipped
                                 type:
                                   type: string
                                   enum:
@@ -40680,6 +40800,9 @@ paths:
                                     - type: string
                                       enum:
                                         - abort_by_post_condition
+                                    - type: string
+                                      enum:
+                                        - problematic_skipped
                                 type:
                                   type: string
                                   enum:
@@ -40794,6 +40917,9 @@ paths:
                                     - type: string
                                       enum:
                                         - abort_by_post_condition
+                                    - type: string
+                                      enum:
+                                        - problematic_skipped
                                 type:
                                   type: string
                                   enum:
@@ -41857,7 +41983,7 @@ paths:
           name: principal
           required: true
         - schema:
-            pattern: ^[0123456789ABCDEFGHJKMNPQRSTVWXYZ]{28,41}\.[a-zA-Z]([a-zA-Z0-9]|[-_]){0,39}::[a-zA-Z-]+$
+            pattern: ^[0123456789ABCDEFGHJKMNPQRSTVWXYZ]{28,41}\.[a-zA-Z]([a-zA-Z0-9]|[-_]){0,39}::[a-zA-Z]([a-zA-Z0-9]|[-_!?+<>=/*]){0,127}$
             title: Asset Identifier
             type: string
           example: SP000000000000000000002Q6VF78.pox-3::stx-token
@@ -44198,6 +44324,9 @@ paths:
                                 - type: string
                                   enum:
                                     - abort_by_post_condition
+                                - type: string
+                                  enum:
+                                    - problematic_skipped
                             type:
                               type: string
                               enum:
@@ -44321,6 +44450,9 @@ paths:
                                 - type: string
                                   enum:
                                     - abort_by_post_condition
+                                - type: string
+                                  enum:
+                                    - problematic_skipped
                             type:
                               type: string
                               enum:
@@ -44436,6 +44568,9 @@ paths:
                                 - type: string
                                   enum:
                                     - abort_by_post_condition
+                                - type: string
+                                  enum:
+                                    - problematic_skipped
                             type:
                               type: string
                               enum:
@@ -44547,6 +44682,9 @@ paths:
                                 - type: string
                                   enum:
                                     - abort_by_post_condition
+                                - type: string
+                                  enum:
+                                    - problematic_skipped
                             type:
                               type: string
                               enum:
@@ -44646,6 +44784,9 @@ paths:
                                 - type: string
                                   enum:
                                     - abort_by_post_condition
+                                - type: string
+                                  enum:
+                                    - problematic_skipped
                             type:
                               type: string
                               enum:
@@ -44760,6 +44901,9 @@ paths:
                                 - type: string
                                   enum:
                                     - abort_by_post_condition
+                                - type: string
+                                  enum:
+                                    - problematic_skipped
                             type:
                               type: string
                               enum:
@@ -44956,6 +45100,9 @@ paths:
                               - type: string
                                 enum:
                                   - abort_by_post_condition
+                              - type: string
+                                enum:
+                                  - problematic_skipped
                           parent_block:
                             type: object
                             required:
@@ -45488,6 +45635,9 @@ paths:
                               - type: string
                                 enum:
                                   - abort_by_post_condition
+                              - type: string
+                                enum:
+                                  - problematic_skipped
                           parent_block:
                             type: object
                             required:
@@ -46013,6 +46163,9 @@ paths:
                               - type: string
                                 enum:
                                   - abort_by_post_condition
+                              - type: string
+                                enum:
+                                  - problematic_skipped
                           parent_block:
                             type: object
                             required:
@@ -46546,6 +46699,9 @@ paths:
                               - type: string
                                 enum:
                                   - abort_by_post_condition
+                              - type: string
+                                enum:
+                                  - problematic_skipped
                           parent_block:
                             type: object
                             required:
@@ -47053,6 +47209,9 @@ paths:
                               - type: string
                                 enum:
                                   - abort_by_post_condition
+                              - type: string
+                                enum:
+                                  - problematic_skipped
                           parent_block:
                             type: object
                             required:
@@ -47617,6 +47776,9 @@ paths:
                               - type: string
                                 enum:
                                   - abort_by_post_condition
+                              - type: string
+                                enum:
+                                  - problematic_skipped
                           parent_block:
                             type: object
                             required:
@@ -51066,7 +51228,7 @@ paths:
                                       enum:
                                         - transfer
                                     asset_identifier:
-                                      pattern: ^[0123456789ABCDEFGHJKMNPQRSTVWXYZ]{28,41}\.[a-zA-Z]([a-zA-Z0-9]|[-_]){0,39}::[a-zA-Z-]+$
+                                      pattern: ^[0123456789ABCDEFGHJKMNPQRSTVWXYZ]{28,41}\.[a-zA-Z]([a-zA-Z0-9]|[-_]){0,39}::[a-zA-Z]([a-zA-Z0-9]|[-_!?+<>=/*]){0,127}$
                                       title: Asset Identifier
                                       description: Asset Identifier
                                       examples:
@@ -51133,7 +51295,7 @@ paths:
                                             - SP000000000000000000002Q6VF78.pox-3
                                           type: string
                                     asset_identifier:
-                                      pattern: ^[0123456789ABCDEFGHJKMNPQRSTVWXYZ]{28,41}\.[a-zA-Z]([a-zA-Z0-9]|[-_]){0,39}::[a-zA-Z-]+$
+                                      pattern: ^[0123456789ABCDEFGHJKMNPQRSTVWXYZ]{28,41}\.[a-zA-Z]([a-zA-Z0-9]|[-_]){0,39}::[a-zA-Z]([a-zA-Z0-9]|[-_!?+<>=/*]){0,127}$
                                       title: Asset Identifier
                                       description: Asset Identifier
                                       examples:
@@ -51172,7 +51334,7 @@ paths:
                                             - SP000000000000000000002Q6VF78.pox-3
                                           type: string
                                     asset_identifier:
-                                      pattern: ^[0123456789ABCDEFGHJKMNPQRSTVWXYZ]{28,41}\.[a-zA-Z]([a-zA-Z0-9]|[-_]){0,39}::[a-zA-Z-]+$
+                                      pattern: ^[0123456789ABCDEFGHJKMNPQRSTVWXYZ]{28,41}\.[a-zA-Z]([a-zA-Z0-9]|[-_]){0,39}::[a-zA-Z]([a-zA-Z0-9]|[-_!?+<>=/*]){0,127}$
                                       title: Asset Identifier
                                       description: Asset Identifier
                                       examples:
@@ -51212,7 +51374,7 @@ paths:
                                       enum:
                                         - transfer
                                     asset_identifier:
-                                      pattern: ^[0123456789ABCDEFGHJKMNPQRSTVWXYZ]{28,41}\.[a-zA-Z]([a-zA-Z0-9]|[-_]){0,39}::[a-zA-Z-]+$
+                                      pattern: ^[0123456789ABCDEFGHJKMNPQRSTVWXYZ]{28,41}\.[a-zA-Z]([a-zA-Z0-9]|[-_]){0,39}::[a-zA-Z]([a-zA-Z0-9]|[-_!?+<>=/*]){0,127}$
                                       title: Asset Identifier
                                       description: Asset Identifier
                                       examples:
@@ -51282,7 +51444,7 @@ paths:
                                             - SP000000000000000000002Q6VF78.pox-3
                                           type: string
                                     asset_identifier:
-                                      pattern: ^[0123456789ABCDEFGHJKMNPQRSTVWXYZ]{28,41}\.[a-zA-Z]([a-zA-Z0-9]|[-_]){0,39}::[a-zA-Z-]+$
+                                      pattern: ^[0123456789ABCDEFGHJKMNPQRSTVWXYZ]{28,41}\.[a-zA-Z]([a-zA-Z0-9]|[-_]){0,39}::[a-zA-Z]([a-zA-Z0-9]|[-_!?+<>=/*]){0,127}$
                                       title: Asset Identifier
                                       description: Asset Identifier
                                       examples:
@@ -51324,7 +51486,7 @@ paths:
                                             - SP000000000000000000002Q6VF78.pox-3
                                           type: string
                                     asset_identifier:
-                                      pattern: ^[0123456789ABCDEFGHJKMNPQRSTVWXYZ]{28,41}\.[a-zA-Z]([a-zA-Z0-9]|[-_]){0,39}::[a-zA-Z-]+$
+                                      pattern: ^[0123456789ABCDEFGHJKMNPQRSTVWXYZ]{28,41}\.[a-zA-Z]([a-zA-Z0-9]|[-_]){0,39}::[a-zA-Z]([a-zA-Z0-9]|[-_!?+<>=/*]){0,127}$
                                       title: Asset Identifier
                                       description: Asset Identifier
                                       examples:

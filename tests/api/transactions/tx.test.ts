@@ -1937,6 +1937,116 @@ describe('tx tests', () => {
     assert.deepEqual(JSON.parse(fetchTx.text), expectedResp);
   });
 
+  test('tx store and processing - problematic_skipped', async () => {
+    const dbBlock: DbBlock = {
+      block_hash: '0xff',
+      index_block_hash: '0x1234',
+      parent_index_block_hash: '0x5678',
+      parent_block_hash: '0x5678',
+      parent_microblock_hash: '',
+      parent_microblock_sequence: 0,
+      block_height: 1,
+      tenure_height: 1,
+      block_time: 1594647995,
+      burn_block_time: 1594647995,
+      burn_block_hash: '0x1234',
+      burn_block_height: 123,
+      miner_txid: '0x4321',
+      tx_count: 1,
+      tx_total_size: 1,
+      canonical: true,
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
+      signer_bitvec: null,
+      signer_signatures: null,
+    };
+    const txBuilder = await makeContractDeploy({
+      contractName: 'hello-world',
+      codeBody: '()',
+      fee: 200,
+      nonce: 0,
+      senderKey: 'b8d99fd45da58038d630d9855d3ca2466e8e0f89d3894c4724f0efc9ff4b51f001',
+      postConditions: [],
+    });
+    const serializedHex = txBuilder.serialize();
+    const tx = decodeTransaction(serializedHex);
+    const dbTx = createDbTxFromCoreMsg({
+      core_tx: {
+        raw_tx: '0x' + serializedHex,
+        raw_result: '0x0809', // (err none)
+        status: 'problematic_skipped',
+        txid: '0x' + txBuilder.txid(),
+        tx_index: 2,
+        contract_interface: null,
+        microblock_hash: null,
+        microblock_parent_hash: null,
+        microblock_sequence: null,
+        vm_error: null,
+        problematic_skipped: 7,
+        execution_cost: {
+          read_count: 0,
+          read_length: 0,
+          runtime: 0,
+          write_count: 0,
+          write_length: 0,
+        },
+      },
+      nonce: 0,
+      raw_tx: bufferToHex(Buffer.from('')),
+      parsed_tx: tx,
+      sender_address: 'SP2ZRX0K27GW0SP3GJCEMHD95TQGJMKB7GB36ZAR0',
+      sponsor_address: undefined,
+      index_block_hash: dbBlock.index_block_hash,
+      parent_index_block_hash: dbBlock.parent_index_block_hash,
+      parent_block_hash: dbBlock.parent_block_hash,
+      microblock_hash: '',
+      microblock_sequence: I32_MAX,
+      burn_block_height: dbBlock.burn_block_height,
+      block_hash: dbBlock.parent_block_hash,
+      block_height: dbBlock.block_height,
+      block_time: 1594647995,
+      burn_block_time: 1594647995,
+      parent_burn_block_hash: '0xaa',
+      parent_burn_block_time: 1626122935,
+    });
+    assert.equal(dbTx.status, DbTxStatus.ProblematicSkipped);
+    await db.update({
+      block: dbBlock,
+      microblocks: [],
+      minerRewards: [],
+      txs: [
+        {
+          tx: dbTx,
+          stxEvents: [],
+          stxLockEvents: [],
+          ftEvents: [],
+          nftEvents: [],
+          contractLogEvents: [],
+          names: [],
+          namespaces: [],
+          smartContracts: [],
+          pox2Events: [],
+          pox3Events: [],
+          pox4Events: [],
+          pox5Events: [],
+        },
+      ],
+    });
+
+    const fetchTx = await supertest(api.server).get(`/extended/v1/tx/${dbTx.tx_id}`);
+    assert.equal(fetchTx.status, 200);
+    assert.equal(fetchTx.type, 'application/json');
+    const fetchTxBody = JSON.parse(fetchTx.text);
+    assert.equal(fetchTxBody.tx_status, 'problematic_skipped');
+    assert.deepEqual(fetchTxBody.tx_result, {
+      hex: '0x0809',
+      repr: '(err none)',
+    });
+  });
+
   test('tx store and processing - abort_by_post_condition', async () => {
     const dbBlock: DbBlock = {
       block_hash: '0xff',

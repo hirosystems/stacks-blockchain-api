@@ -50,6 +50,8 @@ function serializeDbTransactionStatus(status: DbTxStatus): TransactionStatus {
       return 'abort_by_response';
     case DbTxStatus.AbortByPostCondition:
       return 'abort_by_post_condition';
+    case DbTxStatus.ProblematicSkipped:
+      return 'problematic_skipped';
     case DbTxStatus.Success:
       return 'success';
     default:

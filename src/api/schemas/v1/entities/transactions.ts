@@ -94,6 +94,7 @@ const AbstractTransactionProperties = {
       Type.Literal('success'),
       Type.Literal('abort_by_response'),
       Type.Literal('abort_by_post_condition'),
+      Type.Literal('problematic_skipped'),
     ],
     {
       description: 'Status of the transaction',

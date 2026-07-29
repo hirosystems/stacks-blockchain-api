@@ -1,6 +1,6 @@
 {
   "name": "@stx-labs/stacks-blockchain-api",
-  "version": "9.0.1",
+  "version": "9.0.2",
   "type": "module",
   "main": "./lib/index.js",
   "scripts": {
@@ -73,7 +73,7 @@
     "@stacks/common": "7.5.0",
     "@stacks/encryption": "7.5.0",
     "@stacks/network": "7.5.0",
-    "@stacks/node-publisher-client": "2.2.1",
+    "@stacks/node-publisher-client": "2.3.0",
     "@stacks/stacking": "7.5.0",
     "@stacks/transactions": "7.5.0",
     "bignumber.js": "10.0.2",
