@@ -6,7 +6,7 @@ import {
 import * as sourceMapSupport from 'source-map-support';
 import { startApiServer } from './api/init.js';
 import { startEventServer } from './event-stream/event-server.js';
-import { StacksCoreRpcClient } from './core-rpc/client.js';
+import { StacksCoreRpcClient, getCoreNodeEndpoint } from './core-rpc/client.js';
 import * as promClient from 'prom-client';
 import getopts from 'getopts';
 import * as fs from 'fs';
@@ -37,20 +37,18 @@ registerShutdownConfig();
 async function monitorCoreRpcConnection(): Promise<void> {
   const CORE_RPC_HEARTBEAT_INTERVAL = 5000; // 5 seconds
   let previouslyConnected = false;
+  logger.info(`Connecting to Stacks node RPC server at ${getCoreNodeEndpoint()}`);
   while (true) {
     const client = new StacksCoreRpcClient();
     try {
       await client.waitForConnection();
       if (!previouslyConnected) {
-        logger.info(`Connection to Stacks core node API server at: ${client.endpoint}`);
+        logger.info(`Connected to Stacks core node RPC server at ${client.endpoint}`);
       }
       previouslyConnected = true;
     } catch (error) {
       previouslyConnected = false;
-      logger.warn(
-        error,
-        `[Non-critical] notice: failed to connect to node RPC server at ${client.endpoint}`
-      );
+      logger.warn(error, `Failed to connect to Stacks node RPC server at ${client.endpoint}`);
     }
     await timeout(CORE_RPC_HEARTBEAT_INTERVAL);
   }
