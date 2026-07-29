@@ -74,6 +74,8 @@ type PgNotificationCallback = (notification: PgNotification) => void;
 export class PgNotifier {
   readonly pgChannelName: string = 'stacks-api-pg-notifier';
   readonly sql: PgSqlClient;
+  /** Identifies which store owns this notifier (e.g. `datastore-default` vs `write-datastore-default`). */
+  readonly usageName: string;
   listener?: postgres.ListenMeta;
 
   static async create(usageName: string) {
@@ -82,11 +84,12 @@ export class PgNotifier {
       connectionArgs: getConnectionArgs(PgServer.primary),
       connectionConfig: getConnectionConfig(PgServer.primary),
     });
-    return new PgNotifier(sql);
+    return new PgNotifier(sql, usageName);
   }
 
-  constructor(sql: PgSqlClient) {
+  constructor(sql: PgSqlClient, usageName: string) {
     this.sql = sql;
+    this.usageName = usageName;
   }
 
   public async connect(eventCallback: PgNotificationCallback) {
@@ -94,7 +97,10 @@ export class PgNotifier {
       this.listener = await this.sql.listen(
         this.pgChannelName,
         message => eventCallback(JSON.parse(message) as PgNotification),
-        () => logger.info(`PgNotifier connected, listening on channel: ${this.pgChannelName}`)
+        () =>
+          logger.info(
+            `PgNotifier connected (${this.usageName}), listening on channel: ${this.pgChannelName}`
+          )
       );
     } catch (error) {
       logger.error(error, 'PgNotifier fatal connection error');

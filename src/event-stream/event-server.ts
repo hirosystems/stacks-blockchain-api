@@ -1008,8 +1008,11 @@ export async function startEventServer(opts: {
     logger.error(`Unexpected event on path ${req.url}`);
   });
 
-  const addr = await app.listen({ port: eventPort, host: eventHost });
-  logger.info(`Event observer listening at: ${addr}`);
+  await app.listen({
+    port: eventPort,
+    host: eventHost,
+    listenTextResolver: address => `Event observer server listening at ${address}`,
+  });
 
   const closeFn = async () => {
     logger.info('Closing event observer server...');

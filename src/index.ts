@@ -128,7 +128,6 @@ async function init(): Promise<void> {
       writeDatastore: dbWriteStore,
       chainId: getApiConfiguredChainID(),
     });
-    logger.info(`API server listening on: http://${apiServer.address}`);
     registerShutdownConfig({
       name: 'API Server',
       handler: () => apiServer.terminate(),
@@ -147,6 +146,7 @@ async function init(): Promise<void> {
     await profilerServer.listen({
       host: ENV.STACKS_PROFILER_HOST ?? '0.0.0.0',
       port: ENV.STACKS_PROFILER_PORT,
+      listenTextResolver: address => `Profiler server listening at ${address}`,
     });
   }
 
@@ -180,7 +180,11 @@ async function init(): Promise<void> {
         await promServer.close();
       },
     });
-    await promServer.listen({ host: '0.0.0.0', port: 9153 });
+    await promServer.listen({
+      host: '0.0.0.0',
+      port: 9153,
+      listenTextResolver: address => `Prometheus metrics server listening at ${address}`,
+    });
   }
 }
 
