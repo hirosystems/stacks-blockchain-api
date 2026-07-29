@@ -37,13 +37,8 @@ export function getConnectionArgs(server: PgServer = PgServer.default): PgConnec
  * @returns The connection target description.
  */
 export function getPgConnectionDescription(server: PgServer = PgServer.default): string {
-  const args = getConnectionArgs(server) as {
-    host?: string;
-    port?: number;
-    database?: string;
-    schema?: string;
-  };
-  return `${args.host}:${args.port}/${args.database} (schema: ${args.schema})`;
+  const { host, port, database, schema } = getConnectionArgs(server);
+  return `${host}:${port}/${database} (schema: ${schema})`;
 }
 
 /**

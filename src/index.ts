@@ -74,7 +74,7 @@ async function init(): Promise<void> {
   });
   registerMempoolPromStats(dbWriteStore.eventEmitter);
 
-  const chainTip = await dbStore.sqlTransaction(sql => dbStore.getChainTip(sql), true);
+  const chainTip = await dbStore.getChainTip(dbStore.sql);
   if (chainTip.block_height > 0) {
     logger.info(
       `Chainstate is at block height ${chainTip.block_height} (${chainTip.index_block_hash})`
