@@ -4605,8 +4605,15 @@ export class PgStore extends BasePgStore {
                 0
               ) AS force_unlock_height
             FROM stx_locked_balances slb
-            CROSS JOIN chain_tip ct
-            LEFT JOIN pox_state ps ON TRUE
+            -- Both are single-row tables, but the planner can't infer that from their
+            -- CHECK(id) constraints, so bound them explicitly: without the LIMITs it
+            -- estimates the cross product at hundreds of thousands of rows.
+            CROSS JOIN (SELECT burn_block_height FROM chain_tip LIMIT 1) ct
+            LEFT JOIN (
+              SELECT pox_v1_unlock_height, pox_v2_unlock_height,
+                pox_v3_unlock_height, pox_v4_unlock_height
+              FROM pox_state LIMIT 1
+            ) ps ON TRUE
             WHERE slb.principal = ${principal}
           ) lock
         ) AS pox_state
