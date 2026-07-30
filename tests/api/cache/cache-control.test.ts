@@ -1132,7 +1132,16 @@ describe('cache-control tests', () => {
       index_block_hash: '0x02',
       parent_index_block_hash: '0x01',
       burn_block_height: 100,
-    }).addTx({ tx_id: '0x0001', sender_address: stacker });
+    })
+      .addTx({ tx_id: '0x0001', sender_address: stacker })
+      // A real `stack-stx` emits both an `stx_lock_event` (which materializes the locked
+      // balance the ETag is derived from) and the synthetic pox print event below.
+      .addTxStxLockEvent({
+        locked_address: stacker,
+        locked_amount: 1000,
+        unlock_height: 200,
+        contract_name: 'pox-4',
+      });
     block2.txData.pox4Events.push({
       event_index: 0,
       tx_id: '0x0001',
@@ -1219,5 +1228,96 @@ describe('cache-control tests', () => {
     const request7 = await supertest(api.server).get(url).set('If-None-Match', etag2);
     assert.equal(request7.status, 304);
     assert.equal(request7.text, '');
+  });
+
+  test('principal cache control invalidates on PoX forced unlock height', async () => {
+    const stacker = 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6';
+    const url = `/extended/v2/addresses/${stacker}/balances/stx`;
+    const mempoolUrl = `${url}?include_mempool=true`;
+
+    // Block 1: stacker locks 1000 uSTX via pox-4, naturally unlocking at burn height 500.
+    await db.update(
+      new TestBlockBuilder({
+        block_height: 1,
+        index_block_hash: '0x01',
+        parent_index_block_hash: '0x00',
+        burn_block_height: 100,
+      })
+        .addTx({ tx_id: '0x0001', sender_address: stacker })
+        .addTxStxLockEvent({
+          locked_address: stacker,
+          locked_amount: 1000,
+          unlock_height: 500,
+          contract_name: 'pox-4',
+        })
+        .build()
+    );
+
+    const locked = await supertest(api.server).get(url);
+    assert.equal(locked.status, 200);
+    assert.equal(JSON.parse(locked.text).locked, '1000');
+    const lockedEtag = locked.headers['etag'];
+
+    const lockedMempool = await supertest(api.server).get(mempoolUrl);
+    assert.equal(lockedMempool.status, 200);
+    const lockedMempoolEtag = lockedMempool.headers['etag'];
+
+    // Block 2: chain advances, still well below the natural unlock height. The STX stay
+    // locked and no new activity occurs, so both ETags remain cache hits.
+    await db.update(
+      new TestBlockBuilder({
+        block_height: 2,
+        index_block_hash: '0x02',
+        parent_index_block_hash: '0x01',
+        burn_block_height: 150,
+      }).build()
+    );
+
+    const stillLocked = await supertest(api.server).get(url).set('If-None-Match', lockedEtag);
+    assert.equal(stillLocked.status, 304);
+    const stillLockedMempool = await supertest(api.server)
+      .get(mempoolUrl)
+      .set('If-None-Match', lockedMempoolEtag);
+    assert.equal(stillLockedMempool.status, 304);
+
+    // Block 3: a hard fork sets the pox-4 forced unlock height below the lock's natural
+    // unlock height, so the STX unlock with no transaction emitted for the stacker.
+    const forkBlock = new TestBlockBuilder({
+      block_height: 3,
+      index_block_hash: '0x03',
+      parent_index_block_hash: '0x02',
+      burn_block_height: 151,
+    }).build();
+    forkBlock.pox_v4_unlock_height = 150;
+    await db.update(forkBlock);
+
+    // The balance response now reports the STX as unlocked, even though the natural unlock
+    // height (500) is still ahead of the burn tip.
+    const unlocked = await supertest(api.server).get(url);
+    assert.equal(unlocked.status, 200);
+    assert.equal(JSON.parse(unlocked.text).locked, '0');
+
+    // ...so the pre-fork ETags must no longer be cache hits, otherwise clients would keep
+    // serving the stale locked balance until the stacker's next transaction.
+    const revalidated = await supertest(api.server).get(url).set('If-None-Match', lockedEtag);
+    assert.equal(revalidated.status, 200);
+    const unlockedEtag = revalidated.headers['etag'];
+    assert.notEqual(unlockedEtag, lockedEtag);
+    assert.equal(JSON.parse(revalidated.text).locked, '0');
+
+    const revalidatedMempool = await supertest(api.server)
+      .get(mempoolUrl)
+      .set('If-None-Match', lockedMempoolEtag);
+    assert.equal(revalidatedMempool.status, 200);
+    const unlockedMempoolEtag = revalidatedMempool.headers['etag'];
+    assert.notEqual(unlockedMempoolEtag, lockedMempoolEtag);
+
+    // The new ETags are stable while nothing else changes.
+    const cached = await supertest(api.server).get(url).set('If-None-Match', unlockedEtag);
+    assert.equal(cached.status, 304);
+    const cachedMempool = await supertest(api.server)
+      .get(mempoolUrl)
+      .set('If-None-Match', unlockedMempoolEtag);
+    assert.equal(cachedMempool.status, 304);
   });
 });
