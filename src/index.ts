@@ -6,7 +6,7 @@ import {
 import * as sourceMapSupport from 'source-map-support';
 import { startApiServer } from './api/init.js';
 import { startEventServer } from './event-stream/event-server.js';
-import { StacksCoreRpcClient } from './core-rpc/client.js';
+import { StacksCoreRpcClient, getCoreNodeEndpoint } from './core-rpc/client.js';
 import * as promClient from 'prom-client';
 import getopts from 'getopts';
 import * as fs from 'fs';
@@ -37,20 +37,18 @@ registerShutdownConfig();
 async function monitorCoreRpcConnection(): Promise<void> {
   const CORE_RPC_HEARTBEAT_INTERVAL = 5000; // 5 seconds
   let previouslyConnected = false;
+  logger.info(`Connecting to Stacks node RPC server at ${getCoreNodeEndpoint()}`);
   while (true) {
     const client = new StacksCoreRpcClient();
     try {
       await client.waitForConnection();
       if (!previouslyConnected) {
-        logger.info(`Connection to Stacks core node API server at: ${client.endpoint}`);
+        logger.info(`Connected to Stacks core node RPC server at ${client.endpoint}`);
       }
       previouslyConnected = true;
     } catch (error) {
       previouslyConnected = false;
-      logger.warn(
-        error,
-        `[Non-critical] notice: failed to connect to node RPC server at ${client.endpoint}`
-      );
+      logger.warn(error, `Failed to connect to Stacks node RPC server at ${client.endpoint}`);
     }
     await timeout(CORE_RPC_HEARTBEAT_INTERVAL);
   }
@@ -75,6 +73,15 @@ async function init(): Promise<void> {
     withRedisNotifier: ENV.REDIS_NOTIFIER_ENABLED,
   });
   registerMempoolPromStats(dbWriteStore.eventEmitter);
+
+  const chainTip = await dbStore.getChainTip(dbStore.sql);
+  if (chainTip.block_height > 0) {
+    logger.info(
+      `Chainstate is at block height ${chainTip.block_height} (${chainTip.index_block_hash})`
+    );
+  } else {
+    logger.info('Chainstate is empty');
+  }
 
   if (apiMode === 'default' || apiMode === 'writeonly') {
     const configuredChainID = getApiConfiguredChainID();
@@ -128,7 +135,6 @@ async function init(): Promise<void> {
       writeDatastore: dbWriteStore,
       chainId: getApiConfiguredChainID(),
     });
-    logger.info(`API server listening on: http://${apiServer.address}`);
     registerShutdownConfig({
       name: 'API Server',
       handler: () => apiServer.terminate(),
@@ -147,6 +153,7 @@ async function init(): Promise<void> {
     await profilerServer.listen({
       host: ENV.STACKS_PROFILER_HOST ?? '0.0.0.0',
       port: ENV.STACKS_PROFILER_PORT,
+      listenTextResolver: address => `Profiler server listening at ${address}`,
     });
   }
 
@@ -180,7 +187,11 @@ async function init(): Promise<void> {
         await promServer.close();
       },
     });
-    await promServer.listen({ host: '0.0.0.0', port: 9153 });
+    await promServer.listen({
+      host: '0.0.0.0',
+      port: 9153,
+      listenTextResolver: address => `Prometheus metrics server listening at ${address}`,
+    });
   }
 }
 

@@ -1,4 +1,4 @@
-import { PgConnectionArgs, PgConnectionOptions } from '@stacks/api-toolkit';
+import { PgConnectionArgs, PgConnectionOptions, PgConnectionVars } from '@stacks/api-toolkit';
 import { ENV } from '../env.js';
 
 /**
@@ -28,6 +28,19 @@ export function getConnectionArgs(server: PgServer = PgServer.default): PgConnec
     schema: primary ? (ENV.PG_PRIMARY_SCHEMA ?? ENV.PG_SCHEMA) : ENV.PG_SCHEMA,
     application_name: ENV.PG_APPLICATION_NAME,
   };
+}
+
+/**
+ * Human-readable description of a server's connection target for logging, e.g.
+ * `db:5432/stacks_blockchain_api (schema: stacks_blockchain_api)`. Never includes credentials.
+ * @param server - The server to describe.
+ * @returns The connection target description.
+ */
+export function getPgConnectionDescription(server: PgServer = PgServer.default): string {
+  // `getConnectionArgs` always returns the vars form (never a connection-string URI), but its
+  // declared return type is the `PgConnectionArgs` union, so narrow to `PgConnectionVars`.
+  const { host, port, database, schema } = getConnectionArgs(server) as PgConnectionVars;
+  return `${host}:${port}/${database} (schema: ${schema})`;
 }
 
 /**

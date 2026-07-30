@@ -139,7 +139,7 @@ export async function startApiServer(opts: {
   const fastify = Fastify({
     trustProxy: true,
     logger: PINO_LOGGER_CONFIG,
-    ignoreTrailingSlash: true,
+    routerOptions: { ignoreTrailingSlash: true },
   }).withTypeProvider<TypeBoxTypeProvider>();
 
   fastify.decorate('db', datastore);
@@ -197,7 +197,11 @@ export async function startApiServer(opts: {
   const ws = new WebSocketTransmitter(datastore, fastify.server);
   ws.connect();
 
-  await fastify.listen({ port: apiPort, host: apiHost });
+  await fastify.listen({
+    port: apiPort,
+    host: apiHost,
+    listenTextResolver: address => `API server listening at ${address}`,
+  });
 
   const terminate = async () => {
     await new Promise<void>((resolve, reject) => {

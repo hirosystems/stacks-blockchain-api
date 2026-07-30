@@ -70,7 +70,7 @@ export const CoreNodeRpcProxyRouter: FastifyPluginAsync<
 > = async fastify => {
   const stacksNodeRpcEndpoint = GetStacksNodeProxyEndpoint();
 
-  logger.info(`/v2/* proxying to: ${stacksNodeRpcEndpoint}`);
+  logger.info(`Proxying Stacks node RPC calls to ${stacksNodeRpcEndpoint}`);
 
   // Default fee estimator options
   let feeEstimatorEnabled = false;

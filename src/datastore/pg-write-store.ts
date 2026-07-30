@@ -110,7 +110,12 @@ import {
   runMigrations,
   logger,
 } from '@stacks/api-toolkit';
-import { PgServer, getConnectionArgs, getConnectionConfig } from './connection.js';
+import {
+  PgServer,
+  getConnectionArgs,
+  getConnectionConfig,
+  getPgConnectionDescription,
+} from './connection.js';
 import { BigNumber } from 'bignumber.js';
 import { RedisNotifier } from './redis-notifier.js';
 import { ENV } from '../env.js';
@@ -202,6 +207,9 @@ export class PgWriteStore extends PgStore {
     withRedisNotifier?: boolean;
     isEventReplay?: boolean;
   }): Promise<PgWriteStore> {
+    logger.info(
+      `Connecting to postgres at ${getPgConnectionDescription(PgServer.primary)} [${usageName}]`
+    );
     const sql = await connectPostgres({
       usageName: usageName,
       connectionArgs: getConnectionArgs(PgServer.primary),
