@@ -4534,7 +4534,15 @@ export class PgStore extends BasePgStore {
   /**
    * Retrieves the last transaction IDs with STX, FT or NFT activity for a principal, with or
    * without mempool transactions. Also returns the current PoX lock state so that ETags
-   * invalidate when STX unlock at a PoX cycle boundary (no transaction is emitted for unlocks).
+   * invalidate when STX unlock without a transaction being emitted, which happens both at a
+   * natural PoX cycle boundary and at a PoX version's forced-unlock height (e.g. the
+   * `pox_v4_unlock_height` set when a hard fork activates a new PoX contract).
+   *
+   * The lock state is derived from the same source the balance responses use for current-tip
+   * reads — the materialized `stx_locked_balances` table resolved against the `pox_state`
+   * forced-unlock heights (mirroring {@link resolveMaterializedStxLock}) — so the ETag can never
+   * report `locked` while the response body reports an unlocked balance. This covers every PoX
+   * version, including pox-5, whose locks are materialized from synthetic stake events.
    * @param includeMempool - include mempool transactions
    * @returns the last confirmed and mempool transaction IDs for the principal, plus PoX lock state
    */
@@ -4570,16 +4578,37 @@ export class PgStore extends BasePgStore {
         AS mempool,
         (
           SELECT CASE
-            WHEN burnchain_unlock_height >= (SELECT burn_block_height FROM chain_tip)
-              AND name != ${Pox4EventName.HandleUnlock}
-            THEN 'locked'
+            -- Locked only while the natural unlock height is still ahead of the burn tip AND the
+            -- pox version's forced-unlock height (if any) has not been surpassed. A zero forced
+            -- unlock height means "not set"; pox-5 and newer have none.
+            WHEN lock.unlock_burn_height >= lock.burn_block_height
+              AND NOT (
+                lock.force_unlock_height > 0
+                AND lock.burn_block_height > lock.force_unlock_height
+              )
+            -- Include the amount and unlock height so lock changes invalidate too.
+            THEN 'locked:' || lock.locked_amount::text || ':' || lock.unlock_burn_height::text
             ELSE 'unlocked'
           END
-          FROM pox4_events
-          WHERE stacker = ${principal}
-            AND canonical = true AND microblock_canonical = true
-          ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
-          LIMIT 1
+          FROM (
+            SELECT
+              slb.locked_amount,
+              slb.unlock_burn_height,
+              ct.burn_block_height,
+              COALESCE(
+                CASE slb.pox_version
+                  WHEN 1 THEN ps.pox_v1_unlock_height
+                  WHEN 2 THEN ps.pox_v2_unlock_height
+                  WHEN 3 THEN ps.pox_v3_unlock_height
+                  WHEN 4 THEN ps.pox_v4_unlock_height
+                END,
+                0
+              ) AS force_unlock_height
+            FROM stx_locked_balances slb
+            CROSS JOIN chain_tip ct
+            LEFT JOIN pox_state ps ON TRUE
+            WHERE slb.principal = ${principal}
+          ) lock
         ) AS pox_state
     `;
     return result[0];
