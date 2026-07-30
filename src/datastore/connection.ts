@@ -1,4 +1,4 @@
-import { PgConnectionArgs, PgConnectionOptions } from '@stacks/api-toolkit';
+import { PgConnectionArgs, PgConnectionOptions, PgConnectionVars } from '@stacks/api-toolkit';
 import { ENV } from '../env.js';
 
 /**
@@ -37,7 +37,9 @@ export function getConnectionArgs(server: PgServer = PgServer.default): PgConnec
  * @returns The connection target description.
  */
 export function getPgConnectionDescription(server: PgServer = PgServer.default): string {
-  const { host, port, database, schema } = getConnectionArgs(server);
+  // `getConnectionArgs` always returns the vars form (never a connection-string URI), but its
+  // declared return type is the `PgConnectionArgs` union, so narrow to `PgConnectionVars`.
+  const { host, port, database, schema } = getConnectionArgs(server) as PgConnectionVars;
   return `${host}:${port}/${database} (schema: ${schema})`;
 }
 
