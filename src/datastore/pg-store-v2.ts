@@ -879,6 +879,12 @@ export class PgStoreV2 extends BasePgStoreModule {
         )
         SELECT
             ps.signing_key,
+            (
+                SELECT signer FROM staking_signers
+                WHERE signer_key = ps.signing_key
+                ORDER BY block_height DESC
+                LIMIT 1
+            ) AS signer_manager,
             ps.weight,
             ps.stacked_amount,
             ps.weight_percent,
@@ -949,6 +955,12 @@ export class PgStoreV2 extends BasePgStoreModule {
         )
         SELECT
             ps.signing_key,
+            (
+                SELECT signer FROM staking_signers
+                WHERE signer_key = ps.signing_key
+                ORDER BY block_height DESC
+                LIMIT 1
+            ) AS signer_manager,
             ps.weight,
             ps.stacked_amount,
             ps.weight_percent,

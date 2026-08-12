@@ -52,6 +52,19 @@ describe('PoX tests', () => {
       true,
       true
     );
+    // Register a signer-manager contract for one of the cycle's signing keys so
+    // the signer endpoints surface it (the other keys stay unregistered/null).
+    const signerManager = 'STRYYQQ9M8KAF4NS7WNZQYY59X93XEKR31JP64CP.signer-manager';
+    await client`
+      INSERT INTO staking_signers (signer, signer_key, tx_id, block_height, burn_block_height)
+      VALUES (
+        ${signerManager},
+        ${'0x038e3c4529395611be9abf6fa3b6987e81d402385e3d605a073f42f407565a4a3d'},
+        ${'0x' + 'ff'.repeat(32)},
+        1,
+        1
+      )
+    `;
     const cycles = await supertest(api.server).get(`/extended/v2/pox/cycles`);
     assert.equal(cycles.status, 200);
     assert.equal(cycles.type, 'application/json');
@@ -115,6 +128,7 @@ describe('PoX tests', () => {
         {
           signing_key: '0x038e3c4529395611be9abf6fa3b6987e81d402385e3d605a073f42f407565a4a3d',
           signer_address: 'STRYYQQ9M8KAF4NS7WNZQYY59X93XEKR31JP64CP',
+          signer_manager: signerManager,
           stacked_amount: '686251350000000000',
           stacked_amount_percent: 50,
           weight: 5,
@@ -125,6 +139,7 @@ describe('PoX tests', () => {
         {
           signing_key: '0x029874497a7952483aa23890e9d0898696f33864d3df90939930a1f45421fe3b09',
           signer_address: 'STF9B75ADQAVXQHNEQ6KGHXTG7JP305J2GRWF3A2',
+          signer_manager: null,
           stacked_amount: '457500900000000000',
           stacked_amount_percent: 33.333333333333336,
           weight: 3,
@@ -135,6 +150,7 @@ describe('PoX tests', () => {
         {
           signing_key: '0x02dcde79b38787b72d8e5e0af81cffa802f0a3c8452d6b46e08859165f49a72736',
           signer_address: 'ST18MDW2PDTBSCR1ACXYRJP2JX70FWNM6YY2VX4SS',
+          signer_manager: null,
           stacked_amount: '228750450000000000',
           stacked_amount_percent: 16.666666666666668,
           weight: 1,
@@ -153,6 +169,7 @@ describe('PoX tests', () => {
     assert.deepEqual(JSON.parse(signer.text), {
       signing_key: '0x038e3c4529395611be9abf6fa3b6987e81d402385e3d605a073f42f407565a4a3d',
       signer_address: 'STRYYQQ9M8KAF4NS7WNZQYY59X93XEKR31JP64CP',
+      signer_manager: signerManager,
       stacked_amount: '686251350000000000',
       stacked_amount_percent: 50,
       weight: 5,
@@ -271,6 +288,7 @@ describe('PoX tests', () => {
           {
             signing_key: '0x028efa20fa5706567008ebaf48f7ae891342eeb944d96392f719c505c89f84ed8d',
             signer_address: 'ST3AM1A56AK2C1XAFJ4115ZSV26EB49BVQ10MGCS0',
+            signer_manager: null,
             stacked_amount: '7500510000000000',
             stacked_amount_percent: 42.857142857142854,
             weight: 9,
@@ -281,6 +299,7 @@ describe('PoX tests', () => {
           {
             signing_key: '0x023f19d77c842b675bd8c858e9ac8b0ca2efa566f17accf8ef9ceb5a992dc67836',
             signer_address: 'ST3PF13W7Z0RRM42A8VZRVFQ75SV1K26RXEP8YGKJ',
+            signer_manager: null,
             stacked_amount: '5000340000000000',
             stacked_amount_percent: 28.571428571428573,
             weight: 6,
@@ -292,6 +311,7 @@ describe('PoX tests', () => {
             // steph doubled the weight of this signer
             signing_key: '0x029fb154a570a1645af3dd43c3c668a979b59d21a46dd717fd799b13be3b2a0dc7',
             signer_address: 'ST3NBRSFKX28FQ2ZJ1MAKX58HKHSDGNV5N7R21XCP',
+            signer_manager: null,
             stacked_amount: '5000340000000000',
             stacked_amount_percent: 28.571428571428573,
             weight: 6,
@@ -311,6 +331,7 @@ describe('PoX tests', () => {
       assert.deepEqual(JSON.parse(signer.text), {
         signing_key: '0x029fb154a570a1645af3dd43c3c668a979b59d21a46dd717fd799b13be3b2a0dc7',
         signer_address: 'ST3NBRSFKX28FQ2ZJ1MAKX58HKHSDGNV5N7R21XCP',
+        signer_manager: null,
         stacked_amount: '5000340000000000',
         stacked_amount_percent: 28.571428571428573,
         weight: 6,

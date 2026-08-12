@@ -1,4 +1,5 @@
 import { Static, Type } from '@sinclair/typebox';
+import { SmartContractIdParamSchema } from '../params.js';
 
 export const PoolDelegationSchema = Type.Object({
   stacker: Type.String({
@@ -39,6 +40,10 @@ export type PoxCycle = Static<typeof PoxCycleSchema>;
 export const PoxSignerSchema = Type.Object({
   signing_key: Type.String(),
   signer_address: Type.String({ description: 'The Stacks address derived from the signing_key.' }),
+  signer_manager: Type.Union([SmartContractIdParamSchema, Type.Null()], {
+    description:
+      'The principal of the signer manager contract that registered this signing key, or null if the key has no registration.',
+  }),
   weight: Type.Integer(),
   stacked_amount: Type.String(),
   weight_percent: Type.Number(),

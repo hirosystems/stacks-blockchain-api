@@ -198,6 +198,7 @@ export function parseDbPoxSigner(signer: DbPoxCycleSigner, isMainnet: boolean): 
   const result: PoxSigner = {
     signing_key: signer.signing_key,
     signer_address: signerAddress,
+    signer_manager: signer.signer_manager,
     weight: signer.weight,
     stacked_amount: signer.stacked_amount,
     weight_percent: signer.weight_percent,

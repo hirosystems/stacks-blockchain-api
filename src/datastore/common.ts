@@ -966,6 +966,7 @@ export interface DbPoxCycle {
 
 export interface DbPoxCycleSigner {
   signing_key: string;
+  signer_manager: string | null;
   weight: number;
   stacked_amount: string;
   weight_percent: number;

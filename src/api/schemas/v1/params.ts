@@ -88,7 +88,7 @@ export const BurnchainAddressParamSchema = Type.String({
   examples: ['bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq'],
 });
 
-const SmartContractIdParamSchema = Type.String({
+export const SmartContractIdParamSchema = Type.String({
   pattern: isTestEnv
     ? undefined
     : '^[0123456789ABCDEFGHJKMNPQRSTVWXYZ]{28,41}.[a-zA-Z]([a-zA-Z0-9]|[-_]){0,39}$',
