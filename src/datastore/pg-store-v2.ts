@@ -880,9 +880,11 @@ export class PgStoreV2 extends BasePgStoreModule {
         SELECT
             ps.signing_key,
             (
-                SELECT signer FROM staking_signers
-                WHERE signer_key = ps.signing_key
-                ORDER BY block_height DESC
+                SELECT s.signer FROM staking_signers s
+                INNER JOIN txs t ON t.tx_id = s.tx_id
+                    AND t.canonical = TRUE AND t.microblock_canonical = TRUE
+                WHERE s.signer_key = ps.signing_key
+                ORDER BY s.block_height DESC, t.microblock_sequence DESC, t.tx_index DESC
                 LIMIT 1
             ) AS signer_manager,
             ps.weight,
@@ -956,9 +958,11 @@ export class PgStoreV2 extends BasePgStoreModule {
         SELECT
             ps.signing_key,
             (
-                SELECT signer FROM staking_signers
-                WHERE signer_key = ps.signing_key
-                ORDER BY block_height DESC
+                SELECT s.signer FROM staking_signers s
+                INNER JOIN txs t ON t.tx_id = s.tx_id
+                    AND t.canonical = TRUE AND t.microblock_canonical = TRUE
+                WHERE s.signer_key = ps.signing_key
+                ORDER BY s.block_height DESC, t.microblock_sequence DESC, t.tx_index DESC
                 LIMIT 1
             ) AS signer_manager,
             ps.weight,

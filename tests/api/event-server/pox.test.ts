@@ -54,13 +54,20 @@ describe('PoX tests', () => {
     );
     // Register a signer-manager contract for one of the cycle's signing keys so
     // the signer endpoints surface it (the other keys stay unregistered/null).
+    // The registration must point at a canonical tx for its block position.
+    const [{ tx_id: registerTxId }] = await client<{ tx_id: string }[]>`
+      SELECT tx_id FROM txs
+      WHERE canonical = true AND microblock_canonical = true
+      ORDER BY block_height ASC, tx_index ASC
+      LIMIT 1
+    `;
     const signerManager = 'STRYYQQ9M8KAF4NS7WNZQYY59X93XEKR31JP64CP.signer-manager';
     await client`
       INSERT INTO staking_signers (signer, signer_key, tx_id, block_height, burn_block_height)
       VALUES (
         ${signerManager},
         ${'0x038e3c4529395611be9abf6fa3b6987e81d402385e3d605a073f42f407565a4a3d'},
-        ${'0x' + 'ff'.repeat(32)},
+        ${registerTxId},
         1,
         1
       )
