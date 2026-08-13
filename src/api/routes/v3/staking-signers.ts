@@ -34,7 +34,8 @@ export const StakingSignersRoutes: FastifyPluginAsync<
       schema: {
         operationId: 'get_staking_signers',
         summary: 'Get staking signers',
-        description: 'Get the registered pox-5 staking signers and their current signing keys.',
+        description:
+          "Get the all-time registry of pox-5 staking signers: every signer principal that has ever registered a signer key, with its most recently registered key. Registrants are never removed from this registry, even if they are no longer part of the current cycle's signer set.",
         tags: ['Staking'],
         querystring: CursorPaginationQuerystring(SignerCursorSchema, ResourceType.Signer),
         response: {

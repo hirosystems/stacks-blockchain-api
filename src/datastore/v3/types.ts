@@ -262,6 +262,34 @@ export interface DbStakingSignerDetail extends DbStakingSigner {
   burn_block_time: number;
 }
 
+/** A signer manager key binding active for a cycle's signing key. */
+export interface DbCycleSignerManager {
+  signer_manager: string;
+  /** The grant's auth id as a decimal string; null for `register-signer` bindings. */
+  auth_id: string | null;
+  /** Block position of the binding event. */
+  block_height: number;
+  burn_block_height: number;
+  /** The binding event's tx id as a `0x`-prefixed hex string. */
+  tx_id: string;
+  /**
+   * The manager's latest key binding made after the cycle's anchor block, when it differs from the
+   * cycle's signing key (i.e. a pending key rotation).
+   */
+  pending_signer_key: string | null;
+}
+
+/** A reward-set signer for a PoX cycle, with its effective signer manager bindings. */
+export interface DbCycleSigner {
+  /** The signing key in the cycle's reward set, as a `0x`-prefixed hex string. */
+  signing_key: string;
+  weight: number;
+  stacked_amount: string;
+  weight_percent: number;
+  stacked_amount_percent: number;
+  signer_managers: DbCycleSignerManager[];
+}
+
 /** A staker that belongs to a signer, with the staking type(s) it participates in. */
 export interface DbSignerStaker {
   staker: string;

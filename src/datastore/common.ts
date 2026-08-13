@@ -215,9 +215,7 @@ export interface DbTx extends BaseTx {
   canonical: boolean;
 
   microblock_canonical: boolean;
-  // TODO(mb): should probably be (number | null) rather than -1 for batched tx
   microblock_sequence: number;
-  // TODO(mb): should probably be (string | null) rather than empty string for batched tx
   microblock_hash: string;
 
   post_conditions: string;
@@ -1782,6 +1780,30 @@ export interface DbPrincipalStxRewardDistributionInsertValues extends DbTxLocati
   principal: string;
   reward_cycle: number;
   reward_amount: string;
+}
+
+/** The pox-5 event a `signer_key_grants` row came from (`kind` smallint column). */
+export enum DbSignerKeyGrantKind {
+  /** `register-signer` */
+  Register = 0,
+  /** `grant-signer-key` */
+  Grant = 1,
+  /** `revoke-signer-grant` */
+  Revoke = 2,
+}
+
+/**
+ * Signer key binding history row, from a pox-5 `register-signer`,
+ * `grant-signer-key`, or `revoke-signer-grant` event. Append-only event log —
+ * key bindings are resolved as-of a cycle's anchor block at read time, so
+ * reorgs only flip the canonical flag.
+ */
+export interface DbSignerKeyGrantInsertValues extends DbTxLocation {
+  kind: DbSignerKeyGrantKind;
+  signer_manager: string;
+  signer_key: string;
+  auth_id: string | null;
+  event_index: number;
 }
 
 /**

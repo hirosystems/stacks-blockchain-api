@@ -6,6 +6,7 @@ import {
   DbBondRegistrationSummary,
   DbBondSummary,
   DbCursorPaginatedResult,
+  DbCycleSigner,
   DbMempoolTransaction,
   DbMempoolTransactionSummary,
   DbPrincipalBondPosition,
@@ -59,7 +60,7 @@ import {
   parseNftBalanceCursor,
   resolveTransactionCursor,
 } from './helpers.js';
-import { DbEventTypeId } from '../common.js';
+import { DbEventTypeId, DbSignerKeyGrantKind } from '../common.js';
 
 export class PgStoreV3 extends BasePgStoreModule {
   /**
@@ -1645,6 +1646,149 @@ export class PgStoreV3 extends BasePgStoreModule {
         current_cursor: currentCursor,
         total,
         results,
+      };
+    });
+  }
+
+  /**
+   * Gets the signer set of the current PoX cycle (the latest canonical cycle with a computed reward
+   * set) joined with the signer manager key bindings that were effective when the cycle's reward
+   * set was calculated. A binding (register/grant/revoke) is effective for the cycle if it landed
+   * strictly before the cycle's anchor block, which encodes the contract rule that key changes made
+   * before the prepare phase apply next cycle and later ones the cycle after. Bindings made at or
+   * after the anchor surface as pending key updates (effective next cycle).
+   *
+   * Keyset-paginated by weight descending, then signing key ascending, with the signing key as the
+   * cursor.
+   * @param args - The arguments for the query.
+   * @returns The cycle's signers, or null if no PoX cycle exists yet.
+   */
+  async getCurrentCycleSigners(args: {
+    limit: number;
+    cursor?: string;
+  }): Promise<(DbCursorPaginatedResult<DbCycleSigner> & { cycle_number: number }) | null> {
+    return await this.sqlTransaction(async sql => {
+      const [cycle] = await sql<{ cycle_number: number; block_height: number }[]>`
+        SELECT cycle_number, block_height
+        FROM pox_cycles
+        WHERE canonical = TRUE
+        ORDER BY cycle_number DESC
+        LIMIT 1
+      `;
+      if (!cycle) return null;
+      const cycleNumber = cycle.cycle_number;
+      const anchorHeight = cycle.block_height;
+
+      // Keyset filter: rows at or after the cursor row in (weight DESC, signing_key ASC) order. An
+      // unknown cursor key yields an empty page.
+      const cursorFilter = args.cursor
+        ? sql`
+          AND (
+            ps.weight < (SELECT weight FROM cursor_row)
+            OR (ps.weight = (SELECT weight FROM cursor_row) AND ps.signing_key >= ${args.cursor})
+          )`
+        : sql``;
+
+      const resultQuery = await sql<(DbCycleSigner & { total: number })[]>`
+        WITH effective_bindings AS (
+          SELECT DISTINCT ON (signer_manager, signer_key)
+            signer_manager, signer_key, kind, auth_id::text AS auth_id,
+            block_height, burn_block_height, tx_id
+          FROM signer_key_grants
+          WHERE canonical = TRUE AND microblock_canonical = TRUE
+            AND block_height < ${anchorHeight}
+          ORDER BY signer_manager, signer_key,
+            block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
+        ), pending_bindings AS (
+          SELECT DISTINCT ON (signer_manager)
+            signer_manager, signer_key
+          FROM signer_key_grants
+          WHERE canonical = TRUE AND microblock_canonical = TRUE
+            AND block_height >= ${anchorHeight}
+            AND kind IN (${DbSignerKeyGrantKind.Register}, ${DbSignerKeyGrantKind.Grant})
+          ORDER BY signer_manager,
+            block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
+        ), cursor_row AS (
+          SELECT weight FROM pox_sets
+          WHERE canonical = TRUE
+            AND cycle_number = ${cycleNumber}
+            AND signing_key = ${args.cursor ?? null}
+          LIMIT 1
+        )
+        SELECT
+          ps.signing_key,
+          ps.weight,
+          ps.stacked_amount,
+          ps.weight_percent,
+          ps.stacked_amount_percent,
+          (
+            SELECT COUNT(*)::int FROM pox_sets
+            WHERE canonical = TRUE AND cycle_number = ${cycleNumber}
+          ) AS total,
+          COALESCE((
+            SELECT json_agg(json_build_object(
+              'signer_manager', eb.signer_manager,
+              'auth_id', eb.auth_id,
+              'block_height', eb.block_height,
+              'burn_block_height', eb.burn_block_height,
+              'tx_id', concat('0x', encode(eb.tx_id, 'hex')),
+              'pending_signer_key',
+                CASE WHEN pb.signer_key IS NOT NULL AND pb.signer_key != ps.signing_key
+                  THEN concat('0x', encode(pb.signer_key, 'hex'))
+                END
+            ) ORDER BY eb.signer_manager)
+            FROM effective_bindings eb
+            LEFT JOIN pending_bindings pb ON pb.signer_manager = eb.signer_manager
+            WHERE eb.signer_key = ps.signing_key AND eb.kind != ${DbSignerKeyGrantKind.Revoke}
+          ), '[]'::json) AS signer_managers
+        FROM pox_sets ps
+        WHERE ps.canonical = TRUE AND ps.cycle_number = ${cycleNumber}
+          ${cursorFilter}
+        ORDER BY ps.weight DESC, ps.signing_key ASC
+        LIMIT ${args.limit + 1}
+      `;
+
+      const hasNextPage = resultQuery.count > args.limit;
+      const results = hasNextPage ? resultQuery.slice(0, args.limit) : [...resultQuery];
+      const total = resultQuery.count > 0 ? resultQuery[0].total : 0;
+
+      const nextResult = resultQuery[resultQuery.length - 1];
+      const nextCursor = hasNextPage && nextResult ? nextResult.signing_key : null;
+      const firstResult = results[0];
+      const currentCursor = firstResult ? firstResult.signing_key : null;
+
+      let prevCursor: string | null = null;
+      if (firstResult) {
+        const prevPageQuery = await sql<{ signing_key: string }[]>`
+          SELECT signing_key FROM pox_sets ps
+          WHERE ps.canonical = TRUE AND ps.cycle_number = ${cycleNumber}
+            AND (
+              ps.weight > ${firstResult.weight}
+              OR (ps.weight = ${firstResult.weight} AND ps.signing_key < ${firstResult.signing_key})
+            )
+          ORDER BY ps.weight ASC, ps.signing_key DESC
+          LIMIT ${args.limit}
+        `;
+        if (prevPageQuery.length > 0) {
+          prevCursor = prevPageQuery[prevPageQuery.length - 1].signing_key;
+        }
+      }
+
+      return {
+        limit: args.limit,
+        next_cursor: nextCursor,
+        prev_cursor: prevCursor,
+        current_cursor: currentCursor,
+        total,
+        cycle_number: cycleNumber,
+        results: results.map(r => ({
+          signing_key: r.signing_key,
+          weight: r.weight,
+          stacked_amount: r.stacked_amount,
+          weight_percent: r.weight_percent,
+          stacked_amount_percent: r.stacked_amount_percent,
+          signer_managers: r.signer_managers,
+        })),
       };
     });
   }
