@@ -21,9 +21,14 @@ export function serializeDbCycleSigner(signer: DbCycleSigner, cycleNumber: numbe
         tx_id: m.tx_id,
       },
       // Bindings made after the cycle's anchor block take effect next cycle.
-      pending_key_update: m.pending_signer_key
-        ? { signer_key: m.pending_signer_key, effective_cycle: cycleNumber + 1 }
-        : null,
+      pending_key_update:
+        m.pending_signer_key && m.pending_tx_id
+          ? {
+              signer_key: m.pending_signer_key,
+              effective_cycle: cycleNumber + 1,
+              tx_id: m.pending_tx_id,
+            }
+          : null,
     })),
   };
 }

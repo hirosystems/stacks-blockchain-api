@@ -33,6 +33,7 @@ export const CycleSignerManagerSchema = Type.Object(
           effective_cycle: Type.Integer({
             description: 'The PoX cycle in which the new key takes effect',
           }),
+          tx_id: TransactionIdSchema,
         },
         {
           description:
@@ -72,7 +73,7 @@ export const CycleSignerSchema = Type.Object(
     ),
     signer_managers: Type.Array(CycleSignerManagerSchema, {
       description:
-        "The signer manager contracts whose key bindings for this signing key were effective when the cycle's reward set was calculated. A key can be bound by more than one manager, in which case the signer's weight is the combined stake under them; empty if the key has no effective binding.",
+        "The signer manager contracts whose key bindings for this signing key were effective when the cycle's reward set was calculated. Every reward-set key has at least one effective binding — stake can only be committed under a bound key. A key can be bound by more than one manager, in which case the signer's weight is the combined stake under them.",
     }),
   },
   { title: 'CycleSigner' }

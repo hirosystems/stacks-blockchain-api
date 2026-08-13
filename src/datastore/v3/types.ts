@@ -277,6 +277,8 @@ export interface DbCycleSignerManager {
    * cycle's signing key (i.e. a pending key rotation).
    */
   pending_signer_key: string | null;
+  /** The tx of the pending key binding; set iff `pending_signer_key` is set. */
+  pending_tx_id: string | null;
 }
 
 /** A reward-set signer for a PoX cycle, with its effective signer manager bindings. */

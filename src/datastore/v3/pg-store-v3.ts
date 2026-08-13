@@ -1701,7 +1701,7 @@ export class PgStoreV3 extends BasePgStoreModule {
             block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
         ), pending_bindings AS (
           SELECT DISTINCT ON (signer_manager)
-            signer_manager, signer_key
+            signer_manager, signer_key, tx_id
           FROM signer_key_grants
           WHERE canonical = TRUE AND microblock_canonical = TRUE
             AND block_height >= ${anchorHeight}
@@ -1735,6 +1735,10 @@ export class PgStoreV3 extends BasePgStoreModule {
               'pending_signer_key',
                 CASE WHEN pb.signer_key IS NOT NULL AND pb.signer_key != ps.signing_key
                   THEN concat('0x', encode(pb.signer_key, 'hex'))
+                END,
+              'pending_tx_id',
+                CASE WHEN pb.signer_key IS NOT NULL AND pb.signer_key != ps.signing_key
+                  THEN concat('0x', encode(pb.tx_id, 'hex'))
                 END
             ) ORDER BY eb.signer_manager)
             FROM effective_bindings eb

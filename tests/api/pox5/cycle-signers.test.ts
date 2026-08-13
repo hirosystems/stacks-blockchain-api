@@ -25,7 +25,10 @@ const MANAGER_E = 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6.manager-e';
 
 const KEY1 = '0x' + '02'.repeat(33);
 const KEY2 = '0x' + '03'.repeat(33);
-const KEY4 = '0x' + '04'.repeat(33); // in the set, never bound
+// Seeded into the set without a binding. Impossible on a real chain (stake can
+// only be committed under a bound key), but the endpoint should degrade to an
+// empty manager list rather than erroring if the data is ever inconsistent.
+const KEY4 = '0x' + '04'.repeat(33);
 const KEY5 = '0x' + '05'.repeat(33); // pending rotation target
 const KEY9 = '0x' + '09'.repeat(33); // bound, never in the set
 
@@ -236,6 +239,7 @@ describe('pox-5 cycle signers', () => {
     assert.deepEqual(entryA.pending_key_update, {
       signer_key: KEY5,
       effective_cycle: CYCLE + 1,
+      tx_id: txId(10),
     });
     // MANAGER_B's grant carries its auth id; the post-anchor revoke does not
     // affect the current cycle and is not a pending key update.
@@ -250,7 +254,8 @@ describe('pox-5 cycle signers', () => {
       [MANAGER_C]
     );
 
-    // KEY4 has no bindings at all.
+    // KEY4 was seeded without bindings (impossible on a real chain) — the
+    // endpoint degrades to an empty manager list instead of erroring.
     assert.equal(signer4.signing_key, KEY4);
     assert.deepEqual(signer4.signer_managers, []);
   });
