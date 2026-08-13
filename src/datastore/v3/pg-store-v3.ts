@@ -1,4 +1,4 @@
-import { BasePgStoreModule } from '@stacks/api-toolkit';
+import { BasePgStoreModule, has0xPrefix } from '@stacks/api-toolkit';
 import {
   DbBond,
   DbBondAllowlistEntry,
@@ -1678,41 +1678,76 @@ export class PgStoreV3 extends BasePgStoreModule {
       if (!cycle) return null;
       const cycleNumber = cycle.cycle_number;
       const anchorHeight = cycle.block_height;
+      const cursor = args.cursor
+        ? has0xPrefix(args.cursor)
+          ? args.cursor
+          : '0x' + args.cursor
+        : undefined;
 
       // Keyset filter: rows at or after the cursor row in (weight DESC, signing_key ASC) order. An
       // unknown cursor key yields an empty page.
-      const cursorFilter = args.cursor
+      const cursorFilter = cursor
         ? sql`
           AND (
             ps.weight < (SELECT weight FROM cursor_row)
-            OR (ps.weight = (SELECT weight FROM cursor_row) AND ps.signing_key >= ${args.cursor})
+            OR (ps.weight = (SELECT weight FROM cursor_row) AND ps.signing_key >= ${cursor})
           )`
         : sql``;
 
+      // A manager's binding for the cycle is its latest register/grant strictly before the anchor,
+      // dropped if that same (manager, key) pair was revoked afterwards (still before the anchor).
+      // Registers and grants overwrite each other (a manager holds one current key); revoking a
+      // superseded key is a no-op. Pending bindings apply the same rule to the post-anchor window.
       const resultQuery = await sql<(DbCycleSigner & { total: number })[]>`
-        WITH effective_bindings AS (
-          SELECT DISTINCT ON (signer_manager, signer_key)
-            signer_manager, signer_key, kind, auth_id::text AS auth_id,
-            block_height, burn_block_height, tx_id
+        WITH latest_bindings AS (
+          SELECT DISTINCT ON (signer_manager)
+            signer_manager, signer_key, auth_id::text AS auth_id,
+            block_height, microblock_sequence, tx_index, event_index,
+            burn_block_height, tx_id
           FROM signer_key_grants
           WHERE canonical = TRUE AND microblock_canonical = TRUE
             AND block_height < ${anchorHeight}
-          ORDER BY signer_manager, signer_key,
+            AND kind IN (${DbSignerKeyGrantKind.Register}, ${DbSignerKeyGrantKind.Grant})
+          ORDER BY signer_manager,
             block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
-        ), pending_bindings AS (
+        ), effective_bindings AS (
+          SELECT lb.* FROM latest_bindings lb
+          WHERE NOT EXISTS (
+            SELECT 1 FROM signer_key_grants r
+            WHERE r.canonical = TRUE AND r.microblock_canonical = TRUE
+              AND r.kind = ${DbSignerKeyGrantKind.Revoke}
+              AND r.signer_manager = lb.signer_manager
+              AND r.signer_key = lb.signer_key
+              AND r.block_height < ${anchorHeight}
+              AND (r.block_height, r.microblock_sequence, r.tx_index, r.event_index)
+                > (lb.block_height, lb.microblock_sequence, lb.tx_index, lb.event_index)
+          )
+        ), pending_candidates AS (
           SELECT DISTINCT ON (signer_manager)
-            signer_manager, signer_key, tx_id
+            signer_manager, signer_key, tx_id,
+            block_height, microblock_sequence, tx_index, event_index
           FROM signer_key_grants
           WHERE canonical = TRUE AND microblock_canonical = TRUE
             AND block_height >= ${anchorHeight}
             AND kind IN (${DbSignerKeyGrantKind.Register}, ${DbSignerKeyGrantKind.Grant})
           ORDER BY signer_manager,
             block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
+        ), pending_bindings AS (
+          SELECT pc.* FROM pending_candidates pc
+          WHERE NOT EXISTS (
+            SELECT 1 FROM signer_key_grants r
+            WHERE r.canonical = TRUE AND r.microblock_canonical = TRUE
+              AND r.kind = ${DbSignerKeyGrantKind.Revoke}
+              AND r.signer_manager = pc.signer_manager
+              AND r.signer_key = pc.signer_key
+              AND (r.block_height, r.microblock_sequence, r.tx_index, r.event_index)
+                > (pc.block_height, pc.microblock_sequence, pc.tx_index, pc.event_index)
+          )
         ), cursor_row AS (
           SELECT weight FROM pox_sets
           WHERE canonical = TRUE
             AND cycle_number = ${cycleNumber}
-            AND signing_key = ${args.cursor ?? null}
+            AND signing_key = ${cursor ?? null}
           LIMIT 1
         )
         SELECT
@@ -1743,7 +1778,7 @@ export class PgStoreV3 extends BasePgStoreModule {
             ) ORDER BY eb.signer_manager)
             FROM effective_bindings eb
             LEFT JOIN pending_bindings pb ON pb.signer_manager = eb.signer_manager
-            WHERE eb.signer_key = ps.signing_key AND eb.kind != ${DbSignerKeyGrantKind.Revoke}
+            WHERE eb.signer_key = ps.signing_key
           ), '[]'::json) AS signer_managers
         FROM pox_sets ps
         WHERE ps.canonical = TRUE AND ps.cycle_number = ${cycleNumber}

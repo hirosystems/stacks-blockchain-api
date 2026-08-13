@@ -30,6 +30,7 @@ const KEY2 = '0x' + '03'.repeat(33);
 // empty manager list rather than erroring if the data is ever inconsistent.
 const KEY4 = '0x' + '04'.repeat(33);
 const KEY5 = '0x' + '05'.repeat(33); // pending rotation target
+const KEY6 = '0x' + '06'.repeat(33); // pending rotation target that gets revoked
 const KEY9 = '0x' + '09'.repeat(33); // bound, never in the set
 
 const CYCLE = 100;
@@ -211,6 +212,21 @@ describe('pox-5 cycle signers', () => {
         data: { signer_key: KEY1, signer_manager: MANAGER_B },
       })
     );
+    // 12/13: MANAGER_C starts a rotation to KEY6 but revokes it — no pending update.
+    await db.update(
+      bindingBlock({
+        height: 12,
+        name: Pox5EventName.GrantSignerKey,
+        data: { signer_key: KEY6, signer_manager: MANAGER_C, auth_id: '666' },
+      })
+    );
+    await db.update(
+      bindingBlock({
+        height: 13,
+        name: Pox5EventName.RevokeSignerGrant,
+        data: { signer_key: KEY6, signer_manager: MANAGER_C },
+      })
+    );
 
     const res = await getCycleSigners();
     assert.equal(res.status, 200, res.text);
@@ -253,6 +269,8 @@ describe('pox-5 cycle signers', () => {
       signer2.signer_managers.map((m: { signer_manager: string }) => m.signer_manager),
       [MANAGER_C]
     );
+    // MANAGER_C's post-anchor rotation to KEY6 was revoked, so it is not pending.
+    assert.equal(signer2.signer_managers[0].pending_key_update, null);
 
     // KEY4 was seeded without bindings (impossible on a real chain) — the
     // endpoint degrades to an empty manager list instead of erroring.
@@ -293,6 +311,67 @@ describe('pox-5 cycle signers', () => {
     assert.equal(signer.signer_managers[0].pending_key_update, null);
   });
 
+  test('grants supersede registers, and revokes do not resurrect older keys', async () => {
+    // MANAGER_A registers KEY1 then grants itself KEY2 — only KEY2 is bound.
+    await db.update(
+      bindingBlock({
+        height: 1,
+        name: Pox5EventName.RegisterSigner,
+        data: { signer: MANAGER_A, signer_key: KEY1 },
+      })
+    );
+    await db.update(
+      bindingBlock({
+        height: 2,
+        name: Pox5EventName.GrantSignerKey,
+        data: { signer_key: KEY2, signer_manager: MANAGER_A, auth_id: '777' },
+      })
+    );
+    // MANAGER_C registers KEY9, rotates to KEY4, then revokes KEY4 — fully
+    // unbound; the revoke does not resurrect the superseded KEY9 binding.
+    await db.update(
+      bindingBlock({
+        height: 3,
+        name: Pox5EventName.RegisterSigner,
+        data: { signer: MANAGER_C, signer_key: KEY9 },
+      })
+    );
+    await db.update(
+      bindingBlock({
+        height: 4,
+        name: Pox5EventName.GrantSignerKey,
+        data: { signer_key: KEY4, signer_manager: MANAGER_C, auth_id: '888' },
+      })
+    );
+    await db.update(
+      bindingBlock({
+        height: 5,
+        name: Pox5EventName.RevokeSignerGrant,
+        data: { signer_key: KEY4, signer_manager: MANAGER_C },
+      })
+    );
+    await seedCycle(CYCLE, 6, [
+      { key: KEY1, weight: 3, stacked: '300000000000' },
+      { key: KEY2, weight: 2, stacked: '200000000000' },
+      { key: KEY9, weight: 1, stacked: '100000000000' },
+    ]);
+
+    const res = await getCycleSigners();
+    assert.equal(res.status, 200, res.text);
+    const body = JSON.parse(res.text);
+    const managersByKey = Object.fromEntries(
+      body.results.map((r: { signing_key: string; signer_managers: { signer_manager: string }[] }) => [
+        r.signing_key,
+        r.signer_managers.map(m => m.signer_manager),
+      ])
+    );
+    assert.deepEqual(managersByKey, {
+      [KEY1]: [], // superseded by MANAGER_A's grant of KEY2
+      [KEY2]: [MANAGER_A],
+      [KEY9]: [], // superseded by KEY4, whose revoke does not resurrect it
+    });
+  });
+
   test('paginates by weight descending with signing key cursor', async () => {
     await seedCycle(CYCLE, 1, [
       { key: KEY1, weight: 5, stacked: '500000000000' },
@@ -322,5 +401,13 @@ describe('pox-5 cycle signers', () => {
     assert.equal(body2.cursor.next, null);
     assert.equal(body2.cursor.previous, KEY1);
     assert.equal(body2.cursor.current, KEY4);
+
+    // A cursor without the 0x prefix is normalized to the same page.
+    const page2b = await getCycleSigners({ limit: '2', cursor: body1.cursor.next.slice(2) });
+    assert.equal(page2b.status, 200, page2b.text);
+    assert.deepEqual(
+      JSON.parse(page2b.text).results.map((r: { signing_key: string }) => r.signing_key),
+      [KEY4]
+    );
   });
 });
