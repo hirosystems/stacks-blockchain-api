@@ -4,12 +4,12 @@ export const shorthands: ColumnDefinitions | undefined = undefined;
 
 /**
  * Append-only history of pox-5 signer key bindings: one row per `register-signer`,
- * `grant-signer-key`, or `revoke-signer-grant` event. Unlike the latest-wins `staking_signers`
- * registry, this table preserves the full timeline so key bindings can be resolved *as of a PoX
- * cycle*: a binding is effective for cycle N if it landed strictly before cycle N's anchor block
- * (the block that computed the cycle's reward set, recorded in `pox_cycles`), which encodes the
- * contract rule that key changes made before the prepare phase apply next cycle and later ones the
- * cycle after. Pure event log with no derived totals — reorgs only flip the canonical flag.
+ * `grant-signer-key`, or `revoke-signer-grant` event. This table preserves the full timeline so key
+ * bindings can be resolved *as of a PoX cycle*: a binding is effective for cycle N if it landed
+ * strictly before cycle N's anchor block (the block that computed the cycle's reward set, recorded
+ * in `pox_cycles`), which encodes the contract rule that key changes made before the prepare phase
+ * apply next cycle and later ones the cycle after. Pure event log with no derived totals — reorgs
+ * only flip the canonical flag.
  */
 export function up(pgm: MigrationBuilder): void {
   pgm.createTable('signer_key_grants', {

@@ -73,7 +73,7 @@ export const CycleSignerSchema = Type.Object(
     ),
     signer_managers: Type.Array(CycleSignerManagerSchema, {
       description:
-        "The signer manager contracts whose key bindings for this signing key were effective when the cycle's reward set was calculated. Every reward-set key has at least one effective binding — stake can only be committed under a bound key. A key can be bound by more than one manager, in which case the signer's weight is the combined stake under them.",
+        "The signer manager contracts whose key bindings for this signing key were effective when the cycle's reward set was calculated.",
     }),
   },
   { title: 'CycleSigner' }

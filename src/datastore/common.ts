@@ -1793,10 +1793,8 @@ export enum DbSignerKeyGrantKind {
 }
 
 /**
- * Signer key binding history row, from a pox-5 `register-signer`,
- * `grant-signer-key`, or `revoke-signer-grant` event. Append-only event log —
- * key bindings are resolved as-of a cycle's anchor block at read time, so
- * reorgs only flip the canonical flag.
+ * Signer key binding history row, from a pox-5 `register-signer`, `grant-signer-key`, or
+ * `revoke-signer-grant` event.
  */
 export interface DbSignerKeyGrantInsertValues extends DbTxLocation {
   kind: DbSignerKeyGrantKind;

@@ -25,7 +25,7 @@ export const StakingCyclesRoutes: FastifyPluginAsync<
         operationId: 'get_cycle_signers',
         summary: 'Get cycle signers',
         description:
-          "Get the signer set of a PoX cycle, including each signer's weight, stacked amount, and the signer manager contracts whose key bindings were effective when the cycle's reward set was calculated. Key bindings changed after that point are surfaced as pending updates that take effect next cycle. Currently only `current` is supported as the cycle number — the latest cycle with a computed reward set.",
+          "Get the signer set of a PoX cycle, including each signer's weight, stacked amount, and the signer manager contracts whose key bindings were effective when the cycle's reward set was calculated. Key bindings changed after that point are surfaced as pending updates that take effect next cycle.",
         tags: ['Staking'],
         params: Type.Object({
           cycle_number: Type.Literal('current', {
