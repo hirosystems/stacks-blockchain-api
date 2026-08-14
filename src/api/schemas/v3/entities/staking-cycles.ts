@@ -40,6 +40,10 @@ export const CycleSignerManagerSchema = Type.Object(
       description:
         "The manager's live `grant-signer-key` authorizations (granted and not revoked). A grant authorizes a future `register-signer` for that key but does not rotate the key by itself.",
     }),
+    grant_active: Type.Boolean({
+      description:
+        'Whether a live `grant-signer-key` authorization currently exists for the registered key.',
+    }),
     pending_key_update: Nullable(
       Type.Object(
         {

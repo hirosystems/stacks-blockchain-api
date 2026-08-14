@@ -20,6 +20,9 @@ export function serializeDbCycleSigner(signer: DbCycleSigner, cycleNumber: numbe
         tx_id: m.tx_id,
       },
       granted_keys: m.granted_keys,
+      // The registration stays bound even if its grant is revoked; this flag surfaces whether the
+      // bound key's authorization is still live.
+      grant_active: m.granted_keys.some(g => g.signer_key === signer.signing_key),
       // Keys registered after the cycle's anchor block take effect next cycle.
       pending_key_update:
         m.pending_signer_key && m.pending_tx_id
