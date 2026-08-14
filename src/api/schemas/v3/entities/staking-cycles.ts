@@ -62,14 +62,14 @@ export const CycleSignerSchema = Type.Object(
       },
       { description: "The signer's voting weight in the cycle" }
     ),
-    stacked_amount: Type.Object(
+    staked_stx: Type.Object(
       {
         amount: Type.String(),
         percent: Type.Number({
-          description: "Percentage of the cycle's total stacked amount",
+          description: "Percentage of the cycle's total staked STX",
         }),
       },
-      { description: 'The uSTX stacked behind this signer in the cycle' }
+      { description: 'The uSTX staked behind this signer in the cycle' }
     ),
     signer_managers: Type.Array(CycleSignerManagerSchema, {
       description:

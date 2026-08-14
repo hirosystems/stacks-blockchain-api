@@ -8,7 +8,7 @@ export function serializeDbCycleSigner(signer: DbCycleSigner, cycleNumber: numbe
       amount: signer.weight,
       percent: signer.weight_percent,
     },
-    stacked_amount: {
+    staked_stx: {
       amount: signer.stacked_amount,
       percent: signer.stacked_amount_percent,
     },

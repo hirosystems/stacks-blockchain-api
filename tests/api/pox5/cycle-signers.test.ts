@@ -240,7 +240,7 @@ describe('pox-5 cycle signers', () => {
     assert.equal(signer1.signing_key, KEY1);
     // Weight 5 of 9 total, 500B of 900B total stacked.
     assert.deepEqual(signer1.weight, { amount: 5, percent: (5 / 9) * 100 });
-    assert.deepEqual(signer1.stacked_amount, { amount: '500000000000', percent: 55 });
+    assert.deepEqual(signer1.staked_stx, { amount: '500000000000', percent: 55 });
     // Managers sorted by principal ascending: MANAGER_B ('ST1…') < MANAGER_A ('ST3…').
     assert.deepEqual(
       signer1.signer_managers.map((m: { signer_manager: string }) => m.signer_manager),
