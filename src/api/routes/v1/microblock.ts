@@ -31,7 +31,7 @@ export const MicroblockRoutes: FastifyPluginAsync<
         summary: 'Get recent microblocks',
         description: `Retrieves a list of microblocks. **This endpoint is deprecated.** Microblocks were removed in the Stacks Nakamoto upgrade and are no longer produced.
 
-          If you need to actively monitor new microblocks, we highly recommend subscribing to [WebSockets or Socket.io](https://github.com/hirosystems/stacks-blockchain-api/tree/master/client) for real-time updates.`,
+          If you need to actively monitor new microblocks, we highly recommend subscribing to [WebSockets or Socket.io](https://github.com/hirosystems/stacks-blockchain-api/tree/main/client) for real-time updates.`,
         tags: ['Microblocks'],
         querystring: Type.Object({
           limit: LimitParam(ResourceType.Microblock, 'Limit', 'Max number of microblocks to fetch'),

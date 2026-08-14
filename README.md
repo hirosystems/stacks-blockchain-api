@@ -349,10 +349,6 @@ Please read the [Code of Conduct](../../../.github/blob/main/CODE_OF_CONDUCT.md)
 
 Report bugs and request features via the [GitHub issue tracker](https://github.com/hirosystems/stacks-blockchain-api/issues/new). Include reproduction steps and as much context as possible.
 
-### Pull Requests
-
-Pull requests should target the `develop` branch, not `master`.
-
 ## Community
 
 - [Discord](https://discord.gg/ZQR6cyZC) — chat with other developers and the Hiro team

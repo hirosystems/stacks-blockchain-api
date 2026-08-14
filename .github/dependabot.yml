@@ -3,7 +3,7 @@ updates:
 
   # Maintain dependencies for GitHub Actions
   - package-ecosystem: "github-actions"
-    target-branch: "master"
+    target-branch: "main"
     directory: "/"
     schedule:
       interval: "daily"
@@ -13,7 +13,7 @@ updates:
 
   # Maintain dependencies for npm
   - package-ecosystem: "npm"
-    target-branch: "master"
+    target-branch: "main"
     directory: "/"
     schedule:
       interval: "daily"
