@@ -1653,10 +1653,16 @@ export class PgStoreV3 extends BasePgStoreModule {
   /**
    * Gets the signer set of the current PoX cycle (the latest canonical cycle with a computed reward
    * set) joined with the signer manager key bindings that were effective when the cycle's reward
-   * set was calculated. A binding (register/grant/revoke) is effective for the cycle if it landed
+   * set was calculated.
+   *
+   * A manager's key binding lives in the contract's `signers` map, written only by
+   * `register-signer`, so a binding is effective for the cycle if its `register-signer` landed
    * strictly before the cycle's anchor block, which encodes the contract rule that key changes made
-   * before the prepare phase apply next cycle and later ones the cycle after. Bindings made at or
-   * after the anchor surface as pending key updates (effective next cycle).
+   * before the prepare phase apply next cycle and later ones the cycle after. Registrations made at
+   * or after the anchor surface as pending key updates (effective next cycle). `grant-signer-key` /
+   * `revoke-signer-grant` only maintain the `(key, manager)` authorization map — a grant authorizes
+   * a future registration but rotates nothing by itself — so live grants are surfaced separately
+   * per manager as `granted_keys`.
    *
    * Keyset-paginated by weight descending, then signing key ascending, with the signing key as the
    * cursor.
@@ -1694,55 +1700,38 @@ export class PgStoreV3 extends BasePgStoreModule {
           )`
         : sql``;
 
-      // A manager's binding for the cycle is its latest register/grant strictly before the anchor,
-      // dropped if that same (manager, key) pair was revoked afterwards (still before the anchor).
-      // Registers and grants overwrite each other (a manager holds one current key); revoking a
-      // superseded key is a no-op. Pending bindings apply the same rule to the post-anchor window.
+      // A manager's binding for the cycle is its latest register-signer strictly before the anchor:
+      // registrations overwrite each other (the contract's signers map is keyed by principal) and
+      // there is no unregister, so revokes never participate. A post-anchor registration is a
+      // pending key update. Grants/revokes only maintain the (key, manager) authorization map: the
+      // latest grant/revoke per pair decides whether the grant is live.
       const resultQuery = await sql<(DbCycleSigner & { total: number })[]>`
-        WITH latest_bindings AS (
+        WITH effective_bindings AS (
           SELECT DISTINCT ON (signer_manager)
-            signer_manager, signer_key, auth_id::text AS auth_id,
-            block_height, microblock_sequence, tx_index, event_index,
-            burn_block_height, tx_id
+            signer_manager, signer_key, block_height, burn_block_height, tx_id
           FROM signer_key_grants
           WHERE canonical = TRUE AND microblock_canonical = TRUE
             AND block_height < ${anchorHeight}
-            AND kind IN (${DbSignerKeyGrantKind.Register}, ${DbSignerKeyGrantKind.Grant})
-          ORDER BY signer_manager,
-            block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
-        ), effective_bindings AS (
-          SELECT lb.* FROM latest_bindings lb
-          WHERE NOT EXISTS (
-            SELECT 1 FROM signer_key_grants r
-            WHERE r.canonical = TRUE AND r.microblock_canonical = TRUE
-              AND r.kind = ${DbSignerKeyGrantKind.Revoke}
-              AND r.signer_manager = lb.signer_manager
-              AND r.signer_key = lb.signer_key
-              AND r.block_height < ${anchorHeight}
-              AND (r.block_height, r.microblock_sequence, r.tx_index, r.event_index)
-                > (lb.block_height, lb.microblock_sequence, lb.tx_index, lb.event_index)
-          )
-        ), pending_candidates AS (
-          SELECT DISTINCT ON (signer_manager)
-            signer_manager, signer_key, tx_id,
-            block_height, microblock_sequence, tx_index, event_index
-          FROM signer_key_grants
-          WHERE canonical = TRUE AND microblock_canonical = TRUE
-            AND block_height >= ${anchorHeight}
-            AND kind IN (${DbSignerKeyGrantKind.Register}, ${DbSignerKeyGrantKind.Grant})
+            AND kind = ${DbSignerKeyGrantKind.Register}
           ORDER BY signer_manager,
             block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
         ), pending_bindings AS (
-          SELECT pc.* FROM pending_candidates pc
-          WHERE NOT EXISTS (
-            SELECT 1 FROM signer_key_grants r
-            WHERE r.canonical = TRUE AND r.microblock_canonical = TRUE
-              AND r.kind = ${DbSignerKeyGrantKind.Revoke}
-              AND r.signer_manager = pc.signer_manager
-              AND r.signer_key = pc.signer_key
-              AND (r.block_height, r.microblock_sequence, r.tx_index, r.event_index)
-                > (pc.block_height, pc.microblock_sequence, pc.tx_index, pc.event_index)
-          )
+          SELECT DISTINCT ON (signer_manager)
+            signer_manager, signer_key, tx_id
+          FROM signer_key_grants
+          WHERE canonical = TRUE AND microblock_canonical = TRUE
+            AND block_height >= ${anchorHeight}
+            AND kind = ${DbSignerKeyGrantKind.Register}
+          ORDER BY signer_manager,
+            block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
+        ), live_grants AS (
+          SELECT DISTINCT ON (signer_manager, signer_key)
+            signer_manager, signer_key, kind, auth_id::text AS auth_id, tx_id
+          FROM signer_key_grants
+          WHERE canonical = TRUE AND microblock_canonical = TRUE
+            AND kind IN (${DbSignerKeyGrantKind.Grant}, ${DbSignerKeyGrantKind.Revoke})
+          ORDER BY signer_manager, signer_key,
+            block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
         ), cursor_row AS (
           SELECT weight FROM pox_sets
           WHERE canonical = TRUE
@@ -1763,10 +1752,19 @@ export class PgStoreV3 extends BasePgStoreModule {
           COALESCE((
             SELECT json_agg(json_build_object(
               'signer_manager', eb.signer_manager,
-              'auth_id', eb.auth_id,
               'block_height', eb.block_height,
               'burn_block_height', eb.burn_block_height,
               'tx_id', concat('0x', encode(eb.tx_id, 'hex')),
+              'granted_keys', COALESCE((
+                SELECT json_agg(json_build_object(
+                  'signer_key', concat('0x', encode(lg.signer_key, 'hex')),
+                  'auth_id', lg.auth_id,
+                  'tx_id', concat('0x', encode(lg.tx_id, 'hex'))
+                ) ORDER BY lg.signer_key)
+                FROM live_grants lg
+                WHERE lg.signer_manager = eb.signer_manager
+                  AND lg.kind = ${DbSignerKeyGrantKind.Grant}
+              ), '[]'::json),
               'pending_signer_key',
                 CASE WHEN pb.signer_key IS NOT NULL AND pb.signer_key != ps.signing_key
                   THEN concat('0x', encode(pb.signer_key, 'hex'))
@@ -1920,9 +1918,9 @@ export class PgStoreV3 extends BasePgStoreModule {
 
   /**
    * Lists the stakers that belong to a signer, unioned across pox-5 STX staking
-   * (`stx_locked_balances.signer`, active locks) and bond staking
-   * (`bond_registrations.signer`), deduplicated by staker with a flag per
-   * staking type. Keyset-paginated by staker principal ascending.
+   * (`stx_locked_balances.signer`, active locks) and bond staking (`bond_registrations.signer`),
+   * deduplicated by staker with a flag per staking type. Keyset-paginated by staker principal
+   * ascending.
    * @param args - The arguments for the query.
    * @returns The signer's stakers.
    */

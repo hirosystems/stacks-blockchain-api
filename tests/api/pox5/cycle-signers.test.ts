@@ -124,8 +124,8 @@ describe('pox-5 cycle signers', () => {
     assert.equal(res.status, 400, res.text);
   });
 
-  test('cycle signers with effective, revoked, multi-manager, and pending bindings', async () => {
-    // Bindings before the anchor block (effective for the cycle):
+  test('cycle signers with registered, granted, revoked, and pending keys', async () => {
+    // Registrations before the anchor block (effective bindings for the cycle):
     // 1: MANAGER_A registers KEY1.
     await db.update(
       bindingBlock({
@@ -134,12 +134,12 @@ describe('pox-5 cycle signers', () => {
         data: { signer: MANAGER_A, signer_key: KEY1 },
       })
     );
-    // 2: KEY1 is also granted to MANAGER_B (multi-manager key).
+    // 2: MANAGER_B also registers KEY1 (multi-manager key).
     await db.update(
       bindingBlock({
         height: 2,
-        name: Pox5EventName.GrantSignerKey,
-        data: { signer_key: KEY1, signer_manager: MANAGER_B, auth_id: '111' },
+        name: Pox5EventName.RegisterSigner,
+        data: { signer: MANAGER_B, signer_key: KEY1 },
       })
     );
     // 3: MANAGER_C registers KEY2.
@@ -150,7 +150,8 @@ describe('pox-5 cycle signers', () => {
         data: { signer: MANAGER_C, signer_key: KEY2 },
       })
     );
-    // 4: KEY2 granted to MANAGER_D, 5: then revoked (pair inactive for the cycle).
+    // 4: KEY2 granted to MANAGER_D, 5: then revoked. D never registers, so it is
+    // not a binding either way and the revoked grant is not live.
     await db.update(
       bindingBlock({
         height: 4,
@@ -165,7 +166,8 @@ describe('pox-5 cycle signers', () => {
         data: { signer_key: KEY2, signer_manager: MANAGER_D },
       })
     );
-    // 6: KEY9 granted to MANAGER_E — key not in the reward set, no effect.
+    // 6: KEY9 granted to MANAGER_E — a grant alone binds nothing, and E never
+    // registers, so E must not appear as a manager anywhere.
     await db.update(
       bindingBlock({
         height: 6,
@@ -173,8 +175,16 @@ describe('pox-5 cycle signers', () => {
         data: { signer_key: KEY9, signer_manager: MANAGER_E, auth_id: '333' },
       })
     );
+    // 7: KEY5 granted to MANAGER_A — a live authorization A may register later.
+    await db.update(
+      bindingBlock({
+        height: 7,
+        name: Pox5EventName.GrantSignerKey,
+        data: { signer_key: KEY5, signer_manager: MANAGER_A, auth_id: '444' },
+      })
+    );
     // Fill the chain up to the anchor.
-    for (const height of [7, 8, 9]) {
+    for (const height of [8, 9]) {
       await db.update(
         new TestBlockBuilder({
           block_height: height,
@@ -195,16 +205,17 @@ describe('pox-5 cycle signers', () => {
       { key: KEY4, weight: 1, stacked: '100000000000' },
     ]);
 
-    // Bindings at/after the anchor (pending, effective next cycle):
-    // 10: MANAGER_A rotates to KEY5.
+    // Events at/after the anchor:
+    // 10: MANAGER_A registers KEY5 — a pending key update, effective next cycle.
     await db.update(
       bindingBlock({
         height: 10,
-        name: Pox5EventName.GrantSignerKey,
-        data: { signer_key: KEY5, signer_manager: MANAGER_A, auth_id: '444' },
+        name: Pox5EventName.RegisterSigner,
+        data: { signer: MANAGER_A, signer_key: KEY5 },
       })
     );
-    // 11: MANAGER_B's grant on KEY1 is revoked — does not affect the current cycle.
+    // 11: a revoke aimed at MANAGER_B's key — revokes only end grants and never
+    // unbind a registration, so B's binding is unaffected.
     await db.update(
       bindingBlock({
         height: 11,
@@ -212,7 +223,8 @@ describe('pox-5 cycle signers', () => {
         data: { signer_key: KEY1, signer_manager: MANAGER_B },
       })
     );
-    // 12/13: MANAGER_C starts a rotation to KEY6 but revokes it — no pending update.
+    // 12/13: MANAGER_C receives a grant for KEY6 but it gets revoked — not a
+    // live authorization, and never a pending update (only registrations are).
     await db.update(
       bindingBlock({
         height: 12,
@@ -247,29 +259,35 @@ describe('pox-5 cycle signers', () => {
       [MANAGER_B, MANAGER_A]
     );
     const [entryB, entryA] = signer1.signer_managers;
-    // MANAGER_A's binding came from register-signer (no auth id) and has a
-    // pending rotation to KEY5, effective next cycle.
-    assert.equal(entryA.auth_id, null);
-    assert.equal(entryA.granted_at.block_height, 1);
-    assert.equal(entryA.granted_at.tx_id, txId(1));
+    // MANAGER_A holds a live authorization for KEY5 and registered it after the
+    // anchor, so the rotation is pending and effective next cycle.
+    assert.equal(entryA.registered_at.block_height, 1);
+    assert.equal(entryA.registered_at.tx_id, txId(1));
+    assert.equal(typeof entryA.registered_at.bitcoin_block_height, 'number');
+    assert.deepEqual(entryA.granted_keys, [
+      { signer_key: KEY5, auth_id: '444', tx_id: txId(7) },
+    ]);
     assert.deepEqual(entryA.pending_key_update, {
       signer_key: KEY5,
       effective_cycle: CYCLE + 1,
       tx_id: txId(10),
     });
-    // MANAGER_B's grant carries its auth id; the post-anchor revoke does not
-    // affect the current cycle and is not a pending key update.
-    assert.equal(entryB.auth_id, '111');
-    assert.equal(entryB.granted_at.block_height, 2);
+    // MANAGER_B has no grants, and the post-anchor revoke neither unbinds its
+    // registration nor creates a pending key update.
+    assert.equal(entryB.registered_at.block_height, 2);
+    assert.deepEqual(entryB.granted_keys, []);
     assert.equal(entryB.pending_key_update, null);
 
-    // KEY2: MANAGER_C active; MANAGER_D's grant was revoked before the anchor.
+    // KEY2: MANAGER_C bound via registration; MANAGER_D only ever held a
+    // (revoked) grant and never registered, so it is not a manager.
     assert.equal(signer2.signing_key, KEY2);
     assert.deepEqual(
       signer2.signer_managers.map((m: { signer_manager: string }) => m.signer_manager),
       [MANAGER_C]
     );
-    // MANAGER_C's post-anchor rotation to KEY6 was revoked, so it is not pending.
+    // MANAGER_C's grant for KEY6 was revoked (not live) and was never
+    // registered (not pending).
+    assert.deepEqual(signer2.signer_managers[0].granted_keys, []);
     assert.equal(signer2.signer_managers[0].pending_key_update, null);
 
     // KEY4 was seeded without bindings (impossible on a real chain) — the
@@ -278,8 +296,8 @@ describe('pox-5 cycle signers', () => {
     assert.deepEqual(signer4.signer_managers, []);
   });
 
-  test('bindings after a newer cycle anchor stop being pending for it', async () => {
-    // MANAGER_A registers KEY1 before cycle 100's anchor, then rotates to KEY5
+  test('registrations after a newer cycle anchor stop being pending for it', async () => {
+    // MANAGER_A registers KEY1 before cycle 100's anchor, then registers KEY5
     // before cycle 101's anchor. For current cycle 101, KEY5 is effective (not
     // pending) and matches the new reward set entry.
     await db.update(
@@ -293,8 +311,8 @@ describe('pox-5 cycle signers', () => {
     await db.update(
       bindingBlock({
         height: 2,
-        name: Pox5EventName.GrantSignerKey,
-        data: { signer_key: KEY5, signer_manager: MANAGER_A, auth_id: '555' },
+        name: Pox5EventName.RegisterSigner,
+        data: { signer: MANAGER_A, signer_key: KEY5 },
       })
     );
     await seedCycle(CYCLE + 1, 3, [{ key: KEY5, weight: 1, stacked: '100000000000' }]);
@@ -307,12 +325,13 @@ describe('pox-5 cycle signers', () => {
     assert.equal(signer.signing_key, KEY5);
     assert.equal(signer.signer_managers.length, 1);
     assert.equal(signer.signer_managers[0].signer_manager, MANAGER_A);
-    assert.equal(signer.signer_managers[0].auth_id, '555');
+    assert.equal(signer.signer_managers[0].registered_at.block_height, 2);
     assert.equal(signer.signer_managers[0].pending_key_update, null);
   });
 
-  test('grants supersede registers, and revokes do not resurrect older keys', async () => {
-    // MANAGER_A registers KEY1 then grants itself KEY2 — only KEY2 is bound.
+  test('registrations overwrite each other; grants and revokes never change bindings', async () => {
+    // MANAGER_A registers KEY1 then registers KEY2 — the signers map is keyed
+    // by principal, so only KEY2 is bound.
     await db.update(
       bindingBlock({
         height: 1,
@@ -323,12 +342,13 @@ describe('pox-5 cycle signers', () => {
     await db.update(
       bindingBlock({
         height: 2,
-        name: Pox5EventName.GrantSignerKey,
-        data: { signer_key: KEY2, signer_manager: MANAGER_A, auth_id: '777' },
+        name: Pox5EventName.RegisterSigner,
+        data: { signer: MANAGER_A, signer_key: KEY2 },
       })
     );
-    // MANAGER_C registers KEY9, rotates to KEY4, then revokes KEY4 — fully
-    // unbound; the revoke does not resurrect the superseded KEY9 binding.
+    // MANAGER_C registers KEY9, then receives and loses a grant for KEY4 — its
+    // KEY9 registration stays bound throughout (grants rotate nothing, and
+    // revokes never unbind a registration).
     await db.update(
       bindingBlock({
         height: 3,
@@ -366,9 +386,9 @@ describe('pox-5 cycle signers', () => {
       ])
     );
     assert.deepEqual(managersByKey, {
-      [KEY1]: [], // superseded by MANAGER_A's grant of KEY2
+      [KEY1]: [], // overwritten by MANAGER_A's registration of KEY2
       [KEY2]: [MANAGER_A],
-      [KEY9]: [], // superseded by KEY4, whose revoke does not resurrect it
+      [KEY9]: [MANAGER_C], // untouched by the KEY4 grant/revoke
     });
   });
 

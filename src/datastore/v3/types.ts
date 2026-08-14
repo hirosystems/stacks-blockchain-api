@@ -262,22 +262,31 @@ export interface DbStakingSignerDetail extends DbStakingSigner {
   burn_block_time: number;
 }
 
-/** A signer manager key binding active for a cycle's signing key. */
+/** A live `grant-signer-key` authorization held by a signer manager. */
+export interface DbSignerKeyGrant {
+  /** The granted signing key as a `0x`-prefixed hex string. */
+  signer_key: string;
+  /** The grant's auth id as a decimal string. */
+  auth_id: string;
+  /** The grant event's tx id as a `0x`-prefixed hex string. */
+  tx_id: string;
+}
+
 export interface DbCycleSignerManager {
   signer_manager: string;
-  /** The grant's auth id as a decimal string; null for `register-signer` bindings. */
-  auth_id: string | null;
-  /** Block position of the binding event. */
+  /** Block position of the `register-signer` event that bound this key. */
   block_height: number;
   burn_block_height: number;
-  /** The binding event's tx id as a `0x`-prefixed hex string. */
+  /** The registration tx id as a `0x`-prefixed hex string. */
   tx_id: string;
+  /** The manager's live key grants (authorizations that may later be registered). */
+  granted_keys: DbSignerKeyGrant[];
   /**
-   * The manager's latest key binding made after the cycle's anchor block, when it differs from the
+   * The manager's latest key registered after the cycle's anchor block, when it differs from the
    * cycle's signing key (i.e. a pending key rotation).
    */
   pending_signer_key: string | null;
-  /** The tx of the pending key binding; set iff `pending_signer_key` is set. */
+  /** The tx of the pending key registration; set iff `pending_signer_key` is set. */
   pending_tx_id: string | null;
 }
 

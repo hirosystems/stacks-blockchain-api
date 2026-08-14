@@ -2,33 +2,49 @@ import { Static, Type } from '@sinclair/typebox';
 import { Nullable } from '../../v1/util.js';
 import { PrincipalSchema, TransactionIdSchema } from './common.js';
 
-/** A signer manager contract whose key binding is effective for the cycle. */
+/** A live `grant-signer-key` authorization held by a signer manager. */
+export const SignerKeyGrantSchema = Type.Object(
+  {
+    signer_key: Type.String({
+      description: 'The granted signing key, as a `0x`-prefixed hex string',
+    }),
+    auth_id: Type.String({
+      description: "The grant's auth id as a decimal string",
+    }),
+    tx_id: TransactionIdSchema,
+  },
+  { title: 'SignerKeyGrant' }
+);
+export type SignerKeyGrant = Static<typeof SignerKeyGrantSchema>;
+
+/** A signer manager contract whose registered key is effective for the cycle. */
 export const CycleSignerManagerSchema = Type.Object(
   {
     signer_manager: PrincipalSchema,
-    auth_id: Nullable(
-      Type.String({
-        description:
-          "The grant's auth id as a decimal string; null when the binding came from `register-signer` instead of `grant-signer-key`.",
-      })
-    ),
-    granted_at: Type.Object(
+    registered_at: Type.Object(
       {
         block_height: Type.Integer({
-          description: 'Stacks block height of the binding event',
+          description: 'Stacks block height of the `register-signer` event',
         }),
-        burn_block_height: Type.Integer({
-          description: 'Burn block height of the binding event',
+        bitcoin_block_height: Type.Integer({
+          description: 'Bitcoin block height of the `register-signer` event',
         }),
         tx_id: TransactionIdSchema,
       },
-      { description: 'The position of the event that bound this key to the manager.' }
+      {
+        description:
+          'The position of the `register-signer` event that bound this key to the manager.',
+      }
     ),
+    granted_keys: Type.Array(SignerKeyGrantSchema, {
+      description:
+        "The manager's live `grant-signer-key` authorizations (granted and not revoked). A grant authorizes a future `register-signer` for that key but does not rotate the key by itself.",
+    }),
     pending_key_update: Nullable(
       Type.Object(
         {
           signer_key: Type.String({
-            description: 'The newly bound signing key, as a `0x`-prefixed hex string',
+            description: 'The newly registered signing key, as a `0x`-prefixed hex string',
           }),
           effective_cycle: Type.Integer({
             description: 'The PoX cycle in which the new key takes effect',
@@ -37,7 +53,7 @@ export const CycleSignerManagerSchema = Type.Object(
         },
         {
           description:
-            "The manager's latest key binding made after this cycle's reward set was calculated, when it differs from the cycle's signing key. Takes effect next cycle.",
+            "The manager's latest key registered after this cycle's reward set was calculated, when it differs from the cycle's signing key. Takes effect next cycle.",
         }
       )
     ),
@@ -73,7 +89,7 @@ export const CycleSignerSchema = Type.Object(
     ),
     signer_managers: Type.Array(CycleSignerManagerSchema, {
       description:
-        "The signer manager contracts whose key bindings for this signing key were effective when the cycle's reward set was calculated.",
+        "The signer manager contracts whose registered signing key (via `register-signer`) was this key when the cycle's reward set was calculated.",
     }),
   },
   { title: 'CycleSigner' }

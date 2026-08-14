@@ -14,13 +14,13 @@ export function serializeDbCycleSigner(signer: DbCycleSigner, cycleNumber: numbe
     },
     signer_managers: signer.signer_managers.map(m => ({
       signer_manager: m.signer_manager,
-      auth_id: m.auth_id,
-      granted_at: {
+      registered_at: {
         block_height: m.block_height,
-        burn_block_height: m.burn_block_height,
+        bitcoin_block_height: m.burn_block_height,
         tx_id: m.tx_id,
       },
-      // Bindings made after the cycle's anchor block take effect next cycle.
+      granted_keys: m.granted_keys,
+      // Keys registered after the cycle's anchor block take effect next cycle.
       pending_key_update:
         m.pending_signer_key && m.pending_tx_id
           ? {
