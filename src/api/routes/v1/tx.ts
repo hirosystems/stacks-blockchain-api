@@ -251,7 +251,7 @@ export const TxRoutes: FastifyPluginAsync<
         summary: 'Get mempool transactions',
         description: `Retrieves all transactions that have been recently broadcast to the mempool. These are pending transactions awaiting confirmation.
 
-        If you need to monitor new transactions, we highly recommend subscribing to [WebSockets or Socket.io](https://github.com/hirosystems/stacks-blockchain-api/tree/master/client) for real-time updates.
+        If you need to monitor new transactions, we highly recommend subscribing to [WebSockets or Socket.io](https://github.com/hirosystems/stacks-blockchain-api/tree/main/client) for real-time updates.
 
         **Deprecated:** use \`GET /extended/v3/mempool/transactions\` instead.`,
         tags: ['Transactions'],

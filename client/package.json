@@ -3,7 +3,7 @@
   "version": "9.0.2",
   "access": "public",
   "description": "Client for the Stacks Blockchain API",
-  "homepage": "https://github.com/stx-labs/stacks-blockchain-api/tree/master/client#readme",
+  "homepage": "https://github.com/stx-labs/stacks-blockchain-api/tree/main/client#readme",
   "author": "Stacks Labs",
   "license": "GPL-3.0",
   "repository": {

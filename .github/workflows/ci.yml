@@ -3,8 +3,7 @@ name: CI
 on:
   push:
     branches:
-      - master
-      - develop
+      - main
       - beta
       - next
     tags-ignore:
@@ -73,18 +72,6 @@ jobs:
             api:v2-proxy,
             api:v3,
             api:pox5,
-            # krypton:bns-e2e,
-            # krypton:faucet-btc,
-            # krypton:faucet-sbtc,
-            # krypton:faucet-stx,
-            # krypton:pox-4-btc-address-formats,
-            # krypton:pox-4-burnchain-delegate-stx,
-            # krypton:pox-4-burnchain-stack-stx,
-            # krypton:pox-4-delegate-aggregation,
-            # krypton:pox-4-delegate-revoked-stacking,
-            # krypton:pox-4-delegate-stacking,
-            # krypton:pox-4-stack-extend-increase,
-            # krypton:rpc,
             snp,
           ]
     runs-on: ubuntu-latest
@@ -192,7 +179,7 @@ jobs:
         uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
         with:
           context: .
-          platforms: ${{ github.ref == 'refs/heads/master' && 'linux/amd64,linux/arm64' || 'linux/amd64' }}
+          platforms: ${{ github.ref == 'refs/heads/main' && 'linux/amd64,linux/arm64' || 'linux/amd64' }}
           tags: ${{ steps.docker_meta.outputs.tags }}
           labels: ${{ steps.docker_meta.outputs.labels }}
           # Only push on non-PR events, or PRs that aren't from forks
