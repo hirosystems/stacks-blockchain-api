@@ -1717,6 +1717,13 @@ export class PgStoreV3 extends BasePgStoreModule {
       // there is no unregister, so revokes never participate. A post-anchor registration is a
       // pending key update. Grants/revokes only maintain the (key, manager) authorization map: the
       // latest grant/revoke per pair decides whether the grant is live.
+      //
+      // Deliberate trade-off: the CTEs resolve bindings for ALL managers once per request rather
+      // than only the page's — per-manager-latest semantics need each manager's full registration
+      // history, key rotation events are rare (the CTE inputs stay small indefinitely), and the
+      // chain-tip cache absorbs repeat hits. If `signer_key_grants` ever grows large, scope the
+      // scans per page row: candidate managers by `signer_key` index probe, then verify each
+      // candidate's latest registration via the `signer_manager` index.
       const resultQuery = await sql<(DbCycleSigner & { total: number })[]>`
         WITH effective_bindings AS (
           SELECT DISTINCT ON (signer_manager)
