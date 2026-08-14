@@ -10,7 +10,7 @@ import {
 } from '../../schemas/v3/cursors.js';
 import { CycleSignerSchema } from '../../schemas/v3/entities/staking-cycles.js';
 import { serializeDbCycleSigner } from '../../serializers/v3/staking-cycles.js';
-import { NotFoundError } from '../../../errors.js';
+import { InvalidRequestError, NotFoundError } from '../../../errors.js';
 
 export const StakingCyclesRoutes: FastifyPluginAsync<
   Record<never, never>,
@@ -44,23 +44,30 @@ export const StakingCyclesRoutes: FastifyPluginAsync<
       },
     },
     async (req, reply) => {
-      const results = await fastify.db.v3.getCurrentCycleSigners({
-        limit: req.query.limit ?? getPagingQueryLimit(ResourceType.Signer),
-        cursor: req.query.cursor,
-      });
-      if (!results) {
-        throw new NotFoundError('No PoX cycles found');
+      try {
+        const results = await fastify.db.v3.getCurrentCycleSigners({
+          limit: req.query.limit ?? getPagingQueryLimit(ResourceType.Signer),
+          cursor: req.query.cursor,
+        });
+        if (!results) {
+          throw new NotFoundError('No PoX cycles found');
+        }
+        await reply.send({
+          limit: results.limit,
+          total: results.total,
+          cursor: {
+            next: results.next_cursor,
+            previous: results.prev_cursor,
+            current: results.current_cursor,
+          },
+          results: results.results.map(r => serializeDbCycleSigner(r, results.cycle_number)),
+        });
+      } catch (error) {
+        if (error instanceof InvalidRequestError) {
+          throw new NotFoundError('Cursor not found');
+        }
+        throw error;
       }
-      await reply.send({
-        limit: results.limit,
-        total: results.total,
-        cursor: {
-          next: results.next_cursor,
-          previous: results.prev_cursor,
-          current: results.current_cursor,
-        },
-        results: results.results.map(r => serializeDbCycleSigner(r, results.cycle_number)),
-      });
     }
   );
 

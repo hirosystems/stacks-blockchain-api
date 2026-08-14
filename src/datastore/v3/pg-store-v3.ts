@@ -1690,13 +1690,25 @@ export class PgStoreV3 extends BasePgStoreModule {
           : '0x' + args.cursor
         : undefined;
 
-      // Keyset filter: rows at or after the cursor row in (weight DESC, signing_key ASC) order. An
-      // unknown cursor key yields an empty page.
+      // Keyset filter: rows at or after the cursor row in (weight DESC, signing_key ASC) order.
+      // The cursor must be one of the cycle's signing keys — otherwise its weight is unknowable
+      // and the page would be silently empty.
+      let cursorWeight: number | undefined;
+      if (cursor) {
+        const [cursorRow] = await sql<{ weight: number }[]>`
+          SELECT weight FROM pox_sets
+          WHERE canonical = TRUE AND cycle_number = ${cycleNumber} AND signing_key = ${cursor}
+          LIMIT 1
+        `;
+        if (!cursorRow)
+          throw new InvalidRequestError('Cursor not found', InvalidRequestErrorType.invalid_param);
+        cursorWeight = cursorRow.weight;
+      }
       const cursorFilter = cursor
         ? sql`
           AND (
-            ps.weight < (SELECT weight FROM cursor_row)
-            OR (ps.weight = (SELECT weight FROM cursor_row) AND ps.signing_key >= ${cursor})
+            ps.weight < ${cursorWeight}
+            OR (ps.weight = ${cursorWeight} AND ps.signing_key >= ${cursor})
           )`
         : sql``;
 
@@ -1732,12 +1744,6 @@ export class PgStoreV3 extends BasePgStoreModule {
             AND kind IN (${DbSignerKeyGrantKind.Grant}, ${DbSignerKeyGrantKind.Revoke})
           ORDER BY signer_manager, signer_key,
             block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
-        ), cursor_row AS (
-          SELECT weight FROM pox_sets
-          WHERE canonical = TRUE
-            AND cycle_number = ${cycleNumber}
-            AND signing_key = ${cursor ?? null}
-          LIMIT 1
         )
         SELECT
           ps.signing_key,

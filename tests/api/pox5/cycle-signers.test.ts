@@ -438,5 +438,10 @@ describe('pox-5 cycle signers', () => {
       JSON.parse(page2b.text).results.map((r: { signing_key: string }) => r.signing_key),
       [KEY4]
     );
+
+    // A well-formed cursor that is not one of the cycle's signing keys is a 404,
+    // not a silently empty page.
+    const unknown = await getCycleSigners({ limit: '2', cursor: KEY5 });
+    assert.equal(unknown.status, 404, unknown.text);
   });
 });
