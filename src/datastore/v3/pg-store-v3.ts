@@ -1,4 +1,4 @@
-import { BasePgStoreModule } from '@stacks/api-toolkit';
+import { BasePgStoreModule, has0xPrefix } from '@stacks/api-toolkit';
 import {
   DbBond,
   DbBondAllowlistEntry,
@@ -6,6 +6,7 @@ import {
   DbBondRegistrationSummary,
   DbBondSummary,
   DbCursorPaginatedResult,
+  DbCycleSigner,
   DbMempoolTransaction,
   DbMempoolTransactionSummary,
   DbPrincipalBondPosition,
@@ -59,7 +60,7 @@ import {
   parseNftBalanceCursor,
   resolveTransactionCursor,
 } from './helpers.js';
-import { DbEventTypeId } from '../common.js';
+import { DbEventTypeId, DbSignerKeyGrantKind } from '../common.js';
 
 export class PgStoreV3 extends BasePgStoreModule {
   /**
@@ -1650,6 +1651,199 @@ export class PgStoreV3 extends BasePgStoreModule {
   }
 
   /**
+   * Gets the signer set of the current PoX cycle (the latest canonical cycle with a computed reward
+   * set) joined with the signer manager key bindings that were effective when the cycle's reward
+   * set was calculated.
+   *
+   * A manager's key binding lives in the contract's `signers` map, written only by
+   * `register-signer`, so a binding is effective for the cycle if its `register-signer` landed
+   * strictly before the cycle's anchor block, which encodes the contract rule that key changes made
+   * before the prepare phase apply next cycle and later ones the cycle after. Registrations made at
+   * or after the anchor surface as pending key updates (effective next cycle). `grant-signer-key` /
+   * `revoke-signer-grant` only maintain the `(key, manager)` authorization map — a grant authorizes
+   * a future registration but rotates nothing by itself — so live grants are surfaced separately
+   * per manager as `granted_keys`.
+   *
+   * Keyset-paginated by weight descending, then signing key ascending, with the signing key as the
+   * cursor.
+   * @param args - The arguments for the query.
+   * @returns The cycle's signers, or null if no PoX cycle exists yet.
+   */
+  async getCurrentCycleSigners(args: {
+    limit: number;
+    cursor?: string;
+  }): Promise<(DbCursorPaginatedResult<DbCycleSigner> & { cycle_number: number }) | null> {
+    return await this.sqlTransaction(async sql => {
+      const [cycle] = await sql<{ cycle_number: number; block_height: number }[]>`
+        SELECT cycle_number, block_height
+        FROM pox_cycles
+        WHERE canonical = TRUE
+        ORDER BY cycle_number DESC
+        LIMIT 1
+      `;
+      if (!cycle) return null;
+      const cycleNumber = cycle.cycle_number;
+      const anchorHeight = cycle.block_height;
+      const cursor = args.cursor
+        ? has0xPrefix(args.cursor)
+          ? args.cursor
+          : '0x' + args.cursor
+        : undefined;
+
+      // Keyset filter: rows at or after the cursor row in (weight DESC, signing_key ASC) order.
+      // The cursor must be one of the cycle's signing keys — otherwise its weight is unknowable
+      // and the page would be silently empty.
+      let cursorWeight: number | undefined;
+      if (cursor) {
+        const [cursorRow] = await sql<{ weight: number }[]>`
+          SELECT weight FROM pox_sets
+          WHERE canonical = TRUE AND cycle_number = ${cycleNumber} AND signing_key = ${cursor}
+          LIMIT 1
+        `;
+        if (!cursorRow)
+          throw new InvalidRequestError('Cursor not found', InvalidRequestErrorType.invalid_param);
+        cursorWeight = cursorRow.weight;
+      }
+      const cursorFilter = cursor
+        ? sql`
+          AND (
+            ps.weight < ${cursorWeight}
+            OR (ps.weight = ${cursorWeight} AND ps.signing_key >= ${cursor})
+          )`
+        : sql``;
+
+      // A manager's binding for the cycle is its latest register-signer strictly before the anchor:
+      // registrations overwrite each other (the contract's signers map is keyed by principal) and
+      // there is no unregister, so revokes never participate. A post-anchor registration is a
+      // pending key update. Grants/revokes only maintain the (key, manager) authorization map: the
+      // latest grant/revoke per pair decides whether the grant is live.
+      //
+      // Deliberate trade-off: the CTEs resolve bindings for ALL managers once per request rather
+      // than only the page's — per-manager-latest semantics need each manager's full registration
+      // history, key rotation events are rare (the CTE inputs stay small indefinitely), and the
+      // chain-tip cache absorbs repeat hits. If `signer_key_grants` ever grows large, scope the
+      // scans per page row: candidate managers by `signer_key` index probe, then verify each
+      // candidate's latest registration via the `signer_manager` index.
+      const resultQuery = await sql<(DbCycleSigner & { total: number })[]>`
+        WITH effective_bindings AS (
+          SELECT DISTINCT ON (signer_manager)
+            signer_manager, signer_key, block_height, burn_block_height, tx_id
+          FROM signer_key_grants
+          WHERE canonical = TRUE AND microblock_canonical = TRUE
+            AND block_height < ${anchorHeight}
+            AND kind = ${DbSignerKeyGrantKind.Register}
+          ORDER BY signer_manager,
+            block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
+        ), pending_bindings AS (
+          SELECT DISTINCT ON (signer_manager)
+            signer_manager, signer_key, tx_id
+          FROM signer_key_grants
+          WHERE canonical = TRUE AND microblock_canonical = TRUE
+            AND block_height >= ${anchorHeight}
+            AND kind = ${DbSignerKeyGrantKind.Register}
+          ORDER BY signer_manager,
+            block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
+        ), live_grants AS (
+          SELECT DISTINCT ON (signer_manager, signer_key)
+            signer_manager, signer_key, kind, auth_id::text AS auth_id, tx_id
+          FROM signer_key_grants
+          WHERE canonical = TRUE AND microblock_canonical = TRUE
+            AND kind IN (${DbSignerKeyGrantKind.Grant}, ${DbSignerKeyGrantKind.Revoke})
+          ORDER BY signer_manager, signer_key,
+            block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
+        )
+        SELECT
+          ps.signing_key,
+          ps.weight,
+          ps.stacked_amount,
+          ps.weight_percent,
+          ps.stacked_amount_percent,
+          (
+            SELECT COUNT(*)::int FROM pox_sets
+            WHERE canonical = TRUE AND cycle_number = ${cycleNumber}
+          ) AS total,
+          COALESCE((
+            SELECT json_agg(json_build_object(
+              'signer_manager', eb.signer_manager,
+              'block_height', eb.block_height,
+              'burn_block_height', eb.burn_block_height,
+              'tx_id', concat('0x', encode(eb.tx_id, 'hex')),
+              'granted_keys', COALESCE((
+                SELECT json_agg(json_build_object(
+                  'signer_key', concat('0x', encode(lg.signer_key, 'hex')),
+                  'auth_id', lg.auth_id,
+                  'tx_id', concat('0x', encode(lg.tx_id, 'hex'))
+                ) ORDER BY lg.signer_key)
+                FROM live_grants lg
+                WHERE lg.signer_manager = eb.signer_manager
+                  AND lg.kind = ${DbSignerKeyGrantKind.Grant}
+              ), '[]'::json),
+              'pending_signer_key',
+                CASE WHEN pb.signer_key IS NOT NULL AND pb.signer_key != ps.signing_key
+                  THEN concat('0x', encode(pb.signer_key, 'hex'))
+                END,
+              'pending_tx_id',
+                CASE WHEN pb.signer_key IS NOT NULL AND pb.signer_key != ps.signing_key
+                  THEN concat('0x', encode(pb.tx_id, 'hex'))
+                END
+            ) ORDER BY eb.signer_manager)
+            FROM effective_bindings eb
+            LEFT JOIN pending_bindings pb ON pb.signer_manager = eb.signer_manager
+            WHERE eb.signer_key = ps.signing_key
+          ), '[]'::json) AS signer_managers
+        FROM pox_sets ps
+        WHERE ps.canonical = TRUE AND ps.cycle_number = ${cycleNumber}
+          ${cursorFilter}
+        ORDER BY ps.weight DESC, ps.signing_key ASC
+        LIMIT ${args.limit + 1}
+      `;
+
+      const hasNextPage = resultQuery.count > args.limit;
+      const results = hasNextPage ? resultQuery.slice(0, args.limit) : [...resultQuery];
+      const total = resultQuery.count > 0 ? resultQuery[0].total : 0;
+
+      const nextResult = resultQuery[resultQuery.length - 1];
+      const nextCursor = hasNextPage && nextResult ? nextResult.signing_key : null;
+      const firstResult = results[0];
+      const currentCursor = firstResult ? firstResult.signing_key : null;
+
+      let prevCursor: string | null = null;
+      if (firstResult) {
+        const prevPageQuery = await sql<{ signing_key: string }[]>`
+          SELECT signing_key FROM pox_sets ps
+          WHERE ps.canonical = TRUE AND ps.cycle_number = ${cycleNumber}
+            AND (
+              ps.weight > ${firstResult.weight}
+              OR (ps.weight = ${firstResult.weight} AND ps.signing_key < ${firstResult.signing_key})
+            )
+          ORDER BY ps.weight ASC, ps.signing_key DESC
+          LIMIT ${args.limit}
+        `;
+        if (prevPageQuery.length > 0) {
+          prevCursor = prevPageQuery[prevPageQuery.length - 1].signing_key;
+        }
+      }
+
+      return {
+        limit: args.limit,
+        next_cursor: nextCursor,
+        prev_cursor: prevCursor,
+        current_cursor: currentCursor,
+        total,
+        cycle_number: cycleNumber,
+        results: results.map(r => ({
+          signing_key: r.signing_key,
+          weight: r.weight,
+          stacked_amount: r.stacked_amount,
+          weight_percent: r.weight_percent,
+          stacked_amount_percent: r.stacked_amount_percent,
+          signer_managers: r.signer_managers,
+        })),
+      };
+    });
+  }
+
+  /**
    * Gets the registered pox-5 staking signers, cursor-paginated by `signer`.
    * @param args - The arguments for the query.
    * @returns The registered signers.
@@ -1737,9 +1931,9 @@ export class PgStoreV3 extends BasePgStoreModule {
 
   /**
    * Lists the stakers that belong to a signer, unioned across pox-5 STX staking
-   * (`stx_locked_balances.signer`, active locks) and bond staking
-   * (`bond_registrations.signer`), deduplicated by staker with a flag per
-   * staking type. Keyset-paginated by staker principal ascending.
+   * (`stx_locked_balances.signer`, active locks) and bond staking (`bond_registrations.signer`),
+   * deduplicated by staker with a flag per staking type. Keyset-paginated by staker principal
+   * ascending.
    * @param args - The arguments for the query.
    * @returns The signer's stakers.
    */

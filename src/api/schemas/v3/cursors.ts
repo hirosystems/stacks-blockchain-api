@@ -99,6 +99,13 @@ export const SignerCursorSchema = Type.String({
 });
 export type SignerCursor = Static<typeof SignerCursorSchema>;
 
+export const SigningKeyCursorSchema = Type.String({
+  pattern: '^(0x)?[0-9a-fA-F]{66}$',
+  description:
+    "Cursor for paginating a cycle's signers (sorted by weight descending, then signing key). Format: signing key",
+});
+export type SigningKeyCursor = Static<typeof SigningKeyCursorSchema>;
+
 export const StakerCursorSchema = Type.String({
   // A Stacks principal: a standard address, optionally followed by a contract name.
   pattern: '^[0123456789ABCDEFGHJKMNPQRSTVWXYZ]{28,41}(\\.[a-zA-Z]([a-zA-Z0-9]|[-_]){0,39})?$',

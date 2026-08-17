@@ -78,6 +78,8 @@ import {
   DbPrincipalBondRewardDistributionInsertValues,
   DbPrincipalBondRewardClaimInsertValues,
   DbPrincipalStxRewardDistributionInsertValues,
+  DbSignerKeyGrantInsertValues,
+  DbSignerKeyGrantKind,
   DbSignerRewardClaimInsertValues,
   PrincipalTxBalanceChangeInsertValues,
 } from './common.js';
@@ -127,9 +129,11 @@ import {
   Pox5EventCalculateRewards,
   Pox5EventClaimRewards,
   Pox5EventClaimStakerRewardsForSigner,
+  Pox5EventGrantSignerKey,
   Pox5EventName,
   Pox5EventRegisterForBond,
   Pox5EventRegisterSigner,
+  Pox5EventRevokeSignerGrant,
   Pox5EventSetupBond,
   Pox5EventStake,
   Pox5EventStakeUpdate,
@@ -613,11 +617,14 @@ export class PgWriteStore extends PgStore {
             break;
           case Pox5EventName.RegisterSigner:
             await this.upsertStakingSigner(sql, txLocation, poxEvent);
+            await this.insertSignerKeyGrant(sql, txLocation, poxEvent);
+            break;
+          case Pox5EventName.GrantSignerKey:
+          case Pox5EventName.RevokeSignerGrant:
+            await this.insertSignerKeyGrant(sql, txLocation, poxEvent);
             break;
           case Pox5EventName.AllowContractCaller:
           case Pox5EventName.DisallowContractCaller:
-          case Pox5EventName.GrantSignerKey:
-          case Pox5EventName.RevokeSignerGrant:
           case Pox5EventName.SetBondAdmin:
             // No-op
             break;
@@ -1172,6 +1179,37 @@ export class PgWriteStore extends PgStore {
         tx_id = EXCLUDED.tx_id,
         block_height = EXCLUDED.block_height,
         burn_block_height = EXCLUDED.burn_block_height
+    `;
+  }
+
+  /**
+   * Append a signer key binding event (pox-5 `register-signer`, `grant-signer-key`, or
+   * `revoke-signer-grant`) to the `signer_key_grants` history. Bindings are resolved against cycle
+   * anchor blocks at read time, so this is a plain insert with no derived state.
+   */
+  private async insertSignerKeyGrant(
+    sql: PgSqlClient,
+    txLocation: DbTxLocation,
+    event: (Pox5EventRegisterSigner | Pox5EventGrantSignerKey | Pox5EventRevokeSignerGrant) & {
+      event_index: number;
+    }
+  ) {
+    const grant: DbSignerKeyGrantInsertValues = {
+      ...txLocation,
+      kind:
+        event.name === Pox5EventName.RegisterSigner
+          ? DbSignerKeyGrantKind.Register
+          : event.name === Pox5EventName.GrantSignerKey
+            ? DbSignerKeyGrantKind.Grant
+            : DbSignerKeyGrantKind.Revoke,
+      signer_manager:
+        'signer_manager' in event.data ? event.data.signer_manager : event.data.signer,
+      signer_key: event.data.signer_key,
+      auth_id: 'auth_id' in event.data ? event.data.auth_id : null,
+      event_index: event.event_index,
+    };
+    await sql`
+      INSERT INTO signer_key_grants ${sql(grant)}
     `;
   }
 
@@ -4746,6 +4784,7 @@ export class PgWriteStore extends PgStore {
       'bond_reward_distributions',
       'bond_reward_calculations',
       'signer_reward_claims',
+      'signer_key_grants',
     ]) {
       q.enqueue(async () => {
         await sql`
