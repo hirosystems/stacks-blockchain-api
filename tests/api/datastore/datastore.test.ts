@@ -4502,6 +4502,7 @@ describe('postgres datastore', () => {
       microblock_sequence: undefined,
       tx_count: 2, // Tx from block 2b does not count
       tx_count_unanchored: 2,
+      stx_supply: '2000', // Coinbase rewards from blocks 1 and 2
     });
     const namespaces = await db.getNamespaceList({ includeUnanchored: false });
     assert.equal(namespaces.results.length, 1);
@@ -4576,6 +4577,7 @@ describe('postgres datastore', () => {
       tx_count: 2,
       tx_count_unanchored: 2,
       mempool_tx_count: 0,
+      stx_supply: '2000',
     });
 
     const block4b: DbBlock = {
@@ -4633,6 +4635,7 @@ describe('postgres datastore', () => {
       tx_count: 2, // Tx from block 2b now counts, but compensates with tx from block 2
       tx_count_unanchored: 2,
       mempool_tx_count: 0,
+      stx_supply: '1000', // Block 2's coinbase reward was orphaned along with the block
     });
 
     const b1 = await db.getBlock({ hash: block1.block_hash });

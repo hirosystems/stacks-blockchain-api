@@ -2015,4 +2015,15 @@ export class PgStoreV3 extends BasePgStoreModule {
       };
     });
   }
+
+  /**
+   * Gets the total liquid STX supply in µSTX, materialized on `chain_tip` by the write path
+   * (mints − burns + matured miner coinbase rewards).
+   */
+  async getStxSupply(): Promise<{ stx_supply: string }> {
+    const result = await this.sql<{ stx_supply: string }[]>`
+      SELECT stx_supply::text FROM chain_tip
+    `;
+    return { stx_supply: result[0]?.stx_supply ?? '0' };
+  }
 }
