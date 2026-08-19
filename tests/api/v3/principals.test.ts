@@ -5,7 +5,7 @@ import { migrate } from '../../test-helpers.ts';
 import { STACKS_TESTNET } from '@stacks/network';
 import * as assert from 'node:assert/strict';
 import { TestBlockBuilder, testMempoolTx } from '../test-builders.ts';
-import { DbTxStatus, DbTxTypeId } from '../../../src/datastore/common.ts';
+import { DbAssetEventTypeId, DbTxStatus, DbTxTypeId } from '../../../src/datastore/common.ts';
 import { hex } from '../test-helpers.ts';
 import { I32_MAX } from '../../../src/helpers.ts';
 import { serializeCV, uintCV } from '@stacks/transactions';
@@ -573,7 +573,8 @@ describe('principals', () => {
           contract_identifier: sendManyContract,
           value: '0x0200000002796f',
         })
-        // tx_index 3: contract STX transfer events -- one without a memo, one with.
+        // tx_index 3: contract STX events -- a transfer without a memo, a transfer with one,
+        // and a mint (no sender).
         .addTx({
           tx_id: hex(0x3103),
           block_hash: hex(3),
@@ -591,6 +592,11 @@ describe('principals', () => {
           recipient: inboundAddr,
           memo: '0x6d656d6f',
         })
+        .addTxStxEvent({
+          amount: 750n,
+          asset_event_type_id: DbAssetEventTypeId.Mint,
+          recipient: inboundAddr,
+        })
         .build();
       await db.update(block3);
     });
@@ -602,16 +608,17 @@ describe('principals', () => {
       });
       assert.equal(response.statusCode, 200);
       const body = JSON.parse(response.body);
-      assert.equal(body.total, 5);
+      assert.equal(body.total, 6);
       assert.deepEqual(
         body.results.map((r: { amount: string }) => r.amount),
-        ['600', '500', '400', '200', '1000']
+        ['750', '600', '500', '400', '200', '1000']
       );
       // Each row carries its own decoded memo: the event memo, null when absent, the unwrapped
       // send-many print buffer for bulk-send legs, and the tx memo for native transfers.
       assert.deepEqual(
         body.results.map((r: { memo: unknown }) => r.memo),
         [
+          null,
           { hex: '0x6d656d6f', repr: 'memo' },
           null,
           { hex: '0x796f', repr: 'yo' },
@@ -619,23 +626,25 @@ describe('principals', () => {
           { hex: '0x686921', repr: 'hi!' },
         ]
       );
+      // Mints are inbound and carry a null sender.
       assert.deepEqual(
-        body.results.map((r: { sender: string }) => r.sender),
-        [testAddr4, testAddr4, testAddr2, testAddr2, testAddr1]
+        body.results.map((r: { sender: string | null }) => r.sender),
+        [null, testAddr4, testAddr4, testAddr2, testAddr2, testAddr1]
       );
       // Every inbound row's recipient is the principal itself.
       assert.deepEqual(
         body.results.map((r: { recipient: string }) => r.recipient),
-        Array(5).fill(inboundAddr)
+        Array(6).fill(inboundAddr)
       );
-      // One row per transfer event: the send-many tx contributes two separate rows. The tx
-      // position is reported as a `transaction` sub-object.
+      // One row per event: the send-many tx contributes two separate rows. The tx position is
+      // reported as a `transaction` sub-object.
       assert.deepEqual(
         body.results.map((r: { transaction: { tx_id: string; event_index: number } }) => [
           r.transaction.tx_id,
           r.transaction.event_index,
         ]),
         [
+          [hex(0x3103), 2],
           [hex(0x3103), 1],
           [hex(0x3103), 0],
           [hex(0x3102), 4],
@@ -650,6 +659,7 @@ describe('principals', () => {
           r.block.tx_index,
         ]),
         [
+          [3, 2],
           [3, 2],
           [3, 2],
           [3, 1],
@@ -682,10 +692,10 @@ describe('principals', () => {
       });
       assert.equal(page1.statusCode, 200);
       const body1 = JSON.parse(page1.body);
-      assert.equal(body1.total, 5);
+      assert.equal(body1.total, 6);
       assert.deepEqual(
         body1.results.map((r: { amount: string }) => r.amount),
-        ['600', '500']
+        ['750', '600']
       );
       assert.equal(body1.cursor.previous, null);
       assert.notEqual(body1.cursor.next, null);
@@ -699,7 +709,7 @@ describe('principals', () => {
       const body2 = JSON.parse(page2.body);
       assert.deepEqual(
         body2.results.map((r: { amount: string }) => r.amount),
-        ['400', '200']
+        ['500', '400']
       );
       assert.notEqual(body2.cursor.previous, null);
       assert.notEqual(body2.cursor.next, null);
@@ -713,7 +723,7 @@ describe('principals', () => {
       const body3 = JSON.parse(page3.body);
       assert.deepEqual(
         body3.results.map((r: { amount: string }) => r.amount),
-        ['1000']
+        ['200', '1000']
       );
       assert.equal(body3.cursor.next, null);
 
@@ -726,7 +736,7 @@ describe('principals', () => {
       assert.equal(backToPage1.statusCode, 200);
       assert.deepEqual(
         JSON.parse(backToPage1.body).results.map((r: { amount: string }) => r.amount),
-        ['600', '500']
+        ['750', '600']
       );
     });
 
@@ -784,7 +794,7 @@ describe('principals', () => {
       });
       assert.equal(response.statusCode, 200);
       const body = JSON.parse(response.body);
-      assert.equal(body.results.length, 6);
+      assert.equal(body.results.length, 7);
       assert.equal(body.results[0].amount, '700');
     });
 
@@ -852,7 +862,8 @@ describe('principals', () => {
           contract_identifier: sendManyContract,
           value: '0x0200000002796f',
         })
-        // tx_index 2: contract STX transfer events -- one without a memo, one with.
+        // tx_index 2: contract STX events -- a transfer without a memo, a transfer with one,
+        // and a burn (no recipient).
         .addTx({
           tx_id: hex(0x3203),
           block_hash: hex(3),
@@ -870,6 +881,11 @@ describe('principals', () => {
           recipient: testAddr2,
           memo: '0x6d656d6f',
         })
+        .addTxStxEvent({
+          amount: 800n,
+          asset_event_type_id: DbAssetEventTypeId.Burn,
+          sender: outboundAddr,
+        })
         .build();
       await db.update(block3);
     });
@@ -882,14 +898,15 @@ describe('principals', () => {
       assert.equal(response.statusCode, 200);
       const body = JSON.parse(response.body);
       // Unlike the inbound view, every send-many leg counts for the sender.
-      assert.equal(body.total, 6);
+      assert.equal(body.total, 7);
       assert.deepEqual(
         body.results.map((r: { amount: string }) => r.amount),
-        ['600', '500', '400', '300', '200', '1000']
+        ['800', '600', '500', '400', '300', '200', '1000']
       );
       assert.deepEqual(
         body.results.map((r: { memo: unknown }) => r.memo),
         [
+          null,
           { hex: '0x6d656d6f', repr: 'memo' },
           null,
           { hex: '0x796f', repr: 'yo' },
@@ -898,14 +915,15 @@ describe('principals', () => {
           { hex: '0x686921', repr: 'hi!' },
         ]
       );
+      // Burns are outbound and carry a null recipient.
       assert.deepEqual(
-        body.results.map((r: { recipient: string }) => r.recipient),
-        [testAddr2, testAddr2, testAddr1, testAddr2, testAddr1, testAddr1]
+        body.results.map((r: { recipient: string | null }) => r.recipient),
+        [null, testAddr2, testAddr2, testAddr1, testAddr2, testAddr1, testAddr1]
       );
       // Every outbound row's sender is the principal itself.
       assert.deepEqual(
         body.results.map((r: { sender: string }) => r.sender),
-        Array(6).fill(outboundAddr)
+        Array(7).fill(outboundAddr)
       );
     });
 
@@ -917,10 +935,10 @@ describe('principals', () => {
       });
       assert.equal(page1.statusCode, 200);
       const body1 = JSON.parse(page1.body);
-      assert.equal(body1.total, 6);
+      assert.equal(body1.total, 7);
       assert.deepEqual(
         body1.results.map((r: { amount: string }) => r.amount),
-        ['600', '500', '400', '300']
+        ['800', '600', '500', '400']
       );
       assert.equal(body1.cursor.previous, null);
       assert.notEqual(body1.cursor.next, null);
@@ -934,7 +952,7 @@ describe('principals', () => {
       const body2 = JSON.parse(page2.body);
       assert.deepEqual(
         body2.results.map((r: { amount: string }) => r.amount),
-        ['200', '1000']
+        ['300', '200', '1000']
       );
       assert.equal(body2.cursor.next, null);
 
@@ -947,7 +965,7 @@ describe('principals', () => {
       assert.equal(backToPage1.statusCode, 200);
       assert.deepEqual(
         JSON.parse(backToPage1.body).results.map((r: { amount: string }) => r.amount),
-        ['600', '500', '400', '300']
+        ['800', '600', '500', '400']
       );
     });
 

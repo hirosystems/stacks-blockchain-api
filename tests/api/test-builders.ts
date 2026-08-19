@@ -360,6 +360,7 @@ export function testMempoolTx(args?: TestMempoolTxArgs): DbMempoolTxRaw {
 
 interface TestStxEventArgs {
   amount?: bigint;
+  asset_event_type_id?: DbAssetEventTypeId;
   block_height?: number;
   event_index?: number;
   recipient?: string;
@@ -375,17 +376,25 @@ interface TestStxEventArgs {
  * @returns `DbStxEvent`
  */
 function testStxEvent(args?: TestStxEventArgs): DbStxEvent {
+  const assetEventTypeId = args?.asset_event_type_id ?? DbAssetEventTypeId.Transfer;
   return {
     canonical: true,
     event_type: DbEventTypeId.StxAsset,
-    asset_event_type_id: DbAssetEventTypeId.Transfer,
+    asset_event_type_id: assetEventTypeId,
     event_index: args?.event_index ?? 0,
     tx_id: args?.tx_id ?? TX_ID,
     tx_index: args?.tx_index ?? 0,
     block_height: args?.block_height ?? BLOCK_HEIGHT,
     amount: args?.amount ?? TOKEN_TRANSFER_AMOUNT,
-    recipient: args?.recipient ?? RECIPIENT_ADDRESS,
-    sender: args?.sender ?? SENDER_ADDRESS,
+    // Mints have no sender and burns no recipient (enforced by db check constraints).
+    recipient:
+      assetEventTypeId === DbAssetEventTypeId.Burn
+        ? undefined
+        : (args?.recipient ?? RECIPIENT_ADDRESS),
+    sender:
+      assetEventTypeId === DbAssetEventTypeId.Mint
+        ? undefined
+        : (args?.sender ?? SENDER_ADDRESS),
     memo: args?.memo,
   };
 }

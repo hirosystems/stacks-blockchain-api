@@ -112,11 +112,11 @@ export const PrincipalsRoutes: FastifyPluginAsync<
         operationId: 'get_principal_inbound_stx_transfers',
         summary: 'Get inbound STX transfers',
         description:
-          'Returns the individual inbound STX transfers received by a principal. Includes native ' +
-          'stx-transfer transactions, `send-many-memo` bulk-send legs, and any other STX ' +
-          'transfer event crediting the principal, each with its own sender, amount, and memo. ' +
-          'A transaction that credits the principal multiple times yields one result per ' +
-          'transfer.',
+          'Returns the individual inbound STX events crediting a principal. Includes native ' +
+          'stx-transfer transactions, `send-many-memo` bulk-send legs, any other STX transfer ' +
+          'event crediting the principal, and STX mints (which have a null `sender`), each with ' +
+          'its own sender, amount, and memo. A transaction that credits the principal multiple ' +
+          'times yields one result per event.',
         tags: ['Transactions'],
         params: Type.Object({ principal: PrincipalSchema }),
         querystring: CursorPaginationQuerystring(EventPositionCursorSchema, ResourceType.Tx),
@@ -158,11 +158,11 @@ export const PrincipalsRoutes: FastifyPluginAsync<
         operationId: 'get_principal_outbound_stx_transfers',
         summary: 'Get outbound STX transfers',
         description:
-          'Returns the individual outbound STX transfers sent by a principal. Includes native ' +
-          'stx-transfer transactions, `send-many-memo` bulk-send legs, and any other STX ' +
-          'transfer event debiting the principal, each with its own recipient, amount, and ' +
-          'memo. A transaction that debits the principal multiple times yields one result per ' +
-          'transfer. STX burns are not transfers and are not included.',
+          'Returns the individual outbound STX events debiting a principal. Includes native ' +
+          'stx-transfer transactions, `send-many-memo` bulk-send legs, any other STX transfer ' +
+          'event debiting the principal, and STX burns (which have a null `recipient`), each ' +
+          'with its own recipient, amount, and memo. A transaction that debits the principal ' +
+          'multiple times yields one result per event.',
         tags: ['Transactions'],
         params: Type.Object({ principal: PrincipalSchema }),
         querystring: CursorPaginationQuerystring(EventPositionCursorSchema, ResourceType.Tx),

@@ -89,8 +89,10 @@ export interface DbPrincipalTransactionSummary extends DbTransactionSummary {
 export type DbStxTransferDirection = 'inbound' | 'outbound';
 
 export interface DbPrincipalStxTransfer {
-  sender: string;
-  recipient: string;
+  /** Null for mint events (STX credited from no sender). */
+  sender: string | null;
+  /** Null for burn events (STX debited to no recipient). */
+  recipient: string | null;
   amount: string;
   /** `0x`-prefixed raw memo bytes, or null when the transfer carries no memo. */
   memo: string | null;

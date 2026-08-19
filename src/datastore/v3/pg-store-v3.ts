@@ -65,7 +65,7 @@ import {
   resolveEventPositionCursor,
   resolveTransactionCursor,
 } from './helpers.js';
-import { DbAssetEventTypeId, DbEventTypeId, DbSignerKeyGrantKind, DbTxTypeId } from '../common.js';
+import { DbEventTypeId, DbSignerKeyGrantKind, DbTxTypeId } from '../common.js';
 
 export class PgStoreV3 extends BasePgStoreModule {
   /**
@@ -282,11 +282,13 @@ export class PgStoreV3 extends BasePgStoreModule {
   }
 
   /**
-   * Gets the individual STX transfer events sent (`outbound`) or received (`inbound`) by a
-   * principal, newest first, keyset-paginated by
-   * `(block_height, microblock_sequence, tx_index, event_index)`. Each row is one STX transfer
-   * event, so a transaction moving STX for the principal multiple times (e.g. a send-many bulk
-   * send) yields one row per transfer, each with its own counterparty, amount, and memo.
+   * Gets the individual STX events debiting (`outbound`) or crediting (`inbound`) a principal,
+   * newest first, keyset-paginated by `(block_height, microblock_sequence, tx_index, event_index)`.
+   * Inbound covers transfers received and mints; outbound covers transfers sent and burns, matching
+   * on the recipient or sender column alone yields exactly this, since mints have no sender and
+   * burns no recipient. Each row is one STX event, so a transaction moving STX for the principal
+   * multiple times (e.g. a send-many bulk send) yields one row per event, each with its own
+   * counterparty, amount, and memo.
    * @param args - The arguments for the query.
    * @returns The principal's STX transfers.
    */
@@ -298,12 +300,13 @@ export class PgStoreV3 extends BasePgStoreModule {
     cursor?: EventPositionCursor;
   }): Promise<DbCursorPaginatedResult<DbPrincipalStxTransfer>> {
     return await this.sqlTransaction(async sql => {
-      // The column the principal is matched against: transfers received vs. transfers sent.
+      // The column the principal is matched against. This alone also selects the correct event
+      // types per direction: mints have a NULL sender and burns a NULL recipient, so inbound
+      // matches transfers + mints and outbound matches transfers + burns.
       const principalColumn = sql(args.direction === 'inbound' ? 'recipient' : 'sender');
       const eventFilter = sql`
         canonical = true
         AND microblock_canonical = true
-        AND asset_event_type_id = ${DbAssetEventTypeId.Transfer}
         AND ${principalColumn} = ${args.principal}
       `;
       let cursorFilter = sql``;
@@ -363,7 +366,6 @@ export class PgStoreV3 extends BasePgStoreModule {
             AND cl.microblock_canonical = true
           WHERE se.canonical = true
             AND se.microblock_canonical = true
-            AND se.asset_event_type_id = ${DbAssetEventTypeId.Transfer}
             AND se.${principalColumn} = ${args.principal}
             ${cursorFilter}
           ORDER BY se.block_height DESC, se.microblock_sequence DESC, se.tx_index DESC,

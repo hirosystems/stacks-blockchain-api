@@ -10,8 +10,8 @@ import { Nullable } from '../../v1/util.js';
 
 export const PrincipalStxTransferSchema = Type.Object(
   {
-    sender: PrincipalSchema,
-    recipient: PrincipalSchema,
+    sender: Nullable(PrincipalSchema),
+    recipient: Nullable(PrincipalSchema),
     amount: AmountSchema,
     memo: Nullable(DecodedStxTransferMemoSchema),
     transaction: TransactionPositionSchema,
