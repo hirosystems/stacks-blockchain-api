@@ -86,6 +86,30 @@ export interface DbPrincipalTransactionSummary extends DbTransactionSummary {
   involvement: DbPrincipalTransactionInvolvement;
 }
 
+export type DbStxTransferDirection = 'inbound' | 'outbound';
+
+export interface DbPrincipalStxTransfer {
+  sender: string;
+  recipient: string;
+  amount: string;
+  /** `0x`-prefixed raw memo bytes, or null when the transfer carries no memo. */
+  memo: string | null;
+  /**
+   * `0x`-prefixed Clarity-serialized print value of the paired `send-many-memo` event (a Clarity
+   * buffer wrapping the memo bytes), or null when this is not a bulk-send leg. Takes precedence
+   * over `memo`.
+   */
+  bulk_send_memo: string | null;
+  tx_id: string;
+  block_height: number;
+  block_hash: string;
+  block_time: number;
+  index_block_hash: string;
+  microblock_sequence: number;
+  tx_index: number;
+  event_index: number;
+}
+
 export interface DbPrincipalTransactionBalanceChange {
   principal: string;
   tx_id: string;

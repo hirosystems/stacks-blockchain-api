@@ -116,6 +116,14 @@ export const BlockPositionSchema = Type.Object({
 });
 export type BlockPosition = Static<typeof BlockPositionSchema>;
 
+export const TransactionPositionSchema = Type.Object({
+  tx_id: TransactionIdSchema,
+  event_index: Type.Integer({
+    description: 'Index of the event within the transaction',
+  }),
+});
+export type TransactionPosition = Static<typeof TransactionPositionSchema>;
+
 export const BitcoinBlockPositionSchema = Type.Object({
   height: Type.Integer({
     description: 'Height of the anchor burn block.',

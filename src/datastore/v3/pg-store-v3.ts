@@ -13,8 +13,10 @@ import {
   DbPrincipalFtBalance,
   DbPrincipalNftBalance,
   DbPrincipalStakingSummary,
+  DbPrincipalStxTransfer,
   DbPrincipalTransactionBalanceChange,
   DbPrincipalTransactionSummary,
+  DbStxTransferDirection,
   DbSignerStaker,
   DbStakingSigner,
   DbStakingSignerDetail,
@@ -48,19 +50,22 @@ import type {
   FtBalanceCursor,
   NftBalanceCursor,
   SignerCursor,
+  EventPositionCursor,
   TransactionCursor,
   TransactionEventCursor,
 } from '../../api/schemas/v3/cursors.js';
 import {
   encodeFtBalanceCursor,
   encodeNftBalanceCursor,
+  encodeEventPositionCursor,
   encodeTransactionCursor,
   parseBondLockupTxs,
   parseFtBalanceCursor,
   parseNftBalanceCursor,
+  resolveEventPositionCursor,
   resolveTransactionCursor,
 } from './helpers.js';
-import { DbEventTypeId, DbSignerKeyGrantKind } from '../common.js';
+import { DbAssetEventTypeId, DbEventTypeId, DbSignerKeyGrantKind, DbTxTypeId } from '../common.js';
 
 export class PgStoreV3 extends BasePgStoreModule {
   /**
@@ -262,6 +267,152 @@ export class PgStoreV3 extends BasePgStoreModule {
         if (prevPageQuery.length > 0) {
           const prevPage = prevPageQuery[prevPageQuery.length - 1];
           prevCursor = encodeTransactionCursor(prevPage);
+        }
+      }
+
+      return {
+        limit: args.limit,
+        next_cursor: nextCursor,
+        prev_cursor: prevCursor,
+        current_cursor: currentCursor,
+        total,
+        results,
+      };
+    });
+  }
+
+  /**
+   * Gets the individual STX transfer events sent (`outbound`) or received (`inbound`) by a
+   * principal, newest first, keyset-paginated by
+   * `(block_height, microblock_sequence, tx_index, event_index)`. Each row is one STX transfer
+   * event, so a transaction moving STX for the principal multiple times (e.g. a send-many bulk
+   * send) yields one row per transfer, each with its own counterparty, amount, and memo.
+   * @param args - The arguments for the query.
+   * @returns The principal's STX transfers.
+   */
+  async getPrincipalStxTransfers(args: {
+    principal: Principal;
+    direction: DbStxTransferDirection;
+    sendManyContractId: string;
+    limit: number;
+    cursor?: EventPositionCursor;
+  }): Promise<DbCursorPaginatedResult<DbPrincipalStxTransfer>> {
+    return await this.sqlTransaction(async sql => {
+      // The column the principal is matched against: transfers received vs. transfers sent.
+      const principalColumn = sql(args.direction === 'inbound' ? 'recipient' : 'sender');
+      const eventFilter = sql`
+        canonical = true
+        AND microblock_canonical = true
+        AND asset_event_type_id = ${DbAssetEventTypeId.Transfer}
+        AND ${principalColumn} = ${args.principal}
+      `;
+      let cursorFilter = sql``;
+      if (args.cursor) {
+        const cursor = await resolveEventPositionCursor(args.cursor, async cursor => {
+          const exactCursorQuery = await sql<{ exists: boolean }[]>`
+            SELECT EXISTS (
+              SELECT 1
+              FROM stx_events
+              WHERE ${eventFilter}
+                AND (block_height, microblock_sequence, tx_index, event_index)
+                    = (${cursor.block_height}, ${cursor.microblock_sequence}, ${cursor.tx_index},
+                       ${cursor.event_index})
+            ) AS exists
+          `;
+          return exactCursorQuery[0]?.exists ?? false;
+        });
+        cursorFilter = sql`
+          AND (se.block_height, se.microblock_sequence, se.tx_index, se.event_index)
+              <= (${cursor.block_height}, ${cursor.microblock_sequence}, ${cursor.tx_index},
+                  ${cursor.event_index})
+        `;
+      }
+      const resultQuery = await sql<(DbPrincipalStxTransfer & { total: number })[]>`
+        WITH transfers AS (
+          SELECT
+            se.sender,
+            se.recipient,
+            se.amount::text AS amount,
+            se.tx_id,
+            se.block_height,
+            t.block_hash,
+            t.block_time,
+            se.index_block_hash,
+            se.microblock_sequence,
+            se.tx_index,
+            se.event_index,
+            -- Native transfers carry their memo on the tx itself; other transfer events may
+            -- carry raw memo bytes of their own.
+            CASE
+              WHEN t.type_id = ${DbTxTypeId.TokenTransfer} THEN t.token_transfer_memo
+              ELSE se.memo
+            END AS memo,
+            -- A send-many-memo leg pairs each STX transfer event with the memo print event
+            -- immediately following it. Kept separate from raw memo bytes because the print
+            -- value is Clarity-serialized and must be decoded differently.
+            cl.value AS bulk_send_memo
+          FROM stx_events AS se
+          INNER JOIN txs AS t USING (tx_id, index_block_hash, microblock_hash)
+          LEFT JOIN contract_logs AS cl
+            ON cl.tx_id = se.tx_id
+            AND cl.index_block_hash = se.index_block_hash
+            AND cl.microblock_hash = se.microblock_hash
+            AND cl.event_index = se.event_index + 1
+            AND cl.contract_identifier = ${args.sendManyContractId}
+            AND cl.canonical = true
+            AND cl.microblock_canonical = true
+          WHERE se.canonical = true
+            AND se.microblock_canonical = true
+            AND se.asset_event_type_id = ${DbAssetEventTypeId.Transfer}
+            AND se.${principalColumn} = ${args.principal}
+            ${cursorFilter}
+          ORDER BY se.block_height DESC, se.microblock_sequence DESC, se.tx_index DESC,
+            se.event_index DESC
+          LIMIT ${args.limit + 1}
+        )
+        SELECT
+          transfers.*,
+          (SELECT COUNT(*)::int FROM stx_events WHERE ${eventFilter}) AS total
+        FROM transfers
+        ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
+      `;
+
+      const hasNextPage = resultQuery.count > args.limit;
+      const results = hasNextPage ? resultQuery.slice(0, args.limit) : resultQuery;
+      const total = resultQuery.count > 0 ? resultQuery[0].total : 0;
+
+      const nextResult = resultQuery[resultQuery.length - 1];
+      const nextCursor = hasNextPage && nextResult ? encodeEventPositionCursor(nextResult) : null;
+
+      const firstResult = results[0];
+      const currentCursor = firstResult ? encodeEventPositionCursor(firstResult) : null;
+
+      let prevCursor: string | null = null;
+      if (firstResult) {
+        const prevPageQuery = await sql<
+          {
+            block_height: number;
+            microblock_sequence: number;
+            tx_index: number;
+            event_index: number;
+          }[]
+        >`
+          SELECT block_height, microblock_sequence, tx_index, event_index
+          FROM stx_events
+          WHERE ${eventFilter}
+            AND (block_height, microblock_sequence, tx_index, event_index)
+                > (
+                  ${firstResult.block_height},
+                  ${firstResult.microblock_sequence},
+                  ${firstResult.tx_index},
+                  ${firstResult.event_index}
+                )
+          ORDER BY block_height ASC, microblock_sequence ASC, tx_index ASC, event_index ASC
+          LIMIT ${args.limit}
+        `;
+        if (prevPageQuery.length > 0) {
+          const prevPage = prevPageQuery[prevPageQuery.length - 1];
+          prevCursor = encodeEventPositionCursor(prevPage);
         }
       }
 

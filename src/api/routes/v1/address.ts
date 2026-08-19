@@ -583,7 +583,7 @@ export const AddressRoutes: FastifyPluginAsync<
         operationId: 'get_account_inbound',
         summary: 'Get inbound STX transfers',
         description:
-          'Retrieves a list of STX transfers with memos to the given principal. This includes regular transfers from a stx-transfer transaction type, and transfers from contract-call transactions at the `send-many-memo` bulk sending contract. **Deprecated:** this endpoint has no direct v3 replacement.',
+          'Retrieves a list of STX transfers with memos to the given principal. This includes regular transfers from a stx-transfer transaction type, and transfers from contract-call transactions at the `send-many-memo` bulk sending contract. **Deprecated:** use `GET /extended/v3/principals/{principal}/transfers/stx/inbound` (`get_principal_inbound_stx_transfers`) instead.',
         tags: ['Accounts'],
         params: Type.Object({
           principal: PrincipalSchema,

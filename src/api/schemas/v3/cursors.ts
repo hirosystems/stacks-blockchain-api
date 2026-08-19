@@ -60,6 +60,13 @@ export const TransactionCursorSchema = Type.String({
 });
 export type TransactionCursor = Static<typeof TransactionCursorSchema>;
 
+export const EventPositionCursorSchema = Type.String({
+  description:
+    'Cursor for paginating individual events by their position in the chain. Format: block_height:microblock_sequence:tx_index:event_index',
+  pattern: '^[0-9]+:[0-9]+:[0-9]+:[0-9]+$',
+});
+export type EventPositionCursor = Static<typeof EventPositionCursorSchema>;
+
 export const MempoolTransactionCursorSchema = Type.String({
   pattern: '^\\d+:(0x)?[a-fA-F0-9]{64}$',
   description: 'Cursor for paginating mempool transactions. Format: receipt_time:tx_id',

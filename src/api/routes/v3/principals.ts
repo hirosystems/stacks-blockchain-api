@@ -20,8 +20,12 @@ import {
   FtBalanceCursorSchema,
   MempoolTransactionCursorSchema,
   NftBalanceCursorSchema,
+  EventPositionCursorSchema,
   TransactionCursorSchema,
 } from '../../schemas/v3/cursors.js';
+import { getSendManyContract } from '../../../helpers.js';
+import { PrincipalStxTransferSchema } from '../../schemas/v3/entities/principal-stx-transfers.js';
+import { serializePrincipalStxTransfer } from '../../serializers/v3/stx-transfers.js';
 import { decodeClarityValueToRepr } from '@stacks/codec';
 import { PrincipalTransactionSummarySchema } from '../../schemas/v3/entities/principal-transactions.js';
 import { serializePrincipalTransactionSummary } from '../../serializers/v3/transactions.js';
@@ -96,6 +100,98 @@ export const PrincipalsRoutes: FastifyPluginAsync<
           current: results.current_cursor,
         },
         results: results.results.map(r => serializePrincipalTransactionSummary(r)),
+      });
+    }
+  );
+
+  fastify.get(
+    '/principals/:principal/transfers/stx/inbound',
+    {
+      preHandler: handlePrincipalCache,
+      schema: {
+        operationId: 'get_principal_inbound_stx_transfers',
+        summary: 'Get inbound STX transfers',
+        description:
+          'Returns the individual inbound STX transfers received by a principal. Includes native ' +
+          'stx-transfer transactions, `send-many-memo` bulk-send legs, and any other STX ' +
+          'transfer event crediting the principal, each with its own sender, amount, and memo. ' +
+          'A transaction that credits the principal multiple times yields one result per ' +
+          'transfer.',
+        tags: ['Transactions'],
+        params: Type.Object({ principal: PrincipalSchema }),
+        querystring: CursorPaginationQuerystring(EventPositionCursorSchema, ResourceType.Tx),
+        response: {
+          200: CursorPaginatedResponse(
+            PrincipalStxTransferSchema,
+            EventPositionCursorSchema,
+            ResourceType.Tx
+          ),
+        },
+      },
+    },
+    async (req, reply) => {
+      const results = await fastify.db.v3.getPrincipalStxTransfers({
+        principal: req.params.principal,
+        direction: 'inbound',
+        sendManyContractId: getSendManyContract(fastify.chainId),
+        limit: req.query.limit ?? getPagingQueryLimit(ResourceType.Tx),
+        cursor: req.query.cursor,
+      });
+      await reply.send({
+        limit: results.limit,
+        total: results.total,
+        cursor: {
+          next: results.next_cursor,
+          previous: results.prev_cursor,
+          current: results.current_cursor,
+        },
+        results: results.results.map(serializePrincipalStxTransfer),
+      });
+    }
+  );
+
+  fastify.get(
+    '/principals/:principal/transfers/stx/outbound',
+    {
+      preHandler: handlePrincipalCache,
+      schema: {
+        operationId: 'get_principal_outbound_stx_transfers',
+        summary: 'Get outbound STX transfers',
+        description:
+          'Returns the individual outbound STX transfers sent by a principal. Includes native ' +
+          'stx-transfer transactions, `send-many-memo` bulk-send legs, and any other STX ' +
+          'transfer event debiting the principal, each with its own recipient, amount, and ' +
+          'memo. A transaction that debits the principal multiple times yields one result per ' +
+          'transfer. STX burns are not transfers and are not included.',
+        tags: ['Transactions'],
+        params: Type.Object({ principal: PrincipalSchema }),
+        querystring: CursorPaginationQuerystring(EventPositionCursorSchema, ResourceType.Tx),
+        response: {
+          200: CursorPaginatedResponse(
+            PrincipalStxTransferSchema,
+            EventPositionCursorSchema,
+            ResourceType.Tx
+          ),
+        },
+      },
+    },
+    async (req, reply) => {
+      const results = await fastify.db.v3.getPrincipalStxTransfers({
+        principal: req.params.principal,
+        direction: 'outbound',
+        sendManyContractId: getSendManyContract(fastify.chainId),
+        limit: req.query.limit ?? getPagingQueryLimit(ResourceType.Tx),
+        cursor: req.query.cursor,
+      });
+      await reply.send({
+        limit: results.limit,
+        total: results.total,
+        cursor: {
+          next: results.next_cursor,
+          previous: results.prev_cursor,
+          current: results.current_cursor,
+        },
+        results: results.results.map(serializePrincipalStxTransfer),
       });
     }
   );
