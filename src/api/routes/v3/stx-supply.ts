@@ -14,7 +14,7 @@ export const StxSupplyRoutes: FastifyPluginAsync<
   TypeBoxTypeProvider
 > = async fastify => {
   fastify.get(
-    '/stx/supply',
+    '/tokens/stx/supply',
     {
       preHandler: handleChainTipCache,
       schema: {

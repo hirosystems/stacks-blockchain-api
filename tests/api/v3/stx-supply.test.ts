@@ -29,7 +29,10 @@ describe('stx supply', () => {
   });
 
   async function getSupply(): Promise<{ total: string; projected_total_2050: string }> {
-    const res = await api.fastifyApp.inject({ method: 'GET', url: '/extended/v3/stx/supply' });
+    const res = await api.fastifyApp.inject({
+      method: 'GET',
+      url: '/extended/v3/tokens/stx/supply',
+    });
     assert.equal(res.statusCode, 200);
     return JSON.parse(res.body);
   }
