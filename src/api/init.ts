@@ -9,7 +9,7 @@ import { BlockRoutes } from './routes/v1/block.js';
 import { FaucetRoutes } from './routes/v1/faucets.js';
 import { AddressRoutes } from './routes/v1/address.js';
 import { SearchRoutes } from './routes/v1/search.js';
-import { StxSupplyRoutes } from './routes/v1/stx-supply.js';
+import { StxSupplyRoutes as StxSupplyRoutesV1 } from './routes/v1/stx-supply.js';
 import { ChainID } from '../helpers.js';
 import { BurnchainRoutes } from './routes/v1/burnchain.js';
 import { BnsNamespaceRoutes } from './routes/v1/bns/namespaces.js';
@@ -56,6 +56,7 @@ import { BlocksRoutes } from './routes/v3/blocks.js';
 import { StakingBondsRoutes } from './routes/v3/staking-bonds.js';
 import { StakingCyclesRoutes } from './routes/v3/staking-cycles.js';
 import { StakingSignersRoutes } from './routes/v3/staking-signers.js';
+import { StxSupplyRoutes } from './routes/v3/stx-supply.js';
 
 export interface ApiServer {
   fastifyApp: FastifyInstance;
@@ -76,7 +77,7 @@ export const StacksApiRoutes: FastifyPluginAsync<
   await fastify.register(
     async fastify => {
       await fastify.register(TxRoutes, { prefix: '/tx' });
-      await fastify.register(StxSupplyRoutes, { prefix: '/stx_supply' });
+      await fastify.register(StxSupplyRoutesV1, { prefix: '/stx_supply' });
       await fastify.register(InfoRoutes, { prefix: '/info' });
       await fastify.register(TokenRoutes, { prefix: '/tokens' });
       await fastify.register(ContractRoutes, { prefix: '/contract' });
@@ -114,6 +115,7 @@ export const StacksApiRoutes: FastifyPluginAsync<
       await fastify.register(StakingBondsRoutes);
       await fastify.register(StakingCyclesRoutes);
       await fastify.register(StakingSignersRoutes);
+      await fastify.register(StxSupplyRoutes);
       await fastify.register(TransactionsRoutes);
     },
     { prefix: '/extended/v3' }
