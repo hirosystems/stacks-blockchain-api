@@ -384,6 +384,7 @@ export class PgWriteStore extends PgStore {
           // we don't want to skip balance changes in transactions that were previously confirmed
           // via microblocks.
           q.enqueue(() => this.updateStxBalances(sql, data.txs, data.minerRewards));
+          q.enqueue(() => this.updateStxSupply(sql, data.txs, data.minerRewards));
           q.enqueue(() => this.updateFtBalances(sql, data.txs));
           // If this block re-orgs past microblocks, though, we must discount the balances generated
           // by their txs which are now also reorged. We must do this here because the block re-org
@@ -2123,6 +2124,34 @@ export class PgWriteStore extends PgStore {
     }
   }
 
+  /**
+   * Advance the materialized total liquid STX supply counter on `chain_tip` with this block's
+   * delta: mints − burns + matured miner coinbase rewards. Reorg corrections are applied in
+   * `markEntitiesCanonical` and `updateFtBalancesFromMicroblockReOrg`, mirroring the
+   * `ft_balances` 'stx' updates.
+   */
+  async updateStxSupply(
+    sql: PgSqlClient,
+    entries: { stxEvents: DbStxEvent[] }[],
+    minerRewards: DbMinerReward[]
+  ) {
+    let delta = 0n;
+    for (const { stxEvents } of entries) {
+      for (const event of stxEvents) {
+        if (event.asset_event_type_id === DbAssetEventTypeId.Mint) {
+          delta += BigInt(event.amount);
+        } else if (event.asset_event_type_id === DbAssetEventTypeId.Burn) {
+          delta -= BigInt(event.amount);
+        }
+      }
+    }
+    for (const reward of minerRewards) {
+      delta += BigInt(reward.coinbase_amount);
+    }
+    if (delta === 0n) return;
+    await sql`UPDATE chain_tip SET stx_supply = stx_supply + ${delta.toString()}`;
+  }
+
   async updateFtBalances(sql: PgSqlClient, entries: { ftEvents: DbFtEvent[] }[]) {
     const balanceMap = new Map<string, { address: string; token: string; balance: bigint }>();
 
@@ -2267,14 +2296,29 @@ export class PgWriteStore extends PgStore {
             GROUP BY recipient
         ) AS subquery
         GROUP BY address
+      ),
+      update_balances AS (
+        INSERT INTO ft_balances (address, token, balance)
+        SELECT ec.address, 'stx', ec.balance_change
+        FROM event_changes ec
+        ON CONFLICT (address, token)
+        DO UPDATE
+        SET balance = ft_balances.balance + EXCLUDED.balance
+        RETURNING ft_balances.address
+      ),
+      supply_change AS (
+        SELECT SUM(
+          CASE asset_event_type_id
+            WHEN 2 THEN (CASE WHEN canonical AND microblock_canonical THEN amount ELSE -amount END) -- Mint
+            WHEN 3 THEN (CASE WHEN canonical AND microblock_canonical THEN -amount ELSE amount END) -- Burn
+            ELSE 0
+          END
+        ) AS delta
+        FROM updated_events
       )
-      INSERT INTO ft_balances (address, token, balance)
-      SELECT ec.address, 'stx', ec.balance_change
-      FROM event_changes ec
-      ON CONFLICT (address, token)
-      DO UPDATE
-      SET balance = ft_balances.balance + EXCLUDED.balance
-      RETURNING ft_balances.address
+      UPDATE chain_tip
+      SET stx_supply = stx_supply + (SELECT delta FROM supply_change)
+      WHERE EXISTS (SELECT 1 FROM supply_change WHERE delta IS NOT NULL)
     `;
   }
 
@@ -4646,8 +4690,17 @@ export class PgWriteStore extends PgStore {
           DO UPDATE
           SET balance = ft_balances.balance + EXCLUDED.balance
           RETURNING ft_balances.address
+        ),
+        supply_change AS (
+          SELECT SUM(CASE WHEN canonical THEN coinbase_amount ELSE -coinbase_amount END) AS delta
+          FROM updated_rewards
+        ),
+        update_stx_supply AS (
+          UPDATE chain_tip
+          SET stx_supply = stx_supply + (SELECT delta FROM supply_change)
+          WHERE EXISTS (SELECT 1 FROM supply_change WHERE delta IS NOT NULL)
         )
-        SELECT 
+        SELECT
           (SELECT COUNT(*)::int FROM updated_rewards) AS updated_rewards_count
       `;
       const updateCount = minerRewardResults[0]?.updated_rewards_count ?? 0;
@@ -4738,10 +4791,24 @@ export class PgWriteStore extends PgStore {
             inbound_count = principal_stx_event_counts.inbound_count + EXCLUDED.inbound_count,
             outbound_count = principal_stx_event_counts.outbound_count + EXCLUDED.outbound_count
           RETURNING principal
+        ),
+        supply_change AS (
+          SELECT SUM(
+            CASE asset_event_type_id
+              WHEN 2 THEN (CASE WHEN canonical THEN amount ELSE -amount END) -- Mint
+              WHEN 3 THEN (CASE WHEN canonical THEN -amount ELSE amount END) -- Burn
+              ELSE 0
+            END
+          ) AS delta
+          FROM updated_events
+        ),
+        update_stx_supply AS (
+          UPDATE chain_tip
+          SET stx_supply = stx_supply + (SELECT delta FROM supply_change)
+          WHERE EXISTS (SELECT 1 FROM supply_change WHERE delta IS NOT NULL)
         )
         SELECT
-          (SELECT COUNT(*)::int FROM updated_events) AS updated_events_count,
-          (SELECT COUNT(*)::int FROM update_event_counts) AS updated_counts_count
+          (SELECT COUNT(*)::int FROM updated_events) AS updated_events_count
       `;
       const updateCount = stxResults[0]?.updated_events_count ?? 0;
       if (canonical) {
