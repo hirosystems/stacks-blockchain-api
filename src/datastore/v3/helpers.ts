@@ -5,6 +5,7 @@ import {
   TransactionCursor,
 } from '../../api/schemas/v3/cursors.js';
 import { I32_MAX } from '../../helpers.js';
+import { InvalidRequestError, InvalidRequestErrorType } from '../../errors.js';
 import { DbBondLockupTx } from './types.js';
 
 const MAX_TX_INDEX = 0x7fff;
@@ -56,12 +57,27 @@ export type EventPositionCursorRow = {
 
 const parseEventPositionCursor = (cursor: EventPositionCursor): EventPositionCursorRow => {
   const [blockHeightStr, microblockSequenceStr, txIndexStr, eventIndexStr] = cursor.split(':');
-  return {
+  const parsed = {
     block_height: parseInt(blockHeightStr, 10),
     microblock_sequence: parseInt(microblockSequenceStr, 10),
     tx_index: parseInt(txIndexStr, 10),
     event_index: parseInt(eventIndexStr, 10),
   };
+  // Reject components that exceed their column ranges (`tx_index` is a smallint, the rest are
+  // integers) -- otherwise the comparison would fail in postgres with an out-of-range error and
+  // surface as a 500 instead of a 400.
+  if (
+    parsed.block_height > I32_MAX ||
+    parsed.microblock_sequence > I32_MAX ||
+    parsed.tx_index > MAX_TX_INDEX ||
+    parsed.event_index > I32_MAX
+  ) {
+    throw new InvalidRequestError(
+      `Cursor value out of range: ${cursor}`,
+      InvalidRequestErrorType.invalid_param
+    );
+  }
+  return parsed;
 };
 
 /**

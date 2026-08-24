@@ -806,6 +806,91 @@ describe('principals', () => {
       });
       assert.equal(response.statusCode, 400);
     });
+
+    test('rejects a cursor with out-of-range components', async () => {
+      // Components beyond their column ranges must 400 instead of failing in postgres as a 500.
+      for (const cursor of ['9999999999:0:0:0', '3:0:99999:0', '3:9999999999:0:9999999999']) {
+        const response = await api.fastifyApp.inject({
+          method: 'GET',
+          url: `/extended/v3/principals/${inboundAddr}/transfers/stx/inbound`,
+          query: { cursor },
+        });
+        assert.equal(response.statusCode, 400, `cursor: ${cursor}`);
+      }
+    });
+
+    test('reports the endpoint-wide total for a cursor past the oldest event', async () => {
+      // A cursor older than the principal's oldest event yields an empty page, but `total` must
+      // still reflect the full result set.
+      const response = await api.fastifyApp.inject({
+        method: 'GET',
+        url: `/extended/v3/principals/${inboundAddr}/transfers/stx/inbound`,
+        query: { cursor: '1:0:0:0' },
+      });
+      assert.equal(response.statusCode, 200);
+      const body = JSON.parse(response.body);
+      assert.deepEqual(body.results, []);
+      assert.equal(body.total, 6);
+      assert.equal(body.cursor.next, null);
+    });
+
+    test('keeps totals accurate across a re-org', async () => {
+      // Fork block at height 3: ingested as non-canonical (the original block 3 is the tip), with
+      // one transfer to the principal.
+      await db.update(
+        new TestBlockBuilder({
+          block_height: 3,
+          block_hash: hex(0x3b01),
+          index_block_hash: hex(0x3b01),
+          parent_index_block_hash: hex(2),
+          parent_block_hash: hex(2),
+        })
+          .addTx({
+            tx_id: hex(0x3301),
+            block_hash: hex(0x3b01),
+            index_block_hash: hex(0x3b01),
+            type_id: DbTxTypeId.TokenTransfer,
+            status: DbTxStatus.Success,
+            sender_address: testAddr1,
+            token_transfer_recipient_address: inboundAddr,
+            token_transfer_amount: 42n,
+          })
+          .addTxStxEvent({ amount: 42n, sender: testAddr1, recipient: inboundAddr })
+          .build()
+      );
+
+      // The original chain is still canonical: totals unchanged.
+      let response = await api.fastifyApp.inject({
+        method: 'GET',
+        url: `/extended/v3/principals/${inboundAddr}/transfers/stx/inbound`,
+      });
+      assert.equal(response.statusCode, 200);
+      assert.equal(JSON.parse(response.body).total, 6);
+
+      // Extend the fork to make it canonical, orphaning the original block 3 and its 6 inbound
+      // events; the fork's single event (ingested non-canonical, so never counted) is restored.
+      await db.update(
+        new TestBlockBuilder({
+          block_height: 4,
+          block_hash: hex(0x3b02),
+          index_block_hash: hex(0x3b02),
+          parent_index_block_hash: hex(0x3b01),
+          parent_block_hash: hex(0x3b01),
+        }).build()
+      );
+
+      response = await api.fastifyApp.inject({
+        method: 'GET',
+        url: `/extended/v3/principals/${inboundAddr}/transfers/stx/inbound`,
+      });
+      assert.equal(response.statusCode, 200);
+      const body = JSON.parse(response.body);
+      assert.equal(body.total, 1);
+      assert.deepEqual(
+        body.results.map((r: { amount: string }) => r.amount),
+        ['42']
+      );
+    });
   });
 
   describe('/v3/principals/:principal/transfers/stx/outbound', () => {

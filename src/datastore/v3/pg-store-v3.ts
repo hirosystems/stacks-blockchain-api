@@ -330,7 +330,13 @@ export class PgStoreV3 extends BasePgStoreModule {
                   ${cursor.event_index})
         `;
       }
-      const resultQuery = await sql<(DbPrincipalStxTransfer & { total: number })[]>`
+      const [countQuery] = await sql<{ total: number }[]>`
+        SELECT ${args.direction === 'inbound' ? 'inbound_count' : 'outbound_count'} AS total
+        FROM principal_stx_event_counts
+        WHERE principal = ${args.principal}
+      `;
+      const total = countQuery?.total ?? 0;
+      const resultQuery = await sql<DbPrincipalStxTransfer[]>`
         WITH transfers AS (
           SELECT
             se.sender,
@@ -372,16 +378,13 @@ export class PgStoreV3 extends BasePgStoreModule {
             se.event_index DESC
           LIMIT ${args.limit + 1}
         )
-        SELECT
-          transfers.*,
-          (SELECT COUNT(*)::int FROM stx_events WHERE ${eventFilter}) AS total
+        SELECT transfers.*
         FROM transfers
         ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
       `;
 
       const hasNextPage = resultQuery.count > args.limit;
       const results = hasNextPage ? resultQuery.slice(0, args.limit) : resultQuery;
-      const total = resultQuery.count > 0 ? resultQuery[0].total : 0;
 
       const nextResult = resultQuery[resultQuery.length - 1];
       const nextCursor = hasNextPage && nextResult ? encodeEventPositionCursor(nextResult) : null;
