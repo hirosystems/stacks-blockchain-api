@@ -330,8 +330,9 @@ export class PgStoreV3 extends BasePgStoreModule {
                   ${cursor.event_index})
         `;
       }
+      const countColumn = sql(args.direction === 'inbound' ? 'inbound_count' : 'outbound_count');
       const [countQuery] = await sql<{ total: number }[]>`
-        SELECT ${args.direction === 'inbound' ? 'inbound_count' : 'outbound_count'} AS total
+        SELECT ${countColumn} AS total
         FROM principal_stx_event_counts
         WHERE principal = ${args.principal}
       `;
