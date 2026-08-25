@@ -504,10 +504,23 @@ export const PrincipalsRoutes: FastifyPluginAsync<
         operationId: 'get_principal_balances_nft',
         summary: 'Get principal NFT balances',
         description:
-          'Get the non-fungible token instances currently owned by a principal, ordered by asset identifier and value.',
+          'Get the non-fungible token instances currently owned by a principal, ordered by asset identifier and value. Optionally filtered to a single asset class via `asset_identifier`.',
         tags: ['Accounts'],
         params: Type.Object({ principal: PrincipalSchema }),
-        querystring: CursorPaginationQuerystring(NftBalanceCursorSchema, ResourceType.NftBalance),
+        querystring: Type.Composite([
+          CursorPaginationQuerystring(NftBalanceCursorSchema, ResourceType.NftBalance),
+          Type.Object({
+            asset_identifier: Type.Optional(
+              Type.String({
+                ...AssetIdentifierSchema,
+                description:
+                  'Return only the instances of this non-fungible token asset class. For ' +
+                  'example, BNS names are held as ' +
+                  '`SP000000000000000000002Q6VF78.bns::names` on mainnet.',
+              })
+            ),
+          }),
+        ]),
         response: {
           200: CursorPaginatedResponse(
             PrincipalNftPositionSchema,
@@ -522,6 +535,7 @@ export const PrincipalsRoutes: FastifyPluginAsync<
         principal: req.params.principal,
         limit: req.query.limit ?? getPagingQueryLimit(ResourceType.NftBalance),
         cursor: req.query.cursor,
+        assetIdentifier: req.query.asset_identifier,
       });
       await reply.send({
         limit: results.limit,

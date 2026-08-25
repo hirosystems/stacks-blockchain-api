@@ -550,8 +550,12 @@ export class PgStoreV3 extends BasePgStoreModule {
     principal: Principal;
     limit: number;
     cursor?: NftBalanceCursor;
+    assetIdentifier?: string;
   }): Promise<DbCursorPaginatedResult<DbPrincipalNftBalance>> {
     return await this.sqlTransaction(async sql => {
+      const assetFilter = args.assetIdentifier
+        ? sql`AND asset_identifier = ${args.assetIdentifier}`
+        : sql``;
       // Position the page strictly after the cursor in `(asset_identifier, value)`
       // ascending order.
       let cursorFilter = sql``;
@@ -570,9 +574,12 @@ export class PgStoreV3 extends BasePgStoreModule {
         SELECT
           asset_identifier,
           value,
-          (SELECT COUNT(*)::int FROM nft_custody WHERE recipient = ${args.principal}) AS total
+          (
+            SELECT COUNT(*)::int FROM nft_custody
+            WHERE recipient = ${args.principal} ${assetFilter}
+          ) AS total
         FROM nft_custody
-        WHERE recipient = ${args.principal} ${cursorFilter}
+        WHERE recipient = ${args.principal} ${assetFilter} ${cursorFilter}
         ORDER BY asset_identifier ASC, value ASC
         LIMIT ${args.limit + 1}
       `;
@@ -593,7 +600,7 @@ export class PgStoreV3 extends BasePgStoreModule {
         const prevPageQuery = await sql<{ asset_identifier: string; value: string }[]>`
           SELECT asset_identifier, value
           FROM nft_custody
-          WHERE recipient = ${args.principal}
+          WHERE recipient = ${args.principal} ${assetFilter}
             AND (
               asset_identifier < ${firstResult.asset_identifier}
               OR (asset_identifier = ${firstResult.asset_identifier} AND value < ${firstResult.value})
