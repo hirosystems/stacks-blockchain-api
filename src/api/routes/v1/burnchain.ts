@@ -20,6 +20,11 @@ import {
   BurnchainRewardSlotHolderListResponseSchema,
 } from '../../schemas/v1/responses/responses.js';
 
+const HISTORICAL_DEPRECATION_NOTE =
+  '**Deprecated:** this endpoint serves historical pox-4 and earlier data only.';
+const HISTORICAL_DEPRECATION_MESSAGE =
+  'Historical pox-4 and earlier data only. See /extended/v3/principals/{principal}/staking for pox-5 data.';
+
 export const BurnchainRoutes: FastifyPluginAsync<
   Record<never, never>,
   Server,
@@ -30,8 +35,10 @@ export const BurnchainRoutes: FastifyPluginAsync<
     {
       schema: {
         operationId: 'get_burnchain_reward_slot_holders',
+        deprecated: true,
+        deprecatedMessage: HISTORICAL_DEPRECATION_MESSAGE,
         summary: 'Get recent reward slot holders',
-        description: `Retrieves a list of the Bitcoin addresses that would validly receive Proof-of-Transfer commitments.`,
+        description: `Retrieves a list of the Bitcoin addresses that would validly receive Proof-of-Transfer commitments. ${HISTORICAL_DEPRECATION_NOTE}`,
         tags: ['Stacking Rewards'],
         querystring: Type.Object({
           limit: LimitParam(ResourceType.Burnchain, 'Limit', 'max number of items to fetch'),
@@ -73,8 +80,10 @@ export const BurnchainRoutes: FastifyPluginAsync<
     {
       schema: {
         operationId: 'get_burnchain_reward_slot_holders_by_address',
+        deprecated: true,
+        deprecatedMessage: HISTORICAL_DEPRECATION_MESSAGE,
         summary: 'Get recent reward slot holder entries for the given address',
-        description: `Retrieves a list of the Bitcoin addresses that would validly receive Proof-of-Transfer commitments for a given reward slot holder recipient address.`,
+        description: `Retrieves a list of the Bitcoin addresses that would validly receive Proof-of-Transfer commitments for a given reward slot holder recipient address. ${HISTORICAL_DEPRECATION_NOTE}`,
         tags: ['Stacking Rewards'],
         params: Type.Object({
           address: Type.String({
@@ -142,8 +151,10 @@ export const BurnchainRoutes: FastifyPluginAsync<
     {
       schema: {
         operationId: 'get_burnchain_reward_list',
+        deprecated: true,
+        deprecatedMessage: HISTORICAL_DEPRECATION_MESSAGE,
         summary: 'Get recent burnchain reward recipients',
-        description: `Retrieves a list of recent burnchain (e.g. Bitcoin) reward recipients with the associated amounts and block info`,
+        description: `Retrieves a list of recent burnchain (e.g. Bitcoin) reward recipients with the associated amounts and block info. ${HISTORICAL_DEPRECATION_NOTE}`,
         tags: ['Stacking Rewards'],
         querystring: Type.Object({
           limit: LimitParam(ResourceType.Burnchain),
@@ -180,8 +191,10 @@ export const BurnchainRoutes: FastifyPluginAsync<
     {
       schema: {
         operationId: 'get_burnchain_reward_list_by_address',
+        deprecated: true,
+        deprecatedMessage: HISTORICAL_DEPRECATION_MESSAGE,
         summary: 'Get recent burnchain reward for the given recipient',
-        description: `Retrieves a list of recent burnchain (e.g. Bitcoin) rewards for the given recipient with the associated amounts and block info`,
+        description: `Retrieves a list of recent burnchain (e.g. Bitcoin) rewards for the given recipient with the associated amounts and block info. ${HISTORICAL_DEPRECATION_NOTE}`,
         tags: ['Stacking Rewards'],
         params: Type.Object({
           address: Type.String({
@@ -255,8 +268,10 @@ export const BurnchainRoutes: FastifyPluginAsync<
     {
       schema: {
         operationId: 'get_burnchain_rewards_total_by_address',
+        deprecated: true,
+        deprecatedMessage: HISTORICAL_DEPRECATION_MESSAGE,
         summary: 'Get total burnchain rewards for the given recipient',
-        description: `Retrieves the total burnchain (e.g. Bitcoin) rewards for a given recipient \`address\``,
+        description: `Retrieves the total burnchain (e.g. Bitcoin) rewards for a given recipient \`address\`. ${HISTORICAL_DEPRECATION_NOTE}`,
         tags: ['Stacking Rewards'],
         params: Type.Object({
           address: Type.String({
