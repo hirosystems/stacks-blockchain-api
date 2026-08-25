@@ -3,6 +3,13 @@ import { Type, TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
 import { Server } from 'node:http';
 import { handleChainTipCache } from '../../controllers/cache-controller.js';
 
+const BLOCK_TIME_DEPRECATION_NOTE =
+  '**Deprecated:** this endpoint returns hardcoded legacy values that no longer reflect actual ' +
+  'Stacks block production since the Nakamoto upgrade.';
+const BLOCK_TIME_DEPRECATION_MESSAGE =
+  'Returns hardcoded legacy values that no longer reflect actual Stacks block production since ' +
+  'the Nakamoto upgrade.';
+
 const enum TargetBlockTime {
   /**
    * This is currently the Stacks 2.0 testnet, which uses a regtest bitcoin node with a
@@ -27,8 +34,10 @@ export const InfoRoutes: FastifyPluginAsync<
       preHandler: handleChainTipCache,
       schema: {
         operationId: 'get_network_block_times',
+        deprecated: true,
+        deprecatedMessage: BLOCK_TIME_DEPRECATION_MESSAGE,
         summary: 'Get the network target block time',
-        description: `Retrieves the target block times for mainnet and testnet. The block time is hardcoded and will change throughout the implementation phases of the testnet.`,
+        description: `Retrieves the target block times for mainnet and testnet. The block time is hardcoded and will change throughout the implementation phases of the testnet. ${BLOCK_TIME_DEPRECATION_NOTE}`,
         tags: ['Info'],
         response: {
           200: Type.Object(
@@ -62,8 +71,10 @@ export const InfoRoutes: FastifyPluginAsync<
       preHandler: handleChainTipCache,
       schema: {
         operationId: 'get_network_block_time_by_network',
+        deprecated: true,
+        deprecatedMessage: BLOCK_TIME_DEPRECATION_MESSAGE,
         summary: `Get a given network's target block time`,
-        description: `Retrieves the target block time for a given network. The network can be mainnet or testnet. The block time is hardcoded and will change throughout the implementation phases of the testnet.`,
+        description: `Retrieves the target block time for a given network. The network can be mainnet or testnet. The block time is hardcoded and will change throughout the implementation phases of the testnet. ${BLOCK_TIME_DEPRECATION_NOTE}`,
         tags: ['Info'],
         params: Type.Object({
           network: Type.Enum({ testnet: 'testnet', mainnet: 'mainnet' }),
