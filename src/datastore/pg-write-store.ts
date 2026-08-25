@@ -2346,10 +2346,45 @@ export class PgWriteStore extends PgStore {
       }
     }
     for (const batch of batchIterate(values, INSERT_BATCH_SIZE)) {
-      const res = await sql`
-        INSERT INTO stx_events ${sql(batch)}
+      // Also bump the materialized `principal_stx_event_counts` for each canonical event: the
+      // recipient's inbound count (transfers and mints) and the sender's outbound count (transfers
+      // and burns). Follows the `principal_tx_counts` convention of counting `canonical = true`
+      // rows.
+      const res = await sql<{ inserted: number }[]>`
+        WITH inserts AS (
+          INSERT INTO stx_events ${sql(batch)}
+          RETURNING sender, recipient, canonical
+        ),
+        count_deltas AS (
+          SELECT
+            COALESCE(i.principal, o.principal) AS principal,
+            COALESCE(i.count, 0) AS inbound_count,
+            COALESCE(o.count, 0) AS outbound_count
+          FROM (
+            SELECT recipient AS principal, COUNT(*) AS count
+            FROM inserts
+            WHERE canonical = true AND recipient IS NOT NULL
+            GROUP BY recipient
+          ) AS i
+          FULL OUTER JOIN (
+            SELECT sender AS principal, COUNT(*) AS count
+            FROM inserts
+            WHERE canonical = true AND sender IS NOT NULL
+            GROUP BY sender
+          ) AS o ON i.principal = o.principal
+        ),
+        count_updates AS (
+          INSERT INTO principal_stx_event_counts (principal, inbound_count, outbound_count)
+          (SELECT principal, inbound_count, outbound_count FROM count_deltas)
+          ON CONFLICT (principal) DO UPDATE SET
+            inbound_count = principal_stx_event_counts.inbound_count + EXCLUDED.inbound_count,
+            outbound_count = principal_stx_event_counts.outbound_count + EXCLUDED.outbound_count
+          RETURNING principal
+        )
+        SELECT COUNT(*)::int AS inserted FROM inserts
       `;
-      assert(res.count === batch.length, `Expecting ${batch.length} inserts, got ${res.count}`);
+      const inserted = res[0]?.inserted ?? 0;
+      assert(inserted === batch.length, `Expecting ${batch.length} inserts, got ${inserted}`);
     }
   }
 
@@ -4724,6 +4759,38 @@ export class PgWriteStore extends PgStore {
           DO UPDATE
           SET balance = ft_balances.balance + EXCLUDED.balance
           RETURNING ft_balances.address
+        ),
+        count_deltas AS (
+          SELECT
+            COALESCE(i.principal, o.principal) AS principal,
+            COALESCE(i.count, 0) AS inbound_count,
+            COALESCE(o.count, 0) AS outbound_count
+          FROM (
+            SELECT recipient AS principal, COUNT(*) AS count
+            FROM updated_events
+            WHERE recipient IS NOT NULL
+            GROUP BY recipient
+          ) AS i
+          FULL OUTER JOIN (
+            SELECT sender AS principal, COUNT(*) AS count
+            FROM updated_events
+            WHERE sender IS NOT NULL
+            GROUP BY sender
+          ) AS o ON i.principal = o.principal
+        ),
+        update_event_counts AS (
+          -- Upsert rather than update: a principal whose only events were ingested in a
+          -- non-canonical block has no counts row yet when that block is restored to canonical.
+          INSERT INTO principal_stx_event_counts (principal, inbound_count, outbound_count)
+          SELECT
+            principal,
+            ${canonical ? sql`inbound_count` : sql`-inbound_count`},
+            ${canonical ? sql`outbound_count` : sql`-outbound_count`}
+          FROM count_deltas
+          ON CONFLICT (principal) DO UPDATE SET
+            inbound_count = principal_stx_event_counts.inbound_count + EXCLUDED.inbound_count,
+            outbound_count = principal_stx_event_counts.outbound_count + EXCLUDED.outbound_count
+          RETURNING principal
         ),
         supply_change AS (
           SELECT SUM(

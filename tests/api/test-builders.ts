@@ -386,11 +386,15 @@ function testStxEvent(args?: TestStxEventArgs): DbStxEvent {
     tx_index: args?.tx_index ?? 0,
     block_height: args?.block_height ?? BLOCK_HEIGHT,
     amount: args?.amount ?? TOKEN_TRANSFER_AMOUNT,
-    // Mints have no sender and burns have no recipient.
+    // Mints have no sender and burns no recipient (enforced by db check constraints).
     recipient:
-      assetEventTypeId === DbAssetEventTypeId.Burn ? undefined : (args?.recipient ?? RECIPIENT_ADDRESS),
+      assetEventTypeId === DbAssetEventTypeId.Burn
+        ? undefined
+        : (args?.recipient ?? RECIPIENT_ADDRESS),
     sender:
-      assetEventTypeId === DbAssetEventTypeId.Mint ? undefined : (args?.sender ?? SENDER_ADDRESS),
+      assetEventTypeId === DbAssetEventTypeId.Mint
+        ? undefined
+        : (args?.sender ?? SENDER_ADDRESS),
     memo: args?.memo,
   };
 }

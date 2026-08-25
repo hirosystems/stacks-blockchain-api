@@ -5,7 +5,7 @@ import { migrate } from '../../test-helpers.ts';
 import { STACKS_TESTNET } from '@stacks/network';
 import * as assert from 'node:assert/strict';
 import { TestBlockBuilder, testMempoolTx } from '../test-builders.ts';
-import { DbTxStatus, DbTxTypeId } from '../../../src/datastore/common.ts';
+import { DbAssetEventTypeId, DbTxStatus, DbTxTypeId } from '../../../src/datastore/common.ts';
 import { hex } from '../test-helpers.ts';
 import { I32_MAX } from '../../../src/helpers.ts';
 import { serializeCV, uintCV } from '@stacks/transactions';

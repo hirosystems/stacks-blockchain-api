@@ -1,9 +1,11 @@
 import {
   FtBalanceCursor,
   NftBalanceCursor,
+  EventPositionCursor,
   TransactionCursor,
 } from '../../api/schemas/v3/cursors.js';
 import { I32_MAX } from '../../helpers.js';
+import { InvalidRequestError, InvalidRequestErrorType } from '../../errors.js';
 import { DbBondLockupTx } from './types.js';
 
 const MAX_TX_INDEX = 0x7fff;
@@ -45,6 +47,68 @@ export const resolveTransactionCursor = async (
 
 export const encodeTransactionCursor = (tx: TransactionCursorRow): TransactionCursor =>
   `${tx.block_height}:${tx.microblock_sequence}:${tx.tx_index}`;
+
+export type EventPositionCursorRow = {
+  block_height: number;
+  microblock_sequence: number;
+  tx_index: number;
+  event_index: number;
+};
+
+const parseEventPositionCursor = (cursor: EventPositionCursor): EventPositionCursorRow => {
+  const [blockHeightStr, microblockSequenceStr, txIndexStr, eventIndexStr] = cursor.split(':');
+  const parsed = {
+    block_height: parseInt(blockHeightStr, 10),
+    microblock_sequence: parseInt(microblockSequenceStr, 10),
+    tx_index: parseInt(txIndexStr, 10),
+    event_index: parseInt(eventIndexStr, 10),
+  };
+  // Reject components that exceed their column ranges (`tx_index` is a smallint, the rest are
+  // integers) -- otherwise the comparison would fail in postgres with an out-of-range error and
+  // surface as a 500 instead of a 400.
+  if (
+    parsed.block_height > I32_MAX ||
+    parsed.microblock_sequence > I32_MAX ||
+    parsed.tx_index > MAX_TX_INDEX ||
+    parsed.event_index > I32_MAX
+  ) {
+    throw new InvalidRequestError(
+      `Cursor value out of range: ${cursor}`,
+      InvalidRequestErrorType.invalid_param
+    );
+  }
+  return parsed;
+};
+
+/**
+ * Resolves an event position cursor to a cursor row. Follows the same convention as
+ * `resolveTransactionCursor`: a cursor with all non-height components at zero that doesn't match an
+ * exact row is treated as a block boundary, positioning the page at the top of that block.
+ * @param cursor - The event position cursor.
+ * @param exactCursorExists - A function that checks if a cursor exists.
+ * @returns The event position cursor row.
+ */
+export const resolveEventPositionCursor = async (
+  cursor: EventPositionCursor,
+  exactCursorExists: (cursor: EventPositionCursorRow) => Promise<boolean>
+): Promise<EventPositionCursorRow> => {
+  const parsed = parseEventPositionCursor(cursor);
+  if (parsed.microblock_sequence !== 0 || parsed.tx_index !== 0 || parsed.event_index !== 0) {
+    return parsed;
+  }
+  if (await exactCursorExists(parsed)) {
+    return parsed;
+  }
+  return {
+    ...parsed,
+    microblock_sequence: I32_MAX,
+    tx_index: MAX_TX_INDEX,
+    event_index: I32_MAX,
+  };
+};
+
+export const encodeEventPositionCursor = (row: EventPositionCursorRow): EventPositionCursor =>
+  `${row.block_height}:${row.microblock_sequence}:${row.tx_index}:${row.event_index}`;
 
 export type FtBalanceCursorRow = {
   balance: string;
