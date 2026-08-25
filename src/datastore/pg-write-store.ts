@@ -86,6 +86,7 @@ import {
 import {
   BLOCK_COLUMNS,
   convertTxQueryResultToDbMempoolTx,
+  isNakamotoBlock,
   markBlockUpdateDataAsNonCanonical,
   MICROBLOCK_COLUMNS,
   parseBlockQueryResult,
@@ -293,11 +294,32 @@ export class PgWriteStore extends PgStore {
     let newTxData: DataStoreTxEventData[] = [];
     let reorg: ReOrgUpdatedEntities = newReOrgUpdatedEntities();
     let isCanonical = true;
+    let skippedDuplicateBlock = false;
 
     await this.sqlWriteTransaction(async sql => {
       const chainTip = await this.getChainTip(sql);
-      reorg = await this.handleReorg(sql, data.block, chainTip.block_height);
-      isCanonical = data.block.block_height > chainTip.block_height;
+      if (isNakamotoBlock(data.block)) {
+        // Nakamoto blocks are validated by signers before they reach the event stream, so they are
+        // always immediately canonical even when they re-org the chain onto a shorter fork.
+        // Canonical flips of already-known blocks only ever happen via a new descendant block, so a
+        // re-delivered block event (e.g. from an SNP stream replay after the chain tip moved
+        // backwards) must be ignored entirely.
+        const existingBlock = await sql`
+          SELECT 1 FROM blocks WHERE index_block_hash = ${data.block.index_block_hash} LIMIT 1
+        `;
+        if (existingBlock.count > 0) {
+          logger.debug(
+            `Ignoring duplicate event for already ingested block ${data.block.block_height} ${data.block.index_block_hash}`
+          );
+          skippedDuplicateBlock = true;
+          return;
+        }
+        reorg = await this.handleReorgNakamoto(sql, data.block, chainTip);
+        isCanonical = true;
+      } else {
+        reorg = await this.handleReorg(sql, data.block, chainTip.block_height);
+        isCanonical = data.block.block_height > chainTip.block_height;
+      }
       if (!isCanonical) {
         markBlockUpdateDataAsNonCanonical(data);
       } else {
@@ -469,6 +491,7 @@ export class PgWriteStore extends PgStore {
         }
       }
     });
+    if (skippedDuplicateBlock) return;
     if (isCanonical) {
       await this.redisNotifier?.notify(
         {
@@ -5264,6 +5287,58 @@ export class PgWriteStore extends PgStore {
   }
 
   /**
+   * Marks a single currently-canonical block (and all its associated entities) as non-canonical,
+   * restoring its transactions to the mempool. Microblock canonical-status results are returned to
+   * the caller instead of being tallied into `updatedEntities` so callers can dedupe them against
+   * other canonical-flip operations happening as part of the same re-org (see
+   * `restoreOrphanedChain`).
+   */
+  private async markBlockNonCanonical(
+    sql: PgSqlClient,
+    block: DbBlock,
+    updatedEntities: ReOrgUpdatedEntities
+  ): Promise<{ orphanedMicroblocks: string[]; acceptedMicroblocks: string[] }> {
+    await sql`
+      UPDATE blocks
+      SET canonical = false
+      WHERE index_block_hash = ${block.index_block_hash} AND canonical = true
+    `;
+    const microCanonicalUpdateResult = await this.updateMicroCanonical(sql, {
+      isCanonical: false,
+      blockHeight: block.block_height,
+      blockHash: block.block_hash,
+      indexBlockHash: block.index_block_hash,
+      parentIndexBlockHash: block.parent_index_block_hash,
+      parentMicroblockHash: block.parent_microblock_hash,
+      parentMicroblockSequence: block.parent_microblock_sequence,
+      burnBlockTime: block.burn_block_time,
+      burnBlockHeight: block.burn_block_height,
+    });
+    updatedEntities.markedNonCanonical.blocks++;
+    updatedEntities.markedNonCanonical.blockHeaders.unshift({
+      index_block_hash: block.index_block_hash,
+      block_height: block.block_height,
+      block_time: block.block_time,
+    });
+    const markNonCanonicalResult = await this.markEntitiesCanonical(
+      sql,
+      block.index_block_hash,
+      block.burn_block_hash,
+      false,
+      updatedEntities
+    );
+    const restoredMempoolTxs = await this.restoreMempoolTxs(
+      sql,
+      markNonCanonicalResult.txsMarkedNonCanonical
+    );
+    updatedEntities.restoredMempoolTxs += restoredMempoolTxs.restoredTxs.length;
+    return {
+      orphanedMicroblocks: microCanonicalUpdateResult.orphanedMicroblocks,
+      acceptedMicroblocks: microCanonicalUpdateResult.acceptedMicroblocks,
+    };
+  }
+
+  /**
    * Recursively restore previously orphaned blocks to canonical.
    * @param sql - The SQL client
    * @param indexBlockHash - The index block hash that we will restore first
@@ -5300,11 +5375,10 @@ export class PgWriteStore extends PgStore {
 
     // Orphan the now conflicting block at the same height
     const orphanedBlockResult = await sql<BlockQueryResult[]>`
-      UPDATE blocks
-      SET canonical = false
+      SELECT ${sql(BLOCK_COLUMNS)}
+      FROM blocks
       WHERE block_height = ${restoredBlockResult[0].block_height}
         AND index_block_hash != ${indexBlockHash} AND canonical = true
-      RETURNING ${sql(BLOCK_COLUMNS)}
     `;
 
     const microblocksOrphaned = new Set<string>();
@@ -5313,17 +5387,11 @@ export class PgWriteStore extends PgStore {
     if (orphanedBlockResult.length > 0) {
       const orphanedBlocks = orphanedBlockResult.map(b => parseBlockQueryResult(b));
       for (const orphanedBlock of orphanedBlocks) {
-        const microCanonicalUpdateResult = await this.updateMicroCanonical(sql, {
-          isCanonical: false,
-          blockHeight: orphanedBlock.block_height,
-          blockHash: orphanedBlock.block_hash,
-          indexBlockHash: orphanedBlock.index_block_hash,
-          parentIndexBlockHash: orphanedBlock.parent_index_block_hash,
-          parentMicroblockHash: orphanedBlock.parent_microblock_hash,
-          parentMicroblockSequence: orphanedBlock.parent_microblock_sequence,
-          burnBlockTime: orphanedBlock.burn_block_time,
-          burnBlockHeight: orphanedBlock.burn_block_height,
-        });
+        const microCanonicalUpdateResult = await this.markBlockNonCanonical(
+          sql,
+          orphanedBlock,
+          updatedEntities
+        );
         microCanonicalUpdateResult.orphanedMicroblocks.forEach(mb => {
           microblocksOrphaned.add(mb);
           microblocksAccepted.delete(mb);
@@ -5333,25 +5401,6 @@ export class PgWriteStore extends PgStore {
           microblocksAccepted.add(mb);
         });
       }
-
-      updatedEntities.markedNonCanonical.blocks++;
-      updatedEntities.markedNonCanonical.blockHeaders.unshift({
-        index_block_hash: orphanedBlockResult[0].index_block_hash,
-        block_height: orphanedBlockResult[0].block_height,
-        block_time: orphanedBlockResult[0].block_time,
-      });
-      const markNonCanonicalResult = await this.markEntitiesCanonical(
-        sql,
-        orphanedBlockResult[0].index_block_hash,
-        orphanedBlockResult[0].burn_block_hash,
-        false,
-        updatedEntities
-      );
-      const restoredMempoolTxs = await this.restoreMempoolTxs(
-        sql,
-        markNonCanonicalResult.txsMarkedNonCanonical
-      );
-      updatedEntities.restoredMempoolTxs += restoredMempoolTxs.restoredTxs.length;
     }
 
     // The canonical microblock tables _must_ be restored _after_ orphaning all other blocks at a
@@ -5422,6 +5471,105 @@ export class PgWriteStore extends PgStore {
     return updatedEntities;
   }
 
+  /**
+   * Marks all canonical blocks above the given height (and their associated entities) as
+   * non-canonical, walking down from the current chain tip. Used when a Nakamoto block re-orgs the
+   * chain onto a fork that is shorter than (or equal in length to) the current canonical chain,
+   * which moves the chain tip backwards.
+   */
+  private async orphanCanonicalBlocksAboveHeight(
+    sql: PgSqlClient,
+    height: number,
+    updatedEntities: ReOrgUpdatedEntities
+  ): Promise<void> {
+    const blocksToOrphanResult = await sql<BlockQueryResult[]>`
+      SELECT ${sql(BLOCK_COLUMNS)}
+      FROM blocks
+      WHERE block_height > ${height} AND canonical = true
+      ORDER BY block_height DESC
+    `;
+    if (blocksToOrphanResult.length > 1) {
+      logger.debug(
+        `Orphaning ${blocksToOrphanResult.length} canonical blocks above height ${height}, chain tip is moving backwards`
+      );
+    }
+    for (const blockToOrphan of blocksToOrphanResult) {
+      const block = parseBlockQueryResult(blockToOrphan);
+      const { orphanedMicroblocks } = await this.markBlockNonCanonical(sql, block, updatedEntities);
+      updatedEntities.markedNonCanonical.microblocks += orphanedMicroblocks.length;
+      updatedEntities.markedNonCanonical.microblockHashes.push(...orphanedMicroblocks);
+    }
+  }
+
+  /**
+   * Handles a re-org for an incoming Nakamoto block. Nakamoto blocks are validated by signers
+   * before they reach the event stream, so an incoming block always becomes the new canonical chain
+   * tip immediately, even when it builds on a fork that is shorter than the current canonical chain
+   * (i.e. the chain tip can move backwards).
+   */
+  async handleReorgNakamoto(
+    sql: PgSqlClient,
+    block: DbBlock,
+    chainTip: DbChainTip
+  ): Promise<ReOrgUpdatedEntities> {
+    const updatedEntities = newReOrgUpdatedEntities();
+    // Common case: the new block builds off the current chain tip.
+    if (block.parent_index_block_hash === chainTip.index_block_hash) {
+      return updatedEntities;
+    }
+    if (block.block_height <= 1) {
+      return updatedEntities;
+    }
+    const parentResult = await sql<
+      {
+        canonical: boolean;
+        index_block_hash: string;
+        burn_block_hash: string;
+        parent_index_block_hash: string;
+      }[]
+    >`
+      SELECT canonical, index_block_hash, burn_block_hash, parent_index_block_hash
+      FROM blocks
+      WHERE block_height = ${block.block_height - 1}
+        AND index_block_hash = ${block.parent_index_block_hash}
+    `;
+    if (parentResult.length > 1)
+      throw new Error(
+        `DB contains multiple blocks at height ${block.block_height - 1} and index_hash ${
+          block.parent_index_block_hash
+        }`
+      );
+    if (parentResult.length === 0)
+      throw new Error(
+        `DB does not contain a parent block at height ${block.block_height - 1} with index_hash ${
+          block.parent_index_block_hash
+        }`
+      );
+    // The two operations below never flip the same block: the orphaned suffix covers heights >=
+    // this block's height, while the restored chain covers heights <= the parent's height.
+    if (block.block_height <= chainTip.block_height) {
+      // The new block re-orgs the chain onto a fork that doesn't extend past the current chain
+      // tip. Orphan all canonical blocks at or above the new block's height.
+      await this.orphanCanonicalBlocksAboveHeight(sql, block.block_height - 1, updatedEntities);
+    }
+    if (!parentResult[0].canonical) {
+      // The new block builds off a previously orphaned chain. Restore canonical status for this
+      // chain, orphaning any conflicting blocks along the way.
+      await this.restoreOrphanedChain(
+        sql,
+        parentResult[0].index_block_hash,
+        parentResult[0].burn_block_hash,
+        updatedEntities
+      );
+    }
+    await this.updateChainTipTxCountsAfterReorg(sql, updatedEntities);
+    logger.info(
+      updatedEntities,
+      `Re-org resolved. Nakamoto block ${block.block_height} ${block.index_block_hash} is the new canonical chain tip.`
+    );
+    return updatedEntities;
+  }
+
   async handleReorg(
     sql: PgSqlClient,
     block: DbBlock,
@@ -5468,22 +5616,32 @@ export class PgWriteStore extends PgStore {
           `Re-org resolved. Block ${block.block_height} builds off a previously orphaned chain.`
         );
       }
-      // Reflect updated transaction totals in `chain_tip` table.
-      const txCountDelta =
-        updatedEntities.markedCanonical.txs - updatedEntities.markedNonCanonical.txs;
-      await sql`
-        UPDATE chain_tip SET
-          tx_count = tx_count + ${txCountDelta},
-          tx_count_unanchored = tx_count_unanchored + ${txCountDelta},
-          bond_count = (
-            SELECT COUNT(*)::int
-            FROM bonds
-            WHERE canonical = true
-              AND microblock_canonical = true
-          )
-      `;
+      await this.updateChainTipTxCountsAfterReorg(sql, updatedEntities);
     }
     return updatedEntities;
+  }
+
+  /**
+   * Reflect updated transaction totals in the `chain_tip` table after a re-org has marked entities
+   * canonical/non-canonical.
+   */
+  private async updateChainTipTxCountsAfterReorg(
+    sql: PgSqlClient,
+    updatedEntities: ReOrgUpdatedEntities
+  ): Promise<void> {
+    const txCountDelta =
+      updatedEntities.markedCanonical.txs - updatedEntities.markedNonCanonical.txs;
+    await sql`
+      UPDATE chain_tip SET
+        tx_count = tx_count + ${txCountDelta},
+        tx_count_unanchored = tx_count_unanchored + ${txCountDelta},
+        bond_count = (
+          SELECT COUNT(*)::int
+          FROM bonds
+          WHERE canonical = true
+            AND microblock_canonical = true
+        )
+    `;
   }
 
   async close(args?: { timeout?: number }): Promise<void> {

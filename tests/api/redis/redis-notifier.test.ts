@@ -125,4 +125,72 @@ describe('redis notifier', () => {
     ]);
     assert.deepEqual(payload3.rollback_blocks, [{ hash: '0x1235', index: 2, time: 1234 }]);
   });
+
+  test('updates redis with nakamoto re-orgs', async () => {
+    // Nakamoto blocks (signer_bitvec set) become canonical immediately, so a fork block that
+    // doesn't extend past the current chain tip still emits a message, with the replaced blocks
+    // as rollbacks.
+    await db.update(
+      new TestBlockBuilder({
+        block_height: 1,
+        block_hash: '0x1234',
+        index_block_hash: '0x1234',
+        block_time: 1234,
+        signer_bitvec: '1111',
+      }).build()
+    );
+    await db.update(
+      new TestBlockBuilder({
+        block_height: 2,
+        block_hash: '0x1235',
+        index_block_hash: '0x1235',
+        parent_index_block_hash: '0x1234',
+        block_time: 1234,
+        signer_bitvec: '1111',
+      }).build()
+    );
+    await db.update(
+      new TestBlockBuilder({
+        block_height: 3,
+        block_hash: '0x1236',
+        index_block_hash: '0x1236',
+        parent_index_block_hash: '0x1235',
+        block_time: 1234,
+        signer_bitvec: '1111',
+      }).build()
+    );
+    assert.equal(messages.length, 3);
+
+    // A sibling block at height 2 moves the chain tip backwards: blocks 2 and 3 are rolled back.
+    await db.update(
+      new TestBlockBuilder({
+        block_height: 2,
+        block_hash: '0x1235bb',
+        index_block_hash: '0x1235bb',
+        parent_index_block_hash: '0x1234',
+        block_time: 1234,
+        signer_bitvec: '1111',
+      }).build()
+    );
+    assert.equal(messages.length, 4);
+    const payload = JSON.parse(messages[3]).payload;
+    assert.deepEqual(payload.apply_blocks, [{ hash: '0x1235bb', index: 2, time: 1234 }]);
+    assert.deepEqual(payload.rollback_blocks, [
+      { hash: '0x1235', index: 2, time: 1234 },
+      { hash: '0x1236', index: 3, time: 1234 },
+    ]);
+
+    // A duplicate event for an already ingested block emits nothing.
+    await db.update(
+      new TestBlockBuilder({
+        block_height: 2,
+        block_hash: '0x1235bb',
+        index_block_hash: '0x1235bb',
+        parent_index_block_hash: '0x1234',
+        block_time: 1234,
+        signer_bitvec: '1111',
+      }).build()
+    );
+    assert.equal(messages.length, 4);
+  });
 });
