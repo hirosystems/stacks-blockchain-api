@@ -5,6 +5,7 @@ import { FastifyPluginAsync } from 'fastify';
 import { Type, TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
 import { Server } from 'node:http';
 import { UnanchoredParamSchema } from '../../../schemas/v1/params.js';
+import { BNS_DEPRECATION_MESSAGE, BNS_DEPRECATION_NOTE } from './deprecation.js';
 
 export const BnsNamespaceRoutes: FastifyPluginAsync<
   Record<never, never>,
@@ -17,8 +18,10 @@ export const BnsNamespaceRoutes: FastifyPluginAsync<
       preHandler: handleChainTipCache,
       schema: {
         operationId: 'get_all_namespaces',
+        deprecated: true,
+        deprecatedMessage: BNS_DEPRECATION_MESSAGE,
         summary: 'Get All Namespaces',
-        description: `Retrieves a list of all namespaces known to the node.`,
+        description: `Retrieves a list of all namespaces known to the node. ${BNS_DEPRECATION_NOTE}`,
         tags: ['Names'],
         querystring: Type.Object({
           unanchored: UnanchoredParamSchema,
@@ -49,8 +52,10 @@ export const BnsNamespaceRoutes: FastifyPluginAsync<
       preHandler: handleChainTipCache,
       schema: {
         operationId: 'get_namespace_names',
+        deprecated: true,
+        deprecatedMessage: BNS_DEPRECATION_MESSAGE,
         summary: 'Get Namespace Names',
-        description: `Retrieves a list of names within a given namespace.`,
+        description: `Retrieves a list of names within a given namespace. ${BNS_DEPRECATION_NOTE}`,
         tags: ['Names'],
         params: Type.Object({
           tld: Type.String({ description: 'the namespace to fetch names from.', examples: ['id'] }),

@@ -12,6 +12,7 @@ import { FastifyPluginAsync } from 'fastify';
 import { Type, TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
 import { Server } from 'node:http';
 import { handleChainTipCache } from '../../../controllers/cache-controller.js';
+import { BNS_DEPRECATION_MESSAGE, BNS_DEPRECATION_NOTE } from './deprecation.js';
 
 export const BnsPriceRoutes: FastifyPluginAsync<
   Record<never, never>,
@@ -24,8 +25,10 @@ export const BnsPriceRoutes: FastifyPluginAsync<
       preHandler: handleChainTipCache,
       schema: {
         operationId: 'get_namespace_price',
+        deprecated: true,
+        deprecatedMessage: BNS_DEPRECATION_MESSAGE,
         summary: 'Get Namespace Price',
-        description: `Retrieves the price of a namespace. The \`amount\` given will be in the smallest possible units of the currency.`,
+        description: `Retrieves the price of a namespace. The \`amount\` given will be in the smallest possible units of the currency. ${BNS_DEPRECATION_NOTE}`,
         tags: ['Names'],
         params: Type.Object({
           tld: Type.String({ description: 'the namespace to fetch price for', examples: ['id'] }),
@@ -85,8 +88,10 @@ export const BnsPriceRoutes: FastifyPluginAsync<
       preHandler: handleChainTipCache,
       schema: {
         operationId: 'get_name_price',
+        deprecated: true,
+        deprecatedMessage: BNS_DEPRECATION_MESSAGE,
         summary: 'Get Name Price',
-        description: `Retrieves the price of a name. The \`amount\` given will be in the smallest possible units of the currency.`,
+        description: `Retrieves the price of a name. The \`amount\` given will be in the smallest possible units of the currency. ${BNS_DEPRECATION_NOTE}`,
         tags: ['Names'],
         params: Type.Object({
           name: Type.String({

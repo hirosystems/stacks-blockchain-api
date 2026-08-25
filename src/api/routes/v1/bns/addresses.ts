@@ -4,6 +4,10 @@ import { Type, TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
 import { Server } from 'node:http';
 import { UnanchoredParamSchema } from '../../../schemas/v1/params.js';
 import { InvalidRequestError, InvalidRequestErrorType } from '../../../../errors.js';
+import {
+  BNS_NAMES_OWNED_DEPRECATION_MESSAGE,
+  BNS_NAMES_OWNED_DEPRECATION_NOTE,
+} from './deprecation.js';
 
 const SUPPORTED_BLOCKCHAINS = ['stacks'];
 
@@ -18,8 +22,10 @@ export const BnsAddressRoutes: FastifyPluginAsync<
       preHandler: handleChainTipCache,
       schema: {
         operationId: 'get_names_owned_by_address',
+        deprecated: true,
+        deprecatedMessage: BNS_NAMES_OWNED_DEPRECATION_MESSAGE,
         summary: 'Get Names Owned by Address',
-        description: `Retrieves a list of names owned by the address provided.`,
+        description: `Retrieves a list of names owned by the address provided. ${BNS_NAMES_OWNED_DEPRECATION_NOTE}`,
         tags: ['Names'],
         params: Type.Object({
           blockchain: Type.String({

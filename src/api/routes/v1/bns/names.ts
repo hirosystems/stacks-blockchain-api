@@ -5,6 +5,7 @@ import { FastifyPluginAsync } from 'fastify';
 import { Type, TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
 import { Server } from 'node:http';
 import { UnanchoredParamSchema } from '../../../schemas/v1/params.js';
+import { BNS_DEPRECATION_MESSAGE, BNS_DEPRECATION_NOTE } from './deprecation.js';
 
 class NameRedirectError extends Error {
   constructor(message: string) {
@@ -25,8 +26,10 @@ export const BnsNameRoutes: FastifyPluginAsync<
       preHandler: handleChainTipCache,
       schema: {
         operationId: 'get_historical_zone_file',
+        deprecated: true,
+        deprecatedMessage: BNS_DEPRECATION_MESSAGE,
         summary: 'Get Historical Zone File',
-        description: `Retrieves the historical zonefile specified by the username and zone hash.`,
+        description: `Retrieves the historical zonefile specified by the username and zone hash. ${BNS_DEPRECATION_NOTE}`,
         tags: ['Names'],
         params: Type.Object({
           name: Type.String({ description: 'fully-qualified name', examples: ['muneeb.id'] }),
@@ -76,8 +79,10 @@ export const BnsNameRoutes: FastifyPluginAsync<
       preHandler: handleChainTipCache,
       schema: {
         operationId: 'fetch_subdomains_list_for_name',
+        deprecated: true,
+        deprecatedMessage: BNS_DEPRECATION_MESSAGE,
         summary: 'Get Name Subdomains',
-        description: `Retrieves the list of subdomains for a specific name`,
+        description: `Retrieves the list of subdomains for a specific name. ${BNS_DEPRECATION_NOTE}`,
         tags: ['Names'],
         params: Type.Object({
           name: Type.String({ description: 'fully-qualified name', examples: ['id.blockstack'] }),
@@ -120,8 +125,10 @@ export const BnsNameRoutes: FastifyPluginAsync<
       preHandler: handleChainTipCache,
       schema: {
         operationId: 'fetch_zone_file',
+        deprecated: true,
+        deprecatedMessage: BNS_DEPRECATION_MESSAGE,
         summary: 'Get Zone File',
-        description: `Retrieves a user's raw zone file. This only works for RFC-compliant zone files. This method returns an error for names that have non-standard zone files.`,
+        description: `Retrieves a user's raw zone file. This only works for RFC-compliant zone files. This method returns an error for names that have non-standard zone files. ${BNS_DEPRECATION_NOTE}`,
         tags: ['Names'],
         params: Type.Object({
           name: Type.String({ description: 'fully-qualified name', examples: ['bar.test'] }),
@@ -176,8 +183,10 @@ export const BnsNameRoutes: FastifyPluginAsync<
       preHandler: handleChainTipCache,
       schema: {
         operationId: 'get_all_names',
+        deprecated: true,
+        deprecatedMessage: BNS_DEPRECATION_MESSAGE,
         summary: 'Get All Names',
-        description: `Retrieves a list of all names known to the node.`,
+        description: `Retrieves a list of all names known to the node. ${BNS_DEPRECATION_NOTE}`,
         tags: ['Names'],
         querystring: Type.Object({
           unanchored: UnanchoredParamSchema,
@@ -225,8 +234,10 @@ export const BnsNameRoutes: FastifyPluginAsync<
       preHandler: handleChainTipCache,
       schema: {
         operationId: 'get_name_info',
+        deprecated: true,
+        deprecatedMessage: BNS_DEPRECATION_MESSAGE,
         summary: 'Get Name Details',
-        description: `Retrieves details of a given name including the \`address\`, \`status\` and last transaction id - \`last_txid\`.`,
+        description: `Retrieves details of a given name including the \`address\`, \`status\` and last transaction id - \`last_txid\`. ${BNS_DEPRECATION_NOTE}`,
         tags: ['Names'],
         params: Type.Object({
           name: Type.String({ description: 'fully-qualified name', examples: ['muneeb.id'] }),

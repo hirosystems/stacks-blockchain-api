@@ -1353,6 +1353,89 @@ describe('principals', () => {
         current: `${vB1}:${collectionB}`,
       });
     });
+
+    test('filters to a single asset class and scopes `total` to the filter', async () => {
+      await db.update(buildNftBlock());
+      const body = await getNftBalances(nftAddr, { asset_identifier: collectionA });
+      // `total` must reflect the filter, not the principal's full NFT count (3).
+      assert.equal(body.total, 2);
+      assert.deepEqual(body.results, [
+        { asset_identifier: collectionA, value: { hex: vA1, repr: 'u1' } },
+        { asset_identifier: collectionA, value: { hex: vA2, repr: 'u2' } },
+      ]);
+    });
+
+    test('scopes the previous cursor to the filter', async () => {
+      await db.update(buildNftBlock());
+      // Collection B sorts after collection A. Unfiltered, the row before `vB1` is
+      // `vA2` of collection A; under the filter there is no previous row at all.
+      const body = await getNftBalances(nftAddr, { asset_identifier: collectionB });
+      assert.equal(body.total, 1);
+      assert.deepEqual(body.results, [
+        { asset_identifier: collectionB, value: { hex: vB1, repr: 'u1' } },
+      ]);
+      assert.deepEqual(body.cursor, {
+        next: null,
+        previous: null,
+        current: `${vB1}:${collectionB}`,
+      });
+    });
+
+    test('paginates with cursors while filtered', async () => {
+      await db.update(buildNftBlock());
+
+      const page1 = await getNftBalances(nftAddr, {
+        asset_identifier: collectionA,
+        limit: '1',
+      });
+      assert.equal(page1.total, 2);
+      assert.deepEqual(page1.results, [
+        { asset_identifier: collectionA, value: { hex: vA1, repr: 'u1' } },
+      ]);
+      assert.deepEqual(page1.cursor, {
+        next: `${vA2}:${collectionA}`,
+        previous: null,
+        current: `${vA1}:${collectionA}`,
+      });
+
+      // The last page must not spill into collection B.
+      const page2 = await getNftBalances(nftAddr, {
+        asset_identifier: collectionA,
+        limit: '1',
+        cursor: page1.cursor.next,
+      });
+      assert.equal(page2.total, 2);
+      assert.deepEqual(page2.results, [
+        { asset_identifier: collectionA, value: { hex: vA2, repr: 'u2' } },
+      ]);
+      assert.deepEqual(page2.cursor, {
+        next: null,
+        previous: `${vA1}:${collectionA}`,
+        current: `${vA2}:${collectionA}`,
+      });
+    });
+
+    test('returns an empty page for an asset class the principal does not hold', async () => {
+      await db.update(buildNftBlock());
+      const body = await getNftBalances(nftAddr, {
+        asset_identifier: 'SP000000000000000000002Q6VF78.collection-c::C',
+      });
+      assert.deepEqual(body, {
+        total: 0,
+        limit: 100,
+        cursor: { next: null, previous: null, current: null },
+        results: [],
+      });
+    });
+
+    test('rejects a malformed asset identifier', async () => {
+      const res = await api.fastifyApp.inject({
+        method: 'GET',
+        url: `/extended/v3/principals/${nftAddr}/balances/nft`,
+        query: { asset_identifier: 'not-an-asset-identifier' },
+      });
+      assert.equal(res.statusCode, 400, res.body);
+    });
   });
 
   describe('/v3/principals/:principal/nonces', () => {
