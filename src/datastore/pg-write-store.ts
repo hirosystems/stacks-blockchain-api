@@ -5248,11 +5248,19 @@ export class PgWriteStore extends PgStore {
         updatedEntities.markedNonCanonical.poxCycles += poxCycleResult.count;
       }
     });
+    // Entities scoped to the block's `burn_block_hash` are only marked non-canonical when no
+    // canonical block still anchors to that burn block. Multiple Nakamoto blocks in a tenure share
+    // the same burn block, so orphaning part of a tenure (e.g. its trailing blocks) must not
+    // invalidate the burn block's own rows. The `blocks.canonical` flip for this block runs before
+    // this method, so the check reflects the post-re-org state.
     q.enqueue(async () => {
       await sql`
         UPDATE burnchain_rewards
         SET canonical = ${canonical}
         WHERE burn_block_hash = ${burnBlockHash} AND canonical != ${canonical}
+          AND (${canonical} OR NOT EXISTS (
+            SELECT 1 FROM blocks WHERE burn_block_hash = ${burnBlockHash} AND canonical = true
+          ))
       `;
     });
     q.enqueue(async () => {
@@ -5261,6 +5269,9 @@ export class PgWriteStore extends PgStore {
           UPDATE burn_block_pox_txs
           SET canonical = ${canonical}
           WHERE burn_block_hash = ${burnBlockHash} AND canonical != ${canonical}
+            AND (${canonical} OR NOT EXISTS (
+              SELECT 1 FROM blocks WHERE burn_block_hash = ${burnBlockHash} AND canonical = true
+            ))
           RETURNING recipient
         ),
         count_deltas AS (

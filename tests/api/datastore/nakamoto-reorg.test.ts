@@ -19,12 +19,14 @@ describe('nakamoto re-org handling', () => {
     hash: string;
     parent: string;
     txId?: string;
+    burnBlockHash?: string;
   }): TestBlockBuilder {
     const builder = new TestBlockBuilder({
       block_height: args.height,
       block_hash: args.hash,
       index_block_hash: args.hash,
       parent_index_block_hash: args.parent,
+      burn_block_hash: args.burnBlockHash,
       signer_bitvec: SIGNER_BITVEC,
     });
     if (args.txId) {
@@ -204,6 +206,75 @@ describe('nakamoto re-org handling', () => {
     assert.equal(txA.result?.canonical, true);
     const txB = await db.getTx({ txId: '0x0302', includeUnanchored: false });
     assert.equal(txB.result?.canonical, false);
+  });
+
+  test('keeps burnchain entities canonical during a same-tenure re-org', async () => {
+    // All blocks share the same burn block (one Nakamoto tenure).
+    const burnBlockHash = '0xbb01';
+    await db.updateBurnchainRewards({
+      rewards: [
+        {
+          canonical: true,
+          burn_block_hash: burnBlockHash,
+          burn_block_height: 200,
+          burn_amount: 2000n,
+          reward_recipient: '1G4ayBXJvxZMoZpaNdZG6VyWwWq2mHpMjQ',
+          reward_amount: 900n,
+          reward_index: 0,
+        },
+      ],
+    });
+    await db.update(nakamotoBlock({ height: 1, hash: '0xa1', parent: '0x00', burnBlockHash }).build());
+    await db.update(nakamotoBlock({ height: 2, hash: '0xa2', parent: '0xa1', burnBlockHash }).build());
+    await db.update(nakamotoBlock({ height: 3, hash: '0xa3', parent: '0xa2', burnBlockHash }).build());
+    // Sibling switch at height 3 within the same tenure.
+    await db.update(nakamotoBlock({ height: 3, hash: '0xb3', parent: '0xa2', burnBlockHash }).build());
+
+    // The stacks-level re-org must not orphan the burn block's rewards: the burn block itself is
+    // still canonical (blocks 1, 2 and 3' anchor to it).
+    const rewards = await db.getBurnchainRewards({ limit: 10, offset: 0 });
+    assert.equal(rewards.length, 1);
+    assert.equal(rewards[0].burn_block_hash, burnBlockHash);
+    assert.equal(rewards[0].canonical, true);
+  });
+
+  test('orphans burnchain entities when a full tenure is orphaned', async () => {
+    await db.updateBurnchainRewards({
+      rewards: [
+        {
+          canonical: true,
+          burn_block_hash: '0xbb02',
+          burn_block_height: 201,
+          burn_amount: 2000n,
+          reward_recipient: '1G4ayBXJvxZMoZpaNdZG6VyWwWq2mHpMjQ',
+          reward_amount: 900n,
+          reward_index: 0,
+        },
+      ],
+    });
+    // Tenure 1 (burn block 0xbb01) mines blocks 1-2, tenure 2 (burn block 0xbb02) mines 3-4.
+    await db.update(
+      nakamotoBlock({ height: 1, hash: '0xa1', parent: '0x00', burnBlockHash: '0xbb01' }).build()
+    );
+    await db.update(
+      nakamotoBlock({ height: 2, hash: '0xa2', parent: '0xa1', burnBlockHash: '0xbb01' }).build()
+    );
+    await db.update(
+      nakamotoBlock({ height: 3, hash: '0xa3', parent: '0xa2', burnBlockHash: '0xbb02' }).build()
+    );
+    await db.update(
+      nakamotoBlock({ height: 4, hash: '0xa4', parent: '0xa3', burnBlockHash: '0xbb02' }).build()
+    );
+
+    // A re-org (e.g. after a burnchain fork) replaces all of tenure 2 with a new tenure built on
+    // burn block 0xbb03. No canonical block anchors to 0xbb02 anymore, so its rewards must be
+    // orphaned along with the blocks.
+    await db.update(
+      nakamotoBlock({ height: 3, hash: '0xb3', parent: '0xa2', burnBlockHash: '0xbb03' }).build()
+    );
+
+    const rewards = await db.getBurnchainRewards({ limit: 10, offset: 0 });
+    assert.equal(rewards.length, 0);
   });
 
   test('ignores duplicate block events', async () => {
