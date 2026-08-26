@@ -1389,6 +1389,15 @@ export function convertTxQueryResultToDbMempoolTx(txs: TxQueryResult[]): DbMempo
   return dbMempoolTxs;
 }
 
+/**
+ * Determines if a block was produced under Nakamoto (epoch 3.0) rules. Nakamoto blocks are
+ * validated by signers before they are announced by stacks-nodes, which is signaled by the
+ * presence of a `signer_bitvec` value.
+ */
+export function isNakamotoBlock(block: Pick<DbBlock, 'signer_bitvec'>): boolean {
+  return block.signer_bitvec !== null;
+}
+
 export function markBlockUpdateDataAsNonCanonical(data: DataStoreBlockUpdateData): void {
   data.block = { ...data.block, canonical: false };
   data.microblocks = data.microblocks.map(mb => ({ ...mb, canonical: false }));
