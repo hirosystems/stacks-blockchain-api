@@ -56,7 +56,8 @@ import { BlocksRoutes } from './routes/v3/blocks.js';
 import { StakingBondsRoutes } from './routes/v3/staking-bonds.js';
 import { StakingCyclesRoutes } from './routes/v3/staking-cycles.js';
 import { StakingSignersRoutes } from './routes/v3/staking-signers.js';
-import { StxSupplyRoutes } from './routes/v3/stx-supply.js';
+import { TokensStxRoutes } from './routes/v3/tokens-stx.js';
+import { TokensFtRoutes } from './routes/v3/tokens-ft.js';
 
 export interface ApiServer {
   fastifyApp: FastifyInstance;
@@ -115,7 +116,8 @@ export const StacksApiRoutes: FastifyPluginAsync<
       await fastify.register(StakingBondsRoutes);
       await fastify.register(StakingCyclesRoutes);
       await fastify.register(StakingSignersRoutes);
-      await fastify.register(StxSupplyRoutes);
+      await fastify.register(TokensStxRoutes);
+      await fastify.register(TokensFtRoutes);
       await fastify.register(TransactionsRoutes);
     },
     { prefix: '/extended/v3' }

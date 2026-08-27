@@ -7,6 +7,7 @@ import {
   DbBondSummary,
   DbCursorPaginatedResult,
   DbCycleSigner,
+  DbFtHolder,
   DbMempoolTransaction,
   DbMempoolTransactionSummary,
   DbPrincipalBondPosition,
@@ -48,6 +49,7 @@ import { TransactionIncludeField } from '../../api/schemas/v3/entities/transacti
 import type {
   BondCursor,
   FtBalanceCursor,
+  FtHolderCursor,
   NftBalanceCursor,
   SignerCursor,
   EventPositionCursor,
@@ -56,11 +58,13 @@ import type {
 } from '../../api/schemas/v3/cursors.js';
 import {
   encodeFtBalanceCursor,
+  encodeFtHolderCursor,
   encodeNftBalanceCursor,
   encodeEventPositionCursor,
   encodeTransactionCursor,
   parseBondLockupTxs,
   parseFtBalanceCursor,
+  parseFtHolderCursor,
   parseNftBalanceCursor,
   resolveEventPositionCursor,
   resolveTransactionCursor,
@@ -2189,5 +2193,102 @@ export class PgStoreV3 extends BasePgStoreModule {
       SELECT stx_supply::text FROM chain_tip
     `;
     return { stx_supply: result[0]?.stx_supply ?? '0' };
+  }
+
+  /**
+   * Gets the holders of a fungible token, sorted by balance descending. Pass `'stx'` as the token
+   * to get STX holders.
+   *
+   * Only positive balances are returned: `ft_balances` rows are never deleted, so a principal that
+   * has spent its entire position remains as a zero-balance row and is not a holder.
+   * @param args - The arguments for the query.
+   * @returns The token's holders.
+   */
+  async getFtHolders(args: {
+    token: string;
+    limit: number;
+    cursor?: FtHolderCursor;
+  }): Promise<DbCursorPaginatedResult<DbFtHolder>> {
+    return await this.sqlTransaction(async sql => {
+      // Position the page at or after the cursor in `(balance DESC, address ASC)` order: a smaller
+      // balance comes later, or the same balance with an address at-or-after the cursor's address.
+      let cursorFilter = sql``;
+      if (args.cursor) {
+        const cursor = parseFtHolderCursor(args.cursor);
+        cursorFilter = sql`
+          AND (
+            balance < ${cursor.balance}::numeric
+            OR (balance = ${cursor.balance}::numeric AND address >= ${cursor.principal})
+          )
+        `;
+      }
+      const baseFilter = sql`
+        token = ${args.token} AND balance > 0
+      `;
+      const resultQuery = await sql<(DbFtHolder & { total: number })[]>`
+        SELECT
+          address AS principal,
+          balance::text AS balance,
+          (SELECT COUNT(*)::int FROM ft_balances WHERE ${baseFilter}) AS total
+        FROM ft_balances
+        WHERE ${baseFilter} ${cursorFilter}
+        ORDER BY balance DESC, address ASC
+        LIMIT ${args.limit + 1}
+      `;
+
+      const hasNextPage = resultQuery.count > args.limit;
+      const results = hasNextPage ? resultQuery.slice(0, args.limit) : resultQuery;
+      const total = resultQuery.count > 0 ? resultQuery[0].total : 0;
+
+      const nextResult = resultQuery[resultQuery.length - 1];
+      const nextCursor = hasNextPage && nextResult ? encodeFtHolderCursor(nextResult) : null;
+
+      const firstResult = results[0];
+      const currentCursor = firstResult ? encodeFtHolderCursor(firstResult) : null;
+
+      // The previous page is the rows strictly before the first result in sort order: a larger
+      // balance, or the same balance with an earlier address.
+      let prevCursor: string | null = null;
+      if (firstResult) {
+        const prevPageQuery = await sql<{ balance: string; principal: string }[]>`
+          SELECT address AS principal, balance::text AS balance
+          FROM ft_balances
+          WHERE ${baseFilter}
+            AND (
+              balance > ${firstResult.balance}::numeric
+              OR (balance = ${firstResult.balance}::numeric AND address < ${firstResult.principal})
+            )
+          ORDER BY balance ASC, address DESC
+          LIMIT ${args.limit}
+        `;
+        if (prevPageQuery.length > 0) {
+          prevCursor = encodeFtHolderCursor(prevPageQuery[prevPageQuery.length - 1]);
+        }
+      }
+
+      return {
+        limit: args.limit,
+        next_cursor: nextCursor,
+        prev_cursor: prevCursor,
+        current_cursor: currentCursor,
+        total,
+        results: results.map(r => ({ principal: r.principal, balance: r.balance })),
+      };
+    });
+  }
+
+  /**
+   * Gets the total supply of a fungible token: the sum of every holder's balance, which is
+   * equivalent to its mints minus its burns. Amounts are in the token's own base units.
+   * @param args - The arguments for the query.
+   * @returns The token's total supply.
+   */
+  async getFtSupply(args: { token: string }): Promise<{ total: string }> {
+    const result = await this.sql<{ total: string }[]>`
+      SELECT COALESCE(SUM(balance), 0)::text AS total
+      FROM ft_balances
+      WHERE token = ${args.token}
+    `;
+    return { total: result[0]?.total ?? '0' };
   }
 }

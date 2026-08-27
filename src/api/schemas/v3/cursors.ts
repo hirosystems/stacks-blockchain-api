@@ -92,6 +92,14 @@ export const FtBalanceCursorSchema = Type.String({
 });
 export type FtBalanceCursor = Static<typeof FtBalanceCursorSchema>;
 
+export const FtHolderCursorSchema = Type.String({
+  pattern: '^\\d+:\\S+$',
+  description:
+    'Cursor for paginating fungible token holders (sorted by balance descending, then holder ' +
+    'principal). Format: balance:principal',
+});
+export type FtHolderCursor = Static<typeof FtHolderCursorSchema>;
+
 export const NftBalanceCursorSchema = Type.String({
   pattern: '^0x[0-9a-fA-F]*:.+$',
   description:
