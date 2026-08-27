@@ -169,6 +169,79 @@ describe('fungible token holders', () => {
       assert.deepEqual(back.results, page1.results);
     });
 
+    test('orders balances numerically, not lexicographically', async () => {
+      // Digit counts differ, so a text sort would put 903… before 1284… and 41500… last.
+      const wide = 'SP000000000000000000002Q6VF78.token-wide::wide';
+      await db.update(
+        new TestBlockBuilder({
+          block_height: 1,
+          block_hash: hex(1),
+          index_block_hash: hex(1),
+          parent_index_block_hash: hex(0),
+          parent_block_hash: hex(0),
+        })
+          .addTx({ tx_id: hex(0x11) })
+          .addTxFtEvent({
+            asset_event_type_id: DbAssetEventTypeId.Mint,
+            recipient: holderA,
+            asset_identifier: wide,
+            amount: 903_117_400_000n,
+          })
+          .addTxFtEvent({
+            asset_event_type_id: DbAssetEventTypeId.Mint,
+            recipient: holderB,
+            asset_identifier: wide,
+            amount: 1_284_665_920_311n,
+          })
+          .addTxFtEvent({
+            asset_event_type_id: DbAssetEventTypeId.Mint,
+            recipient: holderC,
+            asset_identifier: wide,
+            amount: 41_500_000_000n,
+          })
+          .build()
+      );
+
+      const body = await getHolders(`/extended/v3/tokens/ft/${wide}/holders`);
+      assert.deepEqual(
+        body.results.map((r: { balance: string }) => r.balance),
+        ['1284665920311', '903117400000', '41500000000']
+      );
+      // The first page of a descending sort has nothing before it.
+      assert.equal(body.cursor.previous, null);
+
+      // The cursor comparison must agree with the sort: paging forward one row at a
+      // time has to walk the same order.
+      const page1 = await getHolders(`/extended/v3/tokens/ft/${wide}/holders`, { limit: '1' });
+      assert.deepEqual(page1.results, [{ principal: holderB, balance: '1284665920311' }]);
+      const page2 = await getHolders(`/extended/v3/tokens/ft/${wide}/holders`, {
+        limit: '1',
+        cursor: page1.cursor.next,
+      });
+      assert.deepEqual(page2.results, [{ principal: holderA, balance: '903117400000' }]);
+      assert.equal(page2.cursor.previous, `1284665920311:${holderB}`);
+      const page3 = await getHolders(`/extended/v3/tokens/ft/${wide}/holders`, {
+        limit: '1',
+        cursor: page2.cursor.next,
+      });
+      assert.deepEqual(page3.results, [{ principal: holderC, balance: '41500000000' }]);
+      assert.equal(page3.cursor.next, null);
+    });
+
+    test('keeps the global total on a page past the last holder', async () => {
+      await db.update(buildFtBlock());
+      // A syntactically valid cursor positioned below every holder's balance yields an
+      // empty page, but the token still has 4 holders.
+      const body = await getHolders(ftHoldersUrl, { cursor: `1:${holderA}` });
+      assert.deepEqual(body.results, []);
+      assert.equal(body.total, 4);
+      assert.deepEqual(body.cursor, {
+        next: null,
+        previous: null,
+        current: null,
+      });
+    });
+
     test('rejects a malformed asset identifier', async () => {
       const res = await api.fastifyApp.inject({
         method: 'GET',

@@ -22,7 +22,7 @@ export const TokensFtRoutes: FastifyPluginAsync<
     {
       preHandler: handleChainTipCache,
       schema: {
-        operationId: 'get_ft_holders',
+        operationId: 'get_fungible_token_holders',
         summary: 'Get fungible token holders',
         description:
           'Retrieves the principals holding a given fungible token, sorted by balance ' +

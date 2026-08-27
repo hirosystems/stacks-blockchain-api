@@ -2225,20 +2225,23 @@ export class PgStoreV3 extends BasePgStoreModule {
       const baseFilter = sql`
         token = ${args.token} AND balance > 0
       `;
-      const resultQuery = await sql<(DbFtHolder & { total: number })[]>`
+      const totalQuery = await sql<{ total: number }[]>`
+        SELECT COUNT(*)::int AS total FROM ft_balances WHERE ${baseFilter}
+      `;
+      const total = totalQuery[0]?.total ?? 0;
+
+      const resultQuery = await sql<DbFtHolder[]>`
         SELECT
           address AS principal,
-          balance::text AS balance,
-          (SELECT COUNT(*)::int FROM ft_balances WHERE ${baseFilter}) AS total
+          balance::text AS balance
         FROM ft_balances
         WHERE ${baseFilter} ${cursorFilter}
-        ORDER BY balance DESC, address ASC
+        ORDER BY ft_balances.balance DESC, address ASC
         LIMIT ${args.limit + 1}
       `;
 
       const hasNextPage = resultQuery.count > args.limit;
       const results = hasNextPage ? resultQuery.slice(0, args.limit) : resultQuery;
-      const total = resultQuery.count > 0 ? resultQuery[0].total : 0;
 
       const nextResult = resultQuery[resultQuery.length - 1];
       const nextCursor = hasNextPage && nextResult ? encodeFtHolderCursor(nextResult) : null;
@@ -2258,7 +2261,7 @@ export class PgStoreV3 extends BasePgStoreModule {
               balance > ${firstResult.balance}::numeric
               OR (balance = ${firstResult.balance}::numeric AND address < ${firstResult.principal})
             )
-          ORDER BY balance ASC, address DESC
+          ORDER BY ft_balances.balance ASC, address DESC
           LIMIT ${args.limit}
         `;
         if (prevPageQuery.length > 0) {
