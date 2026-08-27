@@ -342,6 +342,12 @@ export interface DbPrincipalFtBalance {
   balance: string;
 }
 
+export interface DbFtHolder {
+  /** The holder's principal (the `ft_balances.address` column). */
+  principal: string;
+  balance: string;
+}
+
 export interface DbPrincipalNftBalance {
   asset_identifier: string;
   /** The NFT instance value (Clarity value) as a `0x`-prefixed hex string. */

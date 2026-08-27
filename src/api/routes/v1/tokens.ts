@@ -44,7 +44,7 @@ export const TokenRoutes: FastifyPluginAsync<
         More information on Non-Fungible Tokens on the Stacks blockchain can be found [here](https://docs.stacks.co/build/create-tokens/creating-a-nft).
 
         **Deprecated:** use \`GET /extended/v3/principals/{principal}/balances/nft\` instead.`,
-        tags: ['Non-Fungible Tokens'],
+        tags: ['Tokens'],
         querystring: Type.Object({
           principal: PrincipalSchema,
           asset_identifiers: Type.Optional(
@@ -150,7 +150,7 @@ export const TokenRoutes: FastifyPluginAsync<
         description: `Retrieves all events relevant to a Non-Fungible Token. Useful to determine the ownership history of a particular asset.
 
         More information on Non-Fungible Tokens on the Stacks blockchain can be found [here](https://docs.stacks.co/build/create-tokens/creating-a-nft).`,
-        tags: ['Non-Fungible Tokens'],
+        tags: ['Tokens'],
         querystring: Type.Object({
           asset_identifier: Type.String({
             description: 'asset class identifier',
@@ -265,7 +265,7 @@ export const TokenRoutes: FastifyPluginAsync<
         description: `Retrieves all mint events for a Non-Fungible Token asset class. Useful to determine which NFTs of a particular collection have been claimed.
 
         More information on Non-Fungible Tokens on the Stacks blockchain can be found [here](https://docs.stacks.co/build/create-tokens/creating-a-nft).`,
-        tags: ['Non-Fungible Tokens'],
+        tags: ['Tokens'],
         querystring: Type.Object({
           asset_identifier: Type.String({
             description: 'asset class identifier',
@@ -367,10 +367,15 @@ export const TokenRoutes: FastifyPluginAsync<
       preHandler: handleChainTipCache,
       schema: {
         operationId: 'get_ft_holders',
+        deprecated: true,
+        deprecatedMessage:
+          'Use /extended/v3/tokens/ft/{asset_identifier}/holders, or ' +
+          '/extended/v3/tokens/stx/holders for STX. The total_supply field moved to ' +
+          '/extended/v3/tokens/ft/{asset_identifier}/supply.',
         summary: 'Fungible token holders',
         description:
-          'Retrieves the list of Fungible Token holders for a given token ID. Specify `stx` for the `token` parameter to get the list of STX holders.',
-        tags: ['Fungible Tokens'],
+          'Retrieves the list of Fungible Token holders for a given token ID. Specify `stx` for the `token` parameter to get the list of STX holders. **Deprecated:** use `GET /extended/v3/tokens/ft/{asset_identifier}/holders` (or `GET /extended/v3/tokens/stx/holders` for STX) instead. The `total_supply` field moved to `GET /extended/v3/tokens/ft/{asset_identifier}/supply`.',
+        tags: ['Tokens'],
         params: Type.Object({
           token: Type.String({
             description: 'fungible token identifier',

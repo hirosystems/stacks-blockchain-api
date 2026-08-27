@@ -72,14 +72,6 @@ export const OpenApiSchemaOptions: SwaggerOptions = {
         },
       },
       {
-        name: 'Non-Fungible Tokens',
-        description: 'Read-only endpoints to obtain non-fungible token details',
-        externalDocs: {
-          description: 'Stacks Documentation - Tokens',
-          url: 'https://docs.stacks.co/build/create-tokens',
-        },
-      },
-      {
         name: 'Search',
         description:
           'Read-only endpoints to search for accounts, blocks, smart contracts, and transactions',
@@ -98,6 +90,15 @@ export const OpenApiSchemaOptions: SwaggerOptions = {
         externalDocs: {
           description: 'Stacks Documentation - Stacking',
           url: 'https://docs.stacks.co/block-production/stacking',
+        },
+      },
+      {
+        name: 'Tokens',
+        description:
+          'Read-only endpoints to obtain STX, fungible token, and non-fungible token details',
+        externalDocs: {
+          description: 'Stacks Documentation - Tokens',
+          url: 'https://docs.stacks.co/build/create-tokens',
         },
       },
       {

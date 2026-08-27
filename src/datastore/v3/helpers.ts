@@ -1,5 +1,6 @@
 import {
   FtBalanceCursor,
+  FtHolderCursor,
   NftBalanceCursor,
   EventPositionCursor,
   TransactionCursor,
@@ -130,6 +131,28 @@ export const parseFtBalanceCursor = (cursor: FtBalanceCursor): FtBalanceCursorRo
 
 export const encodeFtBalanceCursor = (row: FtBalanceCursorRow): FtBalanceCursor =>
   `${row.balance}:${row.token}`;
+
+export type FtHolderCursorRow = {
+  balance: string;
+  /** The holder's principal (the `ft_balances.address` column). */
+  principal: string;
+};
+
+/**
+ * Parses an FT holder cursor (`balance:principal`). The balance is digits-only and contains no
+ * colon, so the cursor is split on the first colon; the remainder is the holder principal (which
+ * may itself contain a `.` contract name, but never a colon).
+ */
+export const parseFtHolderCursor = (cursor: FtHolderCursor): FtHolderCursorRow => {
+  const separatorIndex = cursor.indexOf(':');
+  return {
+    balance: cursor.slice(0, separatorIndex),
+    principal: cursor.slice(separatorIndex + 1),
+  };
+};
+
+export const encodeFtHolderCursor = (row: FtHolderCursorRow): FtHolderCursor =>
+  `${row.balance}:${row.principal}`;
 
 export type NftBalanceCursorRow = {
   /** The NFT instance value as a `0x`-prefixed hex string. */
