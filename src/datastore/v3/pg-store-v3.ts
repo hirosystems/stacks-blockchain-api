@@ -12,6 +12,7 @@ import {
   DbMempoolTransactionSummary,
   DbPrincipalBondPosition,
   DbPrincipalFtBalance,
+  DbPrincipalFtTransfer,
   DbPrincipalNftBalance,
   DbPrincipalStakingSummary,
   DbPrincipalStxTransfer,
@@ -2193,6 +2194,148 @@ export class PgStoreV3 extends BasePgStoreModule {
       SELECT stx_supply::text FROM chain_tip
     `;
     return { stx_supply: result[0]?.stx_supply ?? '0' };
+  }
+
+  /**
+   * Gets a principal's transfer history for a single fungible token, newest first, as one feed
+   * merging the events that credit the principal and the events that debit it.
+   * @param args - The arguments for the query.
+   * @returns The principal's transfers for the asset.
+   */
+  async getPrincipalFtTransfers(args: {
+    principal: Principal;
+    assetIdentifier: string;
+    limit: number;
+    cursor?: EventPositionCursor;
+  }): Promise<DbCursorPaginatedResult<DbPrincipalFtTransfer>> {
+    return await this.sqlTransaction(async sql => {
+      // Matches an event on either side. A self-transfer satisfies both, so anything built on
+      // this must not double-count it.
+      const principalFilter = sql`
+        canonical = true
+        AND microblock_canonical = true
+        AND asset_identifier = ${args.assetIdentifier}
+        AND (sender = ${args.principal} OR recipient = ${args.principal})
+      `;
+
+      let cursorFilter = sql``;
+      if (args.cursor) {
+        const cursor = await resolveEventPositionCursor(args.cursor, async cursor => {
+          const exactCursorQuery = await sql<{ exists: boolean }[]>`
+            SELECT EXISTS (
+              SELECT 1
+              FROM ft_events
+              WHERE ${principalFilter}
+                AND (block_height, microblock_sequence, tx_index, event_index)
+                    = (${cursor.block_height}, ${cursor.microblock_sequence}, ${cursor.tx_index},
+                       ${cursor.event_index})
+            ) AS exists
+          `;
+          return exactCursorQuery[0]?.exists ?? false;
+        });
+        cursorFilter = sql`
+          AND (fe.block_height, fe.microblock_sequence, fe.tx_index, fe.event_index)
+              <= (${cursor.block_height}, ${cursor.microblock_sequence}, ${cursor.tx_index},
+                  ${cursor.event_index})
+        `;
+      }
+
+      // A single OR-filtered count rather than two: the planner can BitmapOr the two
+      // `(principal, asset_identifier, …)` indexes, and a heap tuple matching both sides is
+      // counted once, so self-transfers are not double-counted.
+      const [countQuery] = await sql<{ total: number }[]>`
+        SELECT COUNT(*)::int AS total FROM ft_events WHERE ${principalFilter}
+      `;
+      const total = countQuery?.total ?? 0;
+
+      // Each side is a keyset scan against its own index, capped at `limit + 1`; the merged top
+      // `limit + 1` can only come from the top `limit + 1` of each side. UNION (not UNION ALL)
+      // collapses the duplicate row a self-transfer produces. Two distinct events can never agree
+      // on every selected column, since `event_index` separates events within a transaction and
+      // `tx_id` separates them across transactions.
+      const sidePage = (principalColumn: 'sender' | 'recipient') => sql`
+        SELECT
+          fe.sender,
+          fe.recipient,
+          fe.amount::text AS amount,
+          fe.tx_id,
+          fe.block_height,
+          t.block_hash,
+          t.block_time,
+          fe.index_block_hash,
+          fe.microblock_sequence,
+          fe.tx_index,
+          fe.event_index
+        FROM ft_events AS fe
+        INNER JOIN txs AS t USING (tx_id, index_block_hash, microblock_hash)
+        WHERE fe.canonical = true
+          AND fe.microblock_canonical = true
+          AND fe.asset_identifier = ${args.assetIdentifier}
+          AND fe.${sql(principalColumn)} = ${args.principal}
+          ${cursorFilter}
+        ORDER BY fe.block_height DESC, fe.microblock_sequence DESC, fe.tx_index DESC,
+          fe.event_index DESC
+        LIMIT ${args.limit + 1}
+      `;
+      const resultQuery = await sql<DbPrincipalFtTransfer[]>`
+        WITH inbound AS (${sidePage('recipient')}),
+        outbound AS (${sidePage('sender')}),
+        merged AS (
+          SELECT * FROM inbound
+          UNION
+          SELECT * FROM outbound
+        )
+        SELECT * FROM merged
+        ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
+        LIMIT ${args.limit + 1}
+      `;
+
+      const hasNextPage = resultQuery.count > args.limit;
+      const results = hasNextPage ? resultQuery.slice(0, args.limit) : resultQuery;
+
+      const nextResult = resultQuery[resultQuery.length - 1];
+      const nextCursor = hasNextPage && nextResult ? encodeEventPositionCursor(nextResult) : null;
+
+      const firstResult = results[0];
+      const currentCursor = firstResult ? encodeEventPositionCursor(firstResult) : null;
+
+      let prevCursor: string | null = null;
+      if (firstResult) {
+        const prevPageQuery = await sql<
+          {
+            block_height: number;
+            microblock_sequence: number;
+            tx_index: number;
+            event_index: number;
+          }[]
+        >`
+          SELECT DISTINCT block_height, microblock_sequence, tx_index, event_index
+          FROM ft_events
+          WHERE ${principalFilter}
+            AND (block_height, microblock_sequence, tx_index, event_index)
+                > (
+                  ${firstResult.block_height},
+                  ${firstResult.microblock_sequence},
+                  ${firstResult.tx_index},
+                  ${firstResult.event_index}
+                )
+          ORDER BY block_height ASC, microblock_sequence ASC, tx_index ASC, event_index ASC
+          LIMIT ${args.limit}
+        `;
+        if (prevPageQuery.length > 0) {
+          prevCursor = encodeEventPositionCursor(prevPageQuery[prevPageQuery.length - 1]);
+        }
+      }
+
+      return {
+        limit: args.limit,
+        next_cursor: nextCursor,
+        prev_cursor: prevCursor,
+        current_cursor: currentCursor,
+        total,
+        results,
+      };
+    });
   }
 
   /**
