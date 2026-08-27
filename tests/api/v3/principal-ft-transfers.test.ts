@@ -291,4 +291,115 @@ describe('principal ft transfers', () => {
     });
     assert.equal(res.statusCode, 400, res.body);
   });
+
+  describe('cursor handling', () => {
+    /**
+     * Block 1 puts one of the principal's events at exactly `(1, 0, 0, 0)`. Block 2 puts an
+     * unrelated event at position zero and the principal's event after it, so `2:0:0:0` has no
+     * exact match for this principal and must be read as a block boundary.
+     */
+    const buildCursorBlocks = async () => {
+      await db.update(
+        new TestBlockBuilder({
+          block_height: 1,
+          block_hash: hex(1),
+          index_block_hash: hex(1),
+          parent_index_block_hash: hex(0),
+          parent_block_hash: hex(0),
+        })
+          .addTx({ tx_id: hex(0x11) })
+          .addTxFtEvent({
+            event_index: 0,
+            sender: counterparty,
+            recipient: principal,
+            asset_identifier: token,
+            amount: 100n,
+          })
+          .addTxFtEvent({
+            event_index: 1,
+            sender: counterparty,
+            recipient: principal,
+            asset_identifier: token,
+            amount: 200n,
+          })
+          .build()
+      );
+      await db.update(
+        new TestBlockBuilder({
+          block_height: 2,
+          block_hash: hex(2),
+          index_block_hash: hex(2),
+          parent_index_block_hash: hex(1),
+          parent_block_hash: hex(1),
+        })
+          .addTx({ tx_id: hex(0x22) })
+          // Same asset, but between two other parties, so it does not match this principal.
+          .addTxFtEvent({
+            event_index: 0,
+            sender: counterparty,
+            recipient: other,
+            asset_identifier: token,
+            amount: 999n,
+          })
+          .addTxFtEvent({
+            event_index: 1,
+            sender: counterparty,
+            recipient: principal,
+            asset_identifier: token,
+            amount: 300n,
+          })
+          .build()
+      );
+    };
+
+    test('preserves an exact all-zero cursor position', async () => {
+      await buildCursorBlocks();
+      // An event sits exactly at (1, 0, 0, 0), so the cursor is that position rather than a
+      // block boundary: the page starts at that event and nothing newer leaks in.
+      const body = await get(url(), { cursor: '1:0:0:0' });
+      assert.deepEqual(
+        body.results.map((r: { amount: string }) => r.amount),
+        ['100']
+      );
+      assert.equal(body.cursor.current, '1:0:0:0');
+    });
+
+    test('resolves a block-boundary cursor to the top of the block', async () => {
+      await buildCursorBlocks();
+      // Nothing of this principal's sits at (2, 0, 0, 0) — the event there belongs to other
+      // parties — so the cursor is a boundary and must include block 2's later event.
+      const body = await get(url(), { cursor: '2:0:0:0' });
+      assert.deepEqual(
+        body.results.map((r: { amount: string }) => r.amount),
+        ['300', '200', '100']
+      );
+    });
+
+    test('reports the endpoint-wide total for a cursor past the oldest event', async () => {
+      await buildCursorBlocks();
+      const body = await get(url(), { cursor: '1:0:0:0' });
+      assert.equal(body.total, 3);
+    });
+
+    test('rejects a malformed cursor', async () => {
+      const res = await api.fastifyApp.inject({
+        method: 'GET',
+        url: url(),
+        query: { cursor: 'not-a-cursor' },
+      });
+      assert.equal(res.statusCode, 400, res.body);
+    });
+
+    test('rejects a cursor with out-of-range components', async () => {
+      // Components beyond their column ranges must 400 rather than failing in postgres as a 500.
+      for (const cursor of ['9999999999:0:0:0', '1:0:99999:0', '1:9999999999:0:9999999999']) {
+        const res = await api.fastifyApp.inject({
+          method: 'GET',
+          url: url(),
+          query: { cursor },
+        });
+        assert.equal(res.statusCode, 400, `cursor ${cursor}: ${res.body}`);
+      }
+    });
+  });
 });
