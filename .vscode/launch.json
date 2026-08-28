@@ -102,25 +102,6 @@
     {
       "type": "node",
       "request": "launch",
-      "name": "test: krypton",
-      "runtimeExecutable": "node",
-      "args": [
-        "--import",
-        "tsx",
-        "--test",
-        "--test-global-setup=./tests/krypton/setup.ts",
-        "--test-concurrency=1",
-        "./tests/krypton/**/*.test.ts"
-      ],
-      "outputCapture": "std",
-      "console": "integratedTerminal",
-      "env": {
-        "NODE_ENV": "test"
-      }
-    },
-    {
-      "type": "node",
-      "request": "launch",
       "name": "test: snp",
       "runtimeExecutable": "node",
       "args": [

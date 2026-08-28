@@ -11,7 +11,7 @@ import { bufferToHex } from '@stacks/api-toolkit';
 import { hex } from '../test-helpers.ts';
 import { I32_MAX } from '../../../src/helpers.ts';
 
-describe('transactions', () => {
+describe('v3 transactions', () => {
   let db: PgWriteStore;
   let api: ApiServer;
 

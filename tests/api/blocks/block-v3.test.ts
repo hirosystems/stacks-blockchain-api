@@ -12,7 +12,7 @@ import { I32_MAX } from '../../../src/helpers.ts';
 const SENDER = 'SP466FNC0P7JWTNM2R9T199QRZN1MYEDTAR0KP27';
 const RECIPIENT = 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6';
 
-describe('blocks', () => {
+describe('v3 blocks', () => {
   let db: PgWriteStore;
   let api: ApiServer;
 
