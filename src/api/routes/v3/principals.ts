@@ -25,7 +25,9 @@ import {
 } from '../../schemas/v3/cursors.js';
 import { getSendManyContract } from '../../../helpers.js';
 import { PrincipalStxTransferSchema } from '../../schemas/v3/entities/principal-stx-transfers.js';
+import { PrincipalFtTransferSchema } from '../../schemas/v3/entities/principal-ft-transfers.js';
 import { serializePrincipalStxTransfer } from '../../serializers/v3/stx-transfers.js';
+import { serializePrincipalFtTransfer } from '../../serializers/v3/ft-transfers.js';
 import { decodeClarityValueToRepr } from '@stacks/codec';
 import { PrincipalTransactionSummarySchema } from '../../schemas/v3/entities/principal-transactions.js';
 import { serializePrincipalTransactionSummary } from '../../serializers/v3/transactions.js';
@@ -192,6 +194,54 @@ export const PrincipalsRoutes: FastifyPluginAsync<
           current: results.current_cursor,
         },
         results: results.results.map(serializePrincipalStxTransfer),
+      });
+    }
+  );
+
+  fastify.get(
+    '/principals/:principal/transfers/ft/:asset_identifier',
+    {
+      preHandler: handlePrincipalCache,
+      schema: {
+        operationId: 'get_principal_ft_transfers',
+        summary: 'Get fungible token transfers',
+        description:
+          "Returns a principal's transfer history for a single fungible token as one feed, " +
+          'newest first, combining the events that credit it and the events that debit it. ' +
+          'Includes mints (which have a null `sender`) and burns (which have a null ' +
+          '`recipient`). A transaction that moves the token several times for this principal ' +
+          "yields one result per event. Amounts are in the token's own base units.",
+        tags: ['Transactions'],
+        params: Type.Object({
+          principal: PrincipalSchema,
+          asset_identifier: AssetIdentifierSchema,
+        }),
+        querystring: CursorPaginationQuerystring(EventPositionCursorSchema, ResourceType.Tx),
+        response: {
+          200: CursorPaginatedResponse(
+            PrincipalFtTransferSchema,
+            EventPositionCursorSchema,
+            ResourceType.Tx
+          ),
+        },
+      },
+    },
+    async (req, reply) => {
+      const results = await fastify.db.v3.getPrincipalFtTransfers({
+        principal: req.params.principal,
+        assetIdentifier: req.params.asset_identifier,
+        limit: req.query.limit ?? getPagingQueryLimit(ResourceType.Tx),
+        cursor: req.query.cursor,
+      });
+      await reply.send({
+        limit: results.limit,
+        total: results.total,
+        cursor: {
+          next: results.next_cursor,
+          previous: results.prev_cursor,
+          current: results.current_cursor,
+        },
+        results: results.results.map(serializePrincipalFtTransfer),
       });
     }
   );

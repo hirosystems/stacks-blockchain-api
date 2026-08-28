@@ -342,6 +342,22 @@ export interface DbPrincipalFtBalance {
   balance: string;
 }
 
+export interface DbPrincipalFtTransfer {
+  /** Null for mint events (tokens credited from no sender). */
+  sender: string | null;
+  /** Null for burn events (tokens debited to no recipient). */
+  recipient: string | null;
+  amount: string;
+  tx_id: string;
+  block_height: number;
+  block_hash: string;
+  block_time: number;
+  index_block_hash: string;
+  microblock_sequence: number;
+  tx_index: number;
+  event_index: number;
+}
+
 export interface DbFtHolder {
   /** The holder's principal (the `ft_balances.address` column). */
   principal: string;
