@@ -61,6 +61,7 @@ jobs:
             api:datastore,
             api:event-replay,
             api:event-server,
+            api:faucets,
             api:mempool,
             api:microblocks,
             api:principal,
