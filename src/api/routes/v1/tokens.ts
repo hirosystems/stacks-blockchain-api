@@ -146,6 +146,8 @@ export const TokenRoutes: FastifyPluginAsync<
       preHandler: handleChainTipCache,
       schema: {
         operationId: 'get_nft_history',
+        deprecated: true,
+        deprecatedMessage: 'Use /extended/v3/tokens/nft/{asset_identifier}/history?value={value}.',
         summary: 'Non-Fungible Token history',
         description: `Retrieves all events relevant to a Non-Fungible Token. Useful to determine the ownership history of a particular asset.
 
@@ -261,6 +263,8 @@ export const TokenRoutes: FastifyPluginAsync<
       preHandler: handleChainTipCache,
       schema: {
         operationId: 'get_nft_mints',
+        deprecated: true,
+        deprecatedMessage: 'Use /extended/v3/tokens/nft/{asset_identifier}/mints.',
         summary: 'Non-Fungible Token mints',
         description: `Retrieves all mint events for a Non-Fungible Token asset class. Useful to determine which NFTs of a particular collection have been claimed.
 

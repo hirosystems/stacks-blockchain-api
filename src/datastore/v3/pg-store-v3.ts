@@ -1,4 +1,5 @@
-import { BasePgStoreModule, has0xPrefix } from '@stacks/api-toolkit';
+import { BasePgStoreModule, PgSqlClient, has0xPrefix } from '@stacks/api-toolkit';
+import type postgres from 'postgres';
 import {
   DbBond,
   DbBondAllowlistEntry,
@@ -8,6 +9,8 @@ import {
   DbCursorPaginatedResult,
   DbCycleSigner,
   DbFtHolder,
+  DbNftHistoryEvent,
+  DbNftMint,
   DbMempoolTransaction,
   DbMempoolTransactionSummary,
   DbPrincipalBondPosition,
@@ -63,6 +66,7 @@ import {
   encodeNftBalanceCursor,
   encodeEventPositionCursor,
   encodeTransactionCursor,
+  EventPositionCursorRow,
   parseBondLockupTxs,
   parseFtBalanceCursor,
   parseFtHolderCursor,
@@ -70,7 +74,7 @@ import {
   resolveEventPositionCursor,
   resolveTransactionCursor,
 } from './helpers.js';
-import { DbEventTypeId, DbSignerKeyGrantKind, DbTxTypeId } from '../common.js';
+import { DbAssetEventTypeId, DbEventTypeId, DbSignerKeyGrantKind, DbTxTypeId } from '../common.js';
 
 export class PgStoreV3 extends BasePgStoreModule {
   /**
@@ -2436,5 +2440,165 @@ export class PgStoreV3 extends BasePgStoreModule {
       WHERE token = ${args.token}
     `;
     return { total: result[0]?.total ?? '0' };
+  }
+
+  /**
+   * Gets the event history of a single NFT instance: every canonical transfer, mint, and burn that
+   * moved it, newest first.
+   * @param args - The arguments for the query.
+   * @returns The instance's event history.
+   */
+  async getNftHistory(args: {
+    assetIdentifier: string;
+    value: string;
+    limit: number;
+    cursor?: EventPositionCursor;
+  }): Promise<DbCursorPaginatedResult<DbNftHistoryEvent>> {
+    return await this.sqlTransaction(async sql => {
+      const eventFilter = sql`
+        ne.canonical = true
+        AND ne.microblock_canonical = true
+        AND ne.asset_identifier = ${args.assetIdentifier}
+        AND ne.value = ${args.value}
+      `;
+      return await this.nftEventPage(sql, {
+        eventFilter,
+        columns: sql`ne.sender, ne.recipient`,
+        limit: args.limit,
+        cursor: args.cursor,
+      });
+    });
+  }
+
+  /**
+   * Gets the mint events of an NFT asset class: which instances of the collection have been
+   * claimed, newest first.
+   * @param args - The arguments for the query.
+   * @returns The asset class's mint events.
+   */
+  async getNftMints(args: {
+    assetIdentifier: string;
+    limit: number;
+    cursor?: EventPositionCursor;
+  }): Promise<DbCursorPaginatedResult<DbNftMint>> {
+    return await this.sqlTransaction(async sql => {
+      const eventFilter = sql`
+        ne.canonical = true
+        AND ne.microblock_canonical = true
+        AND ne.asset_identifier = ${args.assetIdentifier}
+        AND ne.asset_event_type_id = ${DbAssetEventTypeId.Mint}
+      `;
+      return await this.nftEventPage(sql, {
+        eventFilter,
+        columns: sql`ne.recipient, ne.value`,
+        limit: args.limit,
+        cursor: args.cursor,
+      });
+    });
+  }
+
+  /**
+   * Shared keyset page over `nft_events`, newest first. Both NFT endpoints differ only in which
+   * rows they select and which columns they project, so the cursor resolution, page fetch, and
+   * next/previous cursor derivation live here.
+   * @param sql - The transaction's sql client.
+   * @param args - The filter, projected columns, page size, and cursor.
+   * @returns A cursor-paginated page of NFT events.
+   */
+  private async nftEventPage<T>(
+    sql: PgSqlClient,
+    args: {
+      eventFilter: postgres.Fragment;
+      columns: postgres.Fragment;
+      limit: number;
+      cursor?: EventPositionCursor;
+    }
+  ): Promise<DbCursorPaginatedResult<T>> {
+    let cursorFilter = sql``;
+    if (args.cursor) {
+      const cursor = await resolveEventPositionCursor(args.cursor, async cursor => {
+        const exactCursorQuery = await sql<{ exists: boolean }[]>`
+          SELECT EXISTS (
+            SELECT 1
+            FROM nft_events AS ne
+            WHERE ${args.eventFilter}
+              AND (ne.block_height, ne.microblock_sequence, ne.tx_index, ne.event_index)
+                  = (${cursor.block_height}, ${cursor.microblock_sequence}, ${cursor.tx_index},
+                     ${cursor.event_index})
+          ) AS exists
+        `;
+        return exactCursorQuery[0]?.exists ?? false;
+      });
+      cursorFilter = sql`
+        AND (ne.block_height, ne.microblock_sequence, ne.tx_index, ne.event_index)
+            <= (${cursor.block_height}, ${cursor.microblock_sequence}, ${cursor.tx_index},
+                ${cursor.event_index})
+      `;
+    }
+
+    const [countQuery] = await sql<{ total: number }[]>`
+      SELECT COUNT(*)::int AS total FROM nft_events AS ne WHERE ${args.eventFilter}
+    `;
+    const total = countQuery?.total ?? 0;
+
+    const resultQuery = await sql<(T & EventPositionCursorRow)[]>`
+      SELECT
+        ${args.columns},
+        ne.tx_id,
+        ne.block_height,
+        t.block_hash,
+        t.block_time,
+        ne.index_block_hash,
+        ne.microblock_sequence,
+        ne.tx_index,
+        ne.event_index
+      FROM nft_events AS ne
+      INNER JOIN txs AS t USING (tx_id, index_block_hash, microblock_hash)
+      WHERE ${args.eventFilter}
+        ${cursorFilter}
+      ORDER BY ne.block_height DESC, ne.microblock_sequence DESC, ne.tx_index DESC,
+        ne.event_index DESC
+      LIMIT ${args.limit + 1}
+    `;
+
+    const hasNextPage = resultQuery.count > args.limit;
+    const results = hasNextPage ? resultQuery.slice(0, args.limit) : resultQuery;
+
+    const nextResult = resultQuery[resultQuery.length - 1];
+    const nextCursor = hasNextPage && nextResult ? encodeEventPositionCursor(nextResult) : null;
+
+    const firstResult = results[0];
+    const currentCursor = firstResult ? encodeEventPositionCursor(firstResult) : null;
+
+    let prevCursor: string | null = null;
+    if (firstResult) {
+      const prevPageQuery = await sql<EventPositionCursorRow[]>`
+        SELECT ne.block_height, ne.microblock_sequence, ne.tx_index, ne.event_index
+        FROM nft_events AS ne
+        WHERE ${args.eventFilter}
+          AND (ne.block_height, ne.microblock_sequence, ne.tx_index, ne.event_index)
+              > (
+                ${firstResult.block_height},
+                ${firstResult.microblock_sequence},
+                ${firstResult.tx_index},
+                ${firstResult.event_index}
+              )
+        ORDER BY ne.block_height ASC, ne.microblock_sequence ASC, ne.tx_index ASC,
+          ne.event_index ASC
+        LIMIT ${args.limit}
+      `;
+      if (prevPageQuery.length > 0) {
+        prevCursor = encodeEventPositionCursor(prevPageQuery[prevPageQuery.length - 1]);
+      }
+    }
+
+    return {
+      limit: args.limit,
+      next_cursor: nextCursor,
+      prev_cursor: prevCursor,
+      current_cursor: currentCursor,
+      total,
+      results: results as T[],
+    };
   }
 }
