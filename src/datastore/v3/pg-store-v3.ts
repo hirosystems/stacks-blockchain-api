@@ -10,7 +10,6 @@ import {
   DbCycleSigner,
   DbFtHolder,
   DbNftHistoryEvent,
-  DbNftMint,
   DbMempoolTransaction,
   DbMempoolTransactionSummary,
   DbPrincipalBondPosition,
@@ -74,7 +73,7 @@ import {
   resolveEventPositionCursor,
   resolveTransactionCursor,
 } from './helpers.js';
-import { DbAssetEventTypeId, DbEventTypeId, DbSignerKeyGrantKind, DbTxTypeId } from '../common.js';
+import { DbEventTypeId, DbSignerKeyGrantKind, DbTxTypeId } from '../common.js';
 
 export class PgStoreV3 extends BasePgStoreModule {
   /**
@@ -2471,36 +2470,8 @@ export class PgStoreV3 extends BasePgStoreModule {
   }
 
   /**
-   * Gets the mint events of an NFT asset class: which instances of the collection have been
-   * claimed, newest first.
-   * @param args - The arguments for the query.
-   * @returns The asset class's mint events.
-   */
-  async getNftMints(args: {
-    assetIdentifier: string;
-    limit: number;
-    cursor?: EventPositionCursor;
-  }): Promise<DbCursorPaginatedResult<DbNftMint>> {
-    return await this.sqlTransaction(async sql => {
-      const eventFilter = sql`
-        ne.canonical = true
-        AND ne.microblock_canonical = true
-        AND ne.asset_identifier = ${args.assetIdentifier}
-        AND ne.asset_event_type_id = ${DbAssetEventTypeId.Mint}
-      `;
-      return await this.nftEventPage(sql, {
-        eventFilter,
-        columns: sql`ne.recipient, ne.value`,
-        limit: args.limit,
-        cursor: args.cursor,
-      });
-    });
-  }
-
-  /**
-   * Shared keyset page over `nft_events`, newest first. Both NFT endpoints differ only in which
-   * rows they select and which columns they project, so the cursor resolution, page fetch, and
-   * next/previous cursor derivation live here.
+   * Keyset page over `nft_events`, newest first: cursor resolution, page fetch, and
+   * next/previous cursor derivation, parameterized by row filter and projected columns.
    * @param sql - The transaction's sql client.
    * @param args - The filter, projected columns, page size, and cursor.
    * @returns A cursor-paginated page of NFT events.

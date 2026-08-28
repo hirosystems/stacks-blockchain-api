@@ -48,7 +48,6 @@ describe('nft events', () => {
 
   const historyUrl = (value: string, assetId: string = asset) =>
     `/extended/v3/tokens/nft/${assetId}/${value}/history`;
-  const mintsUrl = `/extended/v3/tokens/nft/${asset}/mints`;
 
   /**
    * Block 1 mints tokenA to alice and tokenB to bob, plus a mint of a different asset class.
@@ -309,92 +308,6 @@ describe('nft events', () => {
         url: `/extended/v3/tokens/nft/not-an-asset-id/${tokenA}/history`,
       });
       assert.equal(res.statusCode, 400, res.body);
-    });
-  });
-
-  describe('mints', () => {
-    test('returns an empty page for an asset class with no mints', async () => {
-      await buildBlocks();
-      const body = await get(
-        '/extended/v3/tokens/nft/SP000000000000000000002Q6VF78.none::None/mints'
-      );
-      assert.deepEqual(body.results, []);
-      assert.equal(body.total, 0);
-    });
-
-    test('returns only mint events for the asset class, newest first', async () => {
-      await buildBlocks();
-      const body = await get(mintsUrl);
-      assert.equal(body.total, 2);
-      assert.deepEqual(
-        body.results.map((r: { recipient: string; value: { hex: string; repr: string } }) => [
-          r.recipient,
-          r.value.hex,
-          r.value.repr,
-        ]),
-        [
-          [bob, tokenB, 'u2'],
-          [alice, tokenA, 'u1'],
-        ]
-      );
-    });
-
-    test('paginates with cursors', async () => {
-      await buildBlocks();
-      const page1 = await get(mintsUrl, { limit: '1' });
-      assert.equal(page1.total, 2);
-      assert.deepEqual(page1.results[0].recipient, bob);
-
-      const page2 = await get(mintsUrl, { limit: '1', cursor: page1.cursor.next });
-      assert.deepEqual(page2.results[0].recipient, alice);
-      assert.equal(page2.cursor.next, null);
-    });
-
-    test('excludes events orphaned by a reorg', async () => {
-      await buildBlocks();
-      await db.update(
-        new TestBlockBuilder({
-          block_height: 3,
-          block_hash: hex(0x3a),
-          index_block_hash: hex(0x3a),
-          parent_index_block_hash: hex(2),
-          parent_block_hash: hex(2),
-        })
-          .addTx({ tx_id: hex(0x33a) })
-          .addTxNftEvent({
-            asset_event_type_id: DbAssetEventTypeId.Mint,
-            recipient: carol,
-            asset_identifier: asset,
-            value: cvHex(3),
-          })
-          .build()
-      );
-      assert.equal((await get(mintsUrl)).total, 3);
-
-      await db.update(
-        new TestBlockBuilder({
-          block_height: 3,
-          block_hash: hex(0x3b),
-          index_block_hash: hex(0x3b),
-          parent_index_block_hash: hex(2),
-          parent_block_hash: hex(2),
-        })
-          .addTx({ tx_id: hex(0x33b) })
-          .build()
-      );
-      await db.update(
-        new TestBlockBuilder({
-          block_height: 4,
-          block_hash: hex(4),
-          index_block_hash: hex(4),
-          parent_index_block_hash: hex(0x3b),
-          parent_block_hash: hex(0x3b),
-        })
-          .addTx({ tx_id: hex(0x44) })
-          .build()
-      );
-
-      assert.equal((await get(mintsUrl)).total, 2);
     });
   });
 });

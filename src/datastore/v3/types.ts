@@ -373,20 +373,6 @@ export interface DbNftHistoryEvent {
   event_index: number;
 }
 
-export interface DbNftMint {
-  recipient: string | null;
-  /** The NFT instance value (Clarity value) as a `0x`-prefixed hex string. */
-  value: string;
-  tx_id: string;
-  block_height: number;
-  block_hash: string;
-  block_time: number;
-  index_block_hash: string;
-  microblock_sequence: number;
-  tx_index: number;
-  event_index: number;
-}
-
 export interface DbFtHolder {
   /** The holder's principal (the `ft_balances.address` column). */
   principal: string;

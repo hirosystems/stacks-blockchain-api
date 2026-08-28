@@ -266,7 +266,9 @@ export const TokenRoutes: FastifyPluginAsync<
       schema: {
         operationId: 'get_nft_mints',
         deprecated: true,
-        deprecatedMessage: 'Use /extended/v3/tokens/nft/{asset_identifier}/mints.',
+        deprecatedMessage:
+          'No v3 replacement. Mint events are available from ' +
+          '/extended/v3/tokens/nft/{asset_identifier}/{value}/history per instance.',
         summary: 'Non-Fungible Token mints',
         description: `Retrieves all mint events for a Non-Fungible Token asset class. Useful to determine which NFTs of a particular collection have been claimed.
 
