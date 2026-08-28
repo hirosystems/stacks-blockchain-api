@@ -11,13 +11,41 @@ import {
 } from '../../schemas/v3/cursors.js';
 import { getPagingQueryLimit, ResourceType } from '../../pagination.js';
 import { serializeNftHistoryEvent, serializeNftMint } from '../../serializers/v3/nft-events.js';
-import { has0xPrefix } from '@stacks/api-toolkit';
+import { cvToHex, uintCV } from '@stacks/transactions';
+import { InvalidRequestError, InvalidRequestErrorType } from '../../../errors.js';
 
 const NftValueSchema = Type.String({
-  pattern: '^(0x)?[a-fA-F0-9]+$',
-  description: "Hex representation of the token instance's unique Clarity value",
-  examples: ['0x0100000000000000000000000000000803'],
+  pattern: '^(\\d+|0x[a-fA-F0-9]+)$',
+  title: 'NFT instance identifier',
+  description:
+    "The token instance's identifier, either as a plain integer (a SIP-009 token id, which is " +
+    'serialized as a Clarity `uint`) or as a `0x`-prefixed serialized Clarity value.',
+  examples: ['2051', '0x0100000000000000000000000000000803'],
 });
+
+/**
+ * Resolves the `{value}` path segment to the serialized Clarity value stored in `nft_events`. A
+ * plain integer is a SIP-009 token id and becomes a Clarity `uint`; anything else is already a
+ * serialized Clarity value. Parsed as a string rather than a number: Clarity uints are 128-bit and
+ * would lose precision past `Number.MAX_SAFE_INTEGER`.
+ * @param value - The raw path segment.
+ * @returns The `0x`-prefixed serialized Clarity value.
+ */
+const resolveNftValue = (value: string): string => {
+  if (!/^\d+$/.test(value)) {
+    return value;
+  }
+  try {
+    return cvToHex(uintCV(value));
+  } catch {
+    // uintCV throws a RangeError past the uint128 max. Surface that as a 400 rather than letting it
+    // escape as a 500, matching how out-of-range cursor components are handled.
+    throw new InvalidRequestError(
+      `Token id is larger than the maximum Clarity uint`,
+      InvalidRequestErrorType.invalid_param
+    );
+  }
+};
 
 export const TokensNftRoutes: FastifyPluginAsync<
   Record<never, never>,
@@ -25,22 +53,23 @@ export const TokensNftRoutes: FastifyPluginAsync<
   TypeBoxTypeProvider
 > = async fastify => {
   fastify.get(
-    '/tokens/nft/:asset_identifier/history',
+    '/tokens/nft/:asset_identifier/:value/history',
     {
       preHandler: handleChainTipCache,
       schema: {
         operationId: 'get_nft_instance_history',
         summary: 'Get non-fungible token history',
         description:
-          'Retrieves the event history of a single non-fungible token instance — every transfer, ' +
-          "mint, and burn that moved it — newest first. Useful for determining an asset's " +
-          'ownership history. Mints have a null `sender` and burns a null `recipient`.',
+          'Retrieves the event history of a single non-fungible token instance, newest first. ' +
+          "Useful for determining an asset's ownership history. Mints have a null `sender` and " +
+          'burns a null `recipient`. The instance is addressed by a SIP-009 token id, or by its ' +
+          'serialized Clarity value when the collection is not keyed by a `uint`.',
         tags: ['Tokens'],
-        params: Type.Object({ asset_identifier: AssetIdentifierSchema }),
-        querystring: Type.Composite([
-          CursorPaginationQuerystring(EventPositionCursorSchema, ResourceType.Token),
-          Type.Object({ value: NftValueSchema }),
-        ]),
+        params: Type.Object({
+          asset_identifier: AssetIdentifierSchema,
+          value: NftValueSchema,
+        }),
+        querystring: CursorPaginationQuerystring(EventPositionCursorSchema, ResourceType.Token),
         response: {
           200: CursorPaginatedResponse(
             NftHistoryEventSchema,
@@ -51,10 +80,9 @@ export const TokensNftRoutes: FastifyPluginAsync<
       },
     },
     async (req, reply) => {
-      const value = has0xPrefix(req.query.value) ? req.query.value : `0x${req.query.value}`;
       const results = await fastify.db.v3.getNftHistory({
         assetIdentifier: req.params.asset_identifier,
-        value,
+        value: resolveNftValue(req.params.value),
         limit: req.query.limit ?? getPagingQueryLimit(ResourceType.Token),
         cursor: req.query.cursor,
       });

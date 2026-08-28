@@ -147,7 +147,9 @@ export const TokenRoutes: FastifyPluginAsync<
       schema: {
         operationId: 'get_nft_history',
         deprecated: true,
-        deprecatedMessage: 'Use /extended/v3/tokens/nft/{asset_identifier}/history?value={value}.',
+        deprecatedMessage:
+          'Use /extended/v3/tokens/nft/{asset_identifier}/{value}/history, where {value} is a ' +
+          'SIP-009 token id or a 0x-prefixed serialized Clarity value.',
         summary: 'Non-Fungible Token history',
         description: `Retrieves all events relevant to a Non-Fungible Token. Useful to determine the ownership history of a particular asset.
 

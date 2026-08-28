@@ -46,7 +46,8 @@ describe('nft events', () => {
     return JSON.parse(res.body);
   };
 
-  const historyUrl = `/extended/v3/tokens/nft/${asset}/history`;
+  const historyUrl = (value: string, assetId: string = asset) =>
+    `/extended/v3/tokens/nft/${assetId}/${value}/history`;
   const mintsUrl = `/extended/v3/tokens/nft/${asset}/mints`;
 
   /**
@@ -117,7 +118,7 @@ describe('nft events', () => {
   describe('history', () => {
     test('returns an empty page for an instance with no events', async () => {
       await buildBlocks();
-      const body = await get(historyUrl, { value: cvHex(999) });
+      const body = await get(historyUrl(cvHex(999)));
       assert.deepEqual(body, {
         total: 0,
         limit: 50,
@@ -128,7 +129,7 @@ describe('nft events', () => {
 
     test('returns one instance history newest first, scoped to that instance', async () => {
       await buildBlocks();
-      const body = await get(historyUrl, { value: tokenA });
+      const body = await get(historyUrl(tokenA));
       assert.equal(body.total, 3);
       assert.deepEqual(
         body.results.map((r: { sender: string | null; recipient: string | null }) => [
@@ -145,7 +146,7 @@ describe('nft events', () => {
 
     test('separates instances of the same asset class', async () => {
       await buildBlocks();
-      const body = await get(historyUrl, { value: tokenB });
+      const body = await get(historyUrl(tokenB));
       assert.deepEqual(
         body.results.map((r: { sender: string | null; recipient: string | null }) => [
           r.sender,
@@ -160,20 +161,63 @@ describe('nft events', () => {
 
     test('excludes the same instance value under a different asset class', async () => {
       await buildBlocks();
-      const body = await get(`/extended/v3/tokens/nft/${otherAsset}/history`, { value: tokenA });
+      const body = await get(historyUrl(tokenA, otherAsset));
       assert.equal(body.total, 1);
       assert.deepEqual(body.results[0].recipient, carol);
     });
 
-    test('accepts a value without the 0x prefix', async () => {
+    test('addresses the instance by a SIP-009 integer token id', async () => {
       await buildBlocks();
-      const body = await get(historyUrl, { value: tokenA.replace(/^0x/, '') });
-      assert.equal(body.total, 3);
+      // tokenA is `u1`, so `1` must resolve to the same instance as its serialized hex.
+      const byInt = await get(historyUrl('1'));
+      const byHex = await get(historyUrl(tokenA));
+      assert.equal(byInt.total, 3);
+      assert.deepEqual(byInt.results, byHex.results);
+    });
+
+    test('handles an integer token id beyond Number.MAX_SAFE_INTEGER', async () => {
+      // Clarity uints are 128-bit; the id must survive as a string rather than a float.
+      const bigId = '340282366920938463463374607431768211455';
+      const res = await api.fastifyApp.inject({
+        method: 'GET',
+        url: historyUrl(bigId),
+      });
+      assert.equal(res.statusCode, 200, res.body);
+      assert.equal(JSON.parse(res.body).total, 0);
+    });
+
+    test('rejects an integer token id above the uint128 max', async () => {
+      // uintCV throws a RangeError past uint128 max; that must surface as a 400 rather than
+      // an unhandled 500, matching how out-of-range cursor components are handled.
+      const res = await api.fastifyApp.inject({
+        method: 'GET',
+        url: historyUrl('340282366920938463463374607431768211456'),
+      });
+      assert.equal(res.statusCode, 400, res.body);
+    });
+
+    test('rejects a value that is neither an integer nor 0x-prefixed hex', async () => {
+      const res = await api.fastifyApp.inject({
+        method: 'GET',
+        url: historyUrl('deadbeef'),
+      });
+      assert.equal(res.statusCode, 400, res.body);
+    });
+
+    test('reads hex stripped of its 0x prefix as a decimal id, not as hex', async () => {
+      await buildBlocks();
+      // A serialized uint is all decimal digits (`0x0100…0803`), so dropping the prefix
+      // leaves a string that matches the integer form and is read as a (huge) token id
+      // rather than as hex. It resolves to nothing rather than erroring, which is why the
+      // 0x prefix is required rather than optional -- pinned here so any change is deliberate.
+      const body = await get(historyUrl(tokenA.replace(/^0x/, '')));
+      assert.equal(body.total, 0);
+      assert.deepEqual(body.results, []);
     });
 
     test('includes block and transaction position', async () => {
       await buildBlocks();
-      const body = await get(historyUrl, { value: tokenA });
+      const body = await get(historyUrl(tokenA));
       const first = body.results[0];
       assert.equal(first.transaction.tx_id, hex(0x22));
       assert.equal(typeof first.transaction.event_index, 'number');
@@ -185,16 +229,12 @@ describe('nft events', () => {
 
     test('paginates with cursors', async () => {
       await buildBlocks();
-      const page1 = await get(historyUrl, { value: tokenA, limit: '2' });
+      const page1 = await get(historyUrl(tokenA), { limit: '2' });
       assert.equal(page1.total, 3);
       assert.equal(page1.results.length, 2);
       assert.equal(page1.cursor.previous, null);
 
-      const page2 = await get(historyUrl, {
-        value: tokenA,
-        limit: '2',
-        cursor: page1.cursor.next,
-      });
+      const page2 = await get(historyUrl(tokenA), { limit: '2', cursor: page1.cursor.next });
       assert.deepEqual(
         page2.results.map((r: { sender: string | null; recipient: string | null }) => [
           r.sender,
@@ -204,11 +244,7 @@ describe('nft events', () => {
       );
       assert.equal(page2.cursor.next, null);
 
-      const back = await get(historyUrl, {
-        value: tokenA,
-        limit: '2',
-        cursor: page2.cursor.previous,
-      });
+      const back = await get(historyUrl(tokenA), { limit: '2', cursor: page2.cursor.previous });
       assert.deepEqual(back.results, page1.results);
     });
 
@@ -231,7 +267,7 @@ describe('nft events', () => {
           })
           .build()
       );
-      assert.equal((await get(historyUrl, { value: tokenA })).total, 4);
+      assert.equal((await get(historyUrl(tokenA))).total, 4);
 
       await db.update(
         new TestBlockBuilder({
@@ -256,19 +292,21 @@ describe('nft events', () => {
           .build()
       );
 
-      assert.equal((await get(historyUrl, { value: tokenA })).total, 3);
+      assert.equal((await get(historyUrl(tokenA))).total, 3);
     });
 
-    test('requires a value', async () => {
-      const res = await api.fastifyApp.inject({ method: 'GET', url: historyUrl });
-      assert.equal(res.statusCode, 400, res.body);
+    test('does not match without a value segment', async () => {
+      const res = await api.fastifyApp.inject({
+        method: 'GET',
+        url: `/extended/v3/tokens/nft/${asset}/history`,
+      });
+      assert.equal(res.statusCode, 404, res.body);
     });
 
     test('rejects a malformed asset identifier', async () => {
       const res = await api.fastifyApp.inject({
         method: 'GET',
-        url: '/extended/v3/tokens/nft/not-an-asset-id/history',
-        query: { value: tokenA },
+        url: `/extended/v3/tokens/nft/not-an-asset-id/${tokenA}/history`,
       });
       assert.equal(res.statusCode, 400, res.body);
     });
