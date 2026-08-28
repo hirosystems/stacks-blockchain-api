@@ -13,7 +13,7 @@ import { bufferToHex } from '@stacks/api-toolkit';
 // Distinct from the default mempool tx sender to avoid replace-by-fee collisions during inserts.
 const BLOCK_SENDER = 'SP3SBQ9PZEMBNBAWTR7FRPE3XK0EFW9JWVX4G80S2';
 
-describe('mempool', () => {
+describe('v3 mempool', () => {
   let db: PgWriteStore;
   let api: ApiServer;
 
