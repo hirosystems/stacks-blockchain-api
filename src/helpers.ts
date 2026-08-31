@@ -6,11 +6,7 @@ import * as path from 'path';
 import { fileURLToPath } from 'node:url';
 import { isValidStacksAddress, stacksToBitcoinAddress } from '@stacks/codec';
 import * as ecc from 'tiny-secp256k1';
-import {
-  getCoreNodeEndpoint,
-  getCoreRpcClient,
-  waitForCoreRpcConnection,
-} from './core-rpc.js';
+import { getCoreNodeEndpoint, getCoreRpcClient, waitForCoreRpcConnection } from './core-rpc.js';
 import { DbEventTypeId } from './datastore/common.js';
 import { has0xPrefix, logger, numberToHex } from '@stacks/api-toolkit';
 import { createNetwork, STACKS_TESTNET } from '@stacks/network';

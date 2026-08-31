@@ -6,11 +6,7 @@ import {
 import * as sourceMapSupport from 'source-map-support';
 import { startApiServer } from './api/init.js';
 import { startEventServer } from './event-stream/event-server.js';
-import {
-  getCoreNodeEndpoint,
-  getCoreRpcClient,
-  waitForCoreRpcConnection,
-} from './core-rpc.js';
+import { getCoreNodeEndpoint, getCoreRpcClient, waitForCoreRpcConnection } from './core-rpc.js';
 import * as promClient from 'prom-client';
 import getopts from 'getopts';
 import * as fs from 'fs';
