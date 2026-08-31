@@ -64,6 +64,7 @@
     "@stacks/encryption": "7.5.0",
     "@stacks/network": "7.5.0",
     "@stacks/node-publisher-client": "2.3.0",
+    "@stacks/rpc-client": "2.0.1",
     "@stacks/stacking": "7.5.0",
     "@stacks/transactions": "7.5.0",
     "bignumber.js": "10.0.2",

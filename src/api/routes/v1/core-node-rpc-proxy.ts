@@ -5,7 +5,7 @@ import { FastifyPluginAsync } from 'fastify';
 import { TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
 import { IncomingMessage, Server } from 'node:http';
 import { fastifyHttpProxy } from '@fastify/http-proxy';
-import { StacksCoreRpcClient } from '../../../core-rpc/client.js';
+import { getCoreRpcClient } from '../../../core-rpc.js';
 import { logger } from '@stacks/api-toolkit';
 import { ENV } from '../../../env.js';
 
@@ -170,11 +170,11 @@ export const CoreNodeRpcProxyRouter: FastifyPluginAsync<
   /// Retrieves the current Stacks tenure cost limits from the active PoX epoch.
   async function readEpochTenureCostLimits(): Promise<void> {
     const clientInfo = stacksNodeRpcEndpoint.split(':');
-    const client = new StacksCoreRpcClient({ host: clientInfo[0], port: clientInfo[1] });
+    const client = getCoreRpcClient({ host: clientInfo[0], port: clientInfo[1] });
     let attempts = 0;
     while (attempts < 5) {
       try {
-        const poxData = await client.getPox();
+        const poxData = await client.request('GET', '/v2/pox');
         const epochLimits = poxData.epochs.pop()?.block_limit;
         if (epochLimits) {
           feeOpts.readCountLimit = epochLimits.read_count;

@@ -1,7 +1,7 @@
 import { BufferCV, ClarityType, hexToCV } from '@stacks/transactions';
 import { bnsNameCV, ChainID, getChainIDNetwork } from '../../helpers.js';
 import { CoreNodeParsedTxMessage } from '../../event-stream/core-node-message.js';
-import { getCoreNodeEndpoint } from '../../core-rpc/client.js';
+import { getCoreNodeEndpoint } from '../../core-rpc.js';
 import { createNetwork, STACKS_MAINNET, STACKS_TESTNET } from '@stacks/network';
 import { URIType } from 'zone-file/dist/zoneFile.js';
 import { BnsContractIdentifier, printTopic } from './bns-constants.js';

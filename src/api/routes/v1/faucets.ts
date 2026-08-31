@@ -25,7 +25,7 @@ import {
 } from '../../../btc-faucet.js';
 import { DbFaucetRequestCurrency } from '../../../datastore/common.js';
 import { getChainIDNetwork, getStxFaucetNetwork, stxToMicroStx } from '../../../helpers.js';
-import { StacksCoreRpcClient } from '../../../core-rpc/client.js';
+import { CoreRpcError, createCoreRpcClient, type CoreRpcClient } from '@stacks/rpc-client';
 import { isPgConnectionError, logger } from '@stacks/api-toolkit';
 import { ENV } from '../../../env.js';
 import { FastifyPluginAsync, preHandlerHookHandler } from 'fastify';
@@ -74,9 +74,8 @@ export const FAUCET_TESTNET_KEYS: SeededAccount[] = testnetAccounts.map(t => ({
   pubKey: publicKeyToHex(privateKeyToPublic(t.secretKey)),
 }));
 
-function clientFromNetwork(network: StacksNetwork): StacksCoreRpcClient {
-  const coreUrl = new URL(network.client.baseUrl);
-  return new StacksCoreRpcClient({ host: coreUrl.hostname, port: coreUrl.port });
+function clientFromNetwork(network: StacksNetwork): CoreRpcClient {
+  return createCoreRpcClient({ baseUrl: network.client.baseUrl });
 }
 
 // Low-level socket error codes thrown when a backing node (bitcoind RPC or the Stacks core node
@@ -115,8 +114,25 @@ function isNodeConnectionError(error: unknown): boolean {
  *    (note the funds may be present but not yet spendable, e.g. immature coinbase or unconfirmed).
  */
 function isInsufficientFundsError(error: unknown): boolean {
+  if (getTxRejectionReason(error) === 'NotEnoughFunds') {
+    return true;
+  }
   const message = (error as Error | undefined)?.message ?? '';
-  return message.includes('NotEnoughFunds') || message.includes('not enough total amount in utxo');
+  return message.includes('not enough total amount in utxo');
+}
+
+/**
+ * Extracts the Stacks node's mempool rejection reason (e.g. `ConflictingNonceInMempool`) from a
+ * failed `/v2/transactions` broadcast. The node responds `400` with a JSON body like
+ * `{ error: 'transaction rejected', reason: 'TooMuchChaining', ... }`, which `CoreRpcError`
+ * surfaces under `details.error`.
+ */
+function getTxRejectionReason(error: unknown): string | undefined {
+  if (!(error instanceof CoreRpcError)) {
+    return undefined;
+  }
+  const body = (error.details as { error?: { reason?: unknown } } | undefined)?.error;
+  return typeof body?.reason === 'string' ? body.reason : undefined;
 }
 
 export const FaucetRoutes: FastifyPluginAsync<
@@ -424,7 +440,10 @@ export const FaucetRoutes: FastifyPluginAsync<
   ): Promise<bigint> {
     if (stacking) {
       try {
-        const poxInfo = await clientFromNetwork(network).getPox();
+        const poxInfo = await clientFromNetwork(network).request('GET', '/v2/pox');
+        if (poxInfo.min_amount_ustx === undefined) {
+          return FAUCET_DEFAULT_STX_AMOUNT;
+        }
         let stxAmount = BigInt(poxInfo.min_amount_ustx);
         const padPercent = new BigNumber(0.2);
         const padAmount = new BigNumber(stxAmount.toString())
@@ -442,7 +461,7 @@ export const FaucetRoutes: FastifyPluginAsync<
 
   async function fetchNetworkChainID(network: StacksNetwork): Promise<number> {
     const rpcClient = clientFromNetwork(network);
-    const info = await rpcClient.getInfo();
+    const info = await rpcClient.request('GET', '/v2/info');
     return info.network_id;
   }
 
@@ -608,18 +627,20 @@ export const FaucetRoutes: FastifyPluginAsync<
             BigInt(nonces.possibleNextNonce)
           );
           const rawTxHex = tx.serialize();
-          const rawTx = Buffer.from(rawTxHex, 'hex');
           try {
-            const res = await rpcClient.sendTransaction(rawTx);
-            sendSuccess = { txId: res.txId, txRaw: rawTxHex };
+            const txId = await rpcClient.request('POST', '/v2/transactions', {
+              body: { tx: rawTxHex },
+            });
+            sendSuccess = { txId: `0x${txId}`, txRaw: rawTxHex };
             logger.info(
               `StxFaucet success. Sent ${stxAmount} uSTX from ${senderAddress} to ${recipientAddress} (txId: ${sendSuccess.txId}).`
             );
           } catch (error) {
+            const rejectionReason = getTxRejectionReason(error);
             if (
-              (error as Error).message?.includes('ConflictingNonceInMempool') ||
-              (error as Error).message?.includes('TooMuchChaining') ||
-              (error as Error).message?.includes('NotEnoughFunds')
+              rejectionReason === 'ConflictingNonceInMempool' ||
+              rejectionReason === 'TooMuchChaining' ||
+              rejectionReason === 'NotEnoughFunds'
             ) {
               if (keysAttempted == STX_FAUCET_KEYS.length) {
                 logger.warn(
@@ -790,9 +811,11 @@ export const FaucetRoutes: FastifyPluginAsync<
           BigInt(nonces.possibleNextNonce)
         );
         const rawTxHex = tx.serialize();
-        const res = await rpcClient.sendTransaction(Buffer.from(rawTxHex, 'hex'));
+        const txId = await rpcClient.request('POST', '/v2/transactions', {
+          body: { tx: rawTxHex },
+        });
         logger.info(
-          `SbtcFaucet success. Sent ${sbtcAmount} sBTC sats from ${senderAddress} to ${recipientAddress} (txId: ${res.txId}).`
+          `SbtcFaucet success. Sent ${sbtcAmount} sBTC sats from ${senderAddress} to ${recipientAddress} (txId: 0x${txId}).`
         );
 
         await fastify.writeDb?.insertFaucetRequest({
@@ -803,7 +826,7 @@ export const FaucetRoutes: FastifyPluginAsync<
         });
         await reply.send({
           success: true,
-          txId: res.txId,
+          txId: `0x${txId}`,
           txRaw: rawTxHex,
         });
       });

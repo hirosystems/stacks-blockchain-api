@@ -84,7 +84,8 @@ export class MockStacksNode {
       });
     }
     if (path === '/v2/transactions') {
-      const txHex = body.toString('hex');
+      // Broadcasts arrive in the JSON body form: `{ tx: <unprefixed tx hex> }`.
+      const txHex = (JSON.parse(body.toString('utf8')) as { tx: string }).tx;
       this.receivedTxs.push(txHex);
       const override = this.sendTxResponses.shift();
       if (override) return sendJson(res, override.status, override.body);
