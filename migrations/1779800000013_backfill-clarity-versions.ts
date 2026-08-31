@@ -40,8 +40,8 @@ export const BACKFILL_TXS_SQL = `
 /**
  * Backfills the Clarity version of contracts deployed with an unversioned `SmartContract` payload.
  *
- * Such a payload carries no Clarity version on the wire — the node resolves it from the epoch at
- * execution time — so the API recorded `null` for every one of them. The node does report the
+ * Such a payload carries no Clarity version on the wire (the node resolves it from the epoch at
+ * execution time) so the API recorded `null` for every one of them. The node does report the
  * resolved version in the contract interface it sends to event observers, and that whole blob is
  * already stored in `smart_contracts.abi`, so the value can be recovered without touching the node.
  *
