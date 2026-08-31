@@ -10,6 +10,9 @@ import { ClarityAbi } from '@stacks/transactions';
 import { SmartContractSchema } from '../../schemas/v1/entities/smart-contracts.js';
 import { TransactionEventSchema } from '../../schemas/v1/entities/transaction-events.js';
 
+const BY_TRAIT_DEPRECATION_NOTE = '**Deprecated:** this endpoint has no direct v3 replacement.';
+const BY_TRAIT_DEPRECATION_MESSAGE = 'This endpoint has no direct v3 replacement.';
+
 export const ContractRoutes: FastifyPluginAsync<
   Record<never, never>,
   Server,
@@ -21,8 +24,10 @@ export const ContractRoutes: FastifyPluginAsync<
       preHandler: handleChainTipCache,
       schema: {
         operationId: 'get_contracts_by_trait',
+        deprecated: true,
+        deprecatedMessage: BY_TRAIT_DEPRECATION_MESSAGE,
         summary: 'Get contracts by trait',
-        description: `Retrieves a list of contracts based on the following traits listed in JSON format -  functions, variables, maps, fungible tokens and non-fungible tokens`,
+        description: `Retrieves a list of contracts based on the following traits listed in JSON format -  functions, variables, maps, fungible tokens and non-fungible tokens. ${BY_TRAIT_DEPRECATION_NOTE}`,
         tags: ['Smart Contracts'],
         querystring: Type.Object({
           trait_abi: Type.String({
@@ -71,8 +76,10 @@ export const ContractRoutes: FastifyPluginAsync<
       preHandler: handleChainTipCache,
       schema: {
         operationId: 'get_contract_by_id',
+        deprecated: true,
         summary: 'Get contract info',
-        description: 'Retrieves details of a contract with a given `contract_id`',
+        description:
+          'Retrieves details of a contract with a given `contract_id`. **Deprecated:** use `GET /extended/v3/smart-contracts/{contract_id}` instead. For the contract ABI, use the Stacks node RPC endpoint `GET /v2/contracts/interface/{address}/{name}`.',
         tags: ['Smart Contracts'],
         params: Type.Object({
           contract_id: Type.String({

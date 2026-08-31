@@ -55,6 +55,7 @@ import {
   createDbMempoolTxFromCoreMsg,
   createDbTxFromCoreMsg,
   getTxDbStatus,
+  parseClarityVersionFromAbi,
 } from '../datastore/helpers.js';
 import { handleBnsImport } from '../import-v1/index.js';
 import { hexToBuffer, isProdEnv, logger, PINO_LOGGER_CONFIG, stopwatch } from '@stacks/api-toolkit';
@@ -318,19 +319,28 @@ function parseDataStoreTxEventData(
       case TxPayloadTypeID.VersionedSmartContract:
       case TxPayloadTypeID.SmartContract: {
         const contractId = `${tx.sender_address}.${tx.parsed_tx.payload.contract_name}`;
+        const abi = tx.core_tx.contract_interface ?? tx.core_tx.contract_abi;
+        // An unversioned `SmartContract` payload declares no Clarity version; the node resolves it
+        // from the deploy epoch and reports the result in the contract interface, so fall back to
+        // that. Stays null for a failed deploy (no interface) or an ABI predating the field.
         const clarityVersion =
           tx.parsed_tx.payload.type_id == TxPayloadTypeID.VersionedSmartContract
             ? tx.parsed_tx.payload.clarity_version
-            : null;
+            : parseClarityVersionFromAbi(abi);
         dbTx.smartContracts.push({
           tx_id: tx.core_tx.txid,
           contract_id: contractId,
           block_height: blockData.block_height,
           clarity_version: clarityVersion,
           source_code: tx.parsed_tx.payload.code_body,
-          abi: JSON.stringify(tx.core_tx.contract_interface ?? tx.core_tx.contract_abi),
+          abi: JSON.stringify(abi),
           canonical: true,
         });
+        // Keep the denormalized copy on the tx row in step with the contract row. `txs` has no
+        // ABI column, so this is the only place the resolved version can reach it.
+        if (clarityVersion !== null) {
+          dbTx.tx.smart_contract_clarity_version = clarityVersion;
+        }
         break;
       }
       case TxPayloadTypeID.ContractCall: {

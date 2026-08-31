@@ -89,7 +89,11 @@ export const SmartContractTransactionSummarySchema = Type.Composite(
         clarity_version: Nullable(
           Type.Number({
             description:
-              'The Clarity version of the contract, only specified for versioned contract transactions, otherwise null',
+              'The Clarity version of the contract. Versioned contract transactions declare it; ' +
+              'for the rest it is the version the node resolved from the epoch the contract was ' +
+              'deployed in. Null only when it could not be determined, which happens for ' +
+              'contracts indexed from a chainstate predating the point where the Stacks node ' +
+              'began reporting it.',
           })
         ),
         contract_id: Type.String({

@@ -68,7 +68,9 @@ export const SmartContractMempoolTransactionSummarySchema = Type.Composite(
         clarity_version: Nullable(
           Type.Number({
             description:
-              'The Clarity version of the contract, only specified for versioned contract transactions, otherwise null',
+              'The Clarity version of the contract, only specified for versioned contract ' +
+              'transactions, otherwise null. A pending deploy has not been executed, so the ' +
+              'version an unversioned one will resolve to is not yet known.',
           })
         ),
         contract_id: Type.String({
