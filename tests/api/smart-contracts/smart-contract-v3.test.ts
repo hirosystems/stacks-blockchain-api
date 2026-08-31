@@ -151,6 +151,30 @@ describe('v3 smart contract', () => {
     assert.equal(JSON.parse(res.body).clarity_version, 2);
   });
 
+  test('serves a null clarity version when it could not be determined', async () => {
+    // Only reachable for contracts indexed from a chainstate predating the point where the node
+    // began reporting the resolved version in the contract interface.
+    await db.update(
+      new TestBlockBuilder({
+        block_height: 1,
+        index_block_hash: hex(1),
+        parent_index_block_hash: hex(0),
+      })
+        .addTx({
+          tx_id: hex(0x11),
+          type_id: DbTxTypeId.SmartContract,
+          status: DbTxStatus.Success,
+          smart_contract_contract_id: CONTRACT_ID,
+          smart_contract_source_code: SOURCE_CODE,
+        })
+        .build()
+    );
+
+    const res = await get(CONTRACT_ID);
+    assert.equal(res.statusCode, 200);
+    assert.equal(JSON.parse(res.body).clarity_version, null);
+  });
+
   test('404s once the deploy block is reorged out', async () => {
     await deploy({ blockHeight: 1, txId: hex(0x11) });
     assert.equal((await get(CONTRACT_ID)).statusCode, 200);

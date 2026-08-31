@@ -376,7 +376,11 @@ export interface DbPrincipalNftBalance {
  */
 export interface DbSmartContractDetail {
   contract_id: string;
-  /** Null for contracts deployed before versioned contract transactions existed. */
+  /**
+   * Declared by a versioned deploy, otherwise the version the node resolved from the deploy epoch
+   * and reported in the contract interface. Null only when it could not be recovered from that
+   * interface, i.e. a chainstate predating the point where the node began reporting it.
+   */
   clarity_version: number | null;
   tx_id: string;
   block_height: number;
