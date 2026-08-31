@@ -358,6 +358,21 @@ export interface DbPrincipalFtTransfer {
   event_index: number;
 }
 
+export interface DbNftHistoryEvent {
+  /** Null for mint events. */
+  sender: string | null;
+  /** Null for burn events. */
+  recipient: string | null;
+  tx_id: string;
+  block_height: number;
+  block_hash: string;
+  block_time: number;
+  index_block_hash: string;
+  microblock_sequence: number;
+  tx_index: number;
+  event_index: number;
+}
+
 export interface DbFtHolder {
   /** The holder's principal (the `ft_balances.address` column). */
   principal: string;
