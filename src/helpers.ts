@@ -6,7 +6,7 @@ import * as path from 'path';
 import { fileURLToPath } from 'node:url';
 import { isValidStacksAddress, stacksToBitcoinAddress } from '@stacks/codec';
 import * as ecc from 'tiny-secp256k1';
-import { getCoreNodeEndpoint, StacksCoreRpcClient } from './core-rpc/client.js';
+import { getCoreNodeEndpoint, getCoreRpcClient, waitForCoreRpcConnection } from './core-rpc.js';
 import { DbEventTypeId } from './datastore/common.js';
 import { has0xPrefix, logger, numberToHex } from '@stacks/api-toolkit';
 import { createNetwork, STACKS_TESTNET } from '@stacks/network';
@@ -531,9 +531,9 @@ export function getSendManyContract(chainId: ChainID) {
  * @returns `ChainID` Chain id
  */
 export async function getStacksNodeChainID(): Promise<ChainID> {
-  const client = new StacksCoreRpcClient();
-  await client.waitForConnection(Infinity);
-  const coreInfo = await client.getInfo();
+  const client = getCoreRpcClient();
+  await waitForCoreRpcConnection(client, Infinity);
+  const coreInfo = await client.request('GET', '/v2/info');
   // parse chain_id kind (mainnet or testnet) to ensure it is valid and understood by the API
   getChainIDNetwork(coreInfo.network_id);
   return coreInfo.network_id;
