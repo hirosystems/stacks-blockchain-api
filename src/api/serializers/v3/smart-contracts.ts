@@ -11,7 +11,7 @@ import { SmartContract } from '../../schemas/v3/entities/smart-contracts.js';
 export function serializeDbSmartContract(contract: DbSmartContractDetail): SmartContract {
   const result: SmartContract = {
     contract_id: contract.contract_id,
-    clarity_version: contract.clarity_version,
+    clarity_version: contract.clarity_version ?? 0,
     tx_id: contract.tx_id,
     block: {
       height: contract.block_height,

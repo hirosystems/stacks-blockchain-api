@@ -1,5 +1,4 @@
 import { Static, Type } from '@sinclair/typebox';
-import { Nullable } from '../../v1/util.js';
 import {
   BitcoinBlockPositionSchema,
   BlockPositionSchema,
@@ -10,13 +9,10 @@ import {
 export const SmartContractSchema = Type.Object(
   {
     contract_id: SmartContractIdSchema,
-    clarity_version: Nullable(
-      Type.Integer({
-        description:
-          'The Clarity version the contract was deployed with. Null for contracts deployed ' +
-          'before versioned contract transactions existed.',
-      })
-    ),
+    clarity_version: Type.Integer({
+      description: 'The Clarity version the contract runs under.',
+      examples: [3],
+    }),
     tx_id: Type.String({
       ...TransactionIdSchema,
       description: 'ID of the transaction that deployed this contract',

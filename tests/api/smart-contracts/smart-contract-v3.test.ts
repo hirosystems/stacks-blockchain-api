@@ -126,7 +126,9 @@ describe('v3 smart contract', () => {
     assert.equal(body.block.height, 2);
   });
 
-  test('returns a null clarity version for an unversioned deploy', async () => {
+  test('serves the clarity version an unversioned deploy resolved to', async () => {
+    // An unversioned deploy declares no version; ingestion records the one the node reported in
+    // the contract interface, so the endpoint still serves a concrete version.
     await db.update(
       new TestBlockBuilder({
         block_height: 1,
@@ -139,13 +141,14 @@ describe('v3 smart contract', () => {
           status: DbTxStatus.Success,
           smart_contract_contract_id: CONTRACT_ID,
           smart_contract_source_code: SOURCE_CODE,
+          smart_contract_clarity_version: 2,
         })
         .build()
     );
 
     const res = await get(CONTRACT_ID);
     assert.equal(res.statusCode, 200);
-    assert.equal(JSON.parse(res.body).clarity_version, null);
+    assert.equal(JSON.parse(res.body).clarity_version, 2);
   });
 
   test('404s once the deploy block is reorged out', async () => {

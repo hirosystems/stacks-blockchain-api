@@ -412,6 +412,36 @@ export function parseMempoolTxQueryResult(result: MempoolTxQueryResult): DbMempo
 }
 
 /**
+ * Reads the Clarity version out of a contract's ABI.
+ *
+ * A contract deployed with an unversioned `SmartContract` payload carries no Clarity version on the
+ * wire, the node resolves it from the epoch at execution time and reports the result in the
+ * contract interface it sends to event observers as a serialized `ClarityVersion` variant name
+ * (`"Clarity3"`). Contracts deployed before stacks-core added that field (Jan 2023) have an ABI
+ * without it.
+ * @param abi - The `contract_interface` (or legacy `contract_abi`) from the node, if any.
+ * @returns The Clarity version, or null if the ABI does not report one.
+ */
+export function parseClarityVersionFromAbi(abi: unknown): number | null {
+  if (!abi || typeof abi !== 'object') {
+    return null;
+  }
+  const version = (abi as { clarity_version?: unknown }).clarity_version;
+  // Serialized as the enum variant name, e.g. `Clarity3`. Tolerate a bare number in case the
+  // node's serialization ever changes.
+  if (typeof version === 'number' && Number.isInteger(version)) {
+    return version;
+  }
+  if (typeof version === 'string') {
+    const match = /^Clarity(\d+)$/.exec(version);
+    if (match) {
+      return parseInt(match[1], 10);
+    }
+  }
+  return null;
+}
+
+/**
  * The consumers of db responses expect `abi` fields to be a stringified JSON if
  * exists, otherwise `undefined`.
  * The pg query returns a JSON object, `null` (or the string 'null').
