@@ -20,6 +20,7 @@ import {
   DbPrincipalTransactionSummary,
   DbStxTransferDirection,
   DbSignerStaker,
+  DbSmartContractDetail,
   DbStakingSigner,
   DbStakingSignerDetail,
   DbTransaction,
@@ -47,6 +48,7 @@ import { normalizeHashString } from '../../helpers.js';
 import { BlockIdParam } from '../../api/routes/v2/schemas.js';
 import { InvalidRequestError, InvalidRequestErrorType } from '../../errors.js';
 import { TransactionIncludeField } from '../../api/schemas/v3/entities/transactions.js';
+import { SmartContractIncludeField } from '../../api/schemas/v3/entities/smart-contracts.js';
 import type {
   BondCursor,
   FtBalanceCursor,
@@ -70,7 +72,7 @@ import {
   resolveEventPositionCursor,
   resolveTransactionCursor,
 } from './helpers.js';
-import { DbEventTypeId, DbSignerKeyGrantKind, DbTxTypeId } from '../common.js';
+import { DbEventTypeId, DbSignerKeyGrantKind, DbTxStatus, DbTxTypeId } from '../common.js';
 
 export class PgStoreV3 extends BasePgStoreModule {
   /**
@@ -2421,6 +2423,49 @@ export class PgStoreV3 extends BasePgStoreModule {
         results: results.map(r => ({ principal: r.principal, balance: r.balance })),
       };
     });
+  }
+
+  /**
+   * Gets a successfully deployed smart contract by its contract id, together with the block
+   * position of its deployment transaction. Deploy transactions that failed (or were skipped) do
+   * not create a contract, so they are excluded.
+   *
+   * Everything is sourced from `txs`, which carries the contract's clarity version and source code
+   * alongside the block position, so no join is required.
+   * @param args - The arguments for the query.
+   * @returns The smart contract, or null if it was never successfully deployed.
+   */
+  async getSmartContract(args: {
+    contractId: string;
+    include?: SmartContractIncludeField[];
+  }): Promise<DbSmartContractDetail | null> {
+    const sourceCode = args.include?.includes('source_code')
+      ? this.sql`, smart_contract_source_code AS source_code`
+      : this.sql``;
+    // Only one successful deploy can exist per contract id, but order by canonical chain position
+    // anyway so the row is deterministic if a reorg ever leaves duplicates behind.
+    const [result] = await this.sql<DbSmartContractDetail[]>`
+      SELECT
+        smart_contract_contract_id AS contract_id,
+        smart_contract_clarity_version AS clarity_version,
+        tx_id,
+        block_height,
+        block_hash,
+        index_block_hash,
+        block_time,
+        tx_index,
+        burn_block_height,
+        burn_block_time
+        ${sourceCode}
+      FROM txs
+      WHERE smart_contract_contract_id = ${args.contractId}
+        AND canonical = true
+        AND microblock_canonical = true
+        AND status = ${DbTxStatus.Success}
+      ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC
+      LIMIT 1
+    `;
+    return result ?? null;
   }
 
   /**

@@ -369,3 +369,22 @@ export interface DbPrincipalNftBalance {
   /** The NFT instance value (Clarity value) as a `0x`-prefixed hex string. */
   value: string;
 }
+
+/**
+ * A successfully deployed smart contract, with the block position of its deployment transaction.
+ * `source_code` is only selected when the caller opts into it.
+ */
+export interface DbSmartContractDetail {
+  contract_id: string;
+  /** Null for contracts deployed before versioned contract transactions existed. */
+  clarity_version: number | null;
+  tx_id: string;
+  block_height: number;
+  block_hash: string;
+  index_block_hash: string;
+  block_time: number;
+  tx_index: number;
+  burn_block_height: number;
+  burn_block_time: number;
+  source_code?: string;
+}
