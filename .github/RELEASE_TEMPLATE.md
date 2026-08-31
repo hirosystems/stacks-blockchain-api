@@ -4,7 +4,7 @@
 **DB Migration**: ✅ No <!-- / ⚠️ Yes — see Upgrade Notes -->
 
 ```
-docker pull ghcr.io/stx-labs/stacks-blockchain-api:${VERSION}
+docker pull ghcr.io/hirosystems/stacks-blockchain-api:${VERSION}
 ```
 
 <!-- Release Summary: add 1–2 sentences for feature/RECOMMENDED+ releases; delete for routine patches. -->
