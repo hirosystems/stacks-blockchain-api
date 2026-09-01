@@ -225,8 +225,13 @@ export class PgWriteStore extends PgStore {
         logger: {
           debug: _msg => {},
           info: msg => {
+            if (isTestEnv) return;
             if (msg.includes('Migrating files')) {
-              logger.info(`Performing SQL migration, this may take a while...`);
+              logger.info(`Performing SQL migrations, this may take a while...`);
+            } else if (msg.startsWith('> - ')) {
+              logger.info(`Pending migration: ${msg.substring(4)}`);
+            } else if (msg.startsWith('### MIGRATION')) {
+              logger.info(`Running migration: ${msg.replace(/#/g, '').trim().substring(10)}`);
             }
           },
           warn: msg => logger.warn(msg),
