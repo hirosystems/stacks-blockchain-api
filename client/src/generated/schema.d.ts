@@ -77,7 +77,7 @@ export interface paths {
          * @deprecated
          * @description Retrieves all transactions that have been recently broadcast to the mempool. These are pending transactions awaiting confirmation.
          *
-         *             If you need to monitor new transactions, we highly recommend subscribing to [WebSockets or Socket.io](https://github.com/hirosystems/stacks-blockchain-api/tree/master/client) for real-time updates.
+         *             If you need to monitor new transactions, we highly recommend subscribing to [WebSockets or Socket.io](https://github.com/hirosystems/stacks-blockchain-api/tree/main/client) for real-time updates.
          *
          *             **Deprecated:** use `GET /extended/v3/mempool/transactions` instead.
          */
@@ -228,7 +228,8 @@ export interface paths {
         };
         /**
          * Get total and unlocked STX supply
-         * @description Retrieves the total and unlocked STX supply. More information on Stacking can be found [here] (https://docs.stacks.co/block-production/stacking).
+         * @deprecated
+         * @description Retrieves the total and unlocked STX supply. More information on Stacking can be found [here] (https://docs.stacks.co/block-production/stacking). **This endpoint is deprecated in favor of the v3 `get_stx_total_supply` endpoint (`/extended/v3/tokens/stx/supply`), which returns amounts in micro-STX (µSTX).**
          */
         get: operations["get_stx_supply"];
         put?: never;
@@ -249,7 +250,7 @@ export interface paths {
         /**
          * Get total STX supply in plain text format
          * @deprecated
-         * @description Retrieves the total circulating STX token supply as plain text. **This endpoint is deprecated in favor of `get_stx_supply`.**
+         * @description Retrieves the total circulating STX token supply as plain text. **This endpoint is deprecated in favor of the v3 `get_stx_total_supply` endpoint (`/extended/v3/tokens/stx/supply`), which returns amounts in micro-STX (µSTX).**
          */
         get: operations["get_stx_supply_total_supply_plain"];
         put?: never;
@@ -270,7 +271,7 @@ export interface paths {
         /**
          * Get circulating STX supply in plain text format
          * @deprecated
-         * @description Retrieves the STX tokens currently in circulation that have been unlocked as plain text. **This endpoint is deprecated in favor of `get_stx_supply`.**
+         * @description Retrieves the STX tokens currently in circulation that have been unlocked as plain text. **This endpoint is deprecated in favor of the v3 `get_stx_total_supply` endpoint (`/extended/v3/tokens/stx/supply`), which returns amounts in micro-STX (µSTX).**
          */
         get: operations["get_stx_supply_circulating_plain"];
         put?: never;
@@ -291,7 +292,7 @@ export interface paths {
         /**
          * Get total and unlocked STX supply (results formatted the same as the legacy 1.0 API)
          * @deprecated
-         * @description Retrieves total supply of STX tokens including those currently in circulation that have been unlocked. **This endpoint is deprecated in favor of `get_stx_supply`.**
+         * @description Retrieves total supply of STX tokens including those currently in circulation that have been unlocked. **This endpoint is deprecated in favor of the v3 `get_stx_total_supply` endpoint (`/extended/v3/tokens/stx/supply`), which returns amounts in micro-STX (µSTX).**
          */
         get: operations["get_total_stx_supply_legacy_format"];
         put?: never;
@@ -311,7 +312,8 @@ export interface paths {
         };
         /**
          * Get the network target block time
-         * @description Retrieves the target block times for mainnet and testnet. The block time is hardcoded and will change throughout the implementation phases of the testnet.
+         * @deprecated
+         * @description Retrieves the target block times for mainnet and testnet. The block time is hardcoded and will change throughout the implementation phases of the testnet. **Deprecated:** this endpoint returns hardcoded legacy values that no longer reflect actual Stacks block production since the Nakamoto upgrade.
          */
         get: operations["get_network_block_times"];
         put?: never;
@@ -331,7 +333,8 @@ export interface paths {
         };
         /**
          * Get a given network's target block time
-         * @description Retrieves the target block time for a given network. The network can be mainnet or testnet. The block time is hardcoded and will change throughout the implementation phases of the testnet.
+         * @deprecated
+         * @description Retrieves the target block time for a given network. The network can be mainnet or testnet. The block time is hardcoded and will change throughout the implementation phases of the testnet. **Deprecated:** this endpoint returns hardcoded legacy values that no longer reflect actual Stacks block production since the Nakamoto upgrade.
          */
         get: operations["get_network_block_time_by_network"];
         put?: never;
@@ -377,6 +380,7 @@ export interface paths {
         };
         /**
          * Non-Fungible Token history
+         * @deprecated
          * @description Retrieves all events relevant to a Non-Fungible Token. Useful to determine the ownership history of a particular asset.
          *
          *             More information on Non-Fungible Tokens on the Stacks blockchain can be found [here](https://docs.stacks.co/build/create-tokens/creating-a-nft).
@@ -399,6 +403,7 @@ export interface paths {
         };
         /**
          * Non-Fungible Token mints
+         * @deprecated
          * @description Retrieves all mint events for a Non-Fungible Token asset class. Useful to determine which NFTs of a particular collection have been claimed.
          *
          *             More information on Non-Fungible Tokens on the Stacks blockchain can be found [here](https://docs.stacks.co/build/create-tokens/creating-a-nft).
@@ -421,7 +426,8 @@ export interface paths {
         };
         /**
          * Fungible token holders
-         * @description Retrieves the list of Fungible Token holders for a given token ID. Specify `stx` for the `token` parameter to get the list of STX holders.
+         * @deprecated
+         * @description Retrieves the list of Fungible Token holders for a given token ID. Specify `stx` for the `token` parameter to get the list of STX holders. **Deprecated:** use `GET /extended/v3/tokens/ft/{asset_identifier}/holders` (or `GET /extended/v3/tokens/stx/holders` for STX) instead. The `total_supply` field moved to `GET /extended/v3/tokens/ft/{asset_identifier}/supply`.
          */
         get: operations["get_ft_holders"];
         put?: never;
@@ -441,7 +447,8 @@ export interface paths {
         };
         /**
          * Get contracts by trait
-         * @description Retrieves a list of contracts based on the following traits listed in JSON format -  functions, variables, maps, fungible tokens and non-fungible tokens
+         * @deprecated
+         * @description Retrieves a list of contracts based on the following traits listed in JSON format -  functions, variables, maps, fungible tokens and non-fungible tokens. **Deprecated:** this endpoint has no direct v3 replacement.
          */
         get: operations["get_contracts_by_trait"];
         put?: never;
@@ -461,7 +468,8 @@ export interface paths {
         };
         /**
          * Get contract info
-         * @description Retrieves details of a contract with a given `contract_id`
+         * @deprecated
+         * @description Retrieves details of a contract with a given `contract_id`. **Deprecated:** use `GET /extended/v3/smart-contracts/{contract_id}` instead. For the contract ABI, use the Stacks node RPC endpoint `GET /v2/contracts/interface/{address}/{name}`.
          */
         get: operations["get_contract_by_id"];
         put?: never;
@@ -530,7 +538,7 @@ export interface paths {
          * @deprecated
          * @description Retrieves a list of microblocks. **This endpoint is deprecated.** Microblocks were removed in the Stacks Nakamoto upgrade and are no longer produced.
          *
-         *               If you need to actively monitor new microblocks, we highly recommend subscribing to [WebSockets or Socket.io](https://github.com/hirosystems/stacks-blockchain-api/tree/master/client) for real-time updates.
+         *               If you need to actively monitor new microblocks, we highly recommend subscribing to [WebSockets or Socket.io](https://github.com/hirosystems/stacks-blockchain-api/tree/main/client) for real-time updates.
          */
         get: operations["get_microblock_list"];
         put?: never;
@@ -697,7 +705,8 @@ export interface paths {
         };
         /**
          * Get recent reward slot holders
-         * @description Retrieves a list of the Bitcoin addresses that would validly receive Proof-of-Transfer commitments.
+         * @deprecated
+         * @description Retrieves a list of the Bitcoin addresses that would validly receive Proof-of-Transfer commitments. **Deprecated:** this endpoint serves historical pox-4 and earlier data only.
          */
         get: operations["get_burnchain_reward_slot_holders"];
         put?: never;
@@ -717,7 +726,8 @@ export interface paths {
         };
         /**
          * Get recent reward slot holder entries for the given address
-         * @description Retrieves a list of the Bitcoin addresses that would validly receive Proof-of-Transfer commitments for a given reward slot holder recipient address.
+         * @deprecated
+         * @description Retrieves a list of the Bitcoin addresses that would validly receive Proof-of-Transfer commitments for a given reward slot holder recipient address. **Deprecated:** this endpoint serves historical pox-4 and earlier data only.
          */
         get: operations["get_burnchain_reward_slot_holders_by_address"];
         put?: never;
@@ -737,7 +747,8 @@ export interface paths {
         };
         /**
          * Get recent burnchain reward recipients
-         * @description Retrieves a list of recent burnchain (e.g. Bitcoin) reward recipients with the associated amounts and block info
+         * @deprecated
+         * @description Retrieves a list of recent burnchain (e.g. Bitcoin) reward recipients with the associated amounts and block info. **Deprecated:** this endpoint serves historical pox-4 and earlier data only.
          */
         get: operations["get_burnchain_reward_list"];
         put?: never;
@@ -757,7 +768,8 @@ export interface paths {
         };
         /**
          * Get recent burnchain reward for the given recipient
-         * @description Retrieves a list of recent burnchain (e.g. Bitcoin) rewards for the given recipient with the associated amounts and block info
+         * @deprecated
+         * @description Retrieves a list of recent burnchain (e.g. Bitcoin) rewards for the given recipient with the associated amounts and block info. **Deprecated:** this endpoint serves historical pox-4 and earlier data only.
          */
         get: operations["get_burnchain_reward_list_by_address"];
         put?: never;
@@ -777,7 +789,8 @@ export interface paths {
         };
         /**
          * Get total burnchain rewards for the given recipient
-         * @description Retrieves the total burnchain (e.g. Bitcoin) rewards for a given recipient `address`
+         * @deprecated
+         * @description Retrieves the total burnchain (e.g. Bitcoin) rewards for a given recipient `address`. **Deprecated:** this endpoint serves historical pox-4 and earlier data only.
          */
         get: operations["get_burnchain_rewards_total_by_address"];
         put?: never;
@@ -924,7 +937,7 @@ export interface paths {
         /**
          * Get inbound STX transfers
          * @deprecated
-         * @description Retrieves a list of STX transfers with memos to the given principal. This includes regular transfers from a stx-transfer transaction type, and transfers from contract-call transactions at the `send-many-memo` bulk sending contract. **Deprecated:** this endpoint has no direct v3 replacement.
+         * @description Retrieves a list of STX transfers with memos to the given principal. This includes regular transfers from a stx-transfer transaction type, and transfers from contract-call transactions at the `send-many-memo` bulk sending contract. **Deprecated:** use `GET /extended/v3/principals/{principal}/transfers/stx/inbound` (`get_principal_inbound_stx_transfers`) instead.
          */
         get: operations["get_account_inbound"];
         put?: never;
@@ -1806,6 +1819,66 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/extended/v3/principals/{principal}/transfers/stx/inbound": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get inbound STX transfers
+         * @description Returns the individual inbound STX events crediting a principal. Includes native stx-transfer transactions, `send-many-memo` bulk-send legs, any other STX transfer event crediting the principal, and STX mints (which have a null `sender`), each with its own sender, amount, and memo. A transaction that credits the principal multiple times yields one result per event.
+         */
+        get: operations["get_principal_inbound_stx_transfers"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/extended/v3/principals/{principal}/transfers/stx/outbound": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get outbound STX transfers
+         * @description Returns the individual outbound STX events debiting a principal. Includes native stx-transfer transactions, `send-many-memo` bulk-send legs, any other STX transfer event debiting the principal, and STX burns (which have a null `recipient`), each with its own recipient, amount, and memo. A transaction that debits the principal multiple times yields one result per event.
+         */
+        get: operations["get_principal_outbound_stx_transfers"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/extended/v3/principals/{principal}/transfers/ft/{asset_identifier}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get fungible token transfers
+         * @description Returns a principal's transfer history for a single fungible token as one feed, newest first, combining the events that credit it and the events that debit it. Includes mints (which have a null `sender`) and burns (which have a null `recipient`). A transaction that moves the token several times for this principal yields one result per event. Amounts are in the token's own base units.
+         */
+        get: operations["get_principal_ft_transfers"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/extended/v3/principals/{principal}/transactions/{tx_id}/balance-changes": {
         parameters: {
             query?: never;
@@ -1955,7 +2028,7 @@ export interface paths {
         };
         /**
          * Get principal NFT balances
-         * @description Get the non-fungible token instances currently owned by a principal, ordered by asset identifier and value.
+         * @description Get the non-fungible token instances currently owned by a principal, ordered by asset identifier and value. Optionally filtered to a single asset class via `asset_identifier`.
          */
         get: operations["get_principal_balances_nft"];
         put?: never;
@@ -1998,6 +2071,26 @@ export interface paths {
          * @description Returns a list of pending mempool transactions that involve a principal — as the sender, a token-transfer recipient, the deployed contract, or the called contract.
          */
         get: operations["get_principal_mempool_transactions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/extended/v3/smart-contracts/{contract_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get smart contract
+         * @description Retrieves a deployed smart contract, along with the transaction that deployed it. Only successfully deployed contracts are returned; a contract id whose deploy transaction failed is not found.
+         */
+        get: operations["get_smart_contract"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2126,6 +2219,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/extended/v3/staking/cycles/{cycle_number}/signers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get cycle signers
+         * @description Get the signer set of a PoX cycle, including each signer's weight, staked amount, and the signer manager contracts whose registered signing key (via `register-signer`) was this key when the cycle's reward set was calculated. Each manager also lists its live `grant-signer-key` authorizations, and keys registered after the reward set was calculated are surfaced as pending updates that take effect next cycle.
+         */
+        get: operations["get_cycle_signers"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/extended/v3/staking/signers": {
         parameters: {
             query?: never;
@@ -2135,7 +2248,7 @@ export interface paths {
         };
         /**
          * Get staking signers
-         * @description Get the registered pox-5 staking signers and their current signing keys.
+         * @description Get the all-time registry of pox-5 staking signers: every signer principal that has ever registered a signer key, with its most recently registered key. Registrants are never removed from this registry, even if they are no longer part of the current cycle's signer set.
          */
         get: operations["get_staking_signers"];
         put?: never;
@@ -2178,6 +2291,106 @@ export interface paths {
          * @description List the stakers that belong to a pox-5 signer, across both direct STX staking and BTC/sBTC bond staking. Each entry indicates which staking type(s) the staker participates in under this signer.
          */
         get: operations["get_staking_signer_stakers"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/extended/v3/tokens/stx/supply": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get total STX supply
+         * @description Retrieves the total liquid STX supply in micro-STX (µSTX) at the current chain tip: all STX minted (including vesting schedule unlocks) plus matured miner coinbase rewards, minus burned STX.
+         */
+        get: operations["get_stx_total_supply"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/extended/v3/tokens/stx/holders": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get STX holders
+         * @description Retrieves the principals holding STX, sorted by balance descending. Balances are the total µSTX held, including any STX locked for stacking — they are not the spendable balance reported as `available` by a principal's STX balance.
+         */
+        get: operations["get_stx_holders"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/extended/v3/tokens/ft/{asset_identifier}/holders": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get fungible token holders
+         * @description Retrieves the principals holding a given fungible token, sorted by balance descending. Balances are in the token's own base units.
+         */
+        get: operations["get_fungible_token_holders"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/extended/v3/tokens/ft/{asset_identifier}/supply": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get total fungible token supply
+         * @description Retrieves the total supply of a fungible token: the sum of every holder balance, equivalent to the token's mints minus its burns. Returns a zero supply for a token with no recorded balances.
+         */
+        get: operations["get_ft_total_supply"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/extended/v3/tokens/nft/{asset_identifier}/{value}/history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get non-fungible token history
+         * @description Retrieves the event history of a single non-fungible token instance, newest first. Useful for determining an asset's ownership history. Mints have a null `sender` and burns a null `recipient`. The instance is addressed by a SIP-009 token id, or by its serialized Clarity value when the collection is not keyed by a `uint`.
+         */
+        get: operations["get_nft_instance_history"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2255,7 +2468,8 @@ export interface paths {
         };
         /**
          * Get Historical Zone File
-         * @description Retrieves the historical zonefile specified by the username and zone hash.
+         * @deprecated
+         * @description Retrieves the historical zonefile specified by the username and zone hash. **Deprecated:** BNS endpoints are no longer maintained.
          */
         get: operations["get_historical_zone_file"];
         put?: never;
@@ -2275,7 +2489,8 @@ export interface paths {
         };
         /**
          * Get Name Subdomains
-         * @description Retrieves the list of subdomains for a specific name
+         * @deprecated
+         * @description Retrieves the list of subdomains for a specific name. **Deprecated:** BNS endpoints are no longer maintained.
          */
         get: operations["fetch_subdomains_list_for_name"];
         put?: never;
@@ -2295,7 +2510,8 @@ export interface paths {
         };
         /**
          * Get Zone File
-         * @description Retrieves a user's raw zone file. This only works for RFC-compliant zone files. This method returns an error for names that have non-standard zone files.
+         * @deprecated
+         * @description Retrieves a user's raw zone file. This only works for RFC-compliant zone files. This method returns an error for names that have non-standard zone files. **Deprecated:** BNS endpoints are no longer maintained.
          */
         get: operations["fetch_zone_file"];
         put?: never;
@@ -2315,7 +2531,8 @@ export interface paths {
         };
         /**
          * Get All Names
-         * @description Retrieves a list of all names known to the node.
+         * @deprecated
+         * @description Retrieves a list of all names known to the node. **Deprecated:** BNS endpoints are no longer maintained.
          */
         get: operations["get_all_names"];
         put?: never;
@@ -2335,7 +2552,8 @@ export interface paths {
         };
         /**
          * Get Name Details
-         * @description Retrieves details of a given name including the `address`, `status` and last transaction id - `last_txid`.
+         * @deprecated
+         * @description Retrieves details of a given name including the `address`, `status` and last transaction id - `last_txid`. **Deprecated:** BNS endpoints are no longer maintained.
          */
         get: operations["get_name_info"];
         put?: never;
@@ -2355,7 +2573,8 @@ export interface paths {
         };
         /**
          * Get All Namespaces
-         * @description Retrieves a list of all namespaces known to the node.
+         * @deprecated
+         * @description Retrieves a list of all namespaces known to the node. **Deprecated:** BNS endpoints are no longer maintained.
          */
         get: operations["get_all_namespaces"];
         put?: never;
@@ -2375,7 +2594,8 @@ export interface paths {
         };
         /**
          * Get Namespace Names
-         * @description Retrieves a list of names within a given namespace.
+         * @deprecated
+         * @description Retrieves a list of names within a given namespace. **Deprecated:** BNS endpoints are no longer maintained.
          */
         get: operations["get_namespace_names"];
         put?: never;
@@ -2395,7 +2615,8 @@ export interface paths {
         };
         /**
          * Get Names Owned by Address
-         * @description Retrieves a list of names owned by the address provided.
+         * @deprecated
+         * @description Retrieves a list of names owned by the address provided. **Deprecated:** use `GET /extended/v3/principals/{principal}/balances/nft` instead, filtered to the BNS asset identifier. Note that this returns only NFT-backed names, not subdomains or names imported from Blockstack v1.
          */
         get: operations["get_names_owned_by_address"];
         put?: never;
@@ -2415,7 +2636,8 @@ export interface paths {
         };
         /**
          * Get Namespace Price
-         * @description Retrieves the price of a namespace. The `amount` given will be in the smallest possible units of the currency.
+         * @deprecated
+         * @description Retrieves the price of a namespace. The `amount` given will be in the smallest possible units of the currency. **Deprecated:** BNS endpoints are no longer maintained.
          */
         get: operations["get_namespace_price"];
         put?: never;
@@ -2435,7 +2657,8 @@ export interface paths {
         };
         /**
          * Get Name Price
-         * @description Retrieves the price of a name. The `amount` given will be in the smallest possible units of the currency.
+         * @deprecated
+         * @description Retrieves the price of a name. The `amount` given will be in the smallest possible units of the currency. **Deprecated:** BNS endpoints are no longer maintained.
          */
         get: operations["get_name_price"];
         put?: never;
@@ -37767,6 +37990,277 @@ export interface operations {
             };
         };
     };
+    get_principal_inbound_stx_transfers: {
+        parameters: {
+            query?: {
+                /** @description Number of results per page */
+                limit?: number;
+                /** @description Cursor for paginating individual events by their position in the chain. Format: block_height:microblock_sequence:tx_index:event_index */
+                cursor?: string;
+            };
+            header?: never;
+            path: {
+                principal: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @example 1 */
+                        total: number;
+                        /**
+                         * @description Number of results per page
+                         * @default 20
+                         */
+                        limit: number;
+                        cursor: {
+                            next: string | null;
+                            previous: string | null;
+                            current: string | null;
+                        };
+                        results: {
+                            sender: (string) | null;
+                            recipient: (string) | null;
+                            /**
+                             * Amount
+                             * @description Amount
+                             * @example 1000000
+                             */
+                            amount: string;
+                            memo: {
+                                hex: string;
+                                repr: string;
+                            } | null;
+                            transaction: {
+                                /**
+                                 * Transaction ID
+                                 * @description Transaction ID
+                                 * @example 0xf6bd5f4a7b26184a3466340b2e99fd003b4962c0e382a7e4b6a13df3dd7a91c6
+                                 */
+                                tx_id: string;
+                                /** @description Index of the event within the transaction */
+                                event_index: number;
+                            };
+                            block: {
+                                /** @description Height of the block this transactions was associated with */
+                                height: number;
+                                /** @description Hash of the blocked this transactions was associated with */
+                                hash: string;
+                                /** @description Hash of the index block this transactions was associated with */
+                                index_hash: string;
+                                /** @description Unix timestamp (in seconds) indicating when this block was mined. */
+                                time: number;
+                                /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
+                                tx_index: number;
+                            };
+                        }[];
+                    };
+                };
+            };
+            /** @description Default Response */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: string;
+                        message?: string;
+                    } & {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
+    get_principal_outbound_stx_transfers: {
+        parameters: {
+            query?: {
+                /** @description Number of results per page */
+                limit?: number;
+                /** @description Cursor for paginating individual events by their position in the chain. Format: block_height:microblock_sequence:tx_index:event_index */
+                cursor?: string;
+            };
+            header?: never;
+            path: {
+                principal: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @example 1 */
+                        total: number;
+                        /**
+                         * @description Number of results per page
+                         * @default 20
+                         */
+                        limit: number;
+                        cursor: {
+                            next: string | null;
+                            previous: string | null;
+                            current: string | null;
+                        };
+                        results: {
+                            sender: (string) | null;
+                            recipient: (string) | null;
+                            /**
+                             * Amount
+                             * @description Amount
+                             * @example 1000000
+                             */
+                            amount: string;
+                            memo: {
+                                hex: string;
+                                repr: string;
+                            } | null;
+                            transaction: {
+                                /**
+                                 * Transaction ID
+                                 * @description Transaction ID
+                                 * @example 0xf6bd5f4a7b26184a3466340b2e99fd003b4962c0e382a7e4b6a13df3dd7a91c6
+                                 */
+                                tx_id: string;
+                                /** @description Index of the event within the transaction */
+                                event_index: number;
+                            };
+                            block: {
+                                /** @description Height of the block this transactions was associated with */
+                                height: number;
+                                /** @description Hash of the blocked this transactions was associated with */
+                                hash: string;
+                                /** @description Hash of the index block this transactions was associated with */
+                                index_hash: string;
+                                /** @description Unix timestamp (in seconds) indicating when this block was mined. */
+                                time: number;
+                                /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
+                                tx_index: number;
+                            };
+                        }[];
+                    };
+                };
+            };
+            /** @description Default Response */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: string;
+                        message?: string;
+                    } & {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
+    get_principal_ft_transfers: {
+        parameters: {
+            query?: {
+                /** @description Number of results per page */
+                limit?: number;
+                /** @description Cursor for paginating individual events by their position in the chain. Format: block_height:microblock_sequence:tx_index:event_index */
+                cursor?: string;
+            };
+            header?: never;
+            path: {
+                principal: string;
+                /**
+                 * @description Asset Identifier
+                 * @example SP000000000000000000002Q6VF78.pox-3::stx-token
+                 */
+                asset_identifier: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @example 1 */
+                        total: number;
+                        /**
+                         * @description Number of results per page
+                         * @default 20
+                         */
+                        limit: number;
+                        cursor: {
+                            next: string | null;
+                            previous: string | null;
+                            current: string | null;
+                        };
+                        results: {
+                            sender: (string) | null;
+                            recipient: (string) | null;
+                            /**
+                             * Amount
+                             * @description Transfer amount, in the token's own base units
+                             * @example 1000000
+                             */
+                            amount: string;
+                            transaction: {
+                                /**
+                                 * Transaction ID
+                                 * @description Transaction ID
+                                 * @example 0xf6bd5f4a7b26184a3466340b2e99fd003b4962c0e382a7e4b6a13df3dd7a91c6
+                                 */
+                                tx_id: string;
+                                /** @description Index of the event within the transaction */
+                                event_index: number;
+                            };
+                            block: {
+                                /** @description Height of the block this transactions was associated with */
+                                height: number;
+                                /** @description Hash of the blocked this transactions was associated with */
+                                hash: string;
+                                /** @description Hash of the index block this transactions was associated with */
+                                index_hash: string;
+                                /** @description Unix timestamp (in seconds) indicating when this block was mined. */
+                                time: number;
+                                /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
+                                tx_index: number;
+                            };
+                        }[];
+                    };
+                };
+            };
+            /** @description Default Response */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: string;
+                        message?: string;
+                    } & {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
     get_principal_transaction_balance_changes: {
         parameters: {
             query?: {
@@ -38271,6 +38765,11 @@ export interface operations {
                 limit?: number;
                 /** @description Cursor for paginating NFT balances (sorted by asset identifier then value). Format: value:asset_identifier */
                 cursor?: string;
+                /**
+                 * @description Return only the instances of this non-fungible token asset class. For example, BNS names are held as `SP000000000000000000002Q6VF78.bns::names` on mainnet.
+                 * @example SP000000000000000000002Q6VF78.pox-3::stx-token
+                 */
+                asset_identifier?: string;
             };
             header?: never;
             path: {
@@ -38588,6 +39087,83 @@ export interface operations {
                             /** @enum {string} */
                             type: "tenure_change";
                         })[];
+                    };
+                };
+            };
+            /** @description Default Response */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: string;
+                        message?: string;
+                    } & {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
+    get_smart_contract: {
+        parameters: {
+            query?: {
+                /** @description Heavy fields to include in the response. */
+                include?: "source_code"[];
+            };
+            header?: never;
+            path: {
+                /**
+                 * @description Smart Contract ID
+                 * @example SP000000000000000000002Q6VF78.pox-3
+                 */
+                contract_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /**
+                         * Smart Contract ID
+                         * @description Smart Contract ID
+                         * @example SP000000000000000000002Q6VF78.pox-3
+                         */
+                        contract_id: string;
+                        clarity_version: number | null;
+                        /**
+                         * Transaction ID
+                         * @description ID of the transaction that deployed this contract
+                         * @example 0xf6bd5f4a7b26184a3466340b2e99fd003b4962c0e382a7e4b6a13df3dd7a91c6
+                         */
+                        tx_id: string;
+                        block: {
+                            /** @description Height of the block this transactions was associated with */
+                            height: number;
+                            /** @description Hash of the blocked this transactions was associated with */
+                            hash: string;
+                            /** @description Hash of the index block this transactions was associated with */
+                            index_hash: string;
+                            /** @description Unix timestamp (in seconds) indicating when this block was mined. */
+                            time: number;
+                            /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
+                            tx_index: number;
+                        };
+                        bitcoin_block: {
+                            /** @description Height of the anchor burn block. */
+                            height: number;
+                            /** @description Unix timestamp (in seconds) indicating when this block was mined. */
+                            time: number;
+                        };
+                        /** @description The Clarity source code of the contract. Only present when requested via the `include=source_code` query param. */
+                        source_code?: string;
                     };
                 };
             };
@@ -39078,6 +39654,123 @@ export interface operations {
             };
         };
     };
+    get_cycle_signers: {
+        parameters: {
+            query?: {
+                /** @description Number of results per page */
+                limit?: number;
+                /** @description Cursor for paginating a cycle's signers (sorted by weight descending, then signing key). Format: signing key */
+                cursor?: string;
+            };
+            header?: never;
+            path: {
+                /** @description The PoX cycle to fetch signers for. Only `current` is supported at the moment. */
+                cycle_number: "current";
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @example 1 */
+                        total: number;
+                        /**
+                         * @description Number of results per page
+                         * @default 100
+                         */
+                        limit: number;
+                        cursor: {
+                            next: string | null;
+                            previous: string | null;
+                            current: string | null;
+                        };
+                        results: {
+                            /**
+                             * @description The signing key in the cycle's reward set, as a `0x`-prefixed hex string
+                             * @example 0x038e3c4529395611be9abf6fa3b6987e81d402385e3d605a073f42f407565a4a3d
+                             */
+                            signing_key: string;
+                            /** @description The signer's voting weight in the cycle */
+                            weight: {
+                                amount: number;
+                                /** @description Percentage of the cycle's total signer weight */
+                                percent: number;
+                            };
+                            /** @description The uSTX staked behind this signer in the cycle */
+                            staked_stx: {
+                                amount: string;
+                                /** @description Percentage of the cycle's total staked STX */
+                                percent: number;
+                            };
+                            /** @description The signer manager contracts whose registered signing key (via `register-signer`) was this key when the cycle's reward set was calculated. */
+                            signer_managers: {
+                                signer_manager: string;
+                                /** @description The position of the `register-signer` event that bound this key to the manager. */
+                                registered_at: {
+                                    /** @description Stacks block height of the `register-signer` event */
+                                    block_height: number;
+                                    /** @description Bitcoin block height of the `register-signer` event */
+                                    bitcoin_block_height: number;
+                                    /**
+                                     * Transaction ID
+                                     * @description Transaction ID
+                                     * @example 0xf6bd5f4a7b26184a3466340b2e99fd003b4962c0e382a7e4b6a13df3dd7a91c6
+                                     */
+                                    tx_id: string;
+                                };
+                                /** @description The manager's live `grant-signer-key` authorizations (granted and not revoked). A grant authorizes a future `register-signer` for that key but does not rotate the key by itself. */
+                                granted_keys: {
+                                    /** @description The granted signing key, as a `0x`-prefixed hex string */
+                                    signer_key: string;
+                                    /** @description The grant's auth id as a decimal string */
+                                    auth_id: string;
+                                    /**
+                                     * Transaction ID
+                                     * @description Transaction ID
+                                     * @example 0xf6bd5f4a7b26184a3466340b2e99fd003b4962c0e382a7e4b6a13df3dd7a91c6
+                                     */
+                                    tx_id: string;
+                                }[];
+                                /** @description Whether a live `grant-signer-key` authorization currently exists for the registered key. */
+                                grant_active: boolean;
+                                pending_key_update: {
+                                    /** @description The newly registered signing key, as a `0x`-prefixed hex string */
+                                    signer_key: string;
+                                    /** @description The PoX cycle in which the new key takes effect */
+                                    effective_cycle: number;
+                                    /**
+                                     * Transaction ID
+                                     * @description Transaction ID
+                                     */
+                                    tx_id: string;
+                                } | null;
+                            }[];
+                        }[];
+                    };
+                };
+            };
+            /** @description Default Response */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: string;
+                        message?: string;
+                    } & {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
     get_staking_signers: {
         parameters: {
             query?: {
@@ -39251,6 +39944,320 @@ export interface operations {
                              *     ]
                              */
                             types: ("stx" | "btc")[];
+                        }[];
+                    };
+                };
+            };
+            /** @description Default Response */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: string;
+                        message?: string;
+                    } & {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
+    get_stx_total_supply: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /**
+                         * Amount
+                         * @description Total liquid STX supply as a string-quoted integer of micro-STX (µSTX): all STX minted (including vesting schedule unlocks) plus matured miner coinbase rewards, minus burned STX
+                         * @example 1470469916700000
+                         */
+                        total: string;
+                        /**
+                         * Amount
+                         * @description Projected total STX supply in the year 2050, as a string-quoted integer of micro-STX (µSTX).
+                         * @example 2318000000000000
+                         */
+                        projected_total_2050: string;
+                    };
+                };
+            };
+            /** @description Default Response */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: string;
+                        message?: string;
+                    } & {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
+    get_stx_holders: {
+        parameters: {
+            query?: {
+                /** @description Number of results per page */
+                limit?: number;
+                /** @description Cursor for paginating fungible token holders (sorted by balance descending, then holder principal). Format: balance:principal */
+                cursor?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @example 1 */
+                        total: number;
+                        /**
+                         * @description Number of results per page
+                         * @default 100
+                         */
+                        limit: number;
+                        cursor: {
+                            next: string | null;
+                            previous: string | null;
+                            current: string | null;
+                        };
+                        results: {
+                            principal: string;
+                            /**
+                             * Amount
+                             * @description The holder's balance, as a string-quoted integer in the token's own base units
+                             * @example 174823763
+                             */
+                            balance: string;
+                        }[];
+                    };
+                };
+            };
+            /** @description Default Response */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: string;
+                        message?: string;
+                    } & {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
+    get_fungible_token_holders: {
+        parameters: {
+            query?: {
+                /** @description Number of results per page */
+                limit?: number;
+                /** @description Cursor for paginating fungible token holders (sorted by balance descending, then holder principal). Format: balance:principal */
+                cursor?: string;
+            };
+            header?: never;
+            path: {
+                /**
+                 * @description Asset Identifier
+                 * @example SP000000000000000000002Q6VF78.pox-3::stx-token
+                 */
+                asset_identifier: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @example 1 */
+                        total: number;
+                        /**
+                         * @description Number of results per page
+                         * @default 100
+                         */
+                        limit: number;
+                        cursor: {
+                            next: string | null;
+                            previous: string | null;
+                            current: string | null;
+                        };
+                        results: {
+                            principal: string;
+                            /**
+                             * Amount
+                             * @description The holder's balance, as a string-quoted integer in the token's own base units
+                             * @example 174823763
+                             */
+                            balance: string;
+                        }[];
+                    };
+                };
+            };
+            /** @description Default Response */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: string;
+                        message?: string;
+                    } & {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
+    get_ft_total_supply: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /**
+                 * @description Asset Identifier
+                 * @example SP000000000000000000002Q6VF78.pox-3::stx-token
+                 */
+                asset_identifier: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /**
+                         * Asset Identifier
+                         * @description Asset Identifier
+                         * @example SP000000000000000000002Q6VF78.pox-3::stx-token
+                         */
+                        asset_identifier: string;
+                        /**
+                         * Amount
+                         * @description Total supply of the token, as a string-quoted integer in the token's own base units.
+                         * @example 5817609278457
+                         */
+                        total: string;
+                    };
+                };
+            };
+            /** @description Default Response */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: string;
+                        message?: string;
+                    } & {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
+    get_nft_instance_history: {
+        parameters: {
+            query?: {
+                /** @description Number of results per page */
+                limit?: number;
+                /** @description Cursor for paginating individual events by their position in the chain. Format: block_height:microblock_sequence:tx_index:event_index */
+                cursor?: string;
+            };
+            header?: never;
+            path: {
+                /**
+                 * @description Asset Identifier
+                 * @example SP000000000000000000002Q6VF78.pox-3::stx-token
+                 */
+                asset_identifier: string;
+                /** @description The token instance's identifier, either as a plain integer (a SIP-009 token id, which is serialized as a Clarity `uint`) or as a `0x`-prefixed serialized Clarity value. */
+                value: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @example 1 */
+                        total: number;
+                        /**
+                         * @description Number of results per page
+                         * @default 50
+                         */
+                        limit: number;
+                        cursor: {
+                            next: string | null;
+                            previous: string | null;
+                            current: string | null;
+                        };
+                        results: {
+                            sender: (string) | null;
+                            recipient: (string) | null;
+                            transaction: {
+                                /**
+                                 * Transaction ID
+                                 * @description Transaction ID
+                                 * @example 0xf6bd5f4a7b26184a3466340b2e99fd003b4962c0e382a7e4b6a13df3dd7a91c6
+                                 */
+                                tx_id: string;
+                                /** @description Index of the event within the transaction */
+                                event_index: number;
+                            };
+                            block: {
+                                /** @description Height of the block this transactions was associated with */
+                                height: number;
+                                /** @description Hash of the blocked this transactions was associated with */
+                                hash: string;
+                                /** @description Hash of the index block this transactions was associated with */
+                                index_hash: string;
+                                /** @description Unix timestamp (in seconds) indicating when this block was mined. */
+                                time: number;
+                                /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
+                                tx_index: number;
+                            };
                         }[];
                     };
                 };
