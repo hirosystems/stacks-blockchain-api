@@ -15,10 +15,16 @@ import { NotFoundError } from '../../../errors.js';
 import { PaginatedResponse } from '../../schemas/v1/util.js';
 import { PoolDelegation, PoolDelegationSchema } from '../../schemas/v1/entities/pox.js';
 
-const HISTORICAL_DEPRECATION_NOTE =
-  '**Deprecated:** this endpoint serves historical pox-4 and earlier data only.';
-const HISTORICAL_DEPRECATION_MESSAGE =
-  'Historical pox-4 and earlier data only. See /extended/v3/principals/{principal}/staking for pox-5 data.';
+/**
+ * Shared opening line for the deprecation notices below: every route in this file reads the
+ * `pox2_events` / `pox3_events` / `pox4_events` tables and has no pox-5 counterpart. What follows
+ * it differs per route — two have a partial pox-5 equivalent, two have none, so the rest of each
+ * message is written inline at the route.
+ *
+ * These strings reach consumers in the `Warning` header, and in the `410 Gone` body once
+ * `ENABLE_DEPRECATED_ENDPOINTS` is turned off, so they are plain text rather than markdown.
+ */
+const HISTORICAL = 'Historical pox-4 and earlier data only.';
 
 export const PoxEventRoutes: FastifyPluginAsync<
   Record<never, never>,
@@ -53,9 +59,9 @@ export const PoxRoutes: FastifyPluginAsync<
       schema: {
         // operationId: '',
         deprecated: true,
-        deprecatedMessage: HISTORICAL_DEPRECATION_MESSAGE,
+        deprecatedMessage: `${HISTORICAL} No pox-5 replacement; there is no global pox-5 event feed.`,
         summary: 'Get latest PoX events',
-        description: `Retrieves the most recent PoX events. ${HISTORICAL_DEPRECATION_NOTE}`,
+        description: `Retrieves the most recent PoX events. **Deprecated:** ${HISTORICAL} No pox-5 replacement; there is no global pox-5 event feed.`,
         tags: ['Stacking'],
         params: Type.Object({
           pox: Type.Enum({ pox2: 'pox2', pox3: 'pox3', pox4: 'pox4' }),
@@ -93,9 +99,9 @@ export const PoxRoutes: FastifyPluginAsync<
       schema: {
         // operationId: '',
         deprecated: true,
-        deprecatedMessage: HISTORICAL_DEPRECATION_MESSAGE,
+        deprecatedMessage: `${HISTORICAL} No pox-5 replacement; v3 transaction events do not carry decoded pox operations.`,
         summary: 'Get PoX events for a transaction',
-        description: `Retrieves the PoX events produced by a given transaction. ${HISTORICAL_DEPRECATION_NOTE}`,
+        description: `Retrieves the PoX events produced by a given transaction. **Deprecated:** ${HISTORICAL} No pox-5 replacement; v3 transaction events do not carry decoded pox operations.`,
         tags: ['Stacking'],
         params: Type.Object({
           pox: Type.Enum({ pox2: 'pox2', pox3: 'pox3', pox4: 'pox4' }),
@@ -129,9 +135,9 @@ export const PoxRoutes: FastifyPluginAsync<
       schema: {
         // operationId: '',
         deprecated: true,
-        deprecatedMessage: HISTORICAL_DEPRECATION_MESSAGE,
+        deprecatedMessage: `${HISTORICAL} For a principal's current pox-5 position see /extended/v3/principals/{principal}/staking; there is no pox-5 event history equivalent.`,
         summary: 'Get events for a stacking address',
-        description: `Retrieves the PoX events for a given stacker principal. ${HISTORICAL_DEPRECATION_NOTE}`,
+        description: `Retrieves the PoX events for a given stacker principal. **Deprecated:** ${HISTORICAL} For a principal's current pox-5 position see /extended/v3/principals/{principal}/staking; there is no pox-5 event history equivalent.`,
         tags: ['Stacking'],
         params: Type.Object({
           pox: Type.Enum({ pox2: 'pox2', pox3: 'pox3', pox4: 'pox4' }),
@@ -165,9 +171,9 @@ export const PoxRoutes: FastifyPluginAsync<
       schema: {
         operationId: 'get_pool_delegations',
         deprecated: true,
-        deprecatedMessage: HISTORICAL_DEPRECATION_MESSAGE,
+        deprecatedMessage: `${HISTORICAL} See /extended/v3/staking/signers/{principal}/stakers for the pox-5 equivalent.`,
         summary: 'Stacking pool members',
-        description: `Retrieves the list of stacking pool members for a given delegator principal. ${HISTORICAL_DEPRECATION_NOTE}`,
+        description: `Retrieves the list of stacking pool members for a given delegator principal. **Deprecated:** ${HISTORICAL} See /extended/v3/staking/signers/{principal}/stakers for the pox-5 equivalent.`,
         tags: ['Stacking'],
         params: Type.Object({
           pox: Type.Enum({ pox2: 'pox2', pox3: 'pox3', pox4: 'pox4' }),
