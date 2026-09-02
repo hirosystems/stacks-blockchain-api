@@ -586,6 +586,7 @@ export class PgWriteStore extends PgStore {
 
   private async insertPox5SyntheticEvents(sql: PgSqlClient, txs: DataStoreTxEventData[]) {
     const poxValues: Pox5SyntheticEventInsertValues[] = [];
+    const bondEventCounts = new Map<number, number>();
     for (const tx of txs) {
       if (tx.pox5Events.length === 0) continue;
       const txLocation: DbTxLocation = {
@@ -611,6 +612,14 @@ export class PgWriteStore extends PgStore {
           name: poxEvent.name,
           data: poxEvent.data,
         });
+        // Accumulate the per-bond event tally for the `bonds.event_count` counter.
+        // A null `bond_index` (an STX-only claim-staker-rewards-for-signer event)
+        // is not a bond event.
+        const bondIndexData = (poxEvent.data as { bond_index?: string | null }).bond_index;
+        if (bondIndexData != null) {
+          const bondIndex = parseInt(bondIndexData);
+          bondEventCounts.set(bondIndex, (bondEventCounts.get(bondIndex) ?? 0) + 1);
+        }
         switch (poxEvent.name) {
           case Pox5EventName.SetupBond:
             await this.updateBond(sql, txLocation, poxEvent);
@@ -663,6 +672,18 @@ export class PgWriteStore extends PgStore {
     for (const batch of batchIterate(poxValues, INSERT_BATCH_SIZE)) {
       await sql`
         INSERT INTO pox5_events ${sql(batch)}
+      `;
+    }
+    // Maintain each bond's materialized event_count on write, like registered_count. Runs after the
+    // per-event handlers above, so a setup-bond's own `bonds` row already exists when its event is
+    // counted.
+    for (const [bondIndex, count] of bondEventCounts) {
+      await sql`
+        UPDATE bonds
+        SET event_count = event_count + ${count}
+        WHERE bond_index = ${bondIndex}
+          AND canonical = true
+          AND microblock_canonical = true
       `;
     }
   }
@@ -4942,7 +4963,6 @@ export class PgWriteStore extends PgStore {
     // pox-5 tables that only need their canonical flag flipped (no derived
     // bond counters depend on them).
     for (const pox5Table of [
-      'pox5_events',
       'bonds',
       'bond_reward_distributions',
       'bond_reward_calculations',
@@ -4964,6 +4984,28 @@ export class PgWriteStore extends PgStore {
     // No `bonds.canonical` guard on the delta: the delta must apply symmetrically
     // in both directions (orphan then restore) to avoid double-counting, exactly
     // like the ft_balances upsert.
+    q.enqueue(async () => {
+      // Flip pox5_events and apply the bond-scoped event delta to the parent bond's `event_count`
+      // (only events carrying a non-null `bond_index` count).
+      await sql`
+        WITH updated AS (
+          UPDATE pox5_events
+          SET canonical = ${canonical}
+          WHERE index_block_hash = ${indexBlockHash} AND canonical != ${canonical}
+          RETURNING (data->>'bond_index')::int AS bond_index, canonical
+        ),
+        changes AS (
+          SELECT bond_index, SUM(CASE WHEN canonical THEN 1 ELSE -1 END) AS count_change
+          FROM updated
+          WHERE bond_index IS NOT NULL
+          GROUP BY bond_index
+        )
+        UPDATE bonds AS b
+        SET event_count = b.event_count + c.count_change
+        FROM changes c
+        WHERE b.bond_index = c.bond_index
+      `;
+    });
     q.enqueue(async () => {
       await sql`
         WITH updated AS (

@@ -3,6 +3,7 @@ import type postgres from 'postgres';
 import {
   DbBond,
   DbBondAllowlistEntry,
+  DbBondEvent,
   DbBondRegistration,
   DbBondRegistrationSummary,
   DbBondSummary,
@@ -33,6 +34,7 @@ import {
 import {
   BOND_ALLOWLIST_ENTRY_COLUMNS,
   BOND_COLUMNS,
+  BOND_EVENT_COLUMNS,
   BOND_REGISTRATION_COLUMNS,
   BOND_REGISTRATION_SUMMARY_COLUMNS,
   BOND_SUMMARY_COLUMNS,
@@ -1462,6 +1464,117 @@ export class PgStoreV3 extends BasePgStoreModule {
       return result[0]
         ? { ...result[0], burn_block_height: chainTip[0]?.burn_block_height ?? 0 }
         : null;
+    });
+  }
+
+  /**
+   * Gets the pox-5 event log for a bond: every synthetic event carrying this bond's index, newest
+   * first in canonical event order.
+   * @param args - The arguments for the query.
+   * @returns The bond's events.
+   */
+  async getBondEvents(args: {
+    bondIndex: number;
+    limit: number;
+    cursor?: EventPositionCursor;
+  }): Promise<DbCursorPaginatedResult<DbBondEvent>> {
+    return await this.sqlTransaction(async sql => {
+      const limit = args.limit;
+      // The `IS NOT NULL` check is redundant with the equality but is required
+      // verbatim for the planner to match the partial index on
+      // `((data->>'bond_index')::int)` (it also excludes JSON-null `bond_index`
+      // payloads, e.g. STX-only `claim-staker-rewards-for-signer` events).
+      const eventFilter = sql`
+        canonical = true
+        AND microblock_canonical = true
+        AND (data->>'bond_index') IS NOT NULL
+        AND (data->>'bond_index')::int = ${args.bondIndex}
+      `;
+      let cursorFilter = sql``;
+      if (args.cursor) {
+        const cursor = await resolveEventPositionCursor(args.cursor, async cursor => {
+          const exactCursorQuery = await sql<{ exists: boolean }[]>`
+            SELECT EXISTS (
+              SELECT 1
+              FROM pox5_events
+              WHERE ${eventFilter}
+                AND (block_height, microblock_sequence, tx_index, event_index)
+                    = (${cursor.block_height}, ${cursor.microblock_sequence}, ${cursor.tx_index},
+                       ${cursor.event_index})
+            ) AS exists
+          `;
+          return exactCursorQuery[0]?.exists ?? false;
+        });
+        cursorFilter = sql`
+          AND (block_height, microblock_sequence, tx_index, event_index)
+              <= (${cursor.block_height}, ${cursor.microblock_sequence}, ${cursor.tx_index},
+                  ${cursor.event_index})
+        `;
+      }
+
+      const totalQuery = await sql<{ total: number }[]>`
+        SELECT event_count AS total
+        FROM bonds
+        WHERE canonical = true
+          AND microblock_canonical = true
+          AND bond_index = ${args.bondIndex}
+        LIMIT 1
+      `;
+
+      const resultQuery = await sql<(DbBondEvent & { data: unknown })[]>`
+        SELECT ${sql(BOND_EVENT_COLUMNS)}
+        FROM pox5_events
+        WHERE ${eventFilter}
+          ${cursorFilter}
+        ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
+        LIMIT ${limit + 1}
+      `;
+      // The pg driver may return jsonb columns as raw strings here (see `parseBondLockupTxs`) and
+      // returns the bigint time columns as strings, so normalize both.
+      const rows: DbBondEvent[] = resultQuery.map(row => ({
+        ...row,
+        data: (typeof row.data === 'string'
+          ? JSON.parse(row.data)
+          : row.data) as DbBondEvent['data'],
+        block_time: Number(row.block_time),
+        burn_block_time: Number(row.burn_block_time),
+      }));
+
+      const hasNextPage = rows.length > limit;
+      const results = hasNextPage ? rows.slice(0, limit) : rows;
+      const firstResult = results[0];
+      const extraResult = hasNextPage ? rows[limit] : null;
+
+      let prevCursor: string | null = null;
+      if (firstResult) {
+        const prevPageQuery = await sql<EventPositionCursorRow[]>`
+          SELECT block_height, microblock_sequence, tx_index, event_index
+          FROM pox5_events
+          WHERE ${eventFilter}
+            AND (block_height, microblock_sequence, tx_index, event_index)
+                > (
+                  ${firstResult.block_height},
+                  ${firstResult.microblock_sequence},
+                  ${firstResult.tx_index},
+                  ${firstResult.event_index}
+                )
+          ORDER BY block_height ASC, microblock_sequence ASC, tx_index ASC, event_index ASC
+          LIMIT ${limit}
+        `;
+        prevCursor =
+          prevPageQuery.length > 0
+            ? encodeEventPositionCursor(prevPageQuery[prevPageQuery.length - 1])
+            : null;
+      }
+
+      return {
+        limit,
+        next_cursor: extraResult ? encodeEventPositionCursor(extraResult) : null,
+        prev_cursor: prevCursor,
+        current_cursor: firstResult ? encodeEventPositionCursor(firstResult) : null,
+        total: totalQuery[0]?.total ?? 0,
+        results,
+      };
     });
   }
 

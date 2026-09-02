@@ -141,6 +141,21 @@ export const BOND_COLUMNS = [
   'early_unlock_admin',
 ];
 
+export const BOND_EVENT_COLUMNS = [
+  'name',
+  'data',
+  'tx_id',
+  'event_index',
+  'tx_index',
+  'block_height',
+  'block_hash',
+  'block_time',
+  'index_block_hash',
+  'microblock_sequence',
+  'burn_block_height',
+  'burn_block_time',
+];
+
 export const BOND_ALLOWLIST_ENTRY_COLUMNS = [
   'staker',
   'max_sats',

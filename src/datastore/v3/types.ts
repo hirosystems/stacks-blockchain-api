@@ -208,6 +208,26 @@ export interface DbBondAllowlistEntry {
   max_sats: string;
 }
 
+/**
+ * One bond-scoped row from `pox5_events`: the synthetic event name plus its raw decoded payload
+ * (`data`, which always carries a non-null `bond_index`) at its canonical chain position.
+ */
+export interface DbBondEvent {
+  name: string;
+  /** The event's decoded payload, verbatim from the synthetic print event. */
+  data: Record<string, unknown>;
+  tx_id: string;
+  event_index: number;
+  tx_index: number;
+  block_height: number;
+  block_hash: string;
+  block_time: number;
+  index_block_hash: string;
+  microblock_sequence: number;
+  burn_block_height: number;
+  burn_block_time: number;
+}
+
 export interface DbBondLockupTx {
   /** Reversed (big-endian) txid as a `0x`-prefixed hex string. */
   txid: string;
