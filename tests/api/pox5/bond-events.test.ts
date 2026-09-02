@@ -404,6 +404,66 @@ describe('pox-5 bond events', () => {
     assert.equal(page.results.length, 0);
   });
 
+  test("a side-fork block's events don't count until its fork wins, then count exactly once", async () => {
+    // A competing block at the current tip height (3) arrives with a bond event.
+    // It is persisted immediately non-canonical: the log and total must ignore it.
+    await db.update(
+      new TestBlockBuilder({
+        block_height: 3,
+        block_hash: '0xb3',
+        index_block_hash: '0xb3',
+        parent_block_hash: '0x02',
+        parent_index_block_hash: '0x02',
+      })
+        .addTx({ tx_id: '0x' + '66'.repeat(32) })
+        .addTxPox5Event({
+          name: Pox5EventName.UnstakeSbtc,
+          data: {
+            bond_index: String(BOND_INDEX),
+            staker: ALICE,
+            signer: SIGNER,
+            amount_withdrawn_sats: '600',
+            new_amount_sats: '0',
+          },
+        })
+        .build()
+    );
+
+    const beforeFlip = await getJson<BondEventsPage>(`${EVENTS_PATH}?limit=50`);
+    assert.equal(beforeFlip.total, 10, 'non-canonical side-fork event not counted');
+    assert.equal(beforeFlip.results.length, 10);
+
+    // Fork B wins: the early exit (fork A, -1) is orphaned and the side-fork
+    // unstake (+1) becomes canonical — counted once, not twice.
+    await db.update(
+      new TestBlockBuilder({
+        block_height: 4,
+        block_hash: '0xb4',
+        index_block_hash: '0xb4',
+        parent_block_hash: '0xb3',
+        parent_index_block_hash: '0xb3',
+      }).build()
+    );
+
+    const afterFlip = await getJson<BondEventsPage>(`${EVENTS_PATH}?limit=50`);
+    assert.equal(afterFlip.total, 10, 'side-fork event counted exactly once after the flip');
+    assert.equal(afterFlip.results.length, 10);
+    assert.ok(
+      !afterFlip.results.some(r => r.name === Pox5EventName.AnnounceL1EarlyExit),
+      'orphaned early exit gone from the log'
+    );
+    assert.deepEqual(
+      afterFlip.results[0].data,
+      {
+        staker: ALICE,
+        signer: SIGNER,
+        withdrawn: { btc: '600' },
+        remaining: { btc: '0' },
+      },
+      'the side-fork unstake now heads the log'
+    );
+  });
+
   test('a reorg reverts the event log and the event_count total, and a restore reapplies them', async () => {
     // Fork B overtakes fork A's block 3 (the early exit) with two empty blocks.
     await db.update(
