@@ -15,6 +15,11 @@ import { NotFoundError } from '../../../errors.js';
 import { PaginatedResponse } from '../../schemas/v1/util.js';
 import { PoolDelegation, PoolDelegationSchema } from '../../schemas/v1/entities/pox.js';
 
+const HISTORICAL_DEPRECATION_NOTE =
+  '**Deprecated:** this endpoint serves historical pox-4 and earlier data only.';
+const HISTORICAL_DEPRECATION_MESSAGE =
+  'Historical pox-4 and earlier data only. See /extended/v3/principals/{principal}/staking for pox-5 data.';
+
 export const PoxEventRoutes: FastifyPluginAsync<
   Record<never, never>,
   Server,
@@ -47,8 +52,10 @@ export const PoxRoutes: FastifyPluginAsync<
       preHandler: handleChainTipCache,
       schema: {
         // operationId: '',
+        deprecated: true,
+        deprecatedMessage: HISTORICAL_DEPRECATION_MESSAGE,
         summary: 'Get latest PoX events',
-        // description: ``,
+        description: `Retrieves the most recent PoX events. ${HISTORICAL_DEPRECATION_NOTE}`,
         tags: ['Stacking'],
         params: Type.Object({
           pox: Type.Enum({ pox2: 'pox2', pox3: 'pox3', pox4: 'pox4' }),
@@ -85,8 +92,10 @@ export const PoxRoutes: FastifyPluginAsync<
       preHandler: handleChainTipCache,
       schema: {
         // operationId: '',
+        deprecated: true,
+        deprecatedMessage: HISTORICAL_DEPRECATION_MESSAGE,
         summary: 'Get PoX events for a transaction',
-        // description: ``,
+        description: `Retrieves the PoX events produced by a given transaction. ${HISTORICAL_DEPRECATION_NOTE}`,
         tags: ['Stacking'],
         params: Type.Object({
           pox: Type.Enum({ pox2: 'pox2', pox3: 'pox3', pox4: 'pox4' }),
@@ -119,8 +128,10 @@ export const PoxRoutes: FastifyPluginAsync<
       preHandler: handleChainTipCache,
       schema: {
         // operationId: '',
+        deprecated: true,
+        deprecatedMessage: HISTORICAL_DEPRECATION_MESSAGE,
         summary: 'Get events for a stacking address',
-        // description: ``,
+        description: `Retrieves the PoX events for a given stacker principal. ${HISTORICAL_DEPRECATION_NOTE}`,
         tags: ['Stacking'],
         params: Type.Object({
           pox: Type.Enum({ pox2: 'pox2', pox3: 'pox3', pox4: 'pox4' }),
@@ -153,8 +164,10 @@ export const PoxRoutes: FastifyPluginAsync<
       preHandler: handleChainTipCache,
       schema: {
         operationId: 'get_pool_delegations',
+        deprecated: true,
+        deprecatedMessage: HISTORICAL_DEPRECATION_MESSAGE,
         summary: 'Stacking pool members',
-        description: `Retrieves the list of stacking pool members for a given delegator principal.`,
+        description: `Retrieves the list of stacking pool members for a given delegator principal. ${HISTORICAL_DEPRECATION_NOTE}`,
         tags: ['Stacking'],
         params: Type.Object({
           pox: Type.Enum({ pox2: 'pox2', pox3: 'pox3', pox4: 'pox4' }),
