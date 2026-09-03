@@ -617,6 +617,18 @@ describe('burnchain re-org handling', () => {
       rewards: [reward({ hash: '0xdd01', height: 102 })],
     });
     await client`UPDATE burnchain_rewards SET burn_amount = 2000 WHERE burn_block_hash = ${'0xdd01'}`;
+    // A burnchain fork at height 103 present only in burnchain_rewards (no raw events): the
+    // gap-fill must stay consistent with the repaired rewards table, where 0xee02 won.
+    for (const f of [
+      { hash: '0xee01', burn: 500, canonical: false },
+      { hash: '0xee02', burn: 600, canonical: true },
+    ]) {
+      await client`
+        INSERT INTO burnchain_rewards
+          (canonical, burn_block_hash, burn_block_height, burn_amount, reward_recipient, reward_amount, reward_index)
+        VALUES (${f.canonical}, ${f.hash}, 103, ${f.burn}, ${ADDR_1}, 1000, 0)
+      `;
+    }
     // Re-run only the burn_blocks migration (the delivery above also wrote to the live
     // table; drop it so the migration recreates and backfills from scratch).
     await client`DROP TABLE burn_blocks`;
@@ -637,6 +649,8 @@ describe('burnchain re-org handling', () => {
         ['0xbb01', 100, '2000', '1200', true],
         ['0xcc01', 101, '30000', '0', true],
         ['0xdd01', 102, '2000', '1000', true],
+        ['0xee01', 103, '500', '1000', false],
+        ['0xee02', 103, '600', '1000', true],
       ]
     );
   });

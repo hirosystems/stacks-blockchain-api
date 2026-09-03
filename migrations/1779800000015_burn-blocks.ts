@@ -66,16 +66,20 @@ export const up = (pgm: MigrationBuilder) => {
     ORDER BY id
   `);
   // Fill gaps from burnchain_rewards for eras where raw events were pruned or disabled. Rewards
-  // rows duplicate the block-level burn_amount per recipient, so any row's value works.
+  // rows duplicate the block-level burn_amount per recipient, so any row's value works. Groups are
+  // ordered by their latest reward-row id so the assigned burn_blocks ids preserve arrival order
+  // for the canonical tie-break below.
   pgm.sql(`
     INSERT INTO burn_blocks (canonical, burn_block_hash, burn_block_height, burn_amount, reward_amount)
     SELECT false, burn_block_hash, burn_block_height, MAX(burn_amount), SUM(reward_amount)
     FROM burnchain_rewards
     GROUP BY burn_block_hash, burn_block_height
+    ORDER BY MAX(id)
     ON CONFLICT ON CONSTRAINT burn_blocks_unique_idx DO NOTHING
   `);
-  // One canonical hash per height, preferring a hash anchored by a canonical Stacks block and
-  // falling back to arrival order. The same rule as the other burnchain table repairs.
+  // One canonical hash per height, preferring a hash anchored by a canonical Stacks block, then one
+  // canonical in the (already repaired) rewards table -- keeping this table consistent with the
+  // legacy tables -- and falling back to arrival order. The same rule as the other repairs.
   pgm.sql(`
     WITH winners AS (
       SELECT DISTINCT ON (burn_block_height) burn_block_height, burn_block_hash
@@ -84,6 +88,10 @@ export const up = (pgm: MigrationBuilder) => {
         EXISTS (
           SELECT 1 FROM blocks b
           WHERE b.burn_block_hash = c.burn_block_hash AND b.canonical = true
+        ) DESC,
+        EXISTS (
+          SELECT 1 FROM burnchain_rewards r
+          WHERE r.burn_block_hash = c.burn_block_hash AND r.canonical = true
         ) DESC,
         id DESC
     )
