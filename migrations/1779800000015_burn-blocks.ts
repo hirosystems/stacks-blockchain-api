@@ -130,6 +130,28 @@ export const up = (pgm: MigrationBuilder) => {
     WHERE c.burn_block_height = w.burn_block_height
       AND c.canonical != (c.burn_block_hash = w.burn_block_hash)
   `);
+  // Anchor override across all rows, regardless of source: a hash anchored by a canonical Stacks
+  // block is proof of burnchain canonicality and must win even when the passes above resolved its
+  // height from weaker evidence e.g. a partially pruned raw archive where only the losing fork
+  // side's event survives while the anchored winner was gap-filled from burnchain_rewards. At most
+  // one hash per height can carry a canonical anchor (the canonical Stacks chain sees one linear
+  // burnchain), so this pass is deterministic.
+  pgm.sql(`
+    WITH anchored AS (
+      SELECT DISTINCT ON (burn_block_height) burn_block_height, burn_block_hash
+      FROM burn_blocks c
+      WHERE EXISTS (
+        SELECT 1 FROM blocks b
+        WHERE b.burn_block_hash = c.burn_block_hash AND b.canonical = true
+      )
+      ORDER BY burn_block_height, id DESC
+    )
+    UPDATE burn_blocks c
+    SET canonical = (c.burn_block_hash = a.burn_block_hash)
+    FROM anchored a
+    WHERE c.burn_block_height = a.burn_block_height
+      AND c.canonical != (c.burn_block_hash = a.burn_block_hash)
+  `);
   // Propagate the resolved winners back to the legacy burnchain tables so they agree with the
   // raw-event evidence. In particular, a zero-recipient replacement block (visible only in raw
   // events) orphans the rival hash's rewards, slot holders, and pox txs -- the historical

@@ -700,6 +700,34 @@ describe('burnchain re-org handling', () => {
         (canonical, burn_block_hash, burn_block_height, burn_amount, reward_recipient, reward_amount, reward_index)
       VALUES (true, ${'0xff01'}, 104, 100, ${ADDR_1}, 800, 0)
     `;
+    // Height 105: a partially pruned raw archive kept only the losing fork side's (0xaa05) raw
+    // event, while the true winner 0xbb05 exists only in burnchain_rewards -- but a canonical
+    // stacks block anchors 0xbb05, which must override the surviving raw event.
+    await client`
+      INSERT INTO event_observer_requests (event_path, payload)
+      VALUES ('/new_burn_block', ${{
+        burn_block_hash: '0xaa05',
+        burn_block_height: 105,
+        burn_amount: 700,
+        reward_recipients: [],
+        reward_slot_holders: [],
+      }})
+    `;
+    await client`
+      INSERT INTO burnchain_rewards
+        (canonical, burn_block_hash, burn_block_height, burn_amount, reward_recipient, reward_amount, reward_index)
+      VALUES (true, ${'0xbb05'}, 105, 800, ${ADDR_1}, 1000, 0)
+    `;
+    await db.update(
+      new TestBlockBuilder({
+        block_height: 1,
+        block_hash: '0xa1',
+        index_block_hash: '0xa1',
+        parent_index_block_hash: '0x00',
+        burn_block_hash: '0xbb05',
+        burn_block_height: 105,
+      }).build()
+    );
     // Re-run only the burn_blocks migration (the delivery above also wrote to the live
     // table; drop it so the migration recreates and backfills from scratch).
     await client`DROP TABLE burn_blocks`;
@@ -724,6 +752,8 @@ describe('burnchain re-org handling', () => {
         ['0xee02', 103, '600', '1000', true],
         ['0xff01', 104, '100', '800', false],
         ['0xff02', 104, '900', '0', true],
+        ['0xaa05', 105, '700', '0', false],
+        ['0xbb05', 105, '800', '1000', true],
       ]
     );
     // The 0xff01 rewards the legacy tables held canonical are orphaned by the propagation pass.
@@ -735,6 +765,7 @@ describe('burnchain re-org handling', () => {
         ['0xee01', 103, false],
         ['0xee02', 103, true],
         ['0xff01', 104, false],
+        ['0xbb05', 105, true],
       ]
     );
   });
