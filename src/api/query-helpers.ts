@@ -1,6 +1,7 @@
 import { isValidPrincipal } from './../helpers.js';
 import { InvalidRequestError, InvalidRequestErrorType } from '../errors.js';
 import { has0xPrefix, hexToBuffer } from '@stacks/api-toolkit';
+import type { FastifyReply, FastifyRequest, HookHandlerDoneFunction } from 'fastify';
 
 /**
  * Determines if the query parameters of a request are intended to include data for a specific block height,
@@ -93,4 +94,25 @@ export function isValidTxId(tx_id: string) {
   } catch {
     return false;
   }
+}
+
+/**
+ * Builds a `preValidation` hook that normalizes an array-typed querystring parameter accepted in
+ * two forms: repeated (`?tx_id=A&tx_id=B`) and comma-separated (`?tx_id=A,B`).
+ *
+ * Fastify's `qs` parser already yields an array for the repeated form, so only the comma-separated
+ * form needs splitting and only before validation runs, since the schema declares the parameter as
+ * an array and would otherwise reject the single string.
+ * @param param - Name of the querystring parameter to normalize.
+ * @returns A `preValidation` hook that splits the parameter when it arrives as a string.
+ */
+export function splitCommaSeparatedQueryParam(param: string) {
+  return (req: FastifyRequest, _reply: FastifyReply, done: HookHandlerDoneFunction) => {
+    const query = req.query as Record<string, unknown>;
+    const value = query[param];
+    if (typeof value === 'string') {
+      query[param] = value.split(',');
+    }
+    done();
+  };
 }

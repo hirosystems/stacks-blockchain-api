@@ -79,6 +79,32 @@ import { DbEventTypeId, DbSignerKeyGrantKind, DbTxStatus, DbTxTypeId } from '../
 
 export class PgStoreV3 extends BasePgStoreModule {
   /**
+   * Gets the summaries for a specific set of mined transactions, in canonical order.
+   *
+   * Unlike {@link getTransactionSummaries} this is not paginated: the caller supplies an explicit,
+   * bounded set of transaction ids, so there is nothing to page through. Ids that are not mined in
+   * the canonical chain — unknown, or still in the mempool — are simply absent from the result,
+   * which is why the caller cannot rely on positional matching against its input.
+   * @param args - The arguments for the query.
+   * @returns The summaries of the mined transactions among `txIds`.
+   */
+  async getTransactionSummariesByTxIds(args: { txIds: string[] }): Promise<DbTransactionSummary[]> {
+    if (args.txIds.length === 0) {
+      return [];
+    }
+    return await this.sqlTransaction(async sql => {
+      return await sql<DbTransactionSummary[]>`
+        SELECT ${sql(TX_SUMMARY_COLUMNS)}
+        FROM txs
+        WHERE canonical = true
+          AND microblock_canonical = true
+          AND tx_id IN ${sql(args.txIds)}
+        ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC
+      `;
+    });
+  }
+
+  /**
    * Gets the summaries for all transactions.
    * @param args - The arguments for the query.
    * @returns The summaries for all transactions.

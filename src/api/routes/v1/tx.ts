@@ -8,7 +8,11 @@ import {
 } from '../../controllers/db-controller.js';
 import { isValidC32Address, isValidPrincipal, parseEventTypeStrings } from '../../../helpers.js';
 import { InvalidRequestError, InvalidRequestErrorType, NotFoundError } from '../../../errors.js';
-import { validateRequestHexInput, validatePrincipal } from '../../query-helpers.js';
+import {
+  validateRequestHexInput,
+  validatePrincipal,
+  splitCommaSeparatedQueryParam,
+} from '../../query-helpers.js';
 import { getPagingQueryLimit, parsePagingQueryInput, ResourceType } from '../../pagination.js';
 import {
   handleChainTipCache,
@@ -59,12 +63,7 @@ export const TxRoutes: FastifyPluginAsync<
     '/',
     {
       preHandler: handleChainTipCache,
-      preValidation: (req, _reply, done) => {
-        if (typeof req.query.type === 'string') {
-          req.query.type = (req.query.type as string).split(',') as typeof req.query.type;
-        }
-        done();
-      },
+      preValidation: splitCommaSeparatedQueryParam('type'),
       schema: {
         operationId: 'get_transaction_list',
         deprecated: true,
@@ -201,16 +200,15 @@ export const TxRoutes: FastifyPluginAsync<
     '/multiple',
     {
       preHandler: handleMempoolCache,
-      preValidation: (req, _reply, done) => {
-        if (typeof req.query.tx_id === 'string') {
-          req.query.tx_id = (req.query.tx_id as string).split(',') as typeof req.query.tx_id;
-        }
-        done();
-      },
+      preValidation: splitCommaSeparatedQueryParam('tx_id'),
       schema: {
         operationId: 'get_tx_list_details',
+        deprecated: true,
+        deprecatedMessage:
+          'Use GET /extended/v3/transactions/batch instead. It returns mined transactions only, ' +
+          'and omits ids it cannot resolve rather than reporting them as not found.',
         summary: 'Get list of details for transactions',
-        description: `Retrieves a list of transactions for a given list of transaction IDs`,
+        description: `Retrieves a list of transactions for a given list of transaction IDs. **Deprecated:** use \`GET /extended/v3/transactions/batch\` instead. Note two differences: the v3 endpoint returns mined transactions only, so use \`GET /extended/v3/transactions/{tx_id}\` for a transaction that may still be in the mempool; and it returns a \`results\` array rather than a map keyed by transaction id, so ids that do not resolve are absent from the response instead of being reported as \`found: false\`.`,
         tags: ['Transactions'],
         querystring: Type.Object({
           tx_id: Type.Array(TransactionIdParamSchema),
@@ -350,12 +348,7 @@ export const TxRoutes: FastifyPluginAsync<
     '/events',
     {
       preHandler: handleChainTipCache,
-      preValidation: (req, _reply, done) => {
-        if (typeof req.query.type === 'string') {
-          req.query.type = (req.query.type as string).split(',') as typeof req.query.type;
-        }
-        done();
-      },
+      preValidation: splitCommaSeparatedQueryParam('type'),
       schema: {
         operationId: 'get_filtered_events',
         deprecated: true,

@@ -711,6 +711,24 @@ describe('principals', () => {
       assert.equal(response.statusCode, 400);
     });
 
+    test('should reject duplicate tx_ids', async () => {
+      const response = await api.fastifyApp.inject({
+        method: 'GET',
+        url: `/extended/v3/principals/${testAddr1}/balance-changes`,
+        query: { tx_id: [hex(3), hex(3)] },
+      });
+      assert.equal(response.statusCode, 400);
+    });
+
+    test('should reject more than 20 tx_ids', async () => {
+      const response = await api.fastifyApp.inject({
+        method: 'GET',
+        url: `/extended/v3/principals/${testAddr1}/balance-changes`,
+        query: { tx_id: Array.from({ length: 21 }, (_, i) => hex(1000 + i)) },
+      });
+      assert.equal(response.statusCode, 400);
+    });
+
     test('should return an empty list when the principal has no activity on the requested txs', async () => {
       const response = await api.fastifyApp.inject({
         method: 'GET',
