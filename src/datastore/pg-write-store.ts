@@ -586,6 +586,7 @@ export class PgWriteStore extends PgStore {
 
   private async insertPox5SyntheticEvents(sql: PgSqlClient, txs: DataStoreTxEventData[]) {
     const poxValues: Pox5SyntheticEventInsertValues[] = [];
+    const bondEventCounts = new Map<number, number>();
     for (const tx of txs) {
       if (tx.pox5Events.length === 0) continue;
       const txLocation: DbTxLocation = {
@@ -611,6 +612,16 @@ export class PgWriteStore extends PgStore {
           name: poxEvent.name,
           data: poxEvent.data,
         });
+        // Accumulate the per-bond event tally for the `bonds.event_count` counter. A null
+        // `bond_index` (an STX-only claim-staker-rewards-for-signer event) is not a bond event.
+        // Only canonical events count: a side-fork block's events are persisted here too (marked
+        // non-canonical), but they must not enter the counter until the reorg delta flips them
+        // canonical.
+        const bondIndexData = (poxEvent.data as { bond_index?: string | null }).bond_index;
+        if (bondIndexData != null && txLocation.canonical && txLocation.microblock_canonical) {
+          const bondIndex = parseInt(bondIndexData);
+          bondEventCounts.set(bondIndex, (bondEventCounts.get(bondIndex) ?? 0) + 1);
+        }
         switch (poxEvent.name) {
           case Pox5EventName.SetupBond:
             await this.updateBond(sql, txLocation, poxEvent);
@@ -665,6 +676,18 @@ export class PgWriteStore extends PgStore {
         INSERT INTO pox5_events ${sql(batch)}
       `;
     }
+    // Maintain each bond's materialized event_count on write, like registered_count. Runs after the
+    // per-event handlers above, so a setup-bond's own `bonds` row already exists when its event is
+    // counted.
+    for (const [bondIndex, count] of bondEventCounts) {
+      await sql`
+        UPDATE bonds
+        SET event_count = event_count + ${count}
+        WHERE bond_index = ${bondIndex}
+          AND canonical = true
+          AND microblock_canonical = true
+      `;
+    }
   }
 
   private async updateBond(sql: PgSqlClient, txLocation: DbTxLocation, event: Pox5EventSetupBond) {
@@ -717,6 +740,10 @@ export class PgWriteStore extends PgStore {
       await sql`
         INSERT INTO bond_registrations ${sql(bondRegistration)}
       `;
+      if (!(txLocation.canonical && txLocation.microblock_canonical)) {
+        // Side-fork registration: the flag-carrying row above is enough.
+        return;
+      }
       // Maintain the bond's registered_count on write (a new registration).
       await sql`
         UPDATE bonds
@@ -726,6 +753,11 @@ export class PgWriteStore extends PgStore {
           AND microblock_canonical = true
       `;
     } else {
+      if (!(txLocation.canonical && txLocation.microblock_canonical)) {
+        // A registration update mutates the canonical registration row in place; a side-fork update
+        // must not touch it.
+        return;
+      }
       const updateResult = await sql`
         UPDATE bond_registrations SET
           signer = ${event.data.signer},
@@ -753,6 +785,7 @@ export class PgWriteStore extends PgStore {
       | Pox5EventAnnounceL1EarlyExit
       | Pox5EventUnstakeSbtc
   ) {
+    const isCanonicalTx = txLocation.canonical && txLocation.microblock_canonical;
     switch (event.name) {
       case Pox5EventName.RegisterForBond:
       case Pox5EventName.UpdateBondRegistration: {
@@ -770,6 +803,18 @@ export class PgWriteStore extends PgStore {
           stx_locked: event.data.amount_ustx,
           btc_paid_out: '0',
         };
+        if (!isCanonicalTx) {
+          // Side-fork registration: insert the flag-carrying position only if this (principal,
+          // bond) has none. The reorg flip-and-delta restores the bond and principal aggregates
+          // from it if the fork wins. Never clobber an existing (canonical) position, and never
+          // touch aggregates. (When a position already exists the side-fork version is
+          // unrepresentable under the one-row-per-(principal, bond) schema and is dropped.)
+          await sql`
+            INSERT INTO principal_bond_positions ${sql(position)}
+            ON CONFLICT (principal, bond_index) DO NOTHING
+          `;
+          break;
+        }
         await sql`
           WITH existing_position AS (
             SELECT btc_locked, stx_locked
@@ -831,6 +876,10 @@ export class PgWriteStore extends PgStore {
         break;
       }
       case Pox5EventName.AnnounceL1EarlyExit:
+        if (!isCanonicalTx) {
+          // Side-fork exit: an in-place mutation of the canonical position. Skip.
+          return;
+        }
         await sql`
           WITH updated_position AS (
             UPDATE principal_bond_positions
@@ -867,6 +916,10 @@ export class PgWriteStore extends PgStore {
         `;
         return;
       case Pox5EventName.UnstakeSbtc:
+        if (!isCanonicalTx) {
+          // Side-fork unstake: an in-place mutation of the canonical position — skip.
+          return;
+        }
         await sql`
           WITH existing_position AS (
             SELECT bond_index, btc_locked::numeric AS btc_locked, stx_locked::numeric AS stx_locked
@@ -970,6 +1023,12 @@ export class PgWriteStore extends PgStore {
         INSERT INTO principal_bond_reward_distributions ${sql(batch)}
       `;
     }
+    if (!(txLocation.canonical && txLocation.microblock_canonical)) {
+      // Side-fork distribution: the flag-carrying source rows above are enough. The reorg
+      // flip-and-delta credits the accrued totals from them if the fork wins. Applying them now
+      // would corrupt canonical totals and double-count on the flip.
+      return;
+    }
     for (const p of participantRewards) {
       await sql`
         UPDATE principal_bond_positions
@@ -1011,6 +1070,11 @@ export class PgWriteStore extends PgStore {
     await sql`
       INSERT INTO principal_bond_reward_claims ${sql(claim)}
     `;
+    if (!(txLocation.canonical && txLocation.microblock_canonical)) {
+      // Side-fork claim: the flag-carrying source row above is enough. The reorg flip-and-delta
+      // rolls the claimed amounts into the position and totals if the fork wins.
+      return;
+    }
     if (bondIndex === null) {
       // STX-staking reward claim (no bond): roll into the staker's running
       // STX-staking claimed total.
@@ -1113,6 +1177,11 @@ export class PgWriteStore extends PgStore {
         INSERT INTO principal_stx_reward_distributions ${sql(batch)}
       `;
     }
+    if (!(txLocation.canonical && txLocation.microblock_canonical)) {
+      // Side-fork calculation: the flag-carrying source rows above are enough. The reorg
+      // flip-and-delta credits the STX accrued totals from them if the fork wins.
+      return;
+    }
     for (const s of stakerRewards) {
       await sql`
         INSERT INTO principal_staking_totals (principal, stx_accrued_rewards)
@@ -1173,6 +1242,13 @@ export class PgWriteStore extends PgStore {
     txLocation: DbTxLocation,
     event: Pox5EventStake | Pox5EventStakeUpdate | Pox5EventUnstake
   ) {
+    if (!(txLocation.canonical && txLocation.microblock_canonical)) {
+      // Side-fork lock event: the materialized lock is latest-wins per principal,
+      // so applying it would clobber the canonical lock. If the fork wins, the
+      // post-reorg lock re-materialization recomputes it from the canonical
+      // pox5_events.
+      return;
+    }
     await this.setStxLockedBalance(sql, {
       principal: event.data.staker,
       lockedAmount: event.data.amount_ustx,
@@ -1197,6 +1273,12 @@ export class PgWriteStore extends PgStore {
     txLocation: DbTxLocation,
     event: Pox5EventRegisterSigner
   ) {
+    if (!(txLocation.canonical && txLocation.microblock_canonical)) {
+      // Side-fork registration: the materialized signer key is latest-wins per signer, so applying
+      // it would clobber the canonical key. If the fork wins, the post-reorg signer
+      // re-materialization recomputes it from the canonical pox5_events.
+      return;
+    }
     await sql`
       INSERT INTO staking_signers (signer, signer_key, tx_id, block_height, burn_block_height)
       VALUES (
@@ -1393,6 +1475,15 @@ export class PgWriteStore extends PgStore {
       staker: event.data.staker,
       max_sats: maxSats,
     };
+    if (!(txLocation.canonical && txLocation.microblock_canonical)) {
+      // Side-fork event: persist the flag-carrying entry (the reorg flip-and-delta restores the
+      // bond's capacity/count from it if the fork wins) but leave the canonical bond's counters
+      // untouched.
+      await sql`
+        INSERT INTO bond_allowlist_entries ${sql(bondAllowlistEntry)}
+      `;
+      return;
+    }
     await sql`
       WITH inserted AS (
         INSERT INTO bond_allowlist_entries ${sql(bondAllowlistEntry)}
@@ -4942,7 +5033,6 @@ export class PgWriteStore extends PgStore {
     // pox-5 tables that only need their canonical flag flipped (no derived
     // bond counters depend on them).
     for (const pox5Table of [
-      'pox5_events',
       'bonds',
       'bond_reward_distributions',
       'bond_reward_calculations',
@@ -4964,6 +5054,30 @@ export class PgWriteStore extends PgStore {
     // No `bonds.canonical` guard on the delta: the delta must apply symmetrically
     // in both directions (orphan then restore) to avoid double-counting, exactly
     // like the ft_balances upsert.
+    q.enqueue(async () => {
+      // Flip pox5_events and apply the bond-scoped event delta to the parent bond's `event_count`
+      // (only events carrying a non-null `bond_index` count). The delta is restricted to
+      // microblock-canonical rows to mirror the insert-time tally;
+      // `pox5_events.microblock_canonical` never changes after insert, so the two stay symmetric.
+      await sql`
+        WITH updated AS (
+          UPDATE pox5_events
+          SET canonical = ${canonical}
+          WHERE index_block_hash = ${indexBlockHash} AND canonical != ${canonical}
+          RETURNING (data->>'bond_index')::int AS bond_index, canonical, microblock_canonical
+        ),
+        changes AS (
+          SELECT bond_index, SUM(CASE WHEN canonical THEN 1 ELSE -1 END) AS count_change
+          FROM updated
+          WHERE bond_index IS NOT NULL AND microblock_canonical = TRUE
+          GROUP BY bond_index
+        )
+        UPDATE bonds AS b
+        SET event_count = b.event_count + c.count_change
+        FROM changes c
+        WHERE b.bond_index = c.bond_index
+      `;
+    });
     q.enqueue(async () => {
       await sql`
         WITH updated AS (

@@ -1,15 +1,32 @@
 import {
   DbBond,
   DbBondAllowlistEntry,
+  DbBondEvent,
   DbBondRegistration,
   DbBondRegistrationSummary,
   DbBondSummary,
   DbPrincipalBondPosition,
   DbPrincipalStakingSummary,
 } from '../../../datastore/v3/types.js';
-import { DbBondLockupType, DbPrincipalBondPositionStatus } from '../../../datastore/common.js';
+import {
+  bondLockupTypeFromString,
+  DbBondLockupType,
+  DbPrincipalBondPositionStatus,
+} from '../../../datastore/common.js';
+import {
+  Pox5EventAddToAllowlist,
+  Pox5EventAnnounceL1EarlyExit,
+  Pox5EventBondDistribution,
+  Pox5EventClaimStakerRewardsForSigner,
+  Pox5EventName,
+  Pox5EventRegisterForBond,
+  Pox5EventSetupBond,
+  Pox5EventUnstakeSbtc,
+  Pox5EventUpdateBondRegistration,
+} from '@stacks/codec';
 import { Bond, BondSummary } from '../../schemas/v3/entities/bonds.js';
 import { BondStatus } from '../../schemas/v3/entities/bonds.js';
+import { BondEvent } from '../../schemas/v3/entities/bond-events.js';
 import { BondAllowlist } from '../../schemas/v3/entities/bond-allowlist-entries.js';
 import { BondRegistration } from '../../schemas/v3/entities/bond-registrations.js';
 import { BondRegistrationSummary } from '../../schemas/v3/entities/bond-registration-summaries.js';
@@ -107,6 +124,163 @@ export function serializeDbBond(bond: DbBond, currentBurnBlockHeight: number): B
       },
     },
   };
+}
+
+/**
+ * Serializes a bond-scoped `pox5_events` row to an API bond event. Payloads are curated into the
+ * same vocabulary as the bond, allowlist, and registration entities (grouped `{ btc, stx }` string
+ * amounts, integer heights and cycles) instead of passing the raw synthetic event fields through,
+ * and carry only what the event uniquely records — details available on a resource endpoint (e.g.
+ * a registration's proven L1 lockup outputs) are not repeated here.
+ */
+export function serializeDbBondEvent(event: DbBondEvent): BondEvent {
+  const base = {
+    bond_index: parseInt((event.data as { bond_index: string }).bond_index),
+    transaction: {
+      tx_id: event.tx_id,
+      event_index: event.event_index,
+    },
+    block: {
+      height: event.block_height,
+      hash: event.block_hash,
+      index_hash: event.index_block_hash,
+      time: event.block_time,
+      tx_index: event.tx_index,
+    },
+    bitcoin_block: {
+      height: event.burn_block_height,
+      time: event.burn_block_time,
+    },
+  };
+  switch (event.name) {
+    case Pox5EventName.SetupBond: {
+      const data = event.data as unknown as Pox5EventSetupBond['data'];
+      return {
+        ...base,
+        name: Pox5EventName.SetupBond,
+        data: {
+          parameters: {
+            target_rate_bps: parseInt(data.target_rate),
+            stx_value_ratio: parseInt(data.stx_value_ratio),
+            minimum_stx_ratio: parseInt(data.min_ustx_ratio),
+          },
+          early_unlock_bytes: data.early_unlock_bytes,
+          schedule: {
+            activation: {
+              bitcoin_height: parseInt(data.bond_start_height),
+              pox_cycle: parseInt(data.first_reward_cycle),
+            },
+            unlock: {
+              bitcoin_height: parseInt(data.unlock_burn_height),
+              pox_cycle: parseInt(data.unlock_cycle),
+            },
+          },
+        },
+      };
+    }
+    case Pox5EventName.AddToAllowlist: {
+      const data = event.data as unknown as Pox5EventAddToAllowlist['data'];
+      return {
+        ...base,
+        name: Pox5EventName.AddToAllowlist,
+        data: {
+          staker: data.staker,
+          max_sats: data.max_sats,
+        },
+      };
+    }
+    case Pox5EventName.RegisterForBond: {
+      const data = event.data as unknown as Pox5EventRegisterForBond['data'];
+      return {
+        ...base,
+        name: Pox5EventName.RegisterForBond,
+        data: {
+          staker: data.staker,
+          signer: data.signer,
+          type: serializeBondLockupType(bondLockupTypeFromString(data.btc_lockup.type)),
+          balances: {
+            btc: data.sats_total,
+            stx: data.amount_ustx,
+          },
+        },
+      };
+    }
+    case Pox5EventName.UpdateBondRegistration: {
+      const data = event.data as unknown as Pox5EventUpdateBondRegistration['data'];
+      return {
+        ...base,
+        name: Pox5EventName.UpdateBondRegistration,
+        data: {
+          staker: data.staker,
+          signer: data.signer,
+          old_signer: data.old_signer,
+          type: data.is_l1_lock ? 'l1' : 'l2',
+          balances: {
+            btc: data.amount_sats,
+            stx: data.amount_ustx,
+          },
+        },
+      };
+    }
+    case Pox5EventName.AnnounceL1EarlyExit: {
+      const data = event.data as unknown as Pox5EventAnnounceL1EarlyExit['data'];
+      return {
+        ...base,
+        name: Pox5EventName.AnnounceL1EarlyExit,
+        data: {
+          staker: data.staker,
+          signer: data.signer,
+          released: { btc: data.amount_sats_released },
+        },
+      };
+    }
+    case Pox5EventName.UnstakeSbtc: {
+      const data = event.data as unknown as Pox5EventUnstakeSbtc['data'];
+      return {
+        ...base,
+        name: Pox5EventName.UnstakeSbtc,
+        data: {
+          staker: data.staker,
+          signer: data.signer,
+          withdrawn: { btc: data.amount_withdrawn_sats },
+          remaining: { btc: data.new_amount_sats },
+        },
+      };
+    }
+    case Pox5EventName.BondDistribution: {
+      const data = event.data as unknown as Pox5EventBondDistribution['data'];
+      return {
+        ...base,
+        name: Pox5EventName.BondDistribution,
+        data: {
+          target_yield: data.target_yield,
+          rewards: { btc: data.bond_rewards },
+          staked: { btc: data.bond_staked_sats },
+          accrued_rewards_per_sat: data.accrued_rewards_per_sat,
+          cumulative_rewards_per_sat: data.cumulative_rewards_per_sat,
+        },
+      };
+    }
+    case Pox5EventName.ClaimStakerRewardsForSigner: {
+      const data = event.data as unknown as Pox5EventClaimStakerRewardsForSigner['data'];
+      return {
+        ...base,
+        name: Pox5EventName.ClaimStakerRewardsForSigner,
+        data: {
+          signer_manager: data.signer_manager,
+          staker: data.staker,
+          reward_cycle: parseInt(data.reward_cycle),
+          // The bond events query filters to non-null bond_index rows, so this is
+          // always a bond reward claim (never an STX-only claim).
+          claimed: { btc: data.rewards_claimed },
+        },
+      };
+    }
+    default:
+      // The query filter only matches events carrying a bond_index, which is
+      // exactly the set handled above for the deployed pox-5 contract.
+      throw new Error(`Unhandled pox-5 bond event: ${event.name}`);
+  }
 }
 
 export function serializeDbBondAllowlistEntry(entry: DbBondAllowlistEntry): BondAllowlist {

@@ -7,9 +7,11 @@ import {
   BondCursorSchema,
   CursorPaginatedResponse,
   CursorPaginationQuerystring,
+  EventPositionCursorSchema,
   TransactionCursorSchema,
 } from '../../schemas/v3/cursors.js';
 import { BondSchema, BondSummarySchema } from '../../schemas/v3/entities/bonds.js';
+import { BondEventSchema } from '../../schemas/v3/entities/bond-events.js';
 import { BondAllowlistSchema } from '../../schemas/v3/entities/bond-allowlist-entries.js';
 import { BondRegistrationSchema } from '../../schemas/v3/entities/bond-registrations.js';
 import { BondRegistrationSummarySchema } from '../../schemas/v3/entities/bond-registration-summaries.js';
@@ -17,6 +19,7 @@ import { BondIndexSchema, PrincipalSchema } from '../../schemas/v3/entities/comm
 import {
   serializeDbBond,
   serializeDbBondAllowlistEntry,
+  serializeDbBondEvent,
   serializeDbBondRegistration,
   serializeDbBondRegistrationSummary,
   serializeDbBondSummary,
@@ -84,6 +87,47 @@ export const StakingBondsRoutes: FastifyPluginAsync<
         throw new NotFoundError('Bond not found');
       }
       await reply.send(serializeDbBond(bond, bond.burn_block_height));
+    }
+  );
+
+  fastify.get(
+    '/staking/bonds/:bond_index/events',
+    {
+      preHandler: handleChainTipCache,
+      schema: {
+        operationId: 'get_bond_events',
+        summary: 'Get bond events',
+        description:
+          "A bond's pox-5 event log, newest first: setup, allowlist additions, registrations " +
+          'and registration updates, early exits (`announce-l1-early-exit`, and `unstake-sbtc` ' +
+          'with a `new_amount_sats` of 0), partial sBTC unstakes, reward distributions, and ' +
+          'staker reward claims.',
+        tags: ['Staking'],
+        params: Type.Object({
+          bond_index: BondIndexSchema,
+        }),
+        querystring: CursorPaginationQuerystring(EventPositionCursorSchema, ResourceType.Tx),
+        response: {
+          200: CursorPaginatedResponse(BondEventSchema, EventPositionCursorSchema, ResourceType.Tx),
+        },
+      },
+    },
+    async (req, reply) => {
+      const results = await fastify.db.v3.getBondEvents({
+        bondIndex: req.params.bond_index,
+        limit: req.query.limit ?? getPagingQueryLimit(ResourceType.Tx),
+        cursor: req.query.cursor,
+      });
+      await reply.send({
+        limit: results.limit,
+        total: results.total,
+        cursor: {
+          next: results.next_cursor,
+          previous: results.prev_cursor,
+          current: results.current_cursor,
+        },
+        results: results.results.map(r => serializeDbBondEvent(r)),
+      });
     }
   );
 

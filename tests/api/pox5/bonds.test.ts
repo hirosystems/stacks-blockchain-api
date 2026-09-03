@@ -738,6 +738,306 @@ describe('pox-5 bonds reorg handling', () => {
     const summary = await getJson<StakingSummary>(`/extended/v3/principals/${ALICE}/staking`);
     assert.equal(summary.bonds.count, 0, 'position orphaned');
   });
+
+  test("a side-fork block's events don't touch canonical bond state, and apply exactly once when the fork wins", async () => {
+    const NEW_SIGNER = `${ADMIN}.signer-manager-2`;
+    const BOB_SBTC_SATS = 500n;
+    const BOB_AMOUNT_USTX = 5_000_000n;
+    // 1e17 per-sat (1e18 fixed point): alice's 1000 locked sats accrue 100.
+    const PER_SAT = '100000000000000000';
+    const EXPECTED_ALICE_ACCRUED = 100n;
+
+    // Genesis, then the canonical bond: setup + allowlist alice + alice registers.
+    await db.update(
+      new TestBlockBuilder({ block_height: 1, block_hash: '0x01', index_block_hash: '0x01' }).build()
+    );
+    await db.update(
+      new TestBlockBuilder({
+        block_height: 2,
+        block_hash: '0xa2',
+        index_block_hash: '0xa2',
+        parent_block_hash: '0x01',
+        parent_index_block_hash: '0x01',
+      })
+        .addTx({ tx_id: SETUP_TX_ID })
+        .addTxPox5Event({ name: Pox5EventName.SetupBond, data: SETUP_BOND_DATA })
+        .addTxPox5Event({
+          name: Pox5EventName.AddToAllowlist,
+          data: {
+            bond_index: String(BOND_INDEX),
+            staker: ALICE,
+            max_sats: ALICE_MAX_SATS.toString(),
+          },
+        })
+        .addTx({ tx_id: REGISTER_TX_ID })
+        .addTxPox5Event({
+          name: Pox5EventName.RegisterForBond,
+          data: {
+            bond_index: String(BOND_INDEX),
+            signer: SIGNER,
+            staker: ALICE,
+            amount_ustx: AMOUNT_USTX.toString(),
+            sats_total: SBTC_SATS.toString(),
+            first_reward_cycle: String(FIRST_REWARD_CYCLE),
+            unlock_burn_height: String(UNLOCK_BURN_HEIGHT),
+            unlock_cycle: String(UNLOCK_CYCLE),
+            is_l1_lock: false,
+            btc_lockup: { type: 'l2', txs: [] },
+          },
+        })
+        .build()
+    );
+    // Empty canonical block 3 so a competing height-3 block arrives as a side fork.
+    await db.update(
+      new TestBlockBuilder({
+        block_height: 3,
+        block_hash: '0xa3',
+        index_block_hash: '0xa3',
+        parent_block_hash: '0xa2',
+        parent_index_block_hash: '0xa2',
+      }).build()
+    );
+
+    // The side fork (immediately non-canonical): bob is allowlisted + registers,
+    // alice fully unstakes, alice's registration switches signer, and a reward
+    // distribution runs. None of it may touch canonical materialized state.
+    await db.update(
+      new TestBlockBuilder({
+        block_height: 3,
+        block_hash: '0xb3',
+        index_block_hash: '0xb3',
+        parent_block_hash: '0xa2',
+        parent_index_block_hash: '0xa2',
+      })
+        .addTx({ tx_id: '0x' + '77'.repeat(32) })
+        .addTxPox5Event({
+          name: Pox5EventName.AddToAllowlist,
+          data: { bond_index: String(BOND_INDEX), staker: BOB, max_sats: BOB_MAX_SATS.toString() },
+        })
+        .addTxPox5Event({
+          name: Pox5EventName.RegisterForBond,
+          data: {
+            bond_index: String(BOND_INDEX),
+            signer: SIGNER,
+            staker: BOB,
+            amount_ustx: BOB_AMOUNT_USTX.toString(),
+            sats_total: BOB_SBTC_SATS.toString(),
+            first_reward_cycle: String(FIRST_REWARD_CYCLE),
+            unlock_burn_height: String(UNLOCK_BURN_HEIGHT),
+            unlock_cycle: String(UNLOCK_CYCLE),
+            is_l1_lock: false,
+            btc_lockup: { type: 'l2', txs: [] },
+          },
+        })
+        .addTxPox5Event({
+          name: Pox5EventName.UnstakeSbtc,
+          data: {
+            bond_index: String(BOND_INDEX),
+            staker: ALICE,
+            signer: SIGNER,
+            amount_withdrawn_sats: SBTC_SATS.toString(),
+            new_amount_sats: '0',
+          },
+        })
+        .addTxPox5Event({
+          name: Pox5EventName.UpdateBondRegistration,
+          data: {
+            bond_index: String(BOND_INDEX),
+            staker: ALICE,
+            signer: NEW_SIGNER,
+            old_signer: SIGNER,
+            amount_ustx: AMOUNT_USTX.toString(),
+            amount_sats: SBTC_SATS.toString(),
+            first_reward_cycle: String(FIRST_REWARD_CYCLE),
+            num_cycles: '12',
+            is_l1_lock: false,
+          },
+        })
+        .addTxPox5Event({
+          name: Pox5EventName.BondDistribution,
+          data: {
+            bond_index: String(BOND_INDEX),
+            target_yield: '0',
+            bond_rewards: EXPECTED_ALICE_ACCRUED.toString(),
+            bond_staked_sats: SBTC_SATS.toString(),
+            accrued_rewards_per_sat: PER_SAT,
+            cumulative_rewards_per_sat: PER_SAT,
+          },
+        })
+        .build()
+    );
+
+    // Canonical state is untouched by the side fork.
+    const bondBefore = await getJson<BondDetail>(`/extended/v3/staking/bonds/${BOND_INDEX}`);
+    assert.equal(bondBefore.registrations.allowed_count, 1, 'allowed_count untouched');
+    assert.equal(
+      BigInt(bondBefore.parameters.btc_capacity),
+      ALICE_MAX_SATS,
+      'btc_capacity untouched'
+    );
+    assert.equal(bondBefore.registrations.registered_count, 1, 'registered_count untouched');
+    assert.equal(BigInt(bondBefore.balances.locked.btc), SBTC_SATS, 'bond btc_locked untouched');
+    assert.equal(BigInt(bondBefore.balances.locked.stx), AMOUNT_USTX, 'bond stx_locked untouched');
+    const regBefore = await getJson<BondRegistration>(
+      `/extended/v3/staking/bonds/${BOND_INDEX}/registrations/${ALICE}`
+    );
+    assert.equal(regBefore.signer, SIGNER, "alice's registration signer not mutated");
+    const alicePosBefore = await getJson<BondPositionsPage>(
+      `/extended/v3/principals/${ALICE}/staking/bonds`
+    );
+    assert.equal(alicePosBefore.results[0].status, 'enrolled', "alice's position not exited");
+    assert.equal(
+      BigInt(alicePosBefore.results[0].locked.btc),
+      SBTC_SATS,
+      "alice's locked sats not zeroed"
+    );
+    assert.equal(
+      alicePosBefore.results[0].rewards.btc.accrued,
+      '0',
+      'no rewards accrued from the side-fork distribution'
+    );
+    const bobBefore = await getJson<StakingSummary>(`/extended/v3/principals/${BOB}/staking`);
+    assert.equal(bobBefore.bonds.count, 0, "bob's side-fork position not visible");
+
+    // The side fork wins: its counters and bob's position apply exactly once.
+    await db.update(
+      new TestBlockBuilder({
+        block_height: 4,
+        block_hash: '0xb4',
+        index_block_hash: '0xb4',
+        parent_block_hash: '0xb3',
+        parent_index_block_hash: '0xb3',
+      }).build()
+    );
+
+    const bondAfter = await getJson<BondDetail>(`/extended/v3/staking/bonds/${BOND_INDEX}`);
+    assert.equal(bondAfter.registrations.allowed_count, 2, 'allowed_count applied once');
+    assert.equal(
+      BigInt(bondAfter.parameters.btc_capacity),
+      ALICE_MAX_SATS + BOB_MAX_SATS,
+      'btc_capacity applied once'
+    );
+    assert.equal(bondAfter.registrations.registered_count, 2, 'registered_count applied once');
+    assert.equal(
+      BigInt(bondAfter.balances.locked.btc),
+      SBTC_SATS + BOB_SBTC_SATS,
+      "bob's locked sats applied once"
+    );
+    const bobAfter = await getJson<StakingSummary>(`/extended/v3/principals/${BOB}/staking`);
+    assert.equal(bobAfter.bonds.count, 1, "bob's position restored with the fork");
+    assert.equal(BigInt(bobAfter.bonds.locked.btc), BOB_SBTC_SATS);
+    const aliceAfter = await getJson<BondPositionsPage>(
+      `/extended/v3/principals/${ALICE}/staking/bonds`
+    );
+    assert.equal(
+      aliceAfter.results[0].rewards.btc.accrued,
+      EXPECTED_ALICE_ACCRUED.toString(),
+      'distribution rewards credited once by the reorg flip'
+    );
+    // Accepted limitation: in-place mutations (unstake, registration update) that
+    // were skipped on the side fork are not replayed when the fork wins — alice's
+    // position and registration keep their pre-fork values. Event-sourced
+    // re-materialization would be needed to close this, and the whole path is
+    // unreachable in production (Nakamoto blocks are always canonical at insert).
+    assert.equal(BigInt(aliceAfter.results[0].locked.btc), SBTC_SATS);
+    const regAfter = await getJson<BondRegistration>(
+      `/extended/v3/staking/bonds/${BOND_INDEX}/registrations/${ALICE}`
+    );
+    assert.equal(regAfter.signer, SIGNER);
+  });
+
+  test("a side-fork block's stake and register-signer events don't clobber canonical materializations", async () => {
+    const KEY_A = '0x02' + 'aa'.repeat(32);
+    const KEY_B = '0x03' + 'bb'.repeat(32);
+    const STAKE_A = 5_000_000n;
+    const STAKE_B = 9_999_999n;
+    const stakeData = (amountUstx: bigint) => ({
+      signer: SIGNER,
+      staker: ALICE,
+      amount_ustx: amountUstx.toString(),
+      num_cycles: '12',
+      first_reward_cycle: String(FIRST_REWARD_CYCLE),
+      unlock_burn_height: String(UNLOCK_BURN_HEIGHT),
+      unlock_cycle: String(UNLOCK_CYCLE),
+    });
+    async function materialized(): Promise<{ locked: string | null; signerKey: string | null }> {
+      const lock = await db.sql<{ locked_amount: string }[]>`
+        SELECT locked_amount::text AS locked_amount FROM stx_locked_balances
+        WHERE principal = ${ALICE} AND pox_version = 5
+      `;
+      const signer = await db.sql<{ signer_key: string }[]>`
+        SELECT signer_key FROM staking_signers WHERE signer = ${SIGNER}
+      `;
+      return {
+        locked: lock[0]?.locked_amount ?? null,
+        signerKey: signer[0]?.signer_key ?? null,
+      };
+    }
+
+    await db.update(
+      new TestBlockBuilder({ block_height: 1, block_hash: '0x01', index_block_hash: '0x01' }).build()
+    );
+    // Canonical: alice stakes STAKE_A and the signer registers KEY_A.
+    await db.update(
+      new TestBlockBuilder({
+        block_height: 2,
+        block_hash: '0xa2',
+        index_block_hash: '0xa2',
+        parent_block_hash: '0x01',
+        parent_index_block_hash: '0x01',
+      })
+        .addTx({ tx_id: SETUP_TX_ID })
+        .addTxPox5Event({ name: Pox5EventName.Stake, data: stakeData(STAKE_A) })
+        .addTxPox5Event({
+          name: Pox5EventName.RegisterSigner,
+          data: { signer: SIGNER, signer_key: KEY_A },
+        })
+        .build()
+    );
+    assert.deepEqual(await materialized(), { locked: STAKE_A.toString(), signerKey: KEY_A });
+
+    // Side fork at the same height: a competing stake amount and signer key.
+    // Both materializations are latest-wins upserts — the side fork must not
+    // clobber them.
+    await db.update(
+      new TestBlockBuilder({
+        block_height: 2,
+        block_hash: '0xb2',
+        index_block_hash: '0xb2',
+        parent_block_hash: '0x01',
+        parent_index_block_hash: '0x01',
+      })
+        .addTx({ tx_id: REGISTER_TX_ID })
+        .addTxPox5Event({ name: Pox5EventName.Stake, data: stakeData(STAKE_B) })
+        .addTxPox5Event({
+          name: Pox5EventName.RegisterSigner,
+          data: { signer: SIGNER, signer_key: KEY_B },
+        })
+        .build()
+    );
+    assert.deepEqual(
+      await materialized(),
+      { locked: STAKE_A.toString(), signerKey: KEY_A },
+      'canonical lock and signer key untouched by the side fork'
+    );
+
+    // The side fork wins: the post-reorg re-materialization recomputes both from
+    // the now-canonical pox5_events.
+    await db.update(
+      new TestBlockBuilder({
+        block_height: 3,
+        block_hash: '0xb3',
+        index_block_hash: '0xb3',
+        parent_block_hash: '0xb2',
+        parent_index_block_hash: '0xb2',
+      }).build()
+    );
+    assert.deepEqual(
+      await materialized(),
+      { locked: STAKE_B.toString(), signerKey: KEY_B },
+      "the winning fork's lock and signer key re-materialized"
+    );
+  });
 });
 
 /**
