@@ -3074,8 +3074,6 @@ export class PgStore extends BasePgStore {
       ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
     `;
 
-    // TODO: should mining rewards be added?
-
     const txs = parseTxsWithAssetTransfers(resultQuery, args.stxAddress);
     const txTransfers = [...txs.values()];
     txTransfers.sort((a, b) => {
@@ -3183,7 +3181,6 @@ export class PgStore extends BasePgStore {
   }
 
   async searchHash({ hash }: { hash: string }): Promise<FoundOrNot<DbSearchResult>> {
-    // TODO(mb): add support for searching for microblock by hash
     return await this.sqlTransaction(async sql => {
       const txQuery = await sql<ContractTxQueryResult[]>`
         SELECT ${sql(TX_COLUMNS)}, ${abiColumn(sql)}

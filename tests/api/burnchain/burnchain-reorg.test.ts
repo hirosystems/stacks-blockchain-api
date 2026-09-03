@@ -2,15 +2,19 @@ import { DbBurnBlockPoxTx, DbBurnchainReward, DbRewardSlotHolder } from '../../.
 import { PgWriteStore } from '../../../src/datastore/pg-write-store.ts';
 import { MIGRATIONS_DIR } from '../../../src/datastore/pg-store.ts';
 import { getConnectionArgs } from '../../../src/datastore/connection.ts';
+import { EventStreamServer, startEventServer } from '../../../src/event-stream/event-server.ts';
+import { httpPostRequest } from '../../../src/helpers.ts';
 import { PgSqlClient, runMigrations } from '@stacks/api-toolkit';
 import { TestBlockBuilder } from '../test-builders.ts';
 import { migrate } from '../../test-helpers.ts';
 import { beforeEach, afterEach, describe, test } from 'node:test';
 import assert from 'node:assert/strict';
+import { STACKS_MAINNET } from '@stacks/network';
 
 describe('burnchain re-org handling', () => {
   let db: PgWriteStore;
   let client: PgSqlClient;
+  let eventServer: EventStreamServer;
 
   const ADDR_1 = '1G4ayBXJvxZMoZpaNdZG6VyWwWq2mHpMjQ';
   const ADDR_2 = '1DDUAqoyXvhF4cxznN9uL6j9ok1oncsT2z';
@@ -66,7 +70,10 @@ describe('burnchain re-org handling', () => {
     };
   }
 
-  /** Ingests one `/new_burn_block` event the way the event server does. */
+  /**
+   * Builds a simulated `/new_burn_block` JSON payload and POSTs it to the event server, exercising
+   * the real ingestion path.
+   */
   async function deliverBurnBlock(args: {
     hash: string;
     height: number;
@@ -75,28 +82,36 @@ describe('burnchain re-org handling', () => {
     slotHolders?: DbRewardSlotHolder[];
     poxTxs?: DbBurnBlockPoxTx[];
   }) {
-    await db.sqlWriteTransaction(async () => {
-      await db.updateBurnchainBlock({
-        burnchainBlockHash: args.hash,
-        burnchainBlockHeight: args.height,
-        burnAmount: args.burnAmount ?? 0n,
-        rewardAmount: (args.rewards ?? []).reduce((total, r) => total + r.reward_amount, 0n),
-      });
-      await db.updateBurnchainRewards({
-        burnchainBlockHash: args.hash,
-        burnchainBlockHeight: args.height,
-        rewards: args.rewards ?? [],
-      });
-      await db.updateBurnchainRewardSlotHolders({
-        burnchainBlockHash: args.hash,
-        burnchainBlockHeight: args.height,
-        slotHolders: args.slotHolders ?? [],
-      });
-      await db.updateBurnBlockPoxTxs({
-        burnchainBlockHash: args.hash,
-        burnchainBlockHeight: args.height,
-        burnBlockPoxTxs: args.poxTxs ?? [],
-      });
+    const poxTxsByTxid = new Map<string, DbBurnBlockPoxTx[]>();
+    for (const tx of args.poxTxs ?? []) {
+      poxTxsByTxid.set(tx.tx_id, [...(poxTxsByTxid.get(tx.tx_id) ?? []), tx]);
+    }
+    const payload = {
+      burn_block_hash: args.hash,
+      burn_block_height: args.height,
+      burn_amount: Number(args.burnAmount ?? 0n),
+      reward_recipients: [...(args.rewards ?? [])]
+        .sort((a, b) => a.reward_index - b.reward_index)
+        .map(r => ({ recipient: r.reward_recipient, amt: Number(r.reward_amount) })),
+      reward_slot_holders: [...(args.slotHolders ?? [])]
+        .sort((a, b) => a.slot_index - b.slot_index)
+        .map(s => s.address),
+      pox_transactions: [...poxTxsByTxid.entries()].map(([txid, txs]) => ({
+        txid,
+        reward_recipients: txs.map(t => ({
+          recipient: t.recipient,
+          amt: Number(t.amount),
+          utxo_idx: t.utxo_idx,
+        })),
+      })),
+    };
+    await httpPostRequest({
+      host: '127.0.0.1',
+      port: eventServer.serverAddress.port,
+      path: '/new_burn_block',
+      headers: { 'Content-Type': 'application/json' },
+      body: Buffer.from(JSON.stringify(payload), 'utf8'),
+      throwOnNotOK: true,
     });
   }
 
@@ -159,9 +174,16 @@ describe('burnchain re-org handling', () => {
       skipMigrations: true,
     });
     client = db.sql;
+    eventServer = await startEventServer({
+      datastore: db,
+      chainId: STACKS_MAINNET.chainId,
+      serverHost: '127.0.0.1',
+      serverPort: 0,
+    });
   });
 
   afterEach(async () => {
+    await eventServer.closeAsync();
     await db?.close();
     await migrate('down');
   });
@@ -609,7 +631,8 @@ describe('burnchain re-org handling', () => {
     }
     // A block at height 102 missing from raw events but present in burnchain_rewards: the
     // gap-fill path must pick it up from there. Restore the legacy `burn_amount` column the
-    // migration's gap-fill reads (and then drops again) to recreate pre-migration state.
+    // migration's gap-fill reads (and then drops again) to recreate pre-migration state, and prune
+    // the raw event the ingestion stored so the block only exists in burnchain_rewards.
     await client`ALTER TABLE burnchain_rewards ADD COLUMN burn_amount numeric NOT NULL DEFAULT 0`;
     await deliverBurnBlock({
       hash: '0xdd01',
@@ -617,6 +640,10 @@ describe('burnchain re-org handling', () => {
       rewards: [reward({ hash: '0xdd01', height: 102 })],
     });
     await client`UPDATE burnchain_rewards SET burn_amount = 2000 WHERE burn_block_hash = ${'0xdd01'}`;
+    await client`
+      DELETE FROM event_observer_requests
+      WHERE event_path = '/new_burn_block' AND payload->>'burn_block_hash' = '0xdd01'
+    `;
     // A burnchain fork at height 103 present only in burnchain_rewards (no raw events): the
     // gap-fill must stay consistent with the repaired rewards table, where 0xee02 won.
     for (const f of [
