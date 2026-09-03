@@ -57,6 +57,7 @@ jobs:
           [
             api:blocks,
             api:bns,
+            api:burnchain,
             api:cache,
             api:datastore,
             api:event-replay,

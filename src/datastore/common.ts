@@ -65,10 +65,22 @@ export interface DbBurnchainReward {
   canonical: boolean;
   burn_block_hash: string;
   burn_block_height: number;
-  burn_amount: bigint;
   reward_recipient: string;
   reward_amount: bigint;
   reward_index: number;
+}
+
+/** A burnchain reward read joined with its block's `burn_amount` from `burn_blocks`. */
+export interface DbBurnchainRewardWithBurnAmount extends DbBurnchainReward {
+  burn_amount: bigint;
+}
+
+export interface DbBurnchainBlock {
+  canonical: boolean;
+  burn_block_hash: string;
+  burn_block_height: number;
+  burn_amount: bigint;
+  reward_amount: bigint;
 }
 
 export interface DbPoxSetSigners {
@@ -1457,10 +1469,17 @@ export interface BurnchainRewardInsertValues {
   canonical: boolean;
   burn_block_hash: PgBytea;
   burn_block_height: number;
-  burn_amount: PgNumeric;
   reward_recipient: string;
   reward_amount: bigint;
   reward_index: number;
+}
+
+export interface BurnchainBlockInsertValues {
+  canonical: boolean;
+  burn_block_hash: PgBytea;
+  burn_block_height: number;
+  burn_amount: PgNumeric;
+  reward_amount: PgNumeric;
 }
 
 export interface BnsNameInsertValues {

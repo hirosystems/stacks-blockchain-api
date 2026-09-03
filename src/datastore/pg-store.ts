@@ -23,7 +23,7 @@ import {
   DbBnsNamespace,
   DbBnsSubdomain,
   DbBnsZoneFile,
-  DbBurnchainReward,
+  DbBurnchainRewardWithBurnAmount,
   DbChainTip,
   DbEvent,
   DbEventTypeId,
@@ -856,31 +856,33 @@ export class PgStore extends BasePgStore {
     burnchainRecipient?: string;
     limit: number;
     offset: number;
-  }): Promise<DbBurnchainReward[]> {
+  }): Promise<DbBurnchainRewardWithBurnAmount[]> {
     const queryResults = await this.sql<
       {
         burn_block_hash: string;
         burn_block_height: number;
-        burn_amount: string;
+        burn_amount: string | null;
         reward_recipient: string;
         reward_amount: string;
         reward_index: number;
       }[]
     >`
-      SELECT burn_block_hash, burn_block_height, burn_amount, reward_recipient, reward_amount, reward_index
-      FROM burnchain_rewards
-      WHERE canonical = true
-        ${burnchainRecipient ? this.sql`AND reward_recipient = ${burnchainRecipient}` : this.sql``}
-      ORDER BY burn_block_height DESC, reward_index DESC
+      SELECT r.burn_block_hash, r.burn_block_height, b.burn_amount, r.reward_recipient,
+        r.reward_amount, r.reward_index
+      FROM burnchain_rewards r
+      LEFT JOIN burn_blocks b USING (burn_block_hash)
+      WHERE r.canonical = true
+        ${burnchainRecipient ? this.sql`AND r.reward_recipient = ${burnchainRecipient}` : this.sql``}
+      ORDER BY r.burn_block_height DESC, r.reward_index DESC
       LIMIT ${limit}
       OFFSET ${offset}
     `;
     return queryResults.map(r => {
-      const parsed: DbBurnchainReward = {
+      const parsed: DbBurnchainRewardWithBurnAmount = {
         canonical: true,
         burn_block_hash: r.burn_block_hash,
         burn_block_height: r.burn_block_height,
-        burn_amount: BigInt(r.burn_amount),
+        burn_amount: BigInt(r.burn_amount ?? 0),
         reward_recipient: r.reward_recipient,
         reward_amount: BigInt(r.reward_amount),
         reward_index: r.reward_index,
@@ -3072,8 +3074,6 @@ export class PgStore extends BasePgStore {
       ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
     `;
 
-    // TODO: should mining rewards be added?
-
     const txs = parseTxsWithAssetTransfers(resultQuery, args.stxAddress);
     const txTransfers = [...txs.values()];
     txTransfers.sort((a, b) => {
@@ -3181,7 +3181,6 @@ export class PgStore extends BasePgStore {
   }
 
   async searchHash({ hash }: { hash: string }): Promise<FoundOrNot<DbSearchResult>> {
-    // TODO(mb): add support for searching for microblock by hash
     return await this.sqlTransaction(async sql => {
       const txQuery = await sql<ContractTxQueryResult[]>`
         SELECT ${sql(TX_COLUMNS)}, ${abiColumn(sql)}

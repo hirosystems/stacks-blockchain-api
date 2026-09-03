@@ -212,12 +212,13 @@ describe('nakamoto re-org handling', () => {
     // All blocks share the same burn block (one Nakamoto tenure).
     const burnBlockHash = '0xbb01';
     await db.updateBurnchainRewards({
+      burnchainBlockHash: burnBlockHash,
+      burnchainBlockHeight: 200,
       rewards: [
         {
           canonical: true,
           burn_block_hash: burnBlockHash,
           burn_block_height: 200,
-          burn_amount: 2000n,
           reward_recipient: '1G4ayBXJvxZMoZpaNdZG6VyWwWq2mHpMjQ',
           reward_amount: 900n,
           reward_index: 0,
@@ -230,22 +231,22 @@ describe('nakamoto re-org handling', () => {
     // Sibling switch at height 3 within the same tenure.
     await db.update(nakamotoBlock({ height: 3, hash: '0xb3', parent: '0xa2', burnBlockHash }).build());
 
-    // The stacks-level re-org must not orphan the burn block's rewards: the burn block itself is
-    // still canonical (blocks 1, 2 and 3' anchor to it).
+    // The stacks-level re-org must not orphan the burn block's rewards.
     const rewards = await db.getBurnchainRewards({ limit: 10, offset: 0 });
     assert.equal(rewards.length, 1);
     assert.equal(rewards[0].burn_block_hash, burnBlockHash);
     assert.equal(rewards[0].canonical, true);
   });
 
-  test('orphans burnchain entities when a full tenure is orphaned', async () => {
+  test('keeps burnchain entities canonical when a full tenure is orphaned', async () => {
     await db.updateBurnchainRewards({
+      burnchainBlockHash: '0xbb02',
+      burnchainBlockHeight: 201,
       rewards: [
         {
           canonical: true,
           burn_block_hash: '0xbb02',
           burn_block_height: 201,
-          burn_amount: 2000n,
           reward_recipient: '1G4ayBXJvxZMoZpaNdZG6VyWwWq2mHpMjQ',
           reward_amount: 900n,
           reward_index: 0,
@@ -266,14 +267,25 @@ describe('nakamoto re-org handling', () => {
       nakamotoBlock({ height: 4, hash: '0xa4', parent: '0xa3', burnBlockHash: '0xbb02' }).build()
     );
 
-    // A re-org (e.g. after a burnchain fork) replaces all of tenure 2 with a new tenure built on
-    // burn block 0xbb03. No canonical block anchors to 0xbb02 anymore, so its rewards must be
-    // orphaned along with the blocks.
+    // A stacks-level re-org replaces all of tenure 2 with a new tenure. The rewards paid on burn
+    // block 0xbb02 are a burnchain-level fact and must remain canonical: only a `/new_burn_block`
+    // event for a different hash at the same burn height (an actual burnchain fork) orphans them.
     await db.update(
-      nakamotoBlock({ height: 3, hash: '0xb3', parent: '0xa2', burnBlockHash: '0xbb03' }).build()
+      nakamotoBlock({ height: 3, hash: '0xb3', parent: '0xa2', burnBlockHash: '0xbb02' }).build()
     );
 
-    const rewards = await db.getBurnchainRewards({ limit: 10, offset: 0 });
+    let rewards = await db.getBurnchainRewards({ limit: 10, offset: 0 });
+    assert.equal(rewards.length, 1);
+    assert.equal(rewards[0].burn_block_hash, '0xbb02');
+    assert.equal(rewards[0].canonical, true);
+
+    // The burnchain forks at height 201: the replacement burn block's event orphans the rewards.
+    await db.updateBurnchainRewards({
+      burnchainBlockHash: '0xbb03',
+      burnchainBlockHeight: 201,
+      rewards: [],
+    });
+    rewards = await db.getBurnchainRewards({ limit: 10, offset: 0 });
     assert.equal(rewards.length, 0);
   });
 

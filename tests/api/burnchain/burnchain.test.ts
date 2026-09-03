@@ -175,7 +175,6 @@ describe('burnchain tests', () => {
       canonical: true,
       burn_block_hash: '0x1234',
       burn_block_height: 200,
-      burn_amount: 2000n,
       reward_recipient: addr1,
       reward_amount: 900n,
       reward_index: 0,
@@ -184,7 +183,6 @@ describe('burnchain tests', () => {
       canonical: true,
       burn_block_hash: '0x1234',
       burn_block_height: 200,
-      burn_amount: 2001n,
       reward_recipient: addr1,
       reward_amount: 901n,
       reward_index: 1,
@@ -193,7 +191,6 @@ describe('burnchain tests', () => {
       canonical: true,
       burn_block_hash: '0x2345',
       burn_block_height: 201,
-      burn_amount: 3001n,
       reward_recipient: addr2,
       reward_amount: 902n,
       reward_index: 0,
@@ -207,10 +204,21 @@ describe('burnchain tests', () => {
       reward_index: 2,
     };
     await db.updateBurnchainRewards({
+      burnchainBlockHash: '0x1234',
+      burnchainBlockHeight: 200,
       rewards: [reward1, reward2],
     });
     await db.updateBurnchainRewards({
+      burnchainBlockHash: '0x2345',
+      burnchainBlockHeight: 201,
       rewards: [reward3, reward4, reward5],
+    });
+    // `burn_amount` in responses is block-level, joined from `burn_blocks`.
+    await db.updateBurnchainBlock({
+      burnchainBlockHash: '0x2345',
+      burnchainBlockHeight: 201,
+      burnAmount: 3001n,
+      rewardAmount: 2706n,
     });
 
     const rewardResult = await supertest(api.server).get(
@@ -260,7 +268,6 @@ describe('burnchain tests', () => {
       canonical: true,
       burn_block_hash: '0x1234',
       burn_block_height: 200,
-      burn_amount: 2000n,
       reward_recipient: addr,
       reward_amount: 1000n,
       reward_index: 0,
@@ -269,7 +276,6 @@ describe('burnchain tests', () => {
       canonical: true,
       burn_block_hash: '0x2234',
       burn_block_height: 201,
-      burn_amount: 2000n,
       reward_recipient: addr,
       reward_amount: 1001n,
       reward_index: 0,
@@ -278,18 +284,29 @@ describe('burnchain tests', () => {
       canonical: true,
       burn_block_hash: '0x3234',
       burn_block_height: 202,
-      burn_amount: 2000n,
       reward_recipient: addr,
       reward_amount: 1002n,
       reward_index: 0,
     };
+    await db.updateBurnchainBlock({
+      burnchainBlockHash: '0x1234',
+      burnchainBlockHeight: 200,
+      burnAmount: 2000n,
+      rewardAmount: 900n,
+    });
     await db.updateBurnchainRewards({
+      burnchainBlockHash: '0x1234',
+      burnchainBlockHeight: 200,
       rewards: [reward1],
     });
     await db.updateBurnchainRewards({
+      burnchainBlockHash: '0x2234',
+      burnchainBlockHeight: 201,
       rewards: [reward2],
     });
     await db.updateBurnchainRewards({
+      burnchainBlockHash: '0x3234',
+      burnchainBlockHeight: 202,
       rewards: [reward3],
     });
     const rewardResult = await supertest(api.server).get(
@@ -310,12 +327,19 @@ describe('burnchain tests', () => {
       canonical: true,
       burn_block_hash: '0x1234',
       burn_block_height: 200,
-      burn_amount: 2000n,
       reward_recipient: addr1,
       reward_amount: 900n,
       reward_index: 0,
     };
+    await db.updateBurnchainBlock({
+      burnchainBlockHash: '0x1234',
+      burnchainBlockHeight: 200,
+      burnAmount: 2000n,
+      rewardAmount: 900n,
+    });
     await db.updateBurnchainRewards({
+      burnchainBlockHash: '0x1234',
+      burnchainBlockHeight: 200,
       rewards: [reward1],
     });
     const rewardResult = await supertest(api.server).get(`/extended/v1/burnchain/rewards/${addr1}`);
@@ -348,12 +372,19 @@ describe('burnchain tests', () => {
       canonical: true,
       burn_block_hash: '0x1234',
       burn_block_height: 200,
-      burn_amount: 2000n,
       reward_recipient: mainnetBtcAddr,
       reward_amount: 900n,
       reward_index: 0,
     };
+    await db.updateBurnchainBlock({
+      burnchainBlockHash: '0x1234',
+      burnchainBlockHeight: 200,
+      burnAmount: 2000n,
+      rewardAmount: 900n,
+    });
     await db.updateBurnchainRewards({
+      burnchainBlockHash: '0x1234',
+      burnchainBlockHeight: 200,
       rewards: [reward1],
     });
     const rewardResult = await supertest(api.server).get(
@@ -388,12 +419,19 @@ describe('burnchain tests', () => {
       canonical: true,
       burn_block_hash: '0x1234',
       burn_block_height: 200,
-      burn_amount: 2000n,
       reward_recipient: testnetBtcAddr,
       reward_amount: 900n,
       reward_index: 0,
     };
+    await db.updateBurnchainBlock({
+      burnchainBlockHash: '0x1234',
+      burnchainBlockHeight: 200,
+      burnAmount: 2000n,
+      rewardAmount: 900n,
+    });
     await db.updateBurnchainRewards({
+      burnchainBlockHash: '0x1234',
+      burnchainBlockHeight: 200,
       rewards: [reward1],
     });
     const rewardResult = await supertest(api.server).get(
@@ -428,12 +466,19 @@ describe('burnchain tests', () => {
       canonical: true,
       burn_block_hash: '0x1234',
       burn_block_height: 200,
-      burn_amount: 2000n,
       reward_recipient: testnetBtcAddr,
       reward_amount: 900n,
       reward_index: 0,
     };
+    await db.updateBurnchainBlock({
+      burnchainBlockHash: '0x1234',
+      burnchainBlockHeight: 200,
+      burnAmount: 2000n,
+      rewardAmount: 900n,
+    });
     await db.updateBurnchainRewards({
+      burnchainBlockHash: '0x1234',
+      burnchainBlockHeight: 200,
       rewards: [reward1],
     });
     const rewardResult = await supertest(api.server).get(
@@ -489,9 +534,14 @@ describe('burnchain tests', () => {
         });
       }
 
-      await db.updateBurnBlockPoxTxs({
-        burnBlockPoxTxs: poxTransactions,
-      });
+      // Deliver per burn block, matching how `/new_burn_block` events arrive.
+      for (const burnBlock of burnBlocks) {
+        await db.updateBurnBlockPoxTxs({
+          burnchainBlockHash: burnBlock.hash,
+          burnchainBlockHeight: burnBlock.height,
+          burnBlockPoxTxs: poxTransactions.filter(tx => tx.burn_block_hash === burnBlock.hash),
+        });
+      }
 
       // Fetch for first block by hash with a limit
       let result = await supertest(api.server).get(

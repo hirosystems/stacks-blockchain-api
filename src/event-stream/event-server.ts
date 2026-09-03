@@ -128,7 +128,6 @@ async function handleBurnBlockMessage(
       canonical: true,
       burn_block_hash: burnBlockMsg.burn_block_hash,
       burn_block_height: burnBlockMsg.burn_block_height,
-      burn_amount: BigInt(burnBlockMsg.burn_amount),
       reward_recipient: r.recipient,
       reward_amount: BigInt(r.amt),
       reward_index: index,
@@ -145,14 +144,6 @@ async function handleBurnBlockMessage(
     };
     return slotHolder;
   });
-  await db.updateBurnchainRewards({
-    rewards: rewards,
-  });
-  await db.updateBurnchainRewardSlotHolders({
-    burnchainBlockHash: burnBlockMsg.burn_block_hash,
-    burnchainBlockHeight: burnBlockMsg.burn_block_height,
-    slotHolders: slotHolders,
-  });
   const burnBlockPoxTxs: DbBurnBlockPoxTx[] = [];
   for (const tx of burnBlockMsg.pox_transactions ?? []) {
     for (const recipient of tx.reward_recipients ?? []) {
@@ -167,8 +158,33 @@ async function handleBurnBlockMessage(
       });
     }
   }
-  await db.updateBurnBlockPoxTxs({ burnBlockPoxTxs });
-  await db.updateBurnChainBlockHeight({ blockHeight: burnBlockMsg.burn_block_height });
+  // A single transaction so a failure in any step leaves nothing committed: the node re-delivers
+  // the whole event on a non-200 response, and a partially committed event would otherwise be
+  // ingested twice.
+  await db.sqlWriteTransaction(async () => {
+    await db.updateBurnchainBlock({
+      burnchainBlockHash: burnBlockMsg.burn_block_hash,
+      burnchainBlockHeight: burnBlockMsg.burn_block_height,
+      burnAmount: BigInt(burnBlockMsg.burn_amount),
+      rewardAmount: rewards.reduce((total, r) => total + r.reward_amount, 0n),
+    });
+    await db.updateBurnchainRewards({
+      burnchainBlockHash: burnBlockMsg.burn_block_hash,
+      burnchainBlockHeight: burnBlockMsg.burn_block_height,
+      rewards: rewards,
+    });
+    await db.updateBurnchainRewardSlotHolders({
+      burnchainBlockHash: burnBlockMsg.burn_block_hash,
+      burnchainBlockHeight: burnBlockMsg.burn_block_height,
+      slotHolders: slotHolders,
+    });
+    await db.updateBurnBlockPoxTxs({
+      burnchainBlockHash: burnBlockMsg.burn_block_hash,
+      burnchainBlockHeight: burnBlockMsg.burn_block_height,
+      burnBlockPoxTxs,
+    });
+    await db.updateBurnChainBlockHeight({ blockHeight: burnBlockMsg.burn_block_height });
+  });
 }
 
 async function handleMempoolTxsMessage(rawTxs: string[], db: PgWriteStore): Promise<void> {

@@ -9,6 +9,7 @@
     "build:client": "npm run generate:git-info && npm run generate:openapi && npm run generate:client",
     "test:api:blocks": "NODE_ENV=test node --import tsx --test --test-global-setup=./tests/api/setup.ts --test-concurrency=1 ./tests/api/blocks/**/*.test.ts",
     "test:api:bns": "NODE_ENV=test node --import tsx --test --test-global-setup=./tests/api/setup.ts --test-concurrency=1 ./tests/api/bns/**/*.test.ts",
+    "test:api:burnchain": "NODE_ENV=test node --import tsx --test --test-global-setup=./tests/api/setup.ts --test-concurrency=1 ./tests/api/burnchain/**/*.test.ts",
     "test:api:cache": "NODE_ENV=test node --import tsx --test --test-global-setup=./tests/api/setup.ts --test-concurrency=1 ./tests/api/cache/**/*.test.ts",
     "test:api:datastore": "NODE_ENV=test node --import tsx --test --test-global-setup=./tests/api/setup.ts --test-concurrency=1 ./tests/api/datastore/**/*.test.ts",
     "test:api:event-replay": "NODE_ENV=test node --import tsx --test --test-global-setup=./tests/api/setup.ts --test-concurrency=1 ./tests/api/event-replay/**/*.test.ts",
