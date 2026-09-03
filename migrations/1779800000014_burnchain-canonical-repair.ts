@@ -49,39 +49,10 @@ export const up = (pgm: MigrationBuilder) => {
     'burnchain_rewards_unique_idx',
     'UNIQUE(burn_block_hash, reward_index)'
   );
-  // Same per-height repair for pox txs. The table has no insert-order column, so ties between
-  // hashes not anchored by any canonical Stacks block are broken by the repaired rewards table.
-  pgm.sql(`
-    WITH winners AS (
-      SELECT DISTINCT ON (burn_block_height) burn_block_height, burn_block_hash
-      FROM burn_block_pox_txs p
-      ORDER BY burn_block_height,
-        EXISTS (
-          SELECT 1 FROM blocks b
-          WHERE b.burn_block_hash = p.burn_block_hash AND b.canonical = true
-        ) DESC,
-        EXISTS (
-          SELECT 1 FROM burnchain_rewards r
-          WHERE r.burn_block_hash = p.burn_block_hash AND r.canonical = true
-        ) DESC,
-        burn_block_hash DESC
-    )
-    UPDATE burn_block_pox_txs p
-    SET canonical = (p.burn_block_hash = w.burn_block_hash)
-    FROM winners w
-    WHERE p.burn_block_height = w.burn_block_height
-      AND p.canonical != (p.burn_block_hash = w.burn_block_hash)
-  `);
-  pgm.sql(`
-    DELETE FROM burn_block_pox_tx_counts
-  `);
-  pgm.sql(`
-    INSERT INTO burn_block_pox_tx_counts (recipient, count)
-    (SELECT recipient, COUNT(*) AS count FROM burn_block_pox_txs WHERE canonical = true GROUP BY recipient)
-  `);
   // Same dedup and per-height repair for reward slot holders. Beyond fork/duplicate damage, this
   // also restores rows the legacy write path wrongly orphaned above a re-delivered old burn block's
-  // height.
+  // height. Resolved before pox txs so the shared evidence chain (blocks anchor, then rewards, then
+  // slot holders, then a last-resort tie-break) yields one winner per height across all tables.
   pgm.sql(`
     DELETE FROM reward_slot_holders a
     USING reward_slot_holders b
@@ -115,6 +86,41 @@ export const up = (pgm: MigrationBuilder) => {
     'reward_slot_holders_unique_idx',
     'UNIQUE(burn_block_hash, slot_index)'
   );
+  // Same per-height repair for pox txs, deferring to the tables repaired above so every table
+  // crowns the same hash per height. The table has no insert-order column, so the lexicographic
+  // tie-break only ever applies when it is the sole table holding rows for a height.
+  pgm.sql(`
+    WITH winners AS (
+      SELECT DISTINCT ON (burn_block_height) burn_block_height, burn_block_hash
+      FROM burn_block_pox_txs p
+      ORDER BY burn_block_height,
+        EXISTS (
+          SELECT 1 FROM blocks b
+          WHERE b.burn_block_hash = p.burn_block_hash AND b.canonical = true
+        ) DESC,
+        EXISTS (
+          SELECT 1 FROM burnchain_rewards r
+          WHERE r.burn_block_hash = p.burn_block_hash AND r.canonical = true
+        ) DESC,
+        EXISTS (
+          SELECT 1 FROM reward_slot_holders s
+          WHERE s.burn_block_hash = p.burn_block_hash AND s.canonical = true
+        ) DESC,
+        burn_block_hash DESC
+    )
+    UPDATE burn_block_pox_txs p
+    SET canonical = (p.burn_block_hash = w.burn_block_hash)
+    FROM winners w
+    WHERE p.burn_block_height = w.burn_block_height
+      AND p.canonical != (p.burn_block_hash = w.burn_block_hash)
+  `);
+  pgm.sql(`
+    DELETE FROM burn_block_pox_tx_counts
+  `);
+  pgm.sql(`
+    INSERT INTO burn_block_pox_tx_counts (recipient, count)
+    (SELECT recipient, COUNT(*) AS count FROM burn_block_pox_txs WHERE canonical = true GROUP BY recipient)
+  `);
 };
 
 export const down = (pgm: MigrationBuilder) => {

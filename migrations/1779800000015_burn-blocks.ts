@@ -11,12 +11,12 @@ import type { MigrationBuilder } from 'node-pg-migrate';
  * The backfill sources historical blocks from the raw `/new_burn_block` payloads in
  * `event_observer_requests`, then fills any remaining gaps from `burnchain_rewards` (which only
  * covers blocks that paid at least one recipient). Canonical winners are resolved per height from
- * the strongest evidence available -- a canonical Stacks block anchor, then raw-event arrival
- * order, with legacy-table state consulted only for heights raw events don't cover -- and then
- * propagated back to the legacy burnchain tables, repairing forks those tables couldn't represent
- * (e.g. a zero-recipient replacement block orphaning a reward-paying rival). Note `burn_amount`
- * never included the 2.0-era PoX sunset-ramp surcharge (`sunset_burn` was a separate commit field
- * the node never reported).
+ * the strongest evidence available (a canonical Stacks block anchor, then raw-event arrival order,
+ * with legacy-table state consulted only for heights raw events don't cover) and then propagated
+ * back to the legacy burnchain tables, repairing forks those tables couldn't represent (e.g. a
+ * zero-recipient replacement block orphaning a reward-paying rival). Note `burn_amount` never
+ * included the 2.0-era PoX sunset-ramp surcharge (`sunset_burn` was a separate commit field the
+ * node never reported).
  */
 export const up = (pgm: MigrationBuilder) => {
   pgm.createTable('burn_blocks', {

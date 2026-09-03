@@ -519,6 +519,11 @@ describe('burnchain re-org handling', () => {
       { hash: '0xaa01', height: 100, canonical: true, recipient: ADDR_1 },
       { hash: '0xbb01', height: 100, canonical: true, recipient: ADDR_2 },
       { hash: '0xaa02', height: 101, canonical: false, recipient: ADDR_1 },
+      // Height 102: a fork with no blocks anchor and no reward rows. The winner must come from the
+      // slot holders' arrival order (0xdd01, seeded below), not this table's lexicographic
+      // tie-break (which would pick 0xdd09).
+      { hash: '0xdd09', height: 102, canonical: true, recipient: ADDR_2 },
+      { hash: '0xdd01', height: 102, canonical: true, recipient: ADDR_1 },
     ];
     for (const t of seedPoxTxs) {
       await client`
@@ -539,6 +544,10 @@ describe('burnchain re-org handling', () => {
       { hash: '0xaa01', height: 100, index: 0, canonical: true },
       // Height 101: wrongly orphaned by the legacy `>= height` invalidation (undercount damage).
       { hash: '0xaa02', height: 101, index: 0, canonical: false },
+      // Height 102: fork sides in arrival order -- 0xdd01 arrives last and must win here and in
+      // burn_block_pox_txs.
+      { hash: '0xdd09', height: 102, index: 0, canonical: true },
+      { hash: '0xdd01', height: 102, index: 0, canonical: true },
     ];
     for (const s of seedSlotHolders) {
       await client`
@@ -583,9 +592,11 @@ describe('burnchain re-org handling', () => {
         ['0xaa01', false],
         ['0xbb01', true],
         ['0xaa02', true],
+        ['0xdd01', true],
+        ['0xdd09', false],
       ]
     );
-    assert.equal(await poxTxCount(ADDR_1), 1);
+    assert.equal(await poxTxCount(ADDR_1), 2);
     assert.equal(await poxTxCount(ADDR_2), 1);
 
     const holders = await slotHolderRows();
@@ -595,6 +606,8 @@ describe('burnchain re-org handling', () => {
         ['0xaa01', 100, 0, false],
         ['0xbb01', 100, 0, true],
         ['0xaa02', 101, 0, true],
+        ['0xdd01', 102, 0, true],
+        ['0xdd09', 102, 0, false],
       ]
     );
   });
