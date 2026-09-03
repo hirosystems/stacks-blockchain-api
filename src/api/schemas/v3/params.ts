@@ -1,6 +1,7 @@
 import { ObjectOptions, TSchema, Type } from '@sinclair/typebox';
-import { pagingQueryLimits, ResourceType } from '../../pagination.js';
+import { getPagingQueryLimit, pagingQueryLimits, ResourceType } from '../../pagination.js';
 import { Nullable } from '../v1/util.js';
+import { TransactionIdSchema } from './entities/common.js';
 
 /**
  * Cursor pagination querystring
@@ -71,3 +72,22 @@ export const PrincipalBalanceChangeCursorSchema = Type.String({
     'Format: `<block_height>:<microblock_sequence>:<tx_index>:<asset_type>:<asset_identifier>`.',
   pattern: '^[0-9]+:[0-9]+:[0-9]+:[0-9]+:\\S+$',
 });
+
+/**
+ * Querystring parameter for endpoints that take an explicit set of transaction ids.
+ *
+ * Accepted in two forms: repeated (`?tx_id=A&tx_id=B`) and comma-separated (`?tx_id=A,B`); the
+ * latter normalized before validation by the `splitCommaSeparatedQueryParam('tx_id')`
+ * `preValidation` hook, which every route using this parameter must register.
+ * @param description - What the ids select
+ * @returns The `tx_id` array schema.
+ */
+export const TransactionIdsQuerystringParam = (description: string) =>
+  Type.Array(TransactionIdSchema, {
+    minItems: 1,
+    maxItems: getPagingQueryLimit(ResourceType.Tx),
+    uniqueItems: true,
+    description:
+      `${description} Provide as repeated querystring values (\`?tx_id=A&tx_id=B\`) or as a ` +
+      'single comma-separated value (`?tx_id=A,B`).',
+  });

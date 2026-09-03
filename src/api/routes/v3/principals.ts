@@ -53,6 +53,7 @@ import {
 import {
   PrincipalBalanceChangeCursorSchema,
   PrincipalTransactionBalanceChangeCursorSchema,
+  TransactionIdsQuerystringParam,
 } from '../../schemas/v3/params.js';
 import {
   PrincipalBalanceChangeSchema,
@@ -61,6 +62,7 @@ import {
 import { PrincipalNoncesSchema } from '../../schemas/v3/entities/principal-nonces.js';
 import { MempoolTransactionSummarySchema } from '../../schemas/v3/entities/mempool-transaction-summaries.js';
 import { serializeDbMempoolTransactionSummary } from '../../serializers/v3/mempool-transactions.js';
+import { splitCommaSeparatedQueryParam } from '../../query-helpers.js';
 
 export const PrincipalsRoutes: FastifyPluginAsync<
   Record<never, never>,
@@ -293,15 +295,7 @@ export const PrincipalsRoutes: FastifyPluginAsync<
     '/principals/:principal/balance-changes',
     {
       preHandler: handlePrincipalCache,
-      // Accept both repeated (`?tx_id=A&tx_id=B`) and comma-separated (`?tx_id=A,B`) forms.
-      // The repeated form is already an array via Fastify's qs parser; this hook normalizes
-      // the comma-separated form. Mirrors the convention used by `/extended/v1/tx/multiple`.
-      preValidation: (req, _reply, done) => {
-        if (typeof req.query.tx_id === 'string') {
-          req.query.tx_id = (req.query.tx_id as string).split(',') as typeof req.query.tx_id;
-        }
-        done();
-      },
+      preValidation: splitCommaSeparatedQueryParam('tx_id'),
       schema: {
         operationId: 'get_principal_balance_changes',
         summary: 'Get principal balance changes',
@@ -311,14 +305,7 @@ export const PrincipalsRoutes: FastifyPluginAsync<
         querystring: Type.Composite([
           CursorPaginationQuerystring(PrincipalBalanceChangeCursorSchema, ResourceType.Tx),
           Type.Object({
-            tx_id: Type.Array(TransactionIdSchema, {
-              minItems: 1,
-              maxItems: getPagingQueryLimit(ResourceType.Tx),
-              description:
-                'Transaction IDs to query balance changes for. Provide as repeated ' +
-                'querystring values (`?tx_id=A&tx_id=B`) or as a single comma-separated ' +
-                'value (`?tx_id=A,B`).',
-            }),
+            tx_id: TransactionIdsQuerystringParam('Transaction ids to query balance changes for.'),
           }),
         ]),
         response: {

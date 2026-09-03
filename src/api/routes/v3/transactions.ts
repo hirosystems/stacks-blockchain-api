@@ -23,6 +23,8 @@ import { MempoolTransactionSchema } from '../../schemas/v3/entities/mempool-tran
 import { NotFoundError } from '../../../errors.js';
 import { TransactionEventSchema } from '../../schemas/v3/entities/transaction-events.js';
 import { serializeDbTransactionEvent } from '../../serializers/v3/transaction-events.js';
+import { splitCommaSeparatedQueryParam } from '../../query-helpers.js';
+import { TransactionIdsQuerystringParam } from '../../schemas/v3/params.js';
 
 export const TransactionsRoutes: FastifyPluginAsync<
   Record<never, never>,
@@ -67,19 +69,50 @@ export const TransactionsRoutes: FastifyPluginAsync<
   );
 
   fastify.get(
+    '/transactions/batch',
+    {
+      preHandler: handleChainTipCache,
+      preValidation: splitCommaSeparatedQueryParam('tx_id'),
+      schema: {
+        operationId: 'get_transactions_batch',
+        summary: 'Get a batch of transactions',
+        description:
+          'Retrieves the summaries of up to 20 mined transactions in a single call, given their ' +
+          'transaction ids. Provide them as repeated querystring values (`?tx_id=A&tx_id=B`) or ' +
+          'as a single comma-separated value (`?tx_id=A,B`). Results are returned in canonical ' +
+          'chain order (newest first), not in the order the ids were supplied. Only transactions ' +
+          'mined in the canonical chain are returned: an id that is unknown, non-canonical, or ' +
+          'still in the mempool is absent from `results` rather than reported as an error, so ' +
+          'compare the response against the ids you sent to find the ones that did not resolve. ' +
+          'Use `GET /extended/v3/transactions/{tx_id}` for a single transaction, which also ' +
+          'covers mempool transactions.',
+        tags: ['Transactions'],
+        querystring: Type.Object({
+          tx_id: TransactionIdsQuerystringParam('Transaction ids to fetch summaries for.'),
+        }),
+        response: {
+          200: Type.Object(
+            {
+              results: Type.Array(TransactionSummarySchema),
+            },
+            { title: 'TransactionBatchResponse' }
+          ),
+        },
+      },
+    },
+    async (req, reply) => {
+      const results = await fastify.db.v3.getTransactionSummariesByTxIds({
+        txIds: req.query.tx_id,
+      });
+      await reply.send({ results: results.map(r => serializeDbTransactionSummary(r)) });
+    }
+  );
+
+  fastify.get(
     '/transactions/:tx_id',
     {
       preHandler: handleTransactionCache,
-      // Accept both repeated (`?include=A&include=B`) and comma-separated (`?include=A,B`)
-      // forms. The repeated form is already an array via Fastify's qs parser; this hook
-      // normalizes the comma-separated form. Mirrors the convention used by
-      // `/principals/:principal/balance-changes`.
-      preValidation: (req, _reply, done) => {
-        if (typeof req.query.include === 'string') {
-          req.query.include = (req.query.include as string).split(',') as typeof req.query.include;
-        }
-        done();
-      },
+      preValidation: splitCommaSeparatedQueryParam('include'),
       schema: {
         operationId: 'get_transaction',
         summary: 'Get transaction',
