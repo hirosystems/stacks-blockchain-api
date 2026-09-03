@@ -23,7 +23,7 @@ import {
   DbBnsNamespace,
   DbBnsSubdomain,
   DbBnsZoneFile,
-  DbBurnchainReward,
+  DbBurnchainRewardWithBurnAmount,
   DbChainTip,
   DbEvent,
   DbEventTypeId,
@@ -856,31 +856,33 @@ export class PgStore extends BasePgStore {
     burnchainRecipient?: string;
     limit: number;
     offset: number;
-  }): Promise<DbBurnchainReward[]> {
+  }): Promise<DbBurnchainRewardWithBurnAmount[]> {
     const queryResults = await this.sql<
       {
         burn_block_hash: string;
         burn_block_height: number;
-        burn_amount: string;
+        burn_amount: string | null;
         reward_recipient: string;
         reward_amount: string;
         reward_index: number;
       }[]
     >`
-      SELECT burn_block_hash, burn_block_height, burn_amount, reward_recipient, reward_amount, reward_index
-      FROM burnchain_rewards
-      WHERE canonical = true
-        ${burnchainRecipient ? this.sql`AND reward_recipient = ${burnchainRecipient}` : this.sql``}
-      ORDER BY burn_block_height DESC, reward_index DESC
+      SELECT r.burn_block_hash, r.burn_block_height, b.burn_amount, r.reward_recipient,
+        r.reward_amount, r.reward_index
+      FROM burnchain_rewards r
+      LEFT JOIN burn_blocks b USING (burn_block_hash)
+      WHERE r.canonical = true
+        ${burnchainRecipient ? this.sql`AND r.reward_recipient = ${burnchainRecipient}` : this.sql``}
+      ORDER BY r.burn_block_height DESC, r.reward_index DESC
       LIMIT ${limit}
       OFFSET ${offset}
     `;
     return queryResults.map(r => {
-      const parsed: DbBurnchainReward = {
+      const parsed: DbBurnchainRewardWithBurnAmount = {
         canonical: true,
         burn_block_hash: r.burn_block_hash,
         burn_block_height: r.burn_block_height,
-        burn_amount: BigInt(r.burn_amount),
+        burn_amount: BigInt(r.burn_amount ?? 0),
         reward_recipient: r.reward_recipient,
         reward_amount: BigInt(r.reward_amount),
         reward_index: r.reward_index,

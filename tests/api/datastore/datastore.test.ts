@@ -3107,7 +3107,6 @@ describe('postgres datastore', () => {
       canonical: true,
       burn_block_hash: '0x1234',
       burn_block_height: 200,
-      burn_amount: 2000n,
       reward_recipient: addr1,
       reward_amount: 900n,
       reward_index: 0,
@@ -3116,7 +3115,6 @@ describe('postgres datastore', () => {
       canonical: true,
       burn_block_hash: '0x1234',
       burn_block_height: 200,
-      burn_amount: 2001n,
       reward_recipient: addr1,
       reward_amount: 901n,
       reward_index: 1,
@@ -3125,15 +3123,30 @@ describe('postgres datastore', () => {
       canonical: true,
       burn_block_hash: '0x2345',
       burn_block_height: 201,
-      burn_amount: 3001n,
       reward_recipient: addr1,
       reward_amount: 902n,
       reward_index: 0,
     };
-    await db.updateBurnchainRewards({
-      rewards: [reward1, reward2],
+    await db.updateBurnchainBlock({
+      burnchainBlockHash: '0x1234',
+      burnchainBlockHeight: 200,
+      burnAmount: 2000n,
+      rewardAmount: 1801n,
     });
     await db.updateBurnchainRewards({
+      burnchainBlockHash: '0x1234',
+      burnchainBlockHeight: 200,
+      rewards: [reward1, reward2],
+    });
+    await db.updateBurnchainBlock({
+      burnchainBlockHash: '0x2345',
+      burnchainBlockHeight: 201,
+      burnAmount: 3001n,
+      rewardAmount: 902n,
+    });
+    await db.updateBurnchainRewards({
+      burnchainBlockHash: '0x2345',
+      burnchainBlockHeight: 201,
       rewards: [reward3],
     });
     const rewardQuery = await db.getBurnchainRewards({
@@ -3141,6 +3154,7 @@ describe('postgres datastore', () => {
       limit: 100,
       offset: 0,
     });
+    // `burn_amount` is block-level, joined from `burn_blocks`.
     assert.deepEqual(rewardQuery, [
       {
         canonical: true,
@@ -3155,7 +3169,7 @@ describe('postgres datastore', () => {
         canonical: true,
         burn_block_hash: '0x1234',
         burn_block_height: 200,
-        burn_amount: 2001n,
+        burn_amount: 2000n,
         reward_recipient: addr1,
         reward_amount: 901n,
         reward_index: 1,
@@ -3188,12 +3202,13 @@ describe('postgres datastore', () => {
     }) => {
       // Add some rewards
       await db.updateBurnchainRewards({
+        burnchainBlockHash: args.burn_block_hash,
+        burnchainBlockHeight: args.burn_block_height,
         rewards: [
           {
             canonical: true,
             burn_block_hash: args.burn_block_hash,
             burn_block_height: args.burn_block_height,
-            burn_amount: 2000n,
             reward_recipient: addr1,
             reward_amount: 900n,
             reward_index: 0,
@@ -3202,7 +3217,6 @@ describe('postgres datastore', () => {
             canonical: true,
             burn_block_hash: args.burn_block_hash,
             burn_block_height: args.burn_block_height,
-            burn_amount: 2001n,
             reward_recipient: addr2,
             reward_amount: 901n,
             reward_index: 1,

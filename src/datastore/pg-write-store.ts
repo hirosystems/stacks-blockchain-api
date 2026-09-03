@@ -37,6 +37,7 @@ import {
   NftEventInsertValues,
   SmartContractEventInsertValues,
   MicroblockQueryResult,
+  BurnchainBlockInsertValues,
   BurnchainRewardInsertValues,
   TxInsertValues,
   MempoolTxInsertValues,
@@ -1535,57 +1536,89 @@ export class PgWriteStore extends PgStore {
     slotHolders: DbRewardSlotHolder[];
   }): Promise<void> {
     await this.sqlWriteTransaction(async sql => {
-      const existingSlotHolders = await sql<{ address: string }[]>`
+      // Same-height fork handling; see `updateBurnchainRewards` for the reasoning.
+      const orphanedSlotHolders = await sql<{ address: string }[]>`
         UPDATE reward_slot_holders
         SET canonical = false
-        WHERE canonical = true
-          AND (burn_block_hash = ${burnchainBlockHash}
-            OR burn_block_height >= ${burnchainBlockHeight})
+        WHERE burn_block_height = ${burnchainBlockHeight}
+          AND burn_block_hash != ${burnchainBlockHash}
+          AND canonical = true
       `;
-      if (existingSlotHolders.count > 0) {
+      if (orphanedSlotHolders.count > 0) {
         logger.warn(
-          `Invalidated ${existingSlotHolders.count} burnchain reward slot holders after fork detected at burnchain block ${burnchainBlockHash}`
+          `Invalidated ${orphanedSlotHolders.count} burnchain reward slot holders after fork detected at burnchain block ${burnchainBlockHash}`
         );
       }
       if (slotHolders.length === 0) {
         return;
       }
       const values: RewardSlotHolderInsertValues[] = slotHolders.map(val => ({
-        canonical: val.canonical,
+        canonical: true,
         burn_block_hash: val.burn_block_hash,
         burn_block_height: val.burn_block_height,
         address: val.address,
         slot_index: val.slot_index,
       }));
-      const result = await sql`
+      await sql`
         INSERT INTO reward_slot_holders ${sql(values)}
+        ON CONFLICT ON CONSTRAINT reward_slot_holders_unique_idx DO UPDATE
+        SET canonical = true
+        WHERE reward_slot_holders.canonical = false
       `;
-      if (result.count !== slotHolders.length) {
-        throw new Error(
-          `Unexpected row count after inserting reward slot holders: ${result.count} vs ${slotHolders.length}`
-        );
-      }
     });
   }
 
-  async updateBurnBlockPoxTxs(args: { burnBlockPoxTxs: DbBurnBlockPoxTx[] }): Promise<void> {
-    if (args.burnBlockPoxTxs.length === 0) return;
-    await this.sql`
-      WITH inserts AS (
-        INSERT INTO burn_block_pox_txs ${this.sql(args.burnBlockPoxTxs)}
-        ON CONFLICT ON CONSTRAINT burn_block_pox_txs_unique_idx DO NOTHING
-        RETURNING recipient, canonical
-      ),
-      count_deltas AS (
-        SELECT recipient, COUNT(*) AS count
-        FROM inserts
-        WHERE canonical = true
-        GROUP BY recipient
-      )
-      INSERT INTO burn_block_pox_tx_counts (recipient, count)
-      (SELECT recipient, count FROM count_deltas)
-      ON CONFLICT (recipient) DO UPDATE SET count = burn_block_pox_tx_counts.count + EXCLUDED.count
-    `;
+  async updateBurnBlockPoxTxs(args: {
+    burnchainBlockHash: string;
+    burnchainBlockHeight: number;
+    burnBlockPoxTxs: DbBurnBlockPoxTx[];
+  }): Promise<void> {
+    await this.sqlWriteTransaction(async sql => {
+      // Orphan same-height rows under a different hash (burnchain fork), keeping the materialized
+      // per-recipient counts in sync. See `updateBurnchainRewards` for the reasoning; this too must
+      // run even when the new burn block carries no pox txs.
+      await sql`
+        WITH orphaned AS (
+          UPDATE burn_block_pox_txs
+          SET canonical = false
+          WHERE burn_block_height = ${args.burnchainBlockHeight}
+            AND burn_block_hash != ${args.burnchainBlockHash}
+            AND canonical = true
+          RETURNING recipient
+        ),
+        count_deltas AS (
+          SELECT recipient, COUNT(*) AS count
+          FROM orphaned
+          GROUP BY recipient
+        )
+        UPDATE burn_block_pox_tx_counts AS pc
+        SET count = pc.count - cd.count
+        FROM count_deltas AS cd
+        WHERE pc.recipient = cd.recipient
+      `;
+      if (args.burnBlockPoxTxs.length === 0) return;
+      // Re-delivered rows that are already canonical conflict without updating and are excluded
+      // from the count deltas. Rows restored from a previously orphaned fork flip back to
+      // canonical and count again.
+      await sql`
+        WITH inserts AS (
+          INSERT INTO burn_block_pox_txs ${sql(args.burnBlockPoxTxs)}
+          ON CONFLICT ON CONSTRAINT burn_block_pox_txs_unique_idx DO UPDATE
+          SET canonical = true
+          WHERE burn_block_pox_txs.canonical = false
+          RETURNING recipient, canonical
+        ),
+        count_deltas AS (
+          SELECT recipient, COUNT(*) AS count
+          FROM inserts
+          WHERE canonical = true
+          GROUP BY recipient
+        )
+        INSERT INTO burn_block_pox_tx_counts (recipient, count)
+        (SELECT recipient, count FROM count_deltas)
+        ON CONFLICT (recipient) DO UPDATE SET count = burn_block_pox_tx_counts.count + EXCLUDED.count
+      `;
+    });
   }
 
   async updateMicroblocks(data: DataStoreMicroblockUpdateData): Promise<void> {
@@ -3313,25 +3346,87 @@ export class PgWriteStore extends PgStore {
     };
   }
 
-  async updateBurnchainRewards({ rewards }: { rewards: DbBurnchainReward[] }): Promise<void> {
+  async updateBurnchainBlock({
+    burnchainBlockHash,
+    burnchainBlockHeight,
+    burnAmount,
+    rewardAmount,
+  }: {
+    burnchainBlockHash: string;
+    burnchainBlockHeight: number;
+    burnAmount: bigint;
+    rewardAmount: bigint;
+  }): Promise<void> {
     return await this.sqlWriteTransaction(async sql => {
-      for (const reward of rewards) {
-        const values: BurnchainRewardInsertValues = {
-          canonical: true,
-          burn_block_hash: reward.burn_block_hash,
-          burn_block_height: reward.burn_block_height,
-          burn_amount: reward.burn_amount.toString(),
-          reward_recipient: reward.reward_recipient,
-          reward_amount: reward.reward_amount,
-          reward_index: reward.reward_index,
-        };
-        const rewardInsertResult = await sql`
-          INSERT into burnchain_rewards ${sql(values)}
-        `;
-        if (rewardInsertResult.count !== 1) {
-          throw new Error(`Failed to insert burnchain reward at block ${reward.burn_block_hash}`);
-        }
+      // Same-height fork handling; see `updateBurnchainRewards` for the reasoning.
+      await sql`
+        UPDATE burn_blocks
+        SET canonical = false
+        WHERE burn_block_height = ${burnchainBlockHeight}
+          AND burn_block_hash != ${burnchainBlockHash}
+          AND canonical = true
+      `;
+      const values: BurnchainBlockInsertValues = {
+        canonical: true,
+        burn_block_hash: burnchainBlockHash,
+        burn_block_height: burnchainBlockHeight,
+        burn_amount: burnAmount.toString(),
+        reward_amount: rewardAmount.toString(),
+      };
+      await sql`
+        INSERT INTO burn_blocks ${sql(values)}
+        ON CONFLICT ON CONSTRAINT burn_blocks_unique_idx DO UPDATE
+        SET canonical = true
+        WHERE burn_blocks.canonical = false
+      `;
+    });
+  }
+
+  async updateBurnchainRewards({
+    burnchainBlockHash,
+    burnchainBlockHeight,
+    rewards,
+  }: {
+    burnchainBlockHash: string;
+    burnchainBlockHeight: number;
+    rewards: DbBurnchainReward[];
+  }): Promise<void> {
+    return await this.sqlWriteTransaction(async sql => {
+      // The burnchain is linear: a new burn block at this height means any rewards previously
+      // stored at the same height under a different hash belong to an orphaned burnchain fork. This
+      // must run even when `rewards` is empty. A zero-recipient burn block is how the node reports
+      // a replacement block that paid no rewards. Heights above this one are never touched: the
+      // node announces every replacement block of a burnchain fork individually, and it may also
+      // re-deliver old burn blocks out of order, which must not orphan newer data.
+      const orphanedRewards = await sql`
+        UPDATE burnchain_rewards
+        SET canonical = false
+        WHERE burn_block_height = ${burnchainBlockHeight}
+          AND burn_block_hash != ${burnchainBlockHash}
+          AND canonical = true
+      `;
+      if (orphanedRewards.count > 0) {
+        logger.warn(
+          `Invalidated ${orphanedRewards.count} burnchain rewards after fork detected at burnchain block ${burnchainBlockHash}`
+        );
       }
+      if (rewards.length === 0) return;
+      const values: BurnchainRewardInsertValues[] = rewards.map(reward => ({
+        canonical: true,
+        burn_block_hash: reward.burn_block_hash,
+        burn_block_height: reward.burn_block_height,
+        reward_recipient: reward.reward_recipient,
+        reward_amount: reward.reward_amount,
+        reward_index: reward.reward_index,
+      }));
+      // Idempotent against re-delivered events. The conflict update restores canonical status when
+      // the burnchain forks back to a previously orphaned block.
+      await sql`
+        INSERT INTO burnchain_rewards ${sql(values)}
+        ON CONFLICT ON CONSTRAINT burnchain_rewards_unique_idx DO UPDATE
+        SET canonical = true
+        WHERE burnchain_rewards.canonical = false
+      `;
     });
   }
 
@@ -3342,44 +3437,6 @@ export class PgWriteStore extends PgStore {
     `;
     if (this.metrics && result.length > 0) {
       this.metrics.burnBlockHeight.set(result[0].burn_block_height);
-    }
-  }
-
-  async insertSlotHoldersBatch(sql: PgSqlClient, slotHolders: DbRewardSlotHolder[]): Promise<void> {
-    const slotValues: RewardSlotHolderInsertValues[] = slotHolders.map(slot => ({
-      canonical: true,
-      burn_block_hash: slot.burn_block_hash,
-      burn_block_height: slot.burn_block_height,
-      address: slot.address,
-      slot_index: slot.slot_index,
-    }));
-
-    const result = await sql`
-      INSERT INTO reward_slot_holders ${sql(slotValues)}
-    `;
-
-    if (result.count !== slotValues.length) {
-      throw new Error(`Failed to insert slot holder for ${slotValues}`);
-    }
-  }
-
-  async insertBurnchainRewardsBatch(sql: PgSqlClient, rewards: DbBurnchainReward[]): Promise<void> {
-    const rewardValues: BurnchainRewardInsertValues[] = rewards.map(reward => ({
-      canonical: true,
-      burn_block_hash: reward.burn_block_hash,
-      burn_block_height: reward.burn_block_height,
-      burn_amount: reward.burn_amount.toString(),
-      reward_recipient: reward.reward_recipient,
-      reward_amount: reward.reward_amount,
-      reward_index: reward.reward_index,
-    }));
-
-    const res = await sql`
-      INSERT into burnchain_rewards ${sql(rewardValues)}
-    `;
-
-    if (res.count !== rewardValues.length) {
-      throw new Error(`Failed to insert burnchain reward for ${rewardValues}`);
     }
   }
 
@@ -4578,7 +4635,6 @@ export class PgWriteStore extends PgStore {
   async markEntitiesCanonical(
     sql: PgSqlClient,
     indexBlockHash: string,
-    burnBlockHash: string,
     canonical: boolean,
     updatedEntities: ReOrgUpdatedEntities
   ): Promise<{
@@ -5253,43 +5309,10 @@ export class PgWriteStore extends PgStore {
         updatedEntities.markedNonCanonical.poxCycles += poxCycleResult.count;
       }
     });
-    // Entities scoped to the block's `burn_block_hash` are only marked non-canonical when no
-    // canonical block still anchors to that burn block. Multiple Nakamoto blocks in a tenure share
-    // the same burn block, so orphaning part of a tenure (e.g. its trailing blocks) must not
-    // invalidate the burn block's own rows. The `blocks.canonical` flip for this block runs before
-    // this method, so the check reflects the post-re-org state.
-    q.enqueue(async () => {
-      await sql`
-        UPDATE burnchain_rewards
-        SET canonical = ${canonical}
-        WHERE burn_block_hash = ${burnBlockHash} AND canonical != ${canonical}
-          AND (${canonical} OR NOT EXISTS (
-            SELECT 1 FROM blocks WHERE burn_block_hash = ${burnBlockHash} AND canonical = true
-          ))
-      `;
-    });
-    q.enqueue(async () => {
-      await sql`
-        WITH updates AS (
-          UPDATE burn_block_pox_txs
-          SET canonical = ${canonical}
-          WHERE burn_block_hash = ${burnBlockHash} AND canonical != ${canonical}
-            AND (${canonical} OR NOT EXISTS (
-              SELECT 1 FROM blocks WHERE burn_block_hash = ${burnBlockHash} AND canonical = true
-            ))
-          RETURNING recipient
-        ),
-        count_deltas AS (
-          SELECT recipient, COUNT(*) AS count
-          FROM updates
-          GROUP BY recipient
-        )
-        UPDATE burn_block_pox_tx_counts AS pc
-        SET count = ${canonical ? sql`pc.count + cd.count` : sql`pc.count - cd.count`}
-        FROM count_deltas AS cd
-        WHERE pc.recipient = cd.recipient
-      `;
-    });
+    // Note: `burnchain_rewards` and `burn_block_pox_txs` record burnchain-level facts and are
+    // deliberately not flipped here. A Stacks-level re-org (even one orphaning a full tenure) does
+    // not un-pay bitcoin: their canonical status is maintained exclusively by `/new_burn_block`
+    // ingestion, which orphans same-height rows when the burnchain itself forks.
 
     await q.done();
 
@@ -5339,7 +5362,6 @@ export class PgWriteStore extends PgStore {
     const markNonCanonicalResult = await this.markEntitiesCanonical(
       sql,
       block.index_block_hash,
-      block.burn_block_hash,
       false,
       updatedEntities
     );
@@ -5358,14 +5380,12 @@ export class PgWriteStore extends PgStore {
    * Recursively restore previously orphaned blocks to canonical.
    * @param sql - The SQL client
    * @param indexBlockHash - The index block hash that we will restore first
-   * @param burnBlockHash - The burn block hash that we will restore first
    * @param updatedEntities - The updated entities
    * @returns The updated entities
    */
   async restoreOrphanedChain(
     sql: PgSqlClient,
     indexBlockHash: string,
-    burnBlockHash: string,
     updatedEntities: ReOrgUpdatedEntities
   ): Promise<ReOrgUpdatedEntities> {
     // Restore the previously orphaned block to canonical
@@ -5454,7 +5474,6 @@ export class PgWriteStore extends PgStore {
     const markCanonicalResult = await this.markEntitiesCanonical(
       sql,
       indexBlockHash,
-      burnBlockHash,
       true,
       updatedEntities
     );
@@ -5465,8 +5484,8 @@ export class PgWriteStore extends PgStore {
     updatedEntities.prunedMempoolTxs += prunedMempoolTxs.removedTxs.length;
 
     // Do we have a parent that is non-canonical? If so, restore it recursively.
-    const parentResult = await sql<{ index_block_hash: string; burn_block_hash: string }[]>`
-      SELECT index_block_hash, burn_block_hash
+    const parentResult = await sql<{ index_block_hash: string }[]>`
+      SELECT index_block_hash
       FROM blocks
       WHERE
         block_height = ${restoredBlockResult[0].block_height - 1} AND
@@ -5477,12 +5496,7 @@ export class PgWriteStore extends PgStore {
       throw new Error('Found more than one non-canonical parent to restore during reorg');
     }
     if (parentResult.length > 0) {
-      await this.restoreOrphanedChain(
-        sql,
-        parentResult[0].index_block_hash,
-        parentResult[0].burn_block_hash,
-        updatedEntities
-      );
+      await this.restoreOrphanedChain(sql, parentResult[0].index_block_hash, updatedEntities);
     }
     return updatedEntities;
   }
@@ -5571,12 +5585,7 @@ export class PgWriteStore extends PgStore {
     if (!parentResult[0].canonical) {
       // The new block builds off a previously orphaned chain. Restore canonical status for this
       // chain, orphaning any conflicting blocks along the way.
-      await this.restoreOrphanedChain(
-        sql,
-        parentResult[0].index_block_hash,
-        parentResult[0].burn_block_hash,
-        updatedEntities
-      );
+      await this.restoreOrphanedChain(sql, parentResult[0].index_block_hash, updatedEntities);
     }
     await this.updateChainTipTxCountsAfterReorg(sql, updatedEntities);
     logger.info(
@@ -5621,12 +5630,7 @@ export class PgWriteStore extends PgStore {
         );
       // This block builds off a previously orphaned chain. Restore canonical status for this chain.
       if (!parentResult[0].canonical && block.block_height > chainTipHeight) {
-        await this.restoreOrphanedChain(
-          sql,
-          parentResult[0].index_block_hash,
-          parentResult[0].burn_block_hash,
-          updatedEntities
-        );
+        await this.restoreOrphanedChain(sql, parentResult[0].index_block_hash, updatedEntities);
         logger.info(
           updatedEntities,
           `Re-org resolved. Block ${block.block_height} builds off a previously orphaned chain.`
