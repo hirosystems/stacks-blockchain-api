@@ -172,8 +172,9 @@ export const up = (pgm: MigrationBuilder) => {
 };
 
 export const down = (pgm: MigrationBuilder) => {
-  // Restores the column shape only; the per-row values are not recoverable (rebuild them by
-  // re-running `up`, which sources burn amounts from raw events and this table's data is lost).
+  // Restore the legacy per-reward column and refill it from this table before dropping it, so
+  // historical API `burn_amount` reads survive a rollback. Only blocks with no reward rows (which
+  // the legacy column never represented anyway) lose their burn amounts.
   pgm.addColumn('burnchain_rewards', {
     burn_amount: {
       type: 'numeric',
@@ -181,5 +182,11 @@ export const down = (pgm: MigrationBuilder) => {
       default: 0,
     },
   });
+  pgm.sql(`
+    UPDATE burnchain_rewards r
+    SET burn_amount = b.burn_amount
+    FROM burn_blocks b
+    WHERE b.burn_block_hash = r.burn_block_hash
+  `);
   pgm.dropTable('burn_blocks');
 };
