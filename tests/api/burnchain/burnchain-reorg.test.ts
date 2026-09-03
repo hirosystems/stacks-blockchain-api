@@ -656,6 +656,29 @@ describe('burnchain re-org handling', () => {
         VALUES (${f.canonical}, ${f.hash}, 103, ${f.burn}, ${ADDR_1}, 1000, 0)
       `;
     }
+    // A fork at height 104 where block 0xff01 paid rewards but the later-arriving replacement
+    // 0xff02 paid none: the legacy tables cannot represent 0xff02 (it left 0xff01's rewards
+    // canonical), so the raw-event arrival order must win and be propagated back to them.
+    for (const e of [
+      { hash: '0xff01', burn: 100, recipients: [{ recipient: ADDR_1, amt: 800 }] },
+      { hash: '0xff02', burn: 900, recipients: [] as { recipient: string; amt: number }[] },
+    ]) {
+      await client`
+        INSERT INTO event_observer_requests (event_path, payload)
+        VALUES ('/new_burn_block', ${{
+          burn_block_hash: e.hash,
+          burn_block_height: 104,
+          burn_amount: e.burn,
+          reward_recipients: e.recipients,
+          reward_slot_holders: [],
+        }})
+      `;
+    }
+    await client`
+      INSERT INTO burnchain_rewards
+        (canonical, burn_block_hash, burn_block_height, burn_amount, reward_recipient, reward_amount, reward_index)
+      VALUES (true, ${'0xff01'}, 104, 100, ${ADDR_1}, 800, 0)
+    `;
     // Re-run only the burn_blocks migration (the delivery above also wrote to the live
     // table; drop it so the migration recreates and backfills from scratch).
     await client`DROP TABLE burn_blocks`;
@@ -678,7 +701,46 @@ describe('burnchain re-org handling', () => {
         ['0xdd01', 102, '2000', '1000', true],
         ['0xee01', 103, '500', '1000', false],
         ['0xee02', 103, '600', '1000', true],
+        ['0xff01', 104, '100', '800', false],
+        ['0xff02', 104, '900', '0', true],
       ]
     );
+    // The 0xff01 rewards the legacy tables held canonical are orphaned by the propagation pass.
+    const rewards = await rewardRows();
+    assert.deepEqual(
+      rewards.map(r => [r.burn_block_hash, r.burn_block_height, r.canonical]),
+      [
+        ['0xdd01', 102, true],
+        ['0xee01', 103, false],
+        ['0xee02', 103, true],
+        ['0xff01', 104, false],
+      ]
+    );
+  });
+
+  test('burn block ingestion is atomic across all tables', async () => {
+    // Nested `sqlWriteTransaction` calls join the outer transaction via AsyncLocalStorage (see
+    // `BasePgStore.sqlTransaction`), so a failure after some steps of `handleBurnBlockMessage`
+    // must leave nothing committed. If the inner calls opened their own transactions, the rows
+    // written before the failure would survive.
+    await assert.rejects(
+      db.sqlWriteTransaction(async () => {
+        await db.updateBurnchainBlock({
+          burnchainBlockHash: '0xaa01',
+          burnchainBlockHeight: 100,
+          burnAmount: 5000n,
+          rewardAmount: 1000n,
+        });
+        await db.updateBurnchainRewards({
+          burnchainBlockHash: '0xaa01',
+          burnchainBlockHeight: 100,
+          rewards: [reward({ hash: '0xaa01', height: 100 })],
+        });
+        throw new Error('mid-ingestion failure');
+      }),
+      /mid-ingestion failure/
+    );
+    assert.equal((await burnchainBlockRows()).length, 0);
+    assert.equal((await rewardRows()).length, 0);
   });
 });

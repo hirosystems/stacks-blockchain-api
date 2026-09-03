@@ -10,8 +10,13 @@ import type { MigrationBuilder } from 'node-pg-migrate';
  *
  * The backfill sources historical blocks from the raw `/new_burn_block` payloads in
  * `event_observer_requests`, then fills any remaining gaps from `burnchain_rewards` (which only
- * covers blocks that paid at least one recipient). Note `burn_amount` never included the 2.0-era
- * PoX sunset-ramp surcharge (`sunset_burn` was a separate commit field the node never reported).
+ * covers blocks that paid at least one recipient). Canonical winners are resolved per height from
+ * the strongest evidence available -- a canonical Stacks block anchor, then raw-event arrival
+ * order, with legacy-table state consulted only for heights raw events don't cover -- and then
+ * propagated back to the legacy burnchain tables, repairing forks those tables couldn't represent
+ * (e.g. a zero-recipient replacement block orphaning a reward-paying rival). Note `burn_amount`
+ * never included the 2.0-era PoX sunset-ramp surcharge (`sunset_burn` was a separate commit field
+ * the node never reported).
  */
 export const up = (pgm: MigrationBuilder) => {
   pgm.createTable('burn_blocks', {
@@ -65,10 +70,30 @@ export const up = (pgm: MigrationBuilder) => {
     FROM latest_events
     ORDER BY id
   `);
+  // Resolve winners among raw-event rows first: a canonical Stacks block anchoring a hash is the
+  // strongest evidence, then raw-event arrival order (the node announces replacement blocks after
+  // the blocks they orphan). This runs before the rewards gap-fill so legacy-table state -- which
+  // cannot represent zero-recipient replacement blocks -- can never override raw-event evidence.
+  pgm.sql(`
+    WITH winners AS (
+      SELECT DISTINCT ON (burn_block_height) burn_block_height, burn_block_hash
+      FROM burn_blocks c
+      ORDER BY burn_block_height,
+        EXISTS (
+          SELECT 1 FROM blocks b
+          WHERE b.burn_block_hash = c.burn_block_hash AND b.canonical = true
+        ) DESC,
+        id DESC
+    )
+    UPDATE burn_blocks c
+    SET canonical = (c.burn_block_hash = w.burn_block_hash)
+    FROM winners w
+    WHERE c.burn_block_height = w.burn_block_height
+      AND c.canonical != (c.burn_block_hash = w.burn_block_hash)
+  `);
   // Fill gaps from burnchain_rewards for eras where raw events were pruned or disabled. Rewards
   // rows duplicate the block-level burn_amount per recipient, so any row's value works. Groups are
-  // ordered by their latest reward-row id so the assigned burn_blocks ids preserve arrival order
-  // for the canonical tie-break below.
+  // ordered by their latest reward-row id so the assigned burn_blocks ids preserve arrival order.
   pgm.sql(`
     INSERT INTO burn_blocks (canonical, burn_block_hash, burn_block_height, burn_amount, reward_amount)
     SELECT false, burn_block_hash, burn_block_height, MAX(burn_amount), SUM(reward_amount)
@@ -77,13 +102,17 @@ export const up = (pgm: MigrationBuilder) => {
     ORDER BY MAX(id)
     ON CONFLICT ON CONSTRAINT burn_blocks_unique_idx DO NOTHING
   `);
-  // One canonical hash per height, preferring a hash anchored by a canonical Stacks block, then one
-  // canonical in the (already repaired) rewards table -- keeping this table consistent with the
-  // legacy tables -- and falling back to arrival order. The same rule as the other repairs.
+  // Resolve winners for heights with no raw-event evidence (no canonical row yet): prefer a
+  // canonical Stacks block anchor, then the hash canonical in the (already repaired) rewards
+  // table, then arrival order. Heights already resolved from raw events are left untouched.
   pgm.sql(`
     WITH winners AS (
       SELECT DISTINCT ON (burn_block_height) burn_block_height, burn_block_hash
       FROM burn_blocks c
+      WHERE NOT EXISTS (
+        SELECT 1 FROM burn_blocks c2
+        WHERE c2.burn_block_height = c.burn_block_height AND c2.canonical = true
+      )
       ORDER BY burn_block_height,
         EXISTS (
           SELECT 1 FROM blocks b
@@ -100,6 +129,41 @@ export const up = (pgm: MigrationBuilder) => {
     FROM winners w
     WHERE c.burn_block_height = w.burn_block_height
       AND c.canonical != (c.burn_block_hash = w.burn_block_hash)
+  `);
+  // Propagate the resolved winners back to the legacy burnchain tables so they agree with the
+  // raw-event evidence. In particular, a zero-recipient replacement block (visible only in raw
+  // events) orphans the rival hash's rewards, slot holders, and pox txs -- the historical
+  // counterpart of what the write path now does on ingestion.
+  pgm.sql(`
+    UPDATE burnchain_rewards r
+    SET canonical = (r.burn_block_hash = w.burn_block_hash)
+    FROM burn_blocks w
+    WHERE w.canonical = true
+      AND w.burn_block_height = r.burn_block_height
+      AND r.canonical != (r.burn_block_hash = w.burn_block_hash)
+  `);
+  pgm.sql(`
+    UPDATE reward_slot_holders s
+    SET canonical = (s.burn_block_hash = w.burn_block_hash)
+    FROM burn_blocks w
+    WHERE w.canonical = true
+      AND w.burn_block_height = s.burn_block_height
+      AND s.canonical != (s.burn_block_hash = w.burn_block_hash)
+  `);
+  pgm.sql(`
+    UPDATE burn_block_pox_txs p
+    SET canonical = (p.burn_block_hash = w.burn_block_hash)
+    FROM burn_blocks w
+    WHERE w.canonical = true
+      AND w.burn_block_height = p.burn_block_height
+      AND p.canonical != (p.burn_block_hash = w.burn_block_hash)
+  `);
+  pgm.sql(`
+    DELETE FROM burn_block_pox_tx_counts
+  `);
+  pgm.sql(`
+    INSERT INTO burn_block_pox_tx_counts (recipient, count)
+    (SELECT recipient, COUNT(*) AS count FROM burn_block_pox_txs WHERE canonical = true GROUP BY recipient)
   `);
   // `burn_amount` is a block-level fact now owned by this table; the copy duplicated onto every
   // reward row (and absent for zero-recipient blocks) is redundant. Reads join through
