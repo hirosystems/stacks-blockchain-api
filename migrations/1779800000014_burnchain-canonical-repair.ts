@@ -24,35 +24,12 @@ export const up = (pgm: MigrationBuilder) => {
       AND a.reward_index = b.reward_index
       AND a.id < b.id
   `);
-  // One canonical hash per burn block height. A hash anchored by a canonical Stacks block is proven
-  // canonical on the burnchain; otherwise the last-received hash wins, matching the order in which
-  // the node announces replacement blocks during a burnchain fork.
-  pgm.sql(`
-    WITH winners AS (
-      SELECT DISTINCT ON (burn_block_height) burn_block_height, burn_block_hash
-      FROM burnchain_rewards r
-      ORDER BY burn_block_height,
-        EXISTS (
-          SELECT 1 FROM blocks b
-          WHERE b.burn_block_hash = r.burn_block_hash AND b.canonical = true
-        ) DESC,
-        id DESC
-    )
-    UPDATE burnchain_rewards r
-    SET canonical = (r.burn_block_hash = w.burn_block_hash)
-    FROM winners w
-    WHERE r.burn_block_height = w.burn_block_height
-      AND r.canonical != (r.burn_block_hash = w.burn_block_hash)
-  `);
   pgm.addConstraint(
     'burnchain_rewards',
     'burnchain_rewards_unique_idx',
     'UNIQUE(burn_block_hash, reward_index)'
   );
-  // Same dedup and per-height repair for reward slot holders. Beyond fork/duplicate damage, this
-  // also restores rows the legacy write path wrongly orphaned above a re-delivered old burn block's
-  // height. Resolved before pox txs so the shared evidence chain (blocks anchor, then rewards, then
-  // slot holders, then a last-resort tie-break) yields one winner per height across all tables.
+  // Same dedup for reward slot holders.
   pgm.sql(`
     DELETE FROM reward_slot_holders a
     USING reward_slot_holders b
@@ -60,59 +37,69 @@ export const up = (pgm: MigrationBuilder) => {
       AND a.slot_index = b.slot_index
       AND a.id < b.id
   `);
-  pgm.sql(`
-    WITH winners AS (
-      SELECT DISTINCT ON (burn_block_height) burn_block_height, burn_block_hash
-      FROM reward_slot_holders s
-      ORDER BY burn_block_height,
-        EXISTS (
-          SELECT 1 FROM blocks b
-          WHERE b.burn_block_hash = s.burn_block_hash AND b.canonical = true
-        ) DESC,
-        EXISTS (
-          SELECT 1 FROM burnchain_rewards r
-          WHERE r.burn_block_hash = s.burn_block_hash AND r.canonical = true
-        ) DESC,
-        id DESC
-    )
-    UPDATE reward_slot_holders s
-    SET canonical = (s.burn_block_hash = w.burn_block_hash)
-    FROM winners w
-    WHERE s.burn_block_height = w.burn_block_height
-      AND s.canonical != (s.burn_block_hash = w.burn_block_hash)
-  `);
   pgm.addConstraint(
     'reward_slot_holders',
     'reward_slot_holders_unique_idx',
     'UNIQUE(burn_block_hash, slot_index)'
   );
-  // Same per-height repair for pox txs, deferring to the tables repaired above so every table
-  // crowns the same hash per height. The table has no insert-order column, so the lexicographic
-  // tie-break only ever applies when it is the sole table holding rows for a height.
+  // One shared winner per burn block height, computed over the union of every hash any burnchain
+  // table has seen -- a hash present in only one table must still compete at its height, or tables
+  // could each crown their own only-candidate and diverge. Evidence order: a canonical Stacks block
+  // anchor is proof; otherwise arrival order in `burnchain_rewards`, then in `reward_slot_holders`
+  // (the tables with insert-order ids); a lexicographic tie-break is the last resort for hashes
+  // seen only by `burn_block_pox_txs`. Applied uniformly to all three tables below.
   pgm.sql(`
-    WITH winners AS (
-      SELECT DISTINCT ON (burn_block_height) burn_block_height, burn_block_hash
-      FROM burn_block_pox_txs p
-      ORDER BY burn_block_height,
-        EXISTS (
-          SELECT 1 FROM blocks b
-          WHERE b.burn_block_hash = p.burn_block_hash AND b.canonical = true
-        ) DESC,
-        EXISTS (
-          SELECT 1 FROM burnchain_rewards r
-          WHERE r.burn_block_hash = p.burn_block_hash AND r.canonical = true
-        ) DESC,
-        EXISTS (
-          SELECT 1 FROM reward_slot_holders s
-          WHERE s.burn_block_hash = p.burn_block_hash AND s.canonical = true
-        ) DESC,
-        burn_block_hash DESC
+    CREATE TEMPORARY TABLE burnchain_canonical_winners AS
+    WITH candidates AS (
+      SELECT burn_block_height, burn_block_hash, MAX(id) AS max_reward_id, NULL::int AS max_slot_id
+      FROM burnchain_rewards GROUP BY 1, 2
+      UNION ALL
+      SELECT burn_block_height, burn_block_hash, NULL, MAX(id)
+      FROM reward_slot_holders GROUP BY 1, 2
+      UNION ALL
+      SELECT burn_block_height, burn_block_hash, NULL, NULL
+      FROM burn_block_pox_txs GROUP BY 1, 2
+    ),
+    merged AS (
+      SELECT burn_block_height, burn_block_hash,
+        MAX(max_reward_id) AS max_reward_id,
+        MAX(max_slot_id) AS max_slot_id
+      FROM candidates GROUP BY 1, 2
     )
+    SELECT DISTINCT ON (burn_block_height) burn_block_height, burn_block_hash
+    FROM merged m
+    ORDER BY burn_block_height,
+      EXISTS (
+        SELECT 1 FROM blocks b
+        WHERE b.burn_block_hash = m.burn_block_hash AND b.canonical = true
+      ) DESC,
+      max_reward_id DESC NULLS LAST,
+      max_slot_id DESC NULLS LAST,
+      burn_block_hash DESC
+  `);
+  pgm.sql(`
+    UPDATE burnchain_rewards r
+    SET canonical = (r.burn_block_hash = w.burn_block_hash)
+    FROM burnchain_canonical_winners w
+    WHERE r.burn_block_height = w.burn_block_height
+      AND r.canonical != (r.burn_block_hash = w.burn_block_hash)
+  `);
+  pgm.sql(`
+    UPDATE reward_slot_holders s
+    SET canonical = (s.burn_block_hash = w.burn_block_hash)
+    FROM burnchain_canonical_winners w
+    WHERE s.burn_block_height = w.burn_block_height
+      AND s.canonical != (s.burn_block_hash = w.burn_block_hash)
+  `);
+  pgm.sql(`
     UPDATE burn_block_pox_txs p
     SET canonical = (p.burn_block_hash = w.burn_block_hash)
-    FROM winners w
+    FROM burnchain_canonical_winners w
     WHERE p.burn_block_height = w.burn_block_height
       AND p.canonical != (p.burn_block_hash = w.burn_block_hash)
+  `);
+  pgm.sql(`
+    DROP TABLE burnchain_canonical_winners
   `);
   pgm.sql(`
     DELETE FROM burn_block_pox_tx_counts

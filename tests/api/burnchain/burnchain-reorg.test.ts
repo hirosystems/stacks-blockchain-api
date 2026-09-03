@@ -524,6 +524,10 @@ describe('burnchain re-org handling', () => {
       // tie-break (which would pick 0xdd09).
       { hash: '0xdd09', height: 102, canonical: true, recipient: ADDR_2 },
       { hash: '0xdd01', height: 102, canonical: true, recipient: ADDR_1 },
+      // Height 103: a fork where the hash sets are disjoint across tables -- this table only saw
+      // 0xee0b while reward_slot_holders only saw 0xee0a. The shared winner (0xee0a, by slot
+      // holder arrival) must orphan this row even though its hash never appears here.
+      { hash: '0xee0b', height: 103, canonical: true, recipient: ADDR_2 },
     ];
     for (const t of seedPoxTxs) {
       await client`
@@ -548,6 +552,8 @@ describe('burnchain re-org handling', () => {
       // burn_block_pox_txs.
       { hash: '0xdd09', height: 102, index: 0, canonical: true },
       { hash: '0xdd01', height: 102, index: 0, canonical: true },
+      // Height 103: the disjoint-table fork side this table saw (see the pox tx seeds).
+      { hash: '0xee0a', height: 103, index: 0, canonical: true },
     ];
     for (const s of seedSlotHolders) {
       await client`
@@ -594,6 +600,7 @@ describe('burnchain re-org handling', () => {
         ['0xaa02', true],
         ['0xdd01', true],
         ['0xdd09', false],
+        ['0xee0b', false],
       ]
     );
     assert.equal(await poxTxCount(ADDR_1), 2);
@@ -608,6 +615,7 @@ describe('burnchain re-org handling', () => {
         ['0xaa02', 101, 0, true],
         ['0xdd01', 102, 0, true],
         ['0xdd09', 102, 0, false],
+        ['0xee0a', 103, 0, true],
       ]
     );
   });
