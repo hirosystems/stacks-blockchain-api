@@ -24,6 +24,7 @@ import {
   DbStxTransferDirection,
   DbSignerStaker,
   DbSmartContractDetail,
+  DbStakingRewards,
   DbStakingSigner,
   DbStakingSignerDetail,
   DbTransaction,
@@ -2161,6 +2162,16 @@ export class PgStoreV3 extends BasePgStoreModule {
    * @param args - The arguments for the query.
    * @returns The registered signers.
    */
+  async getStakingRewards(): Promise<DbStakingRewards> {
+    const result = await this.sql<DbStakingRewards[]>`
+      SELECT
+        staking_reward_amount::text AS reward_amount,
+        staking_burn_amount::text AS burn_amount
+      FROM chain_tip
+    `;
+    return result[0] ?? { reward_amount: '0', burn_amount: '0' };
+  }
+
   async getStakingSigners(args: {
     limit: number;
     cursor?: SignerCursor;
