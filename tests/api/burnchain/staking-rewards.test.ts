@@ -9,6 +9,7 @@ import { PgWriteStore } from '../../../src/datastore/pg-write-store.ts';
 import { MIGRATIONS_DIR } from '../../../src/datastore/pg-store.ts';
 import { getConnectionArgs } from '../../../src/datastore/connection.ts';
 import { PgSqlClient, runMigrations } from '@stacks/api-toolkit';
+import { TestBlockBuilder } from '../test-builders.ts';
 import { migrate } from '../../test-helpers.ts';
 
 describe('staking rewards totals', () => {
@@ -119,6 +120,65 @@ describe('staking rewards totals', () => {
     await deliverBurnBlock({ hash: '0xbb01', height: 100, burnAmount: 40000n });
     assert.deepEqual(await getTotals(), {
       btc: { reward_amount: '0', burn_amount: '40000', total_amount: '40000' },
+    });
+  });
+
+  test('burnchain chain tip cache revalidates on burnchain changes only', async () => {
+    await deliverBurnBlock({ hash: '0xaa01', height: 100, burnAmount: 500n, rewardAmount: 1000n });
+    await deliverBurnBlock({ hash: '0xaa02', height: 101, burnAmount: 250n, rewardAmount: 2000n });
+
+    const first = await supertest(api.server).get(`/extended/v3/staking/rewards`);
+    assert.equal(first.status, 200);
+    const etag = first.headers['etag'];
+    assert.ok(etag, 'response must carry an ETag');
+
+    // Unchanged state revalidates.
+    const cached = await supertest(api.server)
+      .get(`/extended/v3/staking/rewards`)
+      .set('If-None-Match', etag);
+    assert.equal(cached.status, 304);
+
+    // A re-delivered event changes nothing: still a 304.
+    await deliverBurnBlock({ hash: '0xaa02', height: 101, burnAmount: 250n, rewardAmount: 2000n });
+    const afterDuplicate = await supertest(api.server)
+      .get(`/extended/v3/staking/rewards`)
+      .set('If-None-Match', etag);
+    assert.equal(afterDuplicate.status, 304);
+
+    // A Stacks block advancing the chain tip without any burn block event must NOT invalidate:
+    // the ETag is keyed on burnchain state, not the Stacks chain tip.
+    await db.update(
+      new TestBlockBuilder({ block_height: 1, block_hash: '0x01', index_block_hash: '0x01' })
+        .addTx({ tx_id: '0x' + 'e1'.repeat(32) })
+        .build()
+    );
+    const afterStacksBlock = await supertest(api.server)
+      .get(`/extended/v3/staking/rewards`)
+      .set('If-None-Match', etag);
+    assert.equal(afterStacksBlock.status, 304);
+
+    // A new burn block invalidates.
+    await deliverBurnBlock({ hash: '0xaa03', height: 102, burnAmount: 100n, rewardAmount: 400n });
+    const afterNewBlock = await supertest(api.server)
+      .get(`/extended/v3/staking/rewards`)
+      .set('If-None-Match', etag);
+    assert.equal(afterNewBlock.status, 200);
+    const etag2 = afterNewBlock.headers['etag'];
+    assert.notEqual(etag2, etag);
+    assert.deepEqual(JSON.parse(afterNewBlock.text), {
+      btc: { reward_amount: '3400', burn_amount: '850', total_amount: '4250' },
+    });
+
+    // A mid-history burnchain fork changes the totals without moving the tip hash: the ETag
+    // must still invalidate (the counters are part of the digest).
+    await deliverBurnBlock({ hash: '0xbb01', height: 100, burnAmount: 999n, rewardAmount: 111n });
+    const afterMidFork = await supertest(api.server)
+      .get(`/extended/v3/staking/rewards`)
+      .set('If-None-Match', etag2);
+    assert.equal(afterMidFork.status, 200);
+    assert.notEqual(afterMidFork.headers['etag'], etag2);
+    assert.deepEqual(JSON.parse(afterMidFork.text), {
+      btc: { reward_amount: '2511', burn_amount: '1349', total_amount: '3860' },
     });
   });
 

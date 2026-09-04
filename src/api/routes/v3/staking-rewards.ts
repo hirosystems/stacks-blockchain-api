@@ -1,7 +1,7 @@
 import { FastifyPluginAsync } from 'fastify';
 import { Server } from 'node:http';
 import { TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
-import { handleChainTipCache } from '../../controllers/cache-controller.js';
+import { handleBurnchainChainTipCache } from '../../controllers/cache-controller.js';
 import { StakingRewardsSchema } from '../../schemas/v3/entities/staking-rewards.js';
 
 export const StakingRewardsRoutes: FastifyPluginAsync<
@@ -12,7 +12,7 @@ export const StakingRewardsRoutes: FastifyPluginAsync<
   fastify.get(
     '/staking/rewards',
     {
-      preHandler: handleChainTipCache,
+      preHandler: handleBurnchainChainTipCache,
       schema: {
         operationId: 'get_staking_rewards',
         summary: 'Get network staking reward totals',
