@@ -935,6 +935,46 @@ export class PgStore extends BasePgStore {
     });
   }
 
+  /**
+   * Gets the current burnchain cache state used to build burnchain ETags: the canonical burn block
+   * at the highest height, plus the materialized network staking totals. The totals cover
+   * mid-history canonical flips (e.g. a deep burnchain fork replacing lower heights before the tip
+   * itself is replaced) that would leave the tip hash unchanged.
+   */
+  async getBurnchainTipCacheState(): Promise<
+    | {
+        burn_block_hash: string;
+        staking_reward_amount: string;
+        staking_burn_amount: string;
+      }
+    | undefined
+  > {
+    const result = await this.sql<
+      {
+        burn_block_hash: string | null;
+        staking_reward_amount: string;
+        staking_burn_amount: string;
+      }[]
+    >`
+      SELECT
+        (
+          SELECT burn_block_hash FROM burn_blocks
+          WHERE canonical = true
+          ORDER BY burn_block_height DESC
+          LIMIT 1
+        ) AS burn_block_hash,
+        staking_reward_amount::text,
+        staking_burn_amount::text
+      FROM chain_tip
+    `;
+    if (result.length === 0 || result[0].burn_block_hash === null) return undefined;
+    return {
+      burn_block_hash: result[0].burn_block_hash,
+      staking_reward_amount: result[0].staking_reward_amount,
+      staking_burn_amount: result[0].staking_burn_amount,
+    };
+  }
+
   async getBurnchainRewardsTotal(
     burnchainRecipient: string
   ): Promise<{ reward_recipient: string; reward_amount: bigint }> {

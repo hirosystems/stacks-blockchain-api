@@ -290,6 +290,13 @@ export interface DbTransactionCursor {
   tx_index: number;
 }
 
+export interface DbStakingRewards {
+  /** Total staking rewards generated, in satoshis. */
+  reward_amount: string;
+  /** Total BTC burned by block commits, in satoshis. */
+  burn_amount: string;
+}
+
 export interface DbStakingSigner {
   signer: string;
   /** The registered compressed secp256k1 public key as a `0x`-prefixed hex string. */

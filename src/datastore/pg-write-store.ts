@@ -3449,13 +3449,22 @@ export class PgWriteStore extends PgStore {
     rewardAmount: bigint;
   }): Promise<void> {
     return await this.sqlWriteTransaction(async sql => {
-      // Same-height fork handling; see `updateBurnchainRewards` for the reasoning.
+      // Same-height fork handling; see `updateBurnchainRewards` for the reasoning. Orphaned
+      // amounts leave the materialized network staking totals.
       await sql`
-        UPDATE burn_blocks
-        SET canonical = false
-        WHERE burn_block_height = ${burnchainBlockHeight}
-          AND burn_block_hash != ${burnchainBlockHash}
-          AND canonical = true
+        WITH orphaned AS (
+          UPDATE burn_blocks
+          SET canonical = false
+          WHERE burn_block_height = ${burnchainBlockHeight}
+            AND burn_block_hash != ${burnchainBlockHash}
+            AND canonical = true
+          RETURNING burn_amount, reward_amount
+        )
+        UPDATE chain_tip SET
+          staking_burn_amount = staking_burn_amount
+            - (SELECT COALESCE(SUM(burn_amount), 0) FROM orphaned),
+          staking_reward_amount = staking_reward_amount
+            - (SELECT COALESCE(SUM(reward_amount), 0) FROM orphaned)
       `;
       const values: BurnchainBlockInsertValues = {
         canonical: true,
@@ -3464,11 +3473,21 @@ export class PgWriteStore extends PgStore {
         burn_amount: burnAmount.toString(),
         reward_amount: rewardAmount.toString(),
       };
+      // The RETURNING set covers newly inserted rows and rows restored to canonical; re-delivered
+      // rows that are already canonical conflict without updating, keeping the counters idempotent.
       await sql`
-        INSERT INTO burn_blocks ${sql(values)}
-        ON CONFLICT ON CONSTRAINT burn_blocks_unique_idx DO UPDATE
-        SET canonical = true
-        WHERE burn_blocks.canonical = false
+        WITH ins AS (
+          INSERT INTO burn_blocks ${sql(values)}
+          ON CONFLICT ON CONSTRAINT burn_blocks_unique_idx DO UPDATE
+          SET canonical = true
+          WHERE burn_blocks.canonical = false
+          RETURNING burn_amount, reward_amount
+        )
+        UPDATE chain_tip SET
+          staking_burn_amount = staking_burn_amount
+            + (SELECT COALESCE(SUM(burn_amount), 0) FROM ins),
+          staking_reward_amount = staking_reward_amount
+            + (SELECT COALESCE(SUM(reward_amount), 0) FROM ins)
       `;
     });
   }

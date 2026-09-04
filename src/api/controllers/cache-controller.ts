@@ -18,6 +18,12 @@ import { BlockIdParam, parseBlockParam } from '../routes/v2/schemas.js';
 export enum ETagType {
   /** ETag based on the latest `index_block_hash` or `microblock_hash`. */
   chainTip = 'chain_tip',
+  /**
+   * ETag based on the canonical burnchain state: the latest canonical burn block hash plus the
+   * materialized staking totals. Use for endpoints whose data changes on `/new_burn_block`
+   * ingestion, which can advance without any Stacks block moving the chain tip.
+   */
+  burnchainChainTip = 'burnchain_chain_tip',
   /** ETag based on a digest of all pending mempool `tx_id`s. */
   mempool = 'mempool',
   /** ETag based on the status of a single transaction across the mempool or canonical chain. */
@@ -93,6 +99,18 @@ async function calculateETag(
           return;
         }
         return chainTip.microblock_hash ?? chainTip.index_block_hash;
+      }
+
+      case ETagType.burnchainChainTip: {
+        const state = await db.getBurnchainTipCacheState();
+        if (!state) {
+          // No canonical burn blocks yet: the API is serving requests before it has ingested any
+          // burn block events.
+          return;
+        }
+        return sha256(
+          `${state.burn_block_hash}:${state.staking_reward_amount}:${state.staking_burn_amount}`
+        );
       }
 
       case ETagType.mempool: {
@@ -190,6 +208,10 @@ export async function handleCache(type: ETagType, request: FastifyRequest, reply
 
 export function handleChainTipCache(request: FastifyRequest, reply: FastifyReply) {
   return handleCache(ETagType.chainTip, request, reply);
+}
+
+export function handleBurnchainChainTipCache(request: FastifyRequest, reply: FastifyReply) {
+  return handleCache(ETagType.burnchainChainTip, request, reply);
 }
 
 export async function handleMempoolCache(request: FastifyRequest, reply: FastifyReply) {
