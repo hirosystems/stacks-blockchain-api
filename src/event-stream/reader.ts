@@ -1,4 +1,4 @@
-import { CoreNodeParsedTxMessage, isTxWithMicroblockInfo } from './core-node-message.js';
+import { CoreNodeParsedTxMessage } from './core-node-message.js';
 import {
   AnchorModeID,
   ClarityTypeID,
@@ -25,7 +25,6 @@ import type {
   Pox4EventStackStx,
   Pox4EventDelegateStx,
 } from '@stacks/codec';
-import { DbMicroblockPartial } from '../datastore/common.js';
 import { NotImplementedError } from '../errors.js';
 import {
   getEnumDescription,
@@ -482,36 +481,6 @@ export interface CoreNodeMsgBlockData {
   block_time: number;
 }
 
-export function parseMicroblocksFromTxs(args: {
-  parentIndexBlockHash: string;
-  txs: NewBlockTransaction[];
-  parentBurnBlock: {
-    hash: string;
-    time: number;
-    height: number;
-  };
-}): DbMicroblockPartial[] {
-  const microblockMap = new Map<string, DbMicroblockPartial>();
-  args.txs.forEach(tx => {
-    if (isTxWithMicroblockInfo(tx) && !microblockMap.has(tx.microblock_hash)) {
-      const dbMbPartial: DbMicroblockPartial = {
-        microblock_hash: tx.microblock_hash,
-        microblock_sequence: tx.microblock_sequence,
-        microblock_parent_hash: tx.microblock_parent_hash,
-        parent_index_block_hash: args.parentIndexBlockHash,
-        parent_burn_block_height: args.parentBurnBlock.height,
-        parent_burn_block_hash: args.parentBurnBlock.hash,
-        parent_burn_block_time: args.parentBurnBlock.time,
-      };
-      microblockMap.set(tx.microblock_hash, dbMbPartial);
-    }
-  });
-  const dbMicroblocks = [...microblockMap.values()].sort(
-    (a, b) => a.microblock_sequence - b.microblock_sequence
-  );
-  return dbMicroblocks;
-}
-
 export function parseMessageTransaction(
   chainId: ChainID,
   coreTx: NewBlockTransaction,
@@ -737,7 +706,6 @@ export function isPoxPrintEvent(event: NewBlockContractEvent): boolean {
 }
 
 interface CoreNodeBlockEventCounts {
-  microblocks: number;
   tx_total: number;
   txs: {
     token_transfer: number;
@@ -769,7 +737,6 @@ interface CoreNodeBlockEventCounts {
 
 export function newCoreNoreBlockEventCounts(): CoreNodeBlockEventCounts {
   return {
-    microblocks: 0,
     tx_total: 0,
     txs: {
       token_transfer: 0,
