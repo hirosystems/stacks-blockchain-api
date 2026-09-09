@@ -21,8 +21,6 @@ import {
   DbBnsSubdomain,
   DbConfigState,
   DbTokenOfferingLocked,
-  DataStoreMicroblockUpdateData,
-  DbMicroblock,
   DataStoreTxEventData,
   DbFaucetRequest,
   MinerRewardInsertValues,
@@ -36,7 +34,6 @@ import {
   FtEventInsertValues,
   NftEventInsertValues,
   SmartContractEventInsertValues,
-  MicroblockQueryResult,
   BurnchainBlockInsertValues,
   BurnchainRewardInsertValues,
   TxInsertValues,
@@ -45,7 +42,6 @@ import {
   BnsNameInsertValues,
   BnsNamespaceInsertValues,
   FaucetRequestInsertValues,
-  MicroblockInsertValues,
   TxQueryResult,
   ReOrgUpdatedEntities,
   BlockQueryResult,
@@ -89,9 +85,7 @@ import {
   convertTxQueryResultToDbMempoolTx,
   isNakamotoBlock,
   markBlockUpdateDataAsNonCanonical,
-  MICROBLOCK_COLUMNS,
   parseBlockQueryResult,
-  parseMicroblockQueryResult,
   parseTxQueryResult,
   TX_COLUMNS,
   TX_METADATA_TABLES,
@@ -145,14 +139,6 @@ import {
 } from '@stacks/codec';
 
 const INSERT_BATCH_SIZE = 500;
-
-class MicroblockGapError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.message = message;
-    this.name = this.constructor.name;
-  }
-}
 
 type TransactionHeader = {
   txId: string;
@@ -297,7 +283,6 @@ export class PgWriteStore extends PgStore {
 
   async update(data: DataStoreBlockUpdateData): Promise<void> {
     let garbageCollectedMempoolTxs: string[] = [];
-    let newTxData: DataStoreTxEventData[] = [];
     let reorg: ReOrgUpdatedEntities = newReOrgUpdatedEntities();
     let isCanonical = true;
     let skippedDuplicateBlock = false;
@@ -339,57 +324,7 @@ export class PgWriteStore extends PgStore {
         await this.pruneMempoolTxs(sql, prunableTxs);
       }
 
-      // Insert microblocks, if any. Clear already inserted microblock txs from the anchor-block
-      // update data to avoid duplicate inserts.
-      const insertedMicroblockHashes = await this.insertMicroblocksFromBlockUpdate(sql, data);
-      newTxData = data.txs.filter(entry => {
-        return !insertedMicroblockHashes.has(entry.tx.microblock_hash);
-      });
-
-      // When processing an immediately-non-canonical block, do not orphan and possible existing
-      // microblocks which may be still considered canonical by the canonical block at this height.
       if (isCanonical) {
-        const { acceptedMicroblockTxs, orphanedMicroblockTxs } = await this.updateMicroCanonical(
-          sql,
-          {
-            isCanonical: isCanonical,
-            blockHeight: data.block.block_height,
-            blockHash: data.block.block_hash,
-            indexBlockHash: data.block.index_block_hash,
-            parentIndexBlockHash: data.block.parent_index_block_hash,
-            parentMicroblockHash: data.block.parent_microblock_hash,
-            parentMicroblockSequence: data.block.parent_microblock_sequence,
-            burnBlockTime: data.block.burn_block_time,
-            burnBlockHeight: data.block.burn_block_height,
-          }
-        );
-
-        // Identify any micro-orphaned txs that also didn't make it into this anchor block, and
-        // restore them into the mempool
-        const orphanedAndMissingTxs = orphanedMicroblockTxs.filter(
-          tx => !data.txs.find(r => tx.tx_id === r.tx.tx_id)
-        );
-        const restoredMempoolTxs = await this.restoreMempoolTxs(
-          sql,
-          orphanedAndMissingTxs.map(tx => ({
-            txId: tx.tx_id,
-            sender_address: tx.sender_address,
-            sponsor_address: tx.sponsor_address,
-            sponsored: tx.sponsored,
-            nonce: tx.nonce,
-          }))
-        );
-        restoredMempoolTxs.restoredTxs.forEach(txId => {
-          logger.info(`Restored micro-orphaned tx to mempool ${txId}`);
-        });
-
-        // Clear accepted microblock txs from the anchor-block update data to avoid duplicate
-        // inserts.
-        newTxData = newTxData.filter(entry => {
-          const matchingTx = acceptedMicroblockTxs.find(tx => tx.tx_id === entry.tx.tx_id);
-          return !matchingTx;
-        });
-
         await this.updatePoxStateUnlockHeight(sql, data);
       }
 
@@ -408,44 +343,31 @@ export class PgWriteStore extends PgStore {
         // Block 0 is non-canonical, but we need to make sure its STX mint events get considered in
         // balance calculations.
         if (data.block.block_height == 0 || isCanonical) {
-          // Use `data.txs` directly instead of `newTxData` for these STX/FT balance updates because
-          // we don't want to skip balance changes in transactions that were previously confirmed
-          // via microblocks.
           q.enqueue(() => this.updateStxBalances(sql, data.txs, data.minerRewards));
           q.enqueue(() => this.updateStxSupply(sql, data.txs, data.minerRewards));
           q.enqueue(() => this.updateFtBalances(sql, data.txs));
-          // If this block re-orgs past microblocks, though, we must discount the balances generated
-          // by their txs which are now also reorged. We must do this here because the block re-org
-          // logic is decoupled from the microblock re-org logic so previous balance updates will
-          // not apply.
-          q.enqueue(async () => {
-            await this.updateFtBalancesFromMicroblockReOrg(sql, [
-              ...reorg.markedNonCanonical.microblockHashes,
-              ...reorg.markedCanonical.microblockHashes,
-            ]);
-          });
         }
         if (data.poxSetSigners && data.poxSetSigners.signers) {
           const poxSet = data.poxSetSigners;
           q.enqueue(() => this.updatePoxSetsBatch(sql, data.block, poxSet));
         }
-        if (newTxData.length > 0) {
+        if (data.txs.length > 0) {
           q.enqueue(() =>
             this.updateTx(
               sql,
-              newTxData.map(b => b.tx)
+              data.txs.map(b => b.tx)
             )
           );
-          q.enqueue(() => this.updateStxEvents(sql, newTxData));
-          q.enqueue(() => this.updatePrincipalTxs(sql, newTxData));
-          q.enqueue(() => this.updateSmartContractEvents(sql, newTxData));
-          q.enqueue(() => this.updatePox4SyntheticEvents(sql, 'pox2_events', newTxData));
-          q.enqueue(() => this.updatePox4SyntheticEvents(sql, 'pox3_events', newTxData));
-          q.enqueue(() => this.updatePox4SyntheticEvents(sql, 'pox4_events', newTxData));
-          q.enqueue(() => this.insertPox5SyntheticEvents(sql, newTxData));
-          q.enqueue(() => this.updateStxLockEvents(sql, newTxData));
-          q.enqueue(() => this.updateFtEvents(sql, newTxData));
-          for (const entry of newTxData) {
+          q.enqueue(() => this.updateStxEvents(sql, data.txs));
+          q.enqueue(() => this.updatePrincipalTxs(sql, data.txs));
+          q.enqueue(() => this.updateSmartContractEvents(sql, data.txs));
+          q.enqueue(() => this.updatePox4SyntheticEvents(sql, 'pox2_events', data.txs));
+          q.enqueue(() => this.updatePox4SyntheticEvents(sql, 'pox3_events', data.txs));
+          q.enqueue(() => this.updatePox4SyntheticEvents(sql, 'pox4_events', data.txs));
+          q.enqueue(() => this.insertPox5SyntheticEvents(sql, data.txs));
+          q.enqueue(() => this.updateStxLockEvents(sql, data.txs));
+          q.enqueue(() => this.updateFtEvents(sql, data.txs));
+          for (const entry of data.txs) {
             q.enqueue(() => this.updateNftEvents(sql, entry.tx, entry.nftEvents));
             q.enqueue(() => this.updateSmartContracts(sql, entry.tx, entry.smartContracts));
             q.enqueue(() => this.updateNamespaces(sql, entry.tx, entry.namespaces));
@@ -485,11 +407,8 @@ export class PgWriteStore extends PgStore {
             block_hash = ${data.block.block_hash},
             index_block_hash = ${data.block.index_block_hash},
             burn_block_height = ${data.block.burn_block_height},
-            microblock_hash = NULL,
-            microblock_sequence = NULL,
             block_count = ${data.block.block_height},
             tx_count = (SELECT tx_count FROM new_tx_count),
-            tx_count_unanchored = (SELECT tx_count FROM new_tx_count),
             bond_count = (SELECT bond_count FROM new_bond_count)
         `;
         if (this.metrics) {
@@ -549,40 +468,6 @@ export class PgWriteStore extends PgStore {
         eventIndex: nftEvent.event_index,
       });
     }
-  }
-
-  /**
-   * Find and insert microblocks that weren't already inserted via the unconfirmed `/new_microblock`
-   * event. This happens when a stacks-node is syncing and receives confirmed microblocks with their
-   * anchor block at the same time.
-   * @param sql - SQL client
-   * @param data - Block data to insert
-   * @returns Set of microblock hashes that were inserted in this update
-   */
-  private async insertMicroblocksFromBlockUpdate(
-    sql: PgSqlClient,
-    data: DataStoreBlockUpdateData
-  ): Promise<Set<string>> {
-    if (data.microblocks.length == 0) return new Set();
-    const existingMicroblocksQuery = await sql<{ microblock_hash: string }[]>`
-      SELECT DISTINCT microblock_hash
-      FROM microblocks
-      WHERE parent_index_block_hash = ${data.block.parent_index_block_hash}
-        AND microblock_hash IN ${sql(data.microblocks.map(mb => mb.microblock_hash))}
-    `;
-    const existingHashes = existingMicroblocksQuery.map(i => i.microblock_hash);
-    const missingMicroblocks = data.microblocks.filter(
-      mb => !existingHashes.includes(mb.microblock_hash)
-    );
-    if (missingMicroblocks.length > 0) {
-      const missingMicroblockHashes = new Set(missingMicroblocks.map(mb => mb.microblock_hash));
-      const missingTxs = data.txs.filter(entry =>
-        missingMicroblockHashes.has(entry.tx.microblock_hash)
-      );
-      await this.insertMicroblockData(sql, missingMicroblocks, missingTxs);
-      return missingMicroblockHashes;
-    }
-    return new Set();
   }
 
   private async insertPox5SyntheticEvents(sql: PgSqlClient, txs: DataStoreTxEventData[]) {
@@ -1712,209 +1597,6 @@ export class PgWriteStore extends PgStore {
     });
   }
 
-  async updateMicroblocks(data: DataStoreMicroblockUpdateData): Promise<void> {
-    try {
-      await this.updateMicroblocksInternal(data);
-    } catch (error) {
-      if (error instanceof MicroblockGapError) {
-        // Log and ignore this error for now, see https://github.com/blockstack/stacks-blockchain/issues/2850
-        // for more details.
-        // In theory it would be possible for the API to cache out-of-order microblock data and use it to
-        // restore data in this condition, but it would require several changes to sensitive re-org code,
-        // as well as introduce a new kind of statefulness and responsibility to the API.
-        logger.warn(error.message);
-      } else {
-        throw error;
-      }
-    }
-  }
-
-  async updateMicroblocksInternal(data: DataStoreMicroblockUpdateData): Promise<void> {
-    const txData: DataStoreTxEventData[] = [];
-    let dbMicroblocks: DbMicroblock[] = [];
-    const deployedSmartContracts: DbSmartContract[] = [];
-    const contractLogEvents: DbSmartContractEvent[] = [];
-
-    await this.sqlWriteTransaction(async sql => {
-      // Sanity check: ensure incoming microblocks have a `parent_index_block_hash` that matches the
-      // API's current known canonical chain tip. We assume this holds true so incoming microblock
-      // data is always treated as being built off the current canonical anchor block.
-      const chainTip = await this.getChainTip(sql);
-      const nonCanonicalMicroblock = data.microblocks.find(
-        mb => mb.parent_index_block_hash !== chainTip.index_block_hash
-      );
-      // Note: the stacks-node event emitter can send old microblocks that have already been processed by a previous anchor block.
-      // Log warning and return, nothing to do.
-      if (nonCanonicalMicroblock) {
-        logger.info(
-          `Failure in microblock ingestion, microblock ${nonCanonicalMicroblock.microblock_hash} ` +
-            `points to parent index block hash ${nonCanonicalMicroblock.parent_index_block_hash} rather ` +
-            `than the current canonical tip's index block hash ${chainTip.index_block_hash}.`
-        );
-        return;
-      }
-
-      // The block height is just one after the current chain tip height
-      const blockHeight = chainTip.block_height + 1;
-      dbMicroblocks = data.microblocks.map(mb => {
-        const dbMicroBlock: DbMicroblock = {
-          canonical: true,
-          microblock_canonical: true,
-          microblock_hash: mb.microblock_hash,
-          microblock_sequence: mb.microblock_sequence,
-          microblock_parent_hash: mb.microblock_parent_hash,
-          parent_index_block_hash: mb.parent_index_block_hash,
-          parent_burn_block_height: mb.parent_burn_block_height,
-          parent_burn_block_hash: mb.parent_burn_block_hash,
-          parent_burn_block_time: mb.parent_burn_block_time,
-          block_height: blockHeight,
-          parent_block_height: chainTip.block_height,
-          parent_block_hash: chainTip.block_hash,
-          index_block_hash: '', // Empty until microblock is confirmed in an anchor block
-          block_hash: '', // Empty until microblock is confirmed in an anchor block
-        };
-        return dbMicroBlock;
-      });
-
-      for (const entry of data.txs) {
-        // Note: the properties block_hash and burn_block_time are empty here because the anchor
-        // block with that data doesn't yet exist.
-        const dbTx: DbTxRaw = {
-          ...entry.tx,
-          parent_block_hash: chainTip.block_hash,
-          block_height: blockHeight,
-        };
-
-        // Set all the `block_height` properties for the related tx objects, since it wasn't known
-        // when creating the objects using only the stacks-node message payload.
-        txData.push({
-          tx: dbTx,
-          stxEvents: entry.stxEvents.map(e => ({ ...e, block_height: blockHeight })),
-          contractLogEvents: entry.contractLogEvents.map(e => ({
-            ...e,
-            block_height: blockHeight,
-          })),
-          stxLockEvents: entry.stxLockEvents.map(e => ({ ...e, block_height: blockHeight })),
-          ftEvents: entry.ftEvents.map(e => ({ ...e, block_height: blockHeight })),
-          nftEvents: entry.nftEvents.map(e => ({ ...e, block_height: blockHeight })),
-          smartContracts: entry.smartContracts.map(e => ({ ...e, block_height: blockHeight })),
-          names: entry.names.map(e => ({ ...e, registered_at: blockHeight })),
-          namespaces: entry.namespaces.map(e => ({ ...e, ready_block: blockHeight })),
-          pox2Events: entry.pox2Events.map(e => ({ ...e, block_height: blockHeight })),
-          pox3Events: entry.pox3Events.map(e => ({ ...e, block_height: blockHeight })),
-          pox4Events: entry.pox4Events.map(e => ({ ...e, block_height: blockHeight })),
-          pox5Events: entry.pox5Events.map(e => ({ ...e, block_height: blockHeight })),
-        });
-        deployedSmartContracts.push(...entry.smartContracts);
-        contractLogEvents.push(...entry.contractLogEvents);
-      }
-
-      await this.insertMicroblockData(sql, dbMicroblocks, txData);
-
-      // Find any microblocks that have been orphaned by this latest microblock chain tip.
-      // This function also checks that each microblock parent hash points to an existing microblock in the db.
-      const currentMicroblockTip = dbMicroblocks[dbMicroblocks.length - 1];
-      const unanchoredMicroblocksAtTip = await this.findUnanchoredMicroblocksAtChainTip(
-        sql,
-        currentMicroblockTip.parent_index_block_hash,
-        blockHeight,
-        currentMicroblockTip
-      );
-      if ('microblockGap' in unanchoredMicroblocksAtTip) {
-        // Throw in order to trigger a SQL tx rollback to undo and db writes so far, but catch, log, and ignore this specific error.
-        throw new MicroblockGapError(
-          `Gap in parent microblock stream for ${currentMicroblockTip.microblock_hash}, missing microblock ${unanchoredMicroblocksAtTip.missingMicroblockHash}, the oldest microblock ${unanchoredMicroblocksAtTip.oldestParentMicroblockHash} found in the chain has sequence ${unanchoredMicroblocksAtTip.oldestParentMicroblockSequence} rather than 0`
-        );
-      }
-      const { orphanedMicroblocks } = unanchoredMicroblocksAtTip;
-      if (orphanedMicroblocks.length > 0) {
-        // Handle microblocks reorgs here, these _should_ only be micro-forks off the same same
-        // unanchored chain tip, e.g. a leader orphaning it's own unconfirmed microblocks
-        const microOrphanResult = await this.handleMicroReorg(sql, {
-          isCanonical: true,
-          isMicroCanonical: false,
-          indexBlockHash: '',
-          blockHash: '',
-          burnBlockTime: -1,
-          burnBlockHeight: -1,
-          microblocks: orphanedMicroblocks,
-        });
-        const microOrphanedTxs = microOrphanResult.updatedTxs;
-        // Restore any micro-orphaned txs into the mempool
-        const restoredMempoolTxs = await this.restoreMempoolTxs(
-          sql,
-          microOrphanedTxs.map(tx => ({
-            txId: tx.tx_id,
-            sender_address: tx.sender_address,
-            sponsor_address: tx.sponsor_address,
-            sponsored: tx.sponsored,
-            nonce: tx.nonce,
-          }))
-        );
-        restoredMempoolTxs.restoredTxs.forEach(txId => {
-          logger.info(`Restored micro-orphaned tx to mempool ${txId}`);
-        });
-      }
-
-      const prunableTxs: TransactionHeader[] = data.txs.map(d => ({
-        txId: d.tx.tx_id,
-        sender_address: d.tx.sender_address,
-        sponsor_address: d.tx.sponsor_address,
-        sponsored: d.tx.sponsored,
-        nonce: d.tx.nonce,
-      }));
-      const removedTxsResult = await this.pruneMempoolTxs(sql, prunableTxs);
-      if (removedTxsResult.removedTxs.length > 0) {
-        logger.debug(
-          `Removed ${removedTxsResult.removedTxs.length} microblock-txs from mempool table during microblock ingestion`
-        );
-      }
-
-      if (!this.isEventReplay) {
-        this.debounceMempoolStat();
-      }
-      if (currentMicroblockTip.microblock_canonical)
-        await sql`
-          UPDATE chain_tip SET
-            microblock_hash = ${currentMicroblockTip.microblock_hash},
-            microblock_sequence = ${currentMicroblockTip.microblock_sequence},
-            microblock_count = microblock_count + ${data.microblocks.length},
-            tx_count_unanchored = ${
-              currentMicroblockTip.microblock_sequence === 0
-                ? sql`tx_count + ${data.txs.length}`
-                : sql`tx_count_unanchored + ${data.txs.length}`
-            },
-            bond_count = (
-              SELECT COUNT(*)::int
-              FROM bonds
-              WHERE canonical = true
-                AND microblock_canonical = true
-            )
-        `;
-    });
-
-    if (this.notifier) {
-      for (const microblock of dbMicroblocks) {
-        await this.notifier.sendMicroblock({ microblockHash: microblock.microblock_hash });
-      }
-      for (const tx of txData) {
-        await this.notifier.sendTx({ txId: tx.tx.tx_id });
-      }
-      for (const smartContract of deployedSmartContracts) {
-        await this.notifier.sendSmartContract({
-          contractId: smartContract.contract_id,
-        });
-      }
-      for (const logEvent of contractLogEvents) {
-        await this.notifier.sendSmartContractLog({
-          txId: logEvent.tx_id,
-          eventIndex: logEvent.event_index,
-        });
-      }
-      await this.emitAddressTxUpdates(txData);
-    }
-  }
-
   async fixBlockZeroData(sql: PgSqlClient, blockOne: DbBlock): Promise<void> {
     const tablesUpdates: Record<string, number> = {};
     const txsResult = await sql<TxQueryResult[]>`
@@ -2279,8 +1961,7 @@ export class PgWriteStore extends PgStore {
   /**
    * Advance the materialized total liquid STX supply counter on `chain_tip` with this block's
    * delta: mints − burns + matured miner coinbase rewards. Reorg corrections are applied in
-   * `markEntitiesCanonical` and `updateFtBalancesFromMicroblockReOrg`, mirroring the
-   * `ft_balances` 'stx' updates.
+   * `markEntitiesCanonical`, mirroring the `ft_balances` 'stx' updates.
    */
   async updateStxSupply(
     sql: PgSqlClient,
@@ -2347,131 +2028,6 @@ export class PgWriteStore extends PgStore {
       `;
       assert(res.count === batch.length, `Expecting ${batch.length} inserts, got ${res.count}`);
     }
-  }
-
-  async updateFtBalancesFromMicroblockReOrg(sql: PgSqlClient, microblockHashes: string[]) {
-    if (microblockHashes.length === 0) return;
-    await sql`
-      WITH updated_txs AS (
-        SELECT tx_id, sender_address, nonce, sponsor_address, fee_rate, sponsored, canonical, microblock_canonical
-        FROM txs
-        WHERE microblock_hash IN ${sql(microblockHashes)}
-      ),
-      affected_addresses AS (
-          SELECT
-            sender_address AS address,
-            fee_rate AS fee_change,
-            canonical,
-            microblock_canonical,
-            sponsored
-          FROM updated_txs
-          WHERE sponsored = false
-        UNION ALL
-          SELECT
-            sponsor_address AS address,
-            fee_rate AS fee_change,
-            canonical,
-            microblock_canonical,
-            sponsored
-          FROM updated_txs
-          WHERE sponsored = true
-      ),
-      balances_update AS (
-        SELECT
-          a.address,
-          SUM(CASE WHEN a.canonical AND a.microblock_canonical THEN -a.fee_change ELSE a.fee_change END) AS balance_change
-        FROM affected_addresses a
-        GROUP BY a.address
-      )
-      INSERT INTO ft_balances (address, token, balance)
-      SELECT b.address, 'stx', b.balance_change
-      FROM balances_update b
-      ON CONFLICT (address, token)
-      DO UPDATE
-      SET balance = ft_balances.balance + EXCLUDED.balance
-      RETURNING ft_balances.address
-    `;
-    await sql`
-      WITH updated_events AS (
-        SELECT sender, recipient, amount, asset_event_type_id, asset_identifier, canonical, microblock_canonical
-        FROM ft_events
-        WHERE microblock_hash IN ${sql(microblockHashes)}
-      ),
-      event_changes AS (
-        SELECT address, asset_identifier, SUM(balance_change) AS balance_change
-        FROM (
-            SELECT sender AS address, asset_identifier,
-              SUM(CASE WHEN canonical AND microblock_canonical THEN -amount ELSE amount END) AS balance_change
-            FROM updated_events
-            WHERE asset_event_type_id IN (1, 3) -- Transfers and Burns affect the sender's balance
-            GROUP BY sender, asset_identifier
-          UNION ALL
-            SELECT recipient AS address, asset_identifier,
-              SUM(CASE WHEN canonical AND microblock_canonical THEN amount ELSE -amount END) AS balance_change
-            FROM updated_events
-            WHERE asset_event_type_id IN (1, 2) -- Transfers and Mints affect the recipient's balance
-            GROUP BY recipient, asset_identifier
-        ) AS subquery
-        GROUP BY address, asset_identifier
-      )
-      INSERT INTO ft_balances (address, token, balance)
-      SELECT ec.address, ec.asset_identifier, ec.balance_change
-      FROM event_changes ec
-      ON CONFLICT (address, token)
-      DO UPDATE
-      SET balance = ft_balances.balance + EXCLUDED.balance
-      RETURNING ft_balances.address
-    `;
-    await sql`
-      WITH updated_events AS (
-        SELECT sender, recipient, amount, asset_event_type_id, canonical, microblock_canonical
-        FROM stx_events
-        WHERE microblock_hash IN ${sql(microblockHashes)}
-      ),
-      event_changes AS (
-        SELECT
-          address,
-          SUM(balance_change) AS balance_change
-        FROM (
-            SELECT
-              sender AS address,
-              SUM(CASE WHEN canonical AND microblock_canonical THEN -amount ELSE amount END) AS balance_change
-            FROM updated_events
-            WHERE asset_event_type_id IN (1, 3) -- Transfers and Burns affect the sender's balance
-            GROUP BY sender
-          UNION ALL
-            SELECT
-              recipient AS address,
-              SUM(CASE WHEN canonical AND microblock_canonical THEN amount ELSE -amount END) AS balance_change
-            FROM updated_events
-            WHERE asset_event_type_id IN (1, 2) -- Transfers and Mints affect the recipient's balance
-            GROUP BY recipient
-        ) AS subquery
-        GROUP BY address
-      ),
-      update_balances AS (
-        INSERT INTO ft_balances (address, token, balance)
-        SELECT ec.address, 'stx', ec.balance_change
-        FROM event_changes ec
-        ON CONFLICT (address, token)
-        DO UPDATE
-        SET balance = ft_balances.balance + EXCLUDED.balance
-        RETURNING ft_balances.address
-      ),
-      supply_change AS (
-        SELECT SUM(
-          CASE asset_event_type_id
-            WHEN 2 THEN (CASE WHEN canonical AND microblock_canonical THEN amount ELSE -amount END) -- Mint
-            WHEN 3 THEN (CASE WHEN canonical AND microblock_canonical THEN -amount ELSE amount END) -- Burn
-            ELSE 0
-          END
-        ) AS delta
-        FROM updated_events
-      )
-      UPDATE chain_tip
-      SET stx_supply = stx_supply + (SELECT delta FROM supply_change)
-      WHERE EXISTS (SELECT 1 FROM supply_change WHERE delta IS NOT NULL)
-    `;
   }
 
   async updateStxEvents(sql: PgSqlClient, entries: { tx: DbTx; stxEvents: DbStxEvent[] }[]) {
@@ -3040,12 +2596,7 @@ export class PgWriteStore extends PgStore {
     }
   }
 
-  async updateNftEvents(
-    sql: PgSqlClient,
-    tx: DbTx,
-    events: DbNftEvent[],
-    _microblock: boolean = false
-  ) {
+  async updateNftEvents(sql: PgSqlClient, tx: DbTx, events: DbNftEvent[]) {
     for (const batch of batchIterate(events, INSERT_BATCH_SIZE)) {
       const custodyInsertsMap = new Map<string, NftCustodyInsertValues>();
       const nftEventInserts: NftEventInsertValues[] = [];
@@ -3340,101 +2891,6 @@ export class PgWriteStore extends PgStore {
     for (const txId of attachments.map(a => a.txId)) {
       await this.notifier?.sendName({ nameInfo: txId });
     }
-  }
-
-  async updateMicroCanonical(
-    sql: PgSqlClient,
-    blockData: {
-      isCanonical: boolean;
-      blockHeight: number;
-      blockHash: string;
-      indexBlockHash: string;
-      parentIndexBlockHash: string;
-      parentMicroblockHash: string;
-      parentMicroblockSequence: number;
-      burnBlockTime: number;
-      burnBlockHeight: number;
-    }
-  ): Promise<{
-    acceptedMicroblockTxs: DbTx[];
-    orphanedMicroblockTxs: DbTx[];
-    acceptedMicroblocks: string[];
-    orphanedMicroblocks: string[];
-  }> {
-    // Find the parent microblock if this anchor block points to one. If not, perform a sanity check
-    // for expected block headers in this case: Anchored blocks that do not have parent microblock
-    // streams will have their parent microblock header hashes set to all 0's, and the parent
-    // microblock sequence number set to 0.
-    let acceptedMicroblockTip: DbMicroblock | undefined;
-    if (BigInt(blockData.parentMicroblockHash) === 0n) {
-      if (blockData.parentMicroblockSequence !== 0) {
-        throw new Error(
-          `Anchor block has a parent microblock sequence of ${blockData.parentMicroblockSequence} but the microblock parent of ${blockData.parentMicroblockHash}.`
-        );
-      }
-      acceptedMicroblockTip = undefined;
-    } else {
-      const microblockTipQuery = await sql<MicroblockQueryResult[]>`
-        SELECT ${sql(MICROBLOCK_COLUMNS)} FROM microblocks
-        WHERE parent_index_block_hash = ${blockData.parentIndexBlockHash}
-        AND microblock_hash = ${blockData.parentMicroblockHash}
-      `;
-      if (microblockTipQuery.length === 0) {
-        throw new Error(
-          `Could not find microblock ${blockData.parentMicroblockHash} while processing anchor block chain tip`
-        );
-      }
-      acceptedMicroblockTip = parseMicroblockQueryResult(microblockTipQuery[0]);
-    }
-
-    // Identify microblocks that were either accepted or orphaned by this anchor block.
-    const unanchoredMicroblocksAtTip = await this.findUnanchoredMicroblocksAtChainTip(
-      sql,
-      blockData.parentIndexBlockHash,
-      blockData.blockHeight,
-      acceptedMicroblockTip
-    );
-    if ('microblockGap' in unanchoredMicroblocksAtTip) {
-      throw new Error(
-        `Gap in parent microblock stream for block ${blockData.blockHash}, missing microblock ${unanchoredMicroblocksAtTip.missingMicroblockHash}, the oldest microblock ${unanchoredMicroblocksAtTip.oldestParentMicroblockHash} found in the chain has sequence ${unanchoredMicroblocksAtTip.oldestParentMicroblockSequence} rather than 0`
-      );
-    }
-
-    const { acceptedMicroblocks, orphanedMicroblocks } = unanchoredMicroblocksAtTip;
-
-    let orphanedMicroblockTxs: DbTx[] = [];
-    if (orphanedMicroblocks.length > 0) {
-      const microOrphanResult = await this.handleMicroReorg(sql, {
-        isCanonical: blockData.isCanonical,
-        isMicroCanonical: false,
-        indexBlockHash: blockData.indexBlockHash,
-        blockHash: blockData.blockHash,
-        burnBlockTime: blockData.burnBlockTime,
-        burnBlockHeight: blockData.burnBlockHeight,
-        microblocks: orphanedMicroblocks,
-      });
-      orphanedMicroblockTxs = microOrphanResult.updatedTxs;
-    }
-    let acceptedMicroblockTxs: DbTx[] = [];
-    if (acceptedMicroblocks.length > 0) {
-      const microAcceptResult = await this.handleMicroReorg(sql, {
-        isCanonical: blockData.isCanonical,
-        isMicroCanonical: true,
-        indexBlockHash: blockData.indexBlockHash,
-        blockHash: blockData.blockHash,
-        burnBlockTime: blockData.burnBlockTime,
-        burnBlockHeight: blockData.burnBlockHeight,
-        microblocks: acceptedMicroblocks,
-      });
-      acceptedMicroblockTxs = microAcceptResult.updatedTxs;
-    }
-
-    return {
-      acceptedMicroblockTxs,
-      orphanedMicroblockTxs,
-      acceptedMicroblocks,
-      orphanedMicroblocks,
-    };
   }
 
   async updateBurnchainBlock({
@@ -4247,170 +3703,10 @@ export class PgWriteStore extends PgStore {
     }
   }
 
-  async insertMicroblockData(
-    sql: PgSqlClient,
-    microblocks: DbMicroblock[],
-    txs: DataStoreTxEventData[]
-  ): Promise<void> {
-    for (const mb of microblocks) {
-      const values: MicroblockInsertValues = {
-        canonical: mb.canonical,
-        microblock_canonical: mb.microblock_canonical,
-        microblock_hash: mb.microblock_hash,
-        microblock_sequence: mb.microblock_sequence,
-        microblock_parent_hash: mb.microblock_parent_hash,
-        parent_index_block_hash: mb.parent_index_block_hash,
-        block_height: mb.block_height,
-        parent_block_height: mb.parent_block_height,
-        parent_block_hash: mb.parent_block_hash,
-        index_block_hash: mb.index_block_hash,
-        block_hash: mb.block_hash,
-        parent_burn_block_height: mb.parent_burn_block_height,
-        parent_burn_block_hash: mb.parent_burn_block_hash,
-        parent_burn_block_time: mb.parent_burn_block_time,
-      };
-      const mbResult = await sql`
-        INSERT INTO microblocks ${sql(values)}
-        ON CONFLICT ON CONSTRAINT unique_microblock_hash DO NOTHING
-      `;
-      if (mbResult.count !== 1) {
-        const errMsg = `A duplicate microblock was attempted to be inserted into the microblocks table: ${mb.microblock_hash}`;
-        logger.warn(errMsg);
-        // A duplicate microblock entry really means we received a duplicate `/new_microblocks` node event.
-        // We will ignore this whole microblock data entry in this case.
-        return;
-      }
-    }
-
-    if (txs.length > 0) {
-      const q = new PgWriteQueue();
-      q.enqueue(async () => {
-        const rowsUpdated = await this.updateTx(
-          sql,
-          txs.map(t => t.tx)
-        );
-        if (rowsUpdated !== txs.length)
-          throw new Error(
-            `Unexpected amount of rows updated for microblock tx insert: ${rowsUpdated}, expecting ${txs.length}`
-          );
-      });
-      q.enqueue(() => this.updateStxEvents(sql, txs));
-      q.enqueue(() => this.updatePrincipalTxs(sql, txs));
-      q.enqueue(() => this.updateSmartContractEvents(sql, txs));
-      q.enqueue(() => this.updatePox4SyntheticEvents(sql, 'pox2_events', txs));
-      q.enqueue(() => this.updatePox4SyntheticEvents(sql, 'pox3_events', txs));
-      q.enqueue(() => this.updatePox4SyntheticEvents(sql, 'pox4_events', txs));
-      q.enqueue(() => this.updateStxLockEvents(sql, txs));
-      q.enqueue(() => this.updateFtEvents(sql, txs));
-      for (const entry of txs) {
-        q.enqueue(() => this.updateNftEvents(sql, entry.tx, entry.nftEvents, true));
-        q.enqueue(() => this.updateSmartContracts(sql, entry.tx, entry.smartContracts));
-        q.enqueue(() => this.updateNamespaces(sql, entry.tx, entry.namespaces));
-        q.enqueue(() => this.updateNames(sql, entry.tx, entry.names));
-      }
-      await q.done();
-    }
-  }
-
-  async handleMicroReorg(
-    sql: PgSqlClient,
-    args: {
-      isCanonical: boolean;
-      isMicroCanonical: boolean;
-      indexBlockHash: string;
-      blockHash: string;
-      burnBlockTime: number;
-      burnBlockHeight: number;
-      microblocks: string[];
-    }
-  ): Promise<{ updatedTxs: DbTx[] }> {
-    // Flag orphaned microblock rows as `microblock_canonical=false`
-    const updatedMicroblocksQuery = await sql`
-      UPDATE microblocks
-      SET microblock_canonical = ${args.isMicroCanonical}, canonical = ${args.isCanonical},
-        index_block_hash = ${args.indexBlockHash}, block_hash = ${args.blockHash}
-      WHERE microblock_hash IN ${sql(args.microblocks)}
-    `;
-    if (updatedMicroblocksQuery.count !== args.microblocks.length) {
-      throw new Error(`Unexpected number of rows updated when setting microblock_canonical`);
-    }
-
-    // Identify microblock transactions that were orphaned or accepted by this anchor block,
-    // and update `microblock_canonical`, `canonical`, as well as anchor block data that may be missing
-    // for unanchored entires.
-    const updatedMbTxsQuery = await sql<TxQueryResult[]>`
-      UPDATE txs
-      SET microblock_canonical = ${args.isMicroCanonical},
-        canonical = ${args.isCanonical}, index_block_hash = ${args.indexBlockHash},
-        block_hash = ${args.blockHash}, burn_block_time = ${args.burnBlockTime},
-        burn_block_height = ${args.burnBlockHeight}
-      WHERE microblock_hash IN ${sql(args.microblocks)}
-        AND (index_block_hash = ${args.indexBlockHash} OR index_block_hash = '\\x'::bytea)
-      RETURNING ${sql(TX_COLUMNS)}
-    `;
-    // Any txs restored need to be pruned from the mempool
-    const updatedMbTxs = updatedMbTxsQuery.map(r => parseTxQueryResult(r));
-    const txsToPrune: TransactionHeader[] = updatedMbTxs
-      .filter(tx => tx.canonical && tx.microblock_canonical)
-      .map(tx => ({
-        txId: tx.tx_id,
-        sender_address: tx.sender_address,
-        sponsor_address: tx.sponsor_address,
-        sponsored: tx.sponsored,
-        nonce: tx.nonce,
-      }));
-    const removedTxsResult = await this.pruneMempoolTxs(sql, txsToPrune);
-    if (removedTxsResult.removedTxs.length > 0) {
-      logger.debug(
-        `Removed ${removedTxsResult.removedTxs.length} txs from mempool table during micro-reorg handling`
-      );
-    }
-
-    // Update the `index_block_hash` and `microblock_canonical` properties on all the tables containing other
-    // microblock-tx metadata that have been accepted or orphaned in this anchor block.
-    if (updatedMbTxs.length > 0) {
-      const txIds = updatedMbTxs.map(tx => tx.tx_id);
-      for (const associatedTableName of TX_METADATA_TABLES) {
-        await sql`
-          UPDATE ${sql(associatedTableName)}
-          SET microblock_canonical = ${args.isMicroCanonical},
-            canonical = ${args.isCanonical}, index_block_hash = ${args.indexBlockHash}
-          WHERE microblock_hash IN ${sql(args.microblocks)}
-            AND (index_block_hash = ${args.indexBlockHash} OR index_block_hash = '\\x'::bytea)
-            AND tx_id IN ${sql(txIds)}
-        `;
-      }
-      await sql`
-        UPDATE principal_txs
-        SET microblock_canonical = ${args.isMicroCanonical},
-          canonical = ${args.isCanonical}, index_block_hash = ${args.indexBlockHash}
-        WHERE microblock_hash IN ${sql(args.microblocks)}
-          AND (index_block_hash = ${args.indexBlockHash} OR index_block_hash = '\\x'::bytea)
-          AND tx_id IN ${sql(txIds)}
-      `;
-      await sql`
-        UPDATE principal_tx_balance_changes
-        SET microblock_canonical = ${args.isMicroCanonical},
-          canonical = ${args.isCanonical}, index_block_hash = ${args.indexBlockHash}
-        WHERE microblock_hash IN ${sql(args.microblocks)}
-          AND (index_block_hash = ${args.indexBlockHash} OR index_block_hash = '\\x'::bytea)
-          AND tx_id IN ${sql(txIds)}
-      `;
-    }
-
-    // Update unanchored tx count in `chain_tip` table
-    const txCountDelta = updatedMbTxs.length * (args.isMicroCanonical ? 1 : -1);
-    await sql`
-      UPDATE chain_tip SET tx_count_unanchored = tx_count_unanchored + ${txCountDelta}
-    `;
-
-    return { updatedTxs: updatedMbTxs };
-  }
-
   /**
-   * Refreshes NFT custody data for events within a block or series of microblocks.
+   * Refreshes NFT custody data for events within a block.
    * @param sql - SQL client
-   * @param args - Block and microblock hashes
+   * @param args - Block index hash
    */
   async updateNftCustodyFromReOrg(
     sql: PgSqlClient,
@@ -4457,73 +3753,6 @@ export class PgWriteStore extends PgStore {
         block_height = EXCLUDED.block_height
     `;
   }
-
-  /**
-   * Fetches from the `microblocks` table with a given `parent_index_block_hash` and a known
-   * latest unanchored microblock tip. Microblocks that are chained to the given tip are
-   * returned as accepted, and all others are returned as orphaned/rejected. This function
-   * only performs the lookup, it does not perform any updates to the db.
-   * If a gap in the microblock stream is detected, that error information is returned instead.
-   * @param microblockChainTip - undefined if processing an anchor block that doesn't point to a parent microblock.
-   */
-  async findUnanchoredMicroblocksAtChainTip(
-    sql: PgSqlClient,
-    parentIndexBlockHash: string,
-    blockHeight: number,
-    microblockChainTip: DbMicroblock | undefined
-  ): Promise<
-    | { acceptedMicroblocks: string[]; orphanedMicroblocks: string[] }
-    | {
-        microblockGap: true;
-        missingMicroblockHash: string;
-        oldestParentMicroblockHash: string;
-        oldestParentMicroblockSequence: number;
-      }
-  > {
-    // Get any microblocks that this anchor block is responsible for accepting or rejecting.
-    // Note: we don't filter on `microblock_canonical=true` here because that could have been flipped in a previous anchor block
-    // which could now be in the process of being re-org'd.
-    const mbQuery = await sql<MicroblockQueryResult[]>`
-      SELECT ${sql(MICROBLOCK_COLUMNS)}
-      FROM microblocks
-      WHERE (parent_index_block_hash = ${parentIndexBlockHash}
-        OR block_height = ${blockHeight})
-    `;
-    const candidateMicroblocks = mbQuery.map(row => parseMicroblockQueryResult(row));
-
-    // Accepted/orphaned status needs to be determined by walking through the microblock hash chain rather than a simple sequence number comparison,
-    // because we can't depend on a `microblock_canonical=true` filter in the above query, so there could be microblocks with the same sequence number
-    // if a leader has self-orphaned its own microblocks.
-    let prevMicroblock: DbMicroblock | undefined = microblockChainTip;
-    const acceptedMicroblocks = new Set<string>();
-    const orphanedMicroblocks = new Set<string>();
-    while (prevMicroblock) {
-      acceptedMicroblocks.add(prevMicroblock.microblock_hash);
-      const foundMb = candidateMicroblocks.find(
-        mb => mb.microblock_hash === prevMicroblock?.microblock_parent_hash
-      );
-      // Sanity check that the first microblock in the chain is sequence 0
-      if (!foundMb && prevMicroblock.microblock_sequence !== 0) {
-        return {
-          microblockGap: true,
-          missingMicroblockHash: prevMicroblock?.microblock_parent_hash,
-          oldestParentMicroblockHash: prevMicroblock.microblock_hash,
-          oldestParentMicroblockSequence: prevMicroblock.microblock_sequence,
-        };
-      }
-      prevMicroblock = foundMb;
-    }
-    candidateMicroblocks.forEach(mb => {
-      if (!acceptedMicroblocks.has(mb.microblock_hash)) {
-        orphanedMicroblocks.add(mb.microblock_hash);
-      }
-    });
-    return {
-      acceptedMicroblocks: [...acceptedMicroblocks],
-      orphanedMicroblocks: [...orphanedMicroblocks],
-    };
-  }
-
   /**
    * Restore transactions in the mempool table. This should be called when mined transactions are
    * marked from canonical to non-canonical.
@@ -5460,32 +4689,18 @@ export class PgWriteStore extends PgStore {
 
   /**
    * Marks a single currently-canonical block (and all its associated entities) as non-canonical,
-   * restoring its transactions to the mempool. Microblock canonical-status results are returned to
-   * the caller instead of being tallied into `updatedEntities` so callers can dedupe them against
-   * other canonical-flip operations happening as part of the same re-org (see
-   * `restoreOrphanedChain`).
+   * restoring its transactions to the mempool.
    */
   private async markBlockNonCanonical(
     sql: PgSqlClient,
     block: DbBlock,
     updatedEntities: ReOrgUpdatedEntities
-  ): Promise<{ orphanedMicroblocks: string[]; acceptedMicroblocks: string[] }> {
+  ): Promise<void> {
     await sql`
       UPDATE blocks
       SET canonical = false
       WHERE index_block_hash = ${block.index_block_hash} AND canonical = true
     `;
-    const microCanonicalUpdateResult = await this.updateMicroCanonical(sql, {
-      isCanonical: false,
-      blockHeight: block.block_height,
-      blockHash: block.block_hash,
-      indexBlockHash: block.index_block_hash,
-      parentIndexBlockHash: block.parent_index_block_hash,
-      parentMicroblockHash: block.parent_microblock_hash,
-      parentMicroblockSequence: block.parent_microblock_sequence,
-      burnBlockTime: block.burn_block_time,
-      burnBlockHeight: block.burn_block_height,
-    });
     updatedEntities.markedNonCanonical.blocks++;
     updatedEntities.markedNonCanonical.blockHeaders.unshift({
       index_block_hash: block.index_block_hash,
@@ -5503,10 +4718,6 @@ export class PgWriteStore extends PgStore {
       markNonCanonicalResult.txsMarkedNonCanonical
     );
     updatedEntities.restoredMempoolTxs += restoredMempoolTxs.restoredTxs.length;
-    return {
-      orphanedMicroblocks: microCanonicalUpdateResult.orphanedMicroblocks,
-      acceptedMicroblocks: microCanonicalUpdateResult.acceptedMicroblocks,
-    };
   }
 
   /**
@@ -5550,59 +4761,9 @@ export class PgWriteStore extends PgStore {
         AND index_block_hash != ${indexBlockHash} AND canonical = true
     `;
 
-    const microblocksOrphaned = new Set<string>();
-    const microblocksAccepted = new Set<string>();
-
-    if (orphanedBlockResult.length > 0) {
-      const orphanedBlocks = orphanedBlockResult.map(b => parseBlockQueryResult(b));
-      for (const orphanedBlock of orphanedBlocks) {
-        const microCanonicalUpdateResult = await this.markBlockNonCanonical(
-          sql,
-          orphanedBlock,
-          updatedEntities
-        );
-        microCanonicalUpdateResult.orphanedMicroblocks.forEach(mb => {
-          microblocksOrphaned.add(mb);
-          microblocksAccepted.delete(mb);
-        });
-        microCanonicalUpdateResult.acceptedMicroblocks.forEach(mb => {
-          microblocksOrphaned.delete(mb);
-          microblocksAccepted.add(mb);
-        });
-      }
+    for (const orphanedBlock of orphanedBlockResult) {
+      await this.markBlockNonCanonical(sql, parseBlockQueryResult(orphanedBlock), updatedEntities);
     }
-
-    // The canonical microblock tables _must_ be restored _after_ orphaning all other blocks at a
-    // given height, because there is only 1 row per microblock hash, and both the orphaned blocks
-    // at this height and the canonical block can be pointed to the same microblocks.
-    const restoredBlock = parseBlockQueryResult(restoredBlockResult[0]);
-    const microCanonicalUpdateResult = await this.updateMicroCanonical(sql, {
-      isCanonical: true,
-      blockHeight: restoredBlock.block_height,
-      blockHash: restoredBlock.block_hash,
-      indexBlockHash: restoredBlock.index_block_hash,
-      parentIndexBlockHash: restoredBlock.parent_index_block_hash,
-      parentMicroblockHash: restoredBlock.parent_microblock_hash,
-      parentMicroblockSequence: restoredBlock.parent_microblock_sequence,
-      burnBlockTime: restoredBlock.burn_block_time,
-      burnBlockHeight: restoredBlock.burn_block_height,
-    });
-    microCanonicalUpdateResult.orphanedMicroblocks.forEach(mb => {
-      microblocksOrphaned.add(mb);
-      microblocksAccepted.delete(mb);
-    });
-    microCanonicalUpdateResult.acceptedMicroblocks.forEach(mb => {
-      microblocksOrphaned.delete(mb);
-      microblocksAccepted.add(mb);
-    });
-    updatedEntities.markedCanonical.microblocks += microblocksAccepted.size;
-    updatedEntities.markedCanonical.microblockHashes.push(
-      ...microCanonicalUpdateResult.acceptedMicroblocks
-    );
-    updatedEntities.markedNonCanonical.microblocks += microblocksOrphaned.size;
-    updatedEntities.markedNonCanonical.microblockHashes.push(
-      ...microCanonicalUpdateResult.orphanedMicroblocks
-    );
 
     const markCanonicalResult = await this.markEntitiesCanonical(
       sql,
@@ -5657,10 +4818,7 @@ export class PgWriteStore extends PgStore {
       );
     }
     for (const blockToOrphan of blocksToOrphanResult) {
-      const block = parseBlockQueryResult(blockToOrphan);
-      const { orphanedMicroblocks } = await this.markBlockNonCanonical(sql, block, updatedEntities);
-      updatedEntities.markedNonCanonical.microblocks += orphanedMicroblocks.length;
-      updatedEntities.markedNonCanonical.microblockHashes.push(...orphanedMicroblocks);
+      await this.markBlockNonCanonical(sql, parseBlockQueryResult(blockToOrphan), updatedEntities);
     }
   }
 
@@ -5787,7 +4945,6 @@ export class PgWriteStore extends PgStore {
     await sql`
       UPDATE chain_tip SET
         tx_count = tx_count + ${txCountDelta},
-        tx_count_unanchored = tx_count_unanchored + ${txCountDelta},
         bond_count = (
           SELECT COUNT(*)::int
           FROM bonds

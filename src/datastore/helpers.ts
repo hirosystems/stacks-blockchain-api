@@ -1430,7 +1430,6 @@ export function isNakamotoBlock(block: Pick<DbBlock, 'signer_bitvec'>): boolean 
 
 export function markBlockUpdateDataAsNonCanonical(data: DataStoreBlockUpdateData): void {
   data.block = { ...data.block, canonical: false };
-  data.microblocks = data.microblocks.map(mb => ({ ...mb, canonical: false }));
   data.txs = data.txs.map(tx => ({
     tx: { ...tx.tx, canonical: false },
     stxLockEvents: tx.stxLockEvents.map(e => ({ ...e, canonical: false })),
@@ -1454,8 +1453,6 @@ export function newReOrgUpdatedEntities(): ReOrgUpdatedEntities {
     markedCanonical: {
       blockHeaders: [],
       blocks: 0,
-      microblockHashes: [],
-      microblocks: 0,
       minerRewards: 0,
       txs: 0,
       stxLockEvents: 0,
@@ -1476,8 +1473,6 @@ export function newReOrgUpdatedEntities(): ReOrgUpdatedEntities {
     markedNonCanonical: {
       blockHeaders: [],
       blocks: 0,
-      microblockHashes: [],
-      microblocks: 0,
       minerRewards: 0,
       txs: 0,
       stxLockEvents: 0,
