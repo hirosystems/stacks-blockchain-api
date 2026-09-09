@@ -16,7 +16,6 @@
     "test:api:event-server": "NODE_ENV=test node --import tsx --test --test-global-setup=./tests/api/setup.ts --test-concurrency=1 ./tests/api/event-server/**/*.test.ts",
     "test:api:faucets": "NODE_ENV=test node --import tsx --test --test-global-setup=./tests/api/setup.ts --test-concurrency=1 ./tests/api/faucets/**/*.test.ts",
     "test:api:mempool": "NODE_ENV=test node --import tsx --test --test-global-setup=./tests/api/setup.ts --test-concurrency=1 ./tests/api/mempool/**/*.test.ts",
-    "test:api:microblocks": "NODE_ENV=test node --import tsx --test --test-global-setup=./tests/api/setup.ts --test-concurrency=1 ./tests/api/microblocks/**/*.test.ts",
     "test:api:principal": "NODE_ENV=test node --import tsx --test --test-global-setup=./tests/api/setup.ts --test-concurrency=1 ./tests/api/principal/**/*.test.ts",
     "test:api:principal-v3": "NODE_ENV=test node --max-old-space-size=8192 --import tsx --test --test-global-setup=./tests/api/setup.ts --test-concurrency=1 ./tests/api/principal-v3/**/*.test.ts",
     "test:api:redis": "NODE_ENV=test node --import tsx --test --test-global-setup=./tests/api/setup.ts --test-concurrency=1 ./tests/api/redis/**/*.test.ts",
