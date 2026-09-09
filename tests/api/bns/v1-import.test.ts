@@ -219,7 +219,6 @@ describe('BNS V1 import', () => {
 
     const dbquery = await db.getSubdomain({
       subdomain: `flushreset.id.blockstack`,
-      includeUnanchored: false,
       chainId: STACKS_TESTNET.chainId,
     });
     assert(dbquery.found);

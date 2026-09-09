@@ -15,7 +15,7 @@ export const AddressNoncesSchema = Type.Object(
     last_executed_tx_nonce: Nullable(
       Type.Integer({
         description:
-          'The latest nonce found within transactions sent by this address, including unanchored microblock transactions. Will be null if there are no current transactions for this address.',
+          'The latest nonce found within confirmed transactions sent by this address. Will be null if there are no current transactions for this address.',
       })
     ),
     possible_next_nonce: Type.Integer({
@@ -33,7 +33,7 @@ export const AddressNoncesSchema = Type.Object(
   {
     title: 'AddressNonces',
     description:
-      'The latest nonce values used by an account by inspecting the mempool, microblock transactions, and anchored transactions',
+      'The latest nonce values used by an account by inspecting the mempool and confirmed transactions',
   }
 );
 export type AddressNonces = Static<typeof AddressNoncesSchema>;

@@ -1,6 +1,6 @@
 import { bnsNameCV, httpPostRequest } from '../../../src/helpers.ts';
 import { EventStreamServer, startEventServer } from '../../../src/event-stream/event-server.ts';
-import { TestBlockBuilder, TestMicroblockStreamBuilder } from '../test-builders.ts';
+import { TestBlockBuilder } from '../test-builders.ts';
 import { DbAssetEventTypeId, DbBnsZoneFile } from '../../../src/datastore/common.ts';
 import { PgWriteStore } from '../../../src/datastore/pg-write-store.ts';
 import { PgSqlClient } from '@stacks/api-toolkit';
@@ -43,15 +43,6 @@ describe('BNS event server tests', () => {
       .addTx()
       .build();
     await db.update(block);
-    const microblock = new TestMicroblockStreamBuilder()
-      .addMicroblock({
-        microblock_hash: '0x8455c986ef89d09968b96fee0ef5b4625aa3860aa68e70123efa129f48e55c6b',
-        microblock_sequence: 0,
-        parent_index_block_hash:
-          '0x29fe7ba9674b9196fefa28764a35a4603065dc25c9dcf83c56648066f36a8dce',
-      })
-      .build();
-    await db.updateMicroblocks(microblock);
     const payload = {
       events: [
         {
@@ -129,10 +120,10 @@ describe('BNS event server tests', () => {
       throwOnNotOK: true,
     });
 
-    const namespaces = await db.getNamespaceList({ includeUnanchored: true });
+    const namespaces = await db.getNamespaceList();
     assert.deepEqual(namespaces.results, ['fren']);
 
-    const namespace = await db.getNamespace({ namespace: 'fren', includeUnanchored: true });
+    const namespace = await db.getNamespace({ namespace: 'fren' });
     assert.equal(namespace.found, true);
     assert.equal(namespace.result?.namespace_id, 'fren');
     assert.equal(namespace.result?.lifetime, 52560);
@@ -171,19 +162,9 @@ describe('BNS event server tests', () => {
       })
       .build();
     await db.update(block);
-    const microblock = new TestMicroblockStreamBuilder()
-      .addMicroblock({
-        microblock_hash: '0xccdd11fef1792979bc54a9b686e9cc4fc3d64f2a9b2d8ee9d34fe27bfab783a4',
-        microblock_sequence: 0,
-        parent_index_block_hash:
-          '0xad9403fc8d8eaef47816555cac51dca9d934384aa9b2581f9b9085509b2af915',
-      })
-      .build();
-    await db.updateMicroblocks(microblock);
 
     const name1 = await db.getName({
       name: 'dayslikewater.btc',
-      includeUnanchored: true,
     });
     assert.equal(name1.found, true);
     assert.equal(name1.result?.namespace_id, 'btc');
@@ -294,11 +275,13 @@ describe('BNS event server tests', () => {
 
     const name2 = await db.getName({
       name: 'dayslikewater.btc',
-      includeUnanchored: true,
     });
     assert.equal(name2.found, true);
     assert.equal(name2.result?.namespace_id, 'btc');
-    assert.equal(name2.result?.tx_id, '0xa75ebee2c824c4943bf8494b101ea7ee7d44191b4a8f761582ce99ef28befb19');
+    assert.equal(
+      name2.result?.tx_id,
+      '0xa75ebee2c824c4943bf8494b101ea7ee7d44191b4a8f761582ce99ef28befb19'
+    );
     assert.equal(name2.result?.status, 'name-transfer');
     assert.equal(name2.result?.expire_block, 1001); // Unchanged as it was not renewed
     assert.equal(name2.result?.address, 'SP1TY00PDWJVNVEX7H7KJGS2K2YXHTQMY8C0G1NVP');
@@ -335,19 +318,9 @@ describe('BNS event server tests', () => {
       })
       .build();
     await db.update(block);
-    const microblock = new TestMicroblockStreamBuilder()
-      .addMicroblock({
-        microblock_hash: '0x640362ec47c40de3337491993e42efe60d05187431633ab03c3f5d33e70d1f8e',
-        microblock_sequence: 0,
-        parent_index_block_hash:
-          '0xaec282925b5096c0bd98588d25a97e134bcc4f19b6600859fa267cf0ee4eaf2d',
-      })
-      .build();
-    await db.updateMicroblocks(microblock);
 
     const name1 = await db.getName({
       name: 'friedger.id',
-      includeUnanchored: true,
     });
     assert.equal(name1.found, true);
     assert.equal(name1.result?.namespace_id, 'id');
@@ -421,11 +394,13 @@ describe('BNS event server tests', () => {
 
     const name2 = await db.getName({
       name: 'friedger.id',
-      includeUnanchored: true,
     });
     assert.equal(name2.found, true);
     assert.equal(name2.result?.namespace_id, 'id');
-    assert.equal(name2.result?.tx_id, '0xf037c8da8210e2a348bbecd3bc44901de875d3774c5fce49cb75d95f2dc2ca4d');
+    assert.equal(
+      name2.result?.tx_id,
+      '0xf037c8da8210e2a348bbecd3bc44901de875d3774c5fce49cb75d95f2dc2ca4d'
+    );
     assert.equal(name2.result?.status, 'name-renewal');
     assert.equal(name2.result?.expire_block, 1002); // Updated correctly
     assert.equal(name2.result?.address, 'SP3GWTV1SMF9HDS4VY5NMM833CHH266W4YBASVYMZ');
@@ -524,7 +499,7 @@ describe('BNS event server tests', () => {
       throwOnNotOK: true,
     });
 
-    const name = await db.getName({ name: 'jnj.btc', includeUnanchored: true });
+    const name = await db.getName({ name: 'jnj.btc' });
     assert.equal(name.found, true);
     assert.equal(name.result?.zonefile_hash, '9198e0b61a029671e53bd59aa229e7ae05af35a3');
     assert.equal(name.result?.tx_id, '0x1212');
@@ -602,7 +577,10 @@ describe('BNS event server tests', () => {
     // To validate table data we'll query it directly. There should only be one zonefile.
     const result = await client<DbBnsZoneFile[]>`SELECT * FROM zonefiles`;
     assert.equal(result.count, 1);
-    assert.equal(result[0].zonefile, '$ORIGIN jnj.btc.\n$TTL 3600\n_http._tcp\tIN\tURI\t10\t1\t"https://gaia.blockstack.org/hub/1z8AzyhC42n8TvoFaUL2nscaCGHqQQWUr/profile.json"\n\n');
+    assert.equal(
+      result[0].zonefile,
+      '$ORIGIN jnj.btc.\n$TTL 3600\n_http._tcp\tIN\tURI\t10\t1\t"https://gaia.blockstack.org/hub/1z8AzyhC42n8TvoFaUL2nscaCGHqQQWUr/profile.json"\n\n'
+    );
   });
 
   test('name-register and name-transfer for several names in one block', async () => {
@@ -624,15 +602,6 @@ describe('BNS event server tests', () => {
       })
       .build();
     await db.update(block);
-    const microblock = new TestMicroblockStreamBuilder()
-      .addMicroblock({
-        microblock_hash: '0xc44f4e3ed66bacaaa5cbe5b9c35b4e2ce2467933b57974fa03b539a2b2b88063',
-        microblock_sequence: 0,
-        parent_index_block_hash:
-          '0x8cc3d58350082f3161ae34deaad77c1c8887947ff0295be59ec5caccf984fe78',
-      })
-      .build();
-    await db.updateMicroblocks(microblock);
 
     const payload = {
       // In the block message, events are not sorted by `event_index`.
@@ -856,11 +825,13 @@ describe('BNS event server tests', () => {
 
     const name = await db.getName({
       name: 'cricketwireless.btc',
-      includeUnanchored: true,
     });
     assert.equal(name.found, true);
     assert.equal(name.result?.namespace_id, 'btc');
-    assert.equal(name.result?.tx_id, '0x28715dc6e09e75cec4d26d6a52426c8cc13c6e5a16d5252886c33ffc6bcceef7');
+    assert.equal(
+      name.result?.tx_id,
+      '0x28715dc6e09e75cec4d26d6a52426c8cc13c6e5a16d5252886c33ffc6bcceef7'
+    );
     assert.equal(name.result?.status, 'name-transfer');
     assert.equal(name.result?.address, 'SP1QFKSVQP3J2PF45KFFCVBR4Q24Y09G0PJDECHS7');
   });
@@ -884,15 +855,6 @@ describe('BNS event server tests', () => {
       })
       .build();
     await db.update(block);
-    const microblock = new TestMicroblockStreamBuilder()
-      .addMicroblock({
-        microblock_hash: '0x2ad76cc1eadb6e0dd155a7b5ac82ff81a2c664552dacb99a524a410856330529',
-        microblock_sequence: 0,
-        parent_index_block_hash:
-          '0x82239cdbd3903ca032d300101990120947132a8a005a92d7a1cdcd5a61b35ba1',
-      })
-      .build();
-    await db.updateMicroblocks(microblock);
 
     const payload = {
       events: [
@@ -1041,23 +1003,24 @@ describe('BNS event server tests', () => {
 
     const name = await db.getName({
       name: 'ape.mega',
-      includeUnanchored: true,
     });
     assert.equal(name.found, true);
     assert.equal(name.result?.namespace_id, 'mega');
-    assert.equal(name.result?.tx_id, '0xf9f9144793f6d4da9aba92a54ab601eb23bfe7f44c1edb29c2920bf5e7d2ac16');
+    assert.equal(
+      name.result?.tx_id,
+      '0xf9f9144793f6d4da9aba92a54ab601eb23bfe7f44c1edb29c2920bf5e7d2ac16'
+    );
     assert.equal(name.result?.status, 'name-transfer');
     assert.equal(name.result?.expire_block, 1002);
     assert.equal(name.result?.address, 'SPV48Q8E5WP4TCQ63E9TV6KF9R4HP01Z8WS3FBTG');
 
-    const list = await db.getNamesList({ page: 0, includeUnanchored: true });
+    const list = await db.getNamesList({ page: 0 });
     assert.equal(list.results.length, 1);
     assert.deepEqual(list.results, ['ape.mega']);
 
     const namespaceList = await db.getNamespaceNamesList({
       namespace: 'mega',
       page: 0,
-      includeUnanchored: true,
     });
     assert.equal(namespaceList.results.length, 1);
     assert.deepEqual(namespaceList.results, ['ape.mega']);

@@ -135,7 +135,6 @@ describe('smart contract tests', () => {
     };
     await db.update({
       block: block1,
-      microblocks: [],
       minerRewards: [],
       txs: [
         {
@@ -281,7 +280,6 @@ describe('smart contract tests', () => {
 
     await db.update({
       block: block1,
-      microblocks: [],
       minerRewards: [],
       txs: [
         {
@@ -399,7 +397,6 @@ describe('smart contract tests', () => {
 
     await db.update({
       block: block1,
-      microblocks: [],
       minerRewards: [],
       txs: [
         {
@@ -1593,7 +1590,6 @@ describe('smart contract tests', () => {
     };
     await db.update({
       block: block1,
-      microblocks: [],
       minerRewards: [],
       txs: [
         {

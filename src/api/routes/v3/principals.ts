@@ -601,7 +601,7 @@ export const PrincipalsRoutes: FastifyPluginAsync<
         operationId: 'get_principal_nonces',
         summary: 'Get principal nonces',
         description:
-          "Get a Stacks account's latest nonce state by inspecting its confirmed (anchored + microblock) transactions and the mempool, including the nonce to use for its next transaction. Only standard principals have nonces; contract principals are not valid.",
+          "Get a Stacks account's latest nonce state by inspecting its confirmed transactions and the mempool, including the nonce to use for its next transaction. Only standard principals have nonces; contract principals are not valid.",
         tags: ['Accounts'],
         params: Type.Object({ principal: AddressSchema }),
         response: {

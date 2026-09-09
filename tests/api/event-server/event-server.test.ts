@@ -4,7 +4,7 @@ import { EventStreamServer, startEventServer } from '../../../src/event-stream/e
 import { PgWriteStore } from '../../../src/datastore/pg-write-store.ts';
 import { PgSqlClient } from '@stacks/api-toolkit';
 import { migrate } from '../../test-helpers.ts';
-import { TestBlockBuilder, TestMicroblockStreamBuilder } from '../test-builders.ts';
+import { TestBlockBuilder } from '../test-builders.ts';
 import assert from 'node:assert/strict';
 import { afterEach, beforeEach, describe, test } from 'node:test';
 import { STACKS_MAINNET } from '@stacks/network';
@@ -54,15 +54,6 @@ describe('api event-server tests', () => {
       .addTx()
       .build();
     await db.update(block);
-    const microblock = new TestMicroblockStreamBuilder()
-      .addMicroblock({
-        microblock_hash: '0x8455c986ef89d09968b96fee0ef5b4625aa3860aa68e70123efa129f48e55c6b',
-        microblock_sequence: 0,
-        parent_index_block_hash:
-          '0x29fe7ba9674b9196fefa28764a35a4603065dc25c9dcf83c56648066f36a8dce',
-      })
-      .build();
-    await db.updateMicroblocks(microblock);
     const payload = {
       events: [
         {

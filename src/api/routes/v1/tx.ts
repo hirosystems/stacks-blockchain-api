@@ -34,7 +34,6 @@ import {
   OrderParamSchema,
   PrincipalSchema,
   TransactionIdParamSchema,
-  UnanchoredParamSchema,
 } from '../../schemas/v1/params.js';
 import {
   MempoolTransaction,
@@ -74,7 +73,6 @@ export const TxRoutes: FastifyPluginAsync<
           offset: OffsetParam(),
           limit: LimitParam(ResourceType.Tx),
           type: Type.Optional(Type.Array(TransactionTypeSchema)),
-          unanchored: UnanchoredParamSchema,
           order: Type.Optional(Type.Enum({ asc: 'asc', desc: 'desc' })),
           sort_by: Type.Optional(
             Type.Enum(
@@ -180,7 +178,6 @@ export const TxRoutes: FastifyPluginAsync<
         offset,
         limit,
         txTypeFilter,
-        includeUnanchored: req.query.unanchored ?? false,
         fromAddress,
         toAddress,
         startTime: req.query.start_time,
@@ -214,7 +211,6 @@ export const TxRoutes: FastifyPluginAsync<
           tx_id: Type.Array(TransactionIdParamSchema),
           event_limit: LimitParam(ResourceType.Event),
           event_offset: OffsetParam(),
-          unanchored: UnanchoredParamSchema,
           exclude_function_args: ExcludeFunctionArgsParamSchema,
         }),
         response: {
@@ -225,14 +221,12 @@ export const TxRoutes: FastifyPluginAsync<
     async (req, reply) => {
       const eventLimit = getPagingQueryLimit(ResourceType.Event, req.query.event_limit);
       const eventOffset = parsePagingQueryInput(req.query.event_offset ?? 0);
-      const includeUnanchored = req.query.unanchored ?? false;
       const excludeFunctionArgs = req.query.exclude_function_args ?? false;
       req.query.tx_id.forEach(tx => validateRequestHexInput(tx));
       const txQuery = await searchTxs(fastify.db, {
         txIds: req.query.tx_id,
         eventLimit,
         eventOffset,
-        includeUnanchored,
         excludeFunctionArgs,
       });
       await reply.send(txQuery);
@@ -259,7 +253,6 @@ export const TxRoutes: FastifyPluginAsync<
           address: Type.Optional(AddressParamSchema),
           order_by: Type.Optional(MempoolOrderByParamSchema),
           order: Type.Optional(OrderParamSchema),
-          unanchored: UnanchoredParamSchema,
           offset: OffsetParam(),
           limit: LimitParam(ResourceType.Tx),
           exclude_function_args: ExcludeFunctionArgsParamSchema,
@@ -294,7 +287,6 @@ export const TxRoutes: FastifyPluginAsync<
         throw new InvalidRequestError(`${error}`, InvalidRequestErrorType.invalid_param);
       }
 
-      const includeUnanchored = req.query.unanchored ?? false;
       const [senderAddress, recipientAddress, address] = addrParams;
       if (address && (recipientAddress || senderAddress)) {
         throw new InvalidRequestError(
@@ -309,7 +301,6 @@ export const TxRoutes: FastifyPluginAsync<
       const { results: txResults, total } = await fastify.db.getMempoolTxList({
         offset,
         limit,
-        includeUnanchored,
         orderBy,
         order,
         senderAddress,
@@ -446,7 +437,6 @@ export const TxRoutes: FastifyPluginAsync<
         querystring: Type.Object({
           event_limit: LimitParam(ResourceType.Event, undefined, undefined, 100),
           event_offset: OffsetParam(),
-          unanchored: UnanchoredParamSchema,
           exclude_function_args: ExcludeFunctionArgsParamSchema,
         }),
         response: {
@@ -464,7 +454,6 @@ export const TxRoutes: FastifyPluginAsync<
 
       const eventLimit = getPagingQueryLimit(ResourceType.Event, req.query['event_limit'], 100);
       const eventOffset = parsePagingQueryInput(req.query['event_offset'] ?? 0);
-      const includeUnanchored = req.query.unanchored ?? false;
       const excludeFunctionArgs = req.query.exclude_function_args ?? false;
       validateRequestHexInput(tx_id);
 
@@ -472,7 +461,6 @@ export const TxRoutes: FastifyPluginAsync<
         txId: tx_id,
         eventLimit,
         eventOffset,
-        includeUnanchored,
         excludeFunctionArgs,
       });
       if (!txQuery.found) {

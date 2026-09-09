@@ -1,6 +1,6 @@
 import supertest from 'supertest';
 import { ApiServer, startApiServer } from '../../../src/api/init.ts';
-import { TestBlockBuilder, TestMicroblockStreamBuilder } from '../test-builders.ts';
+import { TestBlockBuilder } from '../test-builders.ts';
 import { DbAssetEventTypeId } from '../../../src/datastore/common.ts';
 import { PgWriteStore } from '../../../src/datastore/pg-write-store.ts';
 import { migrate } from '../../test-helpers.ts';
@@ -153,25 +153,11 @@ describe('/extended/v1/tokens tests', () => {
     assert.deepEqual(result6.results[0].tx_id, '0x5484');
     assert.deepEqual(result6.results[0].block_height, block3.block.block_height);
 
-    // Transfer NFT from addr2 to addr3 in microblock
-    const microblock1 = new TestMicroblockStreamBuilder()
-      .addMicroblock({ microblock_hash: '0x11', parent_index_block_hash: '0x03' })
-      .addTx({ tx_id: '0x5499' })
-      .addTxNftEvent({
-        asset_identifier: assetId2,
-        asset_event_type_id: DbAssetEventTypeId.Transfer,
-        sender: addr2,
-        recipient: addr3,
-      })
-      .build();
-    await db.updateMicroblocks(microblock1);
-
-    // Confirm unanchored txs
+    // Transfer NFT from addr2 to addr3
     const block4 = new TestBlockBuilder({
       block_height: 4,
       index_block_hash: '0x04',
       parent_index_block_hash: '0x03',
-      parent_microblock_hash: '0x11',
     })
       .addTx({ tx_id: '0x5499' })
       .addTxNftEvent({
@@ -183,7 +169,7 @@ describe('/extended/v1/tokens tests', () => {
       .build();
     await db.update(block4);
 
-    // Request: anchored now shows addr2 with 0 NFTs
+    // Request: addr2 now has 0 NFTs
     const request10 = await supertest(api.server).get(
       `/extended/v1/tokens/nft/holdings?principal=${addr2}`
     );
@@ -217,91 +203,31 @@ describe('/extended/v1/tokens tests', () => {
     const result11 = JSON.parse(request11.text);
     assert.deepEqual(result11.total, 0);
 
-    // Transfer NFT from addr3 back to addr2 again in a micro re-orged tx
-    const microblock2 = new TestMicroblockStreamBuilder()
-      .addMicroblock({ microblock_hash: '0x12', parent_index_block_hash: '0x05' })
-      .addTx({ tx_id: '0xf7f7', microblock_canonical: false })
-      .addTxNftEvent({
-        asset_identifier: assetId2,
-        asset_event_type_id: DbAssetEventTypeId.Transfer,
-        sender: addr3,
-        recipient: addr2,
-      })
-      .build();
-    await db.updateMicroblocks(microblock2);
-
-    // Confirm txs
+    // Transfer NFT from addr3 to addr2 and back in the same block
     const block6 = new TestBlockBuilder({
       block_height: 6,
       index_block_hash: '0x06',
       parent_index_block_hash: '0x05',
     })
-      .addTx({ tx_id: '0xf7f7', microblock_canonical: false })
+      .addTx({ tx_id: '0x1009' })
+      .addTxStxEvent({ event_index: 0 })
       .addTxNftEvent({
         asset_identifier: assetId2,
         asset_event_type_id: DbAssetEventTypeId.Transfer,
         sender: addr3,
         recipient: addr2,
+        event_index: 1, // Higher event index
+      })
+      .addTx({ tx_id: '0x100a' })
+      .addTxNftEvent({
+        asset_identifier: assetId2,
+        asset_event_type_id: DbAssetEventTypeId.Transfer,
+        sender: addr2,
+        recipient: addr3,
+        event_index: 0, // Lower event index but higher tx index
       })
       .build();
     await db.update(block6);
-
-    // Transfer NFT from addr3 to addr2 and back in the same block
-    const microblock3 = new TestMicroblockStreamBuilder()
-      .addMicroblock({
-        microblock_hash: '0x13',
-        parent_index_block_hash: '0x06',
-        microblock_sequence: 0,
-      })
-      .addTx({ tx_id: '0x1009' })
-      .addTxStxEvent({ event_index: 0 })
-      .addTxNftEvent({
-        asset_identifier: assetId2,
-        asset_event_type_id: DbAssetEventTypeId.Transfer,
-        sender: addr3,
-        recipient: addr2,
-        event_index: 1, // Higher event index
-      })
-      .addMicroblock({
-        microblock_hash: '0x14',
-        parent_index_block_hash: '0x06',
-        microblock_sequence: 1,
-      })
-      .addTx({ tx_id: '0x100a' })
-      .addTxNftEvent({
-        asset_identifier: assetId2,
-        asset_event_type_id: DbAssetEventTypeId.Transfer,
-        sender: addr2,
-        recipient: addr3,
-        event_index: 0, // Lower event index but higher microblock index
-      })
-      .build();
-    await db.updateMicroblocks(microblock3);
-    // Confirm txs
-    const block7 = new TestBlockBuilder({
-      block_height: 7,
-      index_block_hash: '0x07',
-      parent_index_block_hash: '0x06',
-    })
-      .addTx({ tx_id: '0x1009' })
-      .addTxStxEvent({ event_index: 0 })
-      .addTxNftEvent({
-        asset_identifier: assetId2,
-        asset_event_type_id: DbAssetEventTypeId.Transfer,
-        sender: addr3,
-        recipient: addr2,
-        event_index: 1, // Higher event index
-      })
-      .addTx({ tx_id: '0x100a' })
-      .addTxNftEvent({
-        asset_identifier: assetId2,
-        asset_event_type_id: DbAssetEventTypeId.Transfer,
-        sender: addr2,
-        recipient: addr3,
-        event_index: 0, // Lower event index but higher microblock index
-      })
-      .build();
-    await db.update(block7);
 
     // Request: addr2 still has 0 NFTs
     const request14 = await supertest(api.server).get(
@@ -313,10 +239,10 @@ describe('/extended/v1/tokens tests', () => {
     assert.deepEqual(result14.total, 0);
 
     // Transfer NFT from addr3 to addr2 and back in the same tx
-    const block8 = new TestBlockBuilder({
-      block_height: 8,
-      index_block_hash: '0x08',
-      parent_index_block_hash: '0x07',
+    const block7 = new TestBlockBuilder({
+      block_height: 7,
+      index_block_hash: '0x07',
+      parent_index_block_hash: '0x06',
     })
       .addTx({ tx_id: '0x100c' })
       // Reversed events but correct event_index
@@ -335,7 +261,7 @@ describe('/extended/v1/tokens tests', () => {
         event_index: 1,
       })
       .build();
-    await db.update(block8);
+    await db.update(block7);
 
     // Request: addr2 still has 0 NFTs
     const request15 = await supertest(api.server).get(
@@ -423,9 +349,12 @@ describe('/extended/v1/tokens tests', () => {
     assert.deepEqual(result3.results[0].tx_id, '0x1002');
     assert.deepEqual(result3.results[1].tx_id, '0x1001');
 
-    // Transfer NFT from addr2 to addr3 in microblock
-    const microblock1 = new TestMicroblockStreamBuilder()
-      .addMicroblock({ microblock_hash: '0x11', parent_index_block_hash: '0x02' })
+    // Transfer NFT from addr2 to addr3
+    const block3 = new TestBlockBuilder({
+      block_height: 3,
+      index_block_hash: '0x03',
+      parent_index_block_hash: '0x02',
+    })
       .addTx({ tx_id: '0x1003' })
       .addTxNftEvent({
         asset_identifier: assetId,
@@ -435,44 +364,9 @@ describe('/extended/v1/tokens tests', () => {
         value: valueHex,
       })
       .build();
-    await db.updateMicroblocks(microblock1);
-
-    // Request: new event appears in unanchored history
-    const request4 = await supertest(api.server).get(
-      `/extended/v1/tokens/nft/history?asset_identifier=${assetId}&value=${valueHex}&unanchored=true`
-    );
-    assert.equal(request4.status, 200);
-    assert.equal(request4.type, 'application/json');
-    const result4 = JSON.parse(request4.text);
-    assert.deepEqual(result4.total, 3);
-    assert.deepEqual(result4.results[0].sender, addr2);
-    assert.deepEqual(result4.results[0].recipient, addr3);
-    assert.deepEqual(result4.results[0].tx_id, '0x1003');
-
-    // Request: new event does not appear in anchored history
-    const request5 = await supertest(api.server).get(
-      `/extended/v1/tokens/nft/history?asset_identifier=${assetId}&value=${valueHex}`
-    );
-    assert.equal(request5.status, 200);
-    assert.equal(request5.type, 'application/json');
-    const result5 = JSON.parse(request5.text);
-    assert.deepEqual(result5.total, 2);
-    assert.deepEqual(result5.results[0].sender, addr1);
-    assert.deepEqual(result5.results[0].recipient, addr2);
-    assert.deepEqual(result5.results[0].tx_id, '0x1002');
-
-    // Confirm unanchored txs
-    const block3 = new TestBlockBuilder({
-      block_height: 3,
-      index_block_hash: '0x03',
-      parent_index_block_hash: '0x02',
-      parent_microblock_hash: '0x11',
-    })
-      .addTx({ tx_id: '0x1004' })
-      .build();
     await db.update(block3);
 
-    // Request: new event now appears in anchored history
+    // Request: new event appears in history
     const request6 = await supertest(api.server).get(
       `/extended/v1/tokens/nft/history?asset_identifier=${assetId}&value=${valueHex}`
     );
@@ -513,33 +407,7 @@ describe('/extended/v1/tokens tests', () => {
     assert.deepEqual(result7.results[0].recipient, addr3);
     assert.deepEqual(result7.results[0].tx_id, '0x1003');
 
-    // Transfer NFT back to addr2 in a microblock re-org tx
-    const microblock2 = new TestMicroblockStreamBuilder()
-      .addMicroblock({ microblock_hash: '0x12', parent_index_block_hash: '0x04' })
-      .addTx({ tx_id: '0x1006', microblock_canonical: false })
-      .addTxNftEvent({
-        asset_identifier: assetId,
-        asset_event_type_id: DbAssetEventTypeId.Transfer,
-        sender: addr3,
-        recipient: addr2,
-        value: valueHex,
-      })
-      .build();
-    await db.updateMicroblocks(microblock2);
-
-    // Request: non-canonical event does not appear in unanchored history
-    const request8 = await supertest(api.server).get(
-      `/extended/v1/tokens/nft/history?asset_identifier=${assetId}&value=${valueHex}&unanchored=true`
-    );
-    assert.equal(request8.status, 200);
-    assert.equal(request8.type, 'application/json');
-    const result8 = JSON.parse(request8.text);
-    assert.deepEqual(result8.total, 3);
-    assert.deepEqual(result8.results[0].sender, addr2);
-    assert.deepEqual(result8.results[0].recipient, addr3);
-    assert.deepEqual(result8.results[0].tx_id, '0x1003');
-
-    // Confirm unanchored txs
+    // Mine another block
     const block5 = new TestBlockBuilder({
       block_height: 5,
       index_block_hash: '0x05',
@@ -580,12 +448,11 @@ describe('/extended/v1/tokens tests', () => {
     assert.deepEqual(result9.results[0].tx_id, '0x1003');
 
     // List NFT to marketplace and purchase in the same block
-    const microblock3 = new TestMicroblockStreamBuilder()
-      .addMicroblock({
-        microblock_hash: '0x13',
-        parent_index_block_hash: '0x06',
-        microblock_sequence: 0,
-      })
+    const block7 = new TestBlockBuilder({
+      block_height: 7,
+      index_block_hash: '0x07',
+      parent_index_block_hash: '0x06',
+    })
       .addTx({ tx_id: '0x1009' })
       .addTxStxEvent({ event_index: 0 })
       // List
@@ -597,11 +464,6 @@ describe('/extended/v1/tokens tests', () => {
         value: valueHex,
         event_index: 1, // Higher event index
       })
-      .addMicroblock({
-        microblock_hash: '0x14',
-        parent_index_block_hash: '0x06',
-        microblock_sequence: 1,
-      })
       .addTx({ tx_id: '0x100a' })
       // Purchase
       .addTxNftEvent({
@@ -610,18 +472,8 @@ describe('/extended/v1/tokens tests', () => {
         sender: marketplace,
         recipient: addr2,
         value: valueHex,
-        event_index: 0, // Lower event index but higher microblock index
+        event_index: 0, // Lower event index but higher tx index
       })
-      .build();
-    await db.updateMicroblocks(microblock3);
-    // Confirm txs
-    const block7 = new TestBlockBuilder({
-      block_height: 7,
-      index_block_hash: '0x07',
-      parent_index_block_hash: '0x06',
-      parent_microblock_hash: '0x14',
-    })
-      .addTx({ tx_id: '0x100b' })
       .build();
     await db.update(block7);
 
@@ -751,9 +603,12 @@ describe('/extended/v1/tokens tests', () => {
     assert.deepEqual(result3.results[0].value.hex, '0x01000000000000000000000000000009c6');
     assert.deepEqual(result3.results[0].tx_id, '0x1002');
 
-    // Mint NFT in microblock
-    const microblock1 = new TestMicroblockStreamBuilder()
-      .addMicroblock({ microblock_hash: '0x11', parent_index_block_hash: '0x02' })
+    // Mint NFT for addr3
+    const block3 = new TestBlockBuilder({
+      block_height: 3,
+      index_block_hash: '0x03',
+      parent_index_block_hash: '0x02',
+    })
       .addTx({ tx_id: '0x1003' })
       .addTxNftEvent({
         asset_identifier: assetId,
@@ -762,44 +617,9 @@ describe('/extended/v1/tokens tests', () => {
         value: '0x01000000000000000000000000000009c7',
       })
       .build();
-    await db.updateMicroblocks(microblock1);
-
-    // Request: new mint appears in unanchored history
-    const request4 = await supertest(api.server).get(
-      `/extended/v1/tokens/nft/mints?asset_identifier=${assetId}&unanchored=true`
-    );
-    assert.equal(request4.status, 200);
-    assert.equal(request4.type, 'application/json');
-    const result4 = JSON.parse(request4.text);
-    assert.deepEqual(result4.total, 3);
-    assert.deepEqual(result4.results[0].recipient, addr3);
-    assert.deepEqual(result4.results[0].value.hex, '0x01000000000000000000000000000009c7');
-    assert.deepEqual(result4.results[0].tx_id, '0x1003');
-
-    // Request: new mint does not appear in anchored history
-    const request5 = await supertest(api.server).get(
-      `/extended/v1/tokens/nft/mints?asset_identifier=${assetId}`
-    );
-    assert.equal(request5.status, 200);
-    assert.equal(request5.type, 'application/json');
-    const result5 = JSON.parse(request5.text);
-    assert.deepEqual(result5.total, 2);
-    assert.deepEqual(result5.results[0].recipient, addr2);
-    assert.deepEqual(result5.results[0].value.hex, '0x01000000000000000000000000000009c6');
-    assert.deepEqual(result5.results[0].tx_id, '0x1002');
-
-    // Confirm unanchored txs
-    const block3 = new TestBlockBuilder({
-      block_height: 3,
-      index_block_hash: '0x03',
-      parent_index_block_hash: '0x02',
-      parent_microblock_hash: '0x11',
-    })
-      .addTx({ tx_id: '0x1004' })
-      .build();
     await db.update(block3);
 
-    // Request: new mint now appears in anchored history
+    // Request: new mint appears in history
     const request6 = await supertest(api.server).get(
       `/extended/v1/tokens/nft/mints?asset_identifier=${assetId}`
     );
@@ -839,32 +659,7 @@ describe('/extended/v1/tokens tests', () => {
     assert.deepEqual(result7.results[0].value.hex, '0x01000000000000000000000000000009c7');
     assert.deepEqual(result7.results[0].tx_id, '0x1003');
 
-    // Mint NFT in a microblock re-org tx
-    const microblock2 = new TestMicroblockStreamBuilder()
-      .addMicroblock({ microblock_hash: '0x12', parent_index_block_hash: '0x04' })
-      .addTx({ tx_id: '0x1006', microblock_canonical: false })
-      .addTxNftEvent({
-        asset_identifier: assetId,
-        asset_event_type_id: DbAssetEventTypeId.Mint,
-        recipient: addr1,
-        value: '0x01000000000000000000000000000009c8',
-      })
-      .build();
-    await db.updateMicroblocks(microblock2);
-
-    // Request: non-canonical event does not appear in unanchored history
-    const request8 = await supertest(api.server).get(
-      `/extended/v1/tokens/nft/mints?asset_identifier=${assetId}&unanchored=true`
-    );
-    assert.equal(request8.status, 200);
-    assert.equal(request8.type, 'application/json');
-    const result8 = JSON.parse(request8.text);
-    assert.deepEqual(result8.total, 3);
-    assert.deepEqual(result8.results[0].recipient, addr3);
-    assert.deepEqual(result8.results[0].value.hex, '0x01000000000000000000000000000009c7');
-    assert.deepEqual(result8.results[0].tx_id, '0x1003');
-
-    // Confirm unanchored txs
+    // Mine another block
     const block5 = new TestBlockBuilder({
       block_height: 5,
       index_block_hash: '0x05',
@@ -904,12 +699,11 @@ describe('/extended/v1/tokens tests', () => {
     assert.deepEqual(result9.results[0].tx_id, '0x1003');
 
     // Mint two NFTs in the same block
-    const microblock3 = new TestMicroblockStreamBuilder()
-      .addMicroblock({
-        microblock_hash: '0x13',
-        parent_index_block_hash: '0x06',
-        microblock_sequence: 0,
-      })
+    const block7 = new TestBlockBuilder({
+      block_height: 7,
+      index_block_hash: '0x07',
+      parent_index_block_hash: '0x06',
+    })
       .addTx({ tx_id: '0x1009' })
       .addTxStxEvent({ event_index: 0 })
       // Mint #1
@@ -920,11 +714,6 @@ describe('/extended/v1/tokens tests', () => {
         value: '0x01000000000000000000000000000009c8',
         event_index: 1, // Higher event index
       })
-      .addMicroblock({
-        microblock_hash: '0x14',
-        parent_index_block_hash: '0x06',
-        microblock_sequence: 1,
-      })
       .addTx({ tx_id: '0x100a' })
       // Mint #2
       .addTxNftEvent({
@@ -932,18 +721,8 @@ describe('/extended/v1/tokens tests', () => {
         asset_event_type_id: DbAssetEventTypeId.Mint,
         recipient: addr1,
         value: '0x01000000000000000000000000000009c9',
-        event_index: 0, // Lower event index but higher microblock index
+        event_index: 0, // Lower event index but higher tx index
       })
-      .build();
-    await db.updateMicroblocks(microblock3);
-    // Confirm txs
-    const block7 = new TestBlockBuilder({
-      block_height: 7,
-      index_block_hash: '0x07',
-      parent_index_block_hash: '0x06',
-      parent_microblock_hash: '0x14',
-    })
-      .addTx({ tx_id: '0x100b' })
       .build();
     await db.update(block7);
 

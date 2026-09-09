@@ -261,7 +261,6 @@ describe('tx tests', () => {
     };
     await db.update({
       block: dbBlock,
-      microblocks: [],
       minerRewards: [],
       txs: [
         {
@@ -440,7 +439,6 @@ describe('tx tests', () => {
     };
     await db.update({
       block: dbBlock,
-      microblocks: [],
       minerRewards: [],
       txs: [
         {
@@ -463,7 +461,6 @@ describe('tx tests', () => {
 
     const txQuery = await getTxFromDataStore(db, {
       txId: dbTx.tx_id,
-      includeUnanchored: false,
       excludeFunctionArgs: false,
     });
     assert.equal(txQuery.found, true);
@@ -666,7 +663,6 @@ describe('tx tests', () => {
     });
     await db.update({
       block: dbBlock,
-      microblocks: [],
       minerRewards: [],
       txs: [
         {
@@ -689,7 +685,6 @@ describe('tx tests', () => {
 
     const txQuery = await getTxFromDataStore(db, {
       txId: dbTx.tx_id,
-      includeUnanchored: false,
       excludeFunctionArgs: false,
     });
     assert.equal(txQuery.found, true);
@@ -820,7 +815,6 @@ describe('tx tests', () => {
     });
     await db.update({
       block: dbBlock,
-      microblocks: [],
       minerRewards: [],
       txs: [
         {
@@ -843,7 +837,6 @@ describe('tx tests', () => {
 
     const txQuery = await getTxFromDataStore(db, {
       txId: dbTx.tx_id,
-      includeUnanchored: false,
       excludeFunctionArgs: false,
     });
     assert.equal(txQuery.found, true);
@@ -1009,7 +1002,6 @@ describe('tx tests', () => {
     };
     await db.update({
       block: dbBlock,
-      microblocks: [],
       minerRewards: [],
       txs: [
         {
@@ -1032,7 +1024,6 @@ describe('tx tests', () => {
 
     const txQuery = await getTxFromDataStore(db, {
       txId: dbTx.tx_id,
-      includeUnanchored: false,
       excludeFunctionArgs: false,
     });
     assert.equal(txQuery.found, true);
@@ -1131,7 +1122,6 @@ describe('tx tests', () => {
     };
     await db.update({
       block: dbBlock,
-      microblocks: [],
       minerRewards: [],
       txs: [],
     });
@@ -1242,7 +1232,6 @@ describe('tx tests', () => {
     ]);
     const txQuery = await getTxFromDataStore(db, {
       txId: dbTx.tx_id,
-      includeUnanchored: false,
       excludeFunctionArgs: false,
     });
     assert.equal(txQuery.found, true);
@@ -1397,7 +1386,6 @@ describe('tx tests', () => {
 
     await db.update({
       block: dbBlock,
-      microblocks: [],
       minerRewards: [],
       txs: [
         {
@@ -1643,7 +1631,6 @@ describe('tx tests', () => {
     };
     await db.update({
       block: dbBlock,
-      microblocks: [],
       minerRewards: [],
       txs: [
         {
@@ -1665,7 +1652,6 @@ describe('tx tests', () => {
     });
     const txQuery = await getTxFromDataStore(db, {
       txId: dbTx.tx_id,
-      includeUnanchored: false,
       excludeFunctionArgs: false,
     });
     assert.equal(txQuery.found, true);
@@ -1855,7 +1841,6 @@ describe('tx tests', () => {
     });
     await db.update({
       block: dbBlock,
-      microblocks: [],
       minerRewards: [],
       txs: [
         {
@@ -1878,7 +1863,6 @@ describe('tx tests', () => {
 
     const txQuery = await getTxFromDataStore(db, {
       txId: dbTx.tx_id,
-      includeUnanchored: false,
       excludeFunctionArgs: false,
     });
     assert.equal(txQuery.found, true);
@@ -2015,7 +1999,6 @@ describe('tx tests', () => {
     assert.equal(dbTx.status, DbTxStatus.ProblematicSkipped);
     await db.update({
       block: dbBlock,
-      microblocks: [],
       minerRewards: [],
       txs: [
         {
@@ -2124,7 +2107,6 @@ describe('tx tests', () => {
     });
     await db.update({
       block: dbBlock,
-      microblocks: [],
       minerRewards: [],
       txs: [
         {
@@ -2147,7 +2129,6 @@ describe('tx tests', () => {
 
     const txQuery = await getTxFromDataStore(db, {
       txId: dbTx.tx_id,
-      includeUnanchored: false,
       excludeFunctionArgs: false,
     });
     assert.equal(txQuery.found, true);
@@ -2920,7 +2901,6 @@ describe('tx tests', () => {
 
     await db.update({
       block: block,
-      microblocks: [],
       minerRewards: [],
       txs: [
         {
@@ -3046,7 +3026,6 @@ describe('tx tests', () => {
 
     await db.update({
       block: block,
-      microblocks: [],
       minerRewards: [],
       txs: [
         {
@@ -3703,7 +3682,6 @@ describe('tx tests', () => {
     };
     await db.update({
       block: block,
-      microblocks: [],
       minerRewards: [],
       txs: [
         {
@@ -3979,7 +3957,6 @@ describe('tx tests', () => {
 
     const dataStoreUpdate: DataStoreBlockUpdateData = {
       block: dbBlock,
-      microblocks: [],
       minerRewards: [],
       txs: [
         {
@@ -4302,7 +4279,6 @@ describe('tx tests', () => {
     };
     await db.update({
       block,
-      microblocks: [],
       minerRewards: [],
       txs: [
         {

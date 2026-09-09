@@ -193,7 +193,7 @@ describe('pox-5 locked STX in balance read path', () => {
         .addTxPox5Event({ name: Pox5EventName.Stake, data: stakeData(STAKE_AMOUNT, ACTIVE_UNLOCK) })
         .build()
     );
-    const balance = await db.getStxBalance({ stxAddress: ALICE, includeUnanchored: false });
+    const balance = await db.getStxBalance({ stxAddress: ALICE });
     assert.equal(balance.locked, STAKE_AMOUNT);
     assert.equal(balance.burnchainUnlockHeight, ACTIVE_UNLOCK);
     assert.equal(balance.lockHeight, 1);
@@ -212,7 +212,7 @@ describe('pox-5 locked STX in balance read path', () => {
         .addTxPox5Event({ name: Pox5EventName.Stake, data: stakeData(STAKE_AMOUNT, EXPIRED_UNLOCK) })
         .build()
     );
-    const balance = await db.getStxBalance({ stxAddress: ALICE, includeUnanchored: false });
+    const balance = await db.getStxBalance({ stxAddress: ALICE });
     assert.equal(balance.locked, 0n);
     assert.equal(balance.lockTxId, '');
     assert.equal(balance.burnchainUnlockHeight, 0);
@@ -263,7 +263,7 @@ describe('pox-5 locked STX in balance read path', () => {
     );
     // The reported bug: after unstake the STX showed as unlocked immediately.
     // It must stay locked until the (end-of-cycle) unlock height.
-    const balance = await db.getStxBalance({ stxAddress: ALICE, includeUnanchored: false });
+    const balance = await db.getStxBalance({ stxAddress: ALICE });
     assert.equal(balance.locked, STAKE_AMOUNT, 'STX still locked right after unstake');
     assert.equal(balance.burnchainUnlockHeight, STILL_LOCKED_UNLOCK, 'unlock deferred to cycle end');
   });
@@ -294,7 +294,7 @@ describe('pox-5 locked STX in balance read path', () => {
         .addTxPox5Event({ name: Pox5EventName.Unstake, data: unstakeData(STAKE_AMOUNT, EXPIRED_UNLOCK) })
         .build()
     );
-    const balance = await db.getStxBalance({ stxAddress: ALICE, includeUnanchored: false });
+    const balance = await db.getStxBalance({ stxAddress: ALICE });
     assert.equal(balance.locked, 0n, 'unlocked once the cycle-end height has passed');
   });
 

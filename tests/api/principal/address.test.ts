@@ -14,14 +14,13 @@ import {
   DbSmartContractEvent,
   DbTokenOfferingLocked,
   DataStoreTxEventData,
-  DataStoreMicroblockUpdateData,
   DbTxRaw,
   DbMempoolTxRaw,
   DbTx,
 } from '../../../src/datastore/common.ts';
 import { startApiServer, ApiServer } from '../../../src/api/init.ts';
 import { I32_MAX } from '../../../src/helpers.ts';
-import { TestBlockBuilder, testMempoolTx, TestMicroblockStreamBuilder } from '../test-builders.ts';
+import { TestBlockBuilder, testMempoolTx } from '../test-builders.ts';
 import { PgWriteStore } from '../../../src/datastore/pg-write-store.ts';
 import { createDbTxFromCoreMsg } from '../../../src/datastore/helpers.ts';
 import { PgSqlClient, bufferToHex } from '@stacks/api-toolkit';
@@ -227,7 +226,6 @@ describe('address tests', () => {
 
     await db.update({
       block: block,
-      microblocks: [],
       minerRewards: [],
       txs: txs.map(data => ({
         tx: data[0],
@@ -1584,7 +1582,6 @@ describe('address tests', () => {
     });
     await db.update({
       block: block,
-      microblocks: [],
       minerRewards: [],
       txs: dataStoreTxs,
     });
@@ -2639,7 +2636,6 @@ describe('address tests', () => {
     };
     await db.update({
       block: dbBlock,
-      microblocks: [],
       minerRewards: [],
       txs: [
         {
@@ -2784,149 +2780,6 @@ describe('address tests', () => {
     assert.deepEqual(JSON.parse(detected_missing_nonce.text), expectedResp5);
   });
 
-  test('exclusive address endpoints params', async () => {
-    const addressEndpoints = [
-      '/stx',
-      '/balances',
-      '/transactions',
-      '/transactions_with_transfers',
-      '/assets',
-      '/stx_inbound',
-    ];
-
-    //check for mutually exclusive unachored and and until_block
-    for (const path of addressEndpoints) {
-      const response = await supertest(api.server).get(
-        `/extended/v1/address/STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6${path}?until_block=5&unanchored=true`
-      );
-      assert.equal(response.status, 400);
-    }
-  });
-
-  test('/transactions materialized view separates anchored and unanchored counts correctly', async () => {
-    const contractId = 'SP3D6PV2ACBPEKYJTCMH7HEN02KP87QSP8KTEH335.megapont-ape-club-nft';
-
-    // Base block
-    const block1 = new TestBlockBuilder({
-      block_height: 1,
-      block_hash: '0x01',
-      index_block_hash: '0x01',
-    })
-      .addTx()
-      .addTxSmartContract({ contract_id: contractId })
-      .addTxContractLogEvent({ contract_identifier: contractId })
-      .build();
-    await db.update(block1);
-
-    // Create 50 contract txs to fill up the materialized view at block_height=2
-    const blockBuilder2 = new TestBlockBuilder({
-      block_height: 2,
-      block_hash: '0x02',
-      index_block_hash: '0x02',
-      parent_block_hash: '0x01',
-      parent_index_block_hash: '0x01',
-    });
-    for (let i = 0; i < 50; i++) {
-      blockBuilder2.addTx({
-        tx_id: '0x1234' + i.toString().padStart(4, '0'),
-        index_block_hash: '0x02',
-        smart_contract_contract_id: contractId,
-      });
-    }
-    const block2 = blockBuilder2.build();
-    await db.update(block2);
-
-    // Now create 10 contract txs in the next microblock.
-    const mbData: DataStoreMicroblockUpdateData = {
-      microblocks: [
-        {
-          microblock_hash: '0xff01',
-          microblock_sequence: 0,
-          microblock_parent_hash: block2.block.block_hash,
-          parent_index_block_hash: block2.block.index_block_hash,
-          parent_burn_block_height: 123,
-          parent_burn_block_hash: '0xaa',
-          parent_burn_block_time: 1626122935,
-        },
-      ],
-      txs: [],
-    };
-    for (let i = 0; i < 10; i++) {
-      mbData.txs.push({
-        tx: {
-          tx_id: '0x1235' + i.toString().padStart(4, '0'),
-          tx_index: 0,
-          anchor_mode: 3,
-          nonce: 0,
-          raw_tx: '0x',
-          type_id: DbTxTypeId.TokenTransfer,
-          status: 1,
-          raw_result: '0x0100000000000000000000000000000001', // u1
-          canonical: true,
-          post_conditions: '0x01f5',
-          fee_rate: 1234n,
-          sponsored: false,
-          sender_address: 'SP466FNC0P7JWTNM2R9T199QRZN1MYEDTAR0KP27',
-          sponsor_address: undefined,
-          origin_hash_mode: 1,
-          token_transfer_amount: 50n,
-          token_transfer_memo: bufferToHex(Buffer.from('hi')),
-          token_transfer_recipient_address: contractId,
-          event_count: 1,
-          parent_index_block_hash: block2.block.index_block_hash,
-          parent_block_hash: block2.block.block_hash,
-          microblock_canonical: true,
-          microblock_sequence: mbData.microblocks[0].microblock_sequence,
-          microblock_hash: mbData.microblocks[0].microblock_hash,
-          parent_burn_block_time: mbData.microblocks[0].parent_burn_block_time,
-          execution_cost_read_count: 0,
-          execution_cost_read_length: 0,
-          execution_cost_runtime: 0,
-          execution_cost_write_count: 0,
-          execution_cost_write_length: 0,
-          smart_contract_contract_id: contractId,
-          index_block_hash: '',
-          block_hash: '',
-          block_time: -1,
-          burn_block_height: -1,
-          burn_block_time: -1,
-          block_height: -1,
-        },
-        stxLockEvents: [],
-        stxEvents: [],
-        ftEvents: [],
-        nftEvents: [],
-        contractLogEvents: [],
-        smartContracts: [],
-        names: [],
-        namespaces: [],
-        pox2Events: [],
-        pox3Events: [],
-        pox4Events: [],
-        pox5Events: [],
-      });
-    }
-    await db.updateMicroblocks(mbData);
-
-    // Anchored results first page should be 50 (50 at block_height=2)
-    const anchoredResult = await supertest(api.server).get(
-      `/extended/v1/address/${contractId}/transactions?limit=50&unanchored=false`
-    );
-    assert.equal(anchoredResult.status, 200);
-    assert.equal(anchoredResult.type, 'application/json');
-    assert.deepEqual(JSON.parse(anchoredResult.text).total, 50); // 50 txs up to block_height=2
-    assert.deepEqual(JSON.parse(anchoredResult.text).results.length, 50);
-
-    // Unanchored results first page should also be 50 (40 at block_height=2, 10 at unanchored block_height=3)
-    const unanchoredResult = await supertest(api.server).get(
-      `/extended/v1/address/${contractId}/transactions?limit=50&unanchored=true`
-    );
-    assert.equal(unanchoredResult.status, 200);
-    assert.equal(unanchoredResult.type, 'application/json');
-    assert.deepEqual(JSON.parse(unanchoredResult.text).total, 60); // 60 txs up to unanchored block_height=3
-    assert.deepEqual(JSON.parse(unanchoredResult.text).results.length, 50);
-  });
-
   test('/transactions endpoint handles re-orgs correctly', async () => {
     const contractId = 'SP3D6PV2ACBPEKYJTCMH7HEN02KP87QSP8KTEH335.megapont-ape-club-nft';
 
@@ -3031,46 +2884,19 @@ describe('address tests', () => {
     assert.deepEqual(json3.results.length, 2);
     assert.deepEqual(json3.results[0].tx_id, '0x11a1');
 
-    // Microblock with non-canonical tx
-    const microblock1 = new TestMicroblockStreamBuilder()
-      .addMicroblock({
-        microblock_hash: '0xbb01',
-        parent_index_block_hash: '0x05',
-        microblock_sequence: 0,
-      })
-      .addTx({
-        tx_id: '0x11a2',
-        smart_contract_contract_id: contractId,
-        microblock_canonical: false,
-        index_block_hash: '0x06',
-      })
-      .build();
-    await db.updateMicroblocks(microblock1);
-
-    // TODO: invalid test, the above function `db.updateMicroblocks` does not use the `microblock_canonical: false` property
-    /*
-    // Transaction not reported in results
-    const result4 = await supertest(api.server).get(
-      `/extended/v1/address/${contractId}/transactions?unanchored=true`
-    );
-    assert.equal(result4.status, 200);
-    assert.equal(result4.type, 'application/json');
-    const json4 = JSON.parse(result4.text);
-    assert.deepEqual(json4.total, 2);
-    assert.deepEqual(json4.results.length, 2);
-    */
-
-    // Confirm with anchor block
+    // New anchor block with another contract tx
     const block6 = new TestBlockBuilder({
       block_height: 6,
       block_hash: '0x06',
       index_block_hash: '0x06',
       parent_block_hash: '0x05',
       parent_index_block_hash: '0x05',
-      parent_microblock_hash: '0xbb01', // Point to latest microblock
-      parent_microblock_sequence: 0,
     })
-      .addTx()
+      .addTx({
+        tx_id: '0x11a2',
+        smart_contract_contract_id: contractId,
+        index_block_hash: '0x06',
+      })
       .build();
     await db.update(block6);
 

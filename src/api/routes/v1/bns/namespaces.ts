@@ -4,7 +4,6 @@ import { handleChainTipCache } from '../../../controllers/cache-controller.js';
 import { FastifyPluginAsync } from 'fastify';
 import { Type, TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
 import { Server } from 'node:http';
-import { UnanchoredParamSchema } from '../../../schemas/v1/params.js';
 import { BNS_DEPRECATION_MESSAGE, BNS_DEPRECATION_NOTE } from './deprecation.js';
 
 export const BnsNamespaceRoutes: FastifyPluginAsync<
@@ -23,9 +22,7 @@ export const BnsNamespaceRoutes: FastifyPluginAsync<
         summary: 'Get All Namespaces',
         description: `Retrieves a list of all namespaces known to the node. ${BNS_DEPRECATION_NOTE}`,
         tags: ['Names'],
-        querystring: Type.Object({
-          unanchored: UnanchoredParamSchema,
-        }),
+        querystring: Type.Object({}),
         response: {
           200: Type.Object({
             namespaces: Type.Array(Type.String(), {
@@ -36,9 +33,8 @@ export const BnsNamespaceRoutes: FastifyPluginAsync<
         },
       },
     },
-    async (req, reply) => {
-      const includeUnanchored = req.query.unanchored ?? false;
-      const { results } = await fastify.db.getNamespaceList({ includeUnanchored });
+    async (_req, reply) => {
+      const { results } = await fastify.db.getNamespaceList();
       const response = {
         namespaces: results,
       };
@@ -68,7 +64,6 @@ export const BnsNamespaceRoutes: FastifyPluginAsync<
               examples: [22],
             })
           ),
-          unanchored: UnanchoredParamSchema,
         }),
         response: {
           200: Type.Array(Type.String(), {
@@ -92,17 +87,15 @@ export const BnsNamespaceRoutes: FastifyPluginAsync<
     async (req, reply) => {
       const { tld } = req.params;
       const page = parsePagingQueryInput(req.query.page ?? 0);
-      const includeUnanchored = req.query.unanchored ?? false;
       await fastify.db
         .sqlTransaction(async _sql => {
-          const response = await fastify.db.getNamespace({ namespace: tld, includeUnanchored });
+          const response = await fastify.db.getNamespace({ namespace: tld });
           if (!response.found) {
             throw BnsErrors.NoSuchNamespace;
           } else {
             const { results } = await fastify.db.getNamespaceNamesList({
               namespace: tld,
               page,
-              includeUnanchored,
             });
             if (results.length === 0 && req.query.page) {
               throw BnsErrors.InvalidPageNumber;

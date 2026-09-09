@@ -9,12 +9,7 @@ import { InvalidRequestError, InvalidRequestErrorType } from '../../../errors.js
 import { FastifyPluginAsync } from 'fastify';
 import { Type, TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
 import { Server } from 'node:http';
-import {
-  LimitParam,
-  OffsetParam,
-  PrincipalSchema,
-  UnanchoredParamSchema,
-} from '../../schemas/v1/params.js';
+import { LimitParam, OffsetParam, PrincipalSchema } from '../../schemas/v1/params.js';
 import { PaginatedResponse } from '../../schemas/v1/util.js';
 import {
   NonFungibleTokenHistoryEventWithTxIdSchema,
@@ -168,7 +163,6 @@ export const TokenRoutes: FastifyPluginAsync<
           }),
           limit: LimitParam(ResourceType.Token, 'Limit', 'max number of events to fetch'),
           offset: OffsetParam('Offset', 'index of first event to fetch'),
-          unanchored: UnanchoredParamSchema,
           tx_metadata: Type.Boolean({
             default: false,
             description:
@@ -210,7 +204,6 @@ export const TokenRoutes: FastifyPluginAsync<
 
       const limit = getPagingQueryLimit(ResourceType.Token, req.query.limit);
       const offset = parsePagingQueryInput(req.query.offset ?? 0);
-      const includeUnanchored = req.query.unanchored ?? false;
       const includeTxMetadata = req.query.tx_metadata ?? false;
 
       await fastify.db
@@ -224,7 +217,7 @@ export const TokenRoutes: FastifyPluginAsync<
             value: strValue,
             limit: limit,
             offset: offset,
-            blockHeight: includeUnanchored ? chainTip.result + 1 : chainTip.result,
+            blockHeight: chainTip.result,
             includeTxMetadata: includeTxMetadata,
           });
           const parsedResults = results.map(result => {
@@ -283,7 +276,6 @@ export const TokenRoutes: FastifyPluginAsync<
           }),
           limit: LimitParam(ResourceType.Token, 'Limit', 'max number of events to fetch'),
           offset: OffsetParam('Offset', 'index of first event to fetch'),
-          unanchored: UnanchoredParamSchema,
           tx_metadata: Type.Boolean({
             default: false,
             description:
@@ -318,7 +310,6 @@ export const TokenRoutes: FastifyPluginAsync<
 
       const limit = getPagingQueryLimit(ResourceType.Token, req.query.limit);
       const offset = parsePagingQueryInput(req.query.offset ?? 0);
-      const includeUnanchored = req.query.unanchored ?? false;
       const includeTxMetadata = req.query.tx_metadata ?? false;
 
       await fastify.db
@@ -331,7 +322,7 @@ export const TokenRoutes: FastifyPluginAsync<
             assetIdentifier: assetIdentifier,
             limit: limit,
             offset: offset,
-            blockHeight: includeUnanchored ? chainTip.result + 1 : chainTip.result,
+            blockHeight: chainTip.result,
             includeTxMetadata: includeTxMetadata,
           });
           const parsedResults = results.map(result => {

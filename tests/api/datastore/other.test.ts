@@ -122,7 +122,6 @@ describe('other tests', () => {
     };
     await db.update({
       block: dbBlock1,
-      microblocks: [],
       minerRewards: [],
       txs: [
         {
@@ -295,11 +294,6 @@ describe('other tests', () => {
     const searchResult5 = await supertest(api.server).get(`/extended/v1/block/${block_hash}`);
     assert.equal(JSON.parse(searchResult5.text).message, odd_block_error.message);
     assert.equal(searchResult5.status, 400);
-
-    // extended/v1/microblock
-    const searchResult6 = await supertest(api.server).get(`/extended/v1/microblock/${block_hash}`);
-    assert.equal(JSON.parse(searchResult6.text).message, odd_block_error.message);
-    assert.equal(searchResult6.status, 400);
 
     // extended/v1/search
     const searchResult7 = await supertest(api.server).get(
