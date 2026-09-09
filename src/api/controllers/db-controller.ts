@@ -18,7 +18,6 @@ import {
   DbEvent,
   DbEventTypeId,
   DbMempoolTx,
-  DbMicroblock,
   DbTx,
   DbTxStatus,
   DbTxTypeId,
@@ -58,7 +57,6 @@ import {
   StxLockTransactionEvent,
   TransactionEvent,
 } from '../schemas/v1/entities/transaction-events.js';
-import { Microblock } from '../schemas/v1/entities/microblock.js';
 import { Block } from '../schemas/v1/entities/block.js';
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -482,69 +480,6 @@ export function parseDbEvent(dbEvent: DbEvent): TransactionEvent {
   }
 }
 
-export async function getUnanchoredTxsFromDataStore(db: PgStore): Promise<Transaction[]> {
-  const dbTxs = await db.getUnanchoredTxs();
-  const parsedTxs = dbTxs.txs.map(dbTx => parseDbTx(dbTx, false));
-  return parsedTxs;
-}
-
-function parseDbMicroblock(mb: DbMicroblock, txs: string[]): Microblock {
-  const microblock: Microblock = {
-    canonical: mb.canonical,
-    microblock_canonical: mb.microblock_canonical,
-    microblock_hash: mb.microblock_hash,
-    microblock_sequence: mb.microblock_sequence,
-    microblock_parent_hash: mb.microblock_parent_hash,
-    block_height: mb.block_height,
-    parent_block_height: mb.parent_block_height,
-    parent_block_hash: mb.parent_block_hash,
-    block_hash: mb.block_hash,
-    txs: txs,
-    parent_burn_block_height: mb.parent_burn_block_height,
-    parent_burn_block_hash: mb.parent_burn_block_hash,
-    parent_burn_block_time: mb.parent_burn_block_time,
-    parent_burn_block_time_iso:
-      mb.parent_burn_block_time > 0 ? unixEpochToIso(mb.parent_burn_block_time) : '',
-  };
-  return microblock;
-}
-
-export async function getMicroblockFromDataStore({
-  db,
-  microblockHash,
-}: {
-  db: PgStore;
-  microblockHash: string;
-}): Promise<FoundOrNot<Microblock>> {
-  const query = await db.getMicroblock({ microblockHash: microblockHash });
-  if (!query.found) {
-    return {
-      found: false,
-    };
-  }
-  const microblock = parseDbMicroblock(query.result.microblock, query.result.txs);
-  return {
-    found: true,
-    result: microblock,
-  };
-}
-
-export async function getMicroblocksFromDataStore(args: {
-  db: PgStore;
-  limit: number;
-  offset: number;
-}): Promise<{ total: number; result: Microblock[] }> {
-  const query = await args.db.getMicroblocks({
-    limit: args.limit,
-    offset: args.offset,
-  });
-  const result = query.result.map(r => parseDbMicroblock(r.microblock, r.txs));
-  return {
-    total: query.total,
-    result: result,
-  };
-}
-
 export async function getBlocksWithMetadata(args: { limit: number; offset: number; db: PgStore }) {
   const blocks = await args.db.getBlocksWithMetadata({
     limit: args.limit,
@@ -631,7 +566,6 @@ function parseDbBlock(
 
 interface GetTxArgs {
   txId: string;
-  includeUnanchored: boolean;
   excludeFunctionArgs: boolean;
 }
 
@@ -646,7 +580,6 @@ interface GetTxsWithEventsArgs extends GetTxsArgs {
 
 interface GetTxsArgs {
   txIds: string[];
-  includeUnanchored: boolean;
   excludeFunctionArgs: boolean;
 }
 
@@ -974,7 +907,6 @@ export async function getMempoolTxsFromDataStore(
   const mempoolTxsQuery = await db.getMempoolTxs({
     txIds: args.txIds,
     includePruned: true,
-    includeUnanchored: args.includeUnanchored,
   });
   if (mempoolTxsQuery.length === 0) {
     return [];
@@ -993,10 +925,7 @@ async function getTxsFromDataStore(
 ): Promise<Transaction[]> {
   return await db.sqlTransaction(async _sql => {
     // fetching all requested transactions from db
-    const txQuery = await db.getTxListDetails({
-      txIds: args.txIds,
-      includeUnanchored: args.includeUnanchored,
-    });
+    const txQuery = await db.getTxListDetails({ txIds: args.txIds });
 
     // returning empty array if no transaction was found
     if (txQuery.length === 0) {
@@ -1044,10 +973,7 @@ export async function getTxFromDataStore(
     if ('dbTx' in args) {
       dbTx = args.dbTx;
     } else {
-      const txQuery = await db.getTx({
-        txId: args.txId,
-        includeUnanchored: args.includeUnanchored,
-      });
+      const txQuery = await db.getTx({ txId: args.txId });
       if (!txQuery.found) {
         return { found: false };
       }
@@ -1107,7 +1033,6 @@ export async function searchTxs(
     mempoolTxs.push(...notMinedTransactions);
     const mempoolTxsQuery = await getMempoolTxsFromDataStore(db, {
       txIds: mempoolTxs,
-      includeUnanchored: args.includeUnanchored,
       excludeFunctionArgs: args.excludeFunctionArgs,
     });
 
@@ -1178,7 +1103,7 @@ export async function searchHashWithMetadata(
 ): Promise<FoundOrNot<DbSearchResultWithMetadata>> {
   return await db.sqlTransaction(async _sql => {
     // checking for tx
-    const txQuery = await db.getTxListDetails({ txIds: [hash], includeUnanchored: true });
+    const txQuery = await db.getTxListDetails({ txIds: [hash] });
     if (txQuery.length > 0) {
       // tx found
       const tx = txQuery[0];
@@ -1194,7 +1119,6 @@ export async function searchHashWithMetadata(
     // checking for mempool tx
     const mempoolTxQuery = await db.getMempoolTxs({
       txIds: [hash],
-      includeUnanchored: true,
       includePruned: true,
     });
     if (mempoolTxQuery.length > 0) {

@@ -30,8 +30,13 @@ export interface DbBlock {
   tenure_height: number | null;
 }
 
-/** An interface representing the microblock data that can be constructed _only_ from the /new_microblocks payload */
-export interface DbMicroblockPartial {
+/**
+ * A row from the `microblocks` table. Microblocks were removed in the Nakamoto upgrade; the table
+ * is historical (pre-Nakamoto) data that is only read, never written.
+ */
+export interface DbMicroblock {
+  canonical: boolean;
+  microblock_canonical: boolean;
   microblock_hash: string;
   microblock_sequence: number;
   microblock_parent_hash: string;
@@ -39,11 +44,6 @@ export interface DbMicroblockPartial {
   parent_burn_block_time: number;
   parent_burn_block_hash: string;
   parent_burn_block_height: number;
-}
-
-export interface DbMicroblock extends DbMicroblockPartial {
-  canonical: boolean;
-  microblock_canonical: boolean;
   block_height: number;
   parent_block_height: number;
   parent_block_hash: string;
@@ -525,7 +525,6 @@ export interface NftEventWithTxMetadata {
 
 export interface DataStoreBlockUpdateData {
   block: DbBlock;
-  microblocks: DbMicroblock[];
   minerRewards: DbMinerReward[];
   txs: DataStoreTxEventData[];
   pox_v1_unlock_height?: number;
@@ -533,11 +532,6 @@ export interface DataStoreBlockUpdateData {
   pox_v3_unlock_height?: number;
   pox_v4_unlock_height?: number;
   poxSetSigners?: DbPoxSetSigners;
-}
-
-export interface DataStoreMicroblockUpdateData {
-  microblocks: DbMicroblockPartial[];
-  txs: DataStoreTxEventData[];
 }
 
 export interface DataStoreTxEventData {
@@ -1002,8 +996,6 @@ export interface BlockHeader {
 interface ReOrgEntities {
   blockHeaders: BlockHeader[];
   blocks: number;
-  microblockHashes: string[];
-  microblocks: number;
   minerRewards: number;
   txs: number;
   stxLockEvents: number;
@@ -1194,23 +1186,6 @@ export interface BlockInsertValues {
   signer_bitvec: string | null;
   signer_signatures: PgBytea[] | null;
   tenure_height: number | null;
-}
-
-export interface MicroblockInsertValues {
-  canonical: boolean;
-  microblock_canonical: boolean;
-  microblock_hash: PgBytea;
-  microblock_sequence: number;
-  microblock_parent_hash: PgBytea;
-  parent_index_block_hash: PgBytea;
-  block_height: number;
-  parent_block_height: number;
-  parent_block_hash: PgBytea;
-  index_block_hash: PgBytea;
-  block_hash: PgBytea;
-  parent_burn_block_height: number;
-  parent_burn_block_hash: PgBytea;
-  parent_burn_block_time: number;
 }
 
 export interface StxEventInsertValues {
@@ -1659,11 +1634,7 @@ export interface DbChainTip {
   block_hash: string;
   index_block_hash: string;
   burn_block_height: number;
-  microblock_hash?: string;
-  microblock_sequence?: number;
-  microblock_count: number;
   tx_count: number;
-  tx_count_unanchored: number;
   mempool_tx_count: number;
   bond_count: number;
   stx_supply: string;
