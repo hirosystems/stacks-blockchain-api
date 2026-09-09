@@ -16,7 +16,6 @@ import { BnsNamespaceRoutes } from './routes/v1/bns/namespaces.js';
 import { BnsPriceRoutes } from './routes/v1/bns/pricing.js';
 import { BnsNameRoutes } from './routes/v1/bns/names.js';
 import { BnsAddressRoutes } from './routes/v1/bns/addresses.js';
-import { MicroblockRoutes } from './routes/v1/microblock.js';
 import { StatusRoutes } from './routes/v1/status.js';
 import { TokenRoutes } from './routes/v1/tokens.js';
 import { FeeRateRoutes } from './routes/v1/fee-rate.js';
@@ -86,7 +85,6 @@ export const StacksApiRoutes: FastifyPluginAsync<
       await fastify.register(TokenRoutes, { prefix: '/tokens' });
       await fastify.register(ContractRoutes, { prefix: '/contract' });
       await fastify.register(FeeRateRoutes, { prefix: '/fee_rate' });
-      await fastify.register(MicroblockRoutes, { prefix: '/microblock' });
       await fastify.register(BlockRoutes, { prefix: '/block' });
       await fastify.register(BurnchainRoutes, { prefix: '/burnchain' });
       await fastify.register(AddressRoutes, { prefix: '/address' });

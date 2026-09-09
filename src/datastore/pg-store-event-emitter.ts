@@ -4,7 +4,6 @@ import { DbConfigState, DbMempoolStats } from './common.js';
 interface DataStoreEvents {
   txUpdate: (txId: string) => void;
   blockUpdate: (blockHash: string) => void;
-  microblockUpdate: (microblockHash: string) => void;
   nftEventUpdate: (txId: string, eventIndex: number) => void;
   addressUpdate: (address: string, blockHeight: number) => void;
   nameUpdate: (info: string) => void;

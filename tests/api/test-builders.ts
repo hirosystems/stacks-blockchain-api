@@ -8,7 +8,6 @@
  */
 import {
   DataStoreBlockUpdateData,
-  DataStoreMicroblockUpdateData,
   DataStoreTxEventData,
   DbAssetEventTypeId,
   DbBlock,
@@ -17,7 +16,6 @@ import {
   DbEventTypeId,
   DbFtEvent,
   DbMempoolTxRaw,
-  DbMicroblockPartial,
   DbMinerReward,
   DbNftEvent,
   DbPox5SyntheticEvent,
@@ -141,33 +139,6 @@ function testBlock(args?: TestBlockArgs): DbBlock {
     signer_bitvec: args?.signer_bitvec ?? null,
     signer_signatures: args?.signer_signatures ?? null,
     tenure_height: args?.tenure_height ?? args?.block_height ?? BLOCK_HEIGHT,
-  };
-}
-
-interface TestMicroblockArgs {
-  microblock_hash?: string;
-  microblock_parent_hash?: string;
-  microblock_sequence?: number;
-  parent_index_block_hash?: string;
-  parent_burn_block_time?: number;
-  parent_burn_block_hash?: string;
-  parent_burn_block_height?: number;
-}
-
-/**
- * Generate a test microblock.
- * @param args - Optional microblock data
- * @returns `DbMicroblockPartial`
- */
-function testMicroblock(args?: TestMicroblockArgs): DbMicroblockPartial {
-  return {
-    microblock_hash: args?.microblock_hash ?? MICROBLOCK_HASH,
-    microblock_sequence: args?.microblock_sequence ?? 0,
-    microblock_parent_hash: args?.microblock_parent_hash ?? BLOCK_HASH,
-    parent_index_block_hash: args?.parent_index_block_hash ?? INDEX_BLOCK_HASH,
-    parent_burn_block_height: args?.parent_burn_block_height ?? BURN_BLOCK_HEIGHT,
-    parent_burn_block_hash: args?.parent_burn_block_hash ?? BURN_BLOCK_HASH,
-    parent_burn_block_time: args?.parent_burn_block_time ?? BURN_BLOCK_TIME,
   };
 }
 
@@ -718,7 +689,6 @@ export class TestBlockBuilder {
   constructor(args?: TestBlockArgs) {
     this.data = {
       block: testBlock(args),
-      microblocks: [],
       minerRewards: [],
       txs: [],
     };
@@ -853,99 +823,5 @@ export class TestBlockBuilder {
     const data = this.data;
     data.block.tx_count = this.txIndex + 1;
     return data;
-  }
-}
-
-/**
- * Builder that creates a test microblock stream so populating the DB becomes easier.
- *
- * The output of `build()` can be used in a `db.updateMicroblocks()` call to process the
- * microblocks just as if they came from the Event Server.
- */
-export class TestMicroblockStreamBuilder {
-  private data: DataStoreMicroblockUpdateData;
-  private microblockIndex = -1;
-  private txIndex = -1;
-  private eventIndex = -1;
-
-  constructor() {
-    this.data = {
-      microblocks: [],
-      txs: [],
-    };
-  }
-
-  get microblock(): DbMicroblockPartial {
-    return this.data.microblocks[this.microblockIndex];
-  }
-
-  get txData(): DataStoreTxEventData {
-    return this.data.txs[this.txIndex];
-  }
-
-  addMicroblock(args?: TestMicroblockArgs): TestMicroblockStreamBuilder {
-    const defaultArgs: TestMicroblockArgs = {
-      microblock_sequence: ++this.microblockIndex,
-      microblock_parent_hash:
-        this.microblockIndex > 0
-          ? this.data.microblocks[this.microblockIndex - 1].microblock_hash
-          : '0x00',
-    };
-    this.data.microblocks.push(testMicroblock({ ...defaultArgs, ...args }));
-    return this;
-  }
-
-  addTx(args?: TestTxArgs): TestMicroblockStreamBuilder {
-    const defaultBlockArgs: TestTxArgs = {
-      parent_index_block_hash: this.microblock.parent_index_block_hash,
-      microblock_hash: this.microblock.microblock_hash,
-      microblock_sequence: this.microblock.microblock_sequence,
-      tx_index: ++this.txIndex,
-      index_block_hash: '',
-    };
-    this.data.txs.push(testTx({ ...defaultBlockArgs, ...args }));
-    this.eventIndex = -1;
-    return this;
-  }
-
-  addTxStxEvent(args?: TestStxEventArgs): TestMicroblockStreamBuilder {
-    const defaultArgs: TestStxEventArgs = {
-      tx_id: this.txData.tx.tx_id,
-      event_index: ++this.eventIndex,
-    };
-    this.txData.stxEvents.push(testStxEvent({ ...defaultArgs, ...args }));
-    return this;
-  }
-
-  addTxNftEvent(args?: TestNftEventArgs): TestMicroblockStreamBuilder {
-    const defaultArgs: TestNftEventArgs = {
-      tx_id: this.txData.tx.tx_id,
-      tx_index: this.txIndex,
-      event_index: ++this.eventIndex,
-    };
-    this.txData.nftEvents.push(testNftEvent({ ...defaultArgs, ...args }));
-    return this;
-  }
-
-  addTxBnsName(args?: TestBnsNameArgs): TestMicroblockStreamBuilder {
-    const defaultArgs: TestBnsNameArgs = {
-      tx_id: this.txData.tx.tx_id,
-      tx_index: this.txIndex,
-    };
-    this.txData.names.push(testBnsName({ ...defaultArgs, ...args }));
-    return this;
-  }
-
-  addTxBnsNamespace(args?: TestBnsNamespaceArgs): TestMicroblockStreamBuilder {
-    const defaultArgs: TestBnsNamespaceArgs = {
-      tx_id: this.txData.tx.tx_id,
-      tx_index: this.txIndex,
-    };
-    this.txData.namespaces.push(testBnsNamespace({ ...defaultArgs, ...args }));
-    return this;
-  }
-
-  build(): DataStoreMicroblockUpdateData {
-    return this.data;
   }
 }

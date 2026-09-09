@@ -32,7 +32,6 @@ export enum ResourceType {
   Event,
   Burnchain,
   Contract,
-  Microblock,
   Token,
   Pox2Event,
   Stacker,
@@ -69,10 +68,6 @@ export const pagingQueryLimits: Record<ResourceType, { defaultLimit: number; max
   [ResourceType.Contract]: {
     defaultLimit: 20,
     maxLimit: 50,
-  },
-  [ResourceType.Microblock]: {
-    defaultLimit: 20,
-    maxLimit: 200,
   },
   [ResourceType.Token]: {
     defaultLimit: 50,

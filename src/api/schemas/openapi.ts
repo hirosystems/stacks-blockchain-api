@@ -56,14 +56,6 @@ export const OpenApiSchemaOptions: SwaggerOptions = {
           'Read-only endpoints to obtain network, Proof-of-Transfer, Stacking, STX token, and node information',
       },
       {
-        name: 'Microblocks',
-        description: 'Read-only endpoints to obtain microblocks details',
-        externalDocs: {
-          description: 'Stacks Documentation - Microblocks',
-          url: 'https://docs.stacks.co/understand-stacks/microblocks',
-        },
-      },
-      {
         name: 'Names',
         description: 'Read-only endpoints realted to the Blockchain Naming System on Stacks',
         externalDocs: {
