@@ -6,7 +6,6 @@ import type {
   Block,
   ClientToServerMessages,
   MempoolTransaction,
-  Microblock,
   NftEvent,
   ServerToClientMessages,
   Topic,
@@ -106,15 +105,6 @@ export class StacksApiSocketClient {
     this.handleSubscription('block', false);
   }
 
-  subscribeMicroblocks(listener?: (tx: Microblock) => void) {
-    if (listener) this.socket.on('microblock', listener);
-    return this.handleSubscription('microblock', true, listener);
-  }
-
-  unsubscribeMicroblocks() {
-    this.handleSubscription('microblock', false);
-  }
-
   subscribeMempool(listener?: (tx: MempoolTransaction) => void) {
     if (listener) this.socket.on('mempool', listener);
     return this.handleSubscription('mempool', true, listener);
@@ -196,7 +186,6 @@ export class StacksApiSocketClient {
     this.socket.on('disconnect', reason => console.warn('disconnected', reason));
     this.socket.on('connect_error', error => console.error('connect_error', error));
     this.socket.on('block', block => console.log('block', block));
-    this.socket.on('microblock', microblock => console.log('microblock', microblock));
     this.socket.on('mempool', tx => console.log('mempool', tx));
     this.socket.on('nft-event', event => console.log('nft-event', event));
   }
