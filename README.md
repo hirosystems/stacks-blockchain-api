@@ -11,7 +11,7 @@ A Fastify-based REST API with real-time WebSocket and Socket.IO support for the 
 
 - [Features](#features)
 - [Quick Start](#quick-start)
-- [API Endpoints](#api-endpoints)
+- [API Reference](#api-reference)
 - [Run Modes](#run-modes)
 - [Configuration](#configuration)
 - [Development](#development)
@@ -23,8 +23,7 @@ A Fastify-based REST API with real-time WebSocket and Socket.IO support for the 
 
 ## Features
 
-- **Nakamoto support** — full support for Nakamoto blocks, tenures, signer signatures, and `NakamotoCoinbase` / `TenureChange` transaction types
-- **Comprehensive REST API** — v1 and v2 endpoints covering blocks, transactions, accounts, smart contracts, NFTs, fungible tokens, BNS (Bitcoin Name System), PoX / stacking, burn chain rewards, and more
+- **Comprehensive REST API** — versioned endpoints covering blocks, transactions, principals, smart contracts, fungible and non-fungible tokens, staking / PoX, and burn chain data (see [API Reference](#api-reference)).
 - **Real-time streaming** — subscribe to blocks, mempool transactions, address activity, STX balance changes, and NFT events via WebSocket (JSON-RPC) or Socket.IO
 - **Client library** — type-safe TypeScript/JS client for REST and real-time APIs ([`@stacks/blockchain-api-client`](client/README.md))
 - **OpenAPI specification** — auto-generated from route definitions; powers Redoc documentation, Postman collections, and the TypeScript client
@@ -32,8 +31,7 @@ A Fastify-based REST API with real-time WebSocket and Socket.IO support for the 
 - **Multiple run modes** — default (read-write), read-only, and write-only modes for flexible scaling
 - **Prometheus metrics** — built-in `/metrics` endpoint for monitoring
 - **SNP integration** — Stacks Nakamoto Protocol event streaming via Redis
-- **BNS** — full Bitcoin Name System support including name lookups, namespaces, subdomains, zonefiles, and pricing
-- **BTC & STX faucets** — testnet/regtest faucet endpoints for development
+- **Faucets** — STX, BTC and sBTC testnet/regtest faucet endpoints for development
 
 ## Quick Start
 
@@ -57,51 +55,10 @@ docker pull hirosystems/stacks-blockchain-api
 
 The API cannot run standalone — it requires a running Stacks node and a PostgreSQL database. See [Deployment](#deployment) for details, or refer to the [Stacks node operator guide](https://docs.stacks.co/operate).
 
-## API Endpoints
+## API Reference
 
-### Extended API v2
+The full endpoint reference, with request and response schemas for every route, is published at [docs.hiro.so/en/apis/stacks-blockchain-api](https://docs.hiro.so/en/apis/stacks-blockchain-api). It is generated from the OpenAPI specification in this repository ([`openapi.yaml`](openapi.yaml)), which is itself generated from the Fastify route definitions at release time.
 
-The recommended versioned endpoints:
-
-| Group | Prefix | Key Endpoints |
-|-------|--------|---------------|
-| **Blocks** | `/extended/v2/blocks` | List blocks, get by height/hash, list transactions, signer signatures, average block times |
-| **Burn Blocks** | `/extended/v2/burn-blocks` | List burn blocks, get by height/hash, list Stacks blocks per burn block, PoX transactions |
-| **Block Tenures** | `/extended/v2/block-tenures` | List blocks for a given tenure height |
-| **Addresses** | `/extended/v2/addresses` | Transactions for address, transaction events, STX balance, FT balances, PoX transactions by BTC address |
-| **PoX** | `/extended/v2/pox` | PoX cycles, signers per cycle, stackers per signer |
-| **Smart Contracts** | `/extended/v2/smart-contracts` | Contract deployment status |
-| **Mempool** | `/extended/v2/mempool` | Mempool fee priorities |
-
-### Extended API v1
-
-| Group | Prefix | Key Endpoints |
-|-------|--------|---------------|
-| **Transactions** | `/extended/v1/tx` | Recent, by ID, raw, by block hash/height, mempool, mempool stats, events |
-| **Blocks** | `/extended/v1/block` | List, by height, by hash, by burn block height/hash |
-| **Accounts** | `/extended/v1/address` | STX balance, all balances, transactions, assets, inbound transfers, nonces, mempool |
-| **Tokens** | `/extended/v1/tokens` | NFT holdings, NFT history, NFT mints, FT holders |
-| **Smart Contracts** | `/extended/v1/contract` | By trait, by ID, contract events |
-| **Search** | `/extended/v1/search` | Universal search (blocks, transactions, contracts, addresses) |
-| **PoX** | `/extended/v1/pox2`, `pox3`, `pox4` | PoX events, stacker info, delegations |
-| **STX Supply** | `/extended/v1/stx_supply` | Total, circulating, legacy format |
-| **Burn Chain** | `/extended/v1/burnchain` | Reward slot holders, rewards, total rewards |
-| **Fee Rate** | `/extended/v1/fee_rate` | Fee rate estimation |
-| **Info** | `/extended/v1/info` | Network block times |
-| **Faucets** | `/extended/v1/faucets` | BTC and STX testnet faucets |
-
-### BNS (Bitcoin Name System)
-
-| Prefix | Endpoints |
-|--------|-----------|
-| `/v1/names` | List names, get name details, zonefiles, subdomains |
-| `/v1/namespaces` | List namespaces, names in a namespace |
-| `/v1/addresses` | Resolve blockchain address to names |
-| `/v2/prices` | Namespace and name pricing |
-
-### Stacks Node RPC Proxy
-
-All requests to `/v2/*` (e.g. `/v2/info`, `/v2/fees/transaction`) are proxied to the connected Stacks core node.
 
 ## Run Modes
 
@@ -155,7 +112,7 @@ Configuration is done via environment variables. A `.env` file in the project ro
 |----------|-------------|---------|
 | `PG_CONNECTION_URI` | Full connection URI (overrides individual vars) | — |
 | `PG_HOST` | Database host | — |
-| `PG_PORT` | Database port | `5432` |
+| `PG_PORT` | Database port | `5490` |
 | `PG_USER` | Database user | — |
 | `PG_PASSWORD` | Database password | — |
 | `PG_DATABASE` | Database name | — |
@@ -201,14 +158,14 @@ A `PG_PRIMARY_*` prefix is available for all PostgreSQL variables to configure a
 | `STACKS_API_LOG_LEVEL` | Log level | — |
 | `STACKS_PROFILER_PORT` | Enable profiler on this port | — |
 | `IBD_MODE_UNTIL_BLOCK` | Initial block download mode until block height | — |
-| `BNS_IMPORT_DIR` | Directory with V1 BNS export data | — |
+| `ENABLE_DEPRECATED_ENDPOINTS` | Serve deprecated `v1`/`v2` routes; `false` makes them respond `410 Gone` | `true` |
 | `STACKS_SHUTDOWN_FORCE_KILL_TIMEOUT` | Graceful shutdown timeout (seconds) | `60` |
 
 ## Development
 
 ### Prerequisites
 
-- Node.js >= 22
+- Node.js >= 24
 - Docker (for service dependencies)
 
 ### Setup
@@ -221,46 +178,39 @@ npm install
 
 ### Running Locally
 
-The quickest way to start with all dependencies (PostgreSQL, Stacks node, Bitcoin node):
+Build and start the API against a running PostgreSQL and Stacks node configured through the environment variables in [Configuration](#configuration):
 
 ```shell
-npm run dev:integrated
+npm run build
+npm start
 ```
 
-This uses Docker Compose to start the service dependencies and runs the API in development mode.
-
-Alternatively, use the VS Code "Launch: w/ postgres" debug configuration.
+Alternatively, use the VS Code `start: api` or `start: mocknet` debug configurations.
 
 Verify the server is running:
 
 ```
-http://localhost:3999/extended/v1/status
+http://localhost:3999/extended
 ```
 
 ### Building
 
 ```shell
 npm run build        # Compile TypeScript
-npm run build:docs   # Generate OpenAPI spec and Redoc docs
-npm run build:client # Generate client types from OpenAPI spec
+npm run build:client # Generate the OpenAPI spec and client types
 ```
 
 ### Testing
 
+Tests are split into suites, one npm script per suite (see `package.json`):
+
 ```shell
-npm test                        # Run all tests
-npm run test:api                # API endpoint tests
-npm run test:bns                # BNS tests
-npm run test:2.5                # PoX-4 / stacking tests
-npm run test:event-replay       # Event replay tests
+npm run test:api:transactions   # e.g. transactions suite; also blocks, principal-v3, pox5, ...
+npm run test:api:event-replay   # Event replay tests
 npm run test:snp                # SNP ingestion tests
 ```
 
-Integration tests spin up their own PostgreSQL via Docker:
-
-```shell
-npm run test:integration
-```
+Each suite spins up its own PostgreSQL via Docker (the `tests/api/setup.ts` global setup), so Docker must be running.
 
 ### Linting
 
@@ -274,11 +224,11 @@ npm run lint:fix    # Auto-fix
 The OpenAPI specification is generated directly from Fastify route definitions:
 
 ```shell
-npm run generate:openapi    # Generate docs/openapi.yaml and docs/openapi.json
-npm run generate:redoc      # Generate Redoc HTML documentation
-npm run generate:postman    # Generate Postman collection
+npm run generate:openapi    # Generate openapi.yaml (deprecated routes excluded)
 npm run generate:client     # Generate TypeScript client types
 ```
+
+The committed `openapi.yaml` and the client types are regenerated as part of the release process; do not regenerate them by hand in feature branches.
 
 ## Event Replay
 
@@ -324,11 +274,9 @@ docker pull hirosystems/stacks-blockchain-api
 
 The image runs `node ./lib/index.js` and expects the environment variables described in [Configuration](#configuration).
 
-A standalone regtest Dockerfile is also available at `docker/standalone-regtest.Dockerfile`, which bundles the API, Stacks node, Bitcoin node, and PostgreSQL into a single image for testing.
-
 ### Upgrading
 
-Major version upgrades (e.g., `7.x` to `8.x`) may include breaking database schema changes. Use [Event Replay](#event-replay) to rebuild the database. Check the [CHANGELOG](CHANGELOG.md) for details on each release.
+Major version upgrades (e.g., `7.x` to `8.x`) may include breaking database schema changes. Use [Event Replay](#event-replay) to rebuild the database. Check the [release notes](https://github.com/hirosystems/stacks-blockchain-api/releases) for details on each release.
 
 ## Bugs and Feature Requests
 

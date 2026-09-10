@@ -6,6 +6,7 @@ import { Pox5EventName } from '@stacks/codec';
 import { ApiServer, startApiServer } from '../../../src/api/init.ts';
 import { PgWriteStore } from '../../../src/datastore/pg-write-store.ts';
 import { migrate } from '../../test-helpers.ts';
+import { getCurrentStxBalance } from '../test-helpers.ts';
 import { TestBlockBuilder } from '../test-builders.ts';
 
 /**
@@ -30,7 +31,12 @@ describe('pox-5 stake locked balances', () => {
 
   async function lockedRow(principal: string) {
     const rows = await db.sql<
-      { locked_amount: string; unlock_burn_height: string; pox_version: number; lock_block_height: number }[]
+      {
+        locked_amount: string;
+        unlock_burn_height: string;
+        pox_version: number;
+        lock_block_height: number;
+      }[]
     >`
       SELECT locked_amount, unlock_burn_height, pox_version, lock_block_height
       FROM stx_locked_balances WHERE principal = ${principal}
@@ -74,7 +80,11 @@ describe('pox-5 stake locked balances', () => {
 
   beforeEach(async () => {
     await migrate('up');
-    db = await PgWriteStore.connect({ usageName: 'tests', withNotifier: false, skipMigrations: true });
+    db = await PgWriteStore.connect({
+      usageName: 'tests',
+      withNotifier: false,
+      skipMigrations: true,
+    });
     api = await startApiServer({ datastore: db, chainId: STACKS_TESTNET.chainId });
     // Block 1: alice stakes.
     await db.update(
@@ -171,7 +181,11 @@ describe('pox-5 locked STX in balance read path', () => {
 
   beforeEach(async () => {
     await migrate('up');
-    db = await PgWriteStore.connect({ usageName: 'tests', withNotifier: false, skipMigrations: true });
+    db = await PgWriteStore.connect({
+      usageName: 'tests',
+      withNotifier: false,
+      skipMigrations: true,
+    });
     api = await startApiServer({ datastore: db, chainId: STACKS_TESTNET.chainId });
   });
 
@@ -193,7 +207,7 @@ describe('pox-5 locked STX in balance read path', () => {
         .addTxPox5Event({ name: Pox5EventName.Stake, data: stakeData(STAKE_AMOUNT, ACTIVE_UNLOCK) })
         .build()
     );
-    const balance = await db.getStxBalance({ stxAddress: ALICE });
+    const balance = await getCurrentStxBalance(db, ALICE);
     assert.equal(balance.locked, STAKE_AMOUNT);
     assert.equal(balance.burnchainUnlockHeight, ACTIVE_UNLOCK);
     assert.equal(balance.lockHeight, 1);
@@ -209,10 +223,13 @@ describe('pox-5 locked STX in balance read path', () => {
         burn_block_height: TIP_BURN_HEIGHT,
       })
         .addTx({ tx_id: '0x' + 'a1'.repeat(32) })
-        .addTxPox5Event({ name: Pox5EventName.Stake, data: stakeData(STAKE_AMOUNT, EXPIRED_UNLOCK) })
+        .addTxPox5Event({
+          name: Pox5EventName.Stake,
+          data: stakeData(STAKE_AMOUNT, EXPIRED_UNLOCK),
+        })
         .build()
     );
-    const balance = await db.getStxBalance({ stxAddress: ALICE });
+    const balance = await getCurrentStxBalance(db, ALICE);
     assert.equal(balance.locked, 0n);
     assert.equal(balance.lockTxId, '');
     assert.equal(balance.burnchainUnlockHeight, 0);
@@ -263,9 +280,13 @@ describe('pox-5 locked STX in balance read path', () => {
     );
     // The reported bug: after unstake the STX showed as unlocked immediately.
     // It must stay locked until the (end-of-cycle) unlock height.
-    const balance = await db.getStxBalance({ stxAddress: ALICE });
+    const balance = await getCurrentStxBalance(db, ALICE);
     assert.equal(balance.locked, STAKE_AMOUNT, 'STX still locked right after unstake');
-    assert.equal(balance.burnchainUnlockHeight, STILL_LOCKED_UNLOCK, 'unlock deferred to cycle end');
+    assert.equal(
+      balance.burnchainUnlockHeight,
+      STILL_LOCKED_UNLOCK,
+      'unlock deferred to cycle end'
+    );
   });
 
   test('after the cycle-end unlock height passes, an unstaked position reports zero locked STX', async () => {
@@ -291,10 +312,13 @@ describe('pox-5 locked STX in balance read path', () => {
         burn_block_height: TIP_BURN_HEIGHT,
       })
         .addTx({ tx_id: '0x' + 'a2'.repeat(32) })
-        .addTxPox5Event({ name: Pox5EventName.Unstake, data: unstakeData(STAKE_AMOUNT, EXPIRED_UNLOCK) })
+        .addTxPox5Event({
+          name: Pox5EventName.Unstake,
+          data: unstakeData(STAKE_AMOUNT, EXPIRED_UNLOCK),
+        })
         .build()
     );
-    const balance = await db.getStxBalance({ stxAddress: ALICE });
+    const balance = await getCurrentStxBalance(db, ALICE);
     assert.equal(balance.locked, 0n, 'unlocked once the cycle-end height has passed');
   });
 
@@ -379,7 +403,11 @@ describe('pox-4 stx_lock inheritance', () => {
 
   beforeEach(async () => {
     await migrate('up');
-    db = await PgWriteStore.connect({ usageName: 'tests', withNotifier: false, skipMigrations: true });
+    db = await PgWriteStore.connect({
+      usageName: 'tests',
+      withNotifier: false,
+      skipMigrations: true,
+    });
     api = await startApiServer({ datastore: db, chainId: STACKS_TESTNET.chainId });
   });
 
@@ -484,7 +512,12 @@ describe('stx_locked_balances reorg handling', () => {
 
   async function lockedRow(principal: string) {
     const rows = await db.sql<
-      { locked_amount: string; unlock_burn_height: string; pox_version: number; lock_block_height: number }[]
+      {
+        locked_amount: string;
+        unlock_burn_height: string;
+        pox_version: number;
+        lock_block_height: number;
+      }[]
     >`
       SELECT locked_amount, unlock_burn_height, pox_version, lock_block_height
       FROM stx_locked_balances WHERE principal = ${principal}
@@ -494,11 +527,19 @@ describe('stx_locked_balances reorg handling', () => {
 
   beforeEach(async () => {
     await migrate('up');
-    db = await PgWriteStore.connect({ usageName: 'tests', withNotifier: false, skipMigrations: true });
+    db = await PgWriteStore.connect({
+      usageName: 'tests',
+      withNotifier: false,
+      skipMigrations: true,
+    });
     api = await startApiServer({ datastore: db, chainId: STACKS_TESTNET.chainId });
     // Genesis.
     await db.update(
-      new TestBlockBuilder({ block_height: 1, block_hash: '0x01', index_block_hash: '0x01' }).build()
+      new TestBlockBuilder({
+        block_height: 1,
+        block_hash: '0x01',
+        index_block_hash: '0x01',
+      }).build()
     );
   });
 

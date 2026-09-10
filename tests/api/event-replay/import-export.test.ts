@@ -28,7 +28,7 @@ describe('import/export tests', () => {
     const args = getConnectionArgs();
     // Import from mocknet TSV
     await createSchema(args);
-    await importEventsFromTsv('tests/api/event-replay/tsv/mocknet.tsv', 'archival', true, true);
+    await importEventsFromTsv('tests/api/event-replay/tsv/mocknet.tsv', true, true);
     const chainTip = await db.getChainTip(db.sql);
     assert.equal(chainTip.block_height, 28);
     assert.equal(
@@ -47,7 +47,7 @@ describe('import/export tests', () => {
 
     // Re-import with exported TSV and check that chain tip matches.
     try {
-      await importEventsFromTsv(`${tmpDir}/export.tsv`, 'archival', true, true);
+      await importEventsFromTsv(`${tmpDir}/export.tsv`, true, true);
       const newChainTip = await db.getChainTip(db.sql);
       assert.equal(newChainTip.block_height, 28);
       assert.equal(
@@ -67,7 +67,7 @@ describe('import/export tests', () => {
     const args = getConnectionArgs();
     // Import from mocknet TSV
     await createSchema(args);
-    await importEventsFromTsv('tests/api/event-replay/tsv/mocknet.tsv', 'archival', true, true);
+    await importEventsFromTsv('tests/api/event-replay/tsv/mocknet.tsv', true, true);
     const chainTip = await db.getChainTip(db.sql);
     assert.equal(chainTip.block_height, 28);
     assert.equal(
@@ -86,7 +86,7 @@ describe('import/export tests', () => {
 
     // Re-import with exported TSV and check that chain tip matches.
     try {
-      await importEventsFromTsv(`${tmpDir}/export.tsv`, 'archival', true, true);
+      await importEventsFromTsv(`${tmpDir}/export.tsv`, true, true);
       const newChainTip = await db.getChainTip(db.sql);
       assert.equal(newChainTip.block_height, 28);
       assert.equal(
@@ -106,20 +106,20 @@ describe('import/export tests', () => {
     // Migrate first so we have some data.
     await migrate('up');
     await assert.rejects(
-      importEventsFromTsv('tests/api/event-replay/tsv/mocknet.tsv', 'archival', false, false),
+      importEventsFromTsv('tests/api/event-replay/tsv/mocknet.tsv', false, false),
       /contains existing data/
     );
 
     // Create strange table
     await db.sql`CREATE TABLE IF NOT EXISTS test (a varchar(10))`;
     await assert.rejects(
-      importEventsFromTsv('tests/api/event-replay/tsv/mocknet.tsv', 'archival', true, false),
+      importEventsFromTsv('tests/api/event-replay/tsv/mocknet.tsv', true, false),
       /migration cycle failed/
     );
 
     // Force and test
     await assert.doesNotReject(
-      importEventsFromTsv('tests/api/event-replay/tsv/mocknet.tsv', 'archival', true, true)
+      importEventsFromTsv('tests/api/event-replay/tsv/mocknet.tsv', true, true)
     );
   });
 
@@ -145,7 +145,7 @@ describe('import/export tests', () => {
 
   test('Bns import occurs (block 1 genesis)', async () => {
     ENV.BNS_IMPORT_DIR = 'tests/api/bns/import-test-files';
-    await importEventsFromTsv('tests/api/event-replay/tsv/mocknet.tsv', 'archival', true, true);
+    await importEventsFromTsv('tests/api/event-replay/tsv/mocknet.tsv', true, true);
     const configState = await db.getConfigState();
     assert.equal(configState.bns_names_onchain_imported, true);
     assert.equal(configState.bns_subdomains_imported, true);
@@ -153,10 +153,9 @@ describe('import/export tests', () => {
 
   test('Bns import occurs (block 0 genesis)', async () => {
     ENV.BNS_IMPORT_DIR = 'tests/api/bns/import-test-files';
-    await importEventsFromTsv('tests/api/event-replay/tsv/mainnet-block0.tsv', 'archival', true, true);
+    await importEventsFromTsv('tests/api/event-replay/tsv/mainnet-block0.tsv', true, true);
     const configState = await db.getConfigState();
     assert.equal(configState.bns_names_onchain_imported, true);
     assert.equal(configState.bns_subdomains_imported, true);
   });
-
 });

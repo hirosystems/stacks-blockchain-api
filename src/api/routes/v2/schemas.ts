@@ -211,7 +211,6 @@ export const BlockParamsSchema = Type.Object(
   },
   { additionalProperties: false }
 );
-export type BlockParams = Static<typeof BlockParamsSchema>;
 
 export const BurnBlockParamsSchema = Type.Object(
   {
