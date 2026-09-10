@@ -36,7 +36,7 @@ import {
   decodePostConditions,
   memoToString,
 } from '@stacks/codec';
-import { serializePostCondition } from './post-conditions.js';
+import { serializePostCondition, serializePostConditionMode } from './post-conditions.js';
 import { serializeDbMempoolTransaction } from './mempool-transactions.js';
 
 /**
@@ -251,9 +251,9 @@ export function serializeDbTransaction(
     vm_error: transaction.vm_error,
   };
   if (include?.includes('post_conditions')) {
-    result.post_conditions = decodePostConditions(transaction.post_conditions).post_conditions.map(
-      pc => serializePostCondition(pc)
-    );
+    const decoded = decodePostConditions(transaction.post_conditions);
+    result.post_condition_mode = serializePostConditionMode(decoded.post_condition_mode);
+    result.post_conditions = decoded.post_conditions.map(pc => serializePostCondition(pc));
   }
   if (include?.includes('result')) {
     result.result = {

@@ -502,6 +502,7 @@ describe('v3 transactions', () => {
       assert.equal(body.contract_call.function_name, 'stack-stx');
       // None of the opt-in fields should be present.
       assert.equal(body.contract_call.function_args, undefined);
+      assert.equal(body.post_condition_mode, undefined);
       assert.equal(body.post_conditions, undefined);
       assert.equal(body.result, undefined);
     });
@@ -520,8 +521,57 @@ describe('v3 transactions', () => {
         { hex: '0x010000000000000000000000000001e240', repr: 'u123456' },
         { hex: '0x0d0000000568656c6c6f', repr: '"hello"' },
       ]);
+      // '0x01f5' → allow mode, empty list.
+      assert.equal(body.post_condition_mode, 'allow');
       assert.deepEqual(body.post_conditions, []);
       assert.deepEqual(body.result, { hex: '0x0703', repr: '(ok true)' });
+    });
+
+    test('should serialize the post condition mode alongside the post conditions', async () => {
+      const txDeny = hex(0x5003);
+      await db.update(
+        new TestBlockBuilder({
+          block_height: 1,
+          index_block_hash: hex(1),
+          parent_index_block_hash: hex(0),
+          parent_block_hash: hex(0),
+        })
+          .addTx({
+            tx_id: txDeny,
+            block_hash: hex(1),
+            index_block_hash: hex(1),
+            block_time: 1000,
+            burn_block_height: 1,
+            burn_block_time: 1000,
+            tx_index: 0,
+            fee_rate: 50n,
+            type_id: DbTxTypeId.ContractCall,
+            status: DbTxStatus.Success,
+            sender_address: SENDER,
+            contract_call_contract_id: CONTRACT_ID,
+            contract_call_function_name: 'stack-stx',
+            contract_call_function_args: bufferToHex(createClarityValueArray(uintCV(1))),
+            // Deny mode (0x02), one STX post condition: origin principal, sent_equal_to, 100 µSTX.
+            post_conditions: '0x02000000010001010000000000000064',
+          })
+          .build()
+      );
+      const response = await api.fastifyApp.inject({
+        method: 'GET',
+        url: `/extended/v3/transactions/${txDeny}`,
+        query: { include: 'post_conditions' },
+      });
+      assert.equal(response.statusCode, 200);
+      const body = JSON.parse(response.body);
+      assert.equal(body.post_condition_mode, 'deny');
+      assert.deepEqual(body.post_conditions, [
+        {
+          type: 'stx',
+          condition_code: 'sent_equal_to',
+          amount: '100',
+          principal: { type_id: 'principal_origin' },
+        },
+      ]);
     });
 
     test('should populate source_code when requested', async () => {
@@ -537,6 +587,7 @@ describe('v3 transactions', () => {
       assert.equal(body.type, 'smart_contract');
       assert.equal(body.smart_contract.source_code, SOURCE_CODE);
       // The other heavy fields stay omitted.
+      assert.equal(body.post_condition_mode, undefined);
       assert.equal(body.post_conditions, undefined);
       assert.equal(body.result, undefined);
     });
