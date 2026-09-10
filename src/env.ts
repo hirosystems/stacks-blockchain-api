@@ -38,11 +38,6 @@ const schema = Type.Object({
   PG_STATEMENT_TIMEOUT: Type.Optional(Type.Integer()),
   /** Can be any string, use to specify a use case specific to a deployment */
   PG_APPLICATION_NAME: Type.String({ default: 'stacks-blockchain-api' }),
-  /**
-   * The connection URI below can be used in place of the PG variables above, but if enabled it must
-   * be defined without others or omitted.
-   */
-  PG_CONNECTION_URI: Type.Optional(Type.String()),
   /** Limit to how many concurrent connections can be created, defaults to 10 */
   PG_CONNECTION_POOL_MAX: Type.Integer({ default: 10, minimum: 0 }),
   /**
@@ -63,9 +58,7 @@ const schema = Type.Object({
   PG_PRIMARY_SSL: Type.Optional(Type.Boolean()),
   PG_PRIMARY_IDLE_TIMEOUT: Type.Optional(Type.Integer({ minimum: 0 })),
   PG_PRIMARY_MAX_LIFETIME: Type.Optional(Type.Integer({ minimum: 0 })),
-  PG_PRIMARY_CLOSE_TIMEOUT: Type.Optional(Type.Integer({ minimum: 0 })),
   PG_PRIMARY_STATEMENT_TIMEOUT: Type.Optional(Type.Integer({ minimum: 0 })),
-  PG_PRIMARY_CONNECTION_URI: Type.Optional(Type.String()),
   PG_PRIMARY_CONNECTION_POOL_MAX: Type.Optional(Type.Integer({ minimum: 0 })),
 
   /**
@@ -160,11 +153,6 @@ const schema = Type.Object({
    * given port. This port should not be publicly exposed.
    */
   STACKS_PROFILER_PORT: Type.Optional(Type.Integer({ minimum: 0, maximum: 65535 })),
-  /**
-   * Specify max number of STX address to store in an in-memory LRU cache (CPU optimization).
-   * Defaults to 50,000, which should result in around 25 megabytes of additional memory usage.
-   */
-  STACKS_ADDRESS_CACHE_SIZE: Type.Integer({ default: 50000, minimum: 0 }),
   /**
    * Insert concurrency when processing new blocks. If your PostgreSQL is operating on SSD and has
    * multiple CPU cores, consider raising this value, for instance, to 8 or 16.

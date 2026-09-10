@@ -15,21 +15,6 @@ import {
 import { MIGRATIONS_DIR } from '../datastore/pg-store.js';
 import { PgServer, getConnectionArgs } from '../datastore/connection.js';
 
-enum EventImportMode {
-  /**
-   * The Event Server will ingest and process every single Stacks node event contained in the TSV file
-   * from block 0 to the latest block. This is the default mode.
-   */
-  archival = 'archival',
-  /**
-   * The Event Server will ingore certain "prunable" events (see `IBD_PRUNABLE_ROUTES`) from
-   * the imported TSV file if they are received outside of a block window, usually set to
-   * TSV's `block_height` - 256.
-   * This allows the import to be faster at the expense of historical blockchain information.
-   */
-  pruned = 'pruned',
-}
-
 /**
  * Exports all Stacks node events stored in the `event_observer_requests` table to a TSV file.
  * @param filePath - Path to TSV file to write
@@ -66,16 +51,13 @@ export async function exportEventsAsTsv(
 /**
  * Imports Stacks node events from a TSV file and ingests them through the Event Server.
  * @param filePath - Path to TSV file to read
- * @param importMode - Event import mode
  * @param wipeDb - If we should wipe the DB before importing
  * @param force - If we should force drop all tables
  */
 export async function importEventsFromTsv(
   filePath?: string,
-  importMode?: string,
   wipeDb: boolean = false,
-  force: boolean = false,
-  prunedBlockHeightOption?: number
+  force: boolean = false
 ): Promise<HttpClientResponse[]> {
   if (!filePath) {
     throw new Error(`A file path should be specified with the --file option`);
@@ -83,18 +65,6 @@ export async function importEventsFromTsv(
   const resolvedFilePath = path.resolve(filePath);
   if (!fs.existsSync(resolvedFilePath)) {
     throw new Error(`File does not exist: ${resolvedFilePath}`);
-  }
-  let eventImportMode: EventImportMode;
-  switch (importMode) {
-    case 'pruned':
-      eventImportMode = EventImportMode.pruned;
-      break;
-    case 'archival':
-    case undefined:
-      eventImportMode = EventImportMode.archival;
-      break;
-    default:
-      throw new Error(`Invalid event import mode: ${importMode}`);
   }
   const connectionArgs = getConnectionArgs(PgServer.primary);
   const hasData = await databaseHasData(connectionArgs);
@@ -120,16 +90,9 @@ export async function importEventsFromTsv(
     );
   }
 
-  // Look for the TSV's block height and determine the prunable block window.
   const tsvBlockHeight = await findTsvBlockHeight(resolvedFilePath);
-  const blockWindowSize = 256;
-  const prunedBlockHeight =
-    prunedBlockHeightOption ?? Math.max(tsvBlockHeight - blockWindowSize, 0);
   console.log(`Event file's block height: ${tsvBlockHeight}`);
-  console.log(`Starting event import and playback in ${eventImportMode} mode`);
-  if (eventImportMode === EventImportMode.pruned) {
-    console.log(`Ignoring all prunable events before block height: ${prunedBlockHeight}`);
-  }
+  console.log(`Starting event import and playback`);
 
   const db = await PgWriteStore.connect({
     usageName: 'import-events',
@@ -155,15 +118,10 @@ export async function importEventsFromTsv(
   // in the equivalent of months/years of API log output.
   logger.level = 'warn';
   // The current import block height. Will be updated with every `/new_block` event.
-  let blockHeight = 0;
+  let blockHeight: number;
   const responses = [];
   for await (const rawEvents of rawEventsIterator) {
     for (const rawEvent of rawEvents) {
-      if (eventImportMode === EventImportMode.pruned) {
-        if (blockHeight === prunedBlockHeight) {
-          console.log(`Resuming prunable event import...`);
-        }
-      }
       const response = await httpPostRequest({
         host: '127.0.0.1',
         port: eventServer.serverAddress.port,

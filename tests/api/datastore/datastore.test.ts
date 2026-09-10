@@ -29,6 +29,7 @@ import { bnsNameCV, I32_MAX } from '../../../src/helpers.ts';
 import { TestBlockBuilder } from '../test-builders.ts';
 import { PgSqlClient, bufferToHex } from '@stacks/api-toolkit';
 import { migrate } from '../../test-helpers.ts';
+import { getCurrentStxBalance } from '../test-helpers.ts';
 import { beforeEach, afterEach, describe, test } from 'node:test';
 import { STACKS_MAINNET } from '@stacks/network';
 
@@ -207,10 +208,10 @@ describe('postgres datastore', () => {
     await db.updateTx(client, tx);
     await db.updateTx(client, tx2);
 
-    const addrAResult = await db.getStxBalance({ stxAddress: 'addrA' });
-    const addrBResult = await db.getStxBalance({ stxAddress: 'addrB' });
-    const addrCResult = await db.getStxBalance({ stxAddress: 'addrC' });
-    const addrDResult = await db.getStxBalance({ stxAddress: 'addrD' });
+    const addrAResult = await getCurrentStxBalance(db, 'addrA');
+    const addrBResult = await getCurrentStxBalance(db, 'addrB');
+    const addrCResult = await getCurrentStxBalance(db, 'addrC');
+    const addrDResult = await getCurrentStxBalance(db, 'addrD');
 
     assert.deepEqual(addrAResult, {
       balance: 198291n,
@@ -4622,21 +4623,13 @@ describe('postgres datastore', () => {
     assert.equal(b3b.result?.canonical, true);
     assert.equal(b4.result?.canonical, true);
 
-    const r1 = await db.getStxBalance({
-      stxAddress: minerReward1.recipient,
-    });
-    const r2 = await db.getStxBalance({
-      stxAddress: minerReward2.recipient,
-    });
+    const r1 = await getCurrentStxBalance(db, minerReward1.recipient);
+    const r2 = await getCurrentStxBalance(db, minerReward2.recipient);
     assert.equal(r1.totalMinerRewardsReceived, 1014n);
     assert.equal(r2.totalMinerRewardsReceived, 0n);
 
-    const lock1 = await db.getStxBalance({
-      stxAddress: stxLockEvent1.locked_address,
-    });
-    const lock2 = await db.getStxBalance({
-      stxAddress: stxLockEvent2.locked_address,
-    });
+    const lock1 = await getCurrentStxBalance(db, stxLockEvent1.locked_address);
+    const lock2 = await getCurrentStxBalance(db, stxLockEvent2.locked_address);
     assert.equal(lock1.locked, 1234n);
     assert.equal(lock2.locked, 0n);
 
@@ -4653,9 +4646,7 @@ describe('postgres datastore', () => {
     // Ensure STX holder balances have tracked correctly through the reorgs
     const holders1 = await db.getTokenHolders({ token: 'stx', limit: 100, offset: 0 });
     for (const holder of holders1.results) {
-      const holderBalance = await db.getStxBalance({
-        stxAddress: holder.address,
-      });
+      const holderBalance = await getCurrentStxBalance(db, holder.address);
       assert.equal(holder.balance, holderBalance.balance.toString());
     }
   });
@@ -5280,9 +5271,7 @@ describe('postgres datastore', () => {
 
     // Ensure STX holder balances have tracked correctly through the reorgs
     for (const holder of holders1.results) {
-      const holderBalance = await db.getStxBalance({
-        stxAddress: holder.address,
-      });
+      const holderBalance = await getCurrentStxBalance(db, holder.address);
       assert.equal(holder.balance, holderBalance.balance.toString());
     }
 
@@ -5832,9 +5821,12 @@ describe('postgres datastore', () => {
       },
       subdomains
     );
-    const { results } = await db.getSubdomainsList({ page: 0 });
+    const results = await db.sql<{ fully_qualified_subdomain: string }[]>`
+      SELECT fully_qualified_subdomain FROM subdomains
+      WHERE canonical = true AND microblock_canonical = true
+    `;
     assert.equal(results.length, 1);
-    assert.equal(results[0], 'test.nametest.namespacetest');
+    assert.equal(results[0].fully_qualified_subdomain, 'test.nametest.namespacetest');
   });
 
   test('pg get transactions in a block', async () => {

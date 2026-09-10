@@ -46,12 +46,7 @@ describe('PoX tests', () => {
   });
 
   test('api', async () => {
-    await importEventsFromTsv(
-      'tests/api/event-server/tsv/epoch-3-transition.tsv',
-      'archival',
-      true,
-      true
-    );
+    await importEventsFromTsv('tests/api/event-server/tsv/epoch-3-transition.tsv', true, true);
     const cycles = await supertest(api.server).get(`/extended/v2/pox/cycles`);
     assert.equal(cycles.status, 200);
     assert.equal(cycles.type, 'application/json');
@@ -195,7 +190,6 @@ describe('PoX tests', () => {
     test('snapshot 1', async () => {
       await importEventsFromTsv(
         'tests/api/event-server/tsv/regtest-env-pox-4-stack-stx-in-reward-phase-S1.tsv',
-        'archival',
         true,
         true
       );
@@ -209,7 +203,6 @@ describe('PoX tests', () => {
     test('snapshot 2', async () => {
       await importEventsFromTsv(
         'tests/api/event-server/tsv/regtest-env-pox-4-stack-stx-in-reward-phase-S2.tsv',
-        'archival',
         true,
         true
       );
@@ -225,7 +218,6 @@ describe('PoX tests', () => {
     test('snapshot 3', async () => {
       await importEventsFromTsv(
         'tests/api/event-server/tsv/regtest-env-pox-4-stack-stx-in-reward-phase-S3.tsv',
-        'archival',
         true,
         true
       );

@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { PgStore } from '../../src/datastore/pg-store.ts';
 
 type Disposable<T> = () =>
   | readonly [item: T, dispose: () => any | Promise<any>]
@@ -81,4 +82,10 @@ export function assertMatchesObject(actual: any, expected: any): void {
 
 export function hex(value: number): string {
   return `0x${value.toString(16).padStart(64, '0')}`;
+}
+
+/** Returns the STX balance of `address` at the current chain tip. */
+export async function getCurrentStxBalance(db: PgStore, address: string) {
+  const chainTip = await db.getChainTip(db.sql);
+  return db.getStxBalanceAtBlock(address, chainTip.block_height);
 }

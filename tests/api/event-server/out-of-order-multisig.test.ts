@@ -43,7 +43,6 @@ describe('Out-of-order-multisig tx tests', () => {
   test('tsv replay with out-of-order-multisig tx', async () => {
     await importEventsFromTsv(
       'tests/api/event-server/tsv/regtest-env-pox-4-out-of-order-multisig-tx.tsv',
-      'archival',
       true,
       true
     );

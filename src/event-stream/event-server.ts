@@ -611,15 +611,6 @@ async function handleNewAttachmentMessage(msg: AttachmentsNewMessage[], db: PgWr
   await db.updateAttachments(attachments);
 }
 
-export const DummyEventMessageHandler: EventMessageHandler = {
-  handleRawEventRequest: () => {},
-  handleBlockMessage: () => {},
-  handleBurnBlock: () => {},
-  handleMempoolTxs: () => {},
-  handleDroppedMempoolTxs: () => {},
-  handleNewAttachment: () => {},
-};
-
 interface EventMessageHandler {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   handleRawEventRequest(eventPath: string, payload: any, db: PgWriteStore): Promise<void> | void;

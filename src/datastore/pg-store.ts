@@ -2062,22 +2062,6 @@ export class PgStore extends BasePgStore {
     return { found: true, result: smartContracts };
   }
 
-  async getStxBalance({ stxAddress }: { stxAddress: string }): Promise<DbStxBalance> {
-    return await this.sqlTransaction(async sql => {
-      const blockQuery = await this.getCurrentBlockInternal(sql);
-      if (!blockQuery.found) {
-        throw new Error(`Could not find current block`);
-      }
-      const result = await this.internalGetStxBalanceAtBlock(
-        sql,
-        stxAddress,
-        blockQuery.result.block_height,
-        blockQuery.result.burn_block_height
-      );
-      return result;
-    });
-  }
-
   async getStxBalanceAtBlock(stxAddress: string, blockHeight: number): Promise<DbStxBalance> {
     return await this.sqlTransaction(async sql => {
       const chainTip = await this.getChainTip(sql);
@@ -3814,27 +3798,6 @@ export class PgStore extends BasePgStore {
           AND canonical = true
           AND microblock_canonical = true
         ORDER BY fully_qualified_subdomain, block_height DESC, microblock_sequence DESC, tx_index DESC
-      `;
-    });
-    const results = queryResult.map(r => r.fully_qualified_subdomain);
-    return { results };
-  }
-
-  /**
-   * @deprecated This function is only used for testing.
-   */
-  async getSubdomainsList({ page }: { page: number }) {
-    const offset = page * 100;
-    const queryResult = await this.sqlTransaction(async sql => {
-      const maxBlockHeight = (await this.getChainTip(sql)).block_height;
-      return await sql<{ fully_qualified_subdomain: string }[]>`
-        SELECT DISTINCT ON (fully_qualified_subdomain) fully_qualified_subdomain
-        FROM subdomains
-        WHERE block_height <= ${maxBlockHeight}
-        AND canonical = true AND microblock_canonical = true
-        ORDER BY fully_qualified_subdomain, block_height DESC, microblock_sequence DESC, tx_index DESC
-        LIMIT 100
-        OFFSET ${offset}
       `;
     });
     const results = queryResult.map(r => r.fully_qualified_subdomain);

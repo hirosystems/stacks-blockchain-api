@@ -75,14 +75,6 @@ export interface DbBurnchainRewardWithBurnAmount extends DbBurnchainReward {
   burn_amount: bigint;
 }
 
-export interface DbBurnchainBlock {
-  canonical: boolean;
-  burn_block_hash: string;
-  burn_block_height: number;
-  burn_amount: bigint;
-  reward_amount: bigint;
-}
-
 export interface DbPoxSetSigners {
   cycle_number: number;
   pox_ustx_threshold: bigint;
