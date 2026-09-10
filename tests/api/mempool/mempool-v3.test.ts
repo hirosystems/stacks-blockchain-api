@@ -445,6 +445,7 @@ describe('v3 mempool', () => {
       assert.equal(body.contract_call.function_name, 'stack-stx');
       // Heavy fields omitted by default.
       assert.equal(body.contract_call.function_args, undefined);
+      assert.equal(body.post_condition_mode, undefined);
       assert.equal(body.post_conditions, undefined);
       // `result` does not apply to mempool transactions (they have not executed) — the
       // schema doesn't even declare it on the mempool type, so it must stay absent
@@ -493,7 +494,54 @@ describe('v3 mempool', () => {
         { hex: '0x010000000000000000000000000001e240', repr: 'u123456' },
         { hex: '0x0d0000000568656c6c6f', repr: '"hello"' },
       ]);
+      // '0x01f5' → allow mode, empty list.
+      assert.equal(body.post_condition_mode, 'allow');
       assert.deepEqual(body.post_conditions, []);
+    });
+
+    test('should serialize the post condition mode alongside the post conditions', async () => {
+      const txId = hex(0x4004);
+      await db.update(
+        new TestBlockBuilder({
+          block_height: 1,
+          index_block_hash: hex(1),
+          parent_index_block_hash: hex(0),
+          parent_block_hash: hex(0),
+        })
+          .addTx({ tx_id: hex(0xaa), sender_address: BLOCK_SENDER, nonce: 0 })
+          .build()
+      );
+      await db.updateMempoolTxs({
+        mempoolTxs: [
+          testMempoolTx({
+            tx_id: txId,
+            receipt_time: 2000,
+            type_id: DbTxTypeId.TokenTransfer,
+            sender_address: SENDER,
+            fee_rate: 100n,
+            nonce: 5,
+            // Deny mode (0x02), one STX post condition: origin principal, sent_equal_to, 100 µSTX.
+            post_conditions: '0x02000000010001010000000000000064',
+          }),
+        ],
+      });
+      const response = await api.fastifyApp.inject({
+        method: 'GET',
+        url: `/extended/v3/transactions/${txId}`,
+        query: { include: 'post_conditions' },
+      });
+      assert.equal(response.statusCode, 200);
+      const body = JSON.parse(response.body);
+      assert.equal(body.status, 'pending');
+      assert.equal(body.post_condition_mode, 'deny');
+      assert.deepEqual(body.post_conditions, [
+        {
+          type: 'stx',
+          condition_code: 'sent_equal_to',
+          amount: '100',
+          principal: { type_id: 'principal_origin' },
+        },
+      ]);
     });
 
     test('should return 304 when ETag matches and refresh ETag when the mempool tx is confirmed', async () => {

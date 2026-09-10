@@ -293,6 +293,7 @@ interface TestMempoolTxArgs {
   sponsor_address?: string;
   sponsored?: boolean;
   receipt_time?: number;
+  post_conditions?: string;
 }
 
 /**
@@ -311,7 +312,7 @@ export function testMempoolTx(args?: TestMempoolTxArgs): DbMempoolTxRaw {
     receipt_time: args?.receipt_time ?? (new Date().getTime() / 1000) | 0,
     status: args?.status ?? DbTxStatus.Pending,
     replaced_by_tx_id: args?.replaced_by_tx_id,
-    post_conditions: '0x01f5',
+    post_conditions: args?.post_conditions ?? '0x01f5',
     fee_rate: args?.fee_rate ?? 1234n,
     sponsored: args?.sponsored ?? false,
     sponsor_address: args?.sponsor_address,

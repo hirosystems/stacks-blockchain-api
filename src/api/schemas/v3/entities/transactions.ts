@@ -1,6 +1,6 @@
 import { Static, Type } from '@sinclair/typebox';
 import { BaseTransactionSummarySchema, TenureChangeCauseSchema } from './transaction-summaries.js';
-import { PostConditionSchema } from './post-conditions.js';
+import { PostConditionModeSchema, PostConditionSchema } from './post-conditions.js';
 import { Nullable } from '../../v1/util.js';
 import {
   DecodedClarityValueSchema,
@@ -19,6 +19,13 @@ const BaseTransactionSchema = Type.Composite([
         description: 'Index block hash of the parent block',
       }),
     }),
+    post_condition_mode: Type.Optional(
+      Type.Union(PostConditionModeSchema.anyOf, {
+        description:
+          'Post condition mode of the transaction. Only present when requested via the ' +
+          '`include=post_conditions` query param.',
+      })
+    ),
     post_conditions: Type.Optional(
       Type.Array(PostConditionSchema, {
         description: 'Only present when requested via the `include=post_conditions` query param.',
