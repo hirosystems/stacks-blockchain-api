@@ -7,7 +7,6 @@ import type {
 import {
   getBlockFromDataStore,
   getMempoolTxsFromDataStore,
-  getMicroblockFromDataStore,
   getTxFromDataStore,
   parseDbTx,
 } from '../../controllers/db-controller.js';
@@ -62,11 +61,6 @@ export class WebSocketTransmitter {
       this.queue
         .add(() => this.blockUpdate(blockHash))
         .catch(error => logger.error(error, 'WebSocketTransmitter blockUpdate error'))
-    );
-    this.db.eventEmitter.addListener('microblockUpdate', microblockHash =>
-      this.queue
-        .add(() => this.microblockUpdate(microblockHash))
-        .catch(error => logger.error(error, 'WebSocketTransmitter microblockUpdate error'))
     );
     this.db.eventEmitter.addListener('nftEventUpdate', (txId, eventIndex) =>
       this.queue
@@ -133,28 +127,11 @@ export class WebSocketTransmitter {
     }
   }
 
-  private async microblockUpdate(microblockHash: string) {
-    if (this.channels.find(c => c.hasListeners('microblock'))) {
-      try {
-        const microblockQuery = await getMicroblockFromDataStore({
-          db: this.db,
-          microblockHash: microblockHash,
-        });
-        if (microblockQuery.found) {
-          await this.send('microblock', microblockQuery.result);
-        }
-      } catch (error) {
-        logger.error(error);
-      }
-    }
-  }
-
   private async txUpdate(txId: string) {
     if (this.channels.find(c => c.hasListeners('mempool'))) {
       try {
         const mempoolTxs = await getMempoolTxsFromDataStore(this.db, {
           txIds: [txId],
-          includeUnanchored: true,
           excludeFunctionArgs: false,
         });
         if (mempoolTxs.length > 0) {
@@ -171,7 +148,6 @@ export class WebSocketTransmitter {
           // Look at the `txs` table first so we always prefer the confirmed transaction.
           const txQuery = await getTxFromDataStore(this.db, {
             txId: txId,
-            includeUnanchored: true,
             excludeFunctionArgs: false,
           });
           if (txQuery.found) {
@@ -180,7 +156,6 @@ export class WebSocketTransmitter {
             // Tx is not yet confirmed, look at `mempool_txs`.
             const mempoolTxs = await getMempoolTxsFromDataStore(this.db, {
               txIds: [txId],
-              includeUnanchored: true,
               excludeFunctionArgs: false,
             });
             if (mempoolTxs.length > 0) {

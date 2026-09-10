@@ -349,7 +349,6 @@ describe('search tests', () => {
 
     const dataStoreUpdate: DataStoreBlockUpdateData = {
       block: block,
-      microblocks: [],
       minerRewards: [],
       txs: [
         {
@@ -870,7 +869,7 @@ describe('search tests', () => {
       recipient: addr7,
       sender: 'none',
     };
-    await db.updateNftEvents(client, stxTx1, [nftEvent1], false);
+    await db.updateNftEvents(client, stxTx1, [nftEvent1]);
 
     // test address as a nft event recipient
     const searchResult7 = await supertest(api.server).get(`/extended/v1/search/${addr7}`);
@@ -898,7 +897,7 @@ describe('search tests', () => {
       recipient: 'none',
       sender: addr8,
     };
-    await db.updateNftEvents(client, stxTx1, [nftEvent2], false);
+    await db.updateNftEvents(client, stxTx1, [nftEvent2]);
 
     // test address as a nft event sender
     const searchResult8 = await supertest(api.server).get(`/extended/v1/search/${addr8}`);
@@ -1302,7 +1301,6 @@ describe('search tests', () => {
 
     const dataStoreUpdate: DataStoreBlockUpdateData = {
       block: block,
-      microblocks: [],
       minerRewards: [],
       txs: [
         {

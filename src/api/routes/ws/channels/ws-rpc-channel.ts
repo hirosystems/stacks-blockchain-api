@@ -24,7 +24,6 @@ import type {
   RpcAddressTxSubscriptionParams,
   RpcAddressBalanceSubscriptionParams,
   RpcBlockSubscriptionParams,
-  RpcMicroblockSubscriptionParams,
   RpcMempoolSubscriptionParams,
   AddressStxBalanceResponse,
   RpcNftEventSubscriptionParams,
@@ -37,7 +36,6 @@ import { isProdEnv, logger, resolveOrTimeout } from '@stacks/api-toolkit';
 
 import { Transaction, MempoolTransaction } from '../../../schemas/v1/entities/transactions.js';
 import { Block } from '../../..//schemas/v1/entities/block.js';
-import { Microblock } from '../../..//schemas/v1/entities/microblock.js';
 import { AddressTransactionWithTransfers } from '../../../schemas/v1/entities/addresses.js';
 
 type Subscription =
@@ -45,7 +43,6 @@ type Subscription =
   | RpcAddressTxSubscriptionParams
   | RpcAddressBalanceSubscriptionParams
   | RpcBlockSubscriptionParams
-  | RpcMicroblockSubscriptionParams
   | RpcMempoolSubscriptionParams
   | RpcNftEventSubscriptionParams
   | RpcNftAssetEventSubscriptionParams
@@ -173,7 +170,6 @@ export class WsRpcChannel extends WebSocketChannel {
     });
 
     this.subscriptions.set('block', new SubscriptionManager());
-    this.subscriptions.set('microblock', new SubscriptionManager());
     this.subscriptions.set('mempool', new SubscriptionManager());
     this.subscriptions.set('transaction', new SubscriptionManager());
     this.subscriptions.set('principalTransactions', new SubscriptionManager());
@@ -233,8 +229,6 @@ export class WsRpcChannel extends WebSocketChannel {
     switch (topic) {
       case 'block':
         return manager.subscriptions.get('block') !== undefined;
-      case 'microblock':
-        return manager.subscriptions.get('microblock') !== undefined;
       case 'mempool':
         return manager.subscriptions.get('mempool') !== undefined;
       case 'transaction': {
@@ -274,11 +268,6 @@ export class WsRpcChannel extends WebSocketChannel {
       case 'block': {
         const [block] = args as ListenerType<WebSocketPayload['block']>;
         this.processBlockUpdate(block);
-        break;
-      }
-      case 'microblock': {
-        const [microblock] = args as ListenerType<WebSocketPayload['microblock']>;
-        this.processMicroblockUpdate(microblock);
         break;
       }
       case 'mempoolTransaction': {
@@ -441,8 +430,6 @@ export class WsRpcChannel extends WebSocketChannel {
         return this.handleAddressBalanceUpdateSubscription(client, req, params, subscribe);
       case 'block':
         return this.handleBlockUpdateSubscription(client, req, params, subscribe);
-      case 'microblock':
-        return this.handleMicroblockUpdateSubscription(client, req, params, subscribe);
       case 'mempool':
         return this.handleMempoolUpdateSubscription(client, req, params, subscribe);
       case 'nft_event':
@@ -542,24 +529,6 @@ export class WsRpcChannel extends WebSocketChannel {
       logger.info(`WsRpcChannel client unsubscribed from 'block'`);
       this.subscriptions.get('block')?.removeSubscription(client, params.event);
       this.prometheus?.unsubscribe(client, 'block');
-    }
-    return jsonRpcSuccess(req.payload.id, {});
-  }
-
-  private handleMicroblockUpdateSubscription(
-    client: WebSocket,
-    req: IParsedObjectRequest,
-    params: RpcMicroblockSubscriptionParams,
-    subscribe: boolean
-  ) {
-    if (subscribe) {
-      logger.info(`WsRpcChannel client subscribed to 'microblock'`);
-      this.subscriptions.get('microblock')?.addSubscription(client, params.event);
-      this.prometheus?.subscribe(client, 'microblock');
-    } else {
-      logger.info(`WsRpcChannel client unsubscribed from 'microblock'`);
-      this.subscriptions.get('microblock')?.removeSubscription(client, params.event);
-      this.prometheus?.unsubscribe(client, 'microblock');
     }
     return jsonRpcSuccess(req.payload.id, {});
   }
@@ -739,25 +708,6 @@ export class WsRpcChannel extends WebSocketChannel {
       }
     } catch (error) {
       logger.error(error, `error sending websocket block updates`);
-    }
-  }
-
-  private processMicroblockUpdate(microblock: Microblock) {
-    try {
-      const manager = this.subscriptions.get('microblock');
-      if (!manager) {
-        return;
-      }
-      const subscribers = manager.subscriptions.get('microblock');
-      if (subscribers) {
-        const rpcNotificationPayload = jsonRpcNotification('microblock', microblock).serialize();
-        subscribers.forEach(client =>
-          this.sendWithTimeout(manager, 'microblock', client, rpcNotificationPayload)
-        );
-        this.prometheus?.sendEvent('microblock');
-      }
-    } catch (error) {
-      logger.error(error, `error sending websocket microblock updates`);
     }
   }
 

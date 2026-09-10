@@ -52,7 +52,6 @@ describe('ws transmitter', () => {
     transmitter['channels'].push(new TestChannel(fakeServer));
     await db.close();
     await assert.doesNotReject(transmitter['blockUpdate']('0xff'));
-    await assert.doesNotReject(transmitter['microblockUpdate']('0xff'));
     await assert.doesNotReject(transmitter['txUpdate']('0xff'));
     await assert.doesNotReject(transmitter['nftEventUpdate']('0xff', 0));
     await assert.doesNotReject(transmitter['addressUpdate']('0xff', 1));

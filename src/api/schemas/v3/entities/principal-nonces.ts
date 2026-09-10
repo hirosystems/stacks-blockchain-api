@@ -30,8 +30,7 @@ export const PrincipalNoncesSchema = Type.Object(
     }),
     last_confirmed_nonce: Nullable(
       Type.Integer({
-        description:
-          "Highest nonce among the principal's confirmed (anchored + microblock) transactions, or null if none.",
+        description: "Highest nonce among the principal's confirmed transactions, or null if none.",
       })
     ),
     mempool: PrincipalMempoolNoncesSchema,

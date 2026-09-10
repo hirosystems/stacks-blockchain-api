@@ -2,7 +2,6 @@ import { Static, Type } from '@sinclair/typebox';
 import { OptionalNullable, PaginatedCursorResponse, PaginatedResponse } from '../util.js';
 import { MempoolStatsSchema } from '../entities/mempool-transactions.js';
 import { MempoolTransactionSchema, TransactionSchema } from '../entities/transactions.js';
-import { MicroblockSchema } from '../entities/microblock.js';
 import {
   AddressTransactionWithTransfersSchema,
   InboundStxTransferSchema,
@@ -44,16 +43,6 @@ export const ServerStatusResponseSchema = Type.Object(
         index_block_hash: Type.String({
           description: 'the current index block hash',
         }),
-        microblock_hash: Type.Optional(
-          Type.String({
-            description: 'the current microblock hash',
-          })
-        ),
-        microblock_sequence: Type.Optional(
-          Type.Integer({
-            description: 'the current microblock sequence number',
-          })
-        ),
         burn_block_height: Type.Integer({
           description: 'the current burn chain block height',
         }),
@@ -105,12 +94,6 @@ export const MempoolTransactionListResponse = PaginatedResponse(MempoolTransacti
   description: 'List of mempool transactions',
 });
 export type MempoolTransactionListResponse = Static<typeof MempoolTransactionListResponse>;
-
-export const MicroblockListResponseSchema = PaginatedResponse(MicroblockSchema, {
-  title: 'MicroblockListResponse',
-  description: 'GET request that returns microblocks',
-});
-export type MicroblockListResponse = Static<typeof MicroblockListResponseSchema>;
 
 export const AddressTransactionsWithTransfersListResponseSchema = PaginatedResponse(
   AddressTransactionWithTransfersSchema,

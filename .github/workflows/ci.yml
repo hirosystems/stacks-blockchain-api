@@ -64,7 +64,6 @@ jobs:
             api:event-server,
             api:faucets,
             api:mempool,
-            api:microblocks,
             api:principal,
             api:principal-v3,
             api:redis,

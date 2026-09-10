@@ -98,7 +98,7 @@ async function calculateETag(
           // blocks.
           return;
         }
-        return chainTip.microblock_hash ?? chainTip.index_block_hash;
+        return chainTip.index_block_hash;
       }
 
       case ETagType.burnchainChainTip: {

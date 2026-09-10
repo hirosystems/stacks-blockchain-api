@@ -4,14 +4,12 @@ import { BASE_PATH } from '../common';
 import type { 
   Block,
   Transaction,
-  Microblock,
   RpcAddressTxNotificationParams,
   RpcAddressBalanceNotificationParams,
   NftEvent,
   MempoolTransaction,
   RpcSubscriptionType,
   RpcBlockSubscriptionParams,
-  RpcMicroblockSubscriptionParams,
   RpcMempoolSubscriptionParams,
   RpcTxUpdateSubscriptionParams,
   RpcAddressTxSubscriptionParams,
@@ -37,7 +35,6 @@ export class StacksApiWebSocketClient {
 
   eventEmitter = new EventEmitter<{
     block: (event: Block) => void;
-    microblock: (event: Microblock) => void;
     mempool: (event: Transaction) => void;
     txUpdate: (event: Transaction | MempoolTransaction) => any;
     addressTxUpdate: (event: RpcAddressTxNotificationParams) => void;
@@ -114,9 +111,6 @@ export class StacksApiWebSocketClient {
       case 'block':
         this.eventEmitter.emit('block', data.params as Block);
         break;
-      case 'microblock':
-        this.eventEmitter.emit('microblock', data.params as Microblock);
-        break;
       case 'mempool':
         this.eventEmitter.emit('mempool', data.params as Transaction);
         break;
@@ -150,21 +144,6 @@ export class StacksApiWebSocketClient {
     return {
       unsubscribe: () => {
         this.eventEmitter.removeListener('block', listener);
-        return this.rpcCall('unsubscribe', params);
-      },
-    };
-  }
-
-  async subscribeMicroblocks(update: (event: Microblock) => any): Promise<Subscription> {
-    const params: RpcMicroblockSubscriptionParams = { event: 'microblock' };
-    await this.rpcCall('subscribe', params);
-    const listener = (event: Microblock) => {
-      update(event);
-    };
-    this.eventEmitter.addListener('microblock', listener);
-    return {
-      unsubscribe: () => {
-        this.eventEmitter.removeListener('microblock', listener);
         return this.rpcCall('unsubscribe', params);
       },
     };

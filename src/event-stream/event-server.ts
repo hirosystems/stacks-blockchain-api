@@ -18,9 +18,7 @@ import {
   DbMinerReward,
   DbBurnchainReward,
   DbRewardSlotHolder,
-  DataStoreMicroblockUpdateData,
   DataStoreTxEventData,
-  DbMicroblock,
   DataStoreAttachmentData,
   DbPox4SyntheticEvent,
   DbTxStatus,
@@ -33,7 +31,6 @@ import {
   getTxSponsorAddress,
   parseMessageTransaction,
   CoreNodeMsgBlockData,
-  parseMicroblocksFromTxs,
   isPoxPrintEvent,
   newCoreNoreBlockEventCounts,
 } from './reader.js';
@@ -67,7 +64,6 @@ import {
   NewBlockEventType,
   NewBlockMessage,
   NewBurnBlockMessage,
-  NewMicroblocksMessage,
   AttachmentsNewMessage,
 } from '@stacks/node-publisher-client';
 import { CoreNodeParsedTxMessage } from './core-node-message.js';
@@ -228,66 +224,6 @@ async function handleDroppedMempoolTxsMessage(
     txIds: msg.dropped_txids,
     new_tx_id: msg.new_txid,
   });
-}
-
-async function handleMicroblockMessage(
-  chainId: ChainID,
-  msg: NewMicroblocksMessage,
-  db: PgWriteStore
-): Promise<void> {
-  logger.debug(`Received microblock with ${msg.transactions.length} txs`);
-  const dbMicroblocks = parseMicroblocksFromTxs({
-    parentIndexBlockHash: msg.parent_index_block_hash,
-    txs: msg.transactions,
-    parentBurnBlock: {
-      height: msg.burn_block_height,
-      hash: msg.burn_block_hash,
-      time: msg.burn_block_timestamp,
-    },
-  });
-  const stacksBlockReceiptDate = Math.round(Date.now() / 1000);
-  const parsedTxs: CoreNodeParsedTxMessage[] = [];
-  msg.transactions.forEach(tx => {
-    const blockData: CoreNodeMsgBlockData = {
-      parent_index_block_hash: msg.parent_index_block_hash,
-
-      parent_burn_block_timestamp: msg.burn_block_timestamp,
-      parent_burn_block_height: msg.burn_block_height,
-      parent_burn_block_hash: msg.burn_block_hash,
-
-      // These properties aren't known until the next anchor block that accepts this microblock.
-      burn_block_time: -1,
-      burn_block_height: -1,
-      index_block_hash: '',
-      block_hash: '',
-      block_time: stacksBlockReceiptDate,
-
-      // These properties can be determined with a db query, they are set while the db is inserting them.
-      block_height: -1,
-      parent_block_hash: '',
-    };
-    const parsedTx = parseMessageTransaction(chainId, tx, blockData, msg.events);
-    if (parsedTx) {
-      parsedTxs.push(parsedTx);
-    }
-  });
-  parsedTxs.forEach(tx => {
-    logger.debug(`Received microblock mined tx: ${tx.core_tx.txid}`);
-  });
-  const updateData: DataStoreMicroblockUpdateData = {
-    microblocks: dbMicroblocks,
-    txs: parseDataStoreTxEventData(
-      parsedTxs,
-      msg.events,
-      {
-        block_height: -1,
-        index_block_hash: '',
-        block_time: stacksBlockReceiptDate,
-      },
-      chainId
-    ),
-  };
-  await db.updateMicroblocks(updateData);
 }
 
 async function handleBlockMessage(
@@ -678,7 +614,6 @@ async function handleNewAttachmentMessage(msg: AttachmentsNewMessage[], db: PgWr
 export const DummyEventMessageHandler: EventMessageHandler = {
   handleRawEventRequest: () => {},
   handleBlockMessage: () => {},
-  handleMicroblockMessage: () => {},
   handleBurnBlock: () => {},
   handleMempoolTxs: () => {},
   handleDroppedMempoolTxs: () => {},
@@ -691,11 +626,6 @@ interface EventMessageHandler {
   handleBlockMessage(
     chainId: ChainID,
     msg: NewBlockMessage,
-    db: PgWriteStore
-  ): Promise<void> | void;
-  handleMicroblockMessage(
-    chainId: ChainID,
-    msg: NewMicroblocksMessage,
     db: PgWriteStore
   ): Promise<void> | void;
   handleMempoolTxs(rawTxs: string[], db: PgWriteStore): Promise<void> | void;
@@ -784,14 +714,6 @@ function createMessageProcessorQueue(db: PgWriteStore): EventMessageHandler {
         .add(() => observeEvent('burn_block', () => handleBurnBlockMessage(msg, db)))
         .catch(e => {
           logger.error(e, 'Error processing core node burn block message');
-          throw e;
-        });
-    },
-    handleMicroblockMessage: (chainId: ChainID, msg: NewMicroblocksMessage, db: PgWriteStore) => {
-      return secondaryQueue
-        .add(() => observeEvent('microblock', () => handleMicroblockMessage(chainId, msg, db)))
-        .catch(e => {
-          logger.error(e, 'Error processing core node microblock message');
           throw e;
         });
     },
@@ -989,9 +911,12 @@ export async function startEventServer(opts: {
 
   app.post('/new_microblocks', async (req, res) => {
     try {
-      const msg = req.body as NewMicroblocksMessage;
-      await messageHandler.handleMicroblockMessage(opts.chainId, msg, db);
       await handleRawEventRequest(req);
+      if (isProdEnv) {
+        logger.warn(
+          'Received new_microblocks message -- event not required for API operations and can cause db bloat and performance degradation in production'
+        );
+      }
       await res.status(200).send({ result: 'ok' });
     } catch (error) {
       logger.error(error, 'error processing core-node /new_microblocks');
@@ -1205,29 +1130,6 @@ export function parseNewBlockMessage(
 
   logger.debug(`Received ${dbMinerRewards.length} matured miner rewards`);
 
-  const dbMicroblocks = parseMicroblocksFromTxs({
-    parentIndexBlockHash: msg.parent_index_block_hash,
-    txs: msg.transactions,
-    parentBurnBlock: {
-      height: msg.parent_burn_block_height,
-      hash: msg.parent_burn_block_hash,
-      time: msg.parent_burn_block_timestamp,
-    },
-  }).map(mb => {
-    const microblock: DbMicroblock = {
-      ...mb,
-      canonical: true,
-      microblock_canonical: true,
-      block_height: msg.block_height,
-      parent_block_height: msg.block_height - 1,
-      parent_block_hash: msg.parent_block_hash,
-      index_block_hash: msg.index_block_hash,
-      block_hash: msg.block_hash,
-    };
-    counts.microblocks += 1;
-    return microblock;
-  });
-
   let poxSetSigners: DbPoxSetSigners | undefined;
   if (msg.reward_set) {
     assertNotNullish(
@@ -1264,7 +1166,6 @@ export function parseNewBlockMessage(
 
   const dbData: DataStoreBlockUpdateData = {
     block: dbBlock,
-    microblocks: dbMicroblocks,
     minerRewards: dbMinerRewards,
     txs: parseDataStoreTxEventData(parsedTxs, msg.events, dbBlock, chainId),
     pox_v1_unlock_height: msg.pox_v1_unlock_height,

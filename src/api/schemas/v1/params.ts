@@ -45,14 +45,6 @@ export const CursorOffsetParam = (args: {
     })
   );
 
-export const UnanchoredParamSchema = Type.Optional(
-  Type.Boolean({
-    default: false,
-    description: 'Include data from unanchored (i.e. unconfirmed) microblocks',
-    examples: [true],
-  })
-);
-
 export const UntilBlockSchema = Type.Optional(
   Type.String({
     description:

@@ -6,7 +6,6 @@ import {
 } from '../../../../client/src/types.js';
 import { WebSocketPrometheus } from './web-socket-prometheus.js';
 import { Block } from '../../schemas/v1/entities/block.js';
-import { Microblock } from '../../schemas/v1/entities/microblock.js';
 import { Transaction, MempoolTransaction } from '../../schemas/v1/entities/transactions.js';
 
 /**
@@ -15,7 +14,6 @@ import { Transaction, MempoolTransaction } from '../../schemas/v1/entities/trans
  */
 export type WebSocketTopics = {
   block: () => void;
-  microblock: () => void;
   mempool: () => void;
   transaction: (txId: string) => void;
   principalTransactions: (principal: string) => void;
@@ -32,7 +30,6 @@ export type WebSocketTopics = {
  */
 export type WebSocketPayload = {
   block: (block: Block) => void;
-  microblock: (microblock: Microblock) => void;
   mempoolTransaction: (transaction: MempoolTransaction) => void;
   transaction: (transaction: Transaction | MempoolTransaction) => void;
   principalTransaction: (principal: string, transaction: AddressTransactionWithTransfers) => void;

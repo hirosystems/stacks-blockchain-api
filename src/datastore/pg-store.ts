@@ -159,9 +159,6 @@ export class PgStore extends BasePgStore {
         case 'blockUpdate':
           this.eventEmitter.emit('blockUpdate', notification.payload.blockHash);
           break;
-        case 'microblockUpdate':
-          this.eventEmitter.emit('microblockUpdate', notification.payload.microblockHash);
-          break;
         case 'txUpdate':
           this.eventEmitter.emit('txUpdate', notification.payload.txId);
           break;
@@ -214,11 +211,7 @@ export class PgStore extends BasePgStore {
       block_hash: tip?.block_hash ?? '',
       index_block_hash: tip?.index_block_hash ?? '',
       burn_block_height: tip?.burn_block_height ?? 0,
-      microblock_hash: tip?.microblock_hash ?? undefined,
-      microblock_sequence: tip?.microblock_sequence ?? undefined,
-      microblock_count: tip?.microblock_count ?? 0,
       tx_count: tip?.tx_count ?? 0,
-      tx_count_unanchored: tip?.tx_count_unanchored ?? 0,
       mempool_tx_count: tip?.mempool_tx_count ?? 0,
       bond_count: tip?.bond_count ?? 0,
       stx_supply: tip?.stx_supply ?? '0',
@@ -549,92 +542,6 @@ export class PgStore extends BasePgStore {
       }
       const parsed = result.map(r => parseTxQueryResult(r));
       return { found: true, result: parsed };
-    });
-  }
-
-  async getMicroblock(args: {
-    microblockHash: string;
-  }): Promise<FoundOrNot<{ microblock: DbMicroblock; txs: string[] }>> {
-    return await this.sqlTransaction(async sql => {
-      const result = await sql<MicroblockQueryResult[]>`
-        SELECT ${sql(MICROBLOCK_COLUMNS)}
-        FROM microblocks
-        WHERE microblock_hash = ${args.microblockHash}
-        ORDER BY canonical DESC, microblock_canonical DESC
-        LIMIT 1
-      `;
-      if (result.length === 0) {
-        return { found: false } as const;
-      }
-      const txQuery = await sql<{ tx_id: string }[]>`
-        SELECT tx_id
-        FROM txs
-        WHERE microblock_hash = ${args.microblockHash} AND canonical = true AND microblock_canonical = true
-        ORDER BY tx_index DESC
-      `;
-      const microblock = parseMicroblockQueryResult(result[0]);
-      const txs = txQuery.map(row => row.tx_id);
-      return { found: true, result: { microblock, txs } };
-    });
-  }
-
-  async getMicroblocks(args: {
-    limit: number;
-    offset: number;
-  }): Promise<{ result: { microblock: DbMicroblock; txs: string[] }[]; total: number }> {
-    return await this.sqlTransaction(async sql => {
-      const countQuery = await sql<
-        { total: number }[]
-      >`SELECT microblock_count AS total FROM chain_tip`;
-      const microblockQuery = await sql<
-        (MicroblockQueryResult & { tx_id?: string | null; tx_index?: number | null })[]
-      >`
-      SELECT microblocks.*, txs.tx_id
-      FROM microblocks LEFT JOIN txs USING(microblock_hash)
-      WHERE microblocks.canonical = true AND microblocks.microblock_canonical = true AND
-        txs.canonical = true AND txs.microblock_canonical = true
-      ORDER BY microblocks.block_height DESC, microblocks.microblock_sequence DESC, txs.tx_index DESC
-      LIMIT ${args.limit}
-      OFFSET ${args.offset};
-      `;
-      const microblocks: { microblock: DbMicroblock; txs: string[] }[] = [];
-      microblockQuery.forEach(row => {
-        const mb = parseMicroblockQueryResult(row);
-        let existing = microblocks.find(
-          item => item.microblock.microblock_hash === mb.microblock_hash
-        );
-        if (!existing) {
-          existing = { microblock: mb, txs: [] };
-          microblocks.push(existing);
-        }
-        if (row.tx_id) {
-          existing.txs.push(row.tx_id);
-        }
-      });
-      return {
-        result: microblocks,
-        total: countQuery[0].total,
-      };
-    });
-  }
-
-  async getUnanchoredTxsInternal(sql: PgSqlClient): Promise<{ txs: DbTx[] }> {
-    // Get transactions that have been streamed in microblocks but not yet accepted or rejected in an anchor block.
-    const { block_height } = await this.getChainTip(sql);
-    const unanchoredBlockHeight = block_height + 1;
-    const query = await sql<ContractTxQueryResult[]>`
-      SELECT ${sql(TX_COLUMNS)}, ${abiColumn(sql)}
-      FROM txs
-      WHERE canonical = true AND microblock_canonical = true AND block_height = ${unanchoredBlockHeight}
-      ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC
-    `;
-    const txs = query.map(row => parseTxQueryResult(row));
-    return { txs: txs };
-  }
-
-  async getUnanchoredTxs(): Promise<{ txs: DbTx[] }> {
-    return await this.sqlTransaction(async sql => {
-      return this.getUnanchoredTxsInternal(sql);
     });
   }
 
@@ -987,44 +894,7 @@ export class PgStore extends BasePgStore {
     return { reward_recipient: burnchainRecipient, reward_amount: resultAmount };
   }
 
-  private async parseMempoolTransactions(
-    result: MempoolTxQueryResult[],
-    sql: PgSqlClient,
-    includeUnanchored: boolean
-  ) {
-    if (result.length === 0) {
-      return [];
-    }
-    const pruned = result.filter(memTx => memTx.pruned && !includeUnanchored);
-    if (pruned.length !== 0) {
-      const unanchoredBlockHeight = await this.getMaxBlockHeight(sql, {
-        includeUnanchored: true,
-      });
-      const notPrunedTxIds = pruned.map(tx => tx.tx_id);
-      const query = await sql<{ tx_id: string }[]>`
-        SELECT tx_id
-        FROM txs
-        WHERE canonical = true AND microblock_canonical = true
-        AND tx_id IN ${sql(notPrunedTxIds)}
-        AND block_height = ${unanchoredBlockHeight}
-      `;
-      // The tx is marked as pruned because it's in an unanchored microblock
-      query.forEach(tran => {
-        const transaction = result.find(tx => tx.tx_id === tran.tx_id);
-        if (transaction) {
-          transaction.pruned = false;
-          transaction.status = DbTxStatus.Pending;
-        }
-      });
-    }
-    return result.map(transaction => parseMempoolTxQueryResult(transaction));
-  }
-
-  async getMempoolTxs(args: {
-    txIds: string[];
-    includeUnanchored: boolean;
-    includePruned?: boolean;
-  }): Promise<DbMempoolTx[]> {
+  async getMempoolTxs(args: { txIds: string[]; includePruned?: boolean }): Promise<DbMempoolTx[]> {
     if (args.txIds.length === 0) {
       return [];
     }
@@ -1034,17 +904,15 @@ export class PgStore extends BasePgStore {
         FROM mempool_txs
         WHERE tx_id IN ${sql(args.txIds)}
       `;
-      return await this.parseMempoolTransactions(result, sql, args.includeUnanchored);
+      return result.map(transaction => parseMempoolTxQueryResult(transaction));
     });
   }
 
   async getMempoolTx({
     txId,
     includePruned,
-    includeUnanchored,
   }: {
     txId: string;
-    includeUnanchored: boolean;
     includePruned?: boolean;
   }): Promise<FoundOrNot<DbMempoolTx>> {
     return await this.sqlTransaction(async sql => {
@@ -1053,34 +921,13 @@ export class PgStore extends BasePgStore {
         FROM mempool_txs
         WHERE tx_id = ${txId}
       `;
-      // Treat the tx as "not pruned" if it's in an unconfirmed microblock and the caller is has not opted-in to unanchored data.
-      if (result[0]?.pruned && !includeUnanchored) {
-        const unanchoredBlockHeight = await this.getMaxBlockHeight(sql, {
-          includeUnanchored: true,
-        });
-        const query = await sql<{ tx_id: string }[]>`
-          SELECT tx_id
-          FROM txs
-          WHERE canonical = true AND microblock_canonical = true
-          AND block_height = ${unanchoredBlockHeight}
-          AND tx_id = ${txId}
-          LIMIT 1
-        `;
-        // The tx is marked as pruned because it's in an unanchored microblock
-        if (query.length > 0) {
-          result[0].pruned = false;
-          result[0].status = DbTxStatus.Pending;
-        }
-      }
       if (result.length === 0 || (!includePruned && result[0].pruned)) {
         return { found: false } as const;
       }
       if (result.length > 1) {
         throw new Error(`Multiple transactions found in mempool table for txid: ${txId}`);
       }
-      const rows = await this.parseMempoolTransactions(result, sql, includeUnanchored);
-      const tx = rows[0];
-      return { found: true, result: tx };
+      return { found: true, result: parseMempoolTxQueryResult(result[0]) };
     });
   }
 
@@ -1140,7 +987,9 @@ export class PgStore extends BasePgStore {
     lastBlockCount?: number;
   }): Promise<DbMempoolStats> {
     let blockHeightCondition = sql``;
-    const chainTipHeight = await this.getMaxBlockHeight(sql, { includeUnanchored: true });
+    // Mempool tx ages are measured against the next block height (the block a pending tx would be
+    // included in), so a tx received at the chain tip has an age of 1.
+    const chainTipHeight = (await this.getChainTip(sql)).block_height + 1;
     if (lastBlockCount) {
       const maxBlockHeight = chainTipHeight - lastBlockCount;
       blockHeightCondition = sql` AND receipt_block_height >= ${maxBlockHeight} `;
@@ -1344,7 +1193,6 @@ export class PgStore extends BasePgStore {
   async getMempoolTxList({
     limit,
     offset,
-    includeUnanchored,
     orderBy,
     order,
     senderAddress,
@@ -1353,7 +1201,6 @@ export class PgStore extends BasePgStore {
   }: {
     limit: number;
     offset: number;
-    includeUnanchored: boolean;
     orderBy?: 'fee' | 'size' | 'age';
     order?: 'asc' | 'desc';
     senderAddress?: string;
@@ -1361,10 +1208,6 @@ export class PgStore extends BasePgStore {
     address?: string;
   }): Promise<{ results: DbMempoolTx[]; total: number }> {
     const queryResult = await this.sqlTransaction(async sql => {
-      // If caller did not opt-in to unanchored tx data, then treat unanchored txs as pending mempool txs.
-      const unanchoredTxs: string[] = !includeUnanchored
-        ? (await this.getUnanchoredTxsInternal(sql)).txs.map(tx => tx.tx_id)
-        : [];
       // If caller is not filtering by any param, get the tx count from the `chain_tip` table.
       const count =
         senderAddress || recipientAddress || address
@@ -1391,11 +1234,7 @@ export class PgStore extends BasePgStore {
                   ? sql`token_transfer_recipient_address = ${recipientAddress}`
                   : sql`TRUE`
         }
-          AND (pruned = false ${
-            !includeUnanchored && unanchoredTxs.length
-              ? sql`OR tx_id IN ${sql(unanchoredTxs)}`
-              : sql``
-          })
+          AND pruned = false
         ORDER BY ${orderBySql} ${orderSql}
         LIMIT ${limit}
         OFFSET ${offset}
@@ -1404,7 +1243,8 @@ export class PgStore extends BasePgStore {
     });
 
     const parsed = queryResult.rows.map(r => {
-      // Ensure pruned and status are reset since the result can contain txs that were pruned from unanchored microblocks
+      // Only non-pruned rows are selected, so normalize the row to a pending mempool tx regardless
+      // of the status the row was last saved with (e.g. a tx restored to the mempool by a re-org).
       r.pruned = false;
       r.status = DbTxStatus.Pending;
       return parseMempoolTxQueryResult(r);
@@ -1427,19 +1267,13 @@ export class PgStore extends BasePgStore {
     return { found: true, result: { digest: result[0].digest } };
   }
 
-  async getTx({
-    txId,
-    includeUnanchored,
-  }: {
-    txId: string;
-    includeUnanchored: boolean;
-  }): Promise<FoundOrNot<DbTx>> {
+  async getTx({ txId }: { txId: string }): Promise<FoundOrNot<DbTx>> {
     return await this.sqlTransaction(async sql => {
-      const maxBlockHeight = await this.getMaxBlockHeight(sql, { includeUnanchored });
+      const chainTip = await this.getChainTip(sql);
       const result = await sql<ContractTxQueryResult[]>`
         SELECT ${sql(TX_COLUMNS)}, ${abiColumn(sql)}
         FROM txs
-        WHERE tx_id = ${txId} AND block_height <= ${maxBlockHeight}
+        WHERE tx_id = ${txId} AND block_height <= ${chainTip.block_height}
         ORDER BY canonical DESC, microblock_canonical DESC, block_height DESC
         LIMIT 1
       `;
@@ -1452,23 +1286,10 @@ export class PgStore extends BasePgStore {
     });
   }
 
-  async getMaxBlockHeight(
-    sql: PgSqlClient,
-    { includeUnanchored }: { includeUnanchored: boolean }
-  ): Promise<number> {
-    const chainTip = await this.getChainTip(sql);
-    if (includeUnanchored) {
-      return chainTip.block_height + 1;
-    } else {
-      return chainTip.block_height;
-    }
-  }
-
   async getTxList({
     limit,
     offset,
     txTypeFilter,
-    includeUnanchored,
     fromAddress,
     toAddress,
     startTime,
@@ -1482,7 +1303,6 @@ export class PgStore extends BasePgStore {
     limit: number;
     offset: number;
     txTypeFilter: TransactionType[];
-    includeUnanchored: boolean;
     fromAddress?: string;
     toAddress?: string;
     startTime?: number;
@@ -1494,7 +1314,7 @@ export class PgStore extends BasePgStore {
     sortBy?: 'block_height' | 'burn_block_time' | 'fee';
   }): Promise<{ results: DbTx[]; total: number }> {
     return await this.sqlTransaction(async sql => {
-      const maxHeight = await this.getMaxBlockHeight(sql, { includeUnanchored });
+      const maxHeight = (await this.getChainTip(sql)).block_height;
       const orderSql = order === 'asc' ? sql`ASC` : sql`DESC`;
 
       let orderBySql: PgSqlQuery;
@@ -1542,7 +1362,7 @@ export class PgStore extends BasePgStore {
 
       const totalQuery: { count: number }[] = noFilters
         ? await sql<{ count: number }[]>`
-        SELECT ${includeUnanchored ? sql('tx_count_unanchored') : sql('tx_count')} AS count
+        SELECT tx_count AS count
         FROM chain_tip
       `
         : await sql<{ count: number }[]>`
@@ -1712,11 +1532,6 @@ export class PgStore extends BasePgStore {
     limit: number;
     offset: number;
   }): Promise<{ results: DbEvent[] }> {
-    // Note: when this is used to fetch events for an unanchored microblock tx, the `indexBlockHash` is empty
-    // which will cause the sql queries to also match micro-orphaned tx data (resulting in duplicate event results).
-    // To prevent that, all micro-orphaned events are excluded using `microblock_orphaned=false`.
-    // That means, unlike regular orphaned txs, if a micro-orphaned tx is never re-mined, the micro-orphaned event data
-    // will never be returned.
     return await this.sqlTransaction(async sql => {
       const eventIndexStart = args.offset;
       const eventIndexEnd = args.offset + args.limit - 1;
@@ -2048,7 +1863,7 @@ export class PgStore extends BasePgStore {
     poxTable: Pox4SyntheticEventTable;
   }): Promise<FoundOrNot<DbPox4SyntheticEvent[]>> {
     return await this.sqlTransaction(async sql => {
-      const dbTx = await this.getTx({ txId, includeUnanchored: true });
+      const dbTx = await this.getTx({ txId });
       if (!dbTx.found) {
         return { found: false };
       }
@@ -2247,26 +2062,16 @@ export class PgStore extends BasePgStore {
     return { found: true, result: smartContracts };
   }
 
-  async getStxBalance({
-    stxAddress,
-    includeUnanchored,
-  }: {
-    stxAddress: string;
-    includeUnanchored: boolean;
-  }): Promise<DbStxBalance> {
+  async getStxBalance({ stxAddress }: { stxAddress: string }): Promise<DbStxBalance> {
     return await this.sqlTransaction(async sql => {
       const blockQuery = await this.getCurrentBlockInternal(sql);
       if (!blockQuery.found) {
         throw new Error(`Could not find current block`);
       }
-      let blockHeight = blockQuery.result.block_height;
-      if (includeUnanchored) {
-        blockHeight++;
-      }
       const result = await this.internalGetStxBalanceAtBlock(
         sql,
         stxAddress,
-        blockHeight,
+        blockQuery.result.block_height,
         blockQuery.result.burn_block_height
       );
       return result;
@@ -2600,25 +2405,15 @@ export class PgStore extends BasePgStore {
     };
   }
 
-  async getUnlockedStxSupply(
-    args:
-      | {
-          blockHeight: number;
-        }
-      | { includeUnanchored: boolean }
-  ): Promise<{ stx: bigint; blockHeight: number }> {
+  async getUnlockedStxSupply(args?: {
+    blockHeight?: number;
+  }): Promise<{ stx: bigint; blockHeight: number }> {
     return await this.sqlTransaction(async sql => {
-      let atBlockHeight: number;
-      let atMatureBlockHeight: number;
-      if ('blockHeight' in args) {
-        atBlockHeight = args.blockHeight;
-        atMatureBlockHeight = args.blockHeight;
-      } else {
-        atBlockHeight = await this.getMaxBlockHeight(sql, {
-          includeUnanchored: args.includeUnanchored,
-        });
-        atMatureBlockHeight = args.includeUnanchored ? atBlockHeight - 1 : atBlockHeight;
-      }
+      const atBlockHeight =
+        args?.blockHeight !== undefined
+          ? args.blockHeight
+          : (await this.getChainTip(sql)).block_height;
+      const atMatureBlockHeight = atBlockHeight;
       const result = await sql<{ amount: string }[]>`
         SELECT SUM(amount) amount
         FROM (
@@ -3651,18 +3446,12 @@ export class PgStore extends BasePgStore {
     return { found: true, result: result[0] } as const;
   }
 
-  async getTxListDetails({
-    txIds,
-    includeUnanchored,
-  }: {
-    txIds: string[];
-    includeUnanchored: boolean;
-  }): Promise<DbTx[]> {
+  async getTxListDetails({ txIds }: { txIds: string[] }): Promise<DbTx[]> {
     if (txIds.length === 0) {
       return [];
     }
     return await this.sqlTransaction(async sql => {
-      const maxBlockHeight = await this.getMaxBlockHeight(sql, { includeUnanchored });
+      const maxBlockHeight = (await this.getChainTip(sql)).block_height;
       const result = await sql<ContractTxQueryResult[]>`
         SELECT ${sql(TX_COLUMNS)}, ${abiColumn(sql)}
         FROM txs
@@ -3680,9 +3469,9 @@ export class PgStore extends BasePgStore {
     });
   }
 
-  async getNamespaceList({ includeUnanchored }: { includeUnanchored: boolean }) {
+  async getNamespaceList() {
     const queryResult = await this.sqlTransaction(async sql => {
-      const maxBlockHeight = await this.getMaxBlockHeight(sql, { includeUnanchored });
+      const maxBlockHeight = (await this.getChainTip(sql)).block_height;
       return await sql<{ namespace_id: string }[]>`
         SELECT DISTINCT ON (namespace_id) namespace_id
         FROM namespaces
@@ -3695,20 +3484,12 @@ export class PgStore extends BasePgStore {
     return { results };
   }
 
-  async getNamespaceNamesList({
-    namespace,
-    page,
-    includeUnanchored,
-  }: {
-    namespace: string;
-    page: number;
-    includeUnanchored: boolean;
-  }): Promise<{
+  async getNamespaceNamesList({ namespace, page }: { namespace: string; page: number }): Promise<{
     results: string[];
   }> {
     const offset = page * 100;
     const queryResult = await this.sqlTransaction(async sql => {
-      const maxBlockHeight = await this.getMaxBlockHeight(sql, { includeUnanchored });
+      const maxBlockHeight = (await this.getChainTip(sql)).block_height;
       return await sql<{ name: string }[]>`
         SELECT name FROM (
           SELECT DISTINCT ON (name) name, status
@@ -3729,13 +3510,11 @@ export class PgStore extends BasePgStore {
 
   async getNamespace({
     namespace,
-    includeUnanchored,
   }: {
     namespace: string;
-    includeUnanchored: boolean;
   }): Promise<FoundOrNot<DbBnsNamespace & { index_block_hash: string }>> {
     const queryResult = await this.sqlTransaction(async sql => {
-      const maxBlockHeight = await this.getMaxBlockHeight(sql, { includeUnanchored });
+      const maxBlockHeight = (await this.getChainTip(sql)).block_height;
       return await sql<(DbBnsNamespace & { tx_id: string; index_block_hash: string })[]>`
         SELECT DISTINCT ON (namespace_id) namespace_id, *
         FROM namespaces
@@ -3759,15 +3538,9 @@ export class PgStore extends BasePgStore {
     return { found: false } as const;
   }
 
-  async getName({
-    name,
-    includeUnanchored,
-  }: {
-    name: string;
-    includeUnanchored: boolean;
-  }): Promise<FoundOrNot<DbBnsName>> {
+  async getName({ name }: { name: string }): Promise<FoundOrNot<DbBnsName>> {
     return await this.sqlTransaction(async sql => {
-      const blockHeight = await this.getMaxBlockHeight(sql, { includeUnanchored });
+      const blockHeight = (await this.getChainTip(sql)).block_height;
       const result = await this.getNamesAtBlockHeight({ names: [name], blockHeight });
       return result.length ? { found: true, result: result[0] } : { found: false };
     });
@@ -3799,13 +3572,10 @@ export class PgStore extends BasePgStore {
   async getHistoricalZoneFile(args: {
     name: string;
     zoneFileHash: string;
-    includeUnanchored: boolean;
     chainId: ChainID;
   }): Promise<FoundOrNot<DbBnsZoneFile>> {
     const queryResult = await this.sqlTransaction(async sql => {
-      const maxBlockHeight = await this.getMaxBlockHeight(sql, {
-        includeUnanchored: args.includeUnanchored,
-      });
+      const maxBlockHeight = (await this.getChainTip(sql)).block_height;
       const parentName = await this.getNamesAtBlockHeight({
         names: [bnsNameFromSubdomain(args.name)],
         blockHeight: maxBlockHeight,
@@ -3858,15 +3628,9 @@ export class PgStore extends BasePgStore {
     return { found: false } as const;
   }
 
-  async getLatestZoneFile({
-    name,
-    includeUnanchored,
-  }: {
-    name: string;
-    includeUnanchored: boolean;
-  }): Promise<FoundOrNot<DbBnsZoneFile>> {
+  async getLatestZoneFile({ name }: { name: string }): Promise<FoundOrNot<DbBnsZoneFile>> {
     const queryResult = await this.sqlTransaction(async sql => {
-      const maxBlockHeight = await this.getMaxBlockHeight(sql, { includeUnanchored });
+      const maxBlockHeight = (await this.getChainTip(sql)).block_height;
       const parentName = await this.getNamesAtBlockHeight({
         names: [bnsNameFromSubdomain(name)],
         blockHeight: maxBlockHeight,
@@ -3921,11 +3685,10 @@ export class PgStore extends BasePgStore {
     chainId,
   }: {
     address: string;
-    includeUnanchored: boolean;
     chainId: ChainID;
   }): Promise<FoundOrNot<string[]>> {
     const queryResult = await this.sqlTransaction(async sql => {
-      const maxBlockHeight = await this.getMaxBlockHeight(sql, { includeUnanchored: false });
+      const maxBlockHeight = (await this.getChainTip(sql)).block_height;
       // 1. Get subdomains owned by this address. These don't produce NFT events so we have to look
       //    directly at the `subdomains` table.
       const subdomainsQuery = await sql<{ name: string; fully_qualified_subdomain: string }[]>`
@@ -4029,15 +3792,13 @@ export class PgStore extends BasePgStore {
    */
   async getSubdomainsListInName({
     name,
-    includeUnanchored,
     chainId: _chainId,
   }: {
     name: string;
-    includeUnanchored: boolean;
     chainId: ChainID;
   }): Promise<{ results: string[] }> {
     const queryResult = await this.sqlTransaction(async sql => {
-      const maxBlockHeight = await this.getMaxBlockHeight(sql, { includeUnanchored });
+      const maxBlockHeight = (await this.getChainTip(sql)).block_height;
       const status = await this.getNamesAtBlockHeight({
         names: [name],
         blockHeight: maxBlockHeight,
@@ -4062,16 +3823,10 @@ export class PgStore extends BasePgStore {
   /**
    * @deprecated This function is only used for testing.
    */
-  async getSubdomainsList({
-    page,
-    includeUnanchored,
-  }: {
-    page: number;
-    includeUnanchored: boolean;
-  }) {
+  async getSubdomainsList({ page }: { page: number }) {
     const offset = page * 100;
     const queryResult = await this.sqlTransaction(async sql => {
-      const maxBlockHeight = await this.getMaxBlockHeight(sql, { includeUnanchored });
+      const maxBlockHeight = (await this.getChainTip(sql)).block_height;
       return await sql<{ fully_qualified_subdomain: string }[]>`
         SELECT DISTINCT ON (fully_qualified_subdomain) fully_qualified_subdomain
         FROM subdomains
@@ -4086,10 +3841,10 @@ export class PgStore extends BasePgStore {
     return { results };
   }
 
-  async getNamesList({ page, includeUnanchored }: { page: number; includeUnanchored: boolean }) {
+  async getNamesList({ page }: { page: number }) {
     const offset = page * 100;
     const queryResult = await this.sqlTransaction(async sql => {
-      const maxBlockHeight = await this.getMaxBlockHeight(sql, { includeUnanchored });
+      const maxBlockHeight = (await this.getChainTip(sql)).block_height;
       return await sql<{ name: string }[]>`
         WITH name_results AS (
           SELECT DISTINCT ON (name) name, status
@@ -4110,15 +3865,13 @@ export class PgStore extends BasePgStore {
 
   async getSubdomain({
     subdomain,
-    includeUnanchored,
     chainId: _chainId,
   }: {
     subdomain: string;
-    includeUnanchored: boolean;
     chainId: ChainID;
   }): Promise<FoundOrNot<DbBnsSubdomain & { index_block_hash: string }>> {
     const queryResult = await this.sqlTransaction(async sql => {
-      const maxBlockHeight = await this.getMaxBlockHeight(sql, { includeUnanchored });
+      const maxBlockHeight = (await this.getChainTip(sql)).block_height;
       const status = await this.getNamesAtBlockHeight({
         names: [bnsNameFromSubdomain(subdomain)],
         blockHeight: maxBlockHeight,

@@ -3,7 +3,7 @@ import { DbTxTypeId, DbTxStatus, DbAssetEventTypeId } from '../../../src/datasto
 import { RpcWebSocketClient } from 'rpc-websocket-client';
 import WebSocket from 'ws';
 import { once } from 'events';
-import { TestBlockBuilder, testMempoolTx, TestMicroblockStreamBuilder } from '../test-builders.ts';
+import { TestBlockBuilder, testMempoolTx } from '../test-builders.ts';
 import { PgWriteStore } from '../../../src/datastore/pg-write-store.ts';
 import { migrate } from '../../test-helpers.ts';
 import { Waiter, waiter } from '@stacks/api-toolkit';
@@ -15,8 +15,6 @@ import {
   RpcAddressTxNotificationParams,
   MempoolTransaction,
   RpcBlockSubscriptionParams,
-  RpcMicroblockSubscriptionParams,
-  Microblock,
   RpcAddressTxSubscriptionParams,
   RpcAddressBalanceSubscriptionParams,
   RpcAddressBalanceNotificationParams,
@@ -108,11 +106,16 @@ describe('websocket notifications', () => {
       });
       await db.updateMempoolTxs({ mempoolTxs: [mempoolTx] });
 
-      const microblock = new TestMicroblockStreamBuilder()
-        .addMicroblock()
+      const block2 = new TestBlockBuilder({
+        block_height: 2,
+        block_hash: '0x02',
+        index_block_hash: '0x02',
+        parent_index_block_hash: block.block.index_block_hash,
+        parent_block_hash: block.block.block_hash,
+      })
         .addTx({ tx_id: txId })
         .build();
-      await db.updateMicroblocks(microblock);
+      await db.update(block2);
 
       // check for tx update notification
       const txStatus1 = await txUpdates[0];
@@ -122,7 +125,7 @@ describe('websocket notifications', () => {
       const mempoolUpdate = await mempoolWaiter;
       assert.equal(mempoolUpdate.tx_id, txId);
 
-      // check for microblock tx update notification
+      // check for confirmed tx update notification
       const txStatus2 = await txUpdates[1];
       assert.equal(txStatus2, 'success');
 
@@ -180,54 +183,6 @@ describe('websocket notifications', () => {
       assert.equal(result.hash, '0x1234');
       assert.equal(result.burn_block_hash, '0x5454');
       assert.equal(result.txs[0], '0x4321');
-    } finally {
-      socket.terminate();
-    }
-  });
-
-  test('websocket rpc - microblock updates', async () => {
-    const addr = apiServer.address;
-    const wsAddress = `ws://${addr}/extended/v1/ws`;
-    const socket = new WebSocket(wsAddress);
-
-    await once(socket, 'open');
-    const client = new RpcWebSocketClient();
-    client.changeSocket(socket as unknown as RpcClientSocket);
-    client.listenMessages();
-
-    const subParams: RpcMicroblockSubscriptionParams = {
-      event: 'microblock',
-    };
-    const subResult = await client.call('subscribe', subParams);
-    assert.deepEqual(subResult, {});
-
-    const updateWaiter: Waiter<Microblock> = waiter();
-    client.onNotification.push(msg => {
-      if (msg.method === 'microblock') {
-        const microblockUpdate: Microblock = msg.params;
-        updateWaiter.finish(microblockUpdate);
-      }
-    });
-
-    const block = new TestBlockBuilder({ block_hash: '0x1212', index_block_hash: '0x4343' })
-      .addTx()
-      .build();
-    await db.update(block);
-    const microblocks = new TestMicroblockStreamBuilder()
-      .addMicroblock({
-        microblock_hash: '0xff01',
-        microblock_parent_hash: '0x1212',
-        parent_index_block_hash: '0x4343',
-      })
-      .addTx({ tx_id: '0xf6f6' })
-      .build();
-    await db.updateMicroblocks(microblocks);
-
-    const result = await updateWaiter;
-    try {
-      assert.equal(result.microblock_hash, '0xff01');
-      assert.equal(result.microblock_parent_hash, '0x1212');
-      assert.equal(result.txs[0], '0xf6f6');
     } finally {
       socket.terminate();
     }
@@ -337,21 +292,24 @@ describe('websocket notifications', () => {
         },
       });
 
-      const microblock = new TestMicroblockStreamBuilder()
-        .addMicroblock({
-          microblock_hash: '0x11',
-          parent_index_block_hash: '0x01',
-        })
+      const block2 = new TestBlockBuilder({
+        block_height: 2,
+        block_hash: '0x02',
+        index_block_hash: '0x02',
+        parent_index_block_hash: '0x01',
+        parent_block_hash: '0x01',
+      })
         .addTx({
           tx_id: '0x8913',
           sender_address: addr,
           token_transfer_amount: 150n,
           fee_rate: 50n,
           type_id: DbTxTypeId.TokenTransfer,
+          parent_block_hash: '0x01',
         })
         .addTxStxEvent({ sender: addr, amount: 150n })
         .build();
-      await db.updateMicroblocks(microblock);
+      await db.update(block2);
       const txUpdate2 = await addrTxUpdates[1];
       assert.deepEqual(txUpdate2, {
         address: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
@@ -369,11 +327,11 @@ describe('websocket notifications', () => {
         ],
         tx: {
           anchor_mode: 'any',
-          block_hash: '0x123456',
+          block_hash: '0x02',
           block_height: 2,
           block_time: 94869287,
           block_time_iso: '1973-01-03T00:34:47.000Z',
-          burn_block_height: 1,
+          burn_block_height: 2,
           burn_block_time: 94869286,
           burn_block_time_iso: '1973-01-03T00:34:46.000Z',
           canonical: true,
@@ -387,7 +345,7 @@ describe('websocket notifications', () => {
           fee_rate: '50',
           is_unanchored: false,
           microblock_canonical: true,
-          microblock_hash: '0x11',
+          microblock_hash: '0x123466',
           microblock_sequence: 0,
           nonce: 0,
           parent_block_hash: '0x01',

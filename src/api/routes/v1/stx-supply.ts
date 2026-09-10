@@ -5,22 +5,13 @@ import { handleChainTipCache } from '../../controllers/cache-controller.js';
 import { FastifyPluginAsync } from 'fastify';
 import { Type, TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
 import { Server } from 'node:http';
-import { UnanchoredParamSchema } from '../../schemas/v1/params.js';
 
 export const StxSupplyRoutes: FastifyPluginAsync<
   Record<never, never>,
   Server,
   TypeBoxTypeProvider
 > = async fastify => {
-  async function getStxSupplyInfo(
-    args:
-      | {
-          blockHeight: number;
-        }
-      | {
-          includeUnanchored: boolean;
-        }
-  ): Promise<{
+  async function getStxSupplyInfo(args?: { blockHeight?: number }): Promise<{
     unlockedPercent: string;
     totalStx: string;
     totalStxYear2050: string;
@@ -65,7 +56,6 @@ export const StxSupplyRoutes: FastifyPluginAsync<
               examples: [777678],
             })
           ),
-          unanchored: UnanchoredParamSchema,
         }),
         response: {
           200: Type.Object(
@@ -100,11 +90,7 @@ export const StxSupplyRoutes: FastifyPluginAsync<
     },
     async (req, reply) => {
       const blockHeight = req.query.height;
-      const supply = await getStxSupplyInfo(
-        blockHeight !== undefined
-          ? { blockHeight }
-          : { includeUnanchored: req.query.unanchored ?? false }
-      );
+      const supply = await getStxSupplyInfo({ blockHeight });
       await reply.send({
         unlocked_percent: supply.unlockedPercent,
         total_stx: supply.totalStx,
@@ -138,7 +124,7 @@ export const StxSupplyRoutes: FastifyPluginAsync<
       },
     },
     async (_req, reply) => {
-      const supply = await getStxSupplyInfo({ includeUnanchored: false });
+      const supply = await getStxSupplyInfo();
       await reply.type('text/plain').send(supply.totalStx);
     }
   );
@@ -166,7 +152,7 @@ export const StxSupplyRoutes: FastifyPluginAsync<
       },
     },
     async (_req, reply) => {
-      const supply = await getStxSupplyInfo({ includeUnanchored: false });
+      const supply = await getStxSupplyInfo();
       await reply.type('text/plain').send(supply.unlockedStx);
     }
   );
@@ -193,7 +179,6 @@ export const StxSupplyRoutes: FastifyPluginAsync<
               examples: [777678],
             })
           ),
-          unanchored: UnanchoredParamSchema,
         }),
         response: {
           200: Type.Object(
@@ -239,11 +224,7 @@ export const StxSupplyRoutes: FastifyPluginAsync<
     },
     async (req, reply) => {
       const blockHeight = req.query.height;
-      const supply = await getStxSupplyInfo(
-        blockHeight !== undefined
-          ? { blockHeight }
-          : { includeUnanchored: req.query.unanchored ?? false }
-      );
+      const supply = await getStxSupplyInfo({ blockHeight });
       await reply.send({
         unlockedPercent: supply.unlockedPercent,
         totalStacks: supply.totalStx,

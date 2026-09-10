@@ -25,7 +25,7 @@ A Fastify-based REST API with real-time WebSocket and Socket.IO support for the 
 
 - **Nakamoto support** — full support for Nakamoto blocks, tenures, signer signatures, and `NakamotoCoinbase` / `TenureChange` transaction types
 - **Comprehensive REST API** — v1 and v2 endpoints covering blocks, transactions, accounts, smart contracts, NFTs, fungible tokens, BNS (Bitcoin Name System), PoX / stacking, burn chain rewards, and more
-- **Real-time streaming** — subscribe to blocks, microblocks, mempool transactions, address activity, STX balance changes, and NFT events via WebSocket (JSON-RPC) or Socket.IO
+- **Real-time streaming** — subscribe to blocks, mempool transactions, address activity, STX balance changes, and NFT events via WebSocket (JSON-RPC) or Socket.IO
 - **Client library** — type-safe TypeScript/JS client for REST and real-time APIs ([`@stacks/blockchain-api-client`](client/README.md))
 - **OpenAPI specification** — auto-generated from route definitions; powers Redoc documentation, Postman collections, and the TypeScript client
 - **Stacks node RPC proxy** — transparently proxies requests to the underlying Stacks node's `/v2/*` endpoints, with optional fee estimation
@@ -79,7 +79,6 @@ The recommended versioned endpoints:
 |-------|--------|---------------|
 | **Transactions** | `/extended/v1/tx` | Recent, by ID, raw, by block hash/height, mempool, mempool stats, events |
 | **Blocks** | `/extended/v1/block` | List, by height, by hash, by burn block height/hash |
-| **Microblocks** | `/extended/v1/microblock` | List, by hash, unanchored transactions |
 | **Accounts** | `/extended/v1/address` | STX balance, all balances, transactions, assets, inbound transfers, nonces, mempool |
 | **Tokens** | `/extended/v1/tokens` | NFT holdings, NFT history, NFT mints, FT holders |
 | **Smart Contracts** | `/extended/v1/contract` | By trait, by ID, contract events |
@@ -307,7 +306,7 @@ The recommended approach is the [stacks-event-replay](https://github.com/hirosys
 
    Import modes via `--mode`:
    - `archival` (default) — imports all events from genesis
-   - `pruned` — skips mempool and microblock events until near chain tip, trading historical data for speed
+   - `pruned` — skips mempool events until near chain tip, trading historical data for speed
 
 ## Deployment
 

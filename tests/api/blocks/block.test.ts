@@ -8,7 +8,7 @@ import {
 } from '../../../src/datastore/common.ts';
 import { startApiServer, ApiServer } from '../../../src/api/init.ts';
 import { I32_MAX, unixEpochToIso } from '../../../src/helpers.ts';
-import { TestBlockBuilder, TestMicroblockStreamBuilder } from '../test-builders.ts';
+import { TestBlockBuilder } from '../test-builders.ts';
 import { PgWriteStore } from '../../../src/datastore/pg-write-store.ts';
 import { PgSqlClient, bufferToHex } from '@stacks/api-toolkit';
 import { migrate } from '../../test-helpers.ts';
@@ -238,11 +238,7 @@ describe('block tests', () => {
     })
       .addTx({ block_hash, tx_id, index_block_hash })
       .build();
-    const microblock = new TestMicroblockStreamBuilder()
-      .addMicroblock({ parent_index_block_hash: index_block_hash })
-      .build();
     await db.update(block1);
-    await db.updateMicroblocks(microblock);
     const expectedResp = {
       limit: 20,
       offset: 0,
@@ -265,7 +261,7 @@ describe('block tests', () => {
           parent_microblock_sequence: 0,
           txs: [tx_id],
           microblocks_accepted: [],
-          microblocks_streamed: [microblock.microblocks[0].microblock_hash],
+          microblocks_streamed: [],
           execution_cost_read_count: 0,
           execution_cost_read_length: 0,
           execution_cost_runtime: 0,
@@ -580,28 +576,9 @@ describe('block tests', () => {
   test('block tx list excludes non-canonical', async () => {
     const block1 = new TestBlockBuilder({ block_hash: '0x0001', index_block_hash: '0x0001' })
       .addTx({ tx_id: '0x0001' })
+      .addTx({ tx_id: '0x1002', canonical: false })
       .build();
     await db.update(block1);
-    const microblock1 = new TestMicroblockStreamBuilder()
-      .addMicroblock({
-        microblock_sequence: 0,
-        microblock_hash: '0xff01',
-        microblock_parent_hash: '0x1212',
-        parent_index_block_hash: block1.block.index_block_hash,
-      })
-      .addTx({ tx_id: '0x1001', index_block_hash: '0x0002' })
-      .build();
-    await db.updateMicroblocks(microblock1);
-    const microblock2 = new TestMicroblockStreamBuilder()
-      .addMicroblock({
-        microblock_sequence: 1,
-        microblock_hash: '0xff02',
-        microblock_parent_hash: microblock1.microblocks[0].microblock_hash,
-        parent_index_block_hash: block1.block.index_block_hash,
-      })
-      .addTx({ tx_id: '0x1002', index_block_hash: '0x0002' })
-      .build();
-    await db.updateMicroblocks(microblock2);
     const expectedResp1 = {
       burn_block_hash: '0xf44f44',
       burn_block_height: Number,
@@ -619,14 +596,12 @@ describe('block tests', () => {
       block_time: 94869287,
       block_time_iso: '1973-01-03T00:34:47.000Z',
       microblocks_accepted: [],
-      microblocks_streamed: [
-        microblock1.microblocks[0].microblock_hash,
-        microblock2.microblocks[0].microblock_hash,
-      ],
+      microblocks_streamed: [],
       miner_txid: '0x4321',
       parent_block_hash: '0x',
       parent_microblock_hash: '0x00',
       parent_microblock_sequence: 0,
+      // Ensure non-canonical tx `0x1002` is not included
       txs: ['0x0001'],
       microblock_tx_count: {},
     };
@@ -636,54 +611,6 @@ describe('block tests', () => {
     assert.equal(fetch1.status, 200);
     assert.equal(fetch1.type, 'application/json');
     assertMatchesObject(JSON.parse(fetch1.text), expectedResp1);
-    // Confirm the first microblock, but orphan the second
-    const block2 = new TestBlockBuilder({
-      block_height: block1.block.block_height + 1,
-      block_hash: '0x0002',
-      index_block_hash: '0x0002',
-      parent_block_hash: block1.block.block_hash,
-      parent_index_block_hash: block1.block.index_block_hash,
-      parent_microblock_hash: microblock1.microblocks[0].microblock_hash,
-      parent_microblock_sequence: microblock1.microblocks[0].microblock_sequence,
-    })
-      .addTx({ tx_id: microblock1.txs[0].tx.tx_id })
-      .addTx({ tx_id: '0x0002' })
-      .build();
-    await db.update(block2);
-    const fetch2 = await supertest(api.server).get(
-      `/extended/v1/block/by_height/${block2.block.block_height}`
-    );
-    const expectedResp2 = {
-      burn_block_hash: '0xf44f44',
-      burn_block_height: Number,
-      burn_block_time: Number,
-      burn_block_time_iso: String,
-      canonical: true,
-      execution_cost_read_count: 0,
-      execution_cost_read_length: 0,
-      execution_cost_runtime: 0,
-      execution_cost_write_count: 0,
-      execution_cost_write_length: 0,
-      index_block_hash: '0x0002',
-      hash: '0x0002',
-      height: 2,
-      block_time: 94869287,
-      block_time_iso: '1973-01-03T00:34:47.000Z',
-      microblocks_accepted: [microblock1.microblocks[0].microblock_hash],
-      microblocks_streamed: [],
-      miner_txid: '0x4321',
-      parent_block_hash: '0x0001',
-      parent_microblock_hash: microblock1.microblocks[0].microblock_hash,
-      parent_microblock_sequence: microblock1.microblocks[0].microblock_sequence,
-      // Ensure micro-orphaned tx `0x1002` is not included
-      txs: ['0x0002', '0x1001'],
-      microblock_tx_count: {
-        '0xff01': microblock1.txs.length,
-      },
-    };
-    assert.equal(fetch2.status, 200);
-    assert.equal(fetch2.type, 'application/json');
-    assertMatchesObject(JSON.parse(fetch2.text), expectedResp2);
   });
 
   test('blocks v2 filtered by burn block', async () => {
@@ -1274,7 +1201,10 @@ describe('block tests', () => {
     assert.equal(res1.status, 200);
     assert.equal(res1.body.height, 2);
     assert.equal(res1.body.block_time, 2000);
-    assert.equal(res1.body.hash, '0x2222222222222222222222222222222222222222222222222222222222222222');
+    assert.equal(
+      res1.body.hash,
+      '0x2222222222222222222222222222222222222222222222222222222222222222'
+    );
 
     // Exact match: query with timestamp equal to block 3 => should return block 3
     const res2 = await supertest(api.server).get(`/extended/v2/blocks/by-block-time/3000`);

@@ -4,7 +4,6 @@ import { handleChainTipCache } from '../../../controllers/cache-controller.js';
 import { FastifyPluginAsync } from 'fastify';
 import { Type, TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
 import { Server } from 'node:http';
-import { UnanchoredParamSchema } from '../../../schemas/v1/params.js';
 import { BNS_DEPRECATION_MESSAGE, BNS_DEPRECATION_NOTE } from './deprecation.js';
 
 class NameRedirectError extends Error {
@@ -38,9 +37,7 @@ export const BnsNameRoutes: FastifyPluginAsync<
             examples: ['b100a68235244b012854a95f9114695679002af9'],
           }),
         }),
-        querystring: Type.Object({
-          unanchored: UnanchoredParamSchema,
-        }),
+        querystring: Type.Object({}),
         response: {
           200: Type.Object(
             {
@@ -58,11 +55,9 @@ export const BnsNameRoutes: FastifyPluginAsync<
     },
     async (req, reply) => {
       const { name, zoneFileHash } = req.params;
-      const includeUnanchored = req.query.unanchored ?? false;
       const zonefile = await fastify.db.getHistoricalZoneFile({
         name: name,
         zoneFileHash: zoneFileHash,
-        includeUnanchored,
         chainId: fastify.chainId,
       });
       if (zonefile.found) {
@@ -87,9 +82,7 @@ export const BnsNameRoutes: FastifyPluginAsync<
         params: Type.Object({
           name: Type.String({ description: 'fully-qualified name', examples: ['id.blockstack'] }),
         }),
-        querystring: Type.Object({
-          unanchored: UnanchoredParamSchema,
-        }),
+        querystring: Type.Object({}),
         response: {
           200: Type.Array(Type.String(), {
             title: 'GetAllSubdomainsInName',
@@ -109,10 +102,8 @@ export const BnsNameRoutes: FastifyPluginAsync<
     },
     async (req, reply) => {
       const { name } = req.params;
-      const includeUnanchored = req.query.unanchored ?? false;
       const subdomainsList = await fastify.db.getSubdomainsListInName({
         name,
-        includeUnanchored,
         chainId: fastify.chainId,
       });
       await reply.send(subdomainsList.results);
@@ -133,9 +124,7 @@ export const BnsNameRoutes: FastifyPluginAsync<
         params: Type.Object({
           name: Type.String({ description: 'fully-qualified name', examples: ['bar.test'] }),
         }),
-        querystring: Type.Object({
-          unanchored: UnanchoredParamSchema,
-        }),
+        querystring: Type.Object({}),
         response: {
           200: Type.Object(
             {
@@ -167,8 +156,7 @@ export const BnsNameRoutes: FastifyPluginAsync<
     },
     async (req, reply) => {
       const { name } = req.params;
-      const includeUnanchored = req.query.unanchored ?? false;
-      const zonefile = await fastify.db.getLatestZoneFile({ name: name, includeUnanchored });
+      const zonefile = await fastify.db.getLatestZoneFile({ name: name });
       if (zonefile.found) {
         await reply.send(zonefile.result);
       } else {
@@ -189,7 +177,6 @@ export const BnsNameRoutes: FastifyPluginAsync<
         description: `Retrieves a list of all names known to the node. ${BNS_DEPRECATION_NOTE}`,
         tags: ['Names'],
         querystring: Type.Object({
-          unanchored: UnanchoredParamSchema,
           page: Type.Optional(
             Type.Integer({
               minimum: 0,
@@ -218,8 +205,7 @@ export const BnsNameRoutes: FastifyPluginAsync<
     },
     async (req, reply) => {
       const page = parsePagingQueryInput(req.query.page ?? 0);
-      const includeUnanchored = req.query.unanchored ?? false;
-      const { results } = await fastify.db.getNamesList({ page, includeUnanchored });
+      const { results } = await fastify.db.getNamesList({ page });
       if (results.length === 0 && req.query.page) {
         await reply.status(400).send(BnsErrors.InvalidPageNumber);
       } else {
@@ -242,9 +228,7 @@ export const BnsNameRoutes: FastifyPluginAsync<
         params: Type.Object({
           name: Type.String({ description: 'fully-qualified name', examples: ['muneeb.id'] }),
         }),
-        querystring: Type.Object({
-          unanchored: UnanchoredParamSchema,
-        }),
+        querystring: Type.Object({}),
         response: {
           200: Type.Object(
             {
@@ -284,7 +268,6 @@ export const BnsNameRoutes: FastifyPluginAsync<
     },
     async (req, reply) => {
       const { name } = req.params;
-      const includeUnanchored = req.query.unanchored ?? false;
 
       await fastify.db
         .sqlTransaction(async _sql => {
@@ -292,7 +275,6 @@ export const BnsNameRoutes: FastifyPluginAsync<
           if (name.split('.').length == 3) {
             const subdomainQuery = await fastify.db.getSubdomain({
               subdomain: name,
-              includeUnanchored,
               chainId: fastify.chainId,
             });
             if (!subdomainQuery.found) {
@@ -322,10 +304,7 @@ export const BnsNameRoutes: FastifyPluginAsync<
             ) as typeof nameInfoResponse;
             await reply.send(response);
           } else {
-            const nameQuery = await fastify.db.getName({
-              name,
-              includeUnanchored: includeUnanchored,
-            });
+            const nameQuery = await fastify.db.getName({ name });
             if (!nameQuery.found) {
               throw { error: `cannot find name ${name}` };
             }

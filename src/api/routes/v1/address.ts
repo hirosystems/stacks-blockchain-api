@@ -30,7 +30,6 @@ import {
   LimitParam,
   OffsetParam,
   PrincipalSchema,
-  UnanchoredParamSchema,
   UntilBlockSchema,
   ExcludeFunctionArgsParamSchema,
 } from '../../schemas/v1/params.js';
@@ -62,7 +61,6 @@ import {
 
 async function getBlockHeight(
   untilBlock: number | string | undefined,
-  unanchored: boolean | undefined,
   db: PgStore
 ): Promise<number> {
   // eslint-disable-next-line no-useless-assignment
@@ -76,13 +74,11 @@ async function getBlockHeight(
     }
     blockHeight = block.result.block_height;
   } else {
-    const includeUnanchored = unanchored ?? false;
     const currentBlockHeight = await db.getCurrentBlockHeight();
     if (!currentBlockHeight.found) {
       throw new NotFoundError(`no current block`);
     }
-
-    blockHeight = currentBlockHeight.result + (includeUnanchored ? 1 : 0);
+    blockHeight = currentBlockHeight.result;
   }
 
   return blockHeight;
@@ -108,7 +104,6 @@ export const AddressRoutes: FastifyPluginAsync<
           principal: PrincipalSchema,
         }),
         querystring: Type.Object({
-          unanchored: UnanchoredParamSchema,
           until_block: UntilBlockSchema,
         }),
         response: {
@@ -119,10 +114,10 @@ export const AddressRoutes: FastifyPluginAsync<
     async (req, reply) => {
       const stxAddress = req.params.principal;
       validatePrincipal(stxAddress);
-      const untilBlock = parseUntilBlockQuery(req.query.until_block, req.query.unanchored);
+      const untilBlock = parseUntilBlockQuery(req.query.until_block);
 
       const result = await fastify.db.sqlTransaction(async sql => {
-        const blockHeight = await getBlockHeight(untilBlock, req.query.unanchored, fastify.db);
+        const blockHeight = await getBlockHeight(untilBlock, fastify.db);
         // Get balance info for STX token
         const stxBalanceResult = await fastify.db.getStxBalanceAtBlock(stxAddress, blockHeight);
         const tokenOfferingLocked = await fastify.db.getTokenOfferingLocked(
@@ -178,7 +173,6 @@ export const AddressRoutes: FastifyPluginAsync<
           principal: PrincipalSchema,
         }),
         querystring: Type.Object({
-          unanchored: UnanchoredParamSchema,
           until_block: UntilBlockSchema,
         }),
         response: {
@@ -189,10 +183,10 @@ export const AddressRoutes: FastifyPluginAsync<
     async (req, reply) => {
       const stxAddress = req.params.principal;
       validatePrincipal(stxAddress);
-      const untilBlock = parseUntilBlockQuery(req.query.until_block, req.query.unanchored);
+      const untilBlock = parseUntilBlockQuery(req.query.until_block);
 
       const result = await fastify.db.sqlTransaction(async sql => {
-        const blockHeight = await getBlockHeight(untilBlock, req.query.unanchored, fastify.db);
+        const blockHeight = await getBlockHeight(untilBlock, fastify.db);
 
         // Get balance info for STX token
         const stxBalanceResult = await fastify.db.getStxBalanceAtBlock(stxAddress, blockHeight);
@@ -290,7 +284,6 @@ export const AddressRoutes: FastifyPluginAsync<
           height: Type.Optional(
             Type.Integer({ description: 'Filter for transactions only at this given block height' })
           ),
-          unanchored: UnanchoredParamSchema,
           until_block: UntilBlockSchema,
           exclude_function_args: ExcludeFunctionArgsParamSchema,
         }),
@@ -302,13 +295,13 @@ export const AddressRoutes: FastifyPluginAsync<
     async (req, reply) => {
       const principal = req.params.principal;
       validatePrincipal(principal);
-      const untilBlock = parseUntilBlockQuery(req.query.until_block, req.query.unanchored);
+      const untilBlock = parseUntilBlockQuery(req.query.until_block);
       const limit = getPagingQueryLimit(ResourceType.Tx, req.query.limit);
       const offset = req.query.offset ?? 0;
       const excludeFunctionArgs = req.query.exclude_function_args ?? false;
 
       const response = await fastify.db.sqlTransaction(async _sql => {
-        const blockParams = getBlockParams(req.query.height, req.query.unanchored);
+        const blockParams = getBlockParams(req.query.height);
         let atSingleBlock = false;
         // eslint-disable-next-line no-useless-assignment
         let blockHeight = 0;
@@ -322,7 +315,7 @@ export const AddressRoutes: FastifyPluginAsync<
           atSingleBlock = true;
           blockHeight = blockParams.blockHeight;
         } else {
-          blockHeight = await getBlockHeight(untilBlock, req.query.unanchored, fastify.db);
+          blockHeight = await getBlockHeight(untilBlock, fastify.db);
         }
 
         const { results: txResults, total } = await fastify.db.getAddressTxs({
@@ -379,7 +372,6 @@ export const AddressRoutes: FastifyPluginAsync<
           const txQuery = await getTxFromDataStore(fastify.db, {
             txId: results.tx.tx_id,
             dbTx: results.tx,
-            includeUnanchored: false,
             excludeFunctionArgs: false,
           });
           if (!txQuery.found) {
@@ -429,7 +421,6 @@ export const AddressRoutes: FastifyPluginAsync<
           height: Type.Optional(
             Type.Integer({ description: 'Filter for transactions only at this given block height' })
           ),
-          unanchored: UnanchoredParamSchema,
           until_block: UntilBlockSchema,
         }),
         response: {
@@ -440,10 +431,10 @@ export const AddressRoutes: FastifyPluginAsync<
     async (req, reply) => {
       const stxAddress = req.params.principal;
       validatePrincipal(stxAddress);
-      const untilBlock = parseUntilBlockQuery(req.query.until_block, req.query.unanchored);
+      const untilBlock = parseUntilBlockQuery(req.query.until_block);
 
       const response = await fastify.db.sqlTransaction(async _sql => {
-        const blockParams = getBlockParams(req.query.height, req.query.unanchored);
+        const blockParams = getBlockParams(req.query.height);
         let atSingleBlock = false;
         // eslint-disable-next-line no-useless-assignment
         let blockHeight = 0;
@@ -457,7 +448,7 @@ export const AddressRoutes: FastifyPluginAsync<
           atSingleBlock = true;
           blockHeight = blockParams.blockHeight;
         } else {
-          blockHeight = await getBlockHeight(untilBlock, req.query.unanchored, fastify.db);
+          blockHeight = await getBlockHeight(untilBlock, fastify.db);
         }
 
         const limit = getPagingQueryLimit(ResourceType.Tx, req.query.limit);
@@ -474,7 +465,6 @@ export const AddressRoutes: FastifyPluginAsync<
           const txQuery = await getTxFromDataStore(fastify.db, {
             txId: entry.tx.tx_id,
             dbTx: entry.tx,
-            includeUnanchored: blockParams.includeUnanchored ?? false,
             excludeFunctionArgs: false,
           });
           if (!txQuery.found) {
@@ -541,7 +531,6 @@ export const AddressRoutes: FastifyPluginAsync<
         querystring: Type.Object({
           limit: LimitParam(ResourceType.Event),
           offset: OffsetParam(),
-          unanchored: UnanchoredParamSchema,
           until_block: UntilBlockSchema,
         }),
         response: {
@@ -553,13 +542,13 @@ export const AddressRoutes: FastifyPluginAsync<
       // get recent asset event associated with address
       const stxAddress = req.params.principal;
       validatePrincipal(stxAddress);
-      const untilBlock = parseUntilBlockQuery(req.query.until_block, req.query.unanchored);
+      const untilBlock = parseUntilBlockQuery(req.query.until_block);
 
       const limit = getPagingQueryLimit(ResourceType.Event, req.query.limit);
       const offset = req.query.offset ?? 0;
 
       const response = await fastify.db.sqlTransaction(async _sql => {
-        const blockHeight = await getBlockHeight(untilBlock, req.query.unanchored, fastify.db);
+        const blockHeight = await getBlockHeight(untilBlock, fastify.db);
         const { results: assetEvents, total } = await fastify.db.getAddressAssetEvents({
           stxAddress,
           limit,
@@ -594,7 +583,6 @@ export const AddressRoutes: FastifyPluginAsync<
           height: Type.Optional(
             Type.Integer({ description: 'Filter for transactions only at this given block height' })
           ),
-          unanchored: UnanchoredParamSchema,
           until_block: UntilBlockSchema,
         }),
         response: {
@@ -615,8 +603,8 @@ export const AddressRoutes: FastifyPluginAsync<
 
         const response = await fastify.db.sqlTransaction(async _sql => {
           let atSingleBlock = false;
-          const untilBlock = parseUntilBlockQuery(req.query.until_block, req.query.unanchored);
-          const blockParams = getBlockParams(req.query.height, req.query.unanchored);
+          const untilBlock = parseUntilBlockQuery(req.query.until_block);
+          const blockParams = getBlockParams(req.query.height);
           // eslint-disable-next-line no-useless-assignment
           let blockHeight = 0;
           if (blockParams.blockHeight) {
@@ -629,7 +617,7 @@ export const AddressRoutes: FastifyPluginAsync<
             atSingleBlock = true;
             blockHeight = blockParams.blockHeight;
           } else {
-            blockHeight = await getBlockHeight(untilBlock, req.query.unanchored, fastify.db);
+            blockHeight = await getBlockHeight(untilBlock, fastify.db);
           }
 
           const limit = getPagingQueryLimit(ResourceType.Tx, req.query.limit);
@@ -683,7 +671,6 @@ export const AddressRoutes: FastifyPluginAsync<
         querystring: Type.Object({
           limit: LimitParam(ResourceType.Tx),
           offset: OffsetParam(),
-          unanchored: UnanchoredParamSchema,
           exclude_function_args: ExcludeFunctionArgsParamSchema,
         }),
         response: {
@@ -703,13 +690,11 @@ export const AddressRoutes: FastifyPluginAsync<
           InvalidRequestErrorType.invalid_param
         );
       }
-      const includeUnanchored = req.query.unanchored ?? false;
       const excludeFunctionArgs = req.query.exclude_function_args ?? false;
       const { results: txResults, total } = await fastify.db.getMempoolTxList({
         offset,
         limit,
         address,
-        includeUnanchored,
       });
       const results: MempoolTransaction[] = txResults.map(tx =>
         parseDbMempoolTx(tx, excludeFunctionArgs)

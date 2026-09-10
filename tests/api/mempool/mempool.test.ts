@@ -9,7 +9,7 @@ import {
   DbTxStatus,
 } from '../../../src/datastore/common.ts';
 import { I32_MAX } from '../../../src/helpers.ts';
-import { TestBlockBuilder, testMempoolTx, TestMicroblockStreamBuilder } from '../test-builders.ts';
+import { TestBlockBuilder, testMempoolTx } from '../test-builders.ts';
 import { getPagingQueryLimit, ResourceType } from '../../../src/api/pagination.ts';
 import { PgSqlClient, bufferToHex } from '@stacks/api-toolkit';
 import { migrate } from '../../test-helpers.ts';
@@ -73,7 +73,6 @@ describe('mempool tests', () => {
     const mempoolTxResult = await db.getMempoolTxList({
       limit: 10,
       offset: 0,
-      includeUnanchored: false,
     });
     assert.deepEqual(mempoolTxResult.total, 257);
   });
@@ -108,7 +107,6 @@ describe('mempool tests', () => {
     const mempoolTxResult = await db.getMempoolTxList({
       limit: 10,
       offset: 0,
-      includeUnanchored: false,
     });
     assert.deepEqual(mempoolTxResult.total, 1);
   });
@@ -1186,62 +1184,6 @@ describe('mempool tests', () => {
     assert.deepEqual(JSON.parse(result.text), expectedResponse);
   });
 
-  test('/microblock/:hash duplicate txs', async () => {
-    const microblock_hash = '0x0fff',
-      tx_id = '0x1234';
-    const block = new TestBlockBuilder({ block_hash: '0x1234', block_height: 1 }).build();
-    await db.update(block);
-
-    const microblock = new TestMicroblockStreamBuilder()
-      .addMicroblock({ microblock_hash, parent_index_block_hash: block.block.index_block_hash })
-      .addTx({
-        tx_id,
-        microblock_canonical: true,
-        canonical: true,
-        index_block_hash: '0x1234',
-      })
-      .addTx({
-        tx_id,
-        microblock_canonical: false,
-        canonical: false,
-        index_block_hash: '0x123456',
-      })
-      .build();
-    await db.updateMicroblocks(microblock);
-
-    const result = await supertest(api.server).get(`/extended/v1/microblock/${microblock_hash}`);
-    assert.equal(result.body.txs.length, 1);
-    assert.deepEqual(result.body.txs[0], tx_id);
-  });
-
-  test('/microblock', async () => {
-    const microblock_hash = '0x0fff';
-    const block = new TestBlockBuilder({ block_hash: '0x1234', block_height: 1 }).build();
-    await db.update(block);
-
-    const microblock = new TestMicroblockStreamBuilder()
-      .addMicroblock({ microblock_hash, parent_index_block_hash: block.block.index_block_hash })
-      .addTx({
-        tx_id: '0xffff',
-      })
-      .addTx({
-        tx_id: '0x1234',
-        canonical: false,
-        microblock_canonical: false,
-      })
-      .build();
-    await db.updateMicroblocks(microblock);
-    const microblockResult = await supertest(api.server).get(`/extended/v1/microblock/`);
-    const response = microblockResult.body;
-    const expectedTxs = ['0xffff'];
-
-    assert.deepEqual(response.total, 1);
-    assert.equal(response.results.length, 1);
-    assert.deepEqual(response.results[0].microblock_hash, microblock_hash);
-    assert.equal(response.results[0].txs.length, 1);
-    assert.deepEqual(response.results[0].txs, expectedTxs);
-  });
-
   test("Re-org'ed txs that weren't previously in the mempool get INSERTED into the mempool AND the other mempool txs get UPDATED", async () => {
     let chainA_BlockHeight = 1;
     const chainA_Suffix = 'aa';
@@ -1297,7 +1239,6 @@ describe('mempool tests', () => {
     let mempoolTxResult = await db.getMempoolTxList({
       limit: 10,
       offset: 0,
-      includeUnanchored: false,
     });
     const mempoolTxs = mempoolTxResult.results;
     assert.deepEqual(mempoolTxs.length, 1);
@@ -1322,7 +1263,6 @@ describe('mempool tests', () => {
     mempoolTxResult = await db.getMempoolTxList({
       limit: 10,
       offset: 0,
-      includeUnanchored: false,
     });
     const mempoolTxsAfterReOrg = mempoolTxResult.results;
     assert.deepEqual(mempoolTxsAfterReOrg.length, 2);
@@ -1449,7 +1389,6 @@ describe('mempool tests', () => {
     // Insert next block using regular update function to trigger the mempool reconcile function
     await db.update({
       block: dbBlock2,
-      microblocks: [],
       minerRewards: [],
       txs: [
         {
@@ -1650,7 +1589,6 @@ describe('mempool tests', () => {
     // Mine tx in block to prune from mempool
     await db.update({
       block: dbBlock1,
-      microblocks: [],
       minerRewards: [],
       txs: [
         {
@@ -1689,13 +1627,11 @@ describe('mempool tests', () => {
     // Orphan the block to get the tx orphaned and placed back in the pool
     await db.update({
       block: dbBlock1b,
-      microblocks: [],
       minerRewards: [],
       txs: [],
     });
     await db.update({
       block: dbBlock2b,
-      microblocks: [],
       minerRewards: [],
       txs: [],
     });

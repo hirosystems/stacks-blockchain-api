@@ -1,12 +1,6 @@
 import supertest from 'supertest';
 import { getBlockFromDataStore } from '../../../src/api/controllers/db-controller.ts';
-import {
-  DbBlock,
-  DbMicroblockPartial,
-  DbTxRaw,
-  DbTxStatus,
-  DbTxTypeId,
-} from '../../../src/datastore/common.ts';
+import { DbBlock, DbTxRaw, DbTxStatus, DbTxTypeId } from '../../../src/datastore/common.ts';
 import { startApiServer, ApiServer } from '../../../src/api/init.ts';
 import { I32_MAX } from '../../../src/helpers.ts';
 import { TestBlockBuilder, testMempoolTx } from '../test-builders.ts';
@@ -107,7 +101,6 @@ describe('cache-control tests', () => {
     };
     await db.update({
       block: block1,
-      microblocks: [],
       minerRewards: [],
       txs: [
         {
@@ -227,127 +220,6 @@ describe('cache-control tests', () => {
     assert.equal(fetchStxSupplyCacheMiss.type, 'application/json');
     assertMatchesObject(fetchStxSupplyCacheMiss.body, fetchStxSupplyResp1);
     assert.equal(fetchStxSupplyCacheMiss.headers['etag'], `"${block1.index_block_hash}"`);
-
-    const mb1: DbMicroblockPartial = {
-      microblock_hash: '0xff01',
-      microblock_sequence: 0,
-      microblock_parent_hash: block1.block_hash,
-      parent_index_block_hash: block1.index_block_hash,
-      parent_burn_block_height: 123,
-      parent_burn_block_hash: '0xaa',
-      parent_burn_block_time: 1626122935,
-    };
-    const mbTx1: DbTxRaw = {
-      tx_id: '0x02',
-      tx_index: 0,
-      anchor_mode: 3,
-      nonce: 0,
-      raw_tx: '',
-      type_id: DbTxTypeId.TokenTransfer,
-      status: 1,
-      raw_result: '0x0100000000000000000000000000000001', // u1
-      canonical: true,
-      post_conditions: '',
-      fee_rate: 1234n,
-      sponsored: false,
-      sender_address: addr1,
-      sponsor_address: undefined,
-      origin_hash_mode: 1,
-      token_transfer_amount: 50n,
-      token_transfer_memo: bufferToHex(Buffer.from('hi')),
-      token_transfer_recipient_address: addr2,
-      event_count: 1,
-      parent_index_block_hash: block1.index_block_hash,
-      parent_block_hash: block1.block_hash,
-      microblock_canonical: true,
-      microblock_sequence: mb1.microblock_sequence,
-      microblock_hash: mb1.microblock_hash,
-      parent_burn_block_time: mb1.parent_burn_block_time,
-      execution_cost_read_count: 0,
-      execution_cost_read_length: 0,
-      execution_cost_runtime: 0,
-      execution_cost_write_count: 0,
-      execution_cost_write_length: 0,
-
-      // These properties aren't known until the next anchor block that accepts this microblock.
-      index_block_hash: '',
-      block_hash: '',
-      burn_block_time: -1,
-      burn_block_height: -1,
-      block_time: -1,
-
-      // These properties can be determined with a db query, they are set while the db is inserting them.
-      block_height: -1,
-      vm_error: null,
-    };
-
-    await db.updateMicroblocks({
-      microblocks: [mb1],
-      txs: [
-        {
-          tx: mbTx1,
-          stxLockEvents: [],
-          stxEvents: [],
-          ftEvents: [],
-          nftEvents: [],
-          contractLogEvents: [],
-          smartContracts: [],
-          names: [],
-          namespaces: [],
-          pox2Events: [],
-          pox3Events: [],
-          pox4Events: [],
-          pox5Events: [],
-        },
-      ],
-    });
-
-    const chainTip2 = await db.getChainTip(db.sql);
-    assert.equal(chainTip2.block_hash, block1.block_hash);
-    assert.equal(chainTip2.block_height, block1.block_height);
-    assert.equal(chainTip2.index_block_hash, block1.index_block_hash);
-    assert.equal(chainTip2.microblock_hash, mb1.microblock_hash);
-    assert.equal(chainTip2.microblock_sequence, mb1.microblock_sequence);
-
-    const expectedResp2 = {
-      burn_block_time: 1594647996,
-      burn_block_time_iso: '2020-07-13T13:46:36.000Z',
-      burn_block_hash: '0x1234',
-      burn_block_height: 123,
-      miner_txid: '0x4321',
-      canonical: true,
-      hash: '0x1234',
-      index_block_hash: '0xdeadbeef',
-      height: 1,
-      block_time: 1594647996,
-      block_time_iso: '2020-07-13T13:46:36.000Z',
-      parent_block_hash: '0xff0011',
-      parent_microblock_hash: '0x00',
-      parent_microblock_sequence: 0,
-      txs: ['0x1234'],
-      microblocks_accepted: [],
-      microblocks_streamed: ['0xff01'],
-      execution_cost_read_count: 0,
-      execution_cost_read_length: 0,
-      execution_cost_runtime: 0,
-      execution_cost_write_count: 0,
-      execution_cost_write_length: 0,
-      microblock_tx_count: {},
-    };
-
-    const fetchBlockByHash2 = await supertest(api.server).get(
-      `/extended/v1/block/${block1.block_hash}`
-    );
-    assert.equal(fetchBlockByHash2.status, 200);
-    assert.equal(fetchBlockByHash2.type, 'application/json');
-    assertMatchesObject(JSON.parse(fetchBlockByHash2.text), expectedResp2);
-    assert.equal(fetchBlockByHash2.headers['etag'], `"${mb1.microblock_hash}"`);
-
-    const fetchBlockByHashCached2 = await supertest(api.server)
-      .get(`/extended/v1/block/${block1.block_hash}`)
-      .set('If-None-Match', `"${mb1.microblock_hash}"`);
-    assert.equal(fetchBlockByHashCached2.status, 304);
-    assert.equal(fetchBlockByHashCached2.text, '');
   });
 
   test('mempool digest cache control', async () => {

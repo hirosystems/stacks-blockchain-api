@@ -5,12 +5,7 @@ import { handleChainTipCache } from '../../controllers/cache-controller.js';
 import { FastifyPluginAsync } from 'fastify';
 import { Type, TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
 import { Server } from 'node:http';
-import {
-  LimitParam,
-  OffsetParam,
-  PrincipalSchema,
-  UnanchoredParamSchema,
-} from '../../schemas/v1/params.js';
+import { LimitParam, OffsetParam, PrincipalSchema } from '../../schemas/v1/params.js';
 import { NotFoundError } from '../../../errors.js';
 import { PaginatedResponse } from '../../schemas/v1/util.js';
 import { PoolDelegation, PoolDelegationSchema } from '../../schemas/v1/entities/pox.js';
@@ -193,7 +188,6 @@ export const PoxRoutes: FastifyPluginAsync<
             })
           ),
           height: Type.Optional(Type.Integer({ minimum: 1 })),
-          unanchored: UnanchoredParamSchema,
         }),
         response: {
           200: PaginatedResponse(PoolDelegationSchema),
@@ -212,15 +206,11 @@ export const PoxRoutes: FastifyPluginAsync<
       const afterBlock = req.query.after_block ?? 0;
 
       const response = await fastify.db.sqlTransaction(async sql => {
-        const blockParams = getBlockParams(req.query.height, req.query.unanchored);
-        let blockHeight: number;
-        if (blockParams.blockHeight !== undefined) {
-          blockHeight = blockParams.blockHeight;
-        } else {
-          blockHeight = await fastify.db.getMaxBlockHeight(sql, {
-            includeUnanchored: blockParams.includeUnanchored ?? false,
-          });
-        }
+        const blockParams = getBlockParams(req.query.height);
+        const blockHeight =
+          blockParams.blockHeight !== undefined
+            ? blockParams.blockHeight
+            : (await fastify.db.getChainTip(sql)).block_height;
 
         const dbBlock = await fastify.db.getBlockByHeightInternal(sql, blockHeight);
         if (!dbBlock.found) {

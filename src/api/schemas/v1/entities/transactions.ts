@@ -123,7 +123,7 @@ const AbstractTransactionProperties = {
   }),
   is_unanchored: Type.Boolean({
     description:
-      'True if the transaction is included in a microblock that has not been confirmed by an anchor block.',
+      'True if the transaction is included in a microblock that has not been confirmed by an anchor block. Microblocks were removed in the Nakamoto upgrade, so this is always `false`.',
   }),
   microblock_hash: Type.String({
     description:

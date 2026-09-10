@@ -1,5 +1,5 @@
 import type { DecodedTxResult } from '@stacks/codec';
-import { NewBlockTransaction, NewMicroblocksTransaction } from '@stacks/node-publisher-client';
+import { NewBlockTransaction } from '@stacks/node-publisher-client';
 
 export interface CoreNodeParsedTxMessage {
   core_tx: NewBlockTransaction;
@@ -20,18 +20,4 @@ export interface CoreNodeParsedTxMessage {
   parent_burn_block_time: number;
   parent_burn_block_hash: string;
   block_time: number;
-}
-
-export function isTxWithMicroblockInfo(tx: NewBlockTransaction): tx is NewMicroblocksTransaction {
-  if (tx.microblock_hash && tx.microblock_parent_hash && tx.microblock_sequence !== null) {
-    return true;
-  }
-  if (tx.microblock_hash || tx.microblock_parent_hash || tx.microblock_sequence !== null) {
-    throw new Error(
-      `Unexpected transaction object that contains only partial microblock data: ${JSON.stringify(
-        tx
-      )}`
-    );
-  }
-  return false;
 }

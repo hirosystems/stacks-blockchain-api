@@ -141,8 +141,6 @@ export class SocketIOChannel extends WebSocketChannel {
     switch (topic) {
       case 'block':
         return this.adapter.rooms.has('block');
-      case 'microblock':
-        return this.adapter.rooms.has('microblock');
       case 'mempool':
         return this.adapter.rooms.has('mempool');
       case 'nftEvent':
@@ -186,12 +184,6 @@ export class SocketIOChannel extends WebSocketChannel {
         const [block] = args as ListenerType<WebSocketPayload['block']>;
         this.prometheus?.sendEvent('block');
         this.io?.to('block').emit('block', block);
-        break;
-      }
-      case 'microblock': {
-        const [microblock] = args as ListenerType<WebSocketPayload['microblock']>;
-        this.prometheus?.sendEvent('microblock');
-        this.io?.to('microblock').emit('microblock', microblock);
         break;
       }
       case 'mempoolTransaction': {
@@ -279,7 +271,6 @@ export class SocketIOChannel extends WebSocketChannel {
       switch (sub) {
         case 'block':
         case 'mempool':
-        case 'microblock':
         case 'nft-event':
           return undefined;
         default:

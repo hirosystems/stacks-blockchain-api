@@ -2,7 +2,6 @@ import { handleChainTipCache } from '../../../controllers/cache-controller.js';
 import { FastifyPluginAsync } from 'fastify';
 import { Type, TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
 import { Server } from 'node:http';
-import { UnanchoredParamSchema } from '../../../schemas/v1/params.js';
 import { InvalidRequestError, InvalidRequestErrorType } from '../../../../errors.js';
 import {
   BNS_NAMES_OWNED_DEPRECATION_MESSAGE,
@@ -37,9 +36,7 @@ export const BnsAddressRoutes: FastifyPluginAsync<
             examples: ['SP2J6ZY48GV1EZ5V2V5RB9MP66SW86PYKKNRV9EJ7'],
           }),
         }),
-        querystring: Type.Object({
-          unanchored: UnanchoredParamSchema,
-        }),
+        querystring: Type.Object({}),
         response: {
           200: Type.Object(
             {
@@ -66,10 +63,8 @@ export const BnsAddressRoutes: FastifyPluginAsync<
           InvalidRequestErrorType.bad_request
         );
       }
-      const includeUnanchored = req.query.unanchored ?? false;
       const namesByAddress = await fastify.db.getNamesByAddressList({
         address: address,
-        includeUnanchored,
         chainId: fastify.chainId,
       });
       if (namesByAddress.found) {

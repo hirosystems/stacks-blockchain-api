@@ -37,8 +37,6 @@ export const StatusRoutes: FastifyPluginAsync<
             block_height: chainTip.block_height,
             block_hash: chainTip.block_hash,
             index_block_hash: chainTip.index_block_hash,
-            microblock_hash: chainTip.microblock_hash,
-            microblock_sequence: chainTip.microblock_sequence,
             burn_block_height: chainTip.burn_block_height,
           };
         }

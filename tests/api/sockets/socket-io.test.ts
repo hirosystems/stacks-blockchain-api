@@ -1,7 +1,7 @@
 import { io } from 'socket.io-client';
 import { ApiServer, startApiServer } from '../../../src/api/init.ts';
 import { DbAssetEventTypeId, DbTxStatus } from '../../../src/datastore/common.ts';
-import { TestBlockBuilder, testMempoolTx, TestMicroblockStreamBuilder } from '../test-builders.ts';
+import { TestBlockBuilder, testMempoolTx } from '../test-builders.ts';
 import { PgWriteStore } from '../../../src/datastore/pg-write-store.ts';
 import { migrate } from '../../test-helpers.ts';
 import { Waiter, waiter } from '@stacks/api-toolkit';
@@ -11,7 +11,6 @@ import {
   AddressTransactionWithTransfers,
   Block,
   MempoolTransaction,
-  Microblock,
   NftEvent,
   Transaction,
 } from '../../../client/src/types.ts';
@@ -157,20 +156,25 @@ describe('socket-io', () => {
     const mempoolResult = await mempoolWaiter;
     const txResult = await txWaiters[0];
 
-    const microblock = new TestMicroblockStreamBuilder()
-      .addMicroblock()
+    const block2 = new TestBlockBuilder({
+      block_height: 2,
+      block_hash: '0x02',
+      index_block_hash: '0x02',
+      parent_index_block_hash: block.block.index_block_hash,
+      parent_block_hash: block.block.block_hash,
+    })
       .addTx({ tx_id: '0x01' })
       .build();
-    await db.updateMicroblocks(microblock);
-    const txMicroblockResult = await txWaiters[1];
+    await db.update(block2);
+    const txConfirmedResult = await txWaiters[1];
 
     try {
       assert.equal(mempoolResult.tx_status, 'pending');
       assert.equal(mempoolResult.tx_id, '0x01');
       assert.equal(txResult.tx_status, 'pending');
       assert.equal(txResult.tx_id, '0x01');
-      assert.equal(txMicroblockResult.tx_id, '0x01');
-      assert.equal(txMicroblockResult.tx_status, 'success');
+      assert.equal(txConfirmedResult.tx_id, '0x01');
+      assert.equal(txConfirmedResult.tx_status, 'success');
     } finally {
       mempoolSub.unsubscribe();
       txSub.unsubscribe();
@@ -201,40 +205,6 @@ describe('socket-io', () => {
       assert.equal(result.txs[0], '0x4321');
     } finally {
       socket.emit('unsubscribe', 'block');
-      socket.close();
-    }
-  });
-
-  test('socket-io > microblock updates', async () => {
-    const socket = io(`http://${apiServer.address}`, {
-      reconnection: false,
-      query: { subscriptions: 'microblock' },
-    });
-    const updateWaiter: Waiter<Microblock> = waiter();
-    socket.on('microblock', microblock => {
-      updateWaiter.finish(microblock);
-    });
-
-    const block = new TestBlockBuilder({ block_hash: '0x1212', index_block_hash: '0x4343' })
-      .addTx()
-      .build();
-    await db.update(block);
-    const microblocks = new TestMicroblockStreamBuilder()
-      .addMicroblock({
-        microblock_hash: '0xff01',
-        parent_index_block_hash: '0x4343',
-      })
-      .addTx({ tx_id: '0xf6f6' })
-      .build();
-    await db.updateMicroblocks(microblocks);
-
-    const result = await updateWaiter;
-    try {
-      assert.equal(result.microblock_hash, '0xff01');
-      assert.equal(result.parent_block_hash, '0x1212');
-      assert.equal(result.txs[0], '0xf6f6');
-    } finally {
-      socket.emit('unsubscribe', 'microblock');
       socket.close();
     }
   });
@@ -270,20 +240,25 @@ describe('socket-io', () => {
     const mempoolResult = await mempoolWaiter;
     const txResult = await txWaiters[0];
 
-    const microblock = new TestMicroblockStreamBuilder()
-      .addMicroblock()
+    const block2 = new TestBlockBuilder({
+      block_height: 2,
+      block_hash: '0x02',
+      index_block_hash: '0x02',
+      parent_index_block_hash: block.block.index_block_hash,
+      parent_block_hash: block.block.block_hash,
+    })
       .addTx({ tx_id: '0x01' })
       .build();
-    await db.updateMicroblocks(microblock);
-    const txMicroblockResult = await txWaiters[1];
+    await db.update(block2);
+    const txConfirmedResult = await txWaiters[1];
 
     try {
       assert.equal(mempoolResult.tx_status, 'pending');
       assert.equal(mempoolResult.tx_id, '0x01');
       assert.equal(txResult.tx_status, 'pending');
       assert.equal(txResult.tx_id, '0x01');
-      assert.equal(txMicroblockResult.tx_id, '0x01');
-      assert.equal(txMicroblockResult.tx_status, 'success');
+      assert.equal(txConfirmedResult.tx_id, '0x01');
+      assert.equal(txConfirmedResult.tx_status, 'success');
     } finally {
       socket.emit('unsubscribe', 'mempool');
       socket.emit('unsubscribe', 'transaction:0x01');
@@ -348,11 +323,13 @@ describe('socket-io', () => {
     await db.update(block);
     const blockResult = await addrTxUpdates[0];
 
-    const microblock = new TestMicroblockStreamBuilder()
-      .addMicroblock({
-        microblock_hash: '0x11',
-        parent_index_block_hash: '0x01',
-      })
+    const block2 = new TestBlockBuilder({
+      block_height: 2,
+      block_hash: '0x02',
+      index_block_hash: '0x02',
+      parent_index_block_hash: '0x01',
+      parent_block_hash: '0x01',
+    })
       .addTx({
         tx_id: '0x8913',
         sender_address: addr1,
@@ -361,16 +338,16 @@ describe('socket-io', () => {
       })
       .addTxStxEvent({ sender: addr1, amount: 150n })
       .build();
-    await db.updateMicroblocks(microblock);
-    const microblockResult = await addrTxUpdates[1];
+    await db.update(block2);
+    const block2Result = await addrTxUpdates[1];
 
     try {
       assert.equal(blockResult.tx.tx_id, '0x8912');
       assert.equal(blockResult.stx_sent, '150'); // Incl. fees
       assert.equal(blockResult.stx_transfers[0].amount, '100');
-      assert.equal(microblockResult.tx.tx_id, '0x8913');
-      assert.equal(microblockResult.stx_sent, '200'); // Incl. fees
-      assert.equal(microblockResult.stx_transfers[0].amount, '150');
+      assert.equal(block2Result.tx.tx_id, '0x8913');
+      assert.equal(block2Result.stx_sent, '200'); // Incl. fees
+      assert.equal(block2Result.stx_transfers[0].amount, '150');
     } finally {
       socket.emit('unsubscribe', `address-transaction:${addr1}`);
       socket.close();

@@ -13,7 +13,6 @@ export type OperationResponse = {
 export type Transaction = OperationResponse['get_transaction_list']['results'][number];
 export type MempoolTransaction = OperationResponse['get_mempool_transaction_list']['results'][number];
 export type Block = OperationResponse['get_block_by_height'];
-export type Microblock = OperationResponse['get_microblock_by_hash'];
 export type NakamotoBlock = OperationResponse['get_block'];
 export type BurnBlock = OperationResponse['get_burn_blocks']['results'][number];
 export type SmartContract = OperationResponse['get_contract_by_id'];
@@ -50,9 +49,6 @@ export type RpcTxUpdateSubscriptionParams = {
 export type RpcBlockSubscriptionParams = {
   event: "block";
 };
-export type RpcMicroblockSubscriptionParams = {
-  event: "microblock";
-};
 export type RpcMempoolSubscriptionParams = {
   event: "mempool";
 };
@@ -81,7 +77,6 @@ export type RpcSubscriptionType =
   | "address_tx_update"
   | "address_balance_update"
   | "block"
-  | "microblock"
   | "mempool"
   | "nft_event"
   | "nft_asset_event"
@@ -93,7 +88,6 @@ export type NftAssetEventTopic = `nft-asset-event:${string}+${string}`;
 export type NftCollectionEventTopic = `nft-collection-event:${string}`;
 export type Topic =
   | 'block'
-  | 'microblock'
   | 'mempool'
   | 'nft-event'
   | AddressTransactionTopic
@@ -108,7 +102,6 @@ export interface ClientToServerMessages {
 
 export interface ServerToClientMessages {
   block: (block: Block) => void;
-  microblock: (microblock: Microblock) => void;
   mempool: (transaction: MempoolTransaction) => void;
   'nft-event': (event: NftEvent) => void;
   [key: TransactionTopic]: (transaction: Transaction | MempoolTransaction) => void;

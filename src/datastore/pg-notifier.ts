@@ -16,10 +16,6 @@ type PgBlockNotificationPayload = {
   blockHash: string;
 };
 
-type PgMicroblockNotificationPayload = {
-  microblockHash: string;
-};
-
 type PgNftEventNotificationPayload = {
   txId: string;
   eventIndex: number;
@@ -58,7 +54,6 @@ type PgConfigStateNotificationPayload = DbConfigState;
  */
 type PgNotification =
   | { type: 'blockUpdate'; payload: PgBlockNotificationPayload }
-  | { type: 'microblockUpdate'; payload: PgMicroblockNotificationPayload }
   | { type: 'txUpdate'; payload: PgTxNotificationPayload }
   | { type: 'nftEventUpdate'; payload: PgNftEventNotificationPayload }
   | { type: 'addressUpdate'; payload: PgAddressNotificationPayload }
@@ -118,10 +113,6 @@ export class PgNotifier {
 
   public async sendBlock(payload: PgBlockNotificationPayload) {
     await this.notify({ type: 'blockUpdate', payload: payload });
-  }
-
-  public async sendMicroblock(payload: PgMicroblockNotificationPayload) {
-    await this.notify({ type: 'microblockUpdate', payload: payload });
   }
 
   public async sendTx(payload: PgTxNotificationPayload) {
