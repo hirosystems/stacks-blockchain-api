@@ -302,6 +302,8 @@ function serializePrincipalBondPositionStatus(
       return 'unlocked';
     case DbPrincipalBondPositionStatus.EarlyExit:
       return 'early_exit';
+    case DbPrincipalBondPositionStatus.RolledOver:
+      return 'rolled_over';
   }
 }
 

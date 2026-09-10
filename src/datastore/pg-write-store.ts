@@ -516,6 +516,10 @@ export class PgWriteStore extends PgStore {
             await this.updateBondAllowlistEntry(sql, txLocation, poxEvent);
             break;
           case Pox5EventName.RegisterForBond:
+            await this.applyRegisterForBondRollOver(sql, txLocation, poxEvent);
+            await this.updateBondRegistration(sql, txLocation, poxEvent);
+            await this.updatePrincipalBondPosition(sql, txLocation, poxEvent);
+            break;
           case Pox5EventName.UpdateBondRegistration:
             await this.updateBondRegistration(sql, txLocation, poxEvent);
             await this.updatePrincipalBondPosition(sql, txLocation, poxEvent);
@@ -537,6 +541,9 @@ export class PgWriteStore extends PgStore {
             await this.updateSignerRewardClaim(sql, txLocation, poxEvent);
             break;
           case Pox5EventName.Stake:
+            await this.applyStakeRollOver(sql, txLocation, poxEvent);
+            await this.upsertStxLockedBalance(sql, txLocation, poxEvent);
+            break;
           case Pox5EventName.StakeUpdate:
           case Pox5EventName.Unstake:
             await this.upsertStxLockedBalance(sql, txLocation, poxEvent);
@@ -591,6 +598,111 @@ export class PgWriteStore extends PgStore {
     };
     await sql`
       INSERT INTO bonds ${sql(bond)}
+    `;
+  }
+
+  /**
+   * Apply the roll-over side of a pox-5 `register-for-bond`. The contract keeps a staker in
+   * exactly one pox-5 position at a time: registering for a bond replaces any earlier bond
+   * membership (`protocol-bond-memberships`) and deletes any STX-only stake (`staker-info`), and
+   * the node carries the staker's single account lock into the new bond (`set_lock_v5`). Mirror
+   * that here so the staker's STX/BTC is not counted under both the old and the new position:
+   *  - drop the staker's materialized pox-5 STX-only lock (`stx_locked_balances`), and
+   *  - mark every other bond position of the staker as rolled over, releasing its locked amounts
+   *    from the bond and principal aggregates.
+   */
+  private async applyRegisterForBondRollOver(
+    sql: PgSqlClient,
+    txLocation: DbTxLocation,
+    event: Pox5EventRegisterForBond
+  ) {
+    if (!(txLocation.canonical && txLocation.microblock_canonical)) {
+      return;
+    }
+    await sql`
+      DELETE FROM stx_locked_balances
+      WHERE principal = ${event.data.staker} AND pox_version = 5
+    `;
+    await this.rollOverBondPositions(sql, event.data.staker, parseInt(event.data.bond_index));
+  }
+
+  /**
+   * Apply the roll-over side of a pox-5 `stake`. The contract rejects a `stake` while an STX-only
+   * stake exists, so a `stake` with an existing bond membership is a bond → STX-only roll-over:
+   * the membership is deleted, custodied sBTC is refunded, and the node carries the account lock
+   * into the new stake. Mark the staker's bond positions as rolled over so their amounts leave
+   * the bond aggregates. Side-fork gated (in-place mutation, not replayed on a fork win).
+   */
+  private async applyStakeRollOver(
+    sql: PgSqlClient,
+    txLocation: DbTxLocation,
+    event: Pox5EventStake
+  ) {
+    if (!(txLocation.canonical && txLocation.microblock_canonical)) {
+      return;
+    }
+    await this.rollOverBondPositions(sql, event.data.staker, null);
+  }
+
+  /**
+   * Mark a staker's bond positions (other than `keepBondIndex`) as rolled over: zero their locked
+   * STX/BTC, flag them inactive, and apply the released amounts as negative deltas to the bonds'
+   * running totals and the principal's staking totals. Positions already rolled over, or holding
+   * nothing, are left alone.
+   */
+  private async rollOverBondPositions(
+    sql: PgSqlClient,
+    staker: string,
+    keepBondIndex: number | null
+  ) {
+    const excludeFilter = keepBondIndex === null ? sql`` : sql`AND bond_index <> ${keepBondIndex}`;
+    await sql`
+      WITH existing AS (
+        SELECT bond_index, btc_locked::numeric AS btc_locked, stx_locked::numeric AS stx_locked
+        FROM principal_bond_positions
+        WHERE principal = ${staker}
+          AND canonical = true
+          AND microblock_canonical = true
+          AND status <> ${DbPrincipalBondPositionStatus.RolledOver}
+          AND (btc_locked::numeric > 0 OR stx_locked::numeric > 0)
+          ${excludeFilter}
+      ),
+      rolled AS (
+        UPDATE principal_bond_positions p
+        SET
+          status = ${DbPrincipalBondPositionStatus.RolledOver},
+          active = false,
+          btc_locked = 0,
+          stx_locked = 0
+        FROM existing e
+        WHERE p.principal = ${staker}
+          AND p.bond_index = e.bond_index
+          AND p.canonical = true
+          AND p.microblock_canonical = true
+        RETURNING e.bond_index, e.btc_locked, e.stx_locked
+      ),
+      bond_update AS (
+        UPDATE bonds b
+        SET
+          btc_locked = b.btc_locked - r.btc_locked,
+          stx_locked = b.stx_locked - r.stx_locked
+        FROM rolled r
+        WHERE b.bond_index = r.bond_index
+          AND b.canonical = true
+          AND b.microblock_canonical = true
+        RETURNING 1
+      ),
+      released AS (
+        SELECT SUM(btc_locked) AS btc_locked, SUM(stx_locked) AS stx_locked
+        FROM rolled
+        HAVING COUNT(*) > 0
+      )
+      INSERT INTO principal_staking_totals (principal, bond_btc_locked, bond_stx_locked)
+      SELECT ${staker}, -released.btc_locked, -released.stx_locked
+      FROM released
+      ON CONFLICT (principal) DO UPDATE SET
+        bond_btc_locked = principal_staking_totals.bond_btc_locked + EXCLUDED.bond_btc_locked,
+        bond_stx_locked = principal_staking_totals.bond_stx_locked + EXCLUDED.bond_stx_locked
     `;
   }
 
@@ -1256,8 +1368,9 @@ export class PgWriteStore extends PgStore {
    * Locked STX is a SET/latest-wins value (not additive like ft_balances), so a reorg can't be
    * handled with signed deltas — instead we re-derive each affected principal's current lock from
    * the latest applicable canonical lock-changing event across all blocks: pox-1..4
-   * `stx_lock_events` and the synthetic pox-5 `stake`/`stake-update`/`unstake` events (which all set
-   * the lock with an absolute amount and `unlock_burn_height`).
+   * `stx_lock_events`, the synthetic pox-5 `stake`/`stake-update`/`unstake` events (which all set
+   * the lock with an absolute amount and `unlock_burn_height`), and pox-5 `register-for-bond`
+   * events (which clear the STX-only lock).
    *
    * Must run AFTER the `stx_lock_events` and `pox5_events` canonical flips for this block have
    * completed (i.e. after the reorg queue drains), so the "latest canonical event" reflects the
@@ -1274,7 +1387,7 @@ export class PgWriteStore extends PgStore {
       SELECT data->>'staker' AS principal
       FROM pox5_events
       WHERE index_block_hash = ${indexBlockHash}
-        AND name IN ('stake', 'stake-update', 'unstake')
+        AND name IN ('stake', 'stake-update', 'unstake', 'register-for-bond')
     `;
     const principals = affectedRows.map(r => r.principal);
     if (principals.length === 0) {
@@ -1338,6 +1451,26 @@ export class PgWriteStore extends PgStore {
             FROM pox5_events p
             WHERE p.canonical = true AND p.microblock_canonical = true
               AND p.name IN ('stake', 'stake-update', 'unstake')
+              AND p.data->>'staker' IN ${sql(batch)}
+            UNION ALL
+            -- pox-5 register-for-bond replaces any STX-only stake: the contract
+            -- deletes the staker's staker-info and the node carries the account
+            -- lock into the bond (tracked in principal_bond_positions), so a
+            -- canonical registration clears the materialized STX-only lock.
+            SELECT
+              p.data->>'staker' AS principal,
+              p.block_height, p.microblock_sequence, p.tx_index, p.event_index,
+              false AS is_set,
+              0::numeric AS locked_amount,
+              0::bigint AS unlock_burn_height,
+              5 AS pox_version,
+              p.tx_id AS lock_tx_id,
+              p.block_height AS lock_block_height,
+              p.burn_block_height AS burnchain_lock_height,
+              NULL AS signer
+            FROM pox5_events p
+            WHERE p.canonical = true AND p.microblock_canonical = true
+              AND p.name = 'register-for-bond'
               AND p.data->>'staker' IN ${sql(batch)}
           ) candidates
           ORDER BY principal,

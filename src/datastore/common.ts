@@ -1714,6 +1714,11 @@ export enum DbPrincipalBondPositionStatus {
   Running = 1,
   Unlocked = 2,
   EarlyExit = 3,
+  /**
+   * The staker rolled this position over into a new position (a later bond via `register-for-bond`,
+   * or an STX-only stake via `stake`).
+   */
+  RolledOver = 4,
 }
 
 export interface DbPrincipalBondPositionInsertValues extends DbTxLocation {

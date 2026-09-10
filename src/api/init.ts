@@ -52,6 +52,7 @@ import { PrincipalsRoutes } from './routes/v3/principals.js';
 import { TransactionsRoutes } from './routes/v3/transactions.js';
 import { MempoolRoutes } from './routes/v3/mempool.js';
 import { BlocksRoutes } from './routes/v3/blocks.js';
+import { StakingRoutes } from './routes/v3/staking.js';
 import { StakingBondsRoutes } from './routes/v3/staking-bonds.js';
 import { StakingCyclesRoutes } from './routes/v3/staking-cycles.js';
 import { StakingRewardsRoutes } from './routes/v3/staking-rewards.js';
@@ -115,6 +116,7 @@ export const StacksApiRoutes: FastifyPluginAsync<
       await fastify.register(MempoolRoutes);
       await fastify.register(PrincipalsRoutes);
       await fastify.register(SmartContractsRoutes);
+      await fastify.register(StakingRoutes);
       await fastify.register(StakingBondsRoutes);
       await fastify.register(StakingCyclesRoutes);
       await fastify.register(StakingRewardsRoutes);
