@@ -31,14 +31,14 @@ export const StakingRoutes: FastifyPluginAsync<
       await reply.send({
         locked: {
           stx: {
-            individual_staked_amount: totals.individual_staked_stx,
-            bond_staked_amount: totals.bond_staked_stx,
-            total_amount: (
+            stx_only_total: totals.individual_staked_stx,
+            bond_total: totals.bond_staked_stx,
+            total: (
               BigInt(totals.individual_staked_stx) + BigInt(totals.bond_staked_stx)
             ).toString(),
           },
           btc: {
-            bond_staked_amount: totals.bond_staked_btc,
+            total: totals.bond_staked_btc,
           },
         },
       });

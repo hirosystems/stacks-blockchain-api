@@ -33,8 +33,8 @@ const BOND_UPCOMING = { index: 1, start: 1_500, unlock: 2_600 };
 const BOND_UNLOCKED = { index: 2, start: 100, unlock: 800 };
 
 interface StakingLockedTotals {
-  stx: { individual_staked_amount: string; bond_staked_amount: string; total_amount: string };
-  btc: { bond_staked_amount: string };
+  stx: { stx_only_total: string; bond_total: string; total: string };
+  btc: { total: string };
 }
 interface StakingOverview {
   locked: StakingLockedTotals;
@@ -136,18 +136,14 @@ describe('staking overview', () => {
     expected: { individual: bigint; bondStx: bigint; bondBtc: bigint },
     label: string
   ) {
+    assert.equal(BigInt(totals.stx.stx_only_total), expected.individual, `${label}: individual`);
+    assert.equal(BigInt(totals.stx.bond_total), expected.bondStx, `${label}: bond stx`);
     assert.equal(
-      BigInt(totals.stx.individual_staked_amount),
-      expected.individual,
-      `${label}: individual`
-    );
-    assert.equal(BigInt(totals.stx.bond_staked_amount), expected.bondStx, `${label}: bond stx`);
-    assert.equal(
-      BigInt(totals.stx.total_amount),
+      BigInt(totals.stx.total),
       expected.individual + expected.bondStx,
       `${label}: total stx`
     );
-    assert.equal(BigInt(totals.btc.bond_staked_amount), expected.bondBtc, `${label}: bond btc`);
+    assert.equal(BigInt(totals.btc.total), expected.bondBtc, `${label}: bond btc`);
   }
 
   beforeEach(async () => {
@@ -172,8 +168,8 @@ describe('staking overview', () => {
     await db.update(nextBlock().build());
     assert.deepEqual(await getJson<StakingOverview>('/extended/v3/staking'), {
       locked: {
-        stx: { individual_staked_amount: '0', bond_staked_amount: '0', total_amount: '0' },
-        btc: { bond_staked_amount: '0' },
+        stx: { stx_only_total: '0', bond_total: '0', total: '0' },
+        btc: { total: '0' },
       },
     });
   });
@@ -357,7 +353,7 @@ describe('staking overview', () => {
     );
   });
 
-  test('combines individual and bond STX into total_amount', async () => {
+  test('combines STX-only and bond STX into the STX total', async () => {
     await db.update(
       nextBlock()
         .addTxPox5Event({ name: Pox5EventName.SetupBond, data: setupBondData(BOND_ACTIVE) })
@@ -382,7 +378,7 @@ describe('staking overview', () => {
       { individual: 5_000_000n, bondStx: 10_000_000n, bondBtc: 1_000n },
       'mixed'
     );
-    assert.equal(totals.stx.total_amount, '15000000');
+    assert.equal(totals.stx.total, '15000000');
   });
 
   test('serves a chain-tip ETag and answers 304 when unchanged', async () => {
