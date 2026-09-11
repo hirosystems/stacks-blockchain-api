@@ -1072,6 +1072,100 @@ describe('staking overview', () => {
       assert.deepEqual([...applied], [{ canonical: true, previous_status: 0 }]);
     });
 
+    test('two side-fork roll-overs of the same position in one block release it once when the fork wins', async () => {
+      // Canonical: bonds 0 and 1 set up, alice registered for bond 0, then two empty blocks.
+      await db.update(
+        nextBlock()
+          .addTxPox5Event({ name: Pox5EventName.SetupBond, data: setupBondData(BOND_ACTIVE) })
+          .addTxPox5Event({ name: Pox5EventName.SetupBond, data: setupBondData(BOND_UPCOMING) })
+          .addTxPox5Event({
+            name: Pox5EventName.RegisterForBond,
+            data: registerData({
+              bond: BOND_ACTIVE.index,
+              staker: ALICE,
+              ustx: 10_000_000n,
+              sats: 1_000n,
+            }),
+          })
+          .build()
+      );
+      const forkPoint = lastIndexHash;
+      await db.update(nextBlock().build());
+
+      // Side fork block 2': alice stakes and then registers for bond 1 in the same block. Both
+      // handlers see the still-live bond 0 position and record a roll-over row for it.
+      await db.update(
+        new TestBlockBuilder({
+          block_height: 2,
+          block_hash: '0xf2',
+          index_block_hash: '0xf2',
+          parent_block_hash: forkPoint,
+          parent_index_block_hash: forkPoint,
+          burn_block_height: TIP,
+          canonical: false,
+        })
+          .addTx({ tx_id: '0x' + 'f2'.repeat(32), canonical: false })
+          .addTxPox5Event({
+            name: Pox5EventName.Stake,
+            data: stakeData({ staker: ALICE, ustx: 11_000_000n, unlock: TIP + 500 }),
+          })
+          .addTx({ tx_id: '0x' + 'f3'.repeat(32), canonical: false })
+          .addTxPox5Event({
+            name: Pox5EventName.RegisterForBond,
+            data: registerData({
+              bond: BOND_UPCOMING.index,
+              staker: ALICE,
+              ustx: 14_000_000n,
+              sats: 1_400n,
+            }),
+          })
+          .build()
+      );
+      const pending = await db.sql<{ previous_status: number | null }[]>`
+        SELECT previous_status FROM bond_position_rollovers
+        WHERE principal = ${ALICE} AND bond_index = ${BOND_ACTIVE.index}
+      `;
+      assert.equal(pending.length, 2, 'both roll-over rows recorded');
+      assertTotals(
+        await getTotals(),
+        { individual: 0n, bondStx: 10_000_000n, bondBtc: 1_000n },
+        'side fork'
+      );
+
+      // The fork wins: both rows flip canonical in one batch, but the position is released once.
+      await db.update(
+        new TestBlockBuilder({
+          block_height: 3,
+          block_hash: '0xf4',
+          index_block_hash: '0xf4',
+          parent_block_hash: '0xf2',
+          parent_index_block_hash: '0xf2',
+          burn_block_height: TIP,
+        }).build()
+      );
+      // The register-for-bond cleared the stake, so only bond 1 is live.
+      assertTotals(
+        await getTotals(),
+        { individual: 0n, bondStx: 14_000_000n, bondBtc: 1_400n },
+        'fork won'
+      );
+      const oldBond = await getJson<BondDetail>(`/extended/v3/staking/bonds/${BOND_ACTIVE.index}`);
+      assert.deepEqual(oldBond.balances.locked, { btc: '0', stx: '0' }, 'not driven negative');
+      const summary = await getJson<StakingSummary>(`/extended/v3/principals/${ALICE}/staking`);
+      assert.equal(summary.bonds.count, 2);
+      assert.deepEqual(summary.bonds.locked, { btc: '1400', stx: '14000000' });
+      const rows = await db.sql<{ previous_status: number | null }[]>`
+        SELECT previous_status FROM bond_position_rollovers
+        WHERE principal = ${ALICE} AND bond_index = ${BOND_ACTIVE.index}
+        ORDER BY id ASC
+      `;
+      assert.deepEqual(
+        [...rows],
+        [{ previous_status: 0 }, { previous_status: null }],
+        'earliest row applied, duplicate left unapplied'
+      );
+    });
+
     test('the migration backfill repairs roll-overs ingested before they were mirrored', async () => {
       // Ingest a stake → bond → bond history with the current handlers...
       await db.update(

@@ -738,7 +738,12 @@ export class PgWriteStore extends PgStore {
     }
     await sql`
       WITH target AS (
-        SELECT r.id, r.principal, r.bond_index,
+        -- One row per position: a batch can carry several roll-over rows for the same position
+        -- (e.g. a side-fork block with a stake followed by a register-for-bond for the same
+        -- staker, both recorded against the then-unmodified position). Only the earliest is
+        -- applied; later duplicates stay unapplied so the deltas below count the position once.
+        SELECT DISTINCT ON (r.principal, r.bond_index)
+          r.id, r.principal, r.bond_index,
           p.status AS previous_status, p.active AS previous_active,
           p.btc_locked AS released_btc, p.stx_locked AS released_stx
         FROM bond_position_rollovers r
@@ -749,6 +754,8 @@ export class PgWriteStore extends PgStore {
           AND r.previous_status IS NULL
           AND p.status <> ${DbPrincipalBondPositionStatus.RolledOver}
           AND (p.btc_locked > 0 OR p.stx_locked > 0)
+        ORDER BY r.principal, r.bond_index,
+          r.block_height ASC, r.microblock_sequence ASC, r.tx_index ASC, r.id ASC
       ),
       marked AS (
         UPDATE bond_position_rollovers r
