@@ -1758,6 +1758,17 @@ export interface DbPrincipalBondRewardClaimInsertValues extends DbTxLocation {
 }
 
 /**
+ * Flag-carrying source row for a pox-5 bond position roll-over (see the `bond_position_rollovers`
+ * migration): the position a staker rolled out of via `register-for-bond` or `stake`. `previous_*`
+ * / `released_*` are filled when the roll-over is applied to the position and used to restore it on
+ * reorg.
+ */
+export interface DbBondPositionRolloverInsertValues extends DbTxLocation {
+  principal: string;
+  bond_index: number;
+}
+
+/**
  * Per-staker STX-staking reward distribution source row, from a pox-5
  * `calculate-rewards` event: the sBTC reward sats a single STX locker accrued
  * from one calculation (its share of `total_stx_staker_rewards` by locked
