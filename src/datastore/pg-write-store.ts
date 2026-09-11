@@ -663,13 +663,21 @@ export class PgWriteStore extends PgStore {
     staker: string,
     keepBondIndex: number | null
   ) {
+    const isCanonicalTx = txLocation.canonical && txLocation.microblock_canonical;
     const excludeFilter = keepBondIndex === null ? sql`` : sql`AND bond_index <> ${keepBondIndex}`;
+    // A canonical roll-over targets the staker's canonical positions. A side-fork roll-over may
+    // target a position that only exists on that same fork (registered in an earlier side-fork
+    // block, stored non-canonical), so its candidates are taken regardless of canonical flag; the
+    // row is only ever applied against a canonical position, so rows for positions that never
+    // become canonical stay unapplied.
+    const canonicalFilter = isCanonicalTx
+      ? sql`AND canonical = true AND microblock_canonical = true`
+      : sql``;
     const candidates = await sql<{ bond_index: number }[]>`
       SELECT bond_index
       FROM principal_bond_positions
       WHERE principal = ${staker}
-        AND canonical = true
-        AND microblock_canonical = true
+        ${canonicalFilter}
         AND status <> ${DbPrincipalBondPositionStatus.RolledOver}
         AND (btc_locked > 0 OR stx_locked > 0)
         ${excludeFilter}
@@ -686,12 +694,34 @@ export class PgWriteStore extends PgStore {
       INSERT INTO bond_position_rollovers ${sql(rows)}
       RETURNING id
     `;
-    if (txLocation.canonical && txLocation.microblock_canonical) {
+    if (isCanonicalTx) {
       await this.applyBondPositionRollovers(
         sql,
         inserted.map(r => r.id)
       );
     }
+  }
+
+  /**
+   * Apply the canonical, not-yet-applied roll-over rows of a block. Used when a fork is restored:
+   * `restoreOrphanedChain` walks tip → fork point, so a roll-over row is flipped canonical before
+   * the earlier fork block holding the position it targets; re-attempting once that block has been
+   * restored (as the recursion unwinds, in ascending block order) applies it. Rows whose position
+   * is still not eligible are left unapplied.
+   */
+  private async applyPendingBondPositionRollovers(sql: PgSqlClient, indexBlockHash: string) {
+    const pending = await sql<{ id: string }[]>`
+      SELECT id
+      FROM bond_position_rollovers
+      WHERE index_block_hash = ${indexBlockHash}
+        AND canonical = true
+        AND microblock_canonical = true
+        AND previous_status IS NULL
+    `;
+    await this.applyBondPositionRollovers(
+      sql,
+      pending.map(r => r.id)
+    );
   }
 
   /**
@@ -771,8 +801,8 @@ export class PgWriteStore extends PgStore {
   /**
    * Undo the given applied `bond_position_rollovers` rows: restore each canonical position's
    * captured status/active flag and add the released amounts back to the position, the bond's
-   * running totals, and the principal's staking totals, then clear the captured state on the row
-   * so a later re-flip can apply it again. Rows that were never applied, or whose position is no
+   * running totals, and the principal's staking totals, then clear the captured state on the row so
+   * a later re-flip can apply it again. Rows that were never applied, or whose position is no
    * longer canonical, are left untouched (a non-canonical position contributed nothing to the
    * aggregates when it was flipped, so there is nothing to add back).
    */
@@ -5066,6 +5096,9 @@ export class PgWriteStore extends PgStore {
     if (parentResult.length > 0) {
       await this.restoreOrphanedChain(sql, parentResult[0].index_block_hash, updatedEntities);
     }
+    // Every earlier block of the restored fork is canonical now: apply this block's roll-overs that
+    // targeted positions registered on the fork (see `applyPendingBondPositionRollovers`).
+    await this.applyPendingBondPositionRollovers(sql, indexBlockHash);
     return updatedEntities;
   }
 

@@ -1,7 +1,7 @@
 import { FastifyPluginAsync } from 'fastify';
 import { Server } from 'node:http';
 import { TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
-import { handleChainTipCache } from '../../controllers/cache-controller.js';
+import { handleChainTipWithBurnchainTipCache } from '../../controllers/cache-controller.js';
 import { StakingOverviewSchema } from '../../schemas/v3/entities/staking-overview.js';
 
 export const StakingRoutes: FastifyPluginAsync<
@@ -12,7 +12,9 @@ export const StakingRoutes: FastifyPluginAsync<
   fastify.get(
     '/staking',
     {
-      preHandler: handleChainTipCache,
+      // Lock and bond expiry depend on the burn tip, which advances on `/new_burn_block` between
+      // Stacks blocks, so the ETag covers the Stacks tip and the burnchain tip (height and hash).
+      preHandler: handleChainTipWithBurnchainTipCache,
       schema: {
         operationId: 'get_staking_overview',
         summary: 'Get network staking overview',

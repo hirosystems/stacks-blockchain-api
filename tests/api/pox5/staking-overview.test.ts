@@ -7,6 +7,10 @@ import { ApiServer, startApiServer } from '../../../src/api/init.ts';
 import { PgWriteStore } from '../../../src/datastore/pg-write-store.ts';
 import { migrate } from '../../test-helpers.ts';
 import { TestBlockBuilder } from '../test-builders.ts';
+import {
+  BACKFILL_BOND_POSITION_ROLLOVERS_SQL,
+  BACKFILL_STALE_STX_LOCKS_SQL,
+} from '../../../migrations/1779800000018_bond-position-rollovers.ts';
 
 /**
  * `GET /extended/v3/staking` — the network staking overview (`locked` totals) — plus the
@@ -391,12 +395,47 @@ describe('staking overview', () => {
       .get('/extended/v3/staking')
       .set('If-None-Match', etag);
     assert.equal(second.status, 304);
-    // A new block changes the tip and invalidates the cached response.
-    await db.update(nextBlock().build());
+    // A burn block advancing the burn tip alone (no Stacks block) changes what the totals report
+    // (lock/bond expiry), so it must invalidate the cached response too.
+    await db.updateBurnChainBlockHeight({ blockHeight: TIP + 1 });
     const third = await supertest(api.server)
       .get('/extended/v3/staking')
       .set('If-None-Match', etag);
     assert.equal(third.status, 200);
+    const burnEtag = third.headers['etag'];
+    assert.notEqual(burnEtag, etag);
+    // A new Stacks block changes the tip and invalidates it as well.
+    await db.update(nextBlock({ burn_block_height: TIP + 1 }).build());
+    const fourth = await supertest(api.server)
+      .get('/extended/v3/staking')
+      .set('If-None-Match', burnEtag);
+    assert.equal(fourth.status, 200);
+    const stacksEtag = fourth.headers['etag'];
+    // A same-height burnchain reorg (new canonical burn block hash, height unchanged) invalidates
+    // too, even though nothing else moved.
+    await db.updateBurnchainBlock({
+      burnchainBlockHash: '0x' + 'aa'.repeat(32),
+      burnchainBlockHeight: TIP + 1,
+      burnAmount: 0n,
+      rewardAmount: 0n,
+    });
+    const afterBurnBlock = await supertest(api.server)
+      .get('/extended/v3/staking')
+      .set('If-None-Match', stacksEtag);
+    assert.equal(afterBurnBlock.status, 200);
+    const burnHashEtag = afterBurnBlock.headers['etag'];
+    assert.notEqual(burnHashEtag, stacksEtag);
+    await db.updateBurnchainBlock({
+      burnchainBlockHash: '0x' + 'bb'.repeat(32),
+      burnchainBlockHeight: TIP + 1,
+      burnAmount: 0n,
+      rewardAmount: 0n,
+    });
+    const afterReorg = await supertest(api.server)
+      .get('/extended/v3/staking')
+      .set('If-None-Match', burnHashEtag);
+    assert.equal(afterReorg.status, 200);
+    assert.notEqual(afterReorg.headers['etag'], burnHashEtag);
   });
 
   describe('roll-overs', () => {
@@ -943,6 +982,214 @@ describe('staking overview', () => {
       const summary = await getJson<StakingSummary>(`/extended/v3/principals/${ALICE}/staking`);
       assert.equal(summary.stx.locked, '11000000');
       assert.deepEqual(summary.bonds.locked, { btc: '0', stx: '0' });
+    });
+
+    test('a roll-over of a position that only exists on the same side fork is applied when the fork wins', async () => {
+      // Canonical chain: block 1 sets up the bond, blocks 2-3 are empty.
+      await db.update(
+        nextBlock()
+          .addTxPox5Event({ name: Pox5EventName.SetupBond, data: setupBondData(BOND_ACTIVE) })
+          .build()
+      );
+      const forkPoint = lastIndexHash;
+      await db.update(nextBlock().build());
+      await db.update(nextBlock().build());
+
+      // Side fork of equal length: block 2' registers alice for the bond, block 3' rolls that
+      // (side-fork-only) position into an STX-only stake.
+      const sideFork = (height: number, hash: string, parent: string) =>
+        new TestBlockBuilder({
+          block_height: height,
+          block_hash: hash,
+          index_block_hash: hash,
+          parent_block_hash: parent,
+          parent_index_block_hash: parent,
+          burn_block_height: TIP,
+          canonical: false,
+        }).addTx({
+          tx_id: '0x' + hash.slice(2).repeat(32 / (hash.length / 2 - 1)),
+          canonical: false,
+        });
+      await db.update(
+        sideFork(2, '0xf2', forkPoint)
+          .addTxPox5Event({
+            name: Pox5EventName.RegisterForBond,
+            data: registerData({
+              bond: BOND_ACTIVE.index,
+              staker: ALICE,
+              ustx: 10_000_000n,
+              sats: 1_000n,
+            }),
+          })
+          .build()
+      );
+      await db.update(
+        sideFork(3, '0xf3', '0xf2')
+          .addTxPox5Event({
+            name: Pox5EventName.Stake,
+            data: stakeData({ staker: ALICE, ustx: 11_000_000n, unlock: TIP + 500 }),
+          })
+          .build()
+      );
+      // Nothing is canonical on the fork yet, but the roll-over intent was recorded.
+      assertTotals(await getTotals(), { individual: 0n, bondStx: 0n, bondBtc: 0n }, 'side fork');
+      const pending = await db.sql<{ canonical: boolean; previous_status: number | null }[]>`
+        SELECT canonical, previous_status FROM bond_position_rollovers WHERE principal = ${ALICE}
+      `;
+      assert.deepEqual([...pending], [{ canonical: false, previous_status: null }]);
+
+      // The fork overtakes: 3' is restored before 2', so the roll-over is applied once its
+      // position's block has been restored too.
+      await db.update(
+        new TestBlockBuilder({
+          block_height: 4,
+          block_hash: '0xf4',
+          index_block_hash: '0xf4',
+          parent_block_hash: '0xf3',
+          parent_index_block_hash: '0xf3',
+          burn_block_height: TIP,
+        }).build()
+      );
+      assertTotals(
+        await getTotals(),
+        { individual: 11_000_000n, bondStx: 0n, bondBtc: 0n },
+        'fork won'
+      );
+      const positions = await getJson<BondPositionsPage>(
+        `/extended/v3/principals/${ALICE}/staking/bonds`
+      );
+      assert.equal(positions.total, 1);
+      assert.equal(positions.results[0].status, 'rolled_over');
+      assert.deepEqual(positions.results[0].locked, { btc: '0', stx: '0' });
+      const bond = await getJson<BondDetail>(`/extended/v3/staking/bonds/${BOND_ACTIVE.index}`);
+      assert.deepEqual(bond.balances.locked, { btc: '0', stx: '0' });
+      const summary = await getJson<StakingSummary>(`/extended/v3/principals/${ALICE}/staking`);
+      assert.equal(summary.stx.locked, '11000000');
+      assert.deepEqual(summary.bonds.locked, { btc: '0', stx: '0' });
+      const applied = await db.sql<{ canonical: boolean; previous_status: number | null }[]>`
+        SELECT canonical, previous_status FROM bond_position_rollovers WHERE principal = ${ALICE}
+      `;
+      assert.deepEqual([...applied], [{ canonical: true, previous_status: 0 }]);
+    });
+
+    test('the migration backfill repairs roll-overs ingested before they were mirrored', async () => {
+      // Ingest a stake → bond → bond history with the current handlers...
+      await db.update(
+        nextBlock()
+          .addTxPox5Event({ name: Pox5EventName.SetupBond, data: setupBondData(BOND_ACTIVE) })
+          .addTxPox5Event({ name: Pox5EventName.SetupBond, data: setupBondData(BOND_UPCOMING) })
+          .addTxPox5Event({
+            name: Pox5EventName.Stake,
+            data: stakeData({ staker: ALICE, ustx: 9_000_000n, unlock: TIP + 500 }),
+          })
+          .build()
+      );
+      await db.update(
+        nextBlock()
+          .addTxPox5Event({
+            name: Pox5EventName.RegisterForBond,
+            data: registerData({
+              bond: BOND_ACTIVE.index,
+              staker: ALICE,
+              ustx: 10_000_000n,
+              sats: 1_000n,
+            }),
+          })
+          .build()
+      );
+      await db.update(
+        nextBlock()
+          .addTxPox5Event({
+            name: Pox5EventName.RegisterForBond,
+            data: registerData({
+              bond: BOND_UPCOMING.index,
+              staker: ALICE,
+              ustx: 14_000_000n,
+              sats: 1_400n,
+            }),
+          })
+          .build()
+      );
+      const rolloverBlock = lastIndexHash;
+      const expected = { individual: 0n, bondStx: 14_000_000n, bondBtc: 1_400n };
+      assertTotals(await getTotals(), expected, 'ingested');
+
+      // ...then rewind the materialized state to what a pre-fix API would hold: the stale
+      // STX-only lock still present, the bond 0 position live, its amounts still in the bond and
+      // principal aggregates, and no roll-over rows.
+      await db.sql`
+        INSERT INTO stx_locked_balances (principal, locked_amount, unlock_burn_height, pox_version,
+          lock_tx_id, lock_block_height, burnchain_lock_height, signer)
+        VALUES (${ALICE}, 9000000, ${TIP + 500}, 5, ${'0x' + '01'.padStart(64, '0')}, 1, ${TIP}, ${SIGNER})
+      `;
+      await db.sql`
+        UPDATE principal_bond_positions
+        SET status = ${0}, active = true, btc_locked = 1000, stx_locked = 10000000
+        WHERE principal = ${ALICE} AND bond_index = ${BOND_ACTIVE.index}
+      `;
+      await db.sql`
+        UPDATE bonds SET btc_locked = btc_locked + 1000, stx_locked = stx_locked + 10000000
+        WHERE bond_index = ${BOND_ACTIVE.index}
+      `;
+      await db.sql`
+        UPDATE principal_staking_totals
+        SET bond_btc_locked = bond_btc_locked + 1000, bond_stx_locked = bond_stx_locked + 10000000
+        WHERE principal = ${ALICE}
+      `;
+      await db.sql`DELETE FROM bond_position_rollovers`;
+      assertTotals(
+        await getTotals(),
+        { individual: 9_000_000n, bondStx: 24_000_000n, bondBtc: 2_400n },
+        'pre-fix state'
+      );
+
+      // Running the backfill statements brings it back to the mirrored state.
+      await db.sql.unsafe(BACKFILL_STALE_STX_LOCKS_SQL);
+      await db.sql.unsafe(BACKFILL_BOND_POSITION_ROLLOVERS_SQL);
+      assertTotals(await getTotals(), expected, 'backfilled');
+      const lockRows = await db.sql<{ principal: string }[]>`
+        SELECT principal FROM stx_locked_balances WHERE principal = ${ALICE}
+      `;
+      assert.equal(lockRows.length, 0, 'stale STX-only lock removed');
+      const positions = await getJson<BondPositionsPage>(
+        `/extended/v3/principals/${ALICE}/staking/bonds`
+      );
+      assert.equal(positions.results[0].status, 'rolled_over');
+      assert.deepEqual(positions.results[0].locked, { btc: '0', stx: '0' });
+      assert.equal(positions.results[1].status, 'enrolled');
+      const oldBond = await getJson<BondDetail>(`/extended/v3/staking/bonds/${BOND_ACTIVE.index}`);
+      assert.deepEqual(oldBond.balances.locked, { btc: '0', stx: '0' });
+      const summary = await getJson<StakingSummary>(`/extended/v3/principals/${ALICE}/staking`);
+      assert.deepEqual(summary.bonds.locked, { btc: '1400', stx: '14000000' });
+      // The roll-over row is keyed to the bond 1 registration block and holds the restore state.
+      const rows = await db.sql<
+        {
+          index_block_hash: string;
+          canonical: boolean;
+          previous_status: number;
+          released_stx: string;
+        }[]
+      >`
+        SELECT '0x' || encode(index_block_hash, 'hex') AS index_block_hash, canonical,
+          previous_status, released_stx::text
+        FROM bond_position_rollovers WHERE principal = ${ALICE}
+      `;
+      assert.deepEqual(
+        [...rows],
+        [
+          {
+            index_block_hash: rolloverBlock,
+            canonical: true,
+            previous_status: 0,
+            released_stx: '10000000',
+          },
+        ]
+      );
+
+      // Running it again is a no-op.
+      await db.sql.unsafe(BACKFILL_STALE_STX_LOCKS_SQL);
+      await db.sql.unsafe(BACKFILL_BOND_POSITION_ROLLOVERS_SQL);
+      assertTotals(await getTotals(), expected, 'idempotent');
     });
 
     test('a registration update on the same bond is not a roll-over', async () => {
