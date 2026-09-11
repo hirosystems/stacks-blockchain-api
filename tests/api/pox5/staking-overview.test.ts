@@ -33,7 +33,7 @@ const BOND_UPCOMING = { index: 1, start: 1_500, unlock: 2_600 };
 const BOND_UNLOCKED = { index: 2, start: 100, unlock: 800 };
 
 interface StakingLockedTotals {
-  stx: { stx_only_total: string; bond_total: string; total: string };
+  stx: { stx_only: string; bonds: string; total: string };
   btc: { total: string };
 }
 interface StakingOverview {
@@ -136,8 +136,8 @@ describe('staking overview', () => {
     expected: { individual: bigint; bondStx: bigint; bondBtc: bigint },
     label: string
   ) {
-    assert.equal(BigInt(totals.stx.stx_only_total), expected.individual, `${label}: individual`);
-    assert.equal(BigInt(totals.stx.bond_total), expected.bondStx, `${label}: bond stx`);
+    assert.equal(BigInt(totals.stx.stx_only), expected.individual, `${label}: individual`);
+    assert.equal(BigInt(totals.stx.bonds), expected.bondStx, `${label}: bond stx`);
     assert.equal(
       BigInt(totals.stx.total),
       expected.individual + expected.bondStx,
@@ -168,7 +168,7 @@ describe('staking overview', () => {
     await db.update(nextBlock().build());
     assert.deepEqual(await getJson<StakingOverview>('/extended/v3/staking'), {
       locked: {
-        stx: { stx_only_total: '0', bond_total: '0', total: '0' },
+        stx: { stx_only: '0', bonds: '0', total: '0' },
         btc: { total: '0' },
       },
     });

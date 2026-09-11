@@ -5,14 +5,14 @@ import { AmountSchema } from './common.js';
 export const StakingLockedTotalsSchema = Type.Object(
   {
     stx: Type.Object({
-      stx_only_total: Type.String({
+      stx_only: Type.String({
         ...AmountSchema,
         description:
           'Total STX currently locked in STX-only staking (the `stake` path), as a ' +
           'string-quoted integer of micro-STX (µSTX).',
         examples: ['88231000000000'],
       }),
-      bond_total: Type.String({
+      bonds: Type.String({
         ...AmountSchema,
         description:
           'Total STX currently locked across all bonds, as a string-quoted integer of ' +
@@ -22,7 +22,7 @@ export const StakingLockedTotalsSchema = Type.Object(
       total: Type.String({
         ...AmountSchema,
         description:
-          'Sum of `stx_only_total` and `bond_total`: all STX currently ' +
+          'Sum of `stx_only` and `bonds`: all STX currently ' +
           'locked by staking, as a string-quoted integer of micro-STX (µSTX).',
         examples: ['91801465300381'],
       }),

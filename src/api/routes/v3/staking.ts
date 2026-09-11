@@ -31,8 +31,8 @@ export const StakingRoutes: FastifyPluginAsync<
       await reply.send({
         locked: {
           stx: {
-            stx_only_total: totals.individual_staked_stx,
-            bond_total: totals.bond_staked_stx,
+            stx_only: totals.individual_staked_stx,
+            bonds: totals.bond_staked_stx,
             total: (
               BigInt(totals.individual_staked_stx) + BigInt(totals.bond_staked_stx)
             ).toString(),
