@@ -24,12 +24,6 @@ export enum ETagType {
    * ingestion, which can advance without any Stacks block moving the chain tip.
    */
   burnchainChainTip = 'burnchain_chain_tip',
-  /**
-   * ETag based on the Stacks chain tip plus the burnchain tip (height and hash). For responses
-   * that derive lock/bond expiry from `chain_tip.burn_block_height`, which `/new_burn_block`
-   * advances between Stacks blocks; the hash also invalidates on a same-height burnchain reorg.
-   */
-  chainTipWithBurnchainTip = 'chain_tip_with_burnchain_tip',
   /** ETag based on a digest of all pending mempool `tx_id`s. */
   mempool = 'mempool',
   /** ETag based on the status of a single transaction across the mempool or canonical chain. */
@@ -105,17 +99,6 @@ async function calculateETag(
           return;
         }
         return chainTip.index_block_hash;
-      }
-
-      case ETagType.chainTipWithBurnchainTip: {
-        const state = await db.getChainTipWithBurnchainTipCacheState();
-        if (!state) {
-          // The API is serving requests before it has synced any blocks.
-          return;
-        }
-        return sha256(
-          `${state.index_block_hash}:${state.burn_block_height}:${state.burn_block_hash ?? ''}`
-        );
       }
 
       case ETagType.burnchainChainTip: {
@@ -229,10 +212,6 @@ export function handleChainTipCache(request: FastifyRequest, reply: FastifyReply
 
 export function handleBurnchainChainTipCache(request: FastifyRequest, reply: FastifyReply) {
   return handleCache(ETagType.burnchainChainTip, request, reply);
-}
-
-export function handleChainTipWithBurnchainTipCache(request: FastifyRequest, reply: FastifyReply) {
-  return handleCache(ETagType.chainTipWithBurnchainTip, request, reply);
 }
 
 export async function handleMempoolCache(request: FastifyRequest, reply: FastifyReply) {

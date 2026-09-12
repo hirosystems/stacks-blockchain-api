@@ -297,16 +297,6 @@ export interface DbStakingRewards {
   burn_amount: string;
 }
 
-/** Network-wide pox-5 locked-asset totals at the current chain tip. */
-export interface DbStakingLockedTotals {
-  /** µSTX locked in pox-5 STX-only stakes whose unlock height has not been reached. */
-  individual_staked_stx: string;
-  /** µSTX locked across bonds that have not yet unlocked. */
-  bond_staked_stx: string;
-  /** Sats locked across bonds that have not yet unlocked. */
-  bond_staked_btc: string;
-}
-
 export interface DbStakingSigner {
   signer: string;
   /** The registered compressed secp256k1 public key as a `0x`-prefixed hex string. */

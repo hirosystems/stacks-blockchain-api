@@ -843,52 +843,6 @@ export class PgStore extends BasePgStore {
   }
 
   /**
-   * Cache-key state for responses that depend on both the Stacks tip and the burnchain tip: the
-   * canonical Stacks tip's index block hash, `chain_tip.burn_block_height` (which `/new_burn_block`
-   * advances between Stacks blocks and which drives lock/bond expiry), and the canonical burnchain
-   * tip hash (so a same-height burnchain reorg also invalidates). `undefined` before any block has
-   * been ingested.
-   */
-  async getChainTipWithBurnchainTipCacheState(): Promise<
-    | {
-        index_block_hash: string;
-        burn_block_height: number;
-        burn_block_hash: string | null;
-      }
-    | undefined
-  > {
-    const result = await this.sql<
-      {
-        block_height: number;
-        index_block_hash: string;
-        burn_block_height: number;
-        burn_block_hash: string | null;
-      }[]
-    >`
-      SELECT
-        block_height,
-        index_block_hash,
-        burn_block_height,
-        (
-          SELECT burn_block_hash FROM burn_blocks
-          WHERE canonical = true
-          ORDER BY burn_block_height DESC
-          LIMIT 1
-        ) AS burn_block_hash
-      FROM chain_tip
-    `;
-    const tip = result[0];
-    if (!tip || tip.block_height === 0) {
-      return undefined;
-    }
-    return {
-      index_block_hash: tip.index_block_hash,
-      burn_block_height: tip.burn_block_height,
-      burn_block_hash: tip.burn_block_hash,
-    };
-  }
-
-  /**
    * Gets the current burnchain cache state used to build burnchain ETags: the canonical burn block
    * at the highest height, plus the materialized network staking totals. The totals cover
    * mid-history canonical flips (e.g. a deep burnchain fork replacing lower heights before the tip

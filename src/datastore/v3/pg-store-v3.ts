@@ -25,7 +25,6 @@ import {
   DbSignerStaker,
   DbSmartContractDetail,
   DbStakingRewards,
-  DbStakingLockedTotals,
   DbStakingSigner,
   DbStakingSignerDetail,
   DbTransaction,
@@ -2154,51 +2153,6 @@ export class PgStoreV3 extends BasePgStoreModule {
           stacked_amount_percent: r.stacked_amount_percent,
           signer_managers: r.signer_managers,
         })),
-      };
-    });
-  }
-
-  /**
-   * Gets the network-wide pox-5 locked-asset totals at the current chain tip.
-   *
-   * STX-only stakes come from the materialized `stx_locked_balances` rows. Lock expiry has no
-   * event, so it is applied here against the burn tip with the same rule as
-   * `resolveMaterializedStxLock` / `getSignerStakers`: a lock is active while
-   * `unlock_burn_height >= burn tip` (pox-5 has no force-unlock height). The existing
-   * `unlock_burn_height` index turns this into a range scan over the active rows only.
-   *
-   * Bond amounts come from the running `bonds.stx_locked` / `bonds.btc_locked` totals. Nothing
-   * zeroes them when a bond unlocks, so bonds are filtered by the same status rule as the bond
-   * serializer: a bond is locked while `unlock_burn_height > burn tip`. Positions count from
-   * registration, so upcoming bonds are included.
-   * @returns The locked totals, as numeric strings.
-   */
-  async getStakingLockedTotals(): Promise<DbStakingLockedTotals> {
-    return await this.sqlTransaction(async sql => {
-      const [tip] = await sql<{ burn_block_height: number }[]>`
-        SELECT burn_block_height FROM chain_tip
-      `;
-      const burnBlockHeight = tip?.burn_block_height ?? 0;
-      const [stx] = await sql<{ individual_staked_stx: string }[]>`
-        SELECT COALESCE(SUM(locked_amount), 0)::text AS individual_staked_stx
-        FROM stx_locked_balances
-        WHERE pox_version = 5
-          AND locked_amount > 0
-          AND unlock_burn_height >= ${burnBlockHeight}
-      `;
-      const [bonds] = await sql<{ bond_staked_stx: string; bond_staked_btc: string }[]>`
-        SELECT
-          COALESCE(SUM(stx_locked), 0)::text AS bond_staked_stx,
-          COALESCE(SUM(btc_locked), 0)::text AS bond_staked_btc
-        FROM bonds
-        WHERE canonical = true
-          AND microblock_canonical = true
-          AND unlock_burn_height > ${burnBlockHeight}
-      `;
-      return {
-        individual_staked_stx: stx?.individual_staked_stx ?? '0',
-        bond_staked_stx: bonds?.bond_staked_stx ?? '0',
-        bond_staked_btc: bonds?.bond_staked_btc ?? '0',
       };
     });
   }
