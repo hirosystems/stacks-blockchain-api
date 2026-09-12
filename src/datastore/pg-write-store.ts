@@ -74,6 +74,7 @@ import {
   DbBondRewardDistributionInsertValues,
   DbPrincipalBondRewardDistributionInsertValues,
   DbPrincipalBondRewardClaimInsertValues,
+  DbBondPositionRolloverInsertValues,
   DbPrincipalStxRewardDistributionInsertValues,
   DbSignerKeyGrantInsertValues,
   DbSignerKeyGrantKind,
@@ -516,6 +517,10 @@ export class PgWriteStore extends PgStore {
             await this.updateBondAllowlistEntry(sql, txLocation, poxEvent);
             break;
           case Pox5EventName.RegisterForBond:
+            await this.applyRegisterForBondRollOver(sql, txLocation, poxEvent);
+            await this.updateBondRegistration(sql, txLocation, poxEvent);
+            await this.updatePrincipalBondPosition(sql, txLocation, poxEvent);
+            break;
           case Pox5EventName.UpdateBondRegistration:
             await this.updateBondRegistration(sql, txLocation, poxEvent);
             await this.updatePrincipalBondPosition(sql, txLocation, poxEvent);
@@ -537,6 +542,9 @@ export class PgWriteStore extends PgStore {
             await this.updateSignerRewardClaim(sql, txLocation, poxEvent);
             break;
           case Pox5EventName.Stake:
+            await this.applyStakeRollOver(sql, txLocation, poxEvent);
+            await this.upsertStxLockedBalance(sql, txLocation, poxEvent);
+            break;
           case Pox5EventName.StakeUpdate:
           case Pox5EventName.Unstake:
             await this.upsertStxLockedBalance(sql, txLocation, poxEvent);
@@ -591,6 +599,269 @@ export class PgWriteStore extends PgStore {
     };
     await sql`
       INSERT INTO bonds ${sql(bond)}
+    `;
+  }
+
+  /**
+   * Apply the roll-over side of a pox-5 `register-for-bond`. The contract keeps a staker in
+   * exactly one pox-5 position at a time: registering for a bond replaces any earlier bond
+   * membership (`protocol-bond-memberships`) and deletes any STX-only stake (`staker-info`), and
+   * the node carries the staker's single account lock into the new bond (`set_lock_v5`). Mirror
+   * that here so the staker's STX/BTC is not counted under both the old and the new position:
+   *  - drop the staker's materialized pox-5 STX-only lock (`stx_locked_balances`), and
+   *  - roll every other bond position of the staker over, releasing its locked amounts from the
+   *    bond and principal aggregates.
+   *
+   * Reorg handling: the lock row is re-derived by `recomputeStxLockedBalances` (which treats a
+   * canonical `register-for-bond` as a lock clear); the position roll-over is recorded as
+   * flag-carrying `bond_position_rollovers` rows that the reorg flip restores or applies.
+   */
+  private async applyRegisterForBondRollOver(
+    sql: PgSqlClient,
+    txLocation: DbTxLocation,
+    event: Pox5EventRegisterForBond
+  ) {
+    if (txLocation.canonical && txLocation.microblock_canonical) {
+      await sql`
+        DELETE FROM stx_locked_balances
+        WHERE principal = ${event.data.staker} AND pox_version = 5
+      `;
+    }
+    await this.rollOverBondPositions(
+      sql,
+      txLocation,
+      event.data.staker,
+      parseInt(event.data.bond_index)
+    );
+  }
+
+  /**
+   * Apply the roll-over side of a pox-5 `stake`. The contract rejects a `stake` while an STX-only
+   * stake exists, so a `stake` with an existing bond membership is a bond → STX-only roll-over:
+   * the membership is deleted, custodied sBTC is refunded, and the node carries the account lock
+   * into the new stake. Roll the staker's bond positions over so their amounts leave the bond
+   * aggregates (recorded as `bond_position_rollovers` rows for reorg handling).
+   */
+  private async applyStakeRollOver(
+    sql: PgSqlClient,
+    txLocation: DbTxLocation,
+    event: Pox5EventStake
+  ) {
+    await this.rollOverBondPositions(sql, txLocation, event.data.staker, null);
+  }
+
+  /**
+   * Roll a staker's bond positions (other than `keepBondIndex`) over. Every eligible canonical
+   * position (not already rolled over, holding locked STX or BTC) gets a flag-carrying
+   * `bond_position_rollovers` row keyed to the roll-over tx. For a canonical tx the roll-over is
+   * applied right away (`applyBondPositionRollovers`); for a side-fork tx only the rows are
+   * persisted, and the reorg flip applies them if the fork wins.
+   */
+  private async rollOverBondPositions(
+    sql: PgSqlClient,
+    txLocation: DbTxLocation,
+    staker: string,
+    keepBondIndex: number | null
+  ) {
+    const isCanonicalTx = txLocation.canonical && txLocation.microblock_canonical;
+    const excludeFilter = keepBondIndex === null ? sql`` : sql`AND bond_index <> ${keepBondIndex}`;
+    // A canonical roll-over targets the staker's canonical positions. A side-fork roll-over may
+    // target a position that only exists on that same fork (registered in an earlier side-fork
+    // block, stored non-canonical), so its candidates are taken regardless of canonical flag; the
+    // row is only ever applied against a canonical position, so rows for positions that never
+    // become canonical stay unapplied.
+    const canonicalFilter = isCanonicalTx
+      ? sql`AND canonical = true AND microblock_canonical = true`
+      : sql``;
+    const candidates = await sql<{ bond_index: number }[]>`
+      SELECT bond_index
+      FROM principal_bond_positions
+      WHERE principal = ${staker}
+        ${canonicalFilter}
+        AND status <> ${DbPrincipalBondPositionStatus.RolledOver}
+        AND (btc_locked > 0 OR stx_locked > 0)
+        ${excludeFilter}
+    `;
+    if (candidates.length === 0) {
+      return;
+    }
+    const rows: DbBondPositionRolloverInsertValues[] = candidates.map(c => ({
+      ...txLocation,
+      principal: staker,
+      bond_index: c.bond_index,
+    }));
+    const inserted = await sql<{ id: string }[]>`
+      INSERT INTO bond_position_rollovers ${sql(rows)}
+      RETURNING id
+    `;
+    if (isCanonicalTx) {
+      await this.applyBondPositionRollovers(
+        sql,
+        inserted.map(r => r.id)
+      );
+    }
+  }
+
+  /**
+   * Apply the canonical, not-yet-applied roll-over rows of a block. Used when a fork is restored:
+   * `restoreOrphanedChain` walks tip → fork point, so a roll-over row is flipped canonical before
+   * the earlier fork block holding the position it targets; re-attempting once that block has been
+   * restored (as the recursion unwinds, in ascending block order) applies it. Rows whose position
+   * is still not eligible are left unapplied.
+   */
+  private async applyPendingBondPositionRollovers(sql: PgSqlClient, indexBlockHash: string) {
+    const pending = await sql<{ id: string }[]>`
+      SELECT id
+      FROM bond_position_rollovers
+      WHERE index_block_hash = ${indexBlockHash}
+        AND canonical = true
+        AND microblock_canonical = true
+        AND previous_status IS NULL
+    `;
+    await this.applyBondPositionRollovers(
+      sql,
+      pending.map(r => r.id)
+    );
+  }
+
+  /**
+   * Apply the given `bond_position_rollovers` rows to their positions: capture the position's
+   * current status/active flag and locked amounts on the row, mark the position `rolled_over` with
+   * nothing locked, and apply the released amounts as negative deltas to the bonds' running totals
+   * and the principal's staking totals (the `unstake-sbtc` delta shape). Rows already applied, or
+   * whose position is not eligible (missing, non-canonical, already rolled over, or holding
+   * nothing), are left untouched with `previous_status` NULL.
+   */
+  private async applyBondPositionRollovers(sql: PgSqlClient, ids: string[]) {
+    if (ids.length === 0) {
+      return;
+    }
+    await sql`
+      WITH target AS (
+        -- One row per position: a batch can carry several roll-over rows for the same position
+        -- (e.g. a side-fork block with a stake followed by a register-for-bond for the same
+        -- staker, both recorded against the then-unmodified position). Only the earliest is
+        -- applied; later duplicates stay unapplied so the deltas below count the position once.
+        SELECT DISTINCT ON (r.principal, r.bond_index)
+          r.id, r.principal, r.bond_index,
+          p.status AS previous_status, p.active AS previous_active,
+          p.btc_locked AS released_btc, p.stx_locked AS released_stx
+        FROM bond_position_rollovers r
+        JOIN principal_bond_positions p
+          ON p.principal = r.principal AND p.bond_index = r.bond_index
+          AND p.canonical = true AND p.microblock_canonical = true
+        WHERE r.id IN ${sql(ids)}
+          AND r.previous_status IS NULL
+          AND p.status <> ${DbPrincipalBondPositionStatus.RolledOver}
+          AND (p.btc_locked > 0 OR p.stx_locked > 0)
+        ORDER BY r.principal, r.bond_index,
+          r.block_height ASC, r.microblock_sequence ASC, r.tx_index ASC, r.id ASC
+      ),
+      marked AS (
+        UPDATE bond_position_rollovers r
+        SET previous_status = t.previous_status,
+          previous_active = t.previous_active,
+          released_btc = t.released_btc,
+          released_stx = t.released_stx
+        FROM target t
+        WHERE r.id = t.id
+        RETURNING 1
+      ),
+      rolled AS (
+        UPDATE principal_bond_positions p
+        SET status = ${DbPrincipalBondPositionStatus.RolledOver},
+          active = false,
+          btc_locked = 0,
+          stx_locked = 0
+        FROM target t
+        WHERE p.principal = t.principal AND p.bond_index = t.bond_index
+          AND p.canonical = true AND p.microblock_canonical = true
+        RETURNING 1
+      ),
+      bond_changes AS (
+        SELECT bond_index, SUM(released_btc) AS btc_change, SUM(released_stx) AS stx_change
+        FROM target
+        GROUP BY bond_index
+      ),
+      bond_update AS (
+        UPDATE bonds b
+        SET btc_locked = b.btc_locked - c.btc_change,
+          stx_locked = b.stx_locked - c.stx_change
+        FROM bond_changes c
+        WHERE b.bond_index = c.bond_index
+          AND b.canonical = true AND b.microblock_canonical = true
+        RETURNING 1
+      ),
+      principal_changes AS (
+        SELECT principal, SUM(released_btc) AS btc_change, SUM(released_stx) AS stx_change
+        FROM target
+        GROUP BY principal
+      )
+      INSERT INTO principal_staking_totals (principal, bond_btc_locked, bond_stx_locked)
+      SELECT principal, -btc_change, -stx_change FROM principal_changes
+      ON CONFLICT (principal) DO UPDATE SET
+        bond_btc_locked = principal_staking_totals.bond_btc_locked + EXCLUDED.bond_btc_locked,
+        bond_stx_locked = principal_staking_totals.bond_stx_locked + EXCLUDED.bond_stx_locked
+    `;
+  }
+
+  /**
+   * Undo the given applied `bond_position_rollovers` rows: restore each canonical position's
+   * captured status/active flag and add the released amounts back to the position, the bond's
+   * running totals, and the principal's staking totals, then clear the captured state on the row so
+   * a later re-flip can apply it again. Rows that were never applied, or whose position is no
+   * longer canonical, are left untouched (a non-canonical position contributed nothing to the
+   * aggregates when it was flipped, so there is nothing to add back).
+   */
+  private async revertBondPositionRollovers(sql: PgSqlClient, ids: string[]) {
+    if (ids.length === 0) {
+      return;
+    }
+    await sql`
+      WITH restored AS (
+        UPDATE principal_bond_positions p
+        SET status = r.previous_status,
+          active = r.previous_active,
+          btc_locked = p.btc_locked + r.released_btc,
+          stx_locked = p.stx_locked + r.released_stx
+        FROM bond_position_rollovers r
+        WHERE r.id IN ${sql(ids)}
+          AND r.previous_status IS NOT NULL
+          AND p.principal = r.principal AND p.bond_index = r.bond_index
+          AND p.canonical = true AND p.microblock_canonical = true
+        RETURNING r.id, r.principal, r.bond_index, r.released_btc, r.released_stx
+      ),
+      cleared AS (
+        UPDATE bond_position_rollovers r
+        SET previous_status = NULL, previous_active = NULL, released_btc = 0, released_stx = 0
+        FROM restored t
+        WHERE r.id = t.id
+        RETURNING 1
+      ),
+      bond_changes AS (
+        SELECT bond_index, SUM(released_btc) AS btc_change, SUM(released_stx) AS stx_change
+        FROM restored
+        GROUP BY bond_index
+      ),
+      bond_update AS (
+        UPDATE bonds b
+        SET btc_locked = b.btc_locked + c.btc_change,
+          stx_locked = b.stx_locked + c.stx_change
+        FROM bond_changes c
+        WHERE b.bond_index = c.bond_index
+          AND b.canonical = true AND b.microblock_canonical = true
+        RETURNING 1
+      ),
+      principal_changes AS (
+        SELECT principal, SUM(released_btc) AS btc_change, SUM(released_stx) AS stx_change
+        FROM restored
+        GROUP BY principal
+      )
+      INSERT INTO principal_staking_totals (principal, bond_btc_locked, bond_stx_locked)
+      SELECT principal, btc_change, stx_change FROM principal_changes
+      ON CONFLICT (principal) DO UPDATE SET
+        bond_btc_locked = principal_staking_totals.bond_btc_locked + EXCLUDED.bond_btc_locked,
+        bond_stx_locked = principal_staking_totals.bond_stx_locked + EXCLUDED.bond_stx_locked
     `;
   }
 
@@ -1256,8 +1527,9 @@ export class PgWriteStore extends PgStore {
    * Locked STX is a SET/latest-wins value (not additive like ft_balances), so a reorg can't be
    * handled with signed deltas — instead we re-derive each affected principal's current lock from
    * the latest applicable canonical lock-changing event across all blocks: pox-1..4
-   * `stx_lock_events` and the synthetic pox-5 `stake`/`stake-update`/`unstake` events (which all set
-   * the lock with an absolute amount and `unlock_burn_height`).
+   * `stx_lock_events`, the synthetic pox-5 `stake`/`stake-update`/`unstake` events (which all set
+   * the lock with an absolute amount and `unlock_burn_height`), and pox-5 `register-for-bond`
+   * events (which clear the STX-only lock).
    *
    * Must run AFTER the `stx_lock_events` and `pox5_events` canonical flips for this block have
    * completed (i.e. after the reorg queue drains), so the "latest canonical event" reflects the
@@ -1274,7 +1546,7 @@ export class PgWriteStore extends PgStore {
       SELECT data->>'staker' AS principal
       FROM pox5_events
       WHERE index_block_hash = ${indexBlockHash}
-        AND name IN ('stake', 'stake-update', 'unstake')
+        AND name IN ('stake', 'stake-update', 'unstake', 'register-for-bond')
     `;
     const principals = affectedRows.map(r => r.principal);
     if (principals.length === 0) {
@@ -1338,6 +1610,26 @@ export class PgWriteStore extends PgStore {
             FROM pox5_events p
             WHERE p.canonical = true AND p.microblock_canonical = true
               AND p.name IN ('stake', 'stake-update', 'unstake')
+              AND p.data->>'staker' IN ${sql(batch)}
+            UNION ALL
+            -- pox-5 register-for-bond replaces any STX-only stake: the contract
+            -- deletes the staker's staker-info and the node carries the account
+            -- lock into the bond (tracked in principal_bond_positions), so a
+            -- canonical registration clears the materialized STX-only lock.
+            SELECT
+              p.data->>'staker' AS principal,
+              p.block_height, p.microblock_sequence, p.tx_index, p.event_index,
+              false AS is_set,
+              0::numeric AS locked_amount,
+              0::bigint AS unlock_burn_height,
+              5 AS pox_version,
+              p.tx_id AS lock_tx_id,
+              p.block_height AS lock_block_height,
+              p.burn_block_height AS burnchain_lock_height,
+              NULL AS signer
+            FROM pox5_events p
+            WHERE p.canonical = true AND p.microblock_canonical = true
+              AND p.name = 'register-for-bond'
               AND p.data->>'staker' IN ${sql(batch)}
           ) candidates
           ORDER BY principal,
@@ -4466,6 +4758,25 @@ export class PgWriteStore extends PgStore {
       `;
     });
     q.enqueue(async () => {
+      // Flip the bond position roll-over source rows and replay them against the positions they
+      // rolled out of (rows from older blocks the `principal_bond_positions` flip above cannot
+      // reach): an orphaned roll-over restores the position and its aggregates, a side-fork
+      // roll-over whose block became canonical is applied.
+      const flipped = await sql<{ id: string }[]>`
+        UPDATE bond_position_rollovers
+        SET canonical = ${canonical}
+        WHERE index_block_hash = ${indexBlockHash} AND canonical != ${canonical}
+          AND microblock_canonical = true
+        RETURNING id
+      `;
+      const ids = flipped.map(r => r.id);
+      if (canonical) {
+        await this.applyBondPositionRollovers(sql, ids);
+      } else {
+        await this.revertBondPositionRollovers(sql, ids);
+      }
+    });
+    q.enqueue(async () => {
       // Flip the per-participant reward source rows and apply the signed delta to
       // each participant's running accrued_rewards total (ft_events → ft_balances).
       await sql`
@@ -4792,6 +5103,9 @@ export class PgWriteStore extends PgStore {
     if (parentResult.length > 0) {
       await this.restoreOrphanedChain(sql, parentResult[0].index_block_hash, updatedEntities);
     }
+    // Every earlier block of the restored fork is canonical now: apply this block's roll-overs that
+    // targeted positions registered on the fork (see `applyPendingBondPositionRollovers`).
+    await this.applyPendingBondPositionRollovers(sql, indexBlockHash);
     return updatedEntities;
   }
 
