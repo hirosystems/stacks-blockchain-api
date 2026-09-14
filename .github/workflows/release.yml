@@ -8,7 +8,45 @@ on:
         type: string
 
 jobs:
+  verify:
+    # Only `main` may be released, and the checked-out commit must already carry
+    # the requested version so the artifacts and the tag can never disagree.
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout release commit
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          ref: ${{ github.sha }}
+
+      - name: Check package versions match the requested version
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          for pkg in package.json client/package.json; do
+            actual="$(jq -r .version "$pkg")"
+            if [[ "$actual" != "$VERSION" ]]; then
+              echo "::error::$pkg is at $actual but release $VERSION was requested (commit ${GITHUB_SHA})"
+              exit 1
+            fi
+          done
+
+      - name: Check tag does not already exist
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          if gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/v${VERSION}" >/dev/null 2>&1; then
+            echo "::error::tag v${VERSION} already exists; it must be created by publishing the draft release"
+            exit 1
+          fi
+
   publish-docker:
+    needs: verify
     runs-on: ubuntu-latest
     environment: Production
     permissions:
@@ -16,10 +54,10 @@ jobs:
       contents: read
       packages: write
     steps:
-      - name: Checkout tag
+      - name: Checkout release commit
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
-          ref: v${{ inputs.version }}
+          ref: ${{ github.sha }}
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@96fe6ef7f33517b61c61be40b68a1882f3264fb8 # v4.2.0
@@ -45,6 +83,8 @@ jobs:
             ghcr.io/${{ github.repository }}
             hirosystems/${{ github.event.repository.name }}
             ${{ steps.ecr_login.outputs.registry }}/${{ vars.AWS_ECR_REPOSITORY }}
+          # `org.opencontainers.image.revision` is set to `github.sha` by the
+          # action; `release-verify.yml` compares it against the published tag.
           tags: |
             type=semver,pattern={{version}},value=${{ inputs.version }}
             type=semver,pattern={{major}}.{{minor}},value=${{ inputs.version }}
@@ -80,10 +120,10 @@ jobs:
       contents: read
       id-token: write
     steps:
-      - name: Checkout tag
+      - name: Checkout release commit
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
-          ref: v${{ inputs.version }}
+          ref: ${{ github.sha }}
 
       - name: Use Node.js
         uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
@@ -112,38 +152,42 @@ jobs:
 
   github-release:
     needs: publish-npm
-    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     environment: Production
     permissions:
       contents: write
     steps:
-      - name: Checkout tag
+      - name: Checkout release commit
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
-          ref: v${{ inputs.version }}
+          ref: ${{ github.sha }}
 
-      - name: Create GitHub Release
+      - name: Create draft GitHub Release (tag is created on publish)
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ inputs.version }}
         run: |
-          VERSION="${{ inputs.version }}"
+          set -euo pipefail
           PRERELEASE_FLAG=""
           if echo "$VERSION" | grep -q "-"; then
             PRERELEASE_FLAG="--prerelease"
           fi
 
-          # Fill the template: VERSION, date, and the auto-generated changelog
-          # (the API computes the previous tag automatically).
+          # Fill the template: VERSION, date, and the auto-generated changelog.
+          # The tag does not exist yet, so the notes are generated against the
+          # release commit; the API computes the previous tag automatically.
           export VERSION
           export RELEASE_DATE="$(date -u +%Y-%m-%d)"
-          export CHANGELOG="$(gh api "repos/${{ github.repository }}/releases/generate-notes" \
-            -f tag_name="v$VERSION" --jq '.body')"
+          export CHANGELOG="$(gh api "repos/${GITHUB_REPOSITORY}/releases/generate-notes" \
+            -f tag_name="v$VERSION" -f target_commitish="$GITHUB_SHA" --jq '.body')"
 
           envsubst '${VERSION} ${RELEASE_DATE} ${CHANGELOG}' \
             < .github/RELEASE_TEMPLATE.md > release-notes.md
 
+          # No tag is created for a draft; GitHub creates `v$VERSION` at
+          # `$GITHUB_SHA` when the draft is published.
           gh release create "v$VERSION" \
             --draft \
+            --target "$GITHUB_SHA" \
             --notes-file release-notes.md \
             $PRERELEASE_FLAG
