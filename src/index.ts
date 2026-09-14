@@ -5,6 +5,7 @@ import {
 } from './helpers.js';
 import * as sourceMapSupport from 'source-map-support';
 import { startApiServer } from './api/init.js';
+import { ensurePoxConstants } from './pox-constants.js';
 import { startEventServer } from './event-stream/event-server.js';
 import { getCoreNodeEndpoint, getCoreRpcClient, waitForCoreRpcConnection } from './core-rpc.js';
 import * as promClient from 'prom-client';
@@ -84,8 +85,15 @@ async function init(): Promise<void> {
     logger.info('Chainstate is empty');
   }
 
+  const configuredChainID = getApiConfiguredChainID();
   if (apiMode === 'default' || apiMode === 'writeonly') {
-    const configuredChainID = getApiConfiguredChainID();
+    await ensurePoxConstants({
+      db: dbWriteStore,
+      client: getCoreRpcClient(),
+      chainId: configuredChainID,
+      endpoint: getCoreNodeEndpoint(),
+    });
+
     const eventServer = await startEventServer({
       datastore: dbWriteStore,
       chainId: configuredChainID,
@@ -134,7 +142,7 @@ async function init(): Promise<void> {
     const apiServer = await startApiServer({
       datastore: dbStore,
       writeDatastore: dbWriteStore,
-      chainId: getApiConfiguredChainID(),
+      chainId: configuredChainID,
     });
     registerShutdownConfig({
       name: 'API Server',
