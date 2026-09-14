@@ -1149,9 +1149,16 @@ export class PgWriteStore extends PgStore {
         COALESCE(SUM(CASE WHEN r.btc_lockup_type = ${DbBondLockupType.L1} THEN p.btc_locked END), 0)::text AS native,
         COALESCE(SUM(CASE WHEN r.btc_lockup_type = ${DbBondLockupType.L2} THEN p.btc_locked END), 0)::text AS sbtc
       FROM principal_bond_positions p
-      JOIN bond_registrations r
-        ON r.bond_index = p.bond_index AND r.staker = p.principal
-        AND r.canonical = true AND r.microblock_canonical = true
+      -- Latest canonical registration per position: a staker who rolled out of the bond and
+      -- registered for it again has several registration rows but one position.
+      JOIN LATERAL (
+        SELECT btc_lockup_type
+        FROM bond_registrations r
+        WHERE r.bond_index = p.bond_index AND r.staker = p.principal
+          AND r.canonical = true AND r.microblock_canonical = true
+        ORDER BY r.block_height DESC, r.microblock_sequence DESC, r.tx_index DESC, r.id DESC
+        LIMIT 1
+      ) r ON TRUE
       WHERE p.bond_index = ${bondIndex}
         AND p.canonical = true
         AND p.microblock_canonical = true

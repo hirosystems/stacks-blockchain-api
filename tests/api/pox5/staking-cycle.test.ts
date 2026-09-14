@@ -661,6 +661,69 @@ describe('staking cycle', () => {
     assert.deepEqual(cycle.locked.btc, { total: '3000', native: '2000', sbtc: '1000' });
   });
 
+  test('a staker who re-registers for a bond is counted once, under the latest lockup type', async () => {
+    await seedFixture();
+    // carol (600 sBTC in bond 0) rolls out into an STX-only stake, then registers for bond 0 again
+    // with a native lockup. bond_registrations now holds two canonical rows for her; her position
+    // is one row and must be counted once, as native.
+    await db.update(
+      nextBlock()
+        .addTxPox5Event({
+          name: Pox5EventName.Stake,
+          data: stakeData({ staker: CAROL, ustx: 12_000_000n, unlock: 1500 }),
+        })
+        .build()
+    );
+    await db.update(
+      nextBlock()
+        .addTxPox5Event({
+          name: Pox5EventName.RegisterForBond,
+          data: registerData({
+            bond: BOND_ACTIVE,
+            staker: CAROL,
+            ustx: 11_000_000n,
+            sats: 700n,
+            lockup: 'l1',
+          }),
+        })
+        .build()
+    );
+    const registrations = await db.sql<{ n: number }[]>`
+      SELECT COUNT(*)::int AS n FROM bond_registrations
+      WHERE canonical = TRUE AND staker = ${CAROL} AND bond_index = ${BOND_ACTIVE.index}
+    `;
+    assert.equal(registrations[0].n, 2);
+    // Tip state: dave 2000 native + carol 700 native, nothing sBTC.
+    const cycle = await getCycle('current');
+    assert.deepEqual(cycle.locked.btc, { total: '2700', native: '2700', sbtc: '0' });
+    // A distribution snapshot taken now agrees.
+    await db.update(
+      nextBlock()
+        .addTxPox5Event({
+          name: Pox5EventName.CalculateRewards,
+          data: calculateRewardsData({
+            cycle: 10,
+            height: 1050,
+            bonds: 100n,
+            stxOnly: 100n,
+            reserve: 10n,
+            cycleStakedUstx: 50_000_000n,
+          }),
+        })
+        .addTxPox5Event({
+          name: Pox5EventName.BondDistribution,
+          data: bondDistributionData({ bondRewards: 100n, stakedSats: 2_700n }),
+        })
+        .build()
+    );
+    const [latest] = await db.sql<{ native_staked_sats: string; sbtc_staked_sats: string }[]>`
+      SELECT native_staked_sats::text, sbtc_staked_sats::text
+      FROM bond_reward_distributions WHERE canonical = TRUE
+      ORDER BY block_height DESC LIMIT 1
+    `;
+    assert.deepEqual(latest, { native_staked_sats: '2700', sbtc_staked_sats: '0' });
+  });
+
   test('serves a combined-tip ETag and answers 304 when unchanged', async () => {
     await seedFixture();
     const first = await supertest(api.server).get('/extended/v3/staking/cycles/current');
