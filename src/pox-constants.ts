@@ -101,6 +101,7 @@ export async function ensurePoxConstants(opts: {
   endpoint?: string;
   signal?: AbortSignal;
 }): Promise<PoxConstants> {
+  const { signal } = opts;
   const persisted = await opts.db.getStoredPoxConstants();
   if (persisted) {
     logger.debug({ ...persisted }, 'PoX constants loaded from pox_state');
@@ -118,25 +119,55 @@ export async function ensurePoxConstants(opts: {
   // at debug so an unavailable node does not flood the logs.
   const warnEvery = Math.max(1, Math.round(60_000 / retryIntervalMs));
   let attempt = 0;
-  while (!opts.signal?.aborted) {
+  let constants: PoxConstants | undefined;
+  while (constants === undefined) {
+    throwIfAborted(signal);
     attempt++;
     try {
-      const info = await opts.client.request('GET', '/v2/pox');
-      const constants = poxConstantsFromNodeInfo(info);
-      await opts.db.setPoxConstants(constants);
-      logger.info({ ...constants }, 'PoX constants loaded from the Stacks node and persisted');
-      return constants;
+      // Fetch + validate only; a DB failure below must not read as a node failure or refetch.
+      const info = await abortable(opts.client.request('GET', '/v2/pox'), signal);
+      constants = poxConstantsFromNodeInfo(info);
     } catch (error) {
+      throwIfAborted(signal);
       const message = `Unable to load PoX constants from the Stacks node${endpoint} (attempt ${attempt}), retrying`;
       if (attempt === 1 || attempt % warnEvery === 0) {
         logger.warn(error, message);
       } else {
         logger.debug(error, message);
       }
+      await abortable(timeout(retryIntervalMs), signal);
     }
-    await timeout(retryIntervalMs);
   }
-  throw new Error('PoX constants load aborted before the node answered');
+  // The node may have answered while an abort was requested; never persist past an abort.
+  throwIfAborted(signal);
+  // A persistence failure surfaces as such (and fails the writer's startup), not as a node retry.
+  await opts.db.setPoxConstants(constants);
+  logger.info({ ...constants }, 'PoX constants loaded from the Stacks node and persisted');
+  return constants;
+}
+
+class PoxConstantsLoadAbortedError extends Error {
+  constructor() {
+    super('PoX constants load aborted before the node answered');
+    this.name = 'PoxConstantsLoadAbortedError';
+  }
+}
+
+function throwIfAborted(signal: AbortSignal | undefined): void {
+  if (signal?.aborted) {
+    throw new PoxConstantsLoadAbortedError();
+  }
+}
+
+/** Resolve with `promise`, or reject as soon as `signal` aborts even if `promise` never settles. */
+function abortable<T>(promise: Promise<T>, signal: AbortSignal | undefined): Promise<T> {
+  if (!signal) return promise;
+  return new Promise<T>((resolve, reject) => {
+    const onAbort = () => reject(new PoxConstantsLoadAbortedError());
+    if (signal.aborted) return onAbort();
+    signal.addEventListener('abort', onAbort, { once: true });
+    promise.then(resolve, reject).finally(() => signal.removeEventListener('abort', onAbort));
+  });
 }
 
 /**

@@ -87,13 +87,6 @@ async function init(): Promise<void> {
 
   const configuredChainID = getApiConfiguredChainID();
   if (apiMode === 'default' || apiMode === 'writeonly') {
-    await ensurePoxConstants({
-      db: dbWriteStore,
-      client: getCoreRpcClient(),
-      chainId: configuredChainID,
-      endpoint: getCoreNodeEndpoint(),
-    });
-
     const eventServer = await startEventServer({
       datastore: dbWriteStore,
       chainId: configuredChainID,
@@ -118,6 +111,14 @@ async function init(): Promise<void> {
         throw error;
       }
     }
+
+    await ensurePoxConstants({
+      db: dbWriteStore,
+      client: getCoreRpcClient(),
+      chainId: configuredChainID,
+      endpoint: getCoreNodeEndpoint(),
+    });
+
     if (!snpEnabled) {
       monitorCoreRpcConnection().catch(error => {
         logger.error(error, 'Error monitoring RPC connection');

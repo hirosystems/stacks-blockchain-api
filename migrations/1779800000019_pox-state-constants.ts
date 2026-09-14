@@ -6,8 +6,9 @@ export const shorthands: ColumnDefinitions | undefined = undefined;
  * Persist the network's PoX cycle geometry on the `pox_state` singleton: the
  * `first_burnchain_block_height`, `reward_cycle_length`, and `prepare_phase_block_length` the node
  * reports at `/v2/pox`. The node does not deliver them through the event stream and they never
- * change for a network, so the API reads them from the node once, when the database has none, and
- * serves them from here afterwards (see `PoxConstantsStore`). NULL until that first load.
+ * change for a network, so the writer establishes them once at startup (`ensurePoxConstants`:
+ * hardcoded on mainnet, read from the node otherwise) and every API reads them from here
+ * (`PgStore.getPoxConstants`). NULL until the writer's first start against this database.
  */
 export function up(pgm: MigrationBuilder): void {
   pgm.addColumns('pox_state', {

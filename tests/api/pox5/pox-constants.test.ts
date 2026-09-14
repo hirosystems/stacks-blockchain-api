@@ -133,6 +133,48 @@ describe('ensurePoxConstants', () => {
     assert.equal(repo.writes, 0, 'invalid geometry never persisted');
   });
 
+  test('aborting while a node request is in flight rejects and never persists a late answer', async () => {
+    // A request that only answers after the abort fired.
+    let release: (() => void) | undefined;
+    const client = {
+      calls: 0,
+      request: async () => {
+        client.calls++;
+        await new Promise<void>(resolve => (release = resolve));
+        return poxInfo(TESTNET);
+      },
+    };
+    const repo = stubRepo();
+    const controller = new AbortController();
+    const load = ensurePoxConstants({
+      db: repo,
+      client: client as unknown as PoxInfoClient,
+      chainId: STACKS_TESTNET.chainId,
+      retryIntervalMs: 1,
+      signal: controller.signal,
+    });
+    await new Promise(resolve => setTimeout(resolve, 5));
+    controller.abort();
+    await assert.rejects(load, /aborted/);
+    release?.();
+    await new Promise(resolve => setTimeout(resolve, 5));
+    assert.equal(client.calls, 1);
+    assert.equal(repo.writes, 0, 'late node answer not persisted');
+  });
+
+  test('a persistence failure surfaces as such instead of refetching from the node', async () => {
+    const client = stubClient(poxInfo(TESTNET));
+    const repo = stubRepo();
+    repo.setPoxConstants = async () => {
+      throw new Error('db down');
+    };
+    await assert.rejects(
+      ensurePoxConstants({ db: repo, client, chainId: STACKS_TESTNET.chainId, retryIntervalMs: 1 }),
+      /db down/
+    );
+    assert.equal(client.calls, 1, 'no refetch after the DB failure');
+  });
+
   test('rejects geometries the node would never run with', () => {
     const valid: PoxConstants = { ...MAINNET_POX_CONSTANTS };
     assert.doesNotThrow(() => validatePoxConstants(valid));
