@@ -107,6 +107,22 @@ const DISTRIBUTION_DATA = {
   cumulative_rewards_per_sat: '62500000000000000',
 };
 
+// The `calculate-rewards` the distribution above is emitted by (same tx): its calculation height
+// is the distribution period's start, not the tx's Bitcoin height, and it books to cycle 9.
+const CALCULATE_REWARDS_DATA = {
+  bond_periods: [String(BOND_INDEX)],
+  calculation_height: '950',
+  gross_accrued_rewards: '110',
+  total_bond_rewards: '100',
+  reserve_deposit: '10',
+  reserve_balance: '0',
+  stx_cycle: '9',
+  total_stx_staker_rewards: '0',
+  cycle_staked_ustx: '0',
+  accrued_rewards_per_ustx: '0',
+  cumulative_rewards_per_ustx: '0',
+};
+
 const BOND_CLAIM_DATA = {
   signer_manager: SIGNER,
   staker: ALICE,
@@ -221,6 +237,8 @@ describe('pox-5 bond events', () => {
           data: UPDATE_REGISTRATION_DATA,
         })
         .addTxPox5Event({ name: Pox5EventName.BondDistribution, data: DISTRIBUTION_DATA })
+        // Not a bond event itself (no bond_index), but the distribution's calculation.
+        .addTxPox5Event({ name: Pox5EventName.CalculateRewards, data: CALCULATE_REWARDS_DATA })
         .addTxPox5Event({
           name: Pox5EventName.ClaimStakerRewardsForSigner,
           data: BOND_CLAIM_DATA,
@@ -304,6 +322,7 @@ describe('pox-5 bond events', () => {
     });
 
     assert.deepEqual(distribution.data, {
+      calculation: { bitcoin_height: 950, reward_cycle: 9 },
       target_yield: '123',
       rewards: { btc: '100' },
       staked: { btc: '1600' },

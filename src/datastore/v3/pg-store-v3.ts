@@ -50,6 +50,7 @@ import {
 } from './constants.js';
 import { MaterializedStxLockRow, prefixedCols, resolveMaterializedStxLock } from '../helpers.js';
 import { Principal } from '../../api/schemas/v3/entities/common.js';
+import { Pox5EventName } from '@stacks/codec';
 import { normalizeHashString } from '../../helpers.js';
 import {
   PoxConstants,
@@ -1557,23 +1558,44 @@ export class PgStoreV3 extends BasePgStoreModule {
         LIMIT 1
       `;
 
-      const resultQuery = await sql<(DbBondEvent & { data: unknown })[]>`
-        SELECT ${sql(BOND_EVENT_COLUMNS)}
-        FROM pox5_events
+      // A `bond-distribution` is emitted inside the `calculate-rewards` call, so the calculation
+      // it belongs to (its height and reward cycle) is the `bond_reward_calculations` row of the
+      // same tx; attach it to every event row (null for the other event kinds).
+      const resultQuery = await sql<
+        (Omit<DbBondEvent, 'data' | 'calculation'> & {
+          data: unknown;
+          calculation_height: number | null;
+          stx_cycle: number | null;
+        })[]
+      >`
+        SELECT ${sql(prefixedCols(BOND_EVENT_COLUMNS, 'e'))},
+          c.calculation_height, c.stx_cycle
+        FROM pox5_events e
+        LEFT JOIN LATERAL (
+          SELECT calculation_height, stx_cycle
+          FROM bond_reward_calculations c
+          WHERE c.tx_id = e.tx_id AND c.index_block_hash = e.index_block_hash
+            AND c.canonical = TRUE AND c.microblock_canonical = TRUE
+          LIMIT 1
+        ) c ON e.name = ${Pox5EventName.BondDistribution}
         WHERE ${eventFilter}
           ${cursorFilter}
-        ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
+        ORDER BY e.block_height DESC, e.microblock_sequence DESC, e.tx_index DESC, e.event_index DESC
         LIMIT ${limit + 1}
       `;
       // The pg driver may return jsonb columns as raw strings here (see `parseBondLockupTxs`) and
       // returns the bigint time columns as strings, so normalize both.
-      const rows: DbBondEvent[] = resultQuery.map(row => ({
+      const rows: DbBondEvent[] = resultQuery.map(({ calculation_height, stx_cycle, ...row }) => ({
         ...row,
         data: (typeof row.data === 'string'
           ? JSON.parse(row.data)
           : row.data) as DbBondEvent['data'],
         block_time: Number(row.block_time),
         burn_block_time: Number(row.burn_block_time),
+        calculation:
+          calculation_height !== null && stx_cycle !== null
+            ? { bitcoin_height: calculation_height, reward_cycle: stx_cycle }
+            : null,
       }));
 
       const hasNextPage = rows.length > limit;

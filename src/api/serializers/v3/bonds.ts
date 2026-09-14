@@ -249,10 +249,21 @@ export function serializeDbBondEvent(event: DbBondEvent): BondEvent {
     }
     case Pox5EventName.BondDistribution: {
       const data = event.data as unknown as Pox5EventBondDistribution['data'];
+      if (!event.calculation) {
+        // The contract emits every bond-distribution inside calculate-rewards, and both rows are
+        // ingested from the same tx, so a distribution without its calculation is a data fault.
+        throw new Error(
+          `bond-distribution ${event.tx_id}:${event.event_index} has no calculate-rewards in its tx`
+        );
+      }
       return {
         ...base,
         name: Pox5EventName.BondDistribution,
         data: {
+          calculation: {
+            bitcoin_height: event.calculation.bitcoin_height,
+            reward_cycle: event.calculation.reward_cycle,
+          },
           target_yield: data.target_yield,
           rewards: { btc: data.bond_rewards },
           staked: { btc: data.bond_staked_sats },

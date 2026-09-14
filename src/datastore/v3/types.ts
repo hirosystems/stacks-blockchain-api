@@ -217,6 +217,11 @@ export interface DbBondEvent {
   name: string;
   /** The event's decoded payload, verbatim from the synthetic print event. */
   data: Record<string, unknown>;
+  /**
+   * For a `bond-distribution`: the `calculate-rewards` it was emitted by (same tx) — the
+   * distribution period's height and the reward cycle it books to. Null for other event kinds.
+   */
+  calculation: { bitcoin_height: number; reward_cycle: number } | null;
   tx_id: string;
   event_index: number;
   tx_index: number;
