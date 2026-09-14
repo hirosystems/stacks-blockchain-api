@@ -98,10 +98,12 @@ export const TransactionIdsQuerystringParam = (description: string) =>
  * network's PoX constants: `current` (the cycle containing the burn tip), `previous`, or `next`.
  */
 export const CycleSelectorParamSchema = Type.String({
-  pattern: '^([0-9]+|current|previous|next)$',
+  // Up to nine digits keeps every accepted number inside PostgreSQL's `integer` range.
+  pattern: '^([0-9]{1,9}|current|previous|next)$',
   description:
-    'A PoX cycle number, or one of `current` (the cycle containing the current Bitcoin tip), ' +
-    '`previous`, or `next`. The prepare phase at the end of a cycle belongs to that cycle.',
+    'A PoX cycle number (up to nine digits), or one of `current` (the cycle containing the ' +
+    'current Bitcoin tip), `previous`, or `next`. The prepare phase at the end of a cycle ' +
+    'belongs to that cycle.',
   examples: ['143', 'current'],
 });
 export type CycleSelectorParam = Static<typeof CycleSelectorParamSchema>;

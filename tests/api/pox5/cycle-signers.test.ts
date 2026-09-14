@@ -354,12 +354,25 @@ describe('pox-5 cycle signers', () => {
       })
     );
     await seedCycle(CYCLE + 1, 3, [{ key: KEY5, weight: 1, stacked: '100000000000' }]);
+    // A registration after cycle 101's anchor: pending for 101, irrelevant to cycle 100.
+    await db.update(
+      bindingBlock({
+        height: 3,
+        name: Pox5EventName.RegisterSigner,
+        data: { signer: MANAGER_A, signer_key: KEY2 },
+      })
+    );
 
     // `current` is the cycle containing the burn tip, not the newest reward set: while CYCLE is
     // running, CYCLE + 1's set (emitted during CYCLE's prepare phase) is reachable as `next`.
     const current = await getCycleSigners();
     assert.equal(current.status, 200, current.text);
-    assert.equal(JSON.parse(current.text).results[0].signing_key, KEY1);
+    const [currentSigner] = JSON.parse(current.text).results;
+    assert.equal(currentSigner.signing_key, KEY1);
+    // Cycle 100's pending update is the key that took effect in 101 (registered before 101's
+    // anchor), not the later KEY2 registration.
+    assert.equal(currentSigner.signer_managers[0].pending_key_update.signer_key, KEY5);
+    assert.equal(currentSigner.signer_managers[0].pending_key_update.effective_cycle, CYCLE + 1);
 
     const res = await getCycleSigners({}, 'next');
     assert.equal(res.status, 200, res.text);
@@ -370,7 +383,9 @@ describe('pox-5 cycle signers', () => {
     assert.equal(signer.signer_managers.length, 1);
     assert.equal(signer.signer_managers[0].signer_manager, MANAGER_A);
     assert.equal(signer.signer_managers[0].registered_at.block_height, 2);
-    assert.equal(signer.signer_managers[0].pending_key_update, null);
+    // For 101 (no later reward set yet) the post-anchor KEY2 registration is pending.
+    assert.equal(signer.signer_managers[0].pending_key_update.signer_key, KEY2);
+    assert.equal(signer.signer_managers[0].pending_key_update.effective_cycle, CYCLE + 2);
   });
 
   test('registrations overwrite each other; grants and revokes never change bindings', async () => {

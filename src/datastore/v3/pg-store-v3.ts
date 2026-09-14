@@ -2063,13 +2063,43 @@ export class PgStoreV3 extends BasePgStoreModule {
         WHERE canonical = TRUE AND microblock_canonical = TRUE AND reward_cycle = ${number}
       `;
 
+      // The bonds' running totals and the positions' native / sBTC split at the tip: the lock
+      // figures for an unfinished cycle, and the documented fallback for a finished cycle the
+      // contract never ran a reward calculation for.
+      const tipBondLocks = async () => {
+        const bondStx = sumBig(bonds.map(b => b.stx_locked)).toString();
+        const btc = sumBig(bonds.map(b => b.btc_locked)).toString();
+        if (bondIndexes.length === 0) {
+          return { bondStx, btc, btcNative: '0', btcSbtc: '0' };
+        }
+        const [split] = await sql<{ native: string; sbtc: string }[]>`
+          SELECT
+            COALESCE(SUM(CASE WHEN r.btc_lockup_type = ${DbBondLockupType.L1} THEN p.btc_locked END), 0)::text AS native,
+            COALESCE(SUM(CASE WHEN r.btc_lockup_type = ${DbBondLockupType.L2} THEN p.btc_locked END), 0)::text AS sbtc
+          FROM principal_bond_positions p
+          JOIN bond_registrations r
+            ON r.bond_index = p.bond_index AND r.staker = p.principal
+            AND r.canonical = TRUE AND r.microblock_canonical = TRUE
+          WHERE p.canonical = TRUE AND p.microblock_canonical = TRUE
+            AND p.bond_index IN ${sql(bondIndexes)}
+        `;
+        return { bondStx, btc, btcNative: split.native, btcSbtc: split.sbtc };
+      };
+
       let stxOnly: string;
       let bondStx: string;
       let btc: string;
       let btcNative: string;
       let btcSbtc: string;
       let stxOnlyStakers: number;
-      if (finished && rewards.calculations > 0) {
+      if (finished && rewards.calculations === 0) {
+        // No pox-5 reward accounting exists for this cycle (pre-pox-5, or no calculation was ever
+        // booked to it), so there is no historical STX-only figure to report; today's locks say
+        // nothing about a past cycle. Bond figures fall back to the bonds' running totals.
+        stxOnly = '0';
+        stxOnlyStakers = 0;
+        ({ bondStx, btc, btcNative, btcSbtc } = await tipBondLocks());
+      } else if (finished) {
         const [latestCalc] = await sql<{ cycle_staked_ustx: string }[]>`
           SELECT cycle_staked_ustx::text
           FROM bond_reward_calculations
@@ -2122,28 +2152,7 @@ export class PgStoreV3 extends BasePgStoreModule {
         `;
         stxOnly = locks.amount;
         stxOnlyStakers = locks.stakers;
-        bondStx = sumBig(bonds.map(b => b.stx_locked)).toString();
-        btc = sumBig(bonds.map(b => b.btc_locked)).toString();
-        // Native vs sBTC from the positions of the bonds covering the cycle (amount on the
-        // position, lockup type on the registration).
-        if (bondIndexes.length > 0) {
-          const [split] = await sql<{ native: string; sbtc: string }[]>`
-            SELECT
-              COALESCE(SUM(CASE WHEN r.btc_lockup_type = ${DbBondLockupType.L1} THEN p.btc_locked END), 0)::text AS native,
-              COALESCE(SUM(CASE WHEN r.btc_lockup_type = ${DbBondLockupType.L2} THEN p.btc_locked END), 0)::text AS sbtc
-            FROM principal_bond_positions p
-            JOIN bond_registrations r
-              ON r.bond_index = p.bond_index AND r.staker = p.principal
-              AND r.canonical = TRUE AND r.microblock_canonical = TRUE
-            WHERE p.canonical = TRUE AND p.microblock_canonical = TRUE
-              AND p.bond_index IN ${sql(bondIndexes)}
-          `;
-          btcNative = split.native;
-          btcSbtc = split.sbtc;
-        } else {
-          btcNative = '0';
-          btcSbtc = '0';
-        }
+        ({ bondStx, btc, btcNative, btcSbtc } = await tipBondLocks());
       }
 
       let bondStakers = 0;
@@ -2220,6 +2229,18 @@ export class PgStoreV3 extends BasePgStoreModule {
       if (!cycle) return null;
       const cycleNumber = cycle.cycle_number;
       const anchorHeight = cycle.block_height;
+      // Registrations after this cycle's anchor are pending for the next cycle only up to the next
+      // cycle's own anchor; anything later belongs to cycles after that. Unbounded while the next
+      // reward set has not been emitted (i.e. for the current cycle).
+      const [nextCycle] = await sql<{ block_height: number }[]>`
+        SELECT block_height
+        FROM pox_cycles
+        WHERE canonical = TRUE AND cycle_number = ${cycleNumber + 1}
+        LIMIT 1
+      `;
+      const pendingUpperBound = nextCycle
+        ? sql`AND block_height < ${nextCycle.block_height}`
+        : sql``;
       const cursor = args.cursor
         ? has0xPrefix(args.cursor)
           ? args.cursor
@@ -2276,6 +2297,7 @@ export class PgStoreV3 extends BasePgStoreModule {
           FROM signer_key_grants
           WHERE canonical = TRUE AND microblock_canonical = TRUE
             AND block_height >= ${anchorHeight}
+            ${pendingUpperBound}
             AND kind = ${DbSignerKeyGrantKind.Register}
           ORDER BY signer_manager,
             block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC

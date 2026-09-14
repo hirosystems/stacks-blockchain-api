@@ -446,6 +446,27 @@ describe('staking cycle', () => {
       const res = await supertest(api.server).get(`/extended/v3/staking/cycles/${bad}`);
       assert.ok(res.status === 400 || res.status === 404, `${bad}: ${res.status}`);
     }
+    // Numbers are capped at nine digits so they always fit PostgreSQL's integer columns.
+    assert.equal((await getCycle('999999999')).status, 'upcoming');
+    assert.equal(
+      (await supertest(api.server).get('/extended/v3/staking/cycles/2147483648')).status,
+      400
+    );
+  });
+
+  test('a finished cycle without any reward calculation reports no historical STX-only stake', async () => {
+    await seedFixture();
+    // Cycle 8 is covered by bond 0 but pox-5 never ran calculate-rewards for it. Today's live
+    // stakes (alice) say nothing about it, so the STX-only figures are zero; the bond figures fall
+    // back to the bonds' running totals as documented.
+    const cycle = await getCycle('8');
+    assert.equal(cycle.status, 'finished');
+    assert.deepEqual(cycle.locked, {
+      stx: { stx_only: '0', bonds: '30000000', total: '30000000' },
+      btc: { total: '2600', native: '2000', sbtc: '600' },
+    });
+    assert.deepEqual(cycle.participants, { stakers: { stx_only: 0, bonds: 2 }, signers: null });
+    assert.equal(cycle.rewards.btc.total, '0');
   });
 
   test('without persisted constants the mainnet geometry applies', async () => {
