@@ -112,6 +112,23 @@ export const BondUnstakeSbtcEventSchema = BondEventBase(
 export const BondDistributionEventSchema = BondEventBase(
   'bond-distribution',
   Type.Object({
+    calculation: Type.Object(
+      {
+        bitcoin_height: Type.Integer({
+          description:
+            'The Bitcoin height the rewards were calculated for: the start of the distribution ' +
+            'period, which can differ from the height of the block carrying this event.',
+        }),
+        reward_cycle: Type.Integer({
+          description: 'The PoX reward cycle the calculation (and this distribution) books to',
+        }),
+      },
+      {
+        description:
+          'The `calculate-rewards` call this distribution was emitted by, from the ' +
+          '`calculate-rewards` event in the same transaction.',
+      }
+    ),
     target_yield: Type.String({
       pattern: '^[0-9]+$',
       description: "The bond's target reward for this calculation, in sats",
