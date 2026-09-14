@@ -97,7 +97,7 @@ import {
 import * as path from 'path';
 import { PgStoreV2 } from './pg-store-v2.js';
 import { ENV } from '../env.js';
-import { MAINNET_POX_CONSTANTS, type PoxConstants } from '../pox-constants.js';
+import { MAINNET_POX_CONSTANTS, type PoxConstants } from './pox-constants.js';
 import { BlockIdParam } from '../api/routes/v2/schemas.js';
 import { PgStoreV3 } from './v3/pg-store-v3.js';
 import { Pox4EventName } from '@stacks/codec';

@@ -5,7 +5,7 @@ import {
 } from './helpers.js';
 import * as sourceMapSupport from 'source-map-support';
 import { startApiServer } from './api/init.js';
-import { ensurePoxConstants } from './pox-constants.js';
+import { ensurePoxConstants } from './datastore/pox-constants.js';
 import { startEventServer } from './event-stream/event-server.js';
 import { getCoreNodeEndpoint, getCoreRpcClient, waitForCoreRpcConnection } from './core-rpc.js';
 import * as promClient from 'prom-client';

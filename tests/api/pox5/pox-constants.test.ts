@@ -15,7 +15,7 @@ import {
   poxConstantsFromNodeInfo,
   rewardCycleToBurnHeight,
   validatePoxConstants,
-} from '../../../src/pox-constants.ts';
+} from '../../../src/datastore/pox-constants.ts';
 
 /**
  * PoX constants: the writer's one-time `ensurePoxConstants` (pox_state → mainnet → node), the

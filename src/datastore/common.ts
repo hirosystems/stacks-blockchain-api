@@ -1826,6 +1826,10 @@ export interface DbBondRewardDistributionInsertValues extends DbTxLocation {
   bond_staked_sats: string;
   accrued_rewards_per_sat: string;
   cumulative_rewards_per_sat: string;
+  /** Sats staked through proven Bitcoin L1 lockups at this distribution (positions snapshot). */
+  native_staked_sats: string;
+  /** Sats staked through sBTC lockups at this distribution (positions snapshot). */
+  sbtc_staked_sats: string;
 }
 
 /** Cycle-level reward calculation aggregate, from the pox-5 `calculate-rewards` event. */
