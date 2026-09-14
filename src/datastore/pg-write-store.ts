@@ -1,4 +1,5 @@
 import assert from 'node:assert';
+import type { PoxConstants } from '../pox-constants.js';
 import * as prom from 'prom-client';
 import { getOrAdd, I32_MAX } from '../helpers.js';
 import {
@@ -1675,6 +1676,19 @@ export class PgWriteStore extends PgStore {
       WHERE b.bond_index = i.bond_index
         AND b.canonical = true
         AND b.microblock_canonical = true
+    `;
+  }
+
+  /**
+   * Persist the network's PoX cycle geometry on the `pox_state` singleton (see
+   * `ensurePoxConstants`). Idempotent: the values never change for a network.
+   */
+  async setPoxConstants(constants: PoxConstants): Promise<void> {
+    await this.sql`
+      UPDATE pox_state SET
+        pox_first_burnchain_block_height = ${constants.firstBurnchainBlockHeight},
+        pox_reward_cycle_length = ${constants.rewardCycleLength},
+        pox_prepare_phase_block_length = ${constants.preparePhaseBlockLength}
     `;
   }
 
