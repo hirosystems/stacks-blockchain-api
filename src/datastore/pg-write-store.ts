@@ -1,5 +1,5 @@
 import assert from 'node:assert';
-import type { PoxConstants } from '../pox-constants.js';
+import type { PoxConstants } from './pox-constants.js';
 import * as prom from 'prom-client';
 import { getOrAdd, I32_MAX } from '../helpers.js';
 import {

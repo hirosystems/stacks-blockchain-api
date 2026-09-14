@@ -1,6 +1,6 @@
 import { logger, timeout } from '@stacks/api-toolkit';
 import type { CoreRpcClient } from '@stacks/rpc-client';
-import type { ChainID } from './helpers.js';
+import type { ChainID } from '../helpers.js';
 
 /**
  * The PoX cycle geometry of the network the API serves. Cycle boundaries, phases, and the
@@ -218,4 +218,31 @@ export function getPoxCyclePhase(c: PoxConstants, cycle: number, burnTip: number
   if (burnTip > s.endBitcoinHeight) return 'finished';
   if (burnTip >= s.preparePhaseStartBitcoinHeight) return 'prepare_phase';
   return 'reward_phase';
+}
+
+/** A cycle selector: a cycle number, or an alias relative to the cycle containing the burn tip. */
+export type PoxCycleSelector = number | 'current' | 'previous' | 'next';
+
+/**
+ * Resolve a cycle selector against the burn tip. Returns `undefined` when the tip precedes the
+ * first PoX burn block (no cycle exists yet) or the selector points before cycle 0.
+ */
+export function resolvePoxCycleSelector(
+  c: PoxConstants,
+  selector: PoxCycleSelector,
+  burnTip: number
+): number | undefined {
+  if (typeof selector === 'number') {
+    return Number.isInteger(selector) && selector >= 0 ? selector : undefined;
+  }
+  if (burnTip < c.firstBurnchainBlockHeight) return undefined;
+  const current = burnHeightToRewardCycle(c, burnTip);
+  switch (selector) {
+    case 'current':
+      return current;
+    case 'next':
+      return current + 1;
+    case 'previous':
+      return current > 0 ? current - 1 : undefined;
+  }
 }

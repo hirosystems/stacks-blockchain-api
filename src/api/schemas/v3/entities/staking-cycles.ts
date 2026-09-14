@@ -1,6 +1,6 @@
 import { Static, Type } from '@sinclair/typebox';
 import { Nullable } from '../../v1/util.js';
-import { PrincipalSchema, TransactionIdSchema } from './common.js';
+import { AmountSchema, BondIndexSchema, PrincipalSchema, TransactionIdSchema } from './common.js';
 
 /** A live `grant-signer-key` authorization held by a signer manager. */
 export const SignerKeyGrantSchema = Type.Object(
@@ -99,3 +99,147 @@ export const CycleSignerSchema = Type.Object(
   { title: 'CycleSigner' }
 );
 export type CycleSigner = Static<typeof CycleSignerSchema>;
+
+/** Where a PoX cycle stands relative to the current Bitcoin tip. */
+export const StakingCycleStatusSchema = Type.Union(
+  [
+    Type.Literal('upcoming'),
+    Type.Literal('reward_phase'),
+    Type.Literal('prepare_phase'),
+    Type.Literal('finished'),
+  ],
+  {
+    description: 'Where the cycle stands relative to the current Bitcoin tip.',
+  }
+);
+export type StakingCycleStatus = Static<typeof StakingCycleStatusSchema>;
+
+/** A point on a cycle's timeline. */
+export const CycleSchedulePointSchema = Type.Object({
+  bitcoin_height: Type.Integer({ description: 'The Bitcoin height of this point' }),
+});
+
+/** A per-cycle summary of pox-5 staking: what is locked, who participates, and the rewards. */
+export const StakingCycleSchema = Type.Object(
+  {
+    number: Type.Integer({ description: 'The PoX reward cycle number', examples: [143] }),
+    status: StakingCycleStatusSchema,
+    schedule: Type.Object(
+      {
+        start: CycleSchedulePointSchema,
+        prepare_phase_start: CycleSchedulePointSchema,
+        end: CycleSchedulePointSchema,
+      },
+      {
+        description:
+          'The Bitcoin heights delimiting the cycle, inclusive: its first block, the first block ' +
+          'of its prepare phase, and its last block.',
+      }
+    ),
+    locked: Type.Object(
+      {
+        stx: Type.Object({
+          stx_only: Type.String({
+            ...AmountSchema,
+            description:
+              'STX locked in STX-only staking for this cycle, in µSTX. For a finished cycle this ' +
+              'is the STX-only stake the pox-5 contract accounted for the cycle in its latest ' +
+              'reward calculation; otherwise the STX-only locks live at the tip (or, for an ' +
+              'upcoming cycle, still locked when it starts).',
+          }),
+          bonds: Type.String({
+            ...AmountSchema,
+            description:
+              'STX locked across the bonds covering this cycle, in µSTX. For a finished cycle ' +
+              "with a reward set this is the reward set's total staked STX minus the STX-only " +
+              'stake; otherwise the running locked totals of the bonds covering the cycle.',
+          }),
+          total: Type.String({
+            ...AmountSchema,
+            description: 'Sum of `stx_only` and `bonds`, in µSTX.',
+          }),
+        }),
+        btc: Type.Object({
+          total: Type.String({
+            ...AmountSchema,
+            description:
+              'BTC locked across the bonds covering this cycle, in satoshis (proven Bitcoin L1 ' +
+              'lockups and sBTC lockups). For a finished cycle this is the BTC staked per bond at ' +
+              "the cycle's latest reward distribution; otherwise the bonds' running locked totals.",
+          }),
+        }),
+      },
+      { description: 'The assets locked by staking for this cycle' }
+    ),
+    participants: Type.Object(
+      {
+        stakers: Type.Object({
+          stx_only: Type.Integer({
+            description:
+              'Principals with an STX-only stake covering this cycle. For a finished cycle, the ' +
+              'principals credited STX-staking rewards for it.',
+          }),
+          bonds: Type.Integer({
+            description:
+              'Principals holding a position in a bond covering this cycle, as of the current ' +
+              'tip (positions rolled over into another bond or stake are excluded).',
+          }),
+        }),
+        signers: Nullable(
+          Type.Integer({
+            description:
+              "Signers in the cycle's reward set. `null` until the node has emitted the reward " +
+              "set, which happens during the previous cycle's prepare phase.",
+          })
+        ),
+      },
+      { description: 'Who participates in the cycle' }
+    ),
+    bonds: Type.Object(
+      {
+        total: Type.Integer({ description: 'Bonds whose term covers this cycle' }),
+        indexes: Type.Array(BondIndexSchema, { description: 'Their bond indexes, ascending' }),
+      },
+      { description: 'The pox-5 bonds active during this cycle' }
+    ),
+    rewards: Type.Object(
+      {
+        btc: Type.Object({
+          total: Type.String({
+            ...AmountSchema,
+            description:
+              'sBTC rewards booked to this cycle by the pox-5 reward distributions run so far, in ' +
+              'satoshis. Distributions run periodically within a cycle, so this grows while the ' +
+              'cycle is active; it equals the sum of the `waterfall` entries.',
+          }),
+          waterfall: Type.Object(
+            {
+              bonds: Type.String({
+                ...AmountSchema,
+                description: 'The share paid to bond participants, in satoshis.',
+              }),
+              stx_only: Type.String({
+                ...AmountSchema,
+                description: 'The share paid to STX-only stakers, in satoshis.',
+              }),
+              reserve_deposit: Type.String({
+                ...AmountSchema,
+                description: 'The share deposited into the protocol reserve, in satoshis.',
+              }),
+            },
+            { description: 'How the accrued rewards were split, in payout order' }
+          ),
+          claimed: Type.String({
+            ...AmountSchema,
+            description:
+              'sBTC claimed from the pox-5 contract by signer managers for this cycle so far, in ' +
+              'satoshis. Claims trail distributions and can keep growing after the cycle ends.',
+          }),
+        }),
+      },
+      { description: 'The rewards generated by this cycle' }
+    ),
+  },
+  { title: 'StakingCycle' }
+);
+export type StakingCycle = Static<typeof StakingCycleSchema>;

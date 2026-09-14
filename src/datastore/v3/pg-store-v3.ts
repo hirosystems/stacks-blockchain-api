@@ -9,6 +9,7 @@ import {
   DbBondSummary,
   DbCursorPaginatedResult,
   DbCycleSigner,
+  DbStakingCycle,
   DbFtHolder,
   DbNftHistoryEvent,
   DbMempoolTransaction,
@@ -50,6 +51,14 @@ import {
 import { MaterializedStxLockRow, prefixedCols, resolveMaterializedStxLock } from '../helpers.js';
 import { Principal } from '../../api/schemas/v3/entities/common.js';
 import { normalizeHashString } from '../../helpers.js';
+import {
+  PoxConstants,
+  PoxCycleSelector,
+  getPoxCyclePhase,
+  getPoxCycleSchedule,
+  resolvePoxCycleSelector,
+} from '../pox-constants.js';
+import { DbPrincipalBondPositionStatus } from '../common.js';
 import { BlockIdParam } from '../../api/routes/v2/schemas.js';
 import { InvalidRequestError, InvalidRequestErrorType } from '../../errors.js';
 import { TransactionIncludeField } from '../../api/schemas/v3/entities/transactions.js';
@@ -1965,6 +1974,185 @@ export class PgStoreV3 extends BasePgStoreModule {
   }
 
   /**
+   * Resolve a cycle selector (`current` / `previous` / `next` / a number) against the current burn
+   * tip. Returns undefined when no such cycle exists (tip before PoX started, or `previous` of
+   * cycle 0).
+   */
+  async resolveCycleSelector(
+    selector: PoxCycleSelector,
+    poxConstants: PoxConstants
+  ): Promise<number | undefined> {
+    const [tip] = await this.sql<{ burn_block_height: number }[]>`
+      SELECT burn_block_height FROM chain_tip
+    `;
+    return resolvePoxCycleSelector(poxConstants, selector, tip?.burn_block_height ?? 0);
+  }
+
+  /**
+   * A per-cycle summary of pox-5 staking. What each block is read from depends on whether the cycle
+   * has finished:
+   *
+   * - Not finished (upcoming or in progress): locks are tip state. Pox-5 STX-only locks still
+   *   active at the tip (or, for an upcoming cycle, at its start), and the running locked totals of
+   *   the bonds whose term covers the cycle. Stakers are counted the same way.
+   * - Finished: the pox-5 contract's own accounting for the cycle. The STX-only stake from the
+   *   latest `calculate-rewards` for the cycle (`cycle_staked_ustx`), bond STX as the reward set's
+   *   total staked STX minus that (falling back to the bonds' totals without a reward set), BTC as
+   *   each bond's `bond_staked_sats` at the cycle's latest distribution, and STX-only stakers as
+   *   the principals credited STX-staking rewards for the cycle.
+   *
+   * Rewards are running sums over the cycle's `calculate-rewards` rows, which pox-5 runs
+   * periodically within a cycle, so they grow while the cycle is active; `claimed` sums the signer
+   * managers' `claim-rewards` for the cycle. All queries are single-row or small indexed range
+   * reads (`stx_cycle`, `reward_cycle`, bond terms, active locks).
+   * @returns The cycle summary, or null when the selector resolves to no cycle.
+   */
+  async getStakingCycle(args: {
+    selector: PoxCycleSelector;
+    poxConstants: PoxConstants;
+  }): Promise<DbStakingCycle | null> {
+    return await this.sqlTransaction(async sql => {
+      const [tip] = await sql<{ burn_block_height: number }[]>`
+        SELECT burn_block_height FROM chain_tip
+      `;
+      const burnTip = tip?.burn_block_height ?? 0;
+      const c = args.poxConstants;
+      const number = resolvePoxCycleSelector(c, args.selector, burnTip);
+      if (number === undefined) return null;
+      const schedule = getPoxCycleSchedule(c, number);
+      const status = getPoxCyclePhase(c, number, burnTip);
+      const finished = status === 'finished';
+
+      const [rewardSet] = await sql<{ total_stacked_amount: string; total_signers: number }[]>`
+        SELECT total_stacked_amount::text, total_signers
+        FROM pox_cycles
+        WHERE canonical = TRUE AND cycle_number = ${number}
+        LIMIT 1
+      `;
+      const bonds = await sql<{ bond_index: number; stx_locked: string; btc_locked: string }[]>`
+        SELECT bond_index, stx_locked::text, btc_locked::text
+        FROM bonds
+        WHERE canonical = TRUE AND microblock_canonical = TRUE
+          AND first_reward_cycle <= ${number} AND unlock_cycle > ${number}
+        ORDER BY bond_index ASC
+      `;
+      const bondIndexes = bonds.map(b => b.bond_index);
+      const sumBig = (values: string[]) => values.reduce((acc, v) => acc + BigInt(v), 0n);
+
+      const [rewards] = await sql<
+        {
+          total: string;
+          bonds: string;
+          stx_only: string;
+          reserve_deposit: string;
+          calculations: number;
+        }[]
+      >`
+        SELECT
+          COALESCE(SUM(gross_accrued_rewards), 0)::text AS total,
+          COALESCE(SUM(total_bond_rewards), 0)::text AS bonds,
+          COALESCE(SUM(total_stx_staker_rewards), 0)::text AS stx_only,
+          COALESCE(SUM(reserve_deposit), 0)::text AS reserve_deposit,
+          COUNT(*)::int AS calculations
+        FROM bond_reward_calculations
+        WHERE canonical = TRUE AND microblock_canonical = TRUE AND stx_cycle = ${number}
+      `;
+      const [claims] = await sql<{ claimed: string }[]>`
+        SELECT COALESCE(SUM(total_rewards), 0)::text AS claimed
+        FROM signer_reward_claims
+        WHERE canonical = TRUE AND microblock_canonical = TRUE AND reward_cycle = ${number}
+      `;
+
+      let stxOnly: string;
+      let bondStx: string;
+      let btc: string;
+      let stxOnlyStakers: number;
+      if (finished && rewards.calculations > 0) {
+        const [latestCalc] = await sql<{ cycle_staked_ustx: string }[]>`
+          SELECT cycle_staked_ustx::text
+          FROM bond_reward_calculations
+          WHERE canonical = TRUE AND microblock_canonical = TRUE AND stx_cycle = ${number}
+          ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC
+          LIMIT 1
+        `;
+        stxOnly = latestCalc.cycle_staked_ustx;
+        if (rewardSet) {
+          const diff = BigInt(rewardSet.total_stacked_amount) - BigInt(stxOnly);
+          bondStx = (diff > 0n ? diff : 0n).toString();
+        } else {
+          bondStx = sumBig(bonds.map(b => b.stx_locked)).toString();
+        }
+        // Each bond's BTC at the cycle's latest distribution (distributions share their tx with
+        // the cycle's calculate-rewards event).
+        const [latestSats] = await sql<{ btc: string }[]>`
+          SELECT COALESCE(SUM(bond_staked_sats), 0)::text AS btc
+          FROM (
+            SELECT DISTINCT ON (d.bond_index) d.bond_staked_sats
+            FROM bond_reward_distributions d
+            JOIN bond_reward_calculations c
+              ON c.tx_id = d.tx_id AND c.index_block_hash = d.index_block_hash
+            WHERE d.canonical = TRUE AND d.microblock_canonical = TRUE
+              AND c.canonical = TRUE AND c.microblock_canonical = TRUE
+              AND c.stx_cycle = ${number}
+            ORDER BY d.bond_index, d.block_height DESC, d.microblock_sequence DESC, d.tx_index DESC
+          ) latest
+        `;
+        btc = latestSats.btc;
+        const [credited] = await sql<{ stakers: number }[]>`
+          SELECT COUNT(DISTINCT principal)::int AS stakers
+          FROM principal_stx_reward_distributions
+          WHERE canonical = TRUE AND microblock_canonical = TRUE AND reward_cycle = ${number}
+        `;
+        stxOnlyStakers = credited.stakers;
+      } else {
+        // Locks still active at the tip; for an upcoming cycle, still locked when it starts.
+        const activeAt = Math.max(burnTip, schedule.startBitcoinHeight);
+        const [locks] = await sql<{ amount: string; stakers: number }[]>`
+          SELECT COALESCE(SUM(locked_amount), 0)::text AS amount, COUNT(*)::int AS stakers
+          FROM stx_locked_balances
+          WHERE pox_version = 5 AND locked_amount > 0 AND unlock_burn_height >= ${activeAt}
+        `;
+        stxOnly = locks.amount;
+        stxOnlyStakers = locks.stakers;
+        bondStx = sumBig(bonds.map(b => b.stx_locked)).toString();
+        btc = sumBig(bonds.map(b => b.btc_locked)).toString();
+      }
+
+      let bondStakers = 0;
+      if (bondIndexes.length > 0) {
+        const [positions] = await sql<{ stakers: number }[]>`
+          SELECT COUNT(DISTINCT principal)::int AS stakers
+          FROM principal_bond_positions
+          WHERE canonical = TRUE AND microblock_canonical = TRUE
+            AND status <> ${DbPrincipalBondPositionStatus.RolledOver}
+            AND bond_index IN ${sql(bondIndexes)}
+        `;
+        bondStakers = positions.stakers;
+      }
+
+      return {
+        number,
+        status,
+        schedule,
+        locked: { stx_only: stxOnly, bond_stx: bondStx, btc },
+        participants: {
+          stx_only_stakers: stxOnlyStakers,
+          bond_stakers: bondStakers,
+          signers: rewardSet ? rewardSet.total_signers : null,
+        },
+        bonds: bondIndexes,
+        rewards: {
+          total: rewards.total,
+          bonds: rewards.bonds,
+          stx_only: rewards.stx_only,
+          reserve_deposit: rewards.reserve_deposit,
+          claimed: claims.claimed,
+        },
+      };
+    });
+  }
+
+  /**
    * Gets the signer set of the current PoX cycle (the latest canonical cycle with a computed reward
    * set) joined with the signer manager key bindings that were effective when the cycle's reward
    * set was calculated.
@@ -1981,9 +2169,10 @@ export class PgStoreV3 extends BasePgStoreModule {
    * Keyset-paginated by weight descending, then signing key ascending, with the signing key as the
    * cursor.
    * @param args - The arguments for the query.
-   * @returns The cycle's signers, or null if no PoX cycle exists yet.
+   * @returns The cycle's signers, or null if the node has not emitted a reward set for the cycle.
    */
-  async getCurrentCycleSigners(args: {
+  async getCycleSigners(args: {
+    cycleNumber: number;
     limit: number;
     cursor?: string;
   }): Promise<(DbCursorPaginatedResult<DbCycleSigner> & { cycle_number: number }) | null> {
@@ -1991,8 +2180,7 @@ export class PgStoreV3 extends BasePgStoreModule {
       const [cycle] = await sql<{ cycle_number: number; block_height: number }[]>`
         SELECT cycle_number, block_height
         FROM pox_cycles
-        WHERE canonical = TRUE
-        ORDER BY cycle_number DESC
+        WHERE canonical = TRUE AND cycle_number = ${args.cycleNumber}
         LIMIT 1
       `;
       if (!cycle) return null;

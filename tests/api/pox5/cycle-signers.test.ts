@@ -57,6 +57,19 @@ describe('pox-5 cycle signers', () => {
       .build();
   }
 
+  /** Ingest an empty block at the builder's default burn height so `current` resolves to CYCLE. */
+  async function tipBlock(height: number) {
+    await db.update(
+      new TestBlockBuilder({
+        block_height: height,
+        block_hash: hash(height),
+        index_block_hash: hash(height),
+        parent_block_hash: hash(height - 1),
+        parent_index_block_hash: hash(height - 1),
+      }).build()
+    );
+  }
+
   async function seedCycle(
     cycle: number,
     anchorHeight: number,
@@ -92,18 +105,30 @@ describe('pox-5 cycle signers', () => {
     }
   }
 
-  async function getCycleSigners(query: Record<string, string> = {}) {
+  async function getCycleSigners(query: Record<string, string> = {}, selector = 'current') {
     const res = await supertest(api.server)
-      .get('/extended/v3/staking/cycles/current/signers')
+      .get(`/extended/v3/staking/cycles/${selector}/signers`)
       .query(query);
     return res;
   }
 
   beforeEach(async () => {
     await migrate('up');
-    db = await PgWriteStore.connect({ usageName: 'tests', withNotifier: false, skipMigrations: true });
+    db = await PgWriteStore.connect({
+      usageName: 'tests',
+      withNotifier: false,
+      skipMigrations: true,
+    });
     client = db.sql;
     api = await startApiServer({ datastore: db, chainId: STACKS_TESTNET.chainId });
+    // `current` resolves from the burn tip with the network's PoX constants. The fixture blocks sit
+    // at the builder's default burn height (713000); with these constants that is cycle CYCLE's
+    // reward phase: (713000 - 703000) / 100 = 100.
+    await db.setPoxConstants({
+      firstBurnchainBlockHeight: 703000,
+      rewardCycleLength: 100,
+      preparePhaseBlockLength: 10,
+    });
   });
 
   afterEach(async () => {
@@ -117,11 +142,17 @@ describe('pox-5 cycle signers', () => {
     assert.equal(res.status, 404, res.text);
   });
 
-  test('only `current` is accepted as the cycle number', async () => {
-    // The route is generic (`/staking/cycles/:cycle_number/signers`) so it can
-    // later serve previous cycles, but for now the param only allows `current`.
-    const res = await supertest(api.server).get('/extended/v3/staking/cycles/100/signers');
-    assert.equal(res.status, 400, res.text);
+  test('the cycle param accepts a number or `current` / `previous` / `next`', async () => {
+    await tipBlock(1);
+    await seedCycle(CYCLE, ANCHOR_HEIGHT, [{ key: KEY1, weight: 1, stacked: '100000000000' }]);
+    assert.equal((await getCycleSigners({}, String(CYCLE))).status, 200);
+    assert.equal((await getCycleSigners({}, 'current')).status, 200);
+    // No reward set for the neighbours yet.
+    assert.equal((await getCycleSigners({}, 'previous')).status, 404);
+    assert.equal((await getCycleSigners({}, 'next')).status, 404);
+    assert.equal((await getCycleSigners({}, String(CYCLE + 5))).status, 404);
+    assert.equal((await getCycleSigners({}, 'latest')).status, 400);
+    assert.equal((await getCycleSigners({}, '-1')).status, 400);
   });
 
   test('cycle signers with registered, granted, revoked, and pending keys', async () => {
@@ -266,9 +297,7 @@ describe('pox-5 cycle signers', () => {
     assert.equal(entryA.registered_at.block_height, 1);
     assert.equal(entryA.registered_at.tx_id, txId(1));
     assert.equal(typeof entryA.registered_at.bitcoin_block_height, 'number');
-    assert.deepEqual(entryA.granted_keys, [
-      { signer_key: KEY5, auth_id: '444', tx_id: txId(9) },
-    ]);
+    assert.deepEqual(entryA.granted_keys, [{ signer_key: KEY5, auth_id: '444', tx_id: txId(9) }]);
     assert.equal(entryA.grant_active, false);
     assert.deepEqual(entryA.pending_key_update, {
       signer_key: KEY5,
@@ -326,7 +355,13 @@ describe('pox-5 cycle signers', () => {
     );
     await seedCycle(CYCLE + 1, 3, [{ key: KEY5, weight: 1, stacked: '100000000000' }]);
 
-    const res = await getCycleSigners();
+    // `current` is the cycle containing the burn tip, not the newest reward set: while CYCLE is
+    // running, CYCLE + 1's set (emitted during CYCLE's prepare phase) is reachable as `next`.
+    const current = await getCycleSigners();
+    assert.equal(current.status, 200, current.text);
+    assert.equal(JSON.parse(current.text).results[0].signing_key, KEY1);
+
+    const res = await getCycleSigners({}, 'next');
     assert.equal(res.status, 200, res.text);
     const body = JSON.parse(res.text);
     assert.equal(body.total, 1);
@@ -389,10 +424,12 @@ describe('pox-5 cycle signers', () => {
     assert.equal(res.status, 200, res.text);
     const body = JSON.parse(res.text);
     const managersByKey = Object.fromEntries(
-      body.results.map((r: { signing_key: string; signer_managers: { signer_manager: string }[] }) => [
-        r.signing_key,
-        r.signer_managers.map(m => m.signer_manager),
-      ])
+      body.results.map(
+        (r: { signing_key: string; signer_managers: { signer_manager: string }[] }) => [
+          r.signing_key,
+          r.signer_managers.map(m => m.signer_manager),
+        ]
+      )
     );
     assert.deepEqual(managersByKey, {
       [KEY1]: [], // overwritten by MANAGER_A's registration of KEY2
@@ -402,6 +439,7 @@ describe('pox-5 cycle signers', () => {
   });
 
   test('paginates by weight descending with signing key cursor', async () => {
+    await tipBlock(1);
     await seedCycle(CYCLE, 1, [
       { key: KEY1, weight: 5, stacked: '500000000000' },
       { key: KEY2, weight: 3, stacked: '300000000000' },

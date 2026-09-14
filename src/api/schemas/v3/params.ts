@@ -1,7 +1,8 @@
-import { ObjectOptions, TSchema, Type } from '@sinclair/typebox';
+import { ObjectOptions, Static, TSchema, Type } from '@sinclair/typebox';
 import { getPagingQueryLimit, pagingQueryLimits, ResourceType } from '../../pagination.js';
 import { Nullable } from '../v1/util.js';
 import { TransactionIdSchema } from './entities/common.js';
+import type { PoxCycleSelector } from '../../../datastore/pox-constants.js';
 
 /**
  * Cursor pagination querystring
@@ -91,3 +92,22 @@ export const TransactionIdsQuerystringParam = (description: string) =>
       `${description} Provide as repeated querystring values (\`?tx_id=A&tx_id=B\`) or as a ` +
       'single comma-separated value (`?tx_id=A,B`).',
   });
+
+/**
+ * A PoX cycle selector: a cycle number, or an alias resolved against the current burn tip with the
+ * network's PoX constants: `current` (the cycle containing the burn tip), `previous`, or `next`.
+ */
+export const CycleSelectorParamSchema = Type.String({
+  pattern: '^([0-9]+|current|previous|next)$',
+  description:
+    'A PoX cycle number, or one of `current` (the cycle containing the current Bitcoin tip), ' +
+    '`previous`, or `next`. The prepare phase at the end of a cycle belongs to that cycle.',
+  examples: ['143', 'current'],
+});
+export type CycleSelectorParam = Static<typeof CycleSelectorParamSchema>;
+
+/** Parse a validated cycle selector path param. */
+export function parseCycleSelector(param: string): PoxCycleSelector {
+  if (param === 'current' || param === 'previous' || param === 'next') return param;
+  return parseInt(param, 10);
+}
