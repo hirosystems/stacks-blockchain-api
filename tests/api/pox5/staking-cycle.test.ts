@@ -567,6 +567,100 @@ describe('staking cycle', () => {
     assert.deepEqual([...(await latest())], [{ native_staked_sats: '0', sbtc_staked_sats: '600' }]);
   });
 
+  test('a side-fork distribution has its lockup split rebuilt from the fork when the fork wins', async () => {
+    await db.setPoxConstants(CONSTANTS);
+    // Canonical chain: bond 0 with carol's sBTC registration, then two empty blocks.
+    await db.update(
+      nextBlock()
+        .addTxPox5Event({ name: Pox5EventName.SetupBond, data: setupBondData(BOND_ACTIVE) })
+        .addTxPox5Event({
+          name: Pox5EventName.RegisterForBond,
+          data: registerData({ bond: BOND_ACTIVE, staker: CAROL, ustx: 10_000_000n, sats: 1_000n }),
+        })
+        .build()
+    );
+    const forkPoint = lastIndexHash;
+    await db.update(nextBlock().build());
+    await db.update(nextBlock().build());
+
+    // Side fork of equal length: dave's native registration in 2', a cycle-9 distribution in 3'.
+    // At ingestion the distribution only sees the canonical positions (carol), so its snapshot
+    // says 0 native / 1000 sBTC.
+    const sideFork = (height: number, hash: string, parent: string) =>
+      new TestBlockBuilder({
+        block_height: height,
+        block_hash: hash,
+        index_block_hash: hash,
+        parent_block_hash: parent,
+        parent_index_block_hash: parent,
+        burn_block_height: TIP,
+        canonical: false,
+      }).addTx({ tx_id: '0x' + hash.slice(2).repeat(32), canonical: false });
+    await db.update(
+      sideFork(2, '0xf2', forkPoint)
+        .addTxPox5Event({
+          name: Pox5EventName.RegisterForBond,
+          data: registerData({
+            bond: BOND_ACTIVE,
+            staker: DAVE,
+            ustx: 20_000_000n,
+            sats: 2_000n,
+            lockup: 'l1',
+          }),
+        })
+        .build()
+    );
+    await db.update(
+      sideFork(3, '0xf3', '0xf2')
+        .addTxPox5Event({
+          name: Pox5EventName.CalculateRewards,
+          data: calculateRewardsData({
+            cycle: 9,
+            height: 999,
+            bonds: 300n,
+            stxOnly: 0n,
+            reserve: 30n,
+            cycleStakedUstx: 0n,
+          }),
+        })
+        .addTxPox5Event({
+          name: Pox5EventName.BondDistribution,
+          data: bondDistributionData({ bondRewards: 300n, stakedSats: 3_000n }),
+        })
+        .build()
+    );
+    const snapshot = () =>
+      db.sql<{ canonical: boolean; native_staked_sats: string; sbtc_staked_sats: string }[]>`
+        SELECT canonical, native_staked_sats::text, sbtc_staked_sats::text
+        FROM bond_reward_distributions
+        WHERE index_block_hash = ${'0xf3'}
+      `;
+    assert.deepEqual(
+      [...(await snapshot())],
+      [{ canonical: false, native_staked_sats: '0', sbtc_staked_sats: '1000' }]
+    );
+
+    // The fork wins: dave's registration is canonical now, and the distribution's snapshot is
+    // rebuilt from the fork's own history.
+    await db.update(
+      new TestBlockBuilder({
+        block_height: 4,
+        block_hash: '0xf4',
+        index_block_hash: '0xf4',
+        parent_block_hash: '0xf3',
+        parent_index_block_hash: '0xf3',
+        burn_block_height: TIP,
+      }).build()
+    );
+    assert.deepEqual(
+      [...(await snapshot())],
+      [{ canonical: true, native_staked_sats: '2000', sbtc_staked_sats: '1000' }]
+    );
+    const cycle = await getCycle('9');
+    assert.equal(cycle.status, 'finished');
+    assert.deepEqual(cycle.locked.btc, { total: '3000', native: '2000', sbtc: '1000' });
+  });
+
   test('serves a combined-tip ETag and answers 304 when unchanged', async () => {
     await seedFixture();
     const first = await supertest(api.server).get('/extended/v3/staking/cycles/current');

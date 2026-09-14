@@ -1142,6 +1142,8 @@ export class PgWriteStore extends PgStore {
     // Snapshot how the bond's staked BTC is locked right now: the contract only reports the bond's
     // total per distribution, so this split is what lets a finished cycle report native vs sBTC
     // from the same moment as its total. Positions carry the amount, registrations the lockup type.
+    // A side-fork distribution sees the canonical positions here, not its own fork's; if that fork
+    // wins, `recomputeBondDistributionLockupSplits` re-derives the split from the fork's events.
     const [lockupSplit] = await sql<{ native: string; sbtc: string }[]>`
       SELECT
         COALESCE(SUM(CASE WHEN r.btc_lockup_type = ${DbBondLockupType.L1} THEN p.btc_locked END), 0)::text AS native,
@@ -5136,9 +5138,85 @@ export class PgWriteStore extends PgStore {
       await this.restoreOrphanedChain(sql, parentResult[0].index_block_hash, updatedEntities);
     }
     // Every earlier block of the restored fork is canonical now: apply this block's roll-overs that
-    // targeted positions registered on the fork (see `applyPendingBondPositionRollovers`).
+    // targeted positions registered on the fork (see `applyPendingBondPositionRollovers`), and
+    // rebuild this block's distribution lockup snapshots from the fork's own history (see
+    // `recomputeBondDistributionLockupSplits`).
     await this.applyPendingBondPositionRollovers(sql, indexBlockHash);
+    await this.recomputeBondDistributionLockupSplits(sql, indexBlockHash);
     return updatedEntities;
+  }
+
+  /**
+   * Rebuild the native / sBTC lockup split of a block's canonical `bond_reward_distributions` rows
+   * from the canonical pox-5 event history preceding each distribution's tx. Used when a fork is
+   * restored: a distribution ingested on a side fork snapshotted the split from the then-canonical
+   * positions, not its own fork's (a registration earlier on that fork was non-canonical at the
+   * time), so once the fork wins the snapshot is re-derived from the events, which are canonical by
+   * then. Same derivation as the migration backfill: a participant's BTC in the bond is decided by
+   * their latest earlier `register-for-bond` for the bond (`sats_total`),
+   * `update-bond-registration` (`amount_sats`), `unstake-sbtc` (`new_amount_sats`), or a roll-over
+   * out via `stake` / `register-for-bond` for another bond (0); the lockup type by their latest
+   * registration for the bond.
+   */
+  private async recomputeBondDistributionLockupSplits(sql: PgSqlClient, indexBlockHash: string) {
+    await sql`
+      WITH split AS (
+        SELECT
+          d.tx_id, d.index_block_hash, d.bond_index,
+          COALESCE(SUM(CASE WHEN p.lockup = 'l1' THEN p.sats ELSE 0 END), 0) AS native_staked_sats,
+          COALESCE(SUM(CASE WHEN p.lockup = 'l2' THEN p.sats ELSE 0 END), 0) AS sbtc_staked_sats
+        FROM bond_reward_distributions d
+        LEFT JOIN LATERAL (
+          SELECT reg.staker, reg.lockup, COALESCE(latest.sats, 0) AS sats
+          FROM (
+            SELECT DISTINCT ON (e.data->>'staker')
+              e.data->>'staker' AS staker,
+              e.data->'btc_lockup'->>'type' AS lockup
+            FROM pox5_events e
+            WHERE e.canonical = TRUE AND e.microblock_canonical = TRUE
+              AND e.name = 'register-for-bond'
+              AND (e.data->>'bond_index')::int = d.bond_index
+              AND (e.block_height, e.microblock_sequence, e.tx_index)
+                < (d.block_height, d.microblock_sequence, d.tx_index)
+            ORDER BY e.data->>'staker',
+              e.block_height DESC, e.microblock_sequence DESC, e.tx_index DESC, e.event_index DESC
+          ) reg
+          LEFT JOIN LATERAL (
+            SELECT
+              CASE e.name
+                WHEN 'register-for-bond' THEN
+                  CASE WHEN (e.data->>'bond_index')::int = d.bond_index
+                    THEN (e.data->>'sats_total')::numeric ELSE 0 END
+                WHEN 'update-bond-registration' THEN (e.data->>'amount_sats')::numeric
+                WHEN 'unstake-sbtc' THEN (e.data->>'new_amount_sats')::numeric
+                WHEN 'stake' THEN 0
+              END AS sats
+            FROM pox5_events e
+            WHERE e.canonical = TRUE AND e.microblock_canonical = TRUE
+              AND e.data->>'staker' = reg.staker
+              AND (
+                e.name IN ('stake', 'register-for-bond')
+                OR (
+                  e.name IN ('update-bond-registration', 'unstake-sbtc')
+                  AND (e.data->>'bond_index')::int = d.bond_index
+                )
+              )
+              AND (e.block_height, e.microblock_sequence, e.tx_index)
+                < (d.block_height, d.microblock_sequence, d.tx_index)
+            ORDER BY e.block_height DESC, e.microblock_sequence DESC, e.tx_index DESC, e.event_index DESC
+            LIMIT 1
+          ) latest ON TRUE
+        ) p ON TRUE
+        WHERE d.index_block_hash = ${indexBlockHash} AND d.canonical = TRUE
+        GROUP BY d.tx_id, d.index_block_hash, d.bond_index
+      )
+      UPDATE bond_reward_distributions d
+      SET native_staked_sats = s.native_staked_sats,
+        sbtc_staked_sats = s.sbtc_staked_sats
+      FROM split s
+      WHERE d.tx_id = s.tx_id AND d.index_block_hash = s.index_block_hash
+        AND d.bond_index = s.bond_index
+    `;
   }
 
   /**
