@@ -149,7 +149,15 @@ export async function startApiServer(opts: {
   const fastify = Fastify({
     trustProxy: true,
     logger: PINO_LOGGER_CONFIG,
-    routerOptions: { ignoreTrailingSlash: true },
+    routerOptions: {
+      ignoreTrailingSlash: true,
+      /**
+       * Fastify's default of 100 is too small for legitimate asset identifiers
+       * (`<principal>.<contract>::<asset>` can reach 212 characters) and for serialized Clarity
+       * values used as NFT instance identifiers.
+       */
+      maxParamLength: 1024,
+    },
   }).withTypeProvider<TypeBoxTypeProvider>();
 
   fastify.decorate('db', datastore);

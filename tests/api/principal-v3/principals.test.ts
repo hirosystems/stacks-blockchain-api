@@ -1234,6 +1234,21 @@ describe('principals', () => {
         });
       });
 
+      test('accepts asset identifiers longer than 100 characters', async () => {
+        // Fastify's router rejects path params over `maxParamLength` (default 100) with a 414
+        // before schema validation runs. Legitimate asset identifiers can be far longer.
+        await db.update(buildFtBlock());
+        const tokenLong =
+          'SPPK49DG7WR1J5D50GZ4W7DYYWM5MAXSX0ZA9VEJ.FrodoSaylorKeanuPepe10Inu-token-v69::FrodoSaylorKeanuPepe10Inu';
+        assert.ok(tokenLong.length > 100);
+        const res = await getFtBalance(ftAddr, tokenLong);
+        assert.equal(res.statusCode, 200, res.body);
+        assert.deepEqual(JSON.parse(res.body), {
+          asset_identifier: tokenLong,
+          balance: '0',
+        });
+      });
+
       test('returns a zero balance for a token that nets to zero', async () => {
         await db.update(buildFtBlock());
         const res = await getFtBalance(ftAddr, tokenZero);
