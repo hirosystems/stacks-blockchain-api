@@ -58,7 +58,7 @@ import {
   getPoxCycleSchedule,
   resolvePoxCycleSelector,
 } from '../pox-constants.js';
-import { DbPrincipalBondPositionStatus } from '../common.js';
+import { DbBondLockupType, DbPrincipalBondPositionStatus } from '../common.js';
 import { BlockIdParam } from '../../api/routes/v2/schemas.js';
 import { InvalidRequestError, InvalidRequestErrorType } from '../../errors.js';
 import { TransactionIncludeField } from '../../api/schemas/v3/entities/transactions.js';
@@ -2066,6 +2066,8 @@ export class PgStoreV3 extends BasePgStoreModule {
       let stxOnly: string;
       let bondStx: string;
       let btc: string;
+      let btcNative: string;
+      let btcSbtc: string;
       let stxOnlyStakers: number;
       if (finished && rewards.calculations > 0) {
         const [latestCalc] = await sql<{ cycle_staked_ustx: string }[]>`
@@ -2083,11 +2085,15 @@ export class PgStoreV3 extends BasePgStoreModule {
           bondStx = sumBig(bonds.map(b => b.stx_locked)).toString();
         }
         // Each bond's BTC at the cycle's latest distribution (distributions share their tx with
-        // the cycle's calculate-rewards event).
-        const [latestSats] = await sql<{ btc: string }[]>`
-          SELECT COALESCE(SUM(bond_staked_sats), 0)::text AS btc
+        // the cycle's calculate-rewards event), with the native / sBTC split snapshotted then.
+        const [latestSats] = await sql<{ btc: string; native: string; sbtc: string }[]>`
+          SELECT
+            COALESCE(SUM(bond_staked_sats), 0)::text AS btc,
+            COALESCE(SUM(native_staked_sats), 0)::text AS native,
+            COALESCE(SUM(sbtc_staked_sats), 0)::text AS sbtc
           FROM (
-            SELECT DISTINCT ON (d.bond_index) d.bond_staked_sats
+            SELECT DISTINCT ON (d.bond_index)
+              d.bond_staked_sats, d.native_staked_sats, d.sbtc_staked_sats
             FROM bond_reward_distributions d
             JOIN bond_reward_calculations c
               ON c.tx_id = d.tx_id AND c.index_block_hash = d.index_block_hash
@@ -2098,6 +2104,8 @@ export class PgStoreV3 extends BasePgStoreModule {
           ) latest
         `;
         btc = latestSats.btc;
+        btcNative = latestSats.native;
+        btcSbtc = latestSats.sbtc;
         const [credited] = await sql<{ stakers: number }[]>`
           SELECT COUNT(DISTINCT principal)::int AS stakers
           FROM principal_stx_reward_distributions
@@ -2116,6 +2124,26 @@ export class PgStoreV3 extends BasePgStoreModule {
         stxOnlyStakers = locks.stakers;
         bondStx = sumBig(bonds.map(b => b.stx_locked)).toString();
         btc = sumBig(bonds.map(b => b.btc_locked)).toString();
+        // Native vs sBTC from the positions of the bonds covering the cycle (amount on the
+        // position, lockup type on the registration).
+        if (bondIndexes.length > 0) {
+          const [split] = await sql<{ native: string; sbtc: string }[]>`
+            SELECT
+              COALESCE(SUM(CASE WHEN r.btc_lockup_type = ${DbBondLockupType.L1} THEN p.btc_locked END), 0)::text AS native,
+              COALESCE(SUM(CASE WHEN r.btc_lockup_type = ${DbBondLockupType.L2} THEN p.btc_locked END), 0)::text AS sbtc
+            FROM principal_bond_positions p
+            JOIN bond_registrations r
+              ON r.bond_index = p.bond_index AND r.staker = p.principal
+              AND r.canonical = TRUE AND r.microblock_canonical = TRUE
+            WHERE p.canonical = TRUE AND p.microblock_canonical = TRUE
+              AND p.bond_index IN ${sql(bondIndexes)}
+          `;
+          btcNative = split.native;
+          btcSbtc = split.sbtc;
+        } else {
+          btcNative = '0';
+          btcSbtc = '0';
+        }
       }
 
       let bondStakers = 0;
@@ -2134,7 +2162,13 @@ export class PgStoreV3 extends BasePgStoreModule {
         number,
         status,
         schedule,
-        locked: { stx_only: stxOnly, bond_stx: bondStx, btc },
+        locked: {
+          stx_only: stxOnly,
+          bond_stx: bondStx,
+          btc,
+          btc_native: btcNative,
+          btc_sbtc: btcSbtc,
+        },
         participants: {
           stx_only_stakers: stxOnlyStakers,
           bond_stakers: bondStakers,

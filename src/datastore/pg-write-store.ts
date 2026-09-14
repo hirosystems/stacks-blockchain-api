@@ -71,6 +71,7 @@ import {
   DbPrincipalBondPositionInsertValues,
   DbPrincipalBondPositionStatus,
   bondLockupTypeFromString,
+  DbBondLockupType,
   DbBondRewardCalculationInsertValues,
   DbBondRewardDistributionInsertValues,
   DbPrincipalBondRewardDistributionInsertValues,
@@ -1138,6 +1139,21 @@ export class PgWriteStore extends PgStore {
     event: Pox5EventBondDistribution
   ) {
     const bondIndex = parseInt(event.data.bond_index);
+    // Snapshot how the bond's staked BTC is locked right now: the contract only reports the bond's
+    // total per distribution, so this split is what lets a finished cycle report native vs sBTC
+    // from the same moment as its total. Positions carry the amount, registrations the lockup type.
+    const [lockupSplit] = await sql<{ native: string; sbtc: string }[]>`
+      SELECT
+        COALESCE(SUM(CASE WHEN r.btc_lockup_type = ${DbBondLockupType.L1} THEN p.btc_locked END), 0)::text AS native,
+        COALESCE(SUM(CASE WHEN r.btc_lockup_type = ${DbBondLockupType.L2} THEN p.btc_locked END), 0)::text AS sbtc
+      FROM principal_bond_positions p
+      JOIN bond_registrations r
+        ON r.bond_index = p.bond_index AND r.staker = p.principal
+        AND r.canonical = true AND r.microblock_canonical = true
+      WHERE p.bond_index = ${bondIndex}
+        AND p.canonical = true
+        AND p.microblock_canonical = true
+    `;
     const rewardDistribution: DbBondRewardDistributionInsertValues = {
       ...txLocation,
       bond_index: bondIndex,
@@ -1146,6 +1162,8 @@ export class PgWriteStore extends PgStore {
       bond_staked_sats: event.data.bond_staked_sats,
       accrued_rewards_per_sat: event.data.accrued_rewards_per_sat,
       cumulative_rewards_per_sat: event.data.cumulative_rewards_per_sat,
+      native_staked_sats: lockupSplit.native,
+      sbtc_staked_sats: lockupSplit.sbtc,
     };
     await sql`
       INSERT INTO bond_reward_distributions ${sql(rewardDistribution)}

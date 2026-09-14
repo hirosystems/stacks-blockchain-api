@@ -51,7 +51,11 @@ export function serializeDbStakingCycle(cycle: DbStakingCycle): StakingCycle {
         bonds: cycle.locked.bond_stx,
         total: (BigInt(cycle.locked.stx_only) + BigInt(cycle.locked.bond_stx)).toString(),
       },
-      btc: { total: cycle.locked.btc },
+      btc: {
+        total: cycle.locked.btc,
+        native: cycle.locked.btc_native,
+        sbtc: cycle.locked.btc_sbtc,
+      },
     },
     participants: {
       stakers: {

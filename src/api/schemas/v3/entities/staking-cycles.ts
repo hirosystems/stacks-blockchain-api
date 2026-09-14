@@ -167,6 +167,14 @@ export const StakingCycleSchema = Type.Object(
               'lockups and sBTC lockups). For a finished cycle this is the BTC staked per bond at ' +
               "the cycle's latest reward distribution; otherwise the bonds' running locked totals.",
           }),
+          native: Type.String({
+            ...AmountSchema,
+            description: 'Of `total`, the satoshis locked through proven Bitcoin L1 lockups.',
+          }),
+          sbtc: Type.String({
+            ...AmountSchema,
+            description: 'Of `total`, the satoshis locked through sBTC lockups.',
+          }),
         }),
       },
       { description: 'The assets locked by staking for this cycle' }

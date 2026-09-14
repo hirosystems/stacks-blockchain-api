@@ -7,6 +7,7 @@ import { ApiServer, startApiServer } from '../../../src/api/init.ts';
 import { PgWriteStore } from '../../../src/datastore/pg-write-store.ts';
 import { migrate } from '../../test-helpers.ts';
 import { TestBlockBuilder } from '../test-builders.ts';
+import { BACKFILL_DISTRIBUTION_LOCKUP_SPLIT_SQL } from '../../../migrations/1779800000021_bond-reward-distribution-lockup-split.ts';
 
 /**
  * `GET /extended/v3/staking/cycles/:cycle_number` — the per-cycle pox-5 staking summary — with
@@ -43,7 +44,10 @@ interface StakingCycleResponse {
     prepare_phase_start: { bitcoin_height: number };
     end: { bitcoin_height: number };
   };
-  locked: { stx: { stx_only: string; bonds: string; total: string }; btc: { total: string } };
+  locked: {
+    stx: { stx_only: string; bonds: string; total: string };
+    btc: { total: string; native: string; sbtc: string };
+  };
   participants: { stakers: { stx_only: number; bonds: number }; signers: number | null };
   bonds: { total: number; indexes: number[] };
   rewards: {
@@ -74,7 +78,10 @@ function registerData(args: {
   staker: string;
   ustx: bigint;
   sats: bigint;
+  /** Proven Bitcoin L1 lockup (`l1`, "native") or sBTC (`l2`, the default). */
+  lockup?: 'l1' | 'l2';
 }) {
+  const lockup = args.lockup ?? 'l2';
   return {
     bond_index: String(args.bond.index),
     signer: SIGNER,
@@ -84,8 +91,11 @@ function registerData(args: {
     first_reward_cycle: String(args.bond.first_cycle),
     unlock_burn_height: String(args.bond.unlock),
     unlock_cycle: String(args.bond.unlock_cycle),
-    is_l1_lock: false,
-    btc_lockup: { type: 'l2', txs: [] },
+    is_l1_lock: lockup === 'l1',
+    btc_lockup:
+      lockup === 'l1'
+        ? { type: 'l1', txs: [{ txid: '0x' + 'ab'.repeat(32), output_index: '0' }] }
+        : { type: 'l2', txs: [] },
   };
 }
 
@@ -197,7 +207,13 @@ describe('staking cycle', () => {
         })
         .addTxPox5Event({
           name: Pox5EventName.RegisterForBond,
-          data: registerData({ bond: BOND_ACTIVE, staker: DAVE, ustx: 20_000_000n, sats: 2_000n }),
+          data: registerData({
+            bond: BOND_ACTIVE,
+            staker: DAVE,
+            ustx: 20_000_000n,
+            sats: 2_000n,
+            lockup: 'l1',
+          }),
         })
         .addTxPox5Event({
           name: Pox5EventName.RegisterForBond,
@@ -226,6 +242,21 @@ describe('staking cycle', () => {
         })
         .build()
     );
+    // carol withdraws 400 of her 1000 sBTC before the second distribution.
+    await db.update(
+      nextBlock()
+        .addTxPox5Event({
+          name: Pox5EventName.UnstakeSbtc,
+          data: {
+            staker: CAROL,
+            signer: SIGNER,
+            bond_index: String(BOND_ACTIVE.index),
+            amount_sats_released: '400',
+            new_amount_sats: '600',
+          },
+        })
+        .build()
+    );
     await db.update(
       nextBlock()
         .addTxPox5Event({
@@ -241,7 +272,7 @@ describe('staking cycle', () => {
         })
         .addTxPox5Event({
           name: Pox5EventName.BondDistribution,
-          data: bondDistributionData({ bondRewards: 800n, stakedSats: 3_000n }),
+          data: bondDistributionData({ bondRewards: 800n, stakedSats: 2_600n }),
         })
         .addTxPox5Event({
           name: Pox5EventName.ClaimRewards,
@@ -294,7 +325,8 @@ describe('staking cycle', () => {
       locked: {
         // alice only (bob's lock expired at 1040 < tip); bond 0 is the only bond covering cycle 10.
         stx: { stx_only: '50000000', bonds: '30000000', total: '80000000' },
-        btc: { total: '3000' },
+        // dave's 2000 sats are a native L1 lockup, carol's remaining 600 are sBTC.
+        btc: { total: '2600', native: '2000', sbtc: '600' },
       },
       participants: { stakers: { stx_only: 1, bonds: 2 }, signers: 4 },
       bonds: { total: 1, indexes: [0] },
@@ -324,7 +356,8 @@ describe('staking cycle', () => {
     // bond's latest distribution in the cycle.
     assert.deepEqual(cycle.locked, {
       stx: { stx_only: '45000000', bonds: '55000000', total: '100000000' },
-      btc: { total: '3000' },
+      // The split is the snapshot taken at that distribution, after carol's unstake.
+      btc: { total: '2600', native: '2000', sbtc: '600' },
     });
     // Both lockers were credited STX rewards at calculation time; bond stakers as of the tip.
     assert.deepEqual(cycle.participants, { stakers: { stx_only: 2, bonds: 2 }, signers: 3 });
@@ -353,7 +386,7 @@ describe('staking cycle', () => {
     // alice's lock (unlock 1500) is still live when cycle 11 starts; both bonds cover cycle 11.
     assert.deepEqual(cycle.locked, {
       stx: { stx_only: '50000000', bonds: '35000000', total: '85000000' },
-      btc: { total: '3500' },
+      btc: { total: '3100', native: '2000', sbtc: '1100' },
     });
     assert.deepEqual(cycle.participants, { stakers: { stx_only: 1, bonds: 3 }, signers: null });
     assert.deepEqual(cycle.bonds, { total: 2, indexes: [0, 1] });
@@ -382,7 +415,7 @@ describe('staking cycle', () => {
     assert.equal(cycle.number, 10);
     assert.deepEqual(cycle.locked, {
       stx: { stx_only: '0', bonds: '0', total: '0' },
-      btc: { total: '0' },
+      btc: { total: '0', native: '0', sbtc: '0' },
     });
     assert.deepEqual(cycle.participants, { stakers: { stx_only: 0, bonds: 0 }, signers: null });
     assert.deepEqual(cycle.bonds, { total: 0, indexes: [] });
@@ -430,6 +463,87 @@ describe('staking cycle', () => {
       end: { bitcoin_height: 968449 },
     });
     assert.equal(cycle.status, 'upcoming');
+  });
+
+  test('each distribution snapshots the native / sBTC split, and the backfill rebuilds it from events', async () => {
+    await seedFixture();
+    const rows = () =>
+      db.sql<
+        {
+          bond_staked_sats: string;
+          native_staked_sats: string | null;
+          sbtc_staked_sats: string | null;
+        }[]
+      >`
+        SELECT bond_staked_sats::text, native_staked_sats::text, sbtc_staked_sats::text
+        FROM bond_reward_distributions
+        WHERE canonical = TRUE
+        ORDER BY block_height ASC
+      `;
+    // Snapshotted at ingestion: 1000 sBTC + 2000 native at the first distribution, 600 sBTC after
+    // carol's unstake at the second.
+    const expected = [
+      { bond_staked_sats: '2500', native_staked_sats: '2000', sbtc_staked_sats: '1000' },
+      { bond_staked_sats: '2600', native_staked_sats: '2000', sbtc_staked_sats: '600' },
+    ];
+    assert.deepEqual([...(await rows())], expected);
+
+    // Reset the split to the column default (a row that predates the columns) and rebuild it from
+    // pox5_events.
+    await db.sql`UPDATE bond_reward_distributions SET native_staked_sats = 0, sbtc_staked_sats = 0`;
+    const wiped = await getCycle('previous');
+    assert.deepEqual(wiped.locked.btc, { total: '2600', native: '0', sbtc: '0' });
+    await db.sql.unsafe(BACKFILL_DISTRIBUTION_LOCKUP_SPLIT_SQL);
+    assert.deepEqual([...(await rows())], expected);
+    assert.deepEqual((await getCycle('previous')).locked.btc, {
+      total: '2600',
+      native: '2000',
+      sbtc: '600',
+    });
+  });
+
+  test('the backfill treats a roll-over out of the bond as releasing its BTC', async () => {
+    await seedFixture();
+    // dave rolls his bond-0 position into an STX-only stake, then a third distribution runs.
+    await db.update(
+      nextBlock()
+        .addTxPox5Event({
+          name: Pox5EventName.Stake,
+          data: stakeData({ staker: DAVE, ustx: 21_000_000n, unlock: 1500 }),
+        })
+        .build()
+    );
+    await db.update(
+      nextBlock()
+        .addTxPox5Event({
+          name: Pox5EventName.CalculateRewards,
+          data: calculateRewardsData({
+            cycle: 10,
+            height: 1050,
+            bonds: 100n,
+            stxOnly: 100n,
+            reserve: 10n,
+            cycleStakedUstx: 71_000_000n,
+          }),
+        })
+        .addTxPox5Event({
+          name: Pox5EventName.BondDistribution,
+          data: bondDistributionData({ bondRewards: 100n, stakedSats: 600n }),
+        })
+        .build()
+    );
+    const latest = () =>
+      db.sql<{ native_staked_sats: string; sbtc_staked_sats: string }[]>`
+        SELECT native_staked_sats::text, sbtc_staked_sats::text
+        FROM bond_reward_distributions
+        WHERE canonical = TRUE
+        ORDER BY block_height DESC
+        LIMIT 1
+      `;
+    assert.deepEqual([...(await latest())], [{ native_staked_sats: '0', sbtc_staked_sats: '600' }]);
+    await db.sql`UPDATE bond_reward_distributions SET native_staked_sats = 0, sbtc_staked_sats = 0`;
+    await db.sql.unsafe(BACKFILL_DISTRIBUTION_LOCKUP_SPLIT_SQL);
+    assert.deepEqual([...(await latest())], [{ native_staked_sats: '0', sbtc_staked_sats: '600' }]);
   });
 
   test('serves a combined-tip ETag and answers 304 when unchanged', async () => {

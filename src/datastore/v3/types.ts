@@ -367,6 +367,10 @@ export interface DbStakingCycle {
     bond_stx: string;
     /** Sats locked across the bonds covering the cycle. */
     btc: string;
+    /** Of `btc`, sats locked via proven Bitcoin L1 lockups. */
+    btc_native: string;
+    /** Of `btc`, sats locked via sBTC lockups. */
+    btc_sbtc: string;
   };
   participants: {
     stx_only_stakers: number;
