@@ -8,7 +8,6 @@ import { PgWriteStore } from '../../../src/datastore/pg-write-store.ts';
 import { migrate } from '../../test-helpers.ts';
 import { TestBlockBuilder } from '../test-builders.ts';
 import { BACKFILL_DISTRIBUTION_LOCKUP_SPLIT_SQL } from '../../../migrations/1779800000021_bond-reward-distribution-lockup-split.ts';
-import { BACKFILL_STX_LOCK_FIRST_REWARD_CYCLE_SQL } from '../../../migrations/1779800000022_stx-locked-balances-first-reward-cycle.ts';
 
 /**
  * `GET /extended/v3/staking/cycles/:cycle_number` — the per-cycle pox-5 staking summary — with
@@ -25,6 +24,7 @@ const CAROL = 'ST2REHHS5J3CERCRBEPMGH7921Q6PYKAADT7JP2VB';
 const DAVE = 'ST1SJ3DTE5DN7X54YDH5D64R3BCB6A2AG2ZQ8YPD5';
 const ERIN = 'ST3DWSXBPYDB484QXFTR81K4AWG4ZB5XZNFF3H70C';
 const FRANK = 'ST2CY5V39NHDPWSXMW9QDT3HC3GD6Q6XX4CFRK9AG';
+const GRACE = 'ST2JHG361ZXG51QTKY2NQCVBPPRRE2KZB1HR05NNC';
 const SIGNER = `${ADMIN}.signer-manager`;
 
 const CONSTANTS = {
@@ -171,7 +171,11 @@ describe('staking cycle', () => {
       parent_block_hash: lastIndexHash,
       parent_index_block_hash: lastIndexHash,
       burn_block_height: args?.burn_block_height ?? TIP,
-    }).addTx({ tx_id: '0x' + height.toString(16).padStart(64, '0') });
+    }).addTx({
+      tx_id: '0x' + height.toString(16).padStart(64, '0'),
+      // pox-5 events carry their tx's burn height; keep it in step with the block's.
+      burn_block_height: args?.burn_block_height ?? TIP,
+    });
     lastIndexHash = indexHash;
     return builder;
   }
@@ -196,9 +200,10 @@ describe('staking cycle', () => {
   /** Stakes, bonds, registrations, cycle 9's reward accounting, and reward sets for 9 and 10. */
   async function seedFixture() {
     await db.setPoxConstants(CONSTANTS);
+    // Staked and registered during cycle 9 (burn height 950), so everything counts for cycle 10.
     // alice's stake outlives the fixture tip; bob's ended exactly when cycle 10 started.
     await db.update(
-      nextBlock()
+      nextBlock({ burn_block_height: 950 })
         .addTxPox5Event({ name: Pox5EventName.SetupBond, data: setupBondData(BOND_ACTIVE) })
         .addTxPox5Event({ name: Pox5EventName.SetupBond, data: setupBondData(BOND_UPCOMING) })
         .addTxPox5Event({
@@ -756,7 +761,7 @@ describe('staking cycle', () => {
     assert.equal(next.locked.stx.stx_only, '57000000');
     assert.equal(next.participants.stakers.stx_only, 2);
 
-    // An increase re-adds shares from the next cycle too, and keeps the first cycle.
+    // An increase re-adds shares from the next cycle too; the current cycle keeps its figure.
     await db.update(
       nextBlock()
         .addTxPox5Event({
@@ -776,10 +781,6 @@ describe('staking cycle', () => {
         })
         .build()
     );
-    const [frank] = await db.sql<{ first_reward_cycle: number }[]>`
-      SELECT first_reward_cycle FROM stx_locked_balances WHERE principal = ${FRANK}
-    `;
-    assert.equal(frank.first_reward_cycle, 11, 'stake-update keeps the first cycle');
     current = await getCycle('current');
     assert.equal(current.locked.stx.stx_only, '50000000');
     next = await getCycle('next');
@@ -815,18 +816,53 @@ describe('staking cycle', () => {
     assert.equal(current.participants.stakers.stx_only, 1);
   });
 
-  test('the first_reward_cycle backfill rebuilds lock rows from stake events', async () => {
+  test('a stake rolled into a bond mid-cycle keeps counting for the current cycle', async () => {
     await seedFixture();
-    const rows = () =>
-      db.sql<{ principal: string; first_reward_cycle: number }[]>`
-        SELECT principal, first_reward_cycle FROM stx_locked_balances
-        WHERE pox_version = 5 ORDER BY principal
-      `;
-    const expected = [...(await rows())];
-    assert.ok(expected.every(r => r.first_reward_cycle === 8));
-    await db.sql`UPDATE stx_locked_balances SET first_reward_cycle = 0`;
-    await db.sql.unsafe(BACKFILL_STX_LOCK_FIRST_REWARD_CYCLE_SQL);
-    assert.deepEqual([...(await rows())], expected);
+    // grace staked before cycle 10 with a term ending exactly when bond 1 starts (cycle 11), the
+    // roll-over the contract allows. Her stake counts for cycle 10.
+    await db.update(
+      nextBlock({ burn_block_height: 990 })
+        .addTxPox5Event({
+          name: Pox5EventName.Stake,
+          data: stakeData({ staker: GRACE, ustx: 7_000_000n, unlock: 1100, firstRewardCycle: 10 }),
+        })
+        .build()
+    );
+    // Back to the fixture tip in cycle 10.
+    await db.update(nextBlock().build());
+    await db.sql`UPDATE pox_cycles SET total_stacked_amount = 87000000 WHERE cycle_number = 10`;
+    assert.deepEqual((await getCycle('current')).locked.stx, {
+      stx_only: '57000000',
+      bonds: '30000000',
+      total: '87000000',
+    });
+
+    // During cycle 10 she registers for bond 1: her lock row is replaced by the bond position,
+    // but cycle 10's STX-only figure is unchanged and she is still counted as an STX-only staker.
+    await db.update(
+      nextBlock()
+        .addTxPox5Event({
+          name: Pox5EventName.RegisterForBond,
+          data: registerData({ bond: BOND_UPCOMING, staker: GRACE, ustx: 7_000_000n, sats: 700n }),
+        })
+        .build()
+    );
+    const lockRows = await db.sql<{ principal: string }[]>`
+      SELECT principal FROM stx_locked_balances WHERE principal = ${GRACE}
+    `;
+    assert.equal(lockRows.length, 0, 'STX-only lock row rolled into the bond');
+    const current = await getCycle('current');
+    assert.deepEqual(current.locked.stx, {
+      stx_only: '57000000',
+      bonds: '30000000',
+      total: '87000000',
+    });
+    assert.equal(current.participants.stakers.stx_only, 2);
+    // For cycle 11 her stake has ended and only the bond position counts.
+    const next = await getCycle('next');
+    assert.equal(next.locked.stx.stx_only, '50000000');
+    assert.equal(next.participants.stakers.stx_only, 1);
+    assert.equal(next.locked.stx.bonds, '42000000');
   });
 
   test('serves a combined-tip ETag and answers 304 when unchanged', async () => {

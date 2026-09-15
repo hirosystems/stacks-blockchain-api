@@ -2115,16 +2115,28 @@ export class PgStoreV3 extends BasePgStoreModule {
         return { bondStx, btc, btcNative: split.native, btcSbtc: split.sbtc };
       };
 
-      // pox-5 STX-only locks that count for the cycle. A `stake` made during cycle N takes effect
-      // from N + 1 (its shares start then; the account lock starts immediately), so a cycle only
-      // counts locks whose first reward cycle is at or before it, still locked past its start.
-      const stxOnlyLocks = async (firstCycleAtMost: number) => {
+      // The pox-5 STX-only stake that counts for a cycle, as the contract accounts it: fixed when
+      // the cycle starts. Each staker's stake state is their latest `stake` / `stake-update` /
+      // `unstake` event before the cycle's first Bitcoin block (a stake or increase made during a
+      // cycle only takes effect from the next one), and it counts while its unlock height is past
+      // the cycle's start. Derived from the events rather than `stx_locked_balances` because a stake
+      // rolled into a bond keeps its shares through its original term even though its lock row is
+      // removed on `register-for-bond`.
+      const stxOnlyAtStart = async (startHeight: number) => {
         const [locks] = await sql<{ amount: string; stakers: number }[]>`
-          SELECT COALESCE(SUM(locked_amount), 0)::text AS amount, COUNT(*)::int AS stakers
-          FROM stx_locked_balances
-          WHERE pox_version = 5 AND locked_amount > 0
-            AND first_reward_cycle <= ${firstCycleAtMost}
-            AND unlock_burn_height > ${schedule.startBitcoinHeight}
+          SELECT COALESCE(SUM(amount), 0)::text AS amount, COUNT(*)::int AS stakers
+          FROM (
+            SELECT DISTINCT ON (data->>'staker')
+              (data->>'amount_ustx')::numeric AS amount,
+              (data->>'unlock_burn_height')::bigint AS unlock_burn_height
+            FROM pox5_events
+            WHERE canonical = TRUE AND microblock_canonical = TRUE
+              AND name IN ('stake', 'stake-update', 'unstake')
+              AND burn_block_height < ${startHeight}::bigint
+            ORDER BY data->>'staker',
+              block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
+          ) state
+          WHERE unlock_burn_height > ${startHeight}::bigint
         `;
         return locks;
       };
@@ -2192,20 +2204,20 @@ export class PgStoreV3 extends BasePgStoreModule {
         `;
         stxOnlyStakers = credited.stakers;
       } else if (status === 'upcoming') {
-        // Every live lock covers the next cycle, including stakes and increases made during the
-        // current one; only locks unlocking at or before its start do not.
-        const locks = await stxOnlyLocks(number);
-        stxOnly = locks.amount;
-        stxOnlyStakers = locks.stakers;
+        // Every stake state as of now that outlasts the cycle's start counts for it, including
+        // stakes and increases made during the current cycle; stakes unlocking at or before its
+        // start do not.
+        const stakes = await stxOnlyAtStart(schedule.startBitcoinHeight);
+        stxOnly = stakes.amount;
+        stxOnlyStakers = stakes.stakers;
         ({ bondStx, btc, btcNative, btcSbtc } = await tipBondLocks());
       } else {
-        // In progress: the staked total is fixed at the cycle's start. Stakes and increases made
-        // during it count from the next cycle (see `stxOnlyLocks`), and once the cycle's first
-        // reward calculation has run the contract's own STX-only figure takes over — it also
-        // reflects the pre-increase amounts the lock rows no longer hold. BTC is tip state.
-        const locks = await stxOnlyLocks(number);
-        stxOnly = rewards.calculations > 0 ? await calculatedStxOnly() : locks.amount;
-        stxOnlyStakers = locks.stakers;
+        // In progress: the staked total is fixed at the cycle's start (see `stxOnlyAtStart`), and
+        // once the cycle's first reward calculation has run the contract's own STX-only figure is
+        // authoritative. BTC is tip state.
+        const stakes = await stxOnlyAtStart(schedule.startBitcoinHeight);
+        stxOnly = rewards.calculations > 0 ? await calculatedStxOnly() : stakes.amount;
+        stxOnlyStakers = stakes.stakers;
         const tip = await tipBondLocks();
         bondStx = bondStxFor(stxOnly, tip.bondStx);
         ({ btc, btcNative, btcSbtc } = tip);

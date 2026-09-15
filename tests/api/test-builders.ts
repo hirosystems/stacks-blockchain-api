@@ -192,7 +192,9 @@ function testTx(args?: TestTxArgs): DataStoreTxEventData {
       index_block_hash: args?.index_block_hash ?? INDEX_BLOCK_HASH,
       block_hash: args?.block_hash ?? BLOCK_HASH,
       block_height: args?.block_height ?? BLOCK_HEIGHT,
-      burn_block_height: args?.block_height ?? BLOCK_HEIGHT,
+      // Defaults to the block height (a long-standing builder quirk); pass the block's burn height
+      // explicitly when an event's burn height matters.
+      burn_block_height: args?.burn_block_height ?? args?.block_height ?? BLOCK_HEIGHT,
       burn_block_time: args?.burn_block_time ?? BURN_BLOCK_TIME,
       block_time: args?.block_time ?? STACKS_BLOCK_TIME,
       parent_burn_block_time: BURN_BLOCK_TIME,
@@ -364,9 +366,7 @@ function testStxEvent(args?: TestStxEventArgs): DbStxEvent {
         ? undefined
         : (args?.recipient ?? RECIPIENT_ADDRESS),
     sender:
-      assetEventTypeId === DbAssetEventTypeId.Mint
-        ? undefined
-        : (args?.sender ?? SENDER_ADDRESS),
+      assetEventTypeId === DbAssetEventTypeId.Mint ? undefined : (args?.sender ?? SENDER_ADDRESS),
     memo: args?.memo,
   };
 }
@@ -467,8 +467,7 @@ function testSmartContractLogEvent(args?: TestSmartContractLogEventArgs): DbSmar
     contract_identifier: args?.contract_identifier ?? CONTRACT_ID,
     topic: args?.topic ?? 'some-topic',
     value:
-      args?.value ??
-      bufferToHex(Buffer.from(serializeCV(bufferCVFromString('some val')), 'hex')),
+      args?.value ?? bufferToHex(Buffer.from(serializeCV(bufferCVFromString('some val')), 'hex')),
   };
 }
 
