@@ -141,26 +141,15 @@ export const StakingCycleSchema = Type.Object(
         stx: Type.Object({
           stx_only: Type.String({
             ...AmountSchema,
-            description:
-              'STX locked in STX-only staking that counts for this cycle, in µSTX, as the pox-5 ' +
-              'contract accounts it: fixed when the cycle starts. A stake or increase made during ' +
-              'a cycle takes effect from the next one, and a stake rolled into a bond keeps ' +
-              'counting through its original term. Once an in-progress cycle has had its first ' +
-              "reward calculation, the contract's own figure is used; finished cycles always use " +
-              'it; an upcoming cycle counts every stake that outlasts its start.',
+            description: 'STX locked in STX-only staking that counts for this cycle, in µSTX.',
           }),
           bonds: Type.String({
             ...AmountSchema,
-            description:
-              'STX locked across the bonds covering this cycle, in µSTX. When the cycle has a ' +
-              "reward set this is the reward set's total staked STX minus the STX-only figure; " +
-              'otherwise the running locked totals of the bonds covering the cycle.',
+            description: 'STX locked across the bonds covering this cycle, in µSTX.',
           }),
           total: Type.String({
             ...AmountSchema,
-            description:
-              'Sum of `stx_only` and `bonds`, in µSTX. For a cycle with a reward set this is ' +
-              "the node's total staked STX for the cycle, fixed when the set was selected.",
+            description: 'Sum of `stx_only` and `bonds`, in µSTX.',
           }),
         }),
         btc: Type.Object({
@@ -187,16 +176,10 @@ export const StakingCycleSchema = Type.Object(
       {
         stakers: Type.Object({
           stx_only: Type.Integer({
-            description:
-              'Principals whose STX-only stake counts for this cycle (a stake made during a cycle ' +
-              'counts from the next one; one rolled into a bond keeps counting through its ' +
-              'original term). For a finished cycle, the principals credited STX-staking rewards ' +
-              'for it.',
+            description: 'Principals whose STX-only stake counts for this cycle.',
           }),
           bonds: Type.Integer({
-            description:
-              'Principals holding a position in a bond covering this cycle, as of the current ' +
-              'tip (positions rolled over into another bond or stake are excluded).',
+            description: 'Principals holding a position in a bond covering this cycle.',
           }),
         }),
         signers: Nullable(
