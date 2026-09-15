@@ -4,7 +4,7 @@ info:
   description: Welcome to the API reference overview for the [Stacks Blockchain
     API](https://docs.hiro.so/stacks-blockchain-api). [Download Postman
     collection](https://hirosystems.github.io/stacks-blockchain-api/collection.json).
-  version: 9.2.0
+  version: 9.3.0
 components:
   schemas: {}
 paths:
@@ -52,12 +52,6 @@ paths:
                           index_block_hash:
                             description: the current index block hash
                             type: string
-                          microblock_hash:
-                            description: the current microblock hash
-                            type: string
-                          microblock_sequence:
-                            description: the current microblock sequence number
-                            type: integer
                           burn_block_height:
                             description: the current burn chain block height
                             type: integer
@@ -1090,6 +1084,9 @@ paths:
                                       is_unanchored:
                                         description: True if the transaction is included in a microblock that has not
                                           been confirmed by an anchor block.
+                                          Microblocks were removed in the
+                                          Nakamoto upgrade, so this is always
+                                          `false`.
                                         type: boolean
                                       microblock_hash:
                                         description: The microblock hash that this transaction was streamed in. If the
@@ -1921,6 +1918,9 @@ paths:
                                       is_unanchored:
                                         description: True if the transaction is included in a microblock that has not
                                           been confirmed by an anchor block.
+                                          Microblocks were removed in the
+                                          Nakamoto upgrade, so this is always
+                                          `false`.
                                         type: boolean
                                       microblock_hash:
                                         description: The microblock hash that this transaction was streamed in. If the
@@ -2757,6 +2757,9 @@ paths:
                                       is_unanchored:
                                         description: True if the transaction is included in a microblock that has not
                                           been confirmed by an anchor block.
+                                          Microblocks were removed in the
+                                          Nakamoto upgrade, so this is always
+                                          `false`.
                                         type: boolean
                                       microblock_hash:
                                         description: The microblock hash that this transaction was streamed in. If the
@@ -3610,6 +3613,9 @@ paths:
                                       is_unanchored:
                                         description: True if the transaction is included in a microblock that has not
                                           been confirmed by an anchor block.
+                                          Microblocks were removed in the
+                                          Nakamoto upgrade, so this is always
+                                          `false`.
                                         type: boolean
                                       microblock_hash:
                                         description: The microblock hash that this transaction was streamed in. If the
@@ -4437,6 +4443,9 @@ paths:
                                       is_unanchored:
                                         description: True if the transaction is included in a microblock that has not
                                           been confirmed by an anchor block.
+                                          Microblocks were removed in the
+                                          Nakamoto upgrade, so this is always
+                                          `false`.
                                         type: boolean
                                       microblock_hash:
                                         description: The microblock hash that this transaction was streamed in. If the
@@ -5276,6 +5285,9 @@ paths:
                                       is_unanchored:
                                         description: True if the transaction is included in a microblock that has not
                                           been confirmed by an anchor block.
+                                          Microblocks were removed in the
+                                          Nakamoto upgrade, so this is always
+                                          `false`.
                                         type: boolean
                                       microblock_hash:
                                         description: The microblock hash that this transaction was streamed in. If the
@@ -12098,6 +12110,8 @@ paths:
                                   is_unanchored:
                                     description: True if the transaction is included in a microblock that has not
                                       been confirmed by an anchor block.
+                                      Microblocks were removed in the Nakamoto
+                                      upgrade, so this is always `false`.
                                     type: boolean
                                   microblock_hash:
                                     description: The microblock hash that this transaction was streamed in. If the
@@ -12927,6 +12941,8 @@ paths:
                                   is_unanchored:
                                     description: True if the transaction is included in a microblock that has not
                                       been confirmed by an anchor block.
+                                      Microblocks were removed in the Nakamoto
+                                      upgrade, so this is always `false`.
                                     type: boolean
                                   microblock_hash:
                                     description: The microblock hash that this transaction was streamed in. If the
@@ -13761,6 +13777,8 @@ paths:
                                   is_unanchored:
                                     description: True if the transaction is included in a microblock that has not
                                       been confirmed by an anchor block.
+                                      Microblocks were removed in the Nakamoto
+                                      upgrade, so this is always `false`.
                                     type: boolean
                                   microblock_hash:
                                     description: The microblock hash that this transaction was streamed in. If the
@@ -14612,6 +14630,8 @@ paths:
                                   is_unanchored:
                                     description: True if the transaction is included in a microblock that has not
                                       been confirmed by an anchor block.
+                                      Microblocks were removed in the Nakamoto
+                                      upgrade, so this is always `false`.
                                     type: boolean
                                   microblock_hash:
                                     description: The microblock hash that this transaction was streamed in. If the
@@ -15437,6 +15457,8 @@ paths:
                                   is_unanchored:
                                     description: True if the transaction is included in a microblock that has not
                                       been confirmed by an anchor block.
+                                      Microblocks were removed in the Nakamoto
+                                      upgrade, so this is always `false`.
                                     type: boolean
                                   microblock_hash:
                                     description: The microblock hash that this transaction was streamed in. If the
@@ -16273,6 +16295,8 @@ paths:
                                   is_unanchored:
                                     description: True if the transaction is included in a microblock that has not
                                       been confirmed by an anchor block.
+                                      Microblocks were removed in the Nakamoto
+                                      upgrade, so this is always `false`.
                                     type: boolean
                                   microblock_hash:
                                     description: The microblock hash that this transaction was streamed in. If the
@@ -22645,6 +22669,9 @@ paths:
                             - type: string
                               enum:
                                 - unlocked
+                            - type: string
+                              enum:
+                                - rolled_over
                         active:
                           description: Whether the position is active
                           type: boolean
@@ -23179,9 +23206,9 @@ paths:
       tags:
         - Accounts
       description: Get a Stacks account's latest nonce state by inspecting its
-        confirmed (anchored + microblock) transactions and the mempool,
-        including the nonce to use for its next transaction. Only standard
-        principals have nonces; contract principals are not valid.
+        confirmed transactions and the mempool, including the nonce to use for
+        its next transaction. Only standard principals have nonces; contract
+        principals are not valid.
       parameters:
         - schema:
             pattern: ^[0123456789ABCDEFGHJKMNPQRSTVWXYZ]{28,41}$
@@ -23212,8 +23239,8 @@ paths:
                     type: integer
                   last_confirmed_nonce:
                     anyOf:
-                      - description: Highest nonce among the principal's confirmed (anchored +
-                          microblock) transactions, or null if none.
+                      - description: Highest nonce among the principal's confirmed transactions, or null
+                          if none.
                         type: integer
                       - type: "null"
                   mempool:
@@ -25247,12 +25274,32 @@ paths:
                             data:
                               type: object
                               required:
+                                - calculation
                                 - target_yield
                                 - rewards
                                 - staked
                                 - accrued_rewards_per_sat
                                 - cumulative_rewards_per_sat
                               properties:
+                                calculation:
+                                  description: The `calculate-rewards` call this distribution was emitted by, from
+                                    the `calculate-rewards` event in the same
+                                    transaction.
+                                  type: object
+                                  required:
+                                    - bitcoin_height
+                                    - reward_cycle
+                                  properties:
+                                    bitcoin_height:
+                                      description: "The Bitcoin height the rewards were calculated for: the start of
+                                        the distribution period, which can
+                                        differ from the height of the block
+                                        carrying this event."
+                                      type: integer
+                                    reward_cycle:
+                                      description: The PoX reward cycle the calculation (and this distribution) books
+                                        to
+                                      type: integer
                                 target_yield:
                                   pattern: ^[0-9]+$
                                   description: The bond's target reward for this calculation, in sats
@@ -25885,6 +25932,274 @@ paths:
                     type: string
                   message:
                     type: string
+  /extended/v3/staking/cycles/{cycle_number}:
+    get:
+      operationId: get_staking_cycle
+      summary: Get staking cycle
+      tags:
+        - Staking
+      description: A summary of staking for one PoX reward cycle.
+      parameters:
+        - schema:
+            pattern: ^([0-9]{1,9}|current|previous|next)$
+            type: string
+          examples:
+            "143":
+              value: "143"
+            current:
+              value: current
+          in: path
+          name: cycle_number
+          required: true
+          description: A PoX cycle number (up to nine digits), or one of `current` (the
+            cycle containing the current Bitcoin tip), `previous`, or `next`.
+            The prepare phase at the end of a cycle belongs to that cycle.
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                title: StakingCycle
+                type: object
+                required:
+                  - number
+                  - status
+                  - schedule
+                  - locked
+                  - participants
+                  - bonds
+                  - rewards
+                properties:
+                  number:
+                    description: The PoX reward cycle number
+                    type: integer
+                    example: 143
+                  status:
+                    description: Where the cycle stands relative to the current Bitcoin tip.
+                    anyOf:
+                      - type: string
+                        enum:
+                          - upcoming
+                      - type: string
+                        enum:
+                          - reward_phase
+                      - type: string
+                        enum:
+                          - prepare_phase
+                      - type: string
+                        enum:
+                          - finished
+                  schedule:
+                    description: "The Bitcoin heights delimiting the cycle, inclusive: its first
+                      block, the first block of its prepare phase, and its last
+                      block."
+                    type: object
+                    required:
+                      - start
+                      - prepare_phase_start
+                      - end
+                    properties:
+                      start:
+                        type: object
+                        required:
+                          - bitcoin_height
+                        properties:
+                          bitcoin_height:
+                            description: The Bitcoin height of this point
+                            type: integer
+                      prepare_phase_start:
+                        type: object
+                        required:
+                          - bitcoin_height
+                        properties:
+                          bitcoin_height:
+                            description: The Bitcoin height of this point
+                            type: integer
+                      end:
+                        type: object
+                        required:
+                          - bitcoin_height
+                        properties:
+                          bitcoin_height:
+                            description: The Bitcoin height of this point
+                            type: integer
+                  locked:
+                    description: The assets locked by staking for this cycle
+                    type: object
+                    required:
+                      - stx
+                      - btc
+                    properties:
+                      stx:
+                        type: object
+                        required:
+                          - stx_only
+                          - bonds
+                          - total
+                        properties:
+                          stx_only:
+                            pattern: ^[0-9]+$
+                            title: Amount
+                            description: STX locked in STX-only staking that counts for this cycle, in µSTX.
+                            type: string
+                            example: "1000000"
+                          bonds:
+                            pattern: ^[0-9]+$
+                            title: Amount
+                            description: STX locked across the bonds covering this cycle, in µSTX.
+                            type: string
+                            example: "1000000"
+                          total:
+                            pattern: ^[0-9]+$
+                            title: Amount
+                            description: Sum of `stx_only` and `bonds`, in µSTX.
+                            type: string
+                            example: "1000000"
+                      btc:
+                        type: object
+                        required:
+                          - total
+                          - native
+                          - sbtc
+                        properties:
+                          total:
+                            pattern: ^[0-9]+$
+                            title: Amount
+                            description: BTC locked across the bonds covering this cycle, in satoshis
+                              (proven Bitcoin L1 lockups and sBTC lockups). For
+                              a finished cycle this is the BTC staked per bond
+                              at the cycle's latest reward distribution;
+                              otherwise the bonds' running locked totals.
+                            type: string
+                            example: "1000000"
+                          native:
+                            pattern: ^[0-9]+$
+                            title: Amount
+                            description: Of `total`, the satoshis locked through proven Bitcoin L1 lockups.
+                            type: string
+                            example: "1000000"
+                          sbtc:
+                            pattern: ^[0-9]+$
+                            title: Amount
+                            description: Of `total`, the satoshis locked through sBTC lockups.
+                            type: string
+                            example: "1000000"
+                  participants:
+                    description: Who participates in the cycle
+                    type: object
+                    required:
+                      - stakers
+                      - signers
+                    properties:
+                      stakers:
+                        type: object
+                        required:
+                          - stx_only
+                          - bonds
+                        properties:
+                          stx_only:
+                            description: Principals whose STX-only stake counts for this cycle.
+                            type: integer
+                          bonds:
+                            description: Principals holding a position in a bond covering this cycle.
+                            type: integer
+                      signers:
+                        anyOf:
+                          - description: Signers in the cycle's reward set. `null` until the node has
+                              emitted the reward set, which happens during the
+                              previous cycle's prepare phase.
+                            type: integer
+                          - type: "null"
+                  bonds:
+                    description: The pox-5 bonds active during this cycle
+                    type: object
+                    required:
+                      - total
+                      - indexes
+                    properties:
+                      total:
+                        description: Bonds whose term covers this cycle
+                        type: integer
+                      indexes:
+                        description: Their bond indexes, ascending
+                        type: array
+                        items:
+                          description: The index of the bond in the PoX-5 bond list
+                          type: integer
+                  rewards:
+                    description: The rewards generated by this cycle
+                    type: object
+                    required:
+                      - btc
+                    properties:
+                      btc:
+                        type: object
+                        required:
+                          - total
+                          - waterfall
+                          - claimed
+                        properties:
+                          total:
+                            pattern: ^[0-9]+$
+                            title: Amount
+                            description: sBTC rewards booked to this cycle by the pox-5 reward distributions
+                              run so far, in satoshis. Distributions run
+                              periodically within a cycle, so this grows while
+                              the cycle is active; it equals the sum of the
+                              `waterfall` entries.
+                            type: string
+                            example: "1000000"
+                          waterfall:
+                            description: How the accrued rewards were split, in payout order
+                            type: object
+                            required:
+                              - bonds
+                              - stx_only
+                              - reserve_deposit
+                            properties:
+                              bonds:
+                                pattern: ^[0-9]+$
+                                title: Amount
+                                description: The share paid to bond participants, in satoshis.
+                                type: string
+                                example: "1000000"
+                              stx_only:
+                                pattern: ^[0-9]+$
+                                title: Amount
+                                description: The share paid to STX-only stakers, in satoshis.
+                                type: string
+                                example: "1000000"
+                              reserve_deposit:
+                                pattern: ^[0-9]+$
+                                title: Amount
+                                description: The share deposited into the protocol reserve, in satoshis.
+                                type: string
+                                example: "1000000"
+                          claimed:
+                            pattern: ^[0-9]+$
+                            title: Amount
+                            description: sBTC claimed from the pox-5 contract by signer managers for this
+                              cycle so far, in satoshis. Claims trail
+                              distributions and can keep growing after the cycle
+                              ends.
+                            type: string
+                            example: "1000000"
+        4XX:
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                title: Error Response
+                additionalProperties: true
+                type: object
+                required:
+                  - error
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
   /extended/v3/staking/cycles/{cycle_number}/signers:
     get:
       operationId: get_cycle_signers
@@ -25893,10 +26208,7 @@ paths:
         - Staking
       description: Get the signer set of a PoX cycle, including each signer's weight,
         staked amount, and the signer manager contracts whose registered signing
-        key (via `register-signer`) was this key when the cycle's reward set was
-        calculated. Each manager also lists its live `grant-signer-key`
-        authorizations, and keys registered after the reward set was calculated
-        are surfaced as pending updates that take effect next cycle.
+        key was this key when the cycle's reward set was calculated.
       parameters:
         - schema:
             minimum: 1
@@ -25916,14 +26228,19 @@ paths:
           description: "Cursor for paginating a cycle's signers (sorted by weight
             descending, then signing key). Format: signing key"
         - schema:
+            pattern: ^([0-9]{1,9}|current|previous|next)$
             type: string
-            enum:
-              - current
+          examples:
+            "143":
+              value: "143"
+            current:
+              value: current
           in: path
           name: cycle_number
           required: true
-          description: The PoX cycle to fetch signers for. Only `current` is supported at
-            the moment.
+          description: A PoX cycle number (up to nine digits), or one of `current` (the
+            cycle containing the current Bitcoin tip), `previous`, or `next`.
+            The prepare phase at the end of a cycle belongs to that cycle.
       responses:
         "200":
           description: Default Response
@@ -28936,6 +29253,19 @@ paths:
                               index_hash:
                                 description: Index block hash of the parent block
                                 type: string
+                          post_condition_mode:
+                            description: Post condition mode of the transaction. Only present when requested
+                              via the `include=post_conditions` query param.
+                            anyOf:
+                              - type: string
+                                enum:
+                                  - allow
+                              - type: string
+                                enum:
+                                  - deny
+                              - type: string
+                                enum:
+                                  - originator
                           post_conditions:
                             description: Only present when requested via the `include=post_conditions` query
                               param.
@@ -29471,6 +29801,19 @@ paths:
                               index_hash:
                                 description: Index block hash of the parent block
                                 type: string
+                          post_condition_mode:
+                            description: Post condition mode of the transaction. Only present when requested
+                              via the `include=post_conditions` query param.
+                            anyOf:
+                              - type: string
+                                enum:
+                                  - allow
+                              - type: string
+                                enum:
+                                  - deny
+                              - type: string
+                                enum:
+                                  - originator
                           post_conditions:
                             description: Only present when requested via the `include=post_conditions` query
                               param.
@@ -29999,6 +30342,19 @@ paths:
                               index_hash:
                                 description: Index block hash of the parent block
                                 type: string
+                          post_condition_mode:
+                            description: Post condition mode of the transaction. Only present when requested
+                              via the `include=post_conditions` query param.
+                            anyOf:
+                              - type: string
+                                enum:
+                                  - allow
+                              - type: string
+                                enum:
+                                  - deny
+                              - type: string
+                                enum:
+                                  - originator
                           post_conditions:
                             description: Only present when requested via the `include=post_conditions` query
                               param.
@@ -30535,6 +30891,19 @@ paths:
                               index_hash:
                                 description: Index block hash of the parent block
                                 type: string
+                          post_condition_mode:
+                            description: Post condition mode of the transaction. Only present when requested
+                              via the `include=post_conditions` query param.
+                            anyOf:
+                              - type: string
+                                enum:
+                                  - allow
+                              - type: string
+                                enum:
+                                  - deny
+                              - type: string
+                                enum:
+                                  - originator
                           post_conditions:
                             description: Only present when requested via the `include=post_conditions` query
                               param.
@@ -31045,6 +31414,19 @@ paths:
                               index_hash:
                                 description: Index block hash of the parent block
                                 type: string
+                          post_condition_mode:
+                            description: Post condition mode of the transaction. Only present when requested
+                              via the `include=post_conditions` query param.
+                            anyOf:
+                              - type: string
+                                enum:
+                                  - allow
+                              - type: string
+                                enum:
+                                  - deny
+                              - type: string
+                                enum:
+                                  - originator
                           post_conditions:
                             description: Only present when requested via the `include=post_conditions` query
                               param.
@@ -31612,6 +31994,19 @@ paths:
                               index_hash:
                                 description: Index block hash of the parent block
                                 type: string
+                          post_condition_mode:
+                            description: Post condition mode of the transaction. Only present when requested
+                              via the `include=post_conditions` query param.
+                            anyOf:
+                              - type: string
+                                enum:
+                                  - allow
+                              - type: string
+                                enum:
+                                  - deny
+                              - type: string
+                                enum:
+                                  - originator
                           post_conditions:
                             description: Only present when requested via the `include=post_conditions` query
                               param.
@@ -32104,6 +32499,19 @@ paths:
                               - type: string
                                 enum:
                                   - dropped_problematic
+                          post_condition_mode:
+                            description: Post condition mode of the transaction. Only present when requested
+                              via the `include=post_conditions` query param.
+                            anyOf:
+                              - type: string
+                                enum:
+                                  - allow
+                              - type: string
+                                enum:
+                                  - deny
+                              - type: string
+                                enum:
+                                  - originator
                           post_conditions:
                             description: Only present when requested via the `include=post_conditions` query
                               param.
@@ -32563,6 +32971,19 @@ paths:
                               - type: string
                                 enum:
                                   - dropped_problematic
+                          post_condition_mode:
+                            description: Post condition mode of the transaction. Only present when requested
+                              via the `include=post_conditions` query param.
+                            anyOf:
+                              - type: string
+                                enum:
+                                  - allow
+                              - type: string
+                                enum:
+                                  - deny
+                              - type: string
+                                enum:
+                                  - originator
                           post_conditions:
                             description: Only present when requested via the `include=post_conditions` query
                               param.
@@ -33015,6 +33436,19 @@ paths:
                               - type: string
                                 enum:
                                   - dropped_problematic
+                          post_condition_mode:
+                            description: Post condition mode of the transaction. Only present when requested
+                              via the `include=post_conditions` query param.
+                            anyOf:
+                              - type: string
+                                enum:
+                                  - allow
+                              - type: string
+                                enum:
+                                  - deny
+                              - type: string
+                                enum:
+                                  - originator
                           post_conditions:
                             description: Only present when requested via the `include=post_conditions` query
                               param.
@@ -33475,6 +33909,19 @@ paths:
                               - type: string
                                 enum:
                                   - dropped_problematic
+                          post_condition_mode:
+                            description: Post condition mode of the transaction. Only present when requested
+                              via the `include=post_conditions` query param.
+                            anyOf:
+                              - type: string
+                                enum:
+                                  - allow
+                              - type: string
+                                enum:
+                                  - deny
+                              - type: string
+                                enum:
+                                  - originator
                           post_conditions:
                             description: Only present when requested via the `include=post_conditions` query
                               param.
@@ -33908,6 +34355,19 @@ paths:
                               - type: string
                                 enum:
                                   - dropped_problematic
+                          post_condition_mode:
+                            description: Post condition mode of the transaction. Only present when requested
+                              via the `include=post_conditions` query param.
+                            anyOf:
+                              - type: string
+                                enum:
+                                  - allow
+                              - type: string
+                                enum:
+                                  - deny
+                              - type: string
+                                enum:
+                                  - originator
                           post_conditions:
                             description: Only present when requested via the `include=post_conditions` query
                               param.
@@ -34341,6 +34801,19 @@ paths:
                               - type: string
                                 enum:
                                   - dropped_problematic
+                          post_condition_mode:
+                            description: Post condition mode of the transaction. Only present when requested
+                              via the `include=post_conditions` query param.
+                            anyOf:
+                              - type: string
+                                enum:
+                                  - allow
+                              - type: string
+                                enum:
+                                  - deny
+                              - type: string
+                                enum:
+                                  - originator
                           post_conditions:
                             description: Only present when requested via the `include=post_conditions` query
                               param.
@@ -35358,11 +35831,6 @@ tags:
   - name: Info
     description: Read-only endpoints to obtain network, Proof-of-Transfer, Stacking,
       STX token, and node information
-  - name: Microblocks
-    description: Read-only endpoints to obtain microblocks details
-    externalDocs:
-      description: Stacks Documentation - Microblocks
-      url: https://docs.stacks.co/understand-stacks/microblocks
   - name: Names
     description: Read-only endpoints realted to the Blockchain Naming System on Stacks
     externalDocs:

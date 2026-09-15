@@ -527,71 +527,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/extended/v1/microblock/": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get recent microblocks
-         * @deprecated
-         * @description Retrieves a list of microblocks. **This endpoint is deprecated.** Microblocks were removed in the Stacks Nakamoto upgrade and are no longer produced.
-         *
-         *               If you need to actively monitor new microblocks, we highly recommend subscribing to [WebSockets or Socket.io](https://github.com/hirosystems/stacks-blockchain-api/tree/main/client) for real-time updates.
-         */
-        get: operations["get_microblock_list"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/extended/v1/microblock/{hash}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get microblock
-         * @deprecated
-         * @description Retrieves a specific microblock by `hash`. **This endpoint is deprecated.** Microblocks were removed in the Stacks Nakamoto upgrade and are no longer produced.
-         */
-        get: operations["get_microblock_by_hash"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/extended/v1/microblock/unanchored/txs": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get the list of current transactions that belong to unanchored microblocks
-         * @deprecated
-         * @description Retrieves transactions that have been streamed in microblocks but not yet accepted or rejected in an anchor block. **This endpoint is deprecated.** Microblocks were removed in the Stacks Nakamoto upgrade and are no longer produced.
-         */
-        get: operations["get_unanchored_txs"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/extended/v1/block/": {
         parameters: {
             query?: never;
@@ -2062,7 +1997,7 @@ export interface paths {
         };
         /**
          * Get principal nonces
-         * @description Get a Stacks account's latest nonce state by inspecting its confirmed (anchored + microblock) transactions and the mempool, including the nonce to use for its next transaction. Only standard principals have nonces; contract principals are not valid.
+         * @description Get a Stacks account's latest nonce state by inspecting its confirmed transactions and the mempool, including the nonce to use for its next transaction. Only standard principals have nonces; contract principals are not valid.
          */
         get: operations["get_principal_nonces"];
         put?: never;
@@ -2253,6 +2188,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/extended/v3/staking/cycles/{cycle_number}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get staking cycle
+         * @description A summary of staking for one PoX reward cycle.
+         */
+        get: operations["get_staking_cycle"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/extended/v3/staking/cycles/{cycle_number}/signers": {
         parameters: {
             query?: never;
@@ -2262,7 +2217,7 @@ export interface paths {
         };
         /**
          * Get cycle signers
-         * @description Get the signer set of a PoX cycle, including each signer's weight, staked amount, and the signer manager contracts whose registered signing key (via `register-signer`) was this key when the cycle's reward set was calculated. Each manager also lists its live `grant-signer-key` authorizations, and keys registered after the reward set was calculated are surfaced as pending updates that take effect next cycle.
+         * @description Get the signer set of a PoX cycle, including each signer's weight, staked amount, and the signer manager contracts whose registered signing key was this key when the cycle's reward set was calculated.
          */
         get: operations["get_cycle_signers"];
         put?: never;
@@ -2782,10 +2737,6 @@ export interface operations {
                             block_hash: string;
                             /** @description the current index block hash */
                             index_block_hash: string;
-                            /** @description the current microblock hash */
-                            microblock_hash?: string;
-                            /** @description the current microblock sequence number */
-                            microblock_sequence?: number;
                             /** @description the current burn chain block height */
                             burn_block_height: number;
                         } | null;
@@ -2816,11 +2767,6 @@ export interface operations {
                 /** @description Results per page */
                 limit?: number;
                 type?: ("coinbase" | "token_transfer" | "smart_contract" | "contract_call" | "poison_microblock" | "tenure_change")[];
-                /**
-                 * @description Include data from unanchored (i.e. unconfirmed) microblocks
-                 * @example true
-                 */
-                unanchored?: boolean;
                 order?: "asc" | "desc";
                 /** @description Option to sort results by block height, timestamp, or fee */
                 sort_by?: "block_height" | "burn_block_time" | "fee";
@@ -3029,7 +2975,7 @@ export interface operations {
                             event_count: number;
                             /** @description Hash of the previous block. */
                             parent_block_hash: string;
-                            /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. */
+                            /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. Microblocks were removed in the Nakamoto upgrade, so this is always `false`. */
                             is_unanchored: boolean;
                             /** @description The microblock hash that this transaction was streamed in. If the transaction was batched in an anchor block (not included within a microblock) then this value will be an empty string. */
                             microblock_hash: string;
@@ -3279,7 +3225,7 @@ export interface operations {
                             event_count: number;
                             /** @description Hash of the previous block. */
                             parent_block_hash: string;
-                            /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. */
+                            /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. Microblocks were removed in the Nakamoto upgrade, so this is always `false`. */
                             is_unanchored: boolean;
                             /** @description The microblock hash that this transaction was streamed in. If the transaction was batched in an anchor block (not included within a microblock) then this value will be an empty string. */
                             microblock_hash: string;
@@ -3529,7 +3475,7 @@ export interface operations {
                             event_count: number;
                             /** @description Hash of the previous block. */
                             parent_block_hash: string;
-                            /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. */
+                            /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. Microblocks were removed in the Nakamoto upgrade, so this is always `false`. */
                             is_unanchored: boolean;
                             /** @description The microblock hash that this transaction was streamed in. If the transaction was batched in an anchor block (not included within a microblock) then this value will be an empty string. */
                             microblock_hash: string;
@@ -3786,7 +3732,7 @@ export interface operations {
                             event_count: number;
                             /** @description Hash of the previous block. */
                             parent_block_hash: string;
-                            /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. */
+                            /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. Microblocks were removed in the Nakamoto upgrade, so this is always `false`. */
                             is_unanchored: boolean;
                             /** @description The microblock hash that this transaction was streamed in. If the transaction was batched in an anchor block (not included within a microblock) then this value will be an empty string. */
                             microblock_hash: string;
@@ -4035,7 +3981,7 @@ export interface operations {
                             event_count: number;
                             /** @description Hash of the previous block. */
                             parent_block_hash: string;
-                            /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. */
+                            /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. Microblocks were removed in the Nakamoto upgrade, so this is always `false`. */
                             is_unanchored: boolean;
                             /** @description The microblock hash that this transaction was streamed in. If the transaction was batched in an anchor block (not included within a microblock) then this value will be an empty string. */
                             microblock_hash: string;
@@ -4284,7 +4230,7 @@ export interface operations {
                             event_count: number;
                             /** @description Hash of the previous block. */
                             parent_block_hash: string;
-                            /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. */
+                            /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. Microblocks were removed in the Nakamoto upgrade, so this is always `false`. */
                             is_unanchored: boolean;
                             /** @description The microblock hash that this transaction was streamed in. If the transaction was batched in an anchor block (not included within a microblock) then this value will be an empty string. */
                             microblock_hash: string;
@@ -4417,11 +4363,6 @@ export interface operations {
                 event_limit?: number;
                 /** @description Result offset */
                 event_offset?: number;
-                /**
-                 * @description Include data from unanchored (i.e. unconfirmed) microblocks
-                 * @example true
-                 */
-                unanchored?: boolean;
                 /** @description Exclude function_args from contract call responses for smaller transaction sizes. */
                 exclude_function_args?: boolean;
             };
@@ -4595,7 +4536,7 @@ export interface operations {
                                 event_count: number;
                                 /** @description Hash of the previous block. */
                                 parent_block_hash: string;
-                                /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. */
+                                /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. Microblocks were removed in the Nakamoto upgrade, so this is always `false`. */
                                 is_unanchored: boolean;
                                 /** @description The microblock hash that this transaction was streamed in. If the transaction was batched in an anchor block (not included within a microblock) then this value will be an empty string. */
                                 microblock_hash: string;
@@ -4845,7 +4786,7 @@ export interface operations {
                                 event_count: number;
                                 /** @description Hash of the previous block. */
                                 parent_block_hash: string;
-                                /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. */
+                                /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. Microblocks were removed in the Nakamoto upgrade, so this is always `false`. */
                                 is_unanchored: boolean;
                                 /** @description The microblock hash that this transaction was streamed in. If the transaction was batched in an anchor block (not included within a microblock) then this value will be an empty string. */
                                 microblock_hash: string;
@@ -5095,7 +5036,7 @@ export interface operations {
                                 event_count: number;
                                 /** @description Hash of the previous block. */
                                 parent_block_hash: string;
-                                /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. */
+                                /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. Microblocks were removed in the Nakamoto upgrade, so this is always `false`. */
                                 is_unanchored: boolean;
                                 /** @description The microblock hash that this transaction was streamed in. If the transaction was batched in an anchor block (not included within a microblock) then this value will be an empty string. */
                                 microblock_hash: string;
@@ -5352,7 +5293,7 @@ export interface operations {
                                 event_count: number;
                                 /** @description Hash of the previous block. */
                                 parent_block_hash: string;
-                                /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. */
+                                /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. Microblocks were removed in the Nakamoto upgrade, so this is always `false`. */
                                 is_unanchored: boolean;
                                 /** @description The microblock hash that this transaction was streamed in. If the transaction was batched in an anchor block (not included within a microblock) then this value will be an empty string. */
                                 microblock_hash: string;
@@ -5601,7 +5542,7 @@ export interface operations {
                                 event_count: number;
                                 /** @description Hash of the previous block. */
                                 parent_block_hash: string;
-                                /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. */
+                                /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. Microblocks were removed in the Nakamoto upgrade, so this is always `false`. */
                                 is_unanchored: boolean;
                                 /** @description The microblock hash that this transaction was streamed in. If the transaction was batched in an anchor block (not included within a microblock) then this value will be an empty string. */
                                 microblock_hash: string;
@@ -5850,7 +5791,7 @@ export interface operations {
                                 event_count: number;
                                 /** @description Hash of the previous block. */
                                 parent_block_hash: string;
-                                /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. */
+                                /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. Microblocks were removed in the Nakamoto upgrade, so this is always `false`. */
                                 is_unanchored: boolean;
                                 /** @description The microblock hash that this transaction was streamed in. If the transaction was batched in an anchor block (not included within a microblock) then this value will be an empty string. */
                                 microblock_hash: string;
@@ -6828,11 +6769,6 @@ export interface operations {
                 order_by?: "age" | "size" | "fee";
                 /** @description Results order */
                 order?: "asc" | "desc";
-                /**
-                 * @description Include data from unanchored (i.e. unconfirmed) microblocks
-                 * @example true
-                 */
-                unanchored?: boolean;
                 /** @description Result offset */
                 offset?: number;
                 /** @description Results per page */
@@ -7901,11 +7837,6 @@ export interface operations {
                 event_limit?: number;
                 /** @description Result offset */
                 event_offset?: number;
-                /**
-                 * @description Include data from unanchored (i.e. unconfirmed) microblocks
-                 * @example true
-                 */
-                unanchored?: boolean;
                 /** @description Exclude function_args from contract call responses for smaller transaction sizes. */
                 exclude_function_args?: boolean;
             };
@@ -8081,7 +8012,7 @@ export interface operations {
                         event_count: number;
                         /** @description Hash of the previous block. */
                         parent_block_hash: string;
-                        /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. */
+                        /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. Microblocks were removed in the Nakamoto upgrade, so this is always `false`. */
                         is_unanchored: boolean;
                         /** @description The microblock hash that this transaction was streamed in. If the transaction was batched in an anchor block (not included within a microblock) then this value will be an empty string. */
                         microblock_hash: string;
@@ -8331,7 +8262,7 @@ export interface operations {
                         event_count: number;
                         /** @description Hash of the previous block. */
                         parent_block_hash: string;
-                        /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. */
+                        /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. Microblocks were removed in the Nakamoto upgrade, so this is always `false`. */
                         is_unanchored: boolean;
                         /** @description The microblock hash that this transaction was streamed in. If the transaction was batched in an anchor block (not included within a microblock) then this value will be an empty string. */
                         microblock_hash: string;
@@ -8581,7 +8512,7 @@ export interface operations {
                         event_count: number;
                         /** @description Hash of the previous block. */
                         parent_block_hash: string;
-                        /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. */
+                        /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. Microblocks were removed in the Nakamoto upgrade, so this is always `false`. */
                         is_unanchored: boolean;
                         /** @description The microblock hash that this transaction was streamed in. If the transaction was batched in an anchor block (not included within a microblock) then this value will be an empty string. */
                         microblock_hash: string;
@@ -8838,7 +8769,7 @@ export interface operations {
                         event_count: number;
                         /** @description Hash of the previous block. */
                         parent_block_hash: string;
-                        /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. */
+                        /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. Microblocks were removed in the Nakamoto upgrade, so this is always `false`. */
                         is_unanchored: boolean;
                         /** @description The microblock hash that this transaction was streamed in. If the transaction was batched in an anchor block (not included within a microblock) then this value will be an empty string. */
                         microblock_hash: string;
@@ -9087,7 +9018,7 @@ export interface operations {
                         event_count: number;
                         /** @description Hash of the previous block. */
                         parent_block_hash: string;
-                        /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. */
+                        /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. Microblocks were removed in the Nakamoto upgrade, so this is always `false`. */
                         is_unanchored: boolean;
                         /** @description The microblock hash that this transaction was streamed in. If the transaction was batched in an anchor block (not included within a microblock) then this value will be an empty string. */
                         microblock_hash: string;
@@ -9336,7 +9267,7 @@ export interface operations {
                         event_count: number;
                         /** @description Hash of the previous block. */
                         parent_block_hash: string;
-                        /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. */
+                        /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. Microblocks were removed in the Nakamoto upgrade, so this is always `false`. */
                         is_unanchored: boolean;
                         /** @description The microblock hash that this transaction was streamed in. If the transaction was batched in an anchor block (not included within a microblock) then this value will be an empty string. */
                         microblock_hash: string;
@@ -10516,7 +10447,7 @@ export interface operations {
                             event_count: number;
                             /** @description Hash of the previous block. */
                             parent_block_hash: string;
-                            /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. */
+                            /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. Microblocks were removed in the Nakamoto upgrade, so this is always `false`. */
                             is_unanchored: boolean;
                             /** @description The microblock hash that this transaction was streamed in. If the transaction was batched in an anchor block (not included within a microblock) then this value will be an empty string. */
                             microblock_hash: string;
@@ -10766,7 +10697,7 @@ export interface operations {
                             event_count: number;
                             /** @description Hash of the previous block. */
                             parent_block_hash: string;
-                            /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. */
+                            /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. Microblocks were removed in the Nakamoto upgrade, so this is always `false`. */
                             is_unanchored: boolean;
                             /** @description The microblock hash that this transaction was streamed in. If the transaction was batched in an anchor block (not included within a microblock) then this value will be an empty string. */
                             microblock_hash: string;
@@ -11016,7 +10947,7 @@ export interface operations {
                             event_count: number;
                             /** @description Hash of the previous block. */
                             parent_block_hash: string;
-                            /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. */
+                            /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. Microblocks were removed in the Nakamoto upgrade, so this is always `false`. */
                             is_unanchored: boolean;
                             /** @description The microblock hash that this transaction was streamed in. If the transaction was batched in an anchor block (not included within a microblock) then this value will be an empty string. */
                             microblock_hash: string;
@@ -11273,7 +11204,7 @@ export interface operations {
                             event_count: number;
                             /** @description Hash of the previous block. */
                             parent_block_hash: string;
-                            /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. */
+                            /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. Microblocks were removed in the Nakamoto upgrade, so this is always `false`. */
                             is_unanchored: boolean;
                             /** @description The microblock hash that this transaction was streamed in. If the transaction was batched in an anchor block (not included within a microblock) then this value will be an empty string. */
                             microblock_hash: string;
@@ -11522,7 +11453,7 @@ export interface operations {
                             event_count: number;
                             /** @description Hash of the previous block. */
                             parent_block_hash: string;
-                            /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. */
+                            /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. Microblocks were removed in the Nakamoto upgrade, so this is always `false`. */
                             is_unanchored: boolean;
                             /** @description The microblock hash that this transaction was streamed in. If the transaction was batched in an anchor block (not included within a microblock) then this value will be an empty string. */
                             microblock_hash: string;
@@ -11771,7 +11702,7 @@ export interface operations {
                             event_count: number;
                             /** @description Hash of the previous block. */
                             parent_block_hash: string;
-                            /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. */
+                            /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. Microblocks were removed in the Nakamoto upgrade, so this is always `false`. */
                             is_unanchored: boolean;
                             /** @description The microblock hash that this transaction was streamed in. If the transaction was batched in an anchor block (not included within a microblock) then this value will be an empty string. */
                             microblock_hash: string;
@@ -12085,7 +12016,7 @@ export interface operations {
                             event_count: number;
                             /** @description Hash of the previous block. */
                             parent_block_hash: string;
-                            /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. */
+                            /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. Microblocks were removed in the Nakamoto upgrade, so this is always `false`. */
                             is_unanchored: boolean;
                             /** @description The microblock hash that this transaction was streamed in. If the transaction was batched in an anchor block (not included within a microblock) then this value will be an empty string. */
                             microblock_hash: string;
@@ -12335,7 +12266,7 @@ export interface operations {
                             event_count: number;
                             /** @description Hash of the previous block. */
                             parent_block_hash: string;
-                            /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. */
+                            /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. Microblocks were removed in the Nakamoto upgrade, so this is always `false`. */
                             is_unanchored: boolean;
                             /** @description The microblock hash that this transaction was streamed in. If the transaction was batched in an anchor block (not included within a microblock) then this value will be an empty string. */
                             microblock_hash: string;
@@ -12585,7 +12516,7 @@ export interface operations {
                             event_count: number;
                             /** @description Hash of the previous block. */
                             parent_block_hash: string;
-                            /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. */
+                            /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. Microblocks were removed in the Nakamoto upgrade, so this is always `false`. */
                             is_unanchored: boolean;
                             /** @description The microblock hash that this transaction was streamed in. If the transaction was batched in an anchor block (not included within a microblock) then this value will be an empty string. */
                             microblock_hash: string;
@@ -12842,7 +12773,7 @@ export interface operations {
                             event_count: number;
                             /** @description Hash of the previous block. */
                             parent_block_hash: string;
-                            /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. */
+                            /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. Microblocks were removed in the Nakamoto upgrade, so this is always `false`. */
                             is_unanchored: boolean;
                             /** @description The microblock hash that this transaction was streamed in. If the transaction was batched in an anchor block (not included within a microblock) then this value will be an empty string. */
                             microblock_hash: string;
@@ -13091,7 +13022,7 @@ export interface operations {
                             event_count: number;
                             /** @description Hash of the previous block. */
                             parent_block_hash: string;
-                            /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. */
+                            /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. Microblocks were removed in the Nakamoto upgrade, so this is always `false`. */
                             is_unanchored: boolean;
                             /** @description The microblock hash that this transaction was streamed in. If the transaction was batched in an anchor block (not included within a microblock) then this value will be an empty string. */
                             microblock_hash: string;
@@ -13340,7 +13271,7 @@ export interface operations {
                             event_count: number;
                             /** @description Hash of the previous block. */
                             parent_block_hash: string;
-                            /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. */
+                            /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. Microblocks were removed in the Nakamoto upgrade, so this is always `false`. */
                             is_unanchored: boolean;
                             /** @description The microblock hash that this transaction was streamed in. If the transaction was batched in an anchor block (not included within a microblock) then this value will be an empty string. */
                             microblock_hash: string;
@@ -13473,11 +13404,6 @@ export interface operations {
                  * @example 777678
                  */
                 height?: number;
-                /**
-                 * @description Include data from unanchored (i.e. unconfirmed) microblocks
-                 * @example true
-                 */
-                unanchored?: boolean;
             };
             header?: never;
             path?: never;
@@ -13597,11 +13523,6 @@ export interface operations {
                  * @example 777678
                  */
                 height?: number;
-                /**
-                 * @description Include data from unanchored (i.e. unconfirmed) microblocks
-                 * @example true
-                 */
-                unanchored?: boolean;
             };
             header?: never;
             path?: never;
@@ -13936,7 +13857,7 @@ export interface operations {
                                 event_count: number;
                                 /** @description Hash of the previous block. */
                                 parent_block_hash: string;
-                                /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. */
+                                /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. Microblocks were removed in the Nakamoto upgrade, so this is always `false`. */
                                 is_unanchored: boolean;
                                 /** @description The microblock hash that this transaction was streamed in. If the transaction was batched in an anchor block (not included within a microblock) then this value will be an empty string. */
                                 microblock_hash: string;
@@ -14186,7 +14107,7 @@ export interface operations {
                                 event_count: number;
                                 /** @description Hash of the previous block. */
                                 parent_block_hash: string;
-                                /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. */
+                                /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. Microblocks were removed in the Nakamoto upgrade, so this is always `false`. */
                                 is_unanchored: boolean;
                                 /** @description The microblock hash that this transaction was streamed in. If the transaction was batched in an anchor block (not included within a microblock) then this value will be an empty string. */
                                 microblock_hash: string;
@@ -14436,7 +14357,7 @@ export interface operations {
                                 event_count: number;
                                 /** @description Hash of the previous block. */
                                 parent_block_hash: string;
-                                /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. */
+                                /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. Microblocks were removed in the Nakamoto upgrade, so this is always `false`. */
                                 is_unanchored: boolean;
                                 /** @description The microblock hash that this transaction was streamed in. If the transaction was batched in an anchor block (not included within a microblock) then this value will be an empty string. */
                                 microblock_hash: string;
@@ -14693,7 +14614,7 @@ export interface operations {
                                 event_count: number;
                                 /** @description Hash of the previous block. */
                                 parent_block_hash: string;
-                                /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. */
+                                /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. Microblocks were removed in the Nakamoto upgrade, so this is always `false`. */
                                 is_unanchored: boolean;
                                 /** @description The microblock hash that this transaction was streamed in. If the transaction was batched in an anchor block (not included within a microblock) then this value will be an empty string. */
                                 microblock_hash: string;
@@ -14942,7 +14863,7 @@ export interface operations {
                                 event_count: number;
                                 /** @description Hash of the previous block. */
                                 parent_block_hash: string;
-                                /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. */
+                                /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. Microblocks were removed in the Nakamoto upgrade, so this is always `false`. */
                                 is_unanchored: boolean;
                                 /** @description The microblock hash that this transaction was streamed in. If the transaction was batched in an anchor block (not included within a microblock) then this value will be an empty string. */
                                 microblock_hash: string;
@@ -15191,7 +15112,7 @@ export interface operations {
                                 event_count: number;
                                 /** @description Hash of the previous block. */
                                 parent_block_hash: string;
-                                /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. */
+                                /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. Microblocks were removed in the Nakamoto upgrade, so this is always `false`. */
                                 is_unanchored: boolean;
                                 /** @description The microblock hash that this transaction was streamed in. If the transaction was batched in an anchor block (not included within a microblock) then this value will be an empty string. */
                                 microblock_hash: string;
@@ -15334,11 +15255,6 @@ export interface operations {
                 limit?: number;
                 /** @description index of first event to fetch */
                 offset?: number;
-                /**
-                 * @description Include data from unanchored (i.e. unconfirmed) microblocks
-                 * @example true
-                 */
-                unanchored?: boolean;
                 /** @description whether or not to include the complete transaction metadata instead of just `tx_id`. Enabling this option can affect performance and response times. */
                 tx_metadata: boolean;
             };
@@ -15526,7 +15442,7 @@ export interface operations {
                                 event_count: number;
                                 /** @description Hash of the previous block. */
                                 parent_block_hash: string;
-                                /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. */
+                                /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. Microblocks were removed in the Nakamoto upgrade, so this is always `false`. */
                                 is_unanchored: boolean;
                                 /** @description The microblock hash that this transaction was streamed in. If the transaction was batched in an anchor block (not included within a microblock) then this value will be an empty string. */
                                 microblock_hash: string;
@@ -15776,7 +15692,7 @@ export interface operations {
                                 event_count: number;
                                 /** @description Hash of the previous block. */
                                 parent_block_hash: string;
-                                /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. */
+                                /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. Microblocks were removed in the Nakamoto upgrade, so this is always `false`. */
                                 is_unanchored: boolean;
                                 /** @description The microblock hash that this transaction was streamed in. If the transaction was batched in an anchor block (not included within a microblock) then this value will be an empty string. */
                                 microblock_hash: string;
@@ -16026,7 +15942,7 @@ export interface operations {
                                 event_count: number;
                                 /** @description Hash of the previous block. */
                                 parent_block_hash: string;
-                                /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. */
+                                /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. Microblocks were removed in the Nakamoto upgrade, so this is always `false`. */
                                 is_unanchored: boolean;
                                 /** @description The microblock hash that this transaction was streamed in. If the transaction was batched in an anchor block (not included within a microblock) then this value will be an empty string. */
                                 microblock_hash: string;
@@ -16283,7 +16199,7 @@ export interface operations {
                                 event_count: number;
                                 /** @description Hash of the previous block. */
                                 parent_block_hash: string;
-                                /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. */
+                                /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. Microblocks were removed in the Nakamoto upgrade, so this is always `false`. */
                                 is_unanchored: boolean;
                                 /** @description The microblock hash that this transaction was streamed in. If the transaction was batched in an anchor block (not included within a microblock) then this value will be an empty string. */
                                 microblock_hash: string;
@@ -16532,7 +16448,7 @@ export interface operations {
                                 event_count: number;
                                 /** @description Hash of the previous block. */
                                 parent_block_hash: string;
-                                /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. */
+                                /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. Microblocks were removed in the Nakamoto upgrade, so this is always `false`. */
                                 is_unanchored: boolean;
                                 /** @description The microblock hash that this transaction was streamed in. If the transaction was batched in an anchor block (not included within a microblock) then this value will be an empty string. */
                                 microblock_hash: string;
@@ -16781,7 +16697,7 @@ export interface operations {
                                 event_count: number;
                                 /** @description Hash of the previous block. */
                                 parent_block_hash: string;
-                                /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. */
+                                /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. Microblocks were removed in the Nakamoto upgrade, so this is always `false`. */
                                 is_unanchored: boolean;
                                 /** @description The microblock hash that this transaction was streamed in. If the transaction was batched in an anchor block (not included within a microblock) then this value will be an empty string. */
                                 microblock_hash: string;
@@ -16919,11 +16835,6 @@ export interface operations {
                 limit?: number;
                 /** @description index of first event to fetch */
                 offset?: number;
-                /**
-                 * @description Include data from unanchored (i.e. unconfirmed) microblocks
-                 * @example true
-                 */
-                unanchored?: boolean;
                 /** @description whether or not to include the complete transaction metadata instead of just `tx_id`. Enabling this option can affect performance and response times. */
                 tx_metadata: boolean;
             };
@@ -17121,7 +17032,7 @@ export interface operations {
                                 event_count: number;
                                 /** @description Hash of the previous block. */
                                 parent_block_hash: string;
-                                /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. */
+                                /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. Microblocks were removed in the Nakamoto upgrade, so this is always `false`. */
                                 is_unanchored: boolean;
                                 /** @description The microblock hash that this transaction was streamed in. If the transaction was batched in an anchor block (not included within a microblock) then this value will be an empty string. */
                                 microblock_hash: string;
@@ -17371,7 +17282,7 @@ export interface operations {
                                 event_count: number;
                                 /** @description Hash of the previous block. */
                                 parent_block_hash: string;
-                                /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. */
+                                /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. Microblocks were removed in the Nakamoto upgrade, so this is always `false`. */
                                 is_unanchored: boolean;
                                 /** @description The microblock hash that this transaction was streamed in. If the transaction was batched in an anchor block (not included within a microblock) then this value will be an empty string. */
                                 microblock_hash: string;
@@ -17621,7 +17532,7 @@ export interface operations {
                                 event_count: number;
                                 /** @description Hash of the previous block. */
                                 parent_block_hash: string;
-                                /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. */
+                                /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. Microblocks were removed in the Nakamoto upgrade, so this is always `false`. */
                                 is_unanchored: boolean;
                                 /** @description The microblock hash that this transaction was streamed in. If the transaction was batched in an anchor block (not included within a microblock) then this value will be an empty string. */
                                 microblock_hash: string;
@@ -17878,7 +17789,7 @@ export interface operations {
                                 event_count: number;
                                 /** @description Hash of the previous block. */
                                 parent_block_hash: string;
-                                /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. */
+                                /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. Microblocks were removed in the Nakamoto upgrade, so this is always `false`. */
                                 is_unanchored: boolean;
                                 /** @description The microblock hash that this transaction was streamed in. If the transaction was batched in an anchor block (not included within a microblock) then this value will be an empty string. */
                                 microblock_hash: string;
@@ -18127,7 +18038,7 @@ export interface operations {
                                 event_count: number;
                                 /** @description Hash of the previous block. */
                                 parent_block_hash: string;
-                                /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. */
+                                /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. Microblocks were removed in the Nakamoto upgrade, so this is always `false`. */
                                 is_unanchored: boolean;
                                 /** @description The microblock hash that this transaction was streamed in. If the transaction was batched in an anchor block (not included within a microblock) then this value will be an empty string. */
                                 microblock_hash: string;
@@ -18376,7 +18287,7 @@ export interface operations {
                                 event_count: number;
                                 /** @description Hash of the previous block. */
                                 parent_block_hash: string;
-                                /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. */
+                                /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. Microblocks were removed in the Nakamoto upgrade, so this is always `false`. */
                                 is_unanchored: boolean;
                                 /** @description The microblock hash that this transaction was streamed in. If the transaction was batched in an anchor block (not included within a microblock) then this value will be an empty string. */
                                 microblock_hash: string;
@@ -18812,1700 +18723,6 @@ export interface operations {
                 content: {
                     "application/json": {
                         fee_rate: number;
-                    };
-                };
-            };
-            /** @description Default Response */
-            "4XX": {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        error: string;
-                        message?: string;
-                    } & {
-                        [key: string]: unknown;
-                    };
-                };
-            };
-        };
-    };
-    get_microblock_list: {
-        parameters: {
-            query?: {
-                /** @description Max number of microblocks to fetch */
-                limit?: number;
-                /** @description Result offset */
-                offset?: number;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description GET request that returns microblocks */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        /** @example 20 */
-                        limit: number;
-                        /** @example 0 */
-                        offset: number;
-                        /** @example 1 */
-                        total: number;
-                        results: {
-                            /** @description Set to `true` if the microblock corresponds to the canonical chain tip. */
-                            canonical: boolean;
-                            /** @description Set to `true` if the microblock was not orphaned in a following anchor block. Defaults to `true` if the following anchor block has not yet been created. */
-                            microblock_canonical: boolean;
-                            /** @description The SHA512/256 hash of this microblock. */
-                            microblock_hash: string;
-                            /** @description A hint to describe how to order a set of microblocks. Starts at 0. */
-                            microblock_sequence: number;
-                            /** @description The SHA512/256 hash of the previous signed microblock in this stream. */
-                            microblock_parent_hash: string;
-                            /** @description The anchor block height that confirmed this microblock. */
-                            block_height: number;
-                            /** @description The height of the anchor block that preceded this microblock. */
-                            parent_block_height: number;
-                            /** @description The hash of the anchor block that preceded this microblock. */
-                            parent_block_hash: string;
-                            /** @description The hash of the Bitcoin block that preceded this microblock. */
-                            parent_burn_block_hash: string;
-                            /** @description The block timestamp of the Bitcoin block that preceded this microblock. */
-                            parent_burn_block_time: number;
-                            /** @description The ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) formatted block time of the bitcoin block that preceded this microblock. */
-                            parent_burn_block_time_iso: string;
-                            /** @description The height of the Bitcoin block that preceded this microblock. */
-                            parent_burn_block_height: number;
-                            block_hash: string | null;
-                            /** @description List of transactions included in the microblock */
-                            txs: string[];
-                        }[];
-                    };
-                };
-            };
-            /** @description Default Response */
-            "4XX": {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        error: string;
-                        message?: string;
-                    } & {
-                        [key: string]: unknown;
-                    };
-                };
-            };
-        };
-    };
-    get_microblock_by_hash: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /**
-                 * @description Hash of the microblock
-                 * @example 0x3bfcdf84b3012adb544cf0f6df4835f93418c2269a3881885e27b3d58eb82d47
-                 */
-                hash: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description A microblock */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        /** @description Set to `true` if the microblock corresponds to the canonical chain tip. */
-                        canonical: boolean;
-                        /** @description Set to `true` if the microblock was not orphaned in a following anchor block. Defaults to `true` if the following anchor block has not yet been created. */
-                        microblock_canonical: boolean;
-                        /** @description The SHA512/256 hash of this microblock. */
-                        microblock_hash: string;
-                        /** @description A hint to describe how to order a set of microblocks. Starts at 0. */
-                        microblock_sequence: number;
-                        /** @description The SHA512/256 hash of the previous signed microblock in this stream. */
-                        microblock_parent_hash: string;
-                        /** @description The anchor block height that confirmed this microblock. */
-                        block_height: number;
-                        /** @description The height of the anchor block that preceded this microblock. */
-                        parent_block_height: number;
-                        /** @description The hash of the anchor block that preceded this microblock. */
-                        parent_block_hash: string;
-                        /** @description The hash of the Bitcoin block that preceded this microblock. */
-                        parent_burn_block_hash: string;
-                        /** @description The block timestamp of the Bitcoin block that preceded this microblock. */
-                        parent_burn_block_time: number;
-                        /** @description The ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) formatted block time of the bitcoin block that preceded this microblock. */
-                        parent_burn_block_time_iso: string;
-                        /** @description The height of the Bitcoin block that preceded this microblock. */
-                        parent_burn_block_height: number;
-                        block_hash: string | null;
-                        /** @description List of transactions included in the microblock */
-                        txs: string[];
-                    };
-                };
-            };
-            /** @description Default Response */
-            "4XX": {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        error: string;
-                        message?: string;
-                    } & {
-                        [key: string]: unknown;
-                    };
-                };
-            };
-        };
-    };
-    get_unanchored_txs: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Default Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        total: number;
-                        results: ({
-                            /** @description Transaction ID */
-                            tx_id: string;
-                            /** @description Used for ordering the transactions originating from and paying from an account. The nonce ensures that a transaction is processed at most once. The nonce counts the number of times an account's owner(s) have authorized a transaction. The first transaction from an account will have a nonce value equal to 0, the second will have a nonce value equal to 1, and so on. */
-                            nonce: number;
-                            /** @description Transaction fee as Integer string (64-bit unsigned integer). */
-                            fee_rate: string;
-                            /** @description Address of the transaction initiator */
-                            sender_address: string;
-                            sponsor_nonce?: number;
-                            /** @description Denotes whether the originating account is the same as the paying account */
-                            sponsored: boolean;
-                            sponsor_address?: string;
-                            post_condition_mode: "allow" | "deny" | "originator";
-                            post_conditions: ({
-                                principal: {
-                                    /** @enum {string} */
-                                    type_id: "principal_origin";
-                                } | {
-                                    /** @enum {string} */
-                                    type_id: "principal_standard";
-                                    address: string;
-                                } | {
-                                    /** @enum {string} */
-                                    type_id: "principal_contract";
-                                    address: string;
-                                    contract_name: string;
-                                };
-                                condition_code: "sent_equal_to" | "sent_greater_than" | "sent_greater_than_or_equal_to" | "sent_less_than" | "sent_less_than_or_equal_to";
-                                amount: string;
-                                /** @enum {string} */
-                                type: "stx";
-                            } | {
-                                principal: {
-                                    /** @enum {string} */
-                                    type_id: "principal_origin";
-                                } | {
-                                    /** @enum {string} */
-                                    type_id: "principal_standard";
-                                    address: string;
-                                } | {
-                                    /** @enum {string} */
-                                    type_id: "principal_contract";
-                                    address: string;
-                                    contract_name: string;
-                                };
-                                condition_code: "sent_equal_to" | "sent_greater_than" | "sent_greater_than_or_equal_to" | "sent_less_than" | "sent_less_than_or_equal_to";
-                                amount: string;
-                                /** @enum {string} */
-                                type: "fungible";
-                                asset: {
-                                    asset_name: string;
-                                    contract_address: string;
-                                    contract_name: string;
-                                };
-                            } | {
-                                principal: {
-                                    /** @enum {string} */
-                                    type_id: "principal_origin";
-                                } | {
-                                    /** @enum {string} */
-                                    type_id: "principal_standard";
-                                    address: string;
-                                } | {
-                                    /** @enum {string} */
-                                    type_id: "principal_contract";
-                                    address: string;
-                                    contract_name: string;
-                                };
-                                condition_code: "sent" | "not_sent" | "maybe_sent";
-                                /** @enum {string} */
-                                type: "non_fungible";
-                                asset_value: {
-                                    hex: string;
-                                    repr: string;
-                                };
-                                asset: {
-                                    asset_name: string;
-                                    contract_address: string;
-                                    contract_name: string;
-                                };
-                            } | {
-                                principal: {
-                                    /** @enum {string} */
-                                    type_id: "principal_origin";
-                                } | {
-                                    /** @enum {string} */
-                                    type_id: "principal_standard";
-                                    address: string;
-                                } | {
-                                    /** @enum {string} */
-                                    type_id: "principal_contract";
-                                    address: string;
-                                    contract_name: string;
-                                };
-                                condition_code: "sent_equal_to" | "sent_greater_than" | "sent_greater_than_or_equal_to" | "sent_less_than" | "sent_less_than_or_equal_to";
-                                amount: string;
-                                /** @enum {string} */
-                                type: "staking";
-                            } | {
-                                principal: {
-                                    /** @enum {string} */
-                                    type_id: "principal_origin";
-                                } | {
-                                    /** @enum {string} */
-                                    type_id: "principal_standard";
-                                    address: string;
-                                } | {
-                                    /** @enum {string} */
-                                    type_id: "principal_contract";
-                                    address: string;
-                                    contract_name: string;
-                                };
-                                condition_code: "not_performed" | "maybe_performed" | "performed";
-                                /** @enum {string} */
-                                type: "pox";
-                            })[];
-                            /** @description `on_chain_only`: the transaction MUST be included in an anchored block, `off_chain_only`: the transaction MUST be included in a microblock, `any`: the leader can choose where to include the transaction. */
-                            anchor_mode: "on_chain_only" | "off_chain_only" | "any";
-                            /** @description Hash of the blocked this transactions was associated with */
-                            block_hash: string;
-                            /** @description Height of the block this transactions was associated with */
-                            block_height: number;
-                            /** @description Unix timestamp (in seconds) indicating when this block was mined. */
-                            block_time: number;
-                            /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) indicating when this block was mined. */
-                            block_time_iso: string;
-                            /** @description Unix timestamp (in seconds) indicating when this block was mined. */
-                            burn_block_time: number;
-                            /** @description Height of the anchor burn block. */
-                            burn_block_height: number;
-                            /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this block was mined. */
-                            burn_block_time_iso: string;
-                            /** @description Unix timestamp (in seconds) indicating when this parent block was mined */
-                            parent_burn_block_time: number;
-                            /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this parent block was mined. */
-                            parent_burn_block_time_iso: string;
-                            /** @description Set to `true` if block corresponds to the canonical chain tip */
-                            canonical: boolean;
-                            /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
-                            tx_index: number;
-                            /** @description Status of the transaction */
-                            tx_status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
-                            /** @description Result of the transaction. For contract calls, this will show the value returned by the call. For other transaction types, this will return a boolean indicating the success of the transaction. */
-                            tx_result: {
-                                /** @description Hex string representing the value fo the transaction result */
-                                hex: string;
-                                /** @description Readable string of the transaction result */
-                                repr: string;
-                            };
-                            /** @description Number of transaction events */
-                            event_count: number;
-                            /** @description Hash of the previous block. */
-                            parent_block_hash: string;
-                            /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. */
-                            is_unanchored: boolean;
-                            /** @description The microblock hash that this transaction was streamed in. If the transaction was batched in an anchor block (not included within a microblock) then this value will be an empty string. */
-                            microblock_hash: string;
-                            /** @description The microblock sequence number that this transaction was streamed in. If the transaction was batched in an anchor block (not included within a microblock) then this value will be 2147483647 (0x7fffffff, the max int32 value), this value preserves logical transaction ordering on (block_height, microblock_sequence, tx_index). */
-                            microblock_sequence: number;
-                            /** @description Set to `true` if microblock is anchored in the canonical chain tip, `false` if the transaction was orphaned in a micro-fork. */
-                            microblock_canonical: boolean;
-                            /** @description Execution cost read count. */
-                            execution_cost_read_count: number;
-                            /** @description Execution cost read length. */
-                            execution_cost_read_length: number;
-                            /** @description Execution cost runtime. */
-                            execution_cost_runtime: number;
-                            /** @description Execution cost write count. */
-                            execution_cost_write_count: number;
-                            /** @description Execution cost write length. */
-                            execution_cost_write_length: number;
-                            vm_error: string | null;
-                            events: (({
-                                event_index: number;
-                            } & {
-                                /** @enum {string} */
-                                event_type: "smart_contract_log";
-                                tx_id: string;
-                                contract_log: {
-                                    contract_id: string;
-                                    topic: string;
-                                    value: {
-                                        hex: string;
-                                        repr: string;
-                                    };
-                                };
-                            }) | ({
-                                event_index: number;
-                            } & {
-                                /** @enum {string} */
-                                event_type: "stx_lock";
-                                tx_id: string;
-                                stx_lock_event: {
-                                    locked_amount: string;
-                                    unlock_height: number;
-                                    locked_address: string;
-                                };
-                            }) | ({
-                                event_index: number;
-                            } & {
-                                /** @enum {string} */
-                                event_type: "stx_asset";
-                                tx_id: string;
-                                asset: {
-                                    asset_event_type: "transfer" | "mint" | "burn";
-                                    sender: string;
-                                    recipient: string;
-                                    amount: string;
-                                    memo?: string;
-                                };
-                            }) | ({
-                                event_index: number;
-                            } & {
-                                /** @enum {string} */
-                                event_type: "fungible_token_asset";
-                                tx_id: string;
-                                asset: {
-                                    asset_event_type: "transfer" | "mint" | "burn";
-                                    asset_id: string;
-                                    sender: string;
-                                    recipient: string;
-                                    amount: string;
-                                };
-                            }) | ({
-                                event_index: number;
-                            } & {
-                                /** @enum {string} */
-                                event_type: "non_fungible_token_asset";
-                                tx_id: string;
-                                asset: {
-                                    asset_event_type: "transfer" | "mint" | "burn";
-                                    asset_id: string;
-                                    sender: string;
-                                    recipient: string;
-                                    value: {
-                                        hex: string;
-                                        repr: string;
-                                    };
-                                };
-                            }))[];
-                            /** @enum {string} */
-                            tx_type: "token_transfer";
-                            token_transfer: {
-                                recipient_address: string;
-                                /** @description Transfer amount as Integer string (64-bit unsigned integer) */
-                                amount: string;
-                                /** @description Hex encoded arbitrary message, up to 34 bytes length (should try decoding to an ASCII string) */
-                                memo: string;
-                            };
-                        } | {
-                            /** @description Transaction ID */
-                            tx_id: string;
-                            /** @description Used for ordering the transactions originating from and paying from an account. The nonce ensures that a transaction is processed at most once. The nonce counts the number of times an account's owner(s) have authorized a transaction. The first transaction from an account will have a nonce value equal to 0, the second will have a nonce value equal to 1, and so on. */
-                            nonce: number;
-                            /** @description Transaction fee as Integer string (64-bit unsigned integer). */
-                            fee_rate: string;
-                            /** @description Address of the transaction initiator */
-                            sender_address: string;
-                            sponsor_nonce?: number;
-                            /** @description Denotes whether the originating account is the same as the paying account */
-                            sponsored: boolean;
-                            sponsor_address?: string;
-                            post_condition_mode: "allow" | "deny" | "originator";
-                            post_conditions: ({
-                                principal: {
-                                    /** @enum {string} */
-                                    type_id: "principal_origin";
-                                } | {
-                                    /** @enum {string} */
-                                    type_id: "principal_standard";
-                                    address: string;
-                                } | {
-                                    /** @enum {string} */
-                                    type_id: "principal_contract";
-                                    address: string;
-                                    contract_name: string;
-                                };
-                                condition_code: "sent_equal_to" | "sent_greater_than" | "sent_greater_than_or_equal_to" | "sent_less_than" | "sent_less_than_or_equal_to";
-                                amount: string;
-                                /** @enum {string} */
-                                type: "stx";
-                            } | {
-                                principal: {
-                                    /** @enum {string} */
-                                    type_id: "principal_origin";
-                                } | {
-                                    /** @enum {string} */
-                                    type_id: "principal_standard";
-                                    address: string;
-                                } | {
-                                    /** @enum {string} */
-                                    type_id: "principal_contract";
-                                    address: string;
-                                    contract_name: string;
-                                };
-                                condition_code: "sent_equal_to" | "sent_greater_than" | "sent_greater_than_or_equal_to" | "sent_less_than" | "sent_less_than_or_equal_to";
-                                amount: string;
-                                /** @enum {string} */
-                                type: "fungible";
-                                asset: {
-                                    asset_name: string;
-                                    contract_address: string;
-                                    contract_name: string;
-                                };
-                            } | {
-                                principal: {
-                                    /** @enum {string} */
-                                    type_id: "principal_origin";
-                                } | {
-                                    /** @enum {string} */
-                                    type_id: "principal_standard";
-                                    address: string;
-                                } | {
-                                    /** @enum {string} */
-                                    type_id: "principal_contract";
-                                    address: string;
-                                    contract_name: string;
-                                };
-                                condition_code: "sent" | "not_sent" | "maybe_sent";
-                                /** @enum {string} */
-                                type: "non_fungible";
-                                asset_value: {
-                                    hex: string;
-                                    repr: string;
-                                };
-                                asset: {
-                                    asset_name: string;
-                                    contract_address: string;
-                                    contract_name: string;
-                                };
-                            } | {
-                                principal: {
-                                    /** @enum {string} */
-                                    type_id: "principal_origin";
-                                } | {
-                                    /** @enum {string} */
-                                    type_id: "principal_standard";
-                                    address: string;
-                                } | {
-                                    /** @enum {string} */
-                                    type_id: "principal_contract";
-                                    address: string;
-                                    contract_name: string;
-                                };
-                                condition_code: "sent_equal_to" | "sent_greater_than" | "sent_greater_than_or_equal_to" | "sent_less_than" | "sent_less_than_or_equal_to";
-                                amount: string;
-                                /** @enum {string} */
-                                type: "staking";
-                            } | {
-                                principal: {
-                                    /** @enum {string} */
-                                    type_id: "principal_origin";
-                                } | {
-                                    /** @enum {string} */
-                                    type_id: "principal_standard";
-                                    address: string;
-                                } | {
-                                    /** @enum {string} */
-                                    type_id: "principal_contract";
-                                    address: string;
-                                    contract_name: string;
-                                };
-                                condition_code: "not_performed" | "maybe_performed" | "performed";
-                                /** @enum {string} */
-                                type: "pox";
-                            })[];
-                            /** @description `on_chain_only`: the transaction MUST be included in an anchored block, `off_chain_only`: the transaction MUST be included in a microblock, `any`: the leader can choose where to include the transaction. */
-                            anchor_mode: "on_chain_only" | "off_chain_only" | "any";
-                            /** @description Hash of the blocked this transactions was associated with */
-                            block_hash: string;
-                            /** @description Height of the block this transactions was associated with */
-                            block_height: number;
-                            /** @description Unix timestamp (in seconds) indicating when this block was mined. */
-                            block_time: number;
-                            /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) indicating when this block was mined. */
-                            block_time_iso: string;
-                            /** @description Unix timestamp (in seconds) indicating when this block was mined. */
-                            burn_block_time: number;
-                            /** @description Height of the anchor burn block. */
-                            burn_block_height: number;
-                            /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this block was mined. */
-                            burn_block_time_iso: string;
-                            /** @description Unix timestamp (in seconds) indicating when this parent block was mined */
-                            parent_burn_block_time: number;
-                            /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this parent block was mined. */
-                            parent_burn_block_time_iso: string;
-                            /** @description Set to `true` if block corresponds to the canonical chain tip */
-                            canonical: boolean;
-                            /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
-                            tx_index: number;
-                            /** @description Status of the transaction */
-                            tx_status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
-                            /** @description Result of the transaction. For contract calls, this will show the value returned by the call. For other transaction types, this will return a boolean indicating the success of the transaction. */
-                            tx_result: {
-                                /** @description Hex string representing the value fo the transaction result */
-                                hex: string;
-                                /** @description Readable string of the transaction result */
-                                repr: string;
-                            };
-                            /** @description Number of transaction events */
-                            event_count: number;
-                            /** @description Hash of the previous block. */
-                            parent_block_hash: string;
-                            /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. */
-                            is_unanchored: boolean;
-                            /** @description The microblock hash that this transaction was streamed in. If the transaction was batched in an anchor block (not included within a microblock) then this value will be an empty string. */
-                            microblock_hash: string;
-                            /** @description The microblock sequence number that this transaction was streamed in. If the transaction was batched in an anchor block (not included within a microblock) then this value will be 2147483647 (0x7fffffff, the max int32 value), this value preserves logical transaction ordering on (block_height, microblock_sequence, tx_index). */
-                            microblock_sequence: number;
-                            /** @description Set to `true` if microblock is anchored in the canonical chain tip, `false` if the transaction was orphaned in a micro-fork. */
-                            microblock_canonical: boolean;
-                            /** @description Execution cost read count. */
-                            execution_cost_read_count: number;
-                            /** @description Execution cost read length. */
-                            execution_cost_read_length: number;
-                            /** @description Execution cost runtime. */
-                            execution_cost_runtime: number;
-                            /** @description Execution cost write count. */
-                            execution_cost_write_count: number;
-                            /** @description Execution cost write length. */
-                            execution_cost_write_length: number;
-                            vm_error: string | null;
-                            events: (({
-                                event_index: number;
-                            } & {
-                                /** @enum {string} */
-                                event_type: "smart_contract_log";
-                                tx_id: string;
-                                contract_log: {
-                                    contract_id: string;
-                                    topic: string;
-                                    value: {
-                                        hex: string;
-                                        repr: string;
-                                    };
-                                };
-                            }) | ({
-                                event_index: number;
-                            } & {
-                                /** @enum {string} */
-                                event_type: "stx_lock";
-                                tx_id: string;
-                                stx_lock_event: {
-                                    locked_amount: string;
-                                    unlock_height: number;
-                                    locked_address: string;
-                                };
-                            }) | ({
-                                event_index: number;
-                            } & {
-                                /** @enum {string} */
-                                event_type: "stx_asset";
-                                tx_id: string;
-                                asset: {
-                                    asset_event_type: "transfer" | "mint" | "burn";
-                                    sender: string;
-                                    recipient: string;
-                                    amount: string;
-                                    memo?: string;
-                                };
-                            }) | ({
-                                event_index: number;
-                            } & {
-                                /** @enum {string} */
-                                event_type: "fungible_token_asset";
-                                tx_id: string;
-                                asset: {
-                                    asset_event_type: "transfer" | "mint" | "burn";
-                                    asset_id: string;
-                                    sender: string;
-                                    recipient: string;
-                                    amount: string;
-                                };
-                            }) | ({
-                                event_index: number;
-                            } & {
-                                /** @enum {string} */
-                                event_type: "non_fungible_token_asset";
-                                tx_id: string;
-                                asset: {
-                                    asset_event_type: "transfer" | "mint" | "burn";
-                                    asset_id: string;
-                                    sender: string;
-                                    recipient: string;
-                                    value: {
-                                        hex: string;
-                                        repr: string;
-                                    };
-                                };
-                            }))[];
-                            /** @enum {string} */
-                            tx_type: "smart_contract";
-                            smart_contract: {
-                                clarity_version: number | null;
-                                /** @description Contract identifier formatted as `<principaladdress>.<contract_name>` */
-                                contract_id: string;
-                                /** @description Clarity code of the smart contract being deployed */
-                                source_code: string;
-                            };
-                        } | {
-                            /** @description Transaction ID */
-                            tx_id: string;
-                            /** @description Used for ordering the transactions originating from and paying from an account. The nonce ensures that a transaction is processed at most once. The nonce counts the number of times an account's owner(s) have authorized a transaction. The first transaction from an account will have a nonce value equal to 0, the second will have a nonce value equal to 1, and so on. */
-                            nonce: number;
-                            /** @description Transaction fee as Integer string (64-bit unsigned integer). */
-                            fee_rate: string;
-                            /** @description Address of the transaction initiator */
-                            sender_address: string;
-                            sponsor_nonce?: number;
-                            /** @description Denotes whether the originating account is the same as the paying account */
-                            sponsored: boolean;
-                            sponsor_address?: string;
-                            post_condition_mode: "allow" | "deny" | "originator";
-                            post_conditions: ({
-                                principal: {
-                                    /** @enum {string} */
-                                    type_id: "principal_origin";
-                                } | {
-                                    /** @enum {string} */
-                                    type_id: "principal_standard";
-                                    address: string;
-                                } | {
-                                    /** @enum {string} */
-                                    type_id: "principal_contract";
-                                    address: string;
-                                    contract_name: string;
-                                };
-                                condition_code: "sent_equal_to" | "sent_greater_than" | "sent_greater_than_or_equal_to" | "sent_less_than" | "sent_less_than_or_equal_to";
-                                amount: string;
-                                /** @enum {string} */
-                                type: "stx";
-                            } | {
-                                principal: {
-                                    /** @enum {string} */
-                                    type_id: "principal_origin";
-                                } | {
-                                    /** @enum {string} */
-                                    type_id: "principal_standard";
-                                    address: string;
-                                } | {
-                                    /** @enum {string} */
-                                    type_id: "principal_contract";
-                                    address: string;
-                                    contract_name: string;
-                                };
-                                condition_code: "sent_equal_to" | "sent_greater_than" | "sent_greater_than_or_equal_to" | "sent_less_than" | "sent_less_than_or_equal_to";
-                                amount: string;
-                                /** @enum {string} */
-                                type: "fungible";
-                                asset: {
-                                    asset_name: string;
-                                    contract_address: string;
-                                    contract_name: string;
-                                };
-                            } | {
-                                principal: {
-                                    /** @enum {string} */
-                                    type_id: "principal_origin";
-                                } | {
-                                    /** @enum {string} */
-                                    type_id: "principal_standard";
-                                    address: string;
-                                } | {
-                                    /** @enum {string} */
-                                    type_id: "principal_contract";
-                                    address: string;
-                                    contract_name: string;
-                                };
-                                condition_code: "sent" | "not_sent" | "maybe_sent";
-                                /** @enum {string} */
-                                type: "non_fungible";
-                                asset_value: {
-                                    hex: string;
-                                    repr: string;
-                                };
-                                asset: {
-                                    asset_name: string;
-                                    contract_address: string;
-                                    contract_name: string;
-                                };
-                            } | {
-                                principal: {
-                                    /** @enum {string} */
-                                    type_id: "principal_origin";
-                                } | {
-                                    /** @enum {string} */
-                                    type_id: "principal_standard";
-                                    address: string;
-                                } | {
-                                    /** @enum {string} */
-                                    type_id: "principal_contract";
-                                    address: string;
-                                    contract_name: string;
-                                };
-                                condition_code: "sent_equal_to" | "sent_greater_than" | "sent_greater_than_or_equal_to" | "sent_less_than" | "sent_less_than_or_equal_to";
-                                amount: string;
-                                /** @enum {string} */
-                                type: "staking";
-                            } | {
-                                principal: {
-                                    /** @enum {string} */
-                                    type_id: "principal_origin";
-                                } | {
-                                    /** @enum {string} */
-                                    type_id: "principal_standard";
-                                    address: string;
-                                } | {
-                                    /** @enum {string} */
-                                    type_id: "principal_contract";
-                                    address: string;
-                                    contract_name: string;
-                                };
-                                condition_code: "not_performed" | "maybe_performed" | "performed";
-                                /** @enum {string} */
-                                type: "pox";
-                            })[];
-                            /** @description `on_chain_only`: the transaction MUST be included in an anchored block, `off_chain_only`: the transaction MUST be included in a microblock, `any`: the leader can choose where to include the transaction. */
-                            anchor_mode: "on_chain_only" | "off_chain_only" | "any";
-                            /** @description Hash of the blocked this transactions was associated with */
-                            block_hash: string;
-                            /** @description Height of the block this transactions was associated with */
-                            block_height: number;
-                            /** @description Unix timestamp (in seconds) indicating when this block was mined. */
-                            block_time: number;
-                            /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) indicating when this block was mined. */
-                            block_time_iso: string;
-                            /** @description Unix timestamp (in seconds) indicating when this block was mined. */
-                            burn_block_time: number;
-                            /** @description Height of the anchor burn block. */
-                            burn_block_height: number;
-                            /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this block was mined. */
-                            burn_block_time_iso: string;
-                            /** @description Unix timestamp (in seconds) indicating when this parent block was mined */
-                            parent_burn_block_time: number;
-                            /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this parent block was mined. */
-                            parent_burn_block_time_iso: string;
-                            /** @description Set to `true` if block corresponds to the canonical chain tip */
-                            canonical: boolean;
-                            /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
-                            tx_index: number;
-                            /** @description Status of the transaction */
-                            tx_status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
-                            /** @description Result of the transaction. For contract calls, this will show the value returned by the call. For other transaction types, this will return a boolean indicating the success of the transaction. */
-                            tx_result: {
-                                /** @description Hex string representing the value fo the transaction result */
-                                hex: string;
-                                /** @description Readable string of the transaction result */
-                                repr: string;
-                            };
-                            /** @description Number of transaction events */
-                            event_count: number;
-                            /** @description Hash of the previous block. */
-                            parent_block_hash: string;
-                            /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. */
-                            is_unanchored: boolean;
-                            /** @description The microblock hash that this transaction was streamed in. If the transaction was batched in an anchor block (not included within a microblock) then this value will be an empty string. */
-                            microblock_hash: string;
-                            /** @description The microblock sequence number that this transaction was streamed in. If the transaction was batched in an anchor block (not included within a microblock) then this value will be 2147483647 (0x7fffffff, the max int32 value), this value preserves logical transaction ordering on (block_height, microblock_sequence, tx_index). */
-                            microblock_sequence: number;
-                            /** @description Set to `true` if microblock is anchored in the canonical chain tip, `false` if the transaction was orphaned in a micro-fork. */
-                            microblock_canonical: boolean;
-                            /** @description Execution cost read count. */
-                            execution_cost_read_count: number;
-                            /** @description Execution cost read length. */
-                            execution_cost_read_length: number;
-                            /** @description Execution cost runtime. */
-                            execution_cost_runtime: number;
-                            /** @description Execution cost write count. */
-                            execution_cost_write_count: number;
-                            /** @description Execution cost write length. */
-                            execution_cost_write_length: number;
-                            vm_error: string | null;
-                            events: (({
-                                event_index: number;
-                            } & {
-                                /** @enum {string} */
-                                event_type: "smart_contract_log";
-                                tx_id: string;
-                                contract_log: {
-                                    contract_id: string;
-                                    topic: string;
-                                    value: {
-                                        hex: string;
-                                        repr: string;
-                                    };
-                                };
-                            }) | ({
-                                event_index: number;
-                            } & {
-                                /** @enum {string} */
-                                event_type: "stx_lock";
-                                tx_id: string;
-                                stx_lock_event: {
-                                    locked_amount: string;
-                                    unlock_height: number;
-                                    locked_address: string;
-                                };
-                            }) | ({
-                                event_index: number;
-                            } & {
-                                /** @enum {string} */
-                                event_type: "stx_asset";
-                                tx_id: string;
-                                asset: {
-                                    asset_event_type: "transfer" | "mint" | "burn";
-                                    sender: string;
-                                    recipient: string;
-                                    amount: string;
-                                    memo?: string;
-                                };
-                            }) | ({
-                                event_index: number;
-                            } & {
-                                /** @enum {string} */
-                                event_type: "fungible_token_asset";
-                                tx_id: string;
-                                asset: {
-                                    asset_event_type: "transfer" | "mint" | "burn";
-                                    asset_id: string;
-                                    sender: string;
-                                    recipient: string;
-                                    amount: string;
-                                };
-                            }) | ({
-                                event_index: number;
-                            } & {
-                                /** @enum {string} */
-                                event_type: "non_fungible_token_asset";
-                                tx_id: string;
-                                asset: {
-                                    asset_event_type: "transfer" | "mint" | "burn";
-                                    asset_id: string;
-                                    sender: string;
-                                    recipient: string;
-                                    value: {
-                                        hex: string;
-                                        repr: string;
-                                    };
-                                };
-                            }))[];
-                            /** @enum {string} */
-                            tx_type: "contract_call";
-                            contract_call: {
-                                /** @description Contract identifier formatted as `<principaladdress>.<contract_name>` */
-                                contract_id: string;
-                                /** @description Name of the Clarity function to be invoked */
-                                function_name: string;
-                                /** @description Function definition, including function name and type as well as parameter names and types */
-                                function_signature: string;
-                                function_args?: {
-                                    hex: string;
-                                    repr: string;
-                                    name: string;
-                                    type: string;
-                                }[];
-                            };
-                        } | {
-                            /** @description Transaction ID */
-                            tx_id: string;
-                            /** @description Used for ordering the transactions originating from and paying from an account. The nonce ensures that a transaction is processed at most once. The nonce counts the number of times an account's owner(s) have authorized a transaction. The first transaction from an account will have a nonce value equal to 0, the second will have a nonce value equal to 1, and so on. */
-                            nonce: number;
-                            /** @description Transaction fee as Integer string (64-bit unsigned integer). */
-                            fee_rate: string;
-                            /** @description Address of the transaction initiator */
-                            sender_address: string;
-                            sponsor_nonce?: number;
-                            /** @description Denotes whether the originating account is the same as the paying account */
-                            sponsored: boolean;
-                            sponsor_address?: string;
-                            post_condition_mode: "allow" | "deny" | "originator";
-                            post_conditions: ({
-                                principal: {
-                                    /** @enum {string} */
-                                    type_id: "principal_origin";
-                                } | {
-                                    /** @enum {string} */
-                                    type_id: "principal_standard";
-                                    address: string;
-                                } | {
-                                    /** @enum {string} */
-                                    type_id: "principal_contract";
-                                    address: string;
-                                    contract_name: string;
-                                };
-                                condition_code: "sent_equal_to" | "sent_greater_than" | "sent_greater_than_or_equal_to" | "sent_less_than" | "sent_less_than_or_equal_to";
-                                amount: string;
-                                /** @enum {string} */
-                                type: "stx";
-                            } | {
-                                principal: {
-                                    /** @enum {string} */
-                                    type_id: "principal_origin";
-                                } | {
-                                    /** @enum {string} */
-                                    type_id: "principal_standard";
-                                    address: string;
-                                } | {
-                                    /** @enum {string} */
-                                    type_id: "principal_contract";
-                                    address: string;
-                                    contract_name: string;
-                                };
-                                condition_code: "sent_equal_to" | "sent_greater_than" | "sent_greater_than_or_equal_to" | "sent_less_than" | "sent_less_than_or_equal_to";
-                                amount: string;
-                                /** @enum {string} */
-                                type: "fungible";
-                                asset: {
-                                    asset_name: string;
-                                    contract_address: string;
-                                    contract_name: string;
-                                };
-                            } | {
-                                principal: {
-                                    /** @enum {string} */
-                                    type_id: "principal_origin";
-                                } | {
-                                    /** @enum {string} */
-                                    type_id: "principal_standard";
-                                    address: string;
-                                } | {
-                                    /** @enum {string} */
-                                    type_id: "principal_contract";
-                                    address: string;
-                                    contract_name: string;
-                                };
-                                condition_code: "sent" | "not_sent" | "maybe_sent";
-                                /** @enum {string} */
-                                type: "non_fungible";
-                                asset_value: {
-                                    hex: string;
-                                    repr: string;
-                                };
-                                asset: {
-                                    asset_name: string;
-                                    contract_address: string;
-                                    contract_name: string;
-                                };
-                            } | {
-                                principal: {
-                                    /** @enum {string} */
-                                    type_id: "principal_origin";
-                                } | {
-                                    /** @enum {string} */
-                                    type_id: "principal_standard";
-                                    address: string;
-                                } | {
-                                    /** @enum {string} */
-                                    type_id: "principal_contract";
-                                    address: string;
-                                    contract_name: string;
-                                };
-                                condition_code: "sent_equal_to" | "sent_greater_than" | "sent_greater_than_or_equal_to" | "sent_less_than" | "sent_less_than_or_equal_to";
-                                amount: string;
-                                /** @enum {string} */
-                                type: "staking";
-                            } | {
-                                principal: {
-                                    /** @enum {string} */
-                                    type_id: "principal_origin";
-                                } | {
-                                    /** @enum {string} */
-                                    type_id: "principal_standard";
-                                    address: string;
-                                } | {
-                                    /** @enum {string} */
-                                    type_id: "principal_contract";
-                                    address: string;
-                                    contract_name: string;
-                                };
-                                condition_code: "not_performed" | "maybe_performed" | "performed";
-                                /** @enum {string} */
-                                type: "pox";
-                            })[];
-                            /** @description `on_chain_only`: the transaction MUST be included in an anchored block, `off_chain_only`: the transaction MUST be included in a microblock, `any`: the leader can choose where to include the transaction. */
-                            anchor_mode: "on_chain_only" | "off_chain_only" | "any";
-                            /** @description Hash of the blocked this transactions was associated with */
-                            block_hash: string;
-                            /** @description Height of the block this transactions was associated with */
-                            block_height: number;
-                            /** @description Unix timestamp (in seconds) indicating when this block was mined. */
-                            block_time: number;
-                            /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) indicating when this block was mined. */
-                            block_time_iso: string;
-                            /** @description Unix timestamp (in seconds) indicating when this block was mined. */
-                            burn_block_time: number;
-                            /** @description Height of the anchor burn block. */
-                            burn_block_height: number;
-                            /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this block was mined. */
-                            burn_block_time_iso: string;
-                            /** @description Unix timestamp (in seconds) indicating when this parent block was mined */
-                            parent_burn_block_time: number;
-                            /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this parent block was mined. */
-                            parent_burn_block_time_iso: string;
-                            /** @description Set to `true` if block corresponds to the canonical chain tip */
-                            canonical: boolean;
-                            /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
-                            tx_index: number;
-                            /** @description Status of the transaction */
-                            tx_status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
-                            /** @description Result of the transaction. For contract calls, this will show the value returned by the call. For other transaction types, this will return a boolean indicating the success of the transaction. */
-                            tx_result: {
-                                /** @description Hex string representing the value fo the transaction result */
-                                hex: string;
-                                /** @description Readable string of the transaction result */
-                                repr: string;
-                            };
-                            /** @description Number of transaction events */
-                            event_count: number;
-                            /** @description Hash of the previous block. */
-                            parent_block_hash: string;
-                            /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. */
-                            is_unanchored: boolean;
-                            /** @description The microblock hash that this transaction was streamed in. If the transaction was batched in an anchor block (not included within a microblock) then this value will be an empty string. */
-                            microblock_hash: string;
-                            /** @description The microblock sequence number that this transaction was streamed in. If the transaction was batched in an anchor block (not included within a microblock) then this value will be 2147483647 (0x7fffffff, the max int32 value), this value preserves logical transaction ordering on (block_height, microblock_sequence, tx_index). */
-                            microblock_sequence: number;
-                            /** @description Set to `true` if microblock is anchored in the canonical chain tip, `false` if the transaction was orphaned in a micro-fork. */
-                            microblock_canonical: boolean;
-                            /** @description Execution cost read count. */
-                            execution_cost_read_count: number;
-                            /** @description Execution cost read length. */
-                            execution_cost_read_length: number;
-                            /** @description Execution cost runtime. */
-                            execution_cost_runtime: number;
-                            /** @description Execution cost write count. */
-                            execution_cost_write_count: number;
-                            /** @description Execution cost write length. */
-                            execution_cost_write_length: number;
-                            vm_error: string | null;
-                            events: (({
-                                event_index: number;
-                            } & {
-                                /** @enum {string} */
-                                event_type: "smart_contract_log";
-                                tx_id: string;
-                                contract_log: {
-                                    contract_id: string;
-                                    topic: string;
-                                    value: {
-                                        hex: string;
-                                        repr: string;
-                                    };
-                                };
-                            }) | ({
-                                event_index: number;
-                            } & {
-                                /** @enum {string} */
-                                event_type: "stx_lock";
-                                tx_id: string;
-                                stx_lock_event: {
-                                    locked_amount: string;
-                                    unlock_height: number;
-                                    locked_address: string;
-                                };
-                            }) | ({
-                                event_index: number;
-                            } & {
-                                /** @enum {string} */
-                                event_type: "stx_asset";
-                                tx_id: string;
-                                asset: {
-                                    asset_event_type: "transfer" | "mint" | "burn";
-                                    sender: string;
-                                    recipient: string;
-                                    amount: string;
-                                    memo?: string;
-                                };
-                            }) | ({
-                                event_index: number;
-                            } & {
-                                /** @enum {string} */
-                                event_type: "fungible_token_asset";
-                                tx_id: string;
-                                asset: {
-                                    asset_event_type: "transfer" | "mint" | "burn";
-                                    asset_id: string;
-                                    sender: string;
-                                    recipient: string;
-                                    amount: string;
-                                };
-                            }) | ({
-                                event_index: number;
-                            } & {
-                                /** @enum {string} */
-                                event_type: "non_fungible_token_asset";
-                                tx_id: string;
-                                asset: {
-                                    asset_event_type: "transfer" | "mint" | "burn";
-                                    asset_id: string;
-                                    sender: string;
-                                    recipient: string;
-                                    value: {
-                                        hex: string;
-                                        repr: string;
-                                    };
-                                };
-                            }))[];
-                            /** @enum {string} */
-                            tx_type: "poison_microblock";
-                            poison_microblock: {
-                                /** @description Hex encoded microblock header */
-                                microblock_header_1: string;
-                                /** @description Hex encoded microblock header */
-                                microblock_header_2: string;
-                            };
-                        } | {
-                            /** @description Transaction ID */
-                            tx_id: string;
-                            /** @description Used for ordering the transactions originating from and paying from an account. The nonce ensures that a transaction is processed at most once. The nonce counts the number of times an account's owner(s) have authorized a transaction. The first transaction from an account will have a nonce value equal to 0, the second will have a nonce value equal to 1, and so on. */
-                            nonce: number;
-                            /** @description Transaction fee as Integer string (64-bit unsigned integer). */
-                            fee_rate: string;
-                            /** @description Address of the transaction initiator */
-                            sender_address: string;
-                            sponsor_nonce?: number;
-                            /** @description Denotes whether the originating account is the same as the paying account */
-                            sponsored: boolean;
-                            sponsor_address?: string;
-                            post_condition_mode: "allow" | "deny" | "originator";
-                            post_conditions: ({
-                                principal: {
-                                    /** @enum {string} */
-                                    type_id: "principal_origin";
-                                } | {
-                                    /** @enum {string} */
-                                    type_id: "principal_standard";
-                                    address: string;
-                                } | {
-                                    /** @enum {string} */
-                                    type_id: "principal_contract";
-                                    address: string;
-                                    contract_name: string;
-                                };
-                                condition_code: "sent_equal_to" | "sent_greater_than" | "sent_greater_than_or_equal_to" | "sent_less_than" | "sent_less_than_or_equal_to";
-                                amount: string;
-                                /** @enum {string} */
-                                type: "stx";
-                            } | {
-                                principal: {
-                                    /** @enum {string} */
-                                    type_id: "principal_origin";
-                                } | {
-                                    /** @enum {string} */
-                                    type_id: "principal_standard";
-                                    address: string;
-                                } | {
-                                    /** @enum {string} */
-                                    type_id: "principal_contract";
-                                    address: string;
-                                    contract_name: string;
-                                };
-                                condition_code: "sent_equal_to" | "sent_greater_than" | "sent_greater_than_or_equal_to" | "sent_less_than" | "sent_less_than_or_equal_to";
-                                amount: string;
-                                /** @enum {string} */
-                                type: "fungible";
-                                asset: {
-                                    asset_name: string;
-                                    contract_address: string;
-                                    contract_name: string;
-                                };
-                            } | {
-                                principal: {
-                                    /** @enum {string} */
-                                    type_id: "principal_origin";
-                                } | {
-                                    /** @enum {string} */
-                                    type_id: "principal_standard";
-                                    address: string;
-                                } | {
-                                    /** @enum {string} */
-                                    type_id: "principal_contract";
-                                    address: string;
-                                    contract_name: string;
-                                };
-                                condition_code: "sent" | "not_sent" | "maybe_sent";
-                                /** @enum {string} */
-                                type: "non_fungible";
-                                asset_value: {
-                                    hex: string;
-                                    repr: string;
-                                };
-                                asset: {
-                                    asset_name: string;
-                                    contract_address: string;
-                                    contract_name: string;
-                                };
-                            } | {
-                                principal: {
-                                    /** @enum {string} */
-                                    type_id: "principal_origin";
-                                } | {
-                                    /** @enum {string} */
-                                    type_id: "principal_standard";
-                                    address: string;
-                                } | {
-                                    /** @enum {string} */
-                                    type_id: "principal_contract";
-                                    address: string;
-                                    contract_name: string;
-                                };
-                                condition_code: "sent_equal_to" | "sent_greater_than" | "sent_greater_than_or_equal_to" | "sent_less_than" | "sent_less_than_or_equal_to";
-                                amount: string;
-                                /** @enum {string} */
-                                type: "staking";
-                            } | {
-                                principal: {
-                                    /** @enum {string} */
-                                    type_id: "principal_origin";
-                                } | {
-                                    /** @enum {string} */
-                                    type_id: "principal_standard";
-                                    address: string;
-                                } | {
-                                    /** @enum {string} */
-                                    type_id: "principal_contract";
-                                    address: string;
-                                    contract_name: string;
-                                };
-                                condition_code: "not_performed" | "maybe_performed" | "performed";
-                                /** @enum {string} */
-                                type: "pox";
-                            })[];
-                            /** @description `on_chain_only`: the transaction MUST be included in an anchored block, `off_chain_only`: the transaction MUST be included in a microblock, `any`: the leader can choose where to include the transaction. */
-                            anchor_mode: "on_chain_only" | "off_chain_only" | "any";
-                            /** @description Hash of the blocked this transactions was associated with */
-                            block_hash: string;
-                            /** @description Height of the block this transactions was associated with */
-                            block_height: number;
-                            /** @description Unix timestamp (in seconds) indicating when this block was mined. */
-                            block_time: number;
-                            /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) indicating when this block was mined. */
-                            block_time_iso: string;
-                            /** @description Unix timestamp (in seconds) indicating when this block was mined. */
-                            burn_block_time: number;
-                            /** @description Height of the anchor burn block. */
-                            burn_block_height: number;
-                            /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this block was mined. */
-                            burn_block_time_iso: string;
-                            /** @description Unix timestamp (in seconds) indicating when this parent block was mined */
-                            parent_burn_block_time: number;
-                            /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this parent block was mined. */
-                            parent_burn_block_time_iso: string;
-                            /** @description Set to `true` if block corresponds to the canonical chain tip */
-                            canonical: boolean;
-                            /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
-                            tx_index: number;
-                            /** @description Status of the transaction */
-                            tx_status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
-                            /** @description Result of the transaction. For contract calls, this will show the value returned by the call. For other transaction types, this will return a boolean indicating the success of the transaction. */
-                            tx_result: {
-                                /** @description Hex string representing the value fo the transaction result */
-                                hex: string;
-                                /** @description Readable string of the transaction result */
-                                repr: string;
-                            };
-                            /** @description Number of transaction events */
-                            event_count: number;
-                            /** @description Hash of the previous block. */
-                            parent_block_hash: string;
-                            /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. */
-                            is_unanchored: boolean;
-                            /** @description The microblock hash that this transaction was streamed in. If the transaction was batched in an anchor block (not included within a microblock) then this value will be an empty string. */
-                            microblock_hash: string;
-                            /** @description The microblock sequence number that this transaction was streamed in. If the transaction was batched in an anchor block (not included within a microblock) then this value will be 2147483647 (0x7fffffff, the max int32 value), this value preserves logical transaction ordering on (block_height, microblock_sequence, tx_index). */
-                            microblock_sequence: number;
-                            /** @description Set to `true` if microblock is anchored in the canonical chain tip, `false` if the transaction was orphaned in a micro-fork. */
-                            microblock_canonical: boolean;
-                            /** @description Execution cost read count. */
-                            execution_cost_read_count: number;
-                            /** @description Execution cost read length. */
-                            execution_cost_read_length: number;
-                            /** @description Execution cost runtime. */
-                            execution_cost_runtime: number;
-                            /** @description Execution cost write count. */
-                            execution_cost_write_count: number;
-                            /** @description Execution cost write length. */
-                            execution_cost_write_length: number;
-                            vm_error: string | null;
-                            events: (({
-                                event_index: number;
-                            } & {
-                                /** @enum {string} */
-                                event_type: "smart_contract_log";
-                                tx_id: string;
-                                contract_log: {
-                                    contract_id: string;
-                                    topic: string;
-                                    value: {
-                                        hex: string;
-                                        repr: string;
-                                    };
-                                };
-                            }) | ({
-                                event_index: number;
-                            } & {
-                                /** @enum {string} */
-                                event_type: "stx_lock";
-                                tx_id: string;
-                                stx_lock_event: {
-                                    locked_amount: string;
-                                    unlock_height: number;
-                                    locked_address: string;
-                                };
-                            }) | ({
-                                event_index: number;
-                            } & {
-                                /** @enum {string} */
-                                event_type: "stx_asset";
-                                tx_id: string;
-                                asset: {
-                                    asset_event_type: "transfer" | "mint" | "burn";
-                                    sender: string;
-                                    recipient: string;
-                                    amount: string;
-                                    memo?: string;
-                                };
-                            }) | ({
-                                event_index: number;
-                            } & {
-                                /** @enum {string} */
-                                event_type: "fungible_token_asset";
-                                tx_id: string;
-                                asset: {
-                                    asset_event_type: "transfer" | "mint" | "burn";
-                                    asset_id: string;
-                                    sender: string;
-                                    recipient: string;
-                                    amount: string;
-                                };
-                            }) | ({
-                                event_index: number;
-                            } & {
-                                /** @enum {string} */
-                                event_type: "non_fungible_token_asset";
-                                tx_id: string;
-                                asset: {
-                                    asset_event_type: "transfer" | "mint" | "burn";
-                                    asset_id: string;
-                                    sender: string;
-                                    recipient: string;
-                                    value: {
-                                        hex: string;
-                                        repr: string;
-                                    };
-                                };
-                            }))[];
-                            /** @enum {string} */
-                            tx_type: "coinbase";
-                            coinbase_payload: {
-                                /** @description Hex encoded 32-byte scratch space for block leader's use */
-                                data: string;
-                                alt_recipient?: string | null;
-                                vrf_proof?: string | null;
-                            };
-                        } | {
-                            /** @description Transaction ID */
-                            tx_id: string;
-                            /** @description Used for ordering the transactions originating from and paying from an account. The nonce ensures that a transaction is processed at most once. The nonce counts the number of times an account's owner(s) have authorized a transaction. The first transaction from an account will have a nonce value equal to 0, the second will have a nonce value equal to 1, and so on. */
-                            nonce: number;
-                            /** @description Transaction fee as Integer string (64-bit unsigned integer). */
-                            fee_rate: string;
-                            /** @description Address of the transaction initiator */
-                            sender_address: string;
-                            sponsor_nonce?: number;
-                            /** @description Denotes whether the originating account is the same as the paying account */
-                            sponsored: boolean;
-                            sponsor_address?: string;
-                            post_condition_mode: "allow" | "deny" | "originator";
-                            post_conditions: ({
-                                principal: {
-                                    /** @enum {string} */
-                                    type_id: "principal_origin";
-                                } | {
-                                    /** @enum {string} */
-                                    type_id: "principal_standard";
-                                    address: string;
-                                } | {
-                                    /** @enum {string} */
-                                    type_id: "principal_contract";
-                                    address: string;
-                                    contract_name: string;
-                                };
-                                condition_code: "sent_equal_to" | "sent_greater_than" | "sent_greater_than_or_equal_to" | "sent_less_than" | "sent_less_than_or_equal_to";
-                                amount: string;
-                                /** @enum {string} */
-                                type: "stx";
-                            } | {
-                                principal: {
-                                    /** @enum {string} */
-                                    type_id: "principal_origin";
-                                } | {
-                                    /** @enum {string} */
-                                    type_id: "principal_standard";
-                                    address: string;
-                                } | {
-                                    /** @enum {string} */
-                                    type_id: "principal_contract";
-                                    address: string;
-                                    contract_name: string;
-                                };
-                                condition_code: "sent_equal_to" | "sent_greater_than" | "sent_greater_than_or_equal_to" | "sent_less_than" | "sent_less_than_or_equal_to";
-                                amount: string;
-                                /** @enum {string} */
-                                type: "fungible";
-                                asset: {
-                                    asset_name: string;
-                                    contract_address: string;
-                                    contract_name: string;
-                                };
-                            } | {
-                                principal: {
-                                    /** @enum {string} */
-                                    type_id: "principal_origin";
-                                } | {
-                                    /** @enum {string} */
-                                    type_id: "principal_standard";
-                                    address: string;
-                                } | {
-                                    /** @enum {string} */
-                                    type_id: "principal_contract";
-                                    address: string;
-                                    contract_name: string;
-                                };
-                                condition_code: "sent" | "not_sent" | "maybe_sent";
-                                /** @enum {string} */
-                                type: "non_fungible";
-                                asset_value: {
-                                    hex: string;
-                                    repr: string;
-                                };
-                                asset: {
-                                    asset_name: string;
-                                    contract_address: string;
-                                    contract_name: string;
-                                };
-                            } | {
-                                principal: {
-                                    /** @enum {string} */
-                                    type_id: "principal_origin";
-                                } | {
-                                    /** @enum {string} */
-                                    type_id: "principal_standard";
-                                    address: string;
-                                } | {
-                                    /** @enum {string} */
-                                    type_id: "principal_contract";
-                                    address: string;
-                                    contract_name: string;
-                                };
-                                condition_code: "sent_equal_to" | "sent_greater_than" | "sent_greater_than_or_equal_to" | "sent_less_than" | "sent_less_than_or_equal_to";
-                                amount: string;
-                                /** @enum {string} */
-                                type: "staking";
-                            } | {
-                                principal: {
-                                    /** @enum {string} */
-                                    type_id: "principal_origin";
-                                } | {
-                                    /** @enum {string} */
-                                    type_id: "principal_standard";
-                                    address: string;
-                                } | {
-                                    /** @enum {string} */
-                                    type_id: "principal_contract";
-                                    address: string;
-                                    contract_name: string;
-                                };
-                                condition_code: "not_performed" | "maybe_performed" | "performed";
-                                /** @enum {string} */
-                                type: "pox";
-                            })[];
-                            /** @description `on_chain_only`: the transaction MUST be included in an anchored block, `off_chain_only`: the transaction MUST be included in a microblock, `any`: the leader can choose where to include the transaction. */
-                            anchor_mode: "on_chain_only" | "off_chain_only" | "any";
-                            /** @description Hash of the blocked this transactions was associated with */
-                            block_hash: string;
-                            /** @description Height of the block this transactions was associated with */
-                            block_height: number;
-                            /** @description Unix timestamp (in seconds) indicating when this block was mined. */
-                            block_time: number;
-                            /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) indicating when this block was mined. */
-                            block_time_iso: string;
-                            /** @description Unix timestamp (in seconds) indicating when this block was mined. */
-                            burn_block_time: number;
-                            /** @description Height of the anchor burn block. */
-                            burn_block_height: number;
-                            /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this block was mined. */
-                            burn_block_time_iso: string;
-                            /** @description Unix timestamp (in seconds) indicating when this parent block was mined */
-                            parent_burn_block_time: number;
-                            /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) timestamp indicating when this parent block was mined. */
-                            parent_burn_block_time_iso: string;
-                            /** @description Set to `true` if block corresponds to the canonical chain tip */
-                            canonical: boolean;
-                            /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
-                            tx_index: number;
-                            /** @description Status of the transaction */
-                            tx_status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
-                            /** @description Result of the transaction. For contract calls, this will show the value returned by the call. For other transaction types, this will return a boolean indicating the success of the transaction. */
-                            tx_result: {
-                                /** @description Hex string representing the value fo the transaction result */
-                                hex: string;
-                                /** @description Readable string of the transaction result */
-                                repr: string;
-                            };
-                            /** @description Number of transaction events */
-                            event_count: number;
-                            /** @description Hash of the previous block. */
-                            parent_block_hash: string;
-                            /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. */
-                            is_unanchored: boolean;
-                            /** @description The microblock hash that this transaction was streamed in. If the transaction was batched in an anchor block (not included within a microblock) then this value will be an empty string. */
-                            microblock_hash: string;
-                            /** @description The microblock sequence number that this transaction was streamed in. If the transaction was batched in an anchor block (not included within a microblock) then this value will be 2147483647 (0x7fffffff, the max int32 value), this value preserves logical transaction ordering on (block_height, microblock_sequence, tx_index). */
-                            microblock_sequence: number;
-                            /** @description Set to `true` if microblock is anchored in the canonical chain tip, `false` if the transaction was orphaned in a micro-fork. */
-                            microblock_canonical: boolean;
-                            /** @description Execution cost read count. */
-                            execution_cost_read_count: number;
-                            /** @description Execution cost read length. */
-                            execution_cost_read_length: number;
-                            /** @description Execution cost runtime. */
-                            execution_cost_runtime: number;
-                            /** @description Execution cost write count. */
-                            execution_cost_write_count: number;
-                            /** @description Execution cost write length. */
-                            execution_cost_write_length: number;
-                            vm_error: string | null;
-                            events: (({
-                                event_index: number;
-                            } & {
-                                /** @enum {string} */
-                                event_type: "smart_contract_log";
-                                tx_id: string;
-                                contract_log: {
-                                    contract_id: string;
-                                    topic: string;
-                                    value: {
-                                        hex: string;
-                                        repr: string;
-                                    };
-                                };
-                            }) | ({
-                                event_index: number;
-                            } & {
-                                /** @enum {string} */
-                                event_type: "stx_lock";
-                                tx_id: string;
-                                stx_lock_event: {
-                                    locked_amount: string;
-                                    unlock_height: number;
-                                    locked_address: string;
-                                };
-                            }) | ({
-                                event_index: number;
-                            } & {
-                                /** @enum {string} */
-                                event_type: "stx_asset";
-                                tx_id: string;
-                                asset: {
-                                    asset_event_type: "transfer" | "mint" | "burn";
-                                    sender: string;
-                                    recipient: string;
-                                    amount: string;
-                                    memo?: string;
-                                };
-                            }) | ({
-                                event_index: number;
-                            } & {
-                                /** @enum {string} */
-                                event_type: "fungible_token_asset";
-                                tx_id: string;
-                                asset: {
-                                    asset_event_type: "transfer" | "mint" | "burn";
-                                    asset_id: string;
-                                    sender: string;
-                                    recipient: string;
-                                    amount: string;
-                                };
-                            }) | ({
-                                event_index: number;
-                            } & {
-                                /** @enum {string} */
-                                event_type: "non_fungible_token_asset";
-                                tx_id: string;
-                                asset: {
-                                    asset_event_type: "transfer" | "mint" | "burn";
-                                    asset_id: string;
-                                    sender: string;
-                                    recipient: string;
-                                    value: {
-                                        hex: string;
-                                        repr: string;
-                                    };
-                                };
-                            }))[];
-                            /** @enum {string} */
-                            tx_type: "tenure_change";
-                            tenure_change_payload: {
-                                /** @description Consensus hash of this tenure. Corresponds to the sortition in which the miner of this block was chosen. */
-                                tenure_consensus_hash: string;
-                                /** @description Consensus hash of the previous tenure. Corresponds to the sortition of the previous winning block-commit. */
-                                prev_tenure_consensus_hash: string;
-                                /** @description Current consensus hash on the underlying burnchain. Corresponds to the last-seen sortition. */
-                                burn_view_consensus_hash: string;
-                                /** @description (Hex string) Stacks Block hash */
-                                previous_tenure_end: string;
-                                /** @description The number of blocks produced in the previous tenure. */
-                                previous_tenure_blocks: number;
-                                /** @description Cause of change in mining tenure. Depending on cause, tenure can be ended or extended. */
-                                cause: "block_found" | "extended" | "extended_runtime" | "extended_read_count" | "extended_read_length" | "extended_write_count" | "extended_write_length";
-                                /** @description (Hex string) The ECDSA public key hash of the current tenure. */
-                                pubkey_hash: string;
-                            };
-                        })[];
                     };
                 };
             };
@@ -21279,11 +19496,6 @@ export interface operations {
     get_account_stx_balance: {
         parameters: {
             query?: {
-                /**
-                 * @description Include data from unanchored (i.e. unconfirmed) microblocks
-                 * @example true
-                 */
-                unanchored?: boolean;
                 /** @description Block hash or block height. Return data representing the state up until that point in time, rather than the current block. Note - Use either of the query parameters but not both at a time. */
                 until_block?: string;
             };
@@ -21361,11 +19573,6 @@ export interface operations {
     get_account_balance: {
         parameters: {
             query?: {
-                /**
-                 * @description Include data from unanchored (i.e. unconfirmed) microblocks
-                 * @example true
-                 */
-                unanchored?: boolean;
                 /** @description Block hash or block height. Return data representing the state up until that point in time, rather than the current block. Note - Use either of the query parameters but not both at a time. */
                 until_block?: string;
             };
@@ -21465,11 +19672,6 @@ export interface operations {
                 offset?: number;
                 /** @description Filter for transactions only at this given block height */
                 height?: number;
-                /**
-                 * @description Include data from unanchored (i.e. unconfirmed) microblocks
-                 * @example true
-                 */
-                unanchored?: boolean;
                 /** @description Block hash or block height. Return data representing the state up until that point in time, rather than the current block. Note - Use either of the query parameters but not both at a time. */
                 until_block?: string;
                 /** @description Exclude function_args from contract call responses for smaller transaction sizes. */
@@ -21650,7 +19852,7 @@ export interface operations {
                             event_count: number;
                             /** @description Hash of the previous block. */
                             parent_block_hash: string;
-                            /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. */
+                            /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. Microblocks were removed in the Nakamoto upgrade, so this is always `false`. */
                             is_unanchored: boolean;
                             /** @description The microblock hash that this transaction was streamed in. If the transaction was batched in an anchor block (not included within a microblock) then this value will be an empty string. */
                             microblock_hash: string;
@@ -21900,7 +20102,7 @@ export interface operations {
                             event_count: number;
                             /** @description Hash of the previous block. */
                             parent_block_hash: string;
-                            /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. */
+                            /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. Microblocks were removed in the Nakamoto upgrade, so this is always `false`. */
                             is_unanchored: boolean;
                             /** @description The microblock hash that this transaction was streamed in. If the transaction was batched in an anchor block (not included within a microblock) then this value will be an empty string. */
                             microblock_hash: string;
@@ -22150,7 +20352,7 @@ export interface operations {
                             event_count: number;
                             /** @description Hash of the previous block. */
                             parent_block_hash: string;
-                            /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. */
+                            /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. Microblocks were removed in the Nakamoto upgrade, so this is always `false`. */
                             is_unanchored: boolean;
                             /** @description The microblock hash that this transaction was streamed in. If the transaction was batched in an anchor block (not included within a microblock) then this value will be an empty string. */
                             microblock_hash: string;
@@ -22407,7 +20609,7 @@ export interface operations {
                             event_count: number;
                             /** @description Hash of the previous block. */
                             parent_block_hash: string;
-                            /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. */
+                            /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. Microblocks were removed in the Nakamoto upgrade, so this is always `false`. */
                             is_unanchored: boolean;
                             /** @description The microblock hash that this transaction was streamed in. If the transaction was batched in an anchor block (not included within a microblock) then this value will be an empty string. */
                             microblock_hash: string;
@@ -22656,7 +20858,7 @@ export interface operations {
                             event_count: number;
                             /** @description Hash of the previous block. */
                             parent_block_hash: string;
-                            /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. */
+                            /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. Microblocks were removed in the Nakamoto upgrade, so this is always `false`. */
                             is_unanchored: boolean;
                             /** @description The microblock hash that this transaction was streamed in. If the transaction was batched in an anchor block (not included within a microblock) then this value will be an empty string. */
                             microblock_hash: string;
@@ -22905,7 +21107,7 @@ export interface operations {
                             event_count: number;
                             /** @description Hash of the previous block. */
                             parent_block_hash: string;
-                            /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. */
+                            /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. Microblocks were removed in the Nakamoto upgrade, so this is always `false`. */
                             is_unanchored: boolean;
                             /** @description The microblock hash that this transaction was streamed in. If the transaction was batched in an anchor block (not included within a microblock) then this value will be an empty string. */
                             microblock_hash: string;
@@ -23207,7 +21409,7 @@ export interface operations {
                             event_count: number;
                             /** @description Hash of the previous block. */
                             parent_block_hash: string;
-                            /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. */
+                            /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. Microblocks were removed in the Nakamoto upgrade, so this is always `false`. */
                             is_unanchored: boolean;
                             /** @description The microblock hash that this transaction was streamed in. If the transaction was batched in an anchor block (not included within a microblock) then this value will be an empty string. */
                             microblock_hash: string;
@@ -23457,7 +21659,7 @@ export interface operations {
                             event_count: number;
                             /** @description Hash of the previous block. */
                             parent_block_hash: string;
-                            /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. */
+                            /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. Microblocks were removed in the Nakamoto upgrade, so this is always `false`. */
                             is_unanchored: boolean;
                             /** @description The microblock hash that this transaction was streamed in. If the transaction was batched in an anchor block (not included within a microblock) then this value will be an empty string. */
                             microblock_hash: string;
@@ -23707,7 +21909,7 @@ export interface operations {
                             event_count: number;
                             /** @description Hash of the previous block. */
                             parent_block_hash: string;
-                            /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. */
+                            /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. Microblocks were removed in the Nakamoto upgrade, so this is always `false`. */
                             is_unanchored: boolean;
                             /** @description The microblock hash that this transaction was streamed in. If the transaction was batched in an anchor block (not included within a microblock) then this value will be an empty string. */
                             microblock_hash: string;
@@ -23964,7 +22166,7 @@ export interface operations {
                             event_count: number;
                             /** @description Hash of the previous block. */
                             parent_block_hash: string;
-                            /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. */
+                            /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. Microblocks were removed in the Nakamoto upgrade, so this is always `false`. */
                             is_unanchored: boolean;
                             /** @description The microblock hash that this transaction was streamed in. If the transaction was batched in an anchor block (not included within a microblock) then this value will be an empty string. */
                             microblock_hash: string;
@@ -24213,7 +22415,7 @@ export interface operations {
                             event_count: number;
                             /** @description Hash of the previous block. */
                             parent_block_hash: string;
-                            /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. */
+                            /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. Microblocks were removed in the Nakamoto upgrade, so this is always `false`. */
                             is_unanchored: boolean;
                             /** @description The microblock hash that this transaction was streamed in. If the transaction was batched in an anchor block (not included within a microblock) then this value will be an empty string. */
                             microblock_hash: string;
@@ -24462,7 +22664,7 @@ export interface operations {
                             event_count: number;
                             /** @description Hash of the previous block. */
                             parent_block_hash: string;
-                            /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. */
+                            /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. Microblocks were removed in the Nakamoto upgrade, so this is always `false`. */
                             is_unanchored: boolean;
                             /** @description The microblock hash that this transaction was streamed in. If the transaction was batched in an anchor block (not included within a microblock) then this value will be an empty string. */
                             microblock_hash: string;
@@ -24631,11 +22833,6 @@ export interface operations {
                 offset?: number;
                 /** @description Filter for transactions only at this given block height */
                 height?: number;
-                /**
-                 * @description Include data from unanchored (i.e. unconfirmed) microblocks
-                 * @example true
-                 */
-                unanchored?: boolean;
                 /** @description Block hash or block height. Return data representing the state up until that point in time, rather than the current block. Note - Use either of the query parameters but not both at a time. */
                 until_block?: string;
             };
@@ -24815,7 +23012,7 @@ export interface operations {
                                 event_count: number;
                                 /** @description Hash of the previous block. */
                                 parent_block_hash: string;
-                                /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. */
+                                /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. Microblocks were removed in the Nakamoto upgrade, so this is always `false`. */
                                 is_unanchored: boolean;
                                 /** @description The microblock hash that this transaction was streamed in. If the transaction was batched in an anchor block (not included within a microblock) then this value will be an empty string. */
                                 microblock_hash: string;
@@ -25065,7 +23262,7 @@ export interface operations {
                                 event_count: number;
                                 /** @description Hash of the previous block. */
                                 parent_block_hash: string;
-                                /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. */
+                                /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. Microblocks were removed in the Nakamoto upgrade, so this is always `false`. */
                                 is_unanchored: boolean;
                                 /** @description The microblock hash that this transaction was streamed in. If the transaction was batched in an anchor block (not included within a microblock) then this value will be an empty string. */
                                 microblock_hash: string;
@@ -25315,7 +23512,7 @@ export interface operations {
                                 event_count: number;
                                 /** @description Hash of the previous block. */
                                 parent_block_hash: string;
-                                /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. */
+                                /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. Microblocks were removed in the Nakamoto upgrade, so this is always `false`. */
                                 is_unanchored: boolean;
                                 /** @description The microblock hash that this transaction was streamed in. If the transaction was batched in an anchor block (not included within a microblock) then this value will be an empty string. */
                                 microblock_hash: string;
@@ -25572,7 +23769,7 @@ export interface operations {
                                 event_count: number;
                                 /** @description Hash of the previous block. */
                                 parent_block_hash: string;
-                                /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. */
+                                /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. Microblocks were removed in the Nakamoto upgrade, so this is always `false`. */
                                 is_unanchored: boolean;
                                 /** @description The microblock hash that this transaction was streamed in. If the transaction was batched in an anchor block (not included within a microblock) then this value will be an empty string. */
                                 microblock_hash: string;
@@ -25821,7 +24018,7 @@ export interface operations {
                                 event_count: number;
                                 /** @description Hash of the previous block. */
                                 parent_block_hash: string;
-                                /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. */
+                                /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. Microblocks were removed in the Nakamoto upgrade, so this is always `false`. */
                                 is_unanchored: boolean;
                                 /** @description The microblock hash that this transaction was streamed in. If the transaction was batched in an anchor block (not included within a microblock) then this value will be an empty string. */
                                 microblock_hash: string;
@@ -26070,7 +24267,7 @@ export interface operations {
                                 event_count: number;
                                 /** @description Hash of the previous block. */
                                 parent_block_hash: string;
-                                /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. */
+                                /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. Microblocks were removed in the Nakamoto upgrade, so this is always `false`. */
                                 is_unanchored: boolean;
                                 /** @description The microblock hash that this transaction was streamed in. If the transaction was batched in an anchor block (not included within a microblock) then this value will be an empty string. */
                                 microblock_hash: string;
@@ -26238,11 +24435,6 @@ export interface operations {
                 limit?: number;
                 /** @description Result offset */
                 offset?: number;
-                /**
-                 * @description Include data from unanchored (i.e. unconfirmed) microblocks
-                 * @example true
-                 */
-                unanchored?: boolean;
                 /** @description Block hash or block height. Return data representing the state up until that point in time, rather than the current block. Note - Use either of the query parameters but not both at a time. */
                 until_block?: string;
             };
@@ -26363,11 +24555,6 @@ export interface operations {
                 offset?: number;
                 /** @description Filter for transactions only at this given block height */
                 height?: number;
-                /**
-                 * @description Include data from unanchored (i.e. unconfirmed) microblocks
-                 * @example true
-                 */
-                unanchored?: boolean;
                 /** @description Block hash or block height. Return data representing the state up until that point in time, rather than the current block. Note - Use either of the query parameters but not both at a time. */
                 until_block?: string;
             };
@@ -26434,11 +24621,6 @@ export interface operations {
                 limit?: number;
                 /** @description Result offset */
                 offset?: number;
-                /**
-                 * @description Include data from unanchored (i.e. unconfirmed) microblocks
-                 * @example true
-                 */
-                unanchored?: boolean;
                 /** @description Exclude function_args from contract call responses for smaller transaction sizes. */
                 exclude_function_args?: boolean;
             };
@@ -27329,7 +25511,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description The latest nonce values used by an account by inspecting the mempool, microblock transactions, and anchored transactions */
+            /** @description The latest nonce values used by an account by inspecting the mempool and confirmed transactions */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -27673,7 +25855,7 @@ export interface operations {
                                 event_count: number;
                                 /** @description Hash of the previous block. */
                                 parent_block_hash: string;
-                                /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. */
+                                /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. Microblocks were removed in the Nakamoto upgrade, so this is always `false`. */
                                 is_unanchored: boolean;
                                 /** @description The microblock hash that this transaction was streamed in. If the transaction was batched in an anchor block (not included within a microblock) then this value will be an empty string. */
                                 microblock_hash: string;
@@ -27923,7 +26105,7 @@ export interface operations {
                                 event_count: number;
                                 /** @description Hash of the previous block. */
                                 parent_block_hash: string;
-                                /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. */
+                                /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. Microblocks were removed in the Nakamoto upgrade, so this is always `false`. */
                                 is_unanchored: boolean;
                                 /** @description The microblock hash that this transaction was streamed in. If the transaction was batched in an anchor block (not included within a microblock) then this value will be an empty string. */
                                 microblock_hash: string;
@@ -28173,7 +26355,7 @@ export interface operations {
                                 event_count: number;
                                 /** @description Hash of the previous block. */
                                 parent_block_hash: string;
-                                /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. */
+                                /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. Microblocks were removed in the Nakamoto upgrade, so this is always `false`. */
                                 is_unanchored: boolean;
                                 /** @description The microblock hash that this transaction was streamed in. If the transaction was batched in an anchor block (not included within a microblock) then this value will be an empty string. */
                                 microblock_hash: string;
@@ -28430,7 +26612,7 @@ export interface operations {
                                 event_count: number;
                                 /** @description Hash of the previous block. */
                                 parent_block_hash: string;
-                                /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. */
+                                /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. Microblocks were removed in the Nakamoto upgrade, so this is always `false`. */
                                 is_unanchored: boolean;
                                 /** @description The microblock hash that this transaction was streamed in. If the transaction was batched in an anchor block (not included within a microblock) then this value will be an empty string. */
                                 microblock_hash: string;
@@ -28679,7 +26861,7 @@ export interface operations {
                                 event_count: number;
                                 /** @description Hash of the previous block. */
                                 parent_block_hash: string;
-                                /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. */
+                                /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. Microblocks were removed in the Nakamoto upgrade, so this is always `false`. */
                                 is_unanchored: boolean;
                                 /** @description The microblock hash that this transaction was streamed in. If the transaction was batched in an anchor block (not included within a microblock) then this value will be an empty string. */
                                 microblock_hash: string;
@@ -28928,7 +27110,7 @@ export interface operations {
                                 event_count: number;
                                 /** @description Hash of the previous block. */
                                 parent_block_hash: string;
-                                /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. */
+                                /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. Microblocks were removed in the Nakamoto upgrade, so this is always `false`. */
                                 is_unanchored: boolean;
                                 /** @description The microblock hash that this transaction was streamed in. If the transaction was batched in an anchor block (not included within a microblock) then this value will be an empty string. */
                                 microblock_hash: string;
@@ -30857,7 +29039,7 @@ export interface operations {
                                 event_count: number;
                                 /** @description Hash of the previous block. */
                                 parent_block_hash: string;
-                                /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. */
+                                /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. Microblocks were removed in the Nakamoto upgrade, so this is always `false`. */
                                 is_unanchored: boolean;
                                 /** @description The microblock hash that this transaction was streamed in. If the transaction was batched in an anchor block (not included within a microblock) then this value will be an empty string. */
                                 microblock_hash: string;
@@ -31107,7 +29289,7 @@ export interface operations {
                                 event_count: number;
                                 /** @description Hash of the previous block. */
                                 parent_block_hash: string;
-                                /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. */
+                                /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. Microblocks were removed in the Nakamoto upgrade, so this is always `false`. */
                                 is_unanchored: boolean;
                                 /** @description The microblock hash that this transaction was streamed in. If the transaction was batched in an anchor block (not included within a microblock) then this value will be an empty string. */
                                 microblock_hash: string;
@@ -31357,7 +29539,7 @@ export interface operations {
                                 event_count: number;
                                 /** @description Hash of the previous block. */
                                 parent_block_hash: string;
-                                /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. */
+                                /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. Microblocks were removed in the Nakamoto upgrade, so this is always `false`. */
                                 is_unanchored: boolean;
                                 /** @description The microblock hash that this transaction was streamed in. If the transaction was batched in an anchor block (not included within a microblock) then this value will be an empty string. */
                                 microblock_hash: string;
@@ -31614,7 +29796,7 @@ export interface operations {
                                 event_count: number;
                                 /** @description Hash of the previous block. */
                                 parent_block_hash: string;
-                                /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. */
+                                /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. Microblocks were removed in the Nakamoto upgrade, so this is always `false`. */
                                 is_unanchored: boolean;
                                 /** @description The microblock hash that this transaction was streamed in. If the transaction was batched in an anchor block (not included within a microblock) then this value will be an empty string. */
                                 microblock_hash: string;
@@ -31863,7 +30045,7 @@ export interface operations {
                                 event_count: number;
                                 /** @description Hash of the previous block. */
                                 parent_block_hash: string;
-                                /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. */
+                                /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. Microblocks were removed in the Nakamoto upgrade, so this is always `false`. */
                                 is_unanchored: boolean;
                                 /** @description The microblock hash that this transaction was streamed in. If the transaction was batched in an anchor block (not included within a microblock) then this value will be an empty string. */
                                 microblock_hash: string;
@@ -32112,7 +30294,7 @@ export interface operations {
                                 event_count: number;
                                 /** @description Hash of the previous block. */
                                 parent_block_hash: string;
-                                /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. */
+                                /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. Microblocks were removed in the Nakamoto upgrade, so this is always `false`. */
                                 is_unanchored: boolean;
                                 /** @description The microblock hash that this transaction was streamed in. If the transaction was batched in an anchor block (not included within a microblock) then this value will be an empty string. */
                                 microblock_hash: string;
@@ -32264,11 +30446,6 @@ export interface operations {
                 /** @description If specified, only delegation events after the given block will be included */
                 after_block?: number;
                 height?: number;
-                /**
-                 * @description Include data from unanchored (i.e. unconfirmed) microblocks
-                 * @example true
-                 */
-                unanchored?: boolean;
             };
             header?: never;
             path: {
@@ -33026,7 +31203,7 @@ export interface operations {
                             event_count: number;
                             /** @description Hash of the previous block. */
                             parent_block_hash: string;
-                            /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. */
+                            /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. Microblocks were removed in the Nakamoto upgrade, so this is always `false`. */
                             is_unanchored: boolean;
                             /** @description The microblock hash that this transaction was streamed in. If the transaction was batched in an anchor block (not included within a microblock) then this value will be an empty string. */
                             microblock_hash: string;
@@ -33276,7 +31453,7 @@ export interface operations {
                             event_count: number;
                             /** @description Hash of the previous block. */
                             parent_block_hash: string;
-                            /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. */
+                            /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. Microblocks were removed in the Nakamoto upgrade, so this is always `false`. */
                             is_unanchored: boolean;
                             /** @description The microblock hash that this transaction was streamed in. If the transaction was batched in an anchor block (not included within a microblock) then this value will be an empty string. */
                             microblock_hash: string;
@@ -33526,7 +31703,7 @@ export interface operations {
                             event_count: number;
                             /** @description Hash of the previous block. */
                             parent_block_hash: string;
-                            /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. */
+                            /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. Microblocks were removed in the Nakamoto upgrade, so this is always `false`. */
                             is_unanchored: boolean;
                             /** @description The microblock hash that this transaction was streamed in. If the transaction was batched in an anchor block (not included within a microblock) then this value will be an empty string. */
                             microblock_hash: string;
@@ -33783,7 +31960,7 @@ export interface operations {
                             event_count: number;
                             /** @description Hash of the previous block. */
                             parent_block_hash: string;
-                            /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. */
+                            /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. Microblocks were removed in the Nakamoto upgrade, so this is always `false`. */
                             is_unanchored: boolean;
                             /** @description The microblock hash that this transaction was streamed in. If the transaction was batched in an anchor block (not included within a microblock) then this value will be an empty string. */
                             microblock_hash: string;
@@ -34032,7 +32209,7 @@ export interface operations {
                             event_count: number;
                             /** @description Hash of the previous block. */
                             parent_block_hash: string;
-                            /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. */
+                            /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. Microblocks were removed in the Nakamoto upgrade, so this is always `false`. */
                             is_unanchored: boolean;
                             /** @description The microblock hash that this transaction was streamed in. If the transaction was batched in an anchor block (not included within a microblock) then this value will be an empty string. */
                             microblock_hash: string;
@@ -34281,7 +32458,7 @@ export interface operations {
                             event_count: number;
                             /** @description Hash of the previous block. */
                             parent_block_hash: string;
-                            /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. */
+                            /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. Microblocks were removed in the Nakamoto upgrade, so this is always `false`. */
                             is_unanchored: boolean;
                             /** @description The microblock hash that this transaction was streamed in. If the transaction was batched in an anchor block (not included within a microblock) then this value will be an empty string. */
                             microblock_hash: string;
@@ -35467,7 +33644,7 @@ export interface operations {
                                 event_count: number;
                                 /** @description Hash of the previous block. */
                                 parent_block_hash: string;
-                                /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. */
+                                /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. Microblocks were removed in the Nakamoto upgrade, so this is always `false`. */
                                 is_unanchored: boolean;
                                 /** @description The microblock hash that this transaction was streamed in. If the transaction was batched in an anchor block (not included within a microblock) then this value will be an empty string. */
                                 microblock_hash: string;
@@ -35717,7 +33894,7 @@ export interface operations {
                                 event_count: number;
                                 /** @description Hash of the previous block. */
                                 parent_block_hash: string;
-                                /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. */
+                                /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. Microblocks were removed in the Nakamoto upgrade, so this is always `false`. */
                                 is_unanchored: boolean;
                                 /** @description The microblock hash that this transaction was streamed in. If the transaction was batched in an anchor block (not included within a microblock) then this value will be an empty string. */
                                 microblock_hash: string;
@@ -35967,7 +34144,7 @@ export interface operations {
                                 event_count: number;
                                 /** @description Hash of the previous block. */
                                 parent_block_hash: string;
-                                /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. */
+                                /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. Microblocks were removed in the Nakamoto upgrade, so this is always `false`. */
                                 is_unanchored: boolean;
                                 /** @description The microblock hash that this transaction was streamed in. If the transaction was batched in an anchor block (not included within a microblock) then this value will be an empty string. */
                                 microblock_hash: string;
@@ -36224,7 +34401,7 @@ export interface operations {
                                 event_count: number;
                                 /** @description Hash of the previous block. */
                                 parent_block_hash: string;
-                                /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. */
+                                /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. Microblocks were removed in the Nakamoto upgrade, so this is always `false`. */
                                 is_unanchored: boolean;
                                 /** @description The microblock hash that this transaction was streamed in. If the transaction was batched in an anchor block (not included within a microblock) then this value will be an empty string. */
                                 microblock_hash: string;
@@ -36473,7 +34650,7 @@ export interface operations {
                                 event_count: number;
                                 /** @description Hash of the previous block. */
                                 parent_block_hash: string;
-                                /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. */
+                                /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. Microblocks were removed in the Nakamoto upgrade, so this is always `false`. */
                                 is_unanchored: boolean;
                                 /** @description The microblock hash that this transaction was streamed in. If the transaction was batched in an anchor block (not included within a microblock) then this value will be an empty string. */
                                 microblock_hash: string;
@@ -36722,7 +34899,7 @@ export interface operations {
                                 event_count: number;
                                 /** @description Hash of the previous block. */
                                 parent_block_hash: string;
-                                /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. */
+                                /** @description True if the transaction is included in a microblock that has not been confirmed by an anchor block. Microblocks were removed in the Nakamoto upgrade, so this is always `false`. */
                                 is_unanchored: boolean;
                                 /** @description The microblock hash that this transaction was streamed in. If the transaction was batched in an anchor block (not included within a microblock) then this value will be an empty string. */
                                 microblock_hash: string;
@@ -38603,7 +36780,7 @@ export interface operations {
                         results: {
                             /** @description The index of the bond in the PoX-5 bond list */
                             bond_index: number;
-                            status: "enrolled" | "running" | "early_exit" | "unlocked";
+                            status: "enrolled" | "running" | "early_exit" | "unlocked" | "rolled_over";
                             /** @description Whether the position is active */
                             active: boolean;
                             enrollment: {
@@ -39828,6 +38005,13 @@ export interface operations {
                                 time: number;
                             };
                             data: {
+                                /** @description The `calculate-rewards` call this distribution was emitted by, from the `calculate-rewards` event in the same transaction. */
+                                calculation: {
+                                    /** @description The Bitcoin height the rewards were calculated for: the start of the distribution period, which can differ from the height of the block carrying this event. */
+                                    bitcoin_height: number;
+                                    /** @description The PoX reward cycle the calculation (and this distribution) books to */
+                                    reward_cycle: number;
+                                };
                                 /** @description The bond's target reward for this calculation, in sats */
                                 target_yield: string;
                                 /** @description The rewards earned by this bond this calculation */
@@ -40182,6 +38366,164 @@ export interface operations {
             };
         };
     };
+    get_staking_cycle: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description A PoX cycle number (up to nine digits), or one of `current` (the cycle containing the current Bitcoin tip), `previous`, or `next`. The prepare phase at the end of a cycle belongs to that cycle. */
+                cycle_number: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /**
+                         * @description The PoX reward cycle number
+                         * @example 143
+                         */
+                        number: number;
+                        /** @description Where the cycle stands relative to the current Bitcoin tip. */
+                        status: "upcoming" | "reward_phase" | "prepare_phase" | "finished";
+                        /** @description The Bitcoin heights delimiting the cycle, inclusive: its first block, the first block of its prepare phase, and its last block. */
+                        schedule: {
+                            start: {
+                                /** @description The Bitcoin height of this point */
+                                bitcoin_height: number;
+                            };
+                            prepare_phase_start: {
+                                /** @description The Bitcoin height of this point */
+                                bitcoin_height: number;
+                            };
+                            end: {
+                                /** @description The Bitcoin height of this point */
+                                bitcoin_height: number;
+                            };
+                        };
+                        /** @description The assets locked by staking for this cycle */
+                        locked: {
+                            stx: {
+                                /**
+                                 * Amount
+                                 * @description STX locked in STX-only staking that counts for this cycle, in µSTX.
+                                 * @example 1000000
+                                 */
+                                stx_only: string;
+                                /**
+                                 * Amount
+                                 * @description STX locked across the bonds covering this cycle, in µSTX.
+                                 * @example 1000000
+                                 */
+                                bonds: string;
+                                /**
+                                 * Amount
+                                 * @description Sum of `stx_only` and `bonds`, in µSTX.
+                                 * @example 1000000
+                                 */
+                                total: string;
+                            };
+                            btc: {
+                                /**
+                                 * Amount
+                                 * @description BTC locked across the bonds covering this cycle, in satoshis (proven Bitcoin L1 lockups and sBTC lockups). For a finished cycle this is the BTC staked per bond at the cycle's latest reward distribution; otherwise the bonds' running locked totals.
+                                 * @example 1000000
+                                 */
+                                total: string;
+                                /**
+                                 * Amount
+                                 * @description Of `total`, the satoshis locked through proven Bitcoin L1 lockups.
+                                 * @example 1000000
+                                 */
+                                native: string;
+                                /**
+                                 * Amount
+                                 * @description Of `total`, the satoshis locked through sBTC lockups.
+                                 * @example 1000000
+                                 */
+                                sbtc: string;
+                            };
+                        };
+                        /** @description Who participates in the cycle */
+                        participants: {
+                            stakers: {
+                                /** @description Principals whose STX-only stake counts for this cycle. */
+                                stx_only: number;
+                                /** @description Principals holding a position in a bond covering this cycle. */
+                                bonds: number;
+                            };
+                            signers: number | null;
+                        };
+                        /** @description The pox-5 bonds active during this cycle */
+                        bonds: {
+                            /** @description Bonds whose term covers this cycle */
+                            total: number;
+                            /** @description Their bond indexes, ascending */
+                            indexes: number[];
+                        };
+                        /** @description The rewards generated by this cycle */
+                        rewards: {
+                            btc: {
+                                /**
+                                 * Amount
+                                 * @description sBTC rewards booked to this cycle by the pox-5 reward distributions run so far, in satoshis. Distributions run periodically within a cycle, so this grows while the cycle is active; it equals the sum of the `waterfall` entries.
+                                 * @example 1000000
+                                 */
+                                total: string;
+                                /** @description How the accrued rewards were split, in payout order */
+                                waterfall: {
+                                    /**
+                                     * Amount
+                                     * @description The share paid to bond participants, in satoshis.
+                                     * @example 1000000
+                                     */
+                                    bonds: string;
+                                    /**
+                                     * Amount
+                                     * @description The share paid to STX-only stakers, in satoshis.
+                                     * @example 1000000
+                                     */
+                                    stx_only: string;
+                                    /**
+                                     * Amount
+                                     * @description The share deposited into the protocol reserve, in satoshis.
+                                     * @example 1000000
+                                     */
+                                    reserve_deposit: string;
+                                };
+                                /**
+                                 * Amount
+                                 * @description sBTC claimed from the pox-5 contract by signer managers for this cycle so far, in satoshis. Claims trail distributions and can keep growing after the cycle ends.
+                                 * @example 1000000
+                                 */
+                                claimed: string;
+                            };
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: string;
+                        message?: string;
+                    } & {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
     get_cycle_signers: {
         parameters: {
             query?: {
@@ -40192,8 +38534,8 @@ export interface operations {
             };
             header?: never;
             path: {
-                /** @description The PoX cycle to fetch signers for. Only `current` is supported at the moment. */
-                cycle_number: "current";
+                /** @description A PoX cycle number (up to nine digits), or one of `current` (the cycle containing the current Bitcoin tip), `previous`, or `next`. The prepare phase at the end of a cycle belongs to that cycle. */
+                cycle_number: string;
             };
             cookie?: never;
         };
@@ -41542,6 +39884,8 @@ export interface operations {
                             /** @description Index block hash of the parent block */
                             index_hash: string;
                         };
+                        /** @description Post condition mode of the transaction. Only present when requested via the `include=post_conditions` query param. */
+                        post_condition_mode?: "allow" | "deny" | "originator";
                         /** @description Only present when requested via the `include=post_conditions` query param. */
                         post_conditions?: ({
                             principal: {
@@ -41720,6 +40064,8 @@ export interface operations {
                             /** @description Index block hash of the parent block */
                             index_hash: string;
                         };
+                        /** @description Post condition mode of the transaction. Only present when requested via the `include=post_conditions` query param. */
+                        post_condition_mode?: "allow" | "deny" | "originator";
                         /** @description Only present when requested via the `include=post_conditions` query param. */
                         post_conditions?: ({
                             principal: {
@@ -41895,6 +40241,8 @@ export interface operations {
                             /** @description Index block hash of the parent block */
                             index_hash: string;
                         };
+                        /** @description Post condition mode of the transaction. Only present when requested via the `include=post_conditions` query param. */
+                        post_condition_mode?: "allow" | "deny" | "originator";
                         /** @description Only present when requested via the `include=post_conditions` query param. */
                         post_conditions?: ({
                             principal: {
@@ -42074,6 +40422,8 @@ export interface operations {
                             /** @description Index block hash of the parent block */
                             index_hash: string;
                         };
+                        /** @description Post condition mode of the transaction. Only present when requested via the `include=post_conditions` query param. */
+                        post_condition_mode?: "allow" | "deny" | "originator";
                         /** @description Only present when requested via the `include=post_conditions` query param. */
                         post_conditions?: ({
                             principal: {
@@ -42242,6 +40592,8 @@ export interface operations {
                             /** @description Index block hash of the parent block */
                             index_hash: string;
                         };
+                        /** @description Post condition mode of the transaction. Only present when requested via the `include=post_conditions` query param. */
+                        post_condition_mode?: "allow" | "deny" | "originator";
                         /** @description Only present when requested via the `include=post_conditions` query param. */
                         post_conditions?: ({
                             principal: {
@@ -42426,6 +40778,8 @@ export interface operations {
                             /** @description Index block hash of the parent block */
                             index_hash: string;
                         };
+                        /** @description Post condition mode of the transaction. Only present when requested via the `include=post_conditions` query param. */
+                        post_condition_mode?: "allow" | "deny" | "originator";
                         /** @description Only present when requested via the `include=post_conditions` query param. */
                         post_conditions?: ({
                             principal: {
@@ -42580,6 +40934,8 @@ export interface operations {
                         receipt_block_height: number;
                         /** @description Status of the mempool transaction */
                         status: "pending" | "dropped_replace_by_fee" | "dropped_replace_across_fork" | "dropped_too_expensive" | "dropped_stale_garbage_collect" | "dropped_problematic";
+                        /** @description Post condition mode of the transaction. Only present when requested via the `include=post_conditions` query param. */
+                        post_condition_mode?: "allow" | "deny" | "originator";
                         /** @description Only present when requested via the `include=post_conditions` query param. */
                         post_conditions?: ({
                             principal: {
@@ -42720,6 +41076,8 @@ export interface operations {
                         receipt_block_height: number;
                         /** @description Status of the mempool transaction */
                         status: "pending" | "dropped_replace_by_fee" | "dropped_replace_across_fork" | "dropped_too_expensive" | "dropped_stale_garbage_collect" | "dropped_problematic";
+                        /** @description Post condition mode of the transaction. Only present when requested via the `include=post_conditions` query param. */
+                        post_condition_mode?: "allow" | "deny" | "originator";
                         /** @description Only present when requested via the `include=post_conditions` query param. */
                         post_conditions?: ({
                             principal: {
@@ -42857,6 +41215,8 @@ export interface operations {
                         receipt_block_height: number;
                         /** @description Status of the mempool transaction */
                         status: "pending" | "dropped_replace_by_fee" | "dropped_replace_across_fork" | "dropped_too_expensive" | "dropped_stale_garbage_collect" | "dropped_problematic";
+                        /** @description Post condition mode of the transaction. Only present when requested via the `include=post_conditions` query param. */
+                        post_condition_mode?: "allow" | "deny" | "originator";
                         /** @description Only present when requested via the `include=post_conditions` query param. */
                         post_conditions?: ({
                             principal: {
@@ -42998,6 +41358,8 @@ export interface operations {
                         receipt_block_height: number;
                         /** @description Status of the mempool transaction */
                         status: "pending" | "dropped_replace_by_fee" | "dropped_replace_across_fork" | "dropped_too_expensive" | "dropped_stale_garbage_collect" | "dropped_problematic";
+                        /** @description Post condition mode of the transaction. Only present when requested via the `include=post_conditions` query param. */
+                        post_condition_mode?: "allow" | "deny" | "originator";
                         /** @description Only present when requested via the `include=post_conditions` query param. */
                         post_conditions?: ({
                             principal: {
@@ -43128,6 +41490,8 @@ export interface operations {
                         receipt_block_height: number;
                         /** @description Status of the mempool transaction */
                         status: "pending" | "dropped_replace_by_fee" | "dropped_replace_across_fork" | "dropped_too_expensive" | "dropped_stale_garbage_collect" | "dropped_problematic";
+                        /** @description Post condition mode of the transaction. Only present when requested via the `include=post_conditions` query param. */
+                        post_condition_mode?: "allow" | "deny" | "originator";
                         /** @description Only present when requested via the `include=post_conditions` query param. */
                         post_conditions?: ({
                             principal: {
@@ -43258,6 +41622,8 @@ export interface operations {
                         receipt_block_height: number;
                         /** @description Status of the mempool transaction */
                         status: "pending" | "dropped_replace_by_fee" | "dropped_replace_across_fork" | "dropped_too_expensive" | "dropped_stale_garbage_collect" | "dropped_problematic";
+                        /** @description Post condition mode of the transaction. Only present when requested via the `include=post_conditions` query param. */
+                        post_condition_mode?: "allow" | "deny" | "originator";
                         /** @description Only present when requested via the `include=post_conditions` query param. */
                         post_conditions?: ({
                             principal: {
@@ -43609,13 +41975,7 @@ export interface operations {
     };
     get_historical_zone_file: {
         parameters: {
-            query?: {
-                /**
-                 * @description Include data from unanchored (i.e. unconfirmed) microblocks
-                 * @example true
-                 */
-                unanchored?: boolean;
-            };
+            query?: never;
             header?: never;
             path: {
                 /**
@@ -43659,13 +42019,7 @@ export interface operations {
     };
     fetch_subdomains_list_for_name: {
         parameters: {
-            query?: {
-                /**
-                 * @description Include data from unanchored (i.e. unconfirmed) microblocks
-                 * @example true
-                 */
-                unanchored?: boolean;
-            };
+            query?: never;
             header?: never;
             path: {
                 /**
@@ -43705,13 +42059,7 @@ export interface operations {
     };
     fetch_zone_file: {
         parameters: {
-            query?: {
-                /**
-                 * @description Include data from unanchored (i.e. unconfirmed) microblocks
-                 * @example true
-                 */
-                unanchored?: boolean;
-            };
+            query?: never;
             header?: never;
             path: {
                 /**
@@ -43756,11 +42104,6 @@ export interface operations {
     get_all_names: {
         parameters: {
             query?: {
-                /**
-                 * @description Include data from unanchored (i.e. unconfirmed) microblocks
-                 * @example true
-                 */
-                unanchored?: boolean;
                 /** @description names are defaulted to page 1 with 100 results. You can query specific page results by using the 'page' query parameter. */
                 page?: number;
             };
@@ -43794,13 +42137,7 @@ export interface operations {
     };
     get_name_info: {
         parameters: {
-            query?: {
-                /**
-                 * @description Include data from unanchored (i.e. unconfirmed) microblocks
-                 * @example true
-                 */
-                unanchored?: boolean;
-            };
+            query?: never;
             header?: never;
             path: {
                 /**
@@ -43848,13 +42185,7 @@ export interface operations {
     };
     get_all_namespaces: {
         parameters: {
-            query?: {
-                /**
-                 * @description Include data from unanchored (i.e. unconfirmed) microblocks
-                 * @example true
-                 */
-                unanchored?: boolean;
-            };
+            query?: never;
             header?: never;
             path?: never;
             cookie?: never;
@@ -43900,11 +42231,6 @@ export interface operations {
                  * @example 22
                  */
                 page?: number;
-                /**
-                 * @description Include data from unanchored (i.e. unconfirmed) microblocks
-                 * @example true
-                 */
-                unanchored?: boolean;
             };
             header?: never;
             path: {
@@ -43942,13 +42268,7 @@ export interface operations {
     };
     get_names_owned_by_address: {
         parameters: {
-            query?: {
-                /**
-                 * @description Include data from unanchored (i.e. unconfirmed) microblocks
-                 * @example true
-                 */
-                unanchored?: boolean;
-            };
+            query?: never;
             header?: never;
             path: {
                 /**
