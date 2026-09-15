@@ -24,6 +24,7 @@ const BOB = 'ST11NJTTKGVT6D1HY4NJRVQWMQM7TVAR091EJ8P2Y';
 const CAROL = 'ST2REHHS5J3CERCRBEPMGH7921Q6PYKAADT7JP2VB';
 const DAVE = 'ST1SJ3DTE5DN7X54YDH5D64R3BCB6A2AG2ZQ8YPD5';
 const ERIN = 'ST3DWSXBPYDB484QXFTR81K4AWG4ZB5XZNFF3H70C';
+const FRANK = 'ST2CY5V39NHDPWSXMW9QDT3HC3GD6Q6XX4CFRK9AG';
 const SIGNER = `${ADMIN}.signer-manager`;
 
 const CONSTANTS = {
@@ -734,12 +735,13 @@ describe('staking cycle', () => {
 
   test('a stake made during the current cycle counts from the next cycle', async () => {
     await seedFixture();
-    // erin stakes during cycle 10: her shares start at 11, though her STX is locked right away.
+    // frank (no prior position) stakes during cycle 10: his shares start at 11, though his STX is
+    // locked right away.
     await db.update(
       nextBlock()
         .addTxPox5Event({
           name: Pox5EventName.Stake,
-          data: stakeData({ staker: ERIN, ustx: 7_000_000n, unlock: 1500, firstRewardCycle: 11 }),
+          data: stakeData({ staker: FRANK, ustx: 7_000_000n, unlock: 1500, firstRewardCycle: 11 }),
         })
         .build()
     );
@@ -760,7 +762,7 @@ describe('staking cycle', () => {
         .addTxPox5Event({
           name: Pox5EventName.StakeUpdate,
           data: {
-            staker: ERIN,
+            staker: FRANK,
             signer: SIGNER,
             old_signer: SIGNER,
             prev_unlock_height: '1500',
@@ -774,10 +776,10 @@ describe('staking cycle', () => {
         })
         .build()
     );
-    const [erin] = await db.sql<{ first_reward_cycle: number }[]>`
-      SELECT first_reward_cycle FROM stx_locked_balances WHERE principal = ${ERIN}
+    const [frank] = await db.sql<{ first_reward_cycle: number }[]>`
+      SELECT first_reward_cycle FROM stx_locked_balances WHERE principal = ${FRANK}
     `;
-    assert.equal(erin.first_reward_cycle, 11, 'stake-update keeps the first cycle');
+    assert.equal(frank.first_reward_cycle, 11, 'stake-update keeps the first cycle');
     current = await getCycle('current');
     assert.equal(current.locked.stx.stx_only, '50000000');
     next = await getCycle('next');
