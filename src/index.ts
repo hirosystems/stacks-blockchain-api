@@ -5,6 +5,7 @@ import {
 } from './helpers.js';
 import * as sourceMapSupport from 'source-map-support';
 import { startApiServer } from './api/init.js';
+import { ensurePoxConstants } from './datastore/pox-constants.js';
 import { startEventServer } from './event-stream/event-server.js';
 import { getCoreNodeEndpoint, getCoreRpcClient, waitForCoreRpcConnection } from './core-rpc.js';
 import * as promClient from 'prom-client';
@@ -84,8 +85,8 @@ async function init(): Promise<void> {
     logger.info('Chainstate is empty');
   }
 
+  const configuredChainID = getApiConfiguredChainID();
   if (apiMode === 'default' || apiMode === 'writeonly') {
-    const configuredChainID = getApiConfiguredChainID();
     const eventServer = await startEventServer({
       datastore: dbWriteStore,
       chainId: configuredChainID,
@@ -110,6 +111,14 @@ async function init(): Promise<void> {
         throw error;
       }
     }
+
+    await ensurePoxConstants({
+      db: dbWriteStore,
+      client: getCoreRpcClient(),
+      chainId: configuredChainID,
+      endpoint: getCoreNodeEndpoint(),
+    });
+
     if (!snpEnabled) {
       monitorCoreRpcConnection().catch(error => {
         logger.error(error, 'Error monitoring RPC connection');
@@ -134,7 +143,7 @@ async function init(): Promise<void> {
     const apiServer = await startApiServer({
       datastore: dbStore,
       writeDatastore: dbWriteStore,
-      chainId: getApiConfiguredChainID(),
+      chainId: configuredChainID,
     });
     registerShutdownConfig({
       name: 'API Server',

@@ -1,5 +1,5 @@
-import { DbCycleSigner } from '../../../datastore/v3/types.js';
-import { CycleSigner } from '../../schemas/v3/entities/staking-cycles.js';
+import { DbCycleSigner, DbStakingCycle } from '../../../datastore/v3/types.js';
+import { CycleSigner, StakingCycle } from '../../schemas/v3/entities/staking-cycles.js';
 
 export function serializeDbCycleSigner(signer: DbCycleSigner, cycleNumber: number): CycleSigner {
   return {
@@ -33,5 +33,48 @@ export function serializeDbCycleSigner(signer: DbCycleSigner, cycleNumber: numbe
             }
           : null,
     })),
+  };
+}
+
+export function serializeDbStakingCycle(cycle: DbStakingCycle): StakingCycle {
+  return {
+    number: cycle.number,
+    status: cycle.status,
+    schedule: {
+      start: { bitcoin_height: cycle.schedule.startBitcoinHeight },
+      prepare_phase_start: { bitcoin_height: cycle.schedule.preparePhaseStartBitcoinHeight },
+      end: { bitcoin_height: cycle.schedule.endBitcoinHeight },
+    },
+    locked: {
+      stx: {
+        stx_only: cycle.locked.stx_only,
+        bonds: cycle.locked.bond_stx,
+        total: (BigInt(cycle.locked.stx_only) + BigInt(cycle.locked.bond_stx)).toString(),
+      },
+      btc: {
+        total: cycle.locked.btc,
+        native: cycle.locked.btc_native,
+        sbtc: cycle.locked.btc_sbtc,
+      },
+    },
+    participants: {
+      stakers: {
+        stx_only: cycle.participants.stx_only_stakers,
+        bonds: cycle.participants.bond_stakers,
+      },
+      signers: cycle.participants.signers,
+    },
+    bonds: { total: cycle.bonds.length, indexes: cycle.bonds },
+    rewards: {
+      btc: {
+        total: cycle.rewards.total,
+        waterfall: {
+          bonds: cycle.rewards.bonds,
+          stx_only: cycle.rewards.stx_only,
+          reserve_deposit: cycle.rewards.reserve_deposit,
+        },
+        claimed: cycle.rewards.claimed,
+      },
+    },
   };
 }

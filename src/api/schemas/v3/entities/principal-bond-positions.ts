@@ -6,6 +6,7 @@ export const PrincipalBondPositionStatusSchema = Type.Union([
   Type.Literal('running'),
   Type.Literal('early_exit'),
   Type.Literal('unlocked'),
+  Type.Literal('rolled_over'),
 ]);
 export type PrincipalBondPositionStatus = Static<typeof PrincipalBondPositionStatusSchema>;
 

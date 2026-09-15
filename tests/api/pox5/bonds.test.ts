@@ -1994,11 +1994,21 @@ describe('pox-5 principal bond positions pagination', () => {
     assert.deepEqual(page2.cursor, { next: null, previous: '0', current: '1' });
   });
 
-  test('summary materializes the aggregate of both bond positions', async () => {
+  test('summary counts both positions but only the live one holds locked amounts', async () => {
+    // Registering for bond 1 rolls alice's bond 0 position over (a staker holds one live pox-5
+    // position at a time, and the node carries the single account lock into the new bond), so
+    // bond 0 is kept as a `rolled_over` position with nothing locked and only bond 1 contributes
+    // to the aggregate.
+    const positions = await getJson<BondPositionsPage>(
+      `/extended/v3/principals/${ALICE}/staking/bonds`
+    );
+    assert.equal(positions.results[0].status, 'rolled_over');
+    assert.deepEqual(positions.results[0].locked, { btc: '0', stx: '0' });
+    assert.equal(positions.results[1].status, 'enrolled');
     const summary = await getJson<StakingSummary>(`/extended/v3/principals/${ALICE}/staking`);
     assert.equal(summary.bonds.count, 2);
-    assert.equal(BigInt(summary.bonds.locked.btc), SBTC_SATS * 2n);
-    assert.equal(BigInt(summary.bonds.locked.stx), AMOUNT_USTX * 2n);
+    assert.equal(BigInt(summary.bonds.locked.btc), SBTC_SATS);
+    assert.equal(BigInt(summary.bonds.locked.stx), AMOUNT_USTX);
     assert.equal(BigInt(summary.bonds.rewards.btc.accrued), 0n);
   });
 });

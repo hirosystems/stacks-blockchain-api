@@ -97,6 +97,7 @@ import {
 import * as path from 'path';
 import { PgStoreV2 } from './pg-store-v2.js';
 import { ENV } from '../env.js';
+import { MAINNET_POX_CONSTANTS, type PoxConstants } from './pox-constants.js';
 import { BlockIdParam } from '../api/routes/v2/schemas.js';
 import { PgStoreV3 } from './v3/pg-store-v3.js';
 import { Pox4EventName } from '@stacks/codec';
@@ -284,6 +285,46 @@ export class PgStore extends BasePgStore {
         result: result,
       };
     });
+  }
+
+  /**
+   * The network's PoX cycle geometry persisted on `pox_state` by the writer's one-time
+   * `ensurePoxConstants` at startup. `undefined` until the writer has run against this database.
+   */
+  async getStoredPoxConstants(): Promise<PoxConstants | undefined> {
+    const [row] = await this.sql<
+      {
+        pox_first_burnchain_block_height: number | null;
+        pox_reward_cycle_length: number | null;
+        pox_prepare_phase_block_length: number | null;
+      }[]
+    >`
+      SELECT pox_first_burnchain_block_height, pox_reward_cycle_length, pox_prepare_phase_block_length
+      FROM pox_state
+      LIMIT 1
+    `;
+    if (
+      !row ||
+      row.pox_first_burnchain_block_height === null ||
+      row.pox_reward_cycle_length === null ||
+      row.pox_prepare_phase_block_length === null
+    ) {
+      return undefined;
+    }
+    return {
+      firstBurnchainBlockHeight: row.pox_first_burnchain_block_height,
+      rewardCycleLength: row.pox_reward_cycle_length,
+      preparePhaseBlockLength: row.pox_prepare_phase_block_length,
+    };
+  }
+
+  /**
+   * The PoX cycle geometry to use for cycle-aware reads: the values persisted on `pox_state`, or
+   * the mainnet constants while the writer has not established them yet (correct on mainnet, a
+   * placeholder elsewhere until the writer's first start against this database).
+   */
+  async getPoxConstants(): Promise<PoxConstants> {
+    return (await this.getStoredPoxConstants()) ?? { ...MAINNET_POX_CONSTANTS };
   }
 
   async getPoxForcedUnlockHeightsInternal(sql: PgSqlClient): Promise<
@@ -840,6 +881,52 @@ export class PgStore extends BasePgStore {
       };
       return parsed;
     });
+  }
+
+  /**
+   * Cache-key state for responses that depend on both the Stacks tip and the burnchain tip: the
+   * canonical Stacks tip's index block hash, `chain_tip.burn_block_height` (which `/new_burn_block`
+   * advances between Stacks blocks and which drives lock/bond expiry), and the canonical burnchain
+   * tip hash (so a same-height burnchain reorg also invalidates). `undefined` before any block has
+   * been ingested.
+   */
+  async getChainTipWithBurnchainTipCacheState(): Promise<
+    | {
+        index_block_hash: string;
+        burn_block_height: number;
+        burn_block_hash: string | null;
+      }
+    | undefined
+  > {
+    const result = await this.sql<
+      {
+        block_height: number;
+        index_block_hash: string;
+        burn_block_height: number;
+        burn_block_hash: string | null;
+      }[]
+    >`
+      SELECT
+        block_height,
+        index_block_hash,
+        burn_block_height,
+        (
+          SELECT burn_block_hash FROM burn_blocks
+          WHERE canonical = true
+          ORDER BY burn_block_height DESC
+          LIMIT 1
+        ) AS burn_block_hash
+      FROM chain_tip
+    `;
+    const tip = result[0];
+    if (!tip || tip.block_height === 0) {
+      return undefined;
+    }
+    return {
+      index_block_hash: tip.index_block_hash,
+      burn_block_height: tip.burn_block_height,
+      burn_block_hash: tip.burn_block_hash,
+    };
   }
 
   /**

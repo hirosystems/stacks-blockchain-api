@@ -6,6 +6,7 @@ import {
   DbTxStatus,
   DbTxTypeId,
 } from '../common.js';
+import type { PoxCyclePhase, PoxCycleSchedule } from '../pox-constants.js';
 
 export type DbCursorPaginatedResult<T> = {
   limit: number;
@@ -216,6 +217,11 @@ export interface DbBondEvent {
   name: string;
   /** The event's decoded payload, verbatim from the synthetic print event. */
   data: Record<string, unknown>;
+  /**
+   * For a `bond-distribution`: the `calculate-rewards` it was emitted by (same tx) — the
+   * distribution period's height and the reward cycle it books to. Null for other event kinds.
+   */
+  calculation: { bitcoin_height: number; reward_cycle: number } | null;
   tx_id: string;
   event_index: number;
   tx_index: number;
@@ -352,6 +358,40 @@ export interface DbCycleSigner {
   weight_percent: number;
   stacked_amount_percent: number;
   signer_managers: DbCycleSignerManager[];
+}
+
+/** A per-cycle summary of pox-5 staking (see `PgStoreV3.getStakingCycle`). */
+export interface DbStakingCycle {
+  number: number;
+  status: PoxCyclePhase;
+  schedule: PoxCycleSchedule;
+  locked: {
+    /** µSTX in STX-only stakes covering the cycle. */
+    stx_only: string;
+    /** µSTX locked across the bonds covering the cycle. */
+    bond_stx: string;
+    /** Sats locked across the bonds covering the cycle. */
+    btc: string;
+    /** Of `btc`, sats locked via proven Bitcoin L1 lockups. */
+    btc_native: string;
+    /** Of `btc`, sats locked via sBTC lockups. */
+    btc_sbtc: string;
+  };
+  participants: {
+    stx_only_stakers: number;
+    bond_stakers: number;
+    /** Signers in the cycle's reward set; null until the node has emitted it. */
+    signers: number | null;
+  };
+  /** Indexes of the bonds whose term covers the cycle, ascending. */
+  bonds: number[];
+  rewards: {
+    total: string;
+    bonds: string;
+    stx_only: string;
+    reserve_deposit: string;
+    claimed: string;
+  };
 }
 
 /** A staker that belongs to a signer, with the staking type(s) it participates in. */

@@ -90,15 +90,15 @@ describe('pox-5 signer stakers', () => {
   }
 
   // One block seeding: a bond, STX stakes (ALICE/CAROL under A, DAVE under B),
-  // and bond registrations (BOB/CAROL under A).
+  // and bond registrations (BOB/CAROL under A). A staker holds one live pox-5
+  // position at a time, so CAROL registers for the bond first and then rolls
+  // into an STX-only stake: her lock is live and her registration stays in the
+  // `bond_registrations` registry, which is what gives her both types.
   const seed = () =>
     db.update(
       new TestBlockBuilder({ block_height: 1, block_hash: '0x01', index_block_hash: '0x01' })
         .addTx({ tx_id: '0x' + 'a1'.repeat(32) })
         .addTxPox5Event({ name: Pox5EventName.SetupBond, data: SETUP_BOND_DATA })
-        .addTxPox5Event({ name: Pox5EventName.Stake, data: stakeData(SIGNER_A, ALICE, '5000000') })
-        .addTxPox5Event({ name: Pox5EventName.Stake, data: stakeData(SIGNER_A, CAROL, '7000000') })
-        .addTxPox5Event({ name: Pox5EventName.Stake, data: stakeData(SIGNER_B, DAVE, '9000000') })
         .addTxPox5Event({
           name: Pox5EventName.RegisterForBond,
           data: registerForBondData(SIGNER_A, BOB),
@@ -107,6 +107,9 @@ describe('pox-5 signer stakers', () => {
           name: Pox5EventName.RegisterForBond,
           data: registerForBondData(SIGNER_A, CAROL),
         })
+        .addTxPox5Event({ name: Pox5EventName.Stake, data: stakeData(SIGNER_A, ALICE, '5000000') })
+        .addTxPox5Event({ name: Pox5EventName.Stake, data: stakeData(SIGNER_A, CAROL, '7000000') })
+        .addTxPox5Event({ name: Pox5EventName.Stake, data: stakeData(SIGNER_B, DAVE, '9000000') })
         .build()
     );
 

@@ -1714,6 +1714,11 @@ export enum DbPrincipalBondPositionStatus {
   Running = 1,
   Unlocked = 2,
   EarlyExit = 3,
+  /**
+   * The staker rolled this position over into a new position (a later bond via `register-for-bond`,
+   * or an STX-only stake via `stake`).
+   */
+  RolledOver = 4,
 }
 
 export interface DbPrincipalBondPositionInsertValues extends DbTxLocation {
@@ -1750,6 +1755,17 @@ export interface DbPrincipalBondRewardClaimInsertValues extends DbTxLocation {
   reward_cycle: number;
   bond_index: number | null;
   rewards_claimed: string;
+}
+
+/**
+ * Flag-carrying source row for a pox-5 bond position roll-over (see the `bond_position_rollovers`
+ * migration): the position a staker rolled out of via `register-for-bond` or `stake`. `previous_*`
+ * / `released_*` are filled when the roll-over is applied to the position and used to restore it on
+ * reorg.
+ */
+export interface DbBondPositionRolloverInsertValues extends DbTxLocation {
+  principal: string;
+  bond_index: number;
 }
 
 /**
@@ -1810,6 +1826,10 @@ export interface DbBondRewardDistributionInsertValues extends DbTxLocation {
   bond_staked_sats: string;
   accrued_rewards_per_sat: string;
   cumulative_rewards_per_sat: string;
+  /** Sats staked through proven Bitcoin L1 lockups at this distribution (positions snapshot). */
+  native_staked_sats: string;
+  /** Sats staked through sBTC lockups at this distribution (positions snapshot). */
+  sbtc_staked_sats: string;
 }
 
 /** Cycle-level reward calculation aggregate, from the pox-5 `calculate-rewards` event. */
