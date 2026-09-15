@@ -337,7 +337,7 @@ describe('staking cycle', () => {
       },
       locked: {
         // alice only (bob's lock ended when the cycle started); bond 0 is the only bond covering
-        // cycle 10; the total is the reward set's 80M.
+        // cycle 10 (carol 10M + dave 20M registered); the total is their sum, not the reward set.
         stx: { stx_only: '50000000', bonds: '30000000', total: '80000000' },
         // dave's 2000 sats are a native L1 lockup, carol's remaining 600 are sBTC.
         btc: { total: '2600', native: '2000', sbtc: '600' },
@@ -366,10 +366,10 @@ describe('staking cycle', () => {
       prepare_phase_start: { bitcoin_height: 990 },
       end: { bitcoin_height: 999 },
     });
-    // STX-only from the latest calculation, bonds = reward set total minus that, BTC from the
-    // bond's latest distribution in the cycle.
+    // STX-only from the latest calculation, bonds from the registrations of the bonds covering
+    // the cycle (bond 0: 30M), BTC from the bond's latest distribution in the cycle.
     assert.deepEqual(cycle.locked, {
-      stx: { stx_only: '45000000', bonds: '55000000', total: '100000000' },
+      stx: { stx_only: '45000000', bonds: '30000000', total: '75000000' },
       // The split is the snapshot taken at that distribution, after carol's unstake.
       btc: { total: '2600', native: '2000', sbtc: '600' },
     });
@@ -787,7 +787,7 @@ describe('staking cycle', () => {
     assert.equal(next.locked.stx.stx_only, '59000000');
 
     // Once the cycle's first reward calculation runs, the contract's STX-only figure takes over
-    // (here it reports 49M) and bond STX follows from the reward set's total.
+    // (here it reports 49M); bond STX stays the registered 30M.
     await db.update(
       nextBlock()
         .addTxPox5Event({
@@ -810,10 +810,50 @@ describe('staking cycle', () => {
     current = await getCycle('current');
     assert.deepEqual(current.locked.stx, {
       stx_only: '49000000',
-      bonds: '31000000',
-      total: '80000000',
+      bonds: '30000000',
+      total: '79000000',
     });
     assert.equal(current.participants.stakers.stx_only, 1);
+  });
+
+  test('the reward set never caps the staked total; a roll-out keeps its bond shares', async () => {
+    await seedFixture();
+    // Mainnet cycle 143: the reward set came in 50,020.5 STX below the node's stacked_ustx (a
+    // signer whose key was not valid at the anchor block is left out of the set while its STX
+    // stays staked in the contract). The cycle's staked STX must not follow the reward set.
+    await db.sql`UPDATE pox_cycles SET total_stacked_amount = 29979500000 WHERE cycle_number = 10`;
+    let cycle = await getCycle('current');
+    assert.deepEqual(cycle.locked.stx, {
+      stx_only: '50000000',
+      bonds: '30000000',
+      total: '80000000',
+    });
+    assert.equal(cycle.participants.signers, 4, 'the reward set still feeds the signer count');
+
+    // dave rolls his bond-0 position (20M) into an STX-only stake. The contract keeps his shares
+    // in bond 0 through its term, so cycle 10's bond STX and bond participants are unchanged; his
+    // new stake counts from cycle 11.
+    await db.update(
+      nextBlock()
+        .addTxPox5Event({
+          name: Pox5EventName.Stake,
+          data: stakeData({ staker: DAVE, ustx: 21_000_000n, unlock: 1500 }),
+        })
+        .build()
+    );
+    cycle = await getCycle('current');
+    assert.deepEqual(cycle.locked.stx, {
+      stx_only: '50000000',
+      bonds: '30000000',
+      total: '80000000',
+    });
+    assert.deepEqual(cycle.participants.stakers, { stx_only: 1, bonds: 2 });
+    const next = await getCycle('next');
+    // bond 0 (30M) plus bond 1 (erin's 5M) cover cycle 11.
+    assert.equal(next.locked.stx.stx_only, '71000000');
+    assert.equal(next.locked.stx.bonds, '35000000');
+    assert.equal(next.locked.stx.total, '106000000');
+    assert.deepEqual(next.participants.stakers, { stx_only: 2, bonds: 3 });
   });
 
   test('a stake rolled into a bond mid-cycle keeps counting for the current cycle', async () => {
@@ -828,9 +868,9 @@ describe('staking cycle', () => {
         })
         .build()
     );
-    // Back to the fixture tip in cycle 10.
+    // Back to the fixture tip in cycle 10. The fixture's cycle-10 reward set stays at 80M: the
+    // staked total follows the contract's accounting, not the reward set.
     await db.update(nextBlock().build());
-    await db.sql`UPDATE pox_cycles SET total_stacked_amount = 87000000 WHERE cycle_number = 10`;
     assert.deepEqual((await getCycle('current')).locked.stx, {
       stx_only: '57000000',
       bonds: '30000000',

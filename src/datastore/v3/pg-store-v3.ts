@@ -59,7 +59,7 @@ import {
   getPoxCycleSchedule,
   resolvePoxCycleSelector,
 } from '../pox-constants.js';
-import { DbBondLockupType, DbPrincipalBondPositionStatus } from '../common.js';
+import { DbBondLockupType } from '../common.js';
 import { BlockIdParam } from '../../api/routes/v2/schemas.js';
 import { InvalidRequestError, InvalidRequestErrorType } from '../../errors.js';
 import { TransactionIncludeField } from '../../api/schemas/v3/entities/transactions.js';
@@ -2051,8 +2051,8 @@ export class PgStoreV3 extends BasePgStoreModule {
         WHERE canonical = TRUE AND cycle_number = ${number}
         LIMIT 1
       `;
-      const bonds = await sql<{ bond_index: number; stx_locked: string; btc_locked: string }[]>`
-        SELECT bond_index, stx_locked::text, btc_locked::text
+      const bonds = await sql<{ bond_index: number; btc_locked: string }[]>`
+        SELECT bond_index, btc_locked::text
         FROM bonds
         WHERE canonical = TRUE AND microblock_canonical = TRUE
           AND first_reward_cycle <= ${number} AND unlock_cycle > ${number}
@@ -2085,14 +2085,13 @@ export class PgStoreV3 extends BasePgStoreModule {
         WHERE canonical = TRUE AND microblock_canonical = TRUE AND reward_cycle = ${number}
       `;
 
-      // The bonds' running totals and the positions' native / sBTC split at the tip: the lock
-      // figures for an unfinished cycle, and the documented fallback for a finished cycle the
-      // contract never ran a reward calculation for.
+      // The bonds' running BTC totals and the positions' native / sBTC split at the tip: the BTC
+      // figures for an unfinished cycle, and the fallback for a finished cycle the contract never
+      // ran a reward calculation for.
       const tipBondLocks = async () => {
-        const bondStx = sumBig(bonds.map(b => b.stx_locked)).toString();
         const btc = sumBig(bonds.map(b => b.btc_locked)).toString();
         if (bondIndexes.length === 0) {
-          return { bondStx, btc, btcNative: '0', btcSbtc: '0' };
+          return { btc, btcNative: '0', btcSbtc: '0' };
         }
         const [split] = await sql<{ native: string; sbtc: string }[]>`
           SELECT
@@ -2112,7 +2111,7 @@ export class PgStoreV3 extends BasePgStoreModule {
           WHERE p.canonical = TRUE AND p.microblock_canonical = TRUE
             AND p.bond_index IN ${sql(bondIndexes)}
         `;
-        return { bondStx, btc, btcNative: split.native, btcSbtc: split.sbtc };
+        return { btc, btcNative: split.native, btcSbtc: split.sbtc };
       };
 
       // The pox-5 STX-only stake that counts for a cycle, as the contract accounts it: fixed when
@@ -2151,16 +2150,28 @@ export class PgStoreV3 extends BasePgStoreModule {
         `;
         return latestCalc.cycle_staked_ustx;
       };
-      // Bond STX for a cycle with a reward set: the node's total staked STX minus the STX-only
-      // part (both fixed for the cycle), else the bonds' running totals.
-      const bondStxFor = (stxOnlyAmount: string, tipBondStx: string) => {
-        if (!rewardSet) return tipBondStx;
-        const diff = BigInt(rewardSet.total_stacked_amount) - BigInt(stxOnlyAmount);
-        return (diff > 0n ? diff : 0n).toString();
+      // Bond STX shares for the cycle, as the contract accounts them: each participant's latest
+      // registration amount for every bond covering the cycle (a bond's shares run from the bond's
+      // first cycle, and rolling out of a bond does not remove its shares). Read from the
+      // registration registry rather than positions or the reward set.
+      const registeredBondStx = async () => {
+        if (bondIndexes.length === 0) return { amount: '0', stakers: 0 };
+        const [registered] = await sql<{ amount: string; stakers: number }[]>`
+          SELECT COALESCE(SUM(amount_ustx::numeric), 0)::text AS amount,
+            COUNT(DISTINCT staker)::int AS stakers
+          FROM (
+            SELECT DISTINCT ON (bond_index, staker) staker, amount_ustx
+            FROM bond_registrations
+            WHERE canonical = TRUE AND microblock_canonical = TRUE
+              AND bond_index IN ${sql(bondIndexes)}
+            ORDER BY bond_index, staker,
+              block_height DESC, microblock_sequence DESC, tx_index DESC, id DESC
+          ) latest
+        `;
+        return registered;
       };
 
       let stxOnly: string;
-      let bondStx: string;
       let btc: string;
       let btcNative: string;
       let btcSbtc: string;
@@ -2168,13 +2179,12 @@ export class PgStoreV3 extends BasePgStoreModule {
       if (finished && rewards.calculations === 0) {
         // No pox-5 reward accounting exists for this cycle (pre-pox-5, or no calculation was ever
         // booked to it), so there is no historical STX-only figure to report; today's locks say
-        // nothing about a past cycle. Bond figures fall back to the bonds' running totals.
+        // nothing about a past cycle. Bond BTC falls back to the bonds' running totals.
         stxOnly = '0';
         stxOnlyStakers = 0;
-        ({ bondStx, btc, btcNative, btcSbtc } = await tipBondLocks());
+        ({ btc, btcNative, btcSbtc } = await tipBondLocks());
       } else if (finished) {
         stxOnly = await calculatedStxOnly();
-        bondStx = bondStxFor(stxOnly, sumBig(bonds.map(b => b.stx_locked)).toString());
         // Each bond's BTC at the cycle's latest distribution (distributions share their tx with
         // the cycle's calculate-rewards event), with the native / sBTC split snapshotted then.
         const [latestSats] = await sql<{ btc: string; native: string; sbtc: string }[]>`
@@ -2210,7 +2220,7 @@ export class PgStoreV3 extends BasePgStoreModule {
         const stakes = await stxOnlyAtStart(schedule.startBitcoinHeight);
         stxOnly = stakes.amount;
         stxOnlyStakers = stakes.stakers;
-        ({ bondStx, btc, btcNative, btcSbtc } = await tipBondLocks());
+        ({ btc, btcNative, btcSbtc } = await tipBondLocks());
       } else {
         // In progress: the staked total is fixed at the cycle's start (see `stxOnlyAtStart`), and
         // once the cycle's first reward calculation has run the contract's own STX-only figure is
@@ -2218,22 +2228,12 @@ export class PgStoreV3 extends BasePgStoreModule {
         const stakes = await stxOnlyAtStart(schedule.startBitcoinHeight);
         stxOnly = rewards.calculations > 0 ? await calculatedStxOnly() : stakes.amount;
         stxOnlyStakers = stakes.stakers;
-        const tip = await tipBondLocks();
-        bondStx = bondStxFor(stxOnly, tip.bondStx);
-        ({ btc, btcNative, btcSbtc } = tip);
+        ({ btc, btcNative, btcSbtc } = await tipBondLocks());
       }
-
-      let bondStakers = 0;
-      if (bondIndexes.length > 0) {
-        const [positions] = await sql<{ stakers: number }[]>`
-          SELECT COUNT(DISTINCT principal)::int AS stakers
-          FROM principal_bond_positions
-          WHERE canonical = TRUE AND microblock_canonical = TRUE
-            AND status <> ${DbPrincipalBondPositionStatus.RolledOver}
-            AND bond_index IN ${sql(bondIndexes)}
-        `;
-        bondStakers = positions.stakers;
-      }
+      // Bond STX and bond participants come from the registration registry for every status.
+      const registered = await registeredBondStx();
+      const bondStx = registered.amount;
+      const bondStakers = registered.stakers;
 
       return {
         number,
