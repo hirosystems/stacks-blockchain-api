@@ -23,6 +23,8 @@ const BOB = 'ST11NJTTKGVT6D1HY4NJRVQWMQM7TVAR091EJ8P2Y';
 const CAROL = 'ST2REHHS5J3CERCRBEPMGH7921Q6PYKAADT7JP2VB';
 const DAVE = 'ST1SJ3DTE5DN7X54YDH5D64R3BCB6A2AG2ZQ8YPD5';
 const ERIN = 'ST3DWSXBPYDB484QXFTR81K4AWG4ZB5XZNFF3H70C';
+const FRANK = 'ST2CY5V39NHDPWSXMW9QDT3HC3GD6Q6XX4CFRK9AG';
+const GRACE = 'ST2JHG361ZXG51QTKY2NQCVBPPRRE2KZB1HR05NNC';
 const SIGNER = `${ADMIN}.signer-manager`;
 
 const CONSTANTS = {
@@ -99,13 +101,19 @@ function registerData(args: {
   };
 }
 
-function stakeData(args: { staker: string; ustx: bigint; unlock: number }) {
+function stakeData(args: {
+  staker: string;
+  ustx: bigint;
+  unlock: number;
+  /** The first cycle the stake counts for: the cycle after the one it was made in. */
+  firstRewardCycle?: number;
+}) {
   return {
     signer: SIGNER,
     staker: args.staker,
     amount_ustx: args.ustx.toString(),
     num_cycles: '2',
-    first_reward_cycle: '8',
+    first_reward_cycle: String(args.firstRewardCycle ?? 8),
     unlock_burn_height: String(args.unlock),
     unlock_cycle: '20',
   };
@@ -163,7 +171,11 @@ describe('staking cycle', () => {
       parent_block_hash: lastIndexHash,
       parent_index_block_hash: lastIndexHash,
       burn_block_height: args?.burn_block_height ?? TIP,
-    }).addTx({ tx_id: '0x' + height.toString(16).padStart(64, '0') });
+    }).addTx({
+      tx_id: '0x' + height.toString(16).padStart(64, '0'),
+      // pox-5 events carry their tx's burn height; keep it in step with the block's.
+      burn_block_height: args?.burn_block_height ?? TIP,
+    });
     lastIndexHash = indexHash;
     return builder;
   }
@@ -188,9 +200,10 @@ describe('staking cycle', () => {
   /** Stakes, bonds, registrations, cycle 9's reward accounting, and reward sets for 9 and 10. */
   async function seedFixture() {
     await db.setPoxConstants(CONSTANTS);
-    // alice's stake outlives the fixture tip; bob's expired before it.
+    // Staked and registered during cycle 9 (burn height 950), so everything counts for cycle 10.
+    // alice's stake outlives the fixture tip; bob's ended exactly when cycle 10 started.
     await db.update(
-      nextBlock()
+      nextBlock({ burn_block_height: 950 })
         .addTxPox5Event({ name: Pox5EventName.SetupBond, data: setupBondData(BOND_ACTIVE) })
         .addTxPox5Event({ name: Pox5EventName.SetupBond, data: setupBondData(BOND_UPCOMING) })
         .addTxPox5Event({
@@ -199,7 +212,7 @@ describe('staking cycle', () => {
         })
         .addTxPox5Event({
           name: Pox5EventName.Stake,
-          data: stakeData({ staker: BOB, ustx: 30_000_000n, unlock: 1040 }),
+          data: stakeData({ staker: BOB, ustx: 30_000_000n, unlock: 1000 }),
         })
         .addTxPox5Event({
           name: Pox5EventName.RegisterForBond,
@@ -290,7 +303,7 @@ describe('staking cycle', () => {
         .build()
     );
     await seedRewardSet(9, 100_000_000n, 3);
-    await seedRewardSet(10, 110_000_000n, 4);
+    await seedRewardSet(10, 80_000_000n, 4);
   }
 
   beforeEach(async () => {
@@ -323,7 +336,8 @@ describe('staking cycle', () => {
         end: { bitcoin_height: 1099 },
       },
       locked: {
-        // alice only (bob's lock expired at 1040 < tip); bond 0 is the only bond covering cycle 10.
+        // alice only (bob's lock ended when the cycle started); bond 0 is the only bond covering
+        // cycle 10; the total is the reward set's 80M.
         stx: { stx_only: '50000000', bonds: '30000000', total: '80000000' },
         // dave's 2000 sats are a native L1 lockup, carol's remaining 600 are sBTC.
         btc: { total: '2600', native: '2000', sbtc: '600' },
@@ -722,6 +736,133 @@ describe('staking cycle', () => {
       ORDER BY block_height DESC LIMIT 1
     `;
     assert.deepEqual(latest, { native_staked_sats: '2700', sbtc_staked_sats: '0' });
+  });
+
+  test('a stake made during the current cycle counts from the next cycle', async () => {
+    await seedFixture();
+    // frank (no prior position) stakes during cycle 10: his shares start at 11, though his STX is
+    // locked right away.
+    await db.update(
+      nextBlock()
+        .addTxPox5Event({
+          name: Pox5EventName.Stake,
+          data: stakeData({ staker: FRANK, ustx: 7_000_000n, unlock: 1500, firstRewardCycle: 11 }),
+        })
+        .build()
+    );
+    let current = await getCycle('current');
+    assert.deepEqual(current.locked.stx, {
+      stx_only: '50000000',
+      bonds: '30000000',
+      total: '80000000',
+    });
+    assert.equal(current.participants.stakers.stx_only, 1);
+    let next = await getCycle('next');
+    assert.equal(next.locked.stx.stx_only, '57000000');
+    assert.equal(next.participants.stakers.stx_only, 2);
+
+    // An increase re-adds shares from the next cycle too; the current cycle keeps its figure.
+    await db.update(
+      nextBlock()
+        .addTxPox5Event({
+          name: Pox5EventName.StakeUpdate,
+          data: {
+            staker: FRANK,
+            signer: SIGNER,
+            old_signer: SIGNER,
+            prev_unlock_height: '1500',
+            unlock_burn_height: '1600',
+            unlock_cycle: '16',
+            num_cycles: '5',
+            amount_ustx: '9000000',
+            amount_increase: '2000000',
+            cycles_to_extend: '1',
+          },
+        })
+        .build()
+    );
+    current = await getCycle('current');
+    assert.equal(current.locked.stx.stx_only, '50000000');
+    next = await getCycle('next');
+    assert.equal(next.locked.stx.stx_only, '59000000');
+
+    // Once the cycle's first reward calculation runs, the contract's STX-only figure takes over
+    // (here it reports 49M) and bond STX follows from the reward set's total.
+    await db.update(
+      nextBlock()
+        .addTxPox5Event({
+          name: Pox5EventName.CalculateRewards,
+          data: calculateRewardsData({
+            cycle: 10,
+            height: 1050,
+            bonds: 100n,
+            stxOnly: 100n,
+            reserve: 10n,
+            cycleStakedUstx: 49_000_000n,
+          }),
+        })
+        .addTxPox5Event({
+          name: Pox5EventName.BondDistribution,
+          data: bondDistributionData({ bondRewards: 100n, stakedSats: 2_600n }),
+        })
+        .build()
+    );
+    current = await getCycle('current');
+    assert.deepEqual(current.locked.stx, {
+      stx_only: '49000000',
+      bonds: '31000000',
+      total: '80000000',
+    });
+    assert.equal(current.participants.stakers.stx_only, 1);
+  });
+
+  test('a stake rolled into a bond mid-cycle keeps counting for the current cycle', async () => {
+    await seedFixture();
+    // grace staked before cycle 10 with a term ending exactly when bond 1 starts (cycle 11), the
+    // roll-over the contract allows. Her stake counts for cycle 10.
+    await db.update(
+      nextBlock({ burn_block_height: 990 })
+        .addTxPox5Event({
+          name: Pox5EventName.Stake,
+          data: stakeData({ staker: GRACE, ustx: 7_000_000n, unlock: 1100, firstRewardCycle: 10 }),
+        })
+        .build()
+    );
+    // Back to the fixture tip in cycle 10.
+    await db.update(nextBlock().build());
+    await db.sql`UPDATE pox_cycles SET total_stacked_amount = 87000000 WHERE cycle_number = 10`;
+    assert.deepEqual((await getCycle('current')).locked.stx, {
+      stx_only: '57000000',
+      bonds: '30000000',
+      total: '87000000',
+    });
+
+    // During cycle 10 she registers for bond 1: her lock row is replaced by the bond position,
+    // but cycle 10's STX-only figure is unchanged and she is still counted as an STX-only staker.
+    await db.update(
+      nextBlock()
+        .addTxPox5Event({
+          name: Pox5EventName.RegisterForBond,
+          data: registerData({ bond: BOND_UPCOMING, staker: GRACE, ustx: 7_000_000n, sats: 700n }),
+        })
+        .build()
+    );
+    const lockRows = await db.sql<{ principal: string }[]>`
+      SELECT principal FROM stx_locked_balances WHERE principal = ${GRACE}
+    `;
+    assert.equal(lockRows.length, 0, 'STX-only lock row rolled into the bond');
+    const current = await getCycle('current');
+    assert.deepEqual(current.locked.stx, {
+      stx_only: '57000000',
+      bonds: '30000000',
+      total: '87000000',
+    });
+    assert.equal(current.participants.stakers.stx_only, 2);
+    // For cycle 11 her stake has ended and only the bond position counts.
+    const next = await getCycle('next');
+    assert.equal(next.locked.stx.stx_only, '50000000');
+    assert.equal(next.participants.stakers.stx_only, 1);
+    assert.equal(next.locked.stx.bonds, '42000000');
   });
 
   test('serves a combined-tip ETag and answers 304 when unchanged', async () => {

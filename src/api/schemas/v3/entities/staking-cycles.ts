@@ -141,18 +141,11 @@ export const StakingCycleSchema = Type.Object(
         stx: Type.Object({
           stx_only: Type.String({
             ...AmountSchema,
-            description:
-              'STX locked in STX-only staking for this cycle, in µSTX. For a finished cycle this ' +
-              'is the STX-only stake the pox-5 contract accounted for the cycle in its latest ' +
-              'reward calculation; otherwise the STX-only locks live at the tip (or, for an ' +
-              'upcoming cycle, still locked when it starts).',
+            description: 'STX locked in STX-only staking that counts for this cycle, in µSTX.',
           }),
           bonds: Type.String({
             ...AmountSchema,
-            description:
-              'STX locked across the bonds covering this cycle, in µSTX. For a finished cycle ' +
-              "with a reward set this is the reward set's total staked STX minus the STX-only " +
-              'stake; otherwise the running locked totals of the bonds covering the cycle.',
+            description: 'STX locked across the bonds covering this cycle, in µSTX.',
           }),
           total: Type.String({
             ...AmountSchema,
@@ -183,14 +176,10 @@ export const StakingCycleSchema = Type.Object(
       {
         stakers: Type.Object({
           stx_only: Type.Integer({
-            description:
-              'Principals with an STX-only stake covering this cycle. For a finished cycle, the ' +
-              'principals credited STX-staking rewards for it.',
+            description: 'Principals whose STX-only stake counts for this cycle.',
           }),
           bonds: Type.Integer({
-            description:
-              'Principals holding a position in a bond covering this cycle, as of the current ' +
-              'tip (positions rolled over into another bond or stake are excluded).',
+            description: 'Principals holding a position in a bond covering this cycle.',
           }),
         }),
         signers: Nullable(
