@@ -2115,6 +2115,38 @@ export class PgStoreV3 extends BasePgStoreModule {
         return { bondStx, btc, btcNative: split.native, btcSbtc: split.sbtc };
       };
 
+      // pox-5 STX-only locks that count for the cycle. A `stake` made during cycle N takes effect
+      // from N + 1 (its shares start then; the account lock starts immediately), so a cycle only
+      // counts locks whose first reward cycle is at or before it, still locked past its start.
+      const stxOnlyLocks = async (firstCycleAtMost: number) => {
+        const [locks] = await sql<{ amount: string; stakers: number }[]>`
+          SELECT COALESCE(SUM(locked_amount), 0)::text AS amount, COUNT(*)::int AS stakers
+          FROM stx_locked_balances
+          WHERE pox_version = 5 AND locked_amount > 0
+            AND first_reward_cycle <= ${firstCycleAtMost}
+            AND unlock_burn_height > ${schedule.startBitcoinHeight}
+        `;
+        return locks;
+      };
+      // The contract's own STX-only shares for the cycle, from its latest `calculate-rewards`.
+      const calculatedStxOnly = async () => {
+        const [latestCalc] = await sql<{ cycle_staked_ustx: string }[]>`
+          SELECT cycle_staked_ustx::text
+          FROM bond_reward_calculations
+          WHERE canonical = TRUE AND microblock_canonical = TRUE AND stx_cycle = ${number}
+          ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC
+          LIMIT 1
+        `;
+        return latestCalc.cycle_staked_ustx;
+      };
+      // Bond STX for a cycle with a reward set: the node's total staked STX minus the STX-only
+      // part (both fixed for the cycle), else the bonds' running totals.
+      const bondStxFor = (stxOnlyAmount: string, tipBondStx: string) => {
+        if (!rewardSet) return tipBondStx;
+        const diff = BigInt(rewardSet.total_stacked_amount) - BigInt(stxOnlyAmount);
+        return (diff > 0n ? diff : 0n).toString();
+      };
+
       let stxOnly: string;
       let bondStx: string;
       let btc: string;
@@ -2129,20 +2161,8 @@ export class PgStoreV3 extends BasePgStoreModule {
         stxOnlyStakers = 0;
         ({ bondStx, btc, btcNative, btcSbtc } = await tipBondLocks());
       } else if (finished) {
-        const [latestCalc] = await sql<{ cycle_staked_ustx: string }[]>`
-          SELECT cycle_staked_ustx::text
-          FROM bond_reward_calculations
-          WHERE canonical = TRUE AND microblock_canonical = TRUE AND stx_cycle = ${number}
-          ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC
-          LIMIT 1
-        `;
-        stxOnly = latestCalc.cycle_staked_ustx;
-        if (rewardSet) {
-          const diff = BigInt(rewardSet.total_stacked_amount) - BigInt(stxOnly);
-          bondStx = (diff > 0n ? diff : 0n).toString();
-        } else {
-          bondStx = sumBig(bonds.map(b => b.stx_locked)).toString();
-        }
+        stxOnly = await calculatedStxOnly();
+        bondStx = bondStxFor(stxOnly, sumBig(bonds.map(b => b.stx_locked)).toString());
         // Each bond's BTC at the cycle's latest distribution (distributions share their tx with
         // the cycle's calculate-rewards event), with the native / sBTC split snapshotted then.
         const [latestSats] = await sql<{ btc: string; native: string; sbtc: string }[]>`
@@ -2171,17 +2191,24 @@ export class PgStoreV3 extends BasePgStoreModule {
           WHERE canonical = TRUE AND microblock_canonical = TRUE AND reward_cycle = ${number}
         `;
         stxOnlyStakers = credited.stakers;
-      } else {
-        // Locks still active at the tip; for an upcoming cycle, still locked when it starts.
-        const activeAt = Math.max(burnTip, schedule.startBitcoinHeight);
-        const [locks] = await sql<{ amount: string; stakers: number }[]>`
-          SELECT COALESCE(SUM(locked_amount), 0)::text AS amount, COUNT(*)::int AS stakers
-          FROM stx_locked_balances
-          WHERE pox_version = 5 AND locked_amount > 0 AND unlock_burn_height >= ${activeAt}
-        `;
+      } else if (status === 'upcoming') {
+        // Every live lock covers the next cycle, including stakes and increases made during the
+        // current one; only locks unlocking at or before its start do not.
+        const locks = await stxOnlyLocks(number);
         stxOnly = locks.amount;
         stxOnlyStakers = locks.stakers;
         ({ bondStx, btc, btcNative, btcSbtc } = await tipBondLocks());
+      } else {
+        // In progress: the staked total is fixed at the cycle's start. Stakes and increases made
+        // during it count from the next cycle (see `stxOnlyLocks`), and once the cycle's first
+        // reward calculation has run the contract's own STX-only figure takes over — it also
+        // reflects the pre-increase amounts the lock rows no longer hold. BTC is tip state.
+        const locks = await stxOnlyLocks(number);
+        stxOnly = rewards.calculations > 0 ? await calculatedStxOnly() : locks.amount;
+        stxOnlyStakers = locks.stakers;
+        const tip = await tipBondLocks();
+        bondStx = bondStxFor(stxOnly, tip.bondStx);
+        ({ btc, btcNative, btcSbtc } = tip);
       }
 
       let bondStakers = 0;

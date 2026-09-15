@@ -1390,8 +1390,14 @@ export class PgWriteStore extends PgStore {
       burnchainLockHeight: string | number;
       /** The pox-5 signer the staker staked under, or null for pox-1..4 locks. */
       signer?: string | null;
+      /**
+       * The first PoX reward cycle a pox-5 stake counts for (`stake` / `unstake` carry it). Omit
+       * to keep the row's existing value, as a `stake-update` never changes it; 0 for pox-1..4.
+       */
+      firstRewardCycle?: number;
     }
   ) {
+    const keepFirstRewardCycle = values.firstRewardCycle === undefined;
     const insertValues = {
       principal: values.principal,
       locked_amount: values.lockedAmount,
@@ -1401,6 +1407,7 @@ export class PgWriteStore extends PgStore {
       lock_block_height: values.lockBlockHeight,
       burnchain_lock_height: values.burnchainLockHeight,
       signer: values.signer ?? null,
+      first_reward_cycle: values.firstRewardCycle ?? 0,
     };
     await sql`
       INSERT INTO stx_locked_balances ${sql(insertValues)}
@@ -1411,7 +1418,11 @@ export class PgWriteStore extends PgStore {
         lock_tx_id = EXCLUDED.lock_tx_id,
         lock_block_height = EXCLUDED.lock_block_height,
         burnchain_lock_height = EXCLUDED.burnchain_lock_height,
-        signer = EXCLUDED.signer
+        signer = EXCLUDED.signer,
+        first_reward_cycle = CASE
+          WHEN ${keepFirstRewardCycle} THEN stx_locked_balances.first_reward_cycle
+          ELSE EXCLUDED.first_reward_cycle
+        END
     `;
   }
 
@@ -1444,6 +1455,10 @@ export class PgWriteStore extends PgStore {
       burnchainLockHeight: txLocation.burn_block_height,
       // pox-5 stake/stake-update/unstake all carry the signer the staker staked under.
       signer: event.data.signer,
+      // `stake` (and `unstake`) carry the first reward cycle the stake counts for; a
+      // `stake-update` re-adds shares from the next cycle but leaves the first cycle unchanged.
+      firstRewardCycle:
+        'first_reward_cycle' in event.data ? parseInt(event.data.first_reward_cycle) : undefined,
     });
   }
 
@@ -1591,10 +1606,11 @@ export class PgWriteStore extends PgStore {
       await sql`
         INSERT INTO stx_locked_balances (
           principal, locked_amount, unlock_burn_height, pox_version,
-          lock_tx_id, lock_block_height, burnchain_lock_height, signer
+          lock_tx_id, lock_block_height, burnchain_lock_height, signer, first_reward_cycle
         )
-        SELECT principal, locked_amount, unlock_burn_height, pox_version,
-          lock_tx_id, lock_block_height, burnchain_lock_height, signer
+        SELECT latest.principal, latest.locked_amount, latest.unlock_burn_height,
+          latest.pox_version, latest.lock_tx_id, latest.lock_block_height,
+          latest.burnchain_lock_height, latest.signer, COALESCE(fc.first_reward_cycle, 0)
         FROM (
           SELECT DISTINCT ON (principal)
             principal, is_set, locked_amount, unlock_burn_height, pox_version,
@@ -1663,6 +1679,17 @@ export class PgWriteStore extends PgStore {
           ORDER BY principal,
             block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
         ) latest
+        -- The first reward cycle of a pox-5 lock: from the staker's latest canonical stake /
+        -- unstake (a stake-update carries none and never changes it).
+        LEFT JOIN LATERAL (
+          SELECT (data->>'first_reward_cycle')::int AS first_reward_cycle
+          FROM pox5_events
+          WHERE canonical = true AND microblock_canonical = true
+            AND name IN ('stake', 'unstake')
+            AND data->>'staker' = latest.principal
+          ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
+          LIMIT 1
+        ) fc ON latest.pox_version = 5
         WHERE latest.is_set
       `;
     }

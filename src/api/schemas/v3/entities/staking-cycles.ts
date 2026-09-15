@@ -142,17 +142,18 @@ export const StakingCycleSchema = Type.Object(
           stx_only: Type.String({
             ...AmountSchema,
             description:
-              'STX locked in STX-only staking for this cycle, in µSTX. For a finished cycle this ' +
-              'is the STX-only stake the pox-5 contract accounted for the cycle in its latest ' +
-              'reward calculation; otherwise the STX-only locks live at the tip (or, for an ' +
-              'upcoming cycle, still locked when it starts).',
+              'STX locked in STX-only staking that counts for this cycle, in µSTX. A stake made ' +
+              'during a cycle takes effect from the next one, so an in-progress cycle only counts ' +
+              'locks that began before it (and, once its first reward calculation has run, the ' +
+              "pox-5 contract's own figure for the cycle). Finished cycles use the contract's " +
+              'figure; an upcoming cycle counts every live lock that outlasts its start.',
           }),
           bonds: Type.String({
             ...AmountSchema,
             description:
-              'STX locked across the bonds covering this cycle, in µSTX. For a finished cycle ' +
-              "with a reward set this is the reward set's total staked STX minus the STX-only " +
-              'stake; otherwise the running locked totals of the bonds covering the cycle.',
+              'STX locked across the bonds covering this cycle, in µSTX. When the cycle has a ' +
+              "reward set this is the reward set's total staked STX minus the STX-only figure; " +
+              'otherwise the running locked totals of the bonds covering the cycle.',
           }),
           total: Type.String({
             ...AmountSchema,
@@ -163,9 +164,8 @@ export const StakingCycleSchema = Type.Object(
           total: Type.String({
             ...AmountSchema,
             description:
-              'BTC locked across the bonds covering this cycle, in satoshis (proven Bitcoin L1 ' +
-              'lockups and sBTC lockups). For a finished cycle this is the BTC staked per bond at ' +
-              "the cycle's latest reward distribution; otherwise the bonds' running locked totals.",
+              'Sum of `stx_only` and `bonds`, in µSTX. For a cycle with a reward set this is ' +
+              "the node's total staked STX for the cycle, fixed when the set was selected.",
           }),
           native: Type.String({
             ...AmountSchema,
@@ -184,8 +184,9 @@ export const StakingCycleSchema = Type.Object(
         stakers: Type.Object({
           stx_only: Type.Integer({
             description:
-              'Principals with an STX-only stake covering this cycle. For a finished cycle, the ' +
-              'principals credited STX-staking rewards for it.',
+              'Principals with an STX-only stake that counts for this cycle (stakes made during ' +
+              'a cycle count from the next one). For a finished cycle, the principals credited ' +
+              'STX-staking rewards for it.',
           }),
           bonds: Type.Integer({
             description:

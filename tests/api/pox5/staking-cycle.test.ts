@@ -8,6 +8,7 @@ import { PgWriteStore } from '../../../src/datastore/pg-write-store.ts';
 import { migrate } from '../../test-helpers.ts';
 import { TestBlockBuilder } from '../test-builders.ts';
 import { BACKFILL_DISTRIBUTION_LOCKUP_SPLIT_SQL } from '../../../migrations/1779800000021_bond-reward-distribution-lockup-split.ts';
+import { BACKFILL_STX_LOCK_FIRST_REWARD_CYCLE_SQL } from '../../../migrations/1779800000022_stx-locked-balances-first-reward-cycle.ts';
 
 /**
  * `GET /extended/v3/staking/cycles/:cycle_number` — the per-cycle pox-5 staking summary — with
@@ -99,13 +100,19 @@ function registerData(args: {
   };
 }
 
-function stakeData(args: { staker: string; ustx: bigint; unlock: number }) {
+function stakeData(args: {
+  staker: string;
+  ustx: bigint;
+  unlock: number;
+  /** The first cycle the stake counts for: the cycle after the one it was made in. */
+  firstRewardCycle?: number;
+}) {
   return {
     signer: SIGNER,
     staker: args.staker,
     amount_ustx: args.ustx.toString(),
     num_cycles: '2',
-    first_reward_cycle: '8',
+    first_reward_cycle: String(args.firstRewardCycle ?? 8),
     unlock_burn_height: String(args.unlock),
     unlock_cycle: '20',
   };
@@ -188,7 +195,7 @@ describe('staking cycle', () => {
   /** Stakes, bonds, registrations, cycle 9's reward accounting, and reward sets for 9 and 10. */
   async function seedFixture() {
     await db.setPoxConstants(CONSTANTS);
-    // alice's stake outlives the fixture tip; bob's expired before it.
+    // alice's stake outlives the fixture tip; bob's ended exactly when cycle 10 started.
     await db.update(
       nextBlock()
         .addTxPox5Event({ name: Pox5EventName.SetupBond, data: setupBondData(BOND_ACTIVE) })
@@ -199,7 +206,7 @@ describe('staking cycle', () => {
         })
         .addTxPox5Event({
           name: Pox5EventName.Stake,
-          data: stakeData({ staker: BOB, ustx: 30_000_000n, unlock: 1040 }),
+          data: stakeData({ staker: BOB, ustx: 30_000_000n, unlock: 1000 }),
         })
         .addTxPox5Event({
           name: Pox5EventName.RegisterForBond,
@@ -290,7 +297,7 @@ describe('staking cycle', () => {
         .build()
     );
     await seedRewardSet(9, 100_000_000n, 3);
-    await seedRewardSet(10, 110_000_000n, 4);
+    await seedRewardSet(10, 80_000_000n, 4);
   }
 
   beforeEach(async () => {
@@ -323,7 +330,8 @@ describe('staking cycle', () => {
         end: { bitcoin_height: 1099 },
       },
       locked: {
-        // alice only (bob's lock expired at 1040 < tip); bond 0 is the only bond covering cycle 10.
+        // alice only (bob's lock ended when the cycle started); bond 0 is the only bond covering
+        // cycle 10; the total is the reward set's 80M.
         stx: { stx_only: '50000000', bonds: '30000000', total: '80000000' },
         // dave's 2000 sats are a native L1 lockup, carol's remaining 600 are sBTC.
         btc: { total: '2600', native: '2000', sbtc: '600' },
@@ -722,6 +730,101 @@ describe('staking cycle', () => {
       ORDER BY block_height DESC LIMIT 1
     `;
     assert.deepEqual(latest, { native_staked_sats: '2700', sbtc_staked_sats: '0' });
+  });
+
+  test('a stake made during the current cycle counts from the next cycle', async () => {
+    await seedFixture();
+    // erin stakes during cycle 10: her shares start at 11, though her STX is locked right away.
+    await db.update(
+      nextBlock()
+        .addTxPox5Event({
+          name: Pox5EventName.Stake,
+          data: stakeData({ staker: ERIN, ustx: 7_000_000n, unlock: 1500, firstRewardCycle: 11 }),
+        })
+        .build()
+    );
+    let current = await getCycle('current');
+    assert.deepEqual(current.locked.stx, {
+      stx_only: '50000000',
+      bonds: '30000000',
+      total: '80000000',
+    });
+    assert.equal(current.participants.stakers.stx_only, 1);
+    let next = await getCycle('next');
+    assert.equal(next.locked.stx.stx_only, '57000000');
+    assert.equal(next.participants.stakers.stx_only, 2);
+
+    // An increase re-adds shares from the next cycle too, and keeps the first cycle.
+    await db.update(
+      nextBlock()
+        .addTxPox5Event({
+          name: Pox5EventName.StakeUpdate,
+          data: {
+            staker: ERIN,
+            signer: SIGNER,
+            old_signer: SIGNER,
+            prev_unlock_height: '1500',
+            unlock_burn_height: '1600',
+            unlock_cycle: '16',
+            num_cycles: '5',
+            amount_ustx: '9000000',
+            amount_increase: '2000000',
+            cycles_to_extend: '1',
+          },
+        })
+        .build()
+    );
+    const [erin] = await db.sql<{ first_reward_cycle: number }[]>`
+      SELECT first_reward_cycle FROM stx_locked_balances WHERE principal = ${ERIN}
+    `;
+    assert.equal(erin.first_reward_cycle, 11, 'stake-update keeps the first cycle');
+    current = await getCycle('current');
+    assert.equal(current.locked.stx.stx_only, '50000000');
+    next = await getCycle('next');
+    assert.equal(next.locked.stx.stx_only, '59000000');
+
+    // Once the cycle's first reward calculation runs, the contract's STX-only figure takes over
+    // (here it reports 49M) and bond STX follows from the reward set's total.
+    await db.update(
+      nextBlock()
+        .addTxPox5Event({
+          name: Pox5EventName.CalculateRewards,
+          data: calculateRewardsData({
+            cycle: 10,
+            height: 1050,
+            bonds: 100n,
+            stxOnly: 100n,
+            reserve: 10n,
+            cycleStakedUstx: 49_000_000n,
+          }),
+        })
+        .addTxPox5Event({
+          name: Pox5EventName.BondDistribution,
+          data: bondDistributionData({ bondRewards: 100n, stakedSats: 2_600n }),
+        })
+        .build()
+    );
+    current = await getCycle('current');
+    assert.deepEqual(current.locked.stx, {
+      stx_only: '49000000',
+      bonds: '31000000',
+      total: '80000000',
+    });
+    assert.equal(current.participants.stakers.stx_only, 1);
+  });
+
+  test('the first_reward_cycle backfill rebuilds lock rows from stake events', async () => {
+    await seedFixture();
+    const rows = () =>
+      db.sql<{ principal: string; first_reward_cycle: number }[]>`
+        SELECT principal, first_reward_cycle FROM stx_locked_balances
+        WHERE pox_version = 5 ORDER BY principal
+      `;
+    const expected = [...(await rows())];
+    assert.ok(expected.every(r => r.first_reward_cycle === 8));
+    await db.sql`UPDATE stx_locked_balances SET first_reward_cycle = 0`;
+    await db.sql.unsafe(BACKFILL_STX_LOCK_FIRST_REWARD_CYCLE_SQL);
+    assert.deepEqual([...(await rows())], expected);
   });
 
   test('serves a combined-tip ETag and answers 304 when unchanged', async () => {
