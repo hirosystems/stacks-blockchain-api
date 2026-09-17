@@ -194,7 +194,9 @@ export interface DbBondSummary {
   btc_capacity: string;
   btc_locked: string;
   stx_locked: string;
-  btc_paid_out: string;
+  btc_distributed: string;
+  btc_accrued: string;
+  btc_claimed: string;
   allowed_count: number;
   registered_count: number;
 }
@@ -261,7 +263,6 @@ export interface DbPrincipalBondPosition {
   active: boolean;
   btc_locked: string;
   stx_locked: string;
-  btc_paid_out: string;
   accrued_rewards: string;
   claimed_rewards: string;
   tx_id: string;

@@ -1728,7 +1728,6 @@ export interface DbPrincipalBondPositionInsertValues extends DbTxLocation {
   active: boolean;
   btc_locked: string;
   stx_locked: string;
-  btc_paid_out: string;
 }
 
 /**

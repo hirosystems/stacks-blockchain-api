@@ -8,6 +8,30 @@ export const BondStatusSchema = Type.Union([
 ]);
 export type BondStatus = Static<typeof BondStatusSchema>;
 
+/**
+ * Lifetime sBTC reward sats for a bond. `distributed` and `claimed` are verbatim pox-5 contract
+ * figures; `accrued` is an indexer-side estimate of the split between them (see its description).
+ */
+export const BondBtcRewardsSchema = Type.Object({
+  distributed: Type.String({
+    description:
+      "The lifetime sBTC reward sats the contract has distributed into this bond's reward pool",
+  }),
+  accrued: Type.String({
+    description:
+      "An estimate of the lifetime sBTC reward sats credited to this bond's participants. " +
+      'Never more than `distributed`, because each share is floored to whole sats and the ' +
+      'rounding remainder stays in the pool. This is computed by flooring each distribution, ' +
+      'while the contract floors each settlement interval, so it can under-report by a few sats ' +
+      'and may read slightly below `claimed`. Use `distributed` and `claimed` where exactness ' +
+      'matters',
+  }),
+  claimed: Type.String({
+    description: "The lifetime sBTC reward sats this bond's participants have already claimed",
+  }),
+});
+export type BondBtcRewards = Static<typeof BondBtcRewardsSchema>;
+
 export const BondBalancesSchema = Type.Object({
   locked: Type.Object({
     btc: Type.String({
@@ -17,9 +41,15 @@ export const BondBalancesSchema = Type.Object({
       description: 'The total amount of STX that is locked up for this bond',
     }),
   }),
+  rewards: Type.Object({
+    btc: BondBtcRewardsSchema,
+  }),
   paid_out: Type.Object({
     btc: Type.String({
-      description: 'The total amount of BTC that has been paid out for this bond',
+      description:
+        'The total amount of BTC that has been paid out for this bond. **Deprecated**: use ' +
+        '`rewards.btc.distributed`, which this mirrors',
+      deprecated: true,
     }),
   }),
 });

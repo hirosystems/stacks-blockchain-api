@@ -129,7 +129,9 @@ export const BOND_SUMMARY_COLUMNS = [
   'btc_capacity',
   'btc_locked',
   'stx_locked',
-  'btc_paid_out',
+  'btc_distributed',
+  'btc_accrued',
+  'btc_claimed',
   'allowed_count',
   'registered_count',
 ];
@@ -184,7 +186,6 @@ export const PRINCIPAL_BOND_POSITION_COLUMNS = [
   'active',
   'btc_locked',
   'stx_locked',
-  'btc_paid_out',
   'accrued_rewards',
   'claimed_rewards',
   'tx_id',
