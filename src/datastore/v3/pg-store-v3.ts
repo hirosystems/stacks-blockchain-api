@@ -517,7 +517,7 @@ export class PgStoreV3 extends BasePgStoreModule {
           (SELECT COUNT(*)::int FROM ft_balances WHERE ${baseFilter}) AS total
         FROM ft_balances
         WHERE ${baseFilter} ${cursorFilter}
-        ORDER BY balance DESC, token ASC
+        ORDER BY ft_balances.balance DESC, token ASC
         LIMIT ${args.limit + 1}
       `;
 
@@ -543,7 +543,7 @@ export class PgStoreV3 extends BasePgStoreModule {
               balance > ${firstResult.balance}::numeric
               OR (balance = ${firstResult.balance}::numeric AND token < ${firstResult.token})
             )
-          ORDER BY balance ASC, token DESC
+          ORDER BY ft_balances.balance ASC, token DESC
           LIMIT ${args.limit}
         `;
         if (prevPageQuery.length > 0) {

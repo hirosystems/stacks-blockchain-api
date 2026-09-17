@@ -1206,6 +1206,94 @@ describe('principals', () => {
       });
     });
 
+    // Regression: the page is ordered by the `balance` *column*, not by the
+    // `balance::text` output column. A lexicographic sort ("9" > "100") disagrees
+    // with the numeric cursor comparison, which used to strand every token whose
+    // balance had more digits than the first page's last row.
+    describe('balances of differing digit lengths', () => {
+      const tokenA = 'SP000000000000000000002Q6VF78.token-a::a';
+      const tokenB = 'SP000000000000000000002Q6VF78.token-b::b';
+      const tokenC = 'SP000000000000000000002Q6VF78.token-c::c';
+      const tokenD = 'SP000000000000000000002Q6VF78.token-d::d';
+      const tokenE = 'SP000000000000000000002Q6VF78.token-e::e';
+
+      // Balances chosen so that lexicographic and numeric ordering disagree:
+      // text desc would be 9, 70, 5000, 300, 1000.
+      const buildMixedDigitBlock = () => {
+        const builder = new TestBlockBuilder({
+          block_height: 3,
+          block_hash: hex(3),
+          index_block_hash: hex(3),
+          parent_index_block_hash: hex(2),
+          parent_block_hash: hex(2),
+          burn_block_height: 3,
+        }).addTx({
+          tx_id: hex(330),
+          block_hash: hex(3),
+          index_block_hash: hex(3),
+          burn_block_height: 3,
+          sender_address: testAddr4,
+        });
+        for (const [asset_identifier, amount] of [
+          [tokenA, 9n],
+          [tokenB, 5_000n],
+          [tokenC, 300n],
+          [tokenD, 1_000n],
+          [tokenE, 70n],
+        ] as [string, bigint][]) {
+          builder.addTxFtEvent({
+            recipient: ftAddr,
+            sender: testAddr4,
+            asset_identifier,
+            amount,
+          });
+        }
+        return builder.build();
+      };
+
+      const expected = [
+        { asset_identifier: tokenB, balance: '5000' },
+        { asset_identifier: tokenD, balance: '1000' },
+        { asset_identifier: tokenC, balance: '300' },
+        { asset_identifier: tokenE, balance: '70' },
+        { asset_identifier: tokenA, balance: '9' },
+      ];
+
+      test('sorts numerically, not lexicographically', async () => {
+        await db.update(buildMixedDigitBlock());
+        const body = await getFtBalances(ftAddr);
+        assert.equal(body.total, 5);
+        assert.deepEqual(body.results, expected);
+      });
+
+      test('walks every balance exactly once across cursor pages', async () => {
+        await db.update(buildMixedDigitBlock());
+
+        const seen: unknown[] = [];
+        let cursor: string | null = null;
+        for (let page = 0; page < 10; page++) {
+          const query: Record<string, string> = { limit: '2' };
+          if (cursor) query.cursor = cursor;
+          const body = await getFtBalances(ftAddr, query);
+          seen.push(...body.results);
+          cursor = body.cursor.next;
+          if (!cursor) break;
+        }
+        assert.equal(cursor, null, 'pagination did not terminate');
+        assert.deepEqual(seen, expected);
+      });
+
+      test('walks back to the first page via the previous cursor', async () => {
+        await db.update(buildMixedDigitBlock());
+
+        const last = await getFtBalances(ftAddr, { limit: '2', cursor: `70:${tokenE}` });
+        assert.deepEqual(last.results, [expected[3], expected[4]]);
+
+        const back = await getFtBalances(ftAddr, { limit: '2', cursor: last.cursor.previous });
+        assert.deepEqual(back.results, [expected[1], expected[2]]);
+      });
+    });
+
     describe('single token lookup', () => {
       const getFtBalance = (principal: string, assetIdentifier: string) =>
         api.fastifyApp.inject({

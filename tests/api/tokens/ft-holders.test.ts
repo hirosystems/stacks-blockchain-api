@@ -242,6 +242,73 @@ describe('fungible token holders', () => {
       });
     });
 
+    // The page must be ordered by the `balance` *column*, not by the `balance::text`
+    // output column that shadows it: a lexicographic sort ("9" > "100") disagrees with
+    // the numeric cursor comparison and strands holders on later pages.
+    test('paginates numerically across balances of differing digit lengths', async () => {
+      await db.update(
+        new TestBlockBuilder({
+          block_height: 1,
+          block_hash: hex(1),
+          index_block_hash: hex(1),
+          parent_index_block_hash: hex(0),
+          parent_block_hash: hex(0),
+        })
+          .addTx({ tx_id: hex(0x21) })
+          // Text desc would order these 9, 70, 5000, 300 -- numeric desc is the reverse-ish.
+          .addTxFtEvent({
+            asset_event_type_id: DbAssetEventTypeId.Mint,
+            recipient: holderA,
+            asset_identifier: token,
+            amount: 9n,
+          })
+          .addTxFtEvent({
+            asset_event_type_id: DbAssetEventTypeId.Mint,
+            recipient: holderB,
+            asset_identifier: token,
+            amount: 5_000n,
+          })
+          .addTxFtEvent({
+            asset_event_type_id: DbAssetEventTypeId.Mint,
+            recipient: holderC,
+            asset_identifier: token,
+            amount: 300n,
+          })
+          .addTxFtEvent({
+            asset_event_type_id: DbAssetEventTypeId.Mint,
+            recipient: holderContract,
+            asset_identifier: token,
+            amount: 70n,
+          })
+          .build()
+      );
+
+      const expected = [
+        { principal: holderB, balance: '5000' },
+        { principal: holderC, balance: '300' },
+        { principal: holderContract, balance: '70' },
+        { principal: holderA, balance: '9' },
+      ];
+
+      const full = await getHolders(ftHoldersUrl);
+      assert.equal(full.total, 4);
+      assert.deepEqual(full.results, expected);
+
+      // Walking the cursor must visit every holder exactly once and terminate.
+      const seen: unknown[] = [];
+      let cursor: string | null = null;
+      for (let page = 0; page < 10; page++) {
+        const query: Record<string, string> = { limit: '2' };
+        if (cursor) query.cursor = cursor;
+        const body = await getHolders(ftHoldersUrl, query);
+        seen.push(...body.results);
+        cursor = body.cursor.next;
+        if (!cursor) break;
+      }
+      assert.equal(cursor, null, 'pagination did not terminate');
+      assert.deepEqual(seen, expected);
+    });
+
     test('rejects a malformed asset identifier', async () => {
       const res = await api.fastifyApp.inject({
         method: 'GET',
