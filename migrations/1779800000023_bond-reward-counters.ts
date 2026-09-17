@@ -3,6 +3,54 @@ import type { ColumnDefinitions, MigrationBuilder } from 'node-pg-migrate';
 export const shorthands: ColumnDefinitions | undefined = undefined;
 
 /**
+ * Backfill each counter from its canonical source rows. Each source table holds at most one row per
+ * bond (or per staker) per distribution, so these are small grouped scans.
+ *
+ * `bonds.bond_index` is not unique: a side-fork `setup-bond` inserts its own row with the same
+ * index, and the index backing it is partial (`WHERE canonical AND microblock_canonical`). Only the
+ * active row is targeted, matching the insert-time counter updates. Seeding a fork copy with the
+ * canonical chain's totals would give it a non-zero starting point that its own reorg deltas would
+ * then be applied on top of, if it were ever restored.
+ *
+ * Exported so the backfill can be exercised by tests.
+ */
+export const BACKFILL_BOND_REWARD_COUNTERS_SQL = [
+  `
+    UPDATE bonds b SET btc_distributed = d.total
+    FROM (
+      SELECT bond_index, SUM(bond_rewards::numeric) AS total
+      FROM bond_reward_distributions
+      WHERE canonical = TRUE AND microblock_canonical = TRUE
+      GROUP BY bond_index
+    ) d
+    WHERE b.bond_index = d.bond_index
+      AND b.canonical = TRUE AND b.microblock_canonical = TRUE
+  `,
+  `
+    UPDATE bonds b SET btc_accrued = d.total
+    FROM (
+      SELECT bond_index, SUM(reward_amount::numeric) AS total
+      FROM principal_bond_reward_distributions
+      WHERE canonical = TRUE AND microblock_canonical = TRUE
+      GROUP BY bond_index
+    ) d
+    WHERE b.bond_index = d.bond_index
+      AND b.canonical = TRUE AND b.microblock_canonical = TRUE
+  `,
+  `
+    UPDATE bonds b SET btc_claimed = c.total
+    FROM (
+      SELECT bond_index, SUM(rewards_claimed::numeric) AS total
+      FROM principal_bond_reward_claims
+      WHERE bond_index IS NOT NULL AND canonical = TRUE AND microblock_canonical = TRUE
+      GROUP BY bond_index
+    ) c
+    WHERE b.bond_index = c.bond_index
+      AND b.canonical = TRUE AND b.microblock_canonical = TRUE
+  `,
+];
+
+/**
  * Split the bond-level BTC reward total into the three figures the pox-5 contract actually
  * distinguishes:
  *
@@ -42,38 +90,9 @@ export function up(pgm: MigrationBuilder): void {
   // flip-and-delta that fed `bonds.btc_paid_out` from it therefore always applied a 0 delta.
   pgm.dropColumns('principal_bond_positions', ['btc_paid_out']);
 
-  // Backfill all three counters from their canonical source rows. Each source table holds at most
-  // one row per bond (or per staker) per distribution, so these are small grouped scans.
-  pgm.sql(`
-    UPDATE bonds b SET btc_distributed = d.total
-    FROM (
-      SELECT bond_index, SUM(bond_rewards::numeric) AS total
-      FROM bond_reward_distributions
-      WHERE canonical = TRUE AND microblock_canonical = TRUE
-      GROUP BY bond_index
-    ) d
-    WHERE b.bond_index = d.bond_index
-  `);
-  pgm.sql(`
-    UPDATE bonds b SET btc_accrued = d.total
-    FROM (
-      SELECT bond_index, SUM(reward_amount::numeric) AS total
-      FROM principal_bond_reward_distributions
-      WHERE canonical = TRUE AND microblock_canonical = TRUE
-      GROUP BY bond_index
-    ) d
-    WHERE b.bond_index = d.bond_index
-  `);
-  pgm.sql(`
-    UPDATE bonds b SET btc_claimed = c.total
-    FROM (
-      SELECT bond_index, SUM(rewards_claimed::numeric) AS total
-      FROM principal_bond_reward_claims
-      WHERE bond_index IS NOT NULL AND canonical = TRUE AND microblock_canonical = TRUE
-      GROUP BY bond_index
-    ) c
-    WHERE b.bond_index = c.bond_index
-  `);
+  for (const backfill of BACKFILL_BOND_REWARD_COUNTERS_SQL) {
+    pgm.sql(backfill);
+  }
 }
 
 export function down(pgm: MigrationBuilder): void {
