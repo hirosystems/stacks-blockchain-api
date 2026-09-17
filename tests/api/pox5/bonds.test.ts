@@ -1694,6 +1694,64 @@ describe('pox-5 bonds reward accrual', () => {
     assert.equal(bond.paidOut, 0n, 'deprecated alias reverted');
   });
 
+  test('a canonical distribution does not credit a side-fork copy of the bond row', async () => {
+    // `bonds.bond_index` is not unique across forks: a side-fork `setup-bond` inserts its own row
+    // with the same index. Block 1b loses the tie (same height as the canonical block 1), so its
+    // bond row stays non-canonical and must not be credited by the canonical distribution.
+    await db.update(
+      new TestBlockBuilder({
+        block_height: 1,
+        block_hash: '0xf1',
+        index_block_hash: '0xf1',
+      })
+        .addTx({ tx_id: '0x' + 'f1'.repeat(32) })
+        .addTxPox5Event({ name: Pox5EventName.SetupBond, data: SETUP_BOND_DATA })
+        .build()
+    );
+    await db.update(
+      distributionBlock({
+        block_height: 2,
+        block_hash: '0x02',
+        index_block_hash: '0x02',
+        parent_block_hash: '0x01',
+        parent_index_block_hash: '0x01',
+      })
+    );
+    await db.update(
+      claimBlock({
+        block_height: 3,
+        block_hash: '0x03',
+        index_block_hash: '0x03',
+        parent_block_hash: '0x02',
+        parent_index_block_hash: '0x02',
+      })
+    );
+
+    const rows = await db.sql<
+      {
+        canonical: boolean;
+        btc_distributed: string;
+        btc_accrued: string;
+        btc_claimed: string;
+      }[]
+    >`
+      SELECT canonical, btc_distributed, btc_accrued, btc_claimed
+      FROM bonds WHERE bond_index = ${BOND_INDEX} ORDER BY canonical DESC
+    `;
+    assert.equal(rows.length, 2, 'the side-fork bond row exists alongside the canonical one');
+
+    const [live, fork] = rows;
+    assert.equal(live.canonical, true);
+    assert.equal(BigInt(live.btc_distributed), (ALICE_SATS + BOB_SATS) * 2n);
+    assert.equal(BigInt(live.btc_accrued), ALICE_EXPECTED + BOB_EXPECTED);
+    assert.equal(BigInt(live.btc_claimed), ALICE_CLAIM);
+
+    assert.equal(fork.canonical, false);
+    assert.equal(BigInt(fork.btc_distributed), 0n, 'fork row not credited with the distribution');
+    assert.equal(BigInt(fork.btc_accrued), 0n, 'fork row not credited with the accrual');
+    assert.equal(BigInt(fork.btc_claimed), 0n, 'fork row not credited with the claim');
+  });
+
   test('orphaning only the claim block leaves distributed and accrued intact', async () => {
     await db.update(
       distributionBlock({

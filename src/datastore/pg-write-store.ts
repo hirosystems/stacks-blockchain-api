@@ -1184,6 +1184,8 @@ export class PgWriteStore extends PgStore {
         UPDATE bonds
         SET btc_distributed = btc_distributed + ${event.data.bond_rewards}::numeric
         WHERE bond_index = ${bondIndex}
+          AND canonical = true
+          AND microblock_canonical = true
       `;
     }
 
@@ -1240,6 +1242,8 @@ export class PgWriteStore extends PgStore {
       UPDATE bonds
       SET btc_accrued = btc_accrued + ${accruedTotal.toString()}::numeric
       WHERE bond_index = ${bondIndex}
+        AND canonical = true
+        AND microblock_canonical = true
     `;
     for (const p of participantRewards) {
       await sql`
@@ -1310,6 +1314,8 @@ export class PgWriteStore extends PgStore {
       UPDATE bonds
       SET btc_claimed = btc_claimed + ${event.data.rewards_claimed}::numeric
       WHERE bond_index = ${bondIndex}
+        AND canonical = true
+        AND microblock_canonical = true
     `;
     await sql`
       INSERT INTO principal_staking_totals (principal, bond_claimed_rewards)

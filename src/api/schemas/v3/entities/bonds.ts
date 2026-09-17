@@ -9,8 +9,8 @@ export const BondStatusSchema = Type.Union([
 export type BondStatus = Static<typeof BondStatusSchema>;
 
 /**
- * Lifetime sBTC reward sats for a bond, as the pox-5 contract accounts for them:
- * `claimed` never exceeds `accrued`, which never exceeds `distributed`.
+ * Lifetime sBTC reward sats for a bond. `distributed` and `claimed` are verbatim pox-5 contract
+ * figures; `accrued` is an indexer-side estimate of the split between them (see its description).
  */
 export const BondBtcRewardsSchema = Type.Object({
   distributed: Type.String({
@@ -19,9 +19,12 @@ export const BondBtcRewardsSchema = Type.Object({
   }),
   accrued: Type.String({
     description:
-      "The lifetime sBTC reward sats credited to this bond's participants. Never more than " +
-      "`distributed`: each participant's share is floored to whole sats, and the rounding " +
-      'remainder stays in the pool and is not claimable by anyone',
+      "An estimate of the lifetime sBTC reward sats credited to this bond's participants. " +
+      'Never more than `distributed`, because each share is floored to whole sats and the ' +
+      'rounding remainder stays in the pool. This is computed by flooring each distribution, ' +
+      'while the contract floors each settlement interval, so it can under-report by a few sats ' +
+      'and may read slightly below `claimed`. Use `distributed` and `claimed` where exactness ' +
+      'matters',
   }),
   claimed: Type.String({
     description: "The lifetime sBTC reward sats this bond's participants have already claimed",

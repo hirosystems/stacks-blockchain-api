@@ -13,8 +13,10 @@ export const shorthands: ColumnDefinitions | undefined = undefined;
  *   share is floored to whole sats, so the bond keeps the rounding dust and no staker can ever
  *   claim it.
  * - `btc_claimed`: what participants have actually withdrawn, i.e. the sum of the bond's
- *   `claim-staker-rewards-for-signer` events (`principal_bond_reward_claims`). Always ≤
- *   `btc_accrued`.
+ *   `claim-staker-rewards-for-signer` events (`principal_bond_reward_claims`). Exact, being a
+ *   verbatim contract figure. Note it is NOT bounded by `btc_accrued`: that counter is an estimate
+ *   that can under-report (see `updateBondRewardDistribution`), so a claim settled by the contract
+ *   may exceed it by a few sats.
  *
  * `btc_claimed` reuses the storage of the old `btc_paid_out` column, which was inert: nothing ever
  * incremented it, so every row held 0 and the API's `balances.paid_out.btc` was uniformly `"0"`.
@@ -84,6 +86,8 @@ export function down(pgm: MigrationBuilder): void {
   });
   pgm.dropColumns('bonds', ['btc_distributed', 'btc_accrued']);
   pgm.renameColumn('bonds', 'btc_claimed', 'btc_paid_out');
-  // The restored `bonds.btc_paid_out` keeps its claimed totals rather than reverting to 0; the
-  // pre-migration column was inert, so no write path can observe the difference.
+  // Reset the reused column to its pre-migration state. It was inert and 0 in every row, and the
+  // rolled-back API serves it as `balances.paid_out.btc` — leaving accumulated claim totals behind
+  // would change that field's observable value after a rollback.
+  pgm.sql(`UPDATE bonds SET btc_paid_out = 0`);
 }
