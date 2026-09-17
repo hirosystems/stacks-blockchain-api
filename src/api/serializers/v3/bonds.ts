@@ -94,8 +94,15 @@ export function serializeDbBondSummary(
         btc: summary.btc_locked,
         stx: summary.stx_locked,
       },
+      rewards: {
+        btc: {
+          distributed: summary.btc_distributed,
+          accrued: summary.btc_accrued,
+          claimed: summary.btc_claimed,
+        },
+      },
       paid_out: {
-        btc: summary.btc_paid_out,
+        btc: summary.btc_distributed,
       },
     },
   };

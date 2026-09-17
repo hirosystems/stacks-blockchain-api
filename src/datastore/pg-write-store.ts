@@ -960,7 +960,6 @@ export class PgWriteStore extends PgStore {
               ? event.data.sats_total
               : event.data.amount_sats,
           stx_locked: event.data.amount_ustx,
-          btc_paid_out: '0',
         };
         if (!isCanonicalTx) {
           // Side-fork registration: insert the flag-carrying position only if this (principal,
@@ -1177,11 +1176,31 @@ export class PgWriteStore extends PgStore {
     await sql`
       INSERT INTO bond_reward_distributions ${sql(rewardDistribution)}
     `;
+    if (txLocation.canonical && txLocation.microblock_canonical) {
+      // The contract's own bond-level figure for what this distribution paid into the pool. Applied
+      // before the participant fan-out below, which can bail out early (a bond with no participants
+      // still had rewards distributed to it).
+      await sql`
+        UPDATE bonds
+        SET btc_distributed = btc_distributed + ${event.data.bond_rewards}::numeric
+        WHERE bond_index = ${bondIndex}
+      `;
+    }
 
-    // Split this distribution across the bond's participants by their staked
-    // weight: each participant accrues `floor(staked_sats * per_sat / PRECISION)`
-    // (PRECISION = 1e18). The bond's per-sat rate is uniform, so this is the
-    // participant's exact share (modulo integer-rounding dust).
+    // Split this distribution across the bond's participants by their staked weight: each
+    // participant accrues `floor(staked_sats * per_sat / PRECISION)` (PRECISION = 1e18). The bond's
+    // per-sat rate is uniform, so this is the participant's share of this distribution, floored to
+    // whole sats.
+    //
+    // Known divergence, deliberately left in place: the contract floors once per *settlement*
+    // interval, not per distribution. `compute-earned-rewards` is `pending + floor(shares * (rpt -
+    // rpt_paid) / PRECISION)`, where `rpt` accumulates every distribution in the cycle and
+    // `rpt_paid` only advances when `settle-staker-rewards` runs (register / update / claim /
+    // unstake). Since `floor(a/P) + floor(b/P) <= floor((a+b)/P)`, accruing per distribution can
+    // under-report a staker by up to 1 sat per distribution beyond the first in a settlement
+    // interval. Matching the contract exactly means mirroring its per-(signer, cycle, bond, staker)
+    // rpt snapshots, which is a larger change than the amounts involved justify today. Revisit if
+    // the discrepancy ever matters.
     const perSat = event.data.accrued_rewards_per_sat;
     const participantRewards = await sql<{ principal: string; reward_amount: string }[]>`
       SELECT principal,
@@ -1214,6 +1233,14 @@ export class PgWriteStore extends PgStore {
       // would corrupt canonical totals and double-count on the flip.
       return;
     }
+    // What the pool actually credited to participants: the sum of their floored shares, which is
+    // `bond_rewards` minus the rounding dust the bond keeps (and nobody can claim).
+    const accruedTotal = participantRewards.reduce((sum, p) => sum + BigInt(p.reward_amount), 0n);
+    await sql`
+      UPDATE bonds
+      SET btc_accrued = btc_accrued + ${accruedTotal.toString()}::numeric
+      WHERE bond_index = ${bondIndex}
+    `;
     for (const p of participantRewards) {
       await sql`
         UPDATE principal_bond_positions
@@ -1278,6 +1305,11 @@ export class PgWriteStore extends PgStore {
         AND bond_index = ${bondIndex}
         AND canonical = true
         AND microblock_canonical = true
+    `;
+    await sql`
+      UPDATE bonds
+      SET btc_claimed = btc_claimed + ${event.data.rewards_claimed}::numeric
+      WHERE bond_index = ${bondIndex}
     `;
     await sql`
       INSERT INTO principal_staking_totals (principal, bond_claimed_rewards)
@@ -4671,7 +4703,6 @@ export class PgWriteStore extends PgStore {
     // bond counters depend on them).
     for (const pox5Table of [
       'bonds',
-      'bond_reward_distributions',
       'bond_reward_calculations',
       'signer_reward_claims',
       'signer_key_grants',
@@ -4762,21 +4793,19 @@ export class PgWriteStore extends PgStore {
           UPDATE principal_bond_positions
           SET canonical = ${canonical}
           WHERE index_block_hash = ${indexBlockHash} AND canonical != ${canonical}
-          RETURNING principal, bond_index, btc_locked, stx_locked, btc_paid_out, canonical
+          RETURNING principal, bond_index, btc_locked, stx_locked, canonical
         ),
         bond_changes AS (
           SELECT bond_index,
             SUM(CASE WHEN canonical THEN btc_locked::numeric ELSE -btc_locked::numeric END) AS btc_change,
-            SUM(CASE WHEN canonical THEN stx_locked::numeric ELSE -stx_locked::numeric END) AS stx_change,
-            SUM(CASE WHEN canonical THEN btc_paid_out::numeric ELSE -btc_paid_out::numeric END) AS paid_change
+            SUM(CASE WHEN canonical THEN stx_locked::numeric ELSE -stx_locked::numeric END) AS stx_change
           FROM updated
           GROUP BY bond_index
         ),
         bond_update AS (
           UPDATE bonds AS b
           SET btc_locked = b.btc_locked + c.btc_change,
-              stx_locked = b.stx_locked + c.stx_change,
-              btc_paid_out = b.btc_paid_out + c.paid_change
+              stx_locked = b.stx_locked + c.stx_change
           FROM bond_changes c
           WHERE b.bond_index = c.bond_index
           RETURNING 1
@@ -4818,6 +4847,30 @@ export class PgWriteStore extends PgStore {
       }
     });
     q.enqueue(async () => {
+      // Flip the bond-level distribution rows and apply the signed delta to the parent bond's
+      // running btc_distributed total. `recomputeBondDistributionLockupSplits` rewrites these rows'
+      // native/sBTC split on reorg but never `bond_rewards`, so this delta stays exact.
+      await sql`
+        WITH updated AS (
+          UPDATE bond_reward_distributions
+          SET canonical = ${canonical}
+          WHERE index_block_hash = ${indexBlockHash} AND canonical != ${canonical}
+          RETURNING bond_index, bond_rewards, canonical, microblock_canonical
+        ),
+        changes AS (
+          SELECT bond_index,
+            SUM(CASE WHEN canonical THEN bond_rewards::numeric ELSE -bond_rewards::numeric END) AS reward_change
+          FROM updated
+          WHERE microblock_canonical = TRUE
+          GROUP BY bond_index
+        )
+        UPDATE bonds AS b
+        SET btc_distributed = b.btc_distributed + c.reward_change
+        FROM changes c
+        WHERE b.bond_index = c.bond_index
+      `;
+    });
+    q.enqueue(async () => {
       // Flip the per-participant reward source rows and apply the signed delta to
       // each participant's running accrued_rewards total (ft_events → ft_balances).
       await sql`
@@ -4838,6 +4891,18 @@ export class PgWriteStore extends PgStore {
           SET accrued_rewards = p.accrued_rewards + c.reward_change
           FROM changes c
           WHERE p.principal = c.principal AND p.bond_index = c.bond_index
+          RETURNING 1
+        ),
+        bond_changes AS (
+          SELECT bond_index, SUM(reward_change) AS reward_change
+          FROM changes
+          GROUP BY bond_index
+        ),
+        bond_update AS (
+          UPDATE bonds b
+          SET btc_accrued = b.btc_accrued + c.reward_change
+          FROM bond_changes c
+          WHERE b.bond_index = c.bond_index
           RETURNING 1
         ),
         principal_changes AS (
@@ -4873,6 +4938,18 @@ export class PgWriteStore extends PgStore {
           SET claimed_rewards = p.claimed_rewards + c.claim_change
           FROM changes c
           WHERE p.principal = c.principal AND p.bond_index = c.bond_index
+          RETURNING 1
+        ),
+        bond_changes AS (
+          SELECT bond_index, SUM(claim_change) AS claim_change
+          FROM changes
+          GROUP BY bond_index
+        ),
+        bond_update AS (
+          UPDATE bonds b
+          SET btc_claimed = b.btc_claimed + c.claim_change
+          FROM bond_changes c
+          WHERE b.bond_index = c.bond_index
           RETURNING 1
         ),
         principal_changes AS (

@@ -68,7 +68,11 @@ interface BondSummaryItem {
     btc_capacity: string;
   };
   registrations: { allowed_count: number; registered_count: number };
-  balances: { locked: { btc: string; stx: string }; paid_out: { btc: string } };
+  balances: {
+    locked: { btc: string; stx: string };
+    rewards: { btc: { distributed: string; accrued: string; claimed: string } };
+    paid_out: { btc: string };
+  };
 }
 interface BondDetail extends BondSummaryItem {
   transaction: { tx_id: string };
@@ -1550,6 +1554,190 @@ describe('pox-5 bonds reward accrual', () => {
     assert.equal(BigInt(summary.bonds.locked.btc), ALICE_SATS, 'locked unchanged');
     assert.equal(BigInt(summary.bonds.rewards.btc.accrued), 0n, 'accrued reverted');
     assert.equal(BigInt(summary.bonds.rewards.btc.claimed), 0n, 'claimed reverted');
+  });
+
+  async function bondRewards(): Promise<{
+    distributed: bigint;
+    accrued: bigint;
+    claimed: bigint;
+    paidOut: bigint;
+  }> {
+    const bond = await getJson<BondDetail>(`/extended/v3/staking/bonds/${BOND_INDEX}`);
+    return {
+      distributed: BigInt(bond.balances.rewards.btc.distributed),
+      accrued: BigInt(bond.balances.rewards.btc.accrued),
+      claimed: BigInt(bond.balances.rewards.btc.claimed),
+      paidOut: BigInt(bond.balances.paid_out.btc),
+    };
+  }
+
+  test('the bond tracks distributed, accrued and claimed reward totals', async () => {
+    const before = await bondRewards();
+    assert.equal(before.distributed, 0n);
+    assert.equal(before.accrued, 0n);
+    assert.equal(before.claimed, 0n);
+
+    await db.update(
+      distributionBlock({
+        block_height: 2,
+        block_hash: '0x02',
+        index_block_hash: '0x02',
+        parent_block_hash: '0x01',
+        parent_index_block_hash: '0x01',
+      })
+    );
+
+    const distributed = (ALICE_SATS + BOB_SATS) * 2n;
+    let bond = await bondRewards();
+    assert.equal(bond.distributed, distributed, 'the contract\'s bond_rewards figure');
+    assert.equal(bond.accrued, ALICE_EXPECTED + BOB_EXPECTED, 'sum of the participant fan-out');
+    assert.equal(bond.claimed, 0n, 'nothing claimed yet');
+    assert.equal(bond.paidOut, distributed, 'deprecated paid_out mirrors distributed');
+
+    await db.update(
+      claimBlock({
+        block_height: 3,
+        block_hash: '0x03',
+        index_block_hash: '0x03',
+        parent_block_hash: '0x02',
+        parent_index_block_hash: '0x02',
+      })
+    );
+
+    bond = await bondRewards();
+    assert.equal(bond.distributed, distributed, 'a claim does not change distributed');
+    assert.equal(bond.accrued, ALICE_EXPECTED + BOB_EXPECTED, 'a claim does not change accrued');
+    // The claim block also carries bob's STX-staking claim (null bond_index, 999 sats), which
+    // must not reach the bond's total.
+    assert.equal(bond.claimed, ALICE_CLAIM, 'only the bond-scoped claim counts');
+  });
+
+  test('accrued trails distributed by the per-participant rounding dust', async () => {
+    // rate = 1.0002 sats per staked sat: alice floors 1000.2 -> 1000, bob floors 4000.8 -> 4000,
+    // so the pool keeps 1 sat that no staker can ever claim.
+    const DUST_RATE = '1000200000000000000';
+    const DISTRIBUTED = 5_001n;
+    await db.update(
+      new TestBlockBuilder({
+        block_height: 2,
+        block_hash: '0x02',
+        index_block_hash: '0x02',
+        parent_block_hash: '0x01',
+        parent_index_block_hash: '0x01',
+      })
+        .addTx({ tx_id: DIST_TX_ID })
+        .addTxPox5Event({
+          name: Pox5EventName.BondDistribution,
+          data: {
+            bond_index: String(BOND_INDEX),
+            target_yield: '0',
+            bond_rewards: DISTRIBUTED.toString(),
+            bond_staked_sats: (ALICE_SATS + BOB_SATS).toString(),
+            accrued_rewards_per_sat: DUST_RATE,
+            cumulative_rewards_per_sat: DUST_RATE,
+          },
+        })
+        .build()
+    );
+
+    const bond = await bondRewards();
+    assert.equal(bond.distributed, DISTRIBUTED);
+    assert.equal(bond.accrued, 5_000n, 'floored participant shares');
+    assert.equal(bond.distributed - bond.accrued, 1n, 'the dust stays in the pool');
+    // The bond total is exactly what the positions report, so the parts sum to the whole.
+    assert.equal(await accruedFor(ALICE), 1_000n);
+    assert.equal(await accruedFor(BOB), 4_000n);
+  });
+
+  test('orphaning the distribution block reverts every bond reward counter', async () => {
+    await db.update(
+      distributionBlock({
+        block_height: 2,
+        block_hash: '0x02',
+        index_block_hash: '0x02',
+        parent_block_hash: '0x01',
+        parent_index_block_hash: '0x01',
+      })
+    );
+    await db.update(
+      claimBlock({
+        block_height: 3,
+        block_hash: '0x03',
+        index_block_hash: '0x03',
+        parent_block_hash: '0x02',
+        parent_index_block_hash: '0x02',
+      })
+    );
+    assert.equal((await bondRewards()).claimed, ALICE_CLAIM);
+
+    // Fork B branches from the seed and overtakes, orphaning both blocks.
+    for (const [height, hash] of [
+      [2, '0xb2'],
+      [3, '0xb3'],
+      [4, '0xb4'],
+    ] as const) {
+      await db.update(
+        new TestBlockBuilder({
+          block_height: height,
+          block_hash: hash,
+          index_block_hash: hash,
+          parent_block_hash: height === 2 ? '0x01' : `0xb${height - 1}`,
+          parent_index_block_hash: height === 2 ? '0x01' : `0xb${height - 1}`,
+        }).build()
+      );
+    }
+
+    const bond = await bondRewards();
+    assert.equal(bond.distributed, 0n, 'distributed reverted');
+    assert.equal(bond.accrued, 0n, 'accrued reverted');
+    assert.equal(bond.claimed, 0n, 'claimed reverted');
+    assert.equal(bond.paidOut, 0n, 'deprecated alias reverted');
+  });
+
+  test('orphaning only the claim block leaves distributed and accrued intact', async () => {
+    await db.update(
+      distributionBlock({
+        block_height: 2,
+        block_hash: '0x02',
+        index_block_hash: '0x02',
+        parent_block_hash: '0x01',
+        parent_index_block_hash: '0x01',
+      })
+    );
+    await db.update(
+      claimBlock({
+        block_height: 3,
+        block_hash: '0x03',
+        index_block_hash: '0x03',
+        parent_block_hash: '0x02',
+        parent_index_block_hash: '0x02',
+      })
+    );
+
+    // Fork B branches from the distribution block, orphaning ONLY the claim.
+    await db.update(
+      new TestBlockBuilder({
+        block_height: 3,
+        block_hash: '0xb3',
+        index_block_hash: '0xb3',
+        parent_block_hash: '0x02',
+        parent_index_block_hash: '0x02',
+      }).build()
+    );
+    await db.update(
+      new TestBlockBuilder({
+        block_height: 4,
+        block_hash: '0xb4',
+        index_block_hash: '0xb4',
+        parent_block_hash: '0xb3',
+        parent_index_block_hash: '0xb3',
+      }).build()
+    );
+
+    const bond = await bondRewards();
+    assert.equal(bond.distributed, (ALICE_SATS + BOB_SATS) * 2n, 'distribution survives');
+    assert.equal(bond.accrued, ALICE_EXPECTED + BOB_EXPECTED, 'accrual survives');
+    assert.equal(bond.claimed, 0n, 'claim reverted');
   });
 });
 
