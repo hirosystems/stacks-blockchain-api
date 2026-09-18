@@ -33,6 +33,7 @@ import {
   BnsSubdomainInsertValues,
   BnsZonefileInsertValues,
   FtEventInsertValues,
+  TokenAssetInsertValues,
   NftEventInsertValues,
   SmartContractEventInsertValues,
   BurnchainBlockInsertValues,
@@ -2965,6 +2966,45 @@ export class PgWriteStore extends PgStore {
       `;
       assert(res.count === batch.length, `Expecting ${batch.length} inserts, got ${res.count}`);
     }
+    await this.updateTokenAssets(
+      sql,
+      values.map(value => value.asset_identifier),
+      'ft'
+    );
+  }
+
+  /**
+   * Records the asset identifiers seen in a block's token events, so search can match a term
+   * against them without scanning the event tables.
+   *
+   * Identifiers are deduplicated per call and inserted with `ON CONFLICT DO NOTHING`, so a block
+   * costs one index probe per distinct asset it touched; almost always a conflict, since
+   * `token_assets` only grows when an asset is seen for the very first time. Rows are kept
+   * regardless of canonical status and are never removed on a re-org: an identifier that only ever
+   * appeared on an orphaned fork stays searchable, but every search result linking to it resolves
+   * against canonical data.
+   * @param sql - The SQL client.
+   * @param assetIdentifiers - The asset identifiers seen, duplicates allowed.
+   * @param assetType - Whether these are fungible or non-fungible token assets.
+   */
+  async updateTokenAssets(
+    sql: PgSqlClient,
+    assetIdentifiers: string[],
+    assetType: 'ft' | 'nft'
+  ): Promise<void> {
+    const values = Array.from(
+      new Set(assetIdentifiers),
+      (asset_identifier): TokenAssetInsertValues => ({
+        asset_identifier,
+        asset_type: assetType,
+      })
+    );
+    for (const batch of batchIterate(values, INSERT_BATCH_SIZE)) {
+      await sql`
+        INSERT INTO token_assets ${sql(batch)}
+        ON CONFLICT (asset_identifier) DO NOTHING
+      `;
+    }
   }
 
   async updateNftEvents(sql: PgSqlClient, tx: DbTx, events: DbNftEvent[]) {
@@ -3053,6 +3093,11 @@ export class PgWriteStore extends PgStore {
             )
         `;
       }
+      await this.updateTokenAssets(
+        sql,
+        batch.map(event => event.asset_identifier),
+        'nft'
+      );
     }
   }
 
