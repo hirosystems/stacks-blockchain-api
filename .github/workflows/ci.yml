@@ -67,6 +67,7 @@ jobs:
             api:principal,
             api:principal-v3,
             api:redis,
+            api:search,
             api:smart-contracts,
             api:sockets,
             api:synthetic-txs,
