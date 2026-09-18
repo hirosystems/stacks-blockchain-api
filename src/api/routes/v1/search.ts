@@ -257,6 +257,11 @@ export const SearchRoutes: FastifyPluginAsync<
     {
       schema: {
         operationId: 'search_by_id',
+        deprecated: true,
+        deprecatedMessage:
+          'Use GET /extended/v3/search instead. It takes a partial term as well as a complete ' +
+          'one, matches block heights and token assets in addition to blocks, transactions, ' +
+          'contracts and accounts, and returns every match rather than only the first.',
         summary: 'Search',
         description: `Search blocks, transactions, contracts, or accounts by hash/ID`,
         tags: ['Search'],
