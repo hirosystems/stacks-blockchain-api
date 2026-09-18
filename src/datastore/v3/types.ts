@@ -475,3 +475,40 @@ export interface DbSmartContractDetail {
   burn_block_time: number;
   source_code?: string;
 }
+
+/** A Stacks block matched by a search, reduced to what identifies and locates it. */
+export interface DbSearchBlock {
+  block_height: number;
+  block_hash: string;
+  index_block_hash: string;
+  block_time: number;
+}
+
+/** A Bitcoin block matched by a search. */
+export interface DbSearchBitcoinBlock {
+  burn_block_height: number;
+  burn_block_hash: string;
+}
+
+/** A standard address matched by a search. */
+export interface DbSearchAddress {
+  principal: string;
+}
+
+/** A token asset matched by a search, identified by its on-chain asset identifier. */
+export interface DbSearchTokenAsset {
+  asset_identifier: string;
+  asset_type: 'ft' | 'nft';
+}
+
+/**
+ * A single search result, tagged with the kind of entity it refers to. The store returns these
+ * already ranked, so the API layer only has to serialize them.
+ */
+export type DbSearchHit =
+  | { type: 'block'; result: DbSearchBlock }
+  | { type: 'bitcoin_block'; result: DbSearchBitcoinBlock }
+  | { type: 'transaction'; result: DbTransactionSummary }
+  | { type: 'address'; result: DbSearchAddress }
+  | { type: 'smart_contract'; result: DbSmartContractDetail }
+  | { type: 'token'; result: DbSearchTokenAsset };

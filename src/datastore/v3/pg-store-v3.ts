@@ -1,4 +1,4 @@
-import { BasePgStoreModule, PgSqlClient, has0xPrefix } from '@stacks/api-toolkit';
+import { BasePgStoreModule, PgSqlClient, has0xPrefix, logger } from '@stacks/api-toolkit';
 import type postgres from 'postgres';
 import {
   DbBond,
@@ -32,6 +32,11 @@ import {
   DbTransactionCursor,
   DbTransactionEvent,
   DbTransactionSummary,
+  DbSearchAddress,
+  DbSearchBitcoinBlock,
+  DbSearchBlock,
+  DbSearchHit,
+  DbSearchTokenAsset,
 } from './types.js';
 import {
   BOND_ALLOWLIST_ENTRY_COLUMNS,
@@ -49,7 +54,10 @@ import {
   TX_SUMMARY_COLUMNS,
 } from './constants.js';
 import { MaterializedStxLockRow, prefixedCols, resolveMaterializedStxLock } from '../helpers.js';
+import { escapeLikePattern, matchQuality, nameRelevance, searchHitId } from './helpers.js';
 import { Principal } from '../../api/schemas/v3/entities/common.js';
+import { SearchEntityType } from '../../api/schemas/v3/entities/search.js';
+import { SEARCH_RESULT_LIMIT, SearchMatchQuality, SearchTerm } from '../../api/search-term.js';
 import { Pox5EventName } from '@stacks/codec';
 import { normalizeHashString } from '../../helpers.js';
 import {
@@ -91,6 +99,35 @@ import {
 import { DbEventTypeId, DbSignerKeyGrantKind, DbTxStatus, DbTxTypeId } from '../common.js';
 
 export class PgStoreV3 extends BasePgStoreModule {
+  /** Cached result of {@link hasTrigramSupport}, resolved at most once per store. */
+  private trigramSupport?: Promise<boolean>;
+
+  /**
+   * Whether the `pg_trgm` extension is installed, which decides how search matches names.
+   *
+   * The extension is optional: an operator whose server does not ship it, or whose role may not
+   * create it, still gets a working search endpoint, but without `similarity()` for ranking and
+   * without the GIN indexes that make substring matching fast. The answer is cached for the life
+   * of the store, so installing the extension takes effect on the next restart.
+   * @returns Whether trigram matching is available.
+   */
+  private async hasTrigramSupport(): Promise<boolean> {
+    this.trigramSupport ??= this.sql<{ installed: boolean }[]>`
+      SELECT EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'pg_trgm') AS installed
+    `.then(result => {
+      const installed = result[0]?.installed ?? false;
+      if (!installed) {
+        logger.warn(
+          `The pg_trgm extension is not installed. Search will match contract and asset names by ` +
+            `unindexed substring, which is slower and ranks by match position rather than ` +
+            `similarity. Install pg_trgm and create the trigram indexes to enable it.`
+        );
+      }
+      return installed;
+    });
+    return await this.trigramSupport;
+  }
+
   /**
    * Gets the summaries for a specific set of mined transactions, in canonical order.
    *
@@ -2935,6 +2972,201 @@ export class PgStoreV3 extends BasePgStoreModule {
       LIMIT 1
     `;
     return result ?? null;
+  }
+
+  /**
+   * Searches for the entities a term could refer to, best match first.
+   *
+   * The term's classification decides which branches run: a hex term searches hash columns, a
+   * principal-shaped term searches addresses or contract ids, and so on, with several branches
+   * running for a term that is ambiguous between them. Each branch is capped at the result limit
+   * before the branches are merged, so a broad term can never make this expensive.
+   *
+   * Results are ranked by how closely they matched (an exact hit before a prefix hit before a
+   * substring hit) then by entity type, then by each branch's own ordering, which is recency for
+   * chain entities and similarity for names.
+   * @param args - The classified term and the entity types to search.
+   * @returns The matching entities, at most {@link SEARCH_RESULT_LIMIT} of them.
+   */
+  async search(args: { term: SearchTerm; types: SearchEntityType[] }): Promise<DbSearchHit[]> {
+    const { term } = args;
+    const types = new Set(args.types);
+    const limit = SEARCH_RESULT_LIMIT;
+    // One bucket per match quality. Branches run in entity-type order and append to the bucket for
+    // the quality they matched at, so concatenating the buckets yields the final ranking without a
+    // sort: quality, then type, then each branch's own ordering.
+    const exact: DbSearchHit[] = [];
+    const prefix: DbSearchHit[] = [];
+    const fuzzy: DbSearchHit[] = [];
+    const bucket = (quality: SearchMatchQuality) =>
+      quality === 'exact' ? exact : quality === 'prefix' ? prefix : fuzzy;
+
+    // Resolved before the branches so both name branches rank the same way within one search.
+    const trigrams = await this.hasTrigramSupport();
+
+    return await this.sqlTransaction(async sql => {
+      if (types.has('block')) {
+        if (term.blockHeight !== undefined) {
+          const blocks = await sql<DbSearchBlock[]>`
+            SELECT block_height, block_hash, index_block_hash, block_time
+            FROM blocks
+            WHERE block_height = ${term.blockHeight} AND canonical = true
+            LIMIT 1
+          `;
+          exact.push(...blocks.map(result => ({ type: 'block' as const, result })));
+        }
+        if (term.hash) {
+          const blocks = await sql<DbSearchBlock[]>`
+            SELECT block_height, block_hash, index_block_hash, block_time
+            FROM blocks
+            WHERE canonical = true
+              AND (
+                block_hash BETWEEN ${term.hash.lower} AND ${term.hash.upper}
+                OR index_block_hash BETWEEN ${term.hash.lower} AND ${term.hash.upper}
+              )
+            ORDER BY block_height DESC
+            LIMIT ${limit}
+          `;
+          bucket(term.hash.quality).push(
+            ...blocks.map(result => ({ type: 'block' as const, result }))
+          );
+        }
+      }
+
+      if (types.has('bitcoin_block')) {
+        if (term.blockHeight !== undefined) {
+          const burnBlocks = await sql<DbSearchBitcoinBlock[]>`
+            SELECT burn_block_height, burn_block_hash
+            FROM burn_blocks
+            WHERE burn_block_height = ${term.blockHeight} AND canonical = true
+            LIMIT 1
+          `;
+          exact.push(...burnBlocks.map(result => ({ type: 'bitcoin_block' as const, result })));
+        }
+        if (term.hash) {
+          const burnBlocks = await sql<DbSearchBitcoinBlock[]>`
+            SELECT burn_block_height, burn_block_hash
+            FROM burn_blocks
+            WHERE canonical = true
+              AND burn_block_hash BETWEEN ${term.hash.lower} AND ${term.hash.upper}
+            ORDER BY burn_block_height DESC
+            LIMIT ${limit}
+          `;
+          bucket(term.hash.quality).push(
+            ...burnBlocks.map(result => ({ type: 'bitcoin_block' as const, result }))
+          );
+        }
+      }
+
+      if (types.has('transaction') && term.hash) {
+        const txs = await sql<DbTransactionSummary[]>`
+          SELECT ${sql(TX_SUMMARY_COLUMNS)}
+          FROM txs
+          WHERE tx_id BETWEEN ${term.hash.lower} AND ${term.hash.upper}
+            AND canonical = true
+            AND microblock_canonical = true
+          ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC
+          LIMIT ${limit}
+        `;
+        bucket(term.hash.quality).push(
+          ...txs.map(result => ({ type: 'transaction' as const, result }))
+        );
+      }
+
+      if (types.has('address') && term.address) {
+        // `principal_tx_counts` holds one row per principal ever seen, so this never touches the
+        // transaction or event tables. Contract principals live here too and are excluded, since
+        // they are reported as smart contracts instead.
+        const addresses = await sql<DbSearchAddress[]>`
+          SELECT principal FROM principal_tx_counts
+          WHERE principal LIKE ${escapeLikePattern(term.address.value) + '%'}
+            AND principal NOT LIKE ${'%.%'}
+          ORDER BY count DESC, principal ASC
+          LIMIT ${limit}
+        `;
+        for (const result of addresses) {
+          bucket(matchQuality(result.principal, term.address)).push({ type: 'address', result });
+        }
+      }
+
+      if (types.has('smart_contract') && term.smartContract) {
+        // Contract ids are matched against `smart_contracts`, which holds one row per deploy and
+        // is small enough to index for substring search. The deploy transaction carries the block
+        // position and clarity version the response needs, so each match is then resolved against
+        // `txs` by contract id (at most one indexed lookup per match).
+        const { mode, value } = term.smartContract;
+        const matches =
+          mode === 'prefix'
+            ? await sql<{ contract_id: string }[]>`
+                SELECT contract_id, MAX(block_height) AS max_block_height
+                FROM smart_contracts
+                WHERE contract_id LIKE ${escapeLikePattern(value) + '%'}
+                  AND canonical = true
+                  AND microblock_canonical = true
+                GROUP BY contract_id
+                ORDER BY max_block_height DESC
+                LIMIT ${limit}
+              `
+            : await sql<{ contract_id: string }[]>`
+                SELECT contract_id, MAX(block_height) AS max_block_height
+                FROM smart_contracts
+                WHERE contract_id ILIKE ${'%' + escapeLikePattern(value) + '%'}
+                  AND canonical = true
+                  AND microblock_canonical = true
+                GROUP BY contract_id
+                ORDER BY ${nameRelevance(sql, 'contract_id', value, trigrams)}, max_block_height DESC
+                LIMIT ${limit}
+              `;
+        for (const match of matches) {
+          const contract = await this.getSmartContract({ contractId: match.contract_id });
+          if (contract) {
+            bucket(matchQuality(contract.contract_id, term.smartContract)).push({
+              type: 'smart_contract',
+              result: contract,
+            });
+          }
+        }
+      }
+
+      if (types.has('token') && term.token) {
+        const { mode, value } = term.token;
+        const tokens =
+          mode === 'prefix'
+            ? await sql<DbSearchTokenAsset[]>`
+                SELECT asset_identifier, asset_type FROM token_assets
+                WHERE asset_identifier LIKE ${escapeLikePattern(value) + '%'}
+                ORDER BY asset_identifier ASC
+                LIMIT ${limit}
+              `
+            : await sql<DbSearchTokenAsset[]>`
+                SELECT asset_identifier, asset_type FROM token_assets
+                WHERE asset_identifier ILIKE ${'%' + escapeLikePattern(value) + '%'}
+                ORDER BY ${nameRelevance(sql, 'asset_identifier', value, trigrams)},
+                  asset_identifier ASC
+                LIMIT ${limit}
+              `;
+        for (const result of tokens) {
+          bucket(matchQuality(result.asset_identifier, term.token)).push({ type: 'token', result });
+        }
+      }
+
+      // A term can reach the same entity through more than one branch (a value that is both a valid
+      // height and a hash prefix, for instance) so keep only the best-ranked occurrence.
+      const seen = new Set<string>();
+      const results: DbSearchHit[] = [];
+      for (const hit of [...exact, ...prefix, ...fuzzy]) {
+        const key = `${hit.type}:${searchHitId(hit)}`;
+        if (seen.has(key)) {
+          continue;
+        }
+        seen.add(key);
+        results.push(hit);
+        if (results.length === limit) {
+          break;
+        }
+      }
+      return results;
+    });
   }
 
   /**
