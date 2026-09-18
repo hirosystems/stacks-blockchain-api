@@ -5,7 +5,7 @@ import { PgWriteStore } from '../../../src/datastore/pg-write-store.ts';
 import { ApiServer, startApiServer } from '../../../src/api/init.ts';
 import { migrate } from '../../test-helpers.ts';
 import { TestBlockBuilder } from '../test-builders.ts';
-import { DbTxStatus, DbTxTypeId } from '../../../src/datastore/common.ts';
+import { DbAssetEventTypeId, DbTxStatus, DbTxTypeId } from '../../../src/datastore/common.ts';
 
 const SENDER = 'ST27W5M8BRKA7C5MZE2R1S1F4XTPHFWFRNHA9M04Y';
 const CONTRACT_ID = `${SENDER}.arkadiko-token`;
@@ -63,8 +63,16 @@ describe('v3 search', () => {
         burn_block_height: 700,
       })
         .addTx({ tx_id: hash('aaaa1111'), sender_address: SENDER })
-        .addTxFtEvent({ asset_identifier: ASSET_ID, recipient: SENDER })
-        .addTxNftEvent({ asset_identifier: `${CONTRACT_ID}::diko-nft`, recipient: SENDER })
+        .addTxFtEvent({
+          asset_identifier: ASSET_ID,
+          recipient: SENDER,
+          asset_event_type_id: DbAssetEventTypeId.Mint,
+        })
+        .addTxNftEvent({
+          asset_identifier: `${CONTRACT_ID}::diko-nft`,
+          recipient: SENDER,
+          asset_event_type_id: DbAssetEventTypeId.Mint,
+        })
         .build()
     );
     await db.update(
@@ -150,14 +158,16 @@ describe('v3 search', () => {
     });
 
     test('a prefix shared by several entities returns them in type order', async () => {
+      // The block hash and the transaction id share the queried eight-character prefix and differ
+      // afterwards, so one term reaches both entities.
       await db.update(
         new TestBlockBuilder({
           block_height: 1,
-          block_hash: hash('cccc1111'),
+          block_hash: `0xcccc1111bbbb${'0'.repeat(52)}`,
           index_block_hash: hash('eeee1111'),
           parent_index_block_hash: hash('eeee0000'),
         })
-          .addTx({ tx_id: hash('cccc2222'), sender_address: SENDER })
+          .addTx({ tx_id: `0xcccc1111aaaa${'0'.repeat(52)}`, sender_address: SENDER })
           .build()
       );
 
@@ -166,7 +176,9 @@ describe('v3 search', () => {
       assert.equal(res.statusCode, 400);
 
       const valid = await search('q=0xcccc1111');
-      assert.deepEqual(types(valid.body), ['block']);
+      assert.deepEqual(types(valid.body), ['block', 'transaction']);
+      assert.equal(valid.body.results[0].result.hash, `0xcccc1111bbbb${'0'.repeat(52)}`);
+      assert.equal(valid.body.results[1].result.tx_id, `0xcccc1111aaaa${'0'.repeat(52)}`);
     });
   });
 
@@ -384,9 +396,11 @@ describe('v3 search', () => {
         index_block_hash: hash('dddd1111'),
         parent_index_block_hash: hash('dddd0000'),
       });
+      // All 25 ids share the same eight-character prefix and vary only after it, so the term
+      // below matches every one of them and the response has to be truncated.
       for (let i = 0; i < 25; i++) {
         builder.addTx({
-          tx_id: `0x9999${i.toString(16).padStart(4, '0')}`.padEnd(66, '0'),
+          tx_id: `0x99999999${i.toString(16).padStart(4, '0')}`.padEnd(66, '0'),
           tx_index: i,
           sender_address: SENDER,
         });
@@ -396,12 +410,10 @@ describe('v3 search', () => {
       const res = await search('q=0x9999');
       assert.equal(res.statusCode, 400, 'four hex characters is below the minimum');
 
-      const valid = await search('q=0x99990');
-      assert.equal(valid.statusCode, 400, 'five hex characters is still below the minimum');
-
-      const searchable = await search('q=0x99990000');
+      const searchable = await search('q=0x99999999');
       assert.equal(searchable.statusCode, 200);
-      assert.ok(searchable.body.results.length <= 20);
+      assert.equal(searchable.body.results.length, 20);
+      assert.deepEqual(new Set(types(searchable.body)), new Set(['transaction']));
     });
 
     test('a term that matches nothing returns an empty list', async () => {
@@ -570,6 +582,240 @@ describe('v3 search', () => {
 
       const afterBurnBlock = await get('q=0xffff7777', etag);
       assert.equal(afterBurnBlock.statusCode, 200);
+    });
+  });
+
+  describe('review regressions', () => {
+    test('an exact contract id outranks the prefix matches that would crowd it out', async () => {
+      const exactContract = `${SENDER}.arkadiko`;
+      // The exact contract is the oldest, and 21 longer contracts share its prefix — more than the
+      // result limit — so ordering by height alone would drop it before ranking ever saw it.
+      const builder = new TestBlockBuilder({
+        block_height: 1,
+        block_hash: hash('bbbb1111'),
+        index_block_hash: hash('dddd1111'),
+        parent_index_block_hash: hash('dddd0000'),
+      });
+      builder.addTx({
+        tx_id: hash('aaaa0000'),
+        tx_index: 0,
+        sender_address: SENDER,
+        type_id: DbTxTypeId.VersionedSmartContract,
+        status: DbTxStatus.Success,
+        smart_contract_contract_id: exactContract,
+        smart_contract_source_code: '(define-public (hello) (ok u1))',
+        smart_contract_clarity_version: 3,
+      });
+      for (let i = 0; i < 21; i++) {
+        builder.addTx({
+          tx_id: `0xaaaa1111${i.toString(16).padStart(4, '0')}`.padEnd(66, '0'),
+          tx_index: i + 1,
+          sender_address: SENDER,
+          type_id: DbTxTypeId.VersionedSmartContract,
+          status: DbTxStatus.Success,
+          smart_contract_contract_id: `${exactContract}-${i}`,
+          smart_contract_source_code: '(define-public (hello) (ok u1))',
+          smart_contract_clarity_version: 3,
+        });
+      }
+      await db.update(builder.build());
+
+      const res = await search(`q=${exactContract}&type=smart_contract`);
+      assert.equal(res.statusCode, 200);
+      assert.equal(res.body.results[0].result.contract_id, exactContract);
+    });
+
+    test('does not return an address whose transactions were all orphaned', async () => {
+      const orphaned = 'ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM';
+      await db.update(
+        new TestBlockBuilder({
+          block_height: 1,
+          block_hash: hash('bbbb1111'),
+          index_block_hash: hash('dddd1111'),
+          parent_index_block_hash: hash('dddd0000'),
+        })
+          .addTx({ tx_id: hash('aaaa1111'), sender_address: orphaned })
+          .build()
+      );
+      // A competing block at the same height, then one extending it, re-orgs the first block out.
+      await db.update(
+        new TestBlockBuilder({
+          block_height: 1,
+          block_hash: hash('bbbb9999'),
+          index_block_hash: hash('dddd9999'),
+          parent_index_block_hash: hash('dddd0000'),
+        })
+          .addTx({ tx_id: hash('aaaa9999'), sender_address: SENDER })
+          .build()
+      );
+      await db.update(
+        new TestBlockBuilder({
+          block_height: 2,
+          block_hash: hash('bbbb2222'),
+          index_block_hash: hash('dddd2222'),
+          parent_index_block_hash: hash('dddd9999'),
+        }).build()
+      );
+
+      // The re-org decremented this principal's count to zero and left the row behind, which is
+      // what the query's `count > 0` filter exists to catch.
+      const res = await search(`q=${orphaned}&type=address`);
+      assert.equal(res.statusCode, 200);
+      assert.deepEqual(res.body.results, []);
+    });
+
+    test('searches a bare 64-character hex term as a name as well as a hash', async () => {
+      // Valid as a Clarity asset name and as a hash, since it starts with a letter.
+      const hexName = 'abcdef0123456789'.repeat(4);
+      await db.update(
+        new TestBlockBuilder({
+          block_height: 1,
+          block_hash: hash('bbbb1111'),
+          index_block_hash: hash('dddd1111'),
+          parent_index_block_hash: hash('dddd0000'),
+        })
+          .addTx({ tx_id: hash('aaaa1111'), sender_address: SENDER })
+          .addTxFtEvent({
+            asset_identifier: `${CONTRACT_ID}::${hexName}`,
+            recipient: SENDER,
+            asset_event_type_id: DbAssetEventTypeId.Mint,
+          })
+          .build()
+      );
+
+      const bare = await search(`q=${hexName}`);
+      assert.deepEqual(types(bare.body), ['token']);
+      assert.equal(bare.body.results[0].result.asset_name, hexName);
+
+      // With the `0x` prefix the term is unambiguously a hash, so names are not searched.
+      const prefixed = await search(`q=0x${hexName}`);
+      assert.deepEqual(prefixed.body.results, []);
+    });
+  });
+
+  describe('token canonical state', () => {
+    test('drops a token whose only sighting was orphaned by a re-org', async () => {
+      await db.update(
+        new TestBlockBuilder({
+          block_height: 1,
+          block_hash: hash('bbbb1111'),
+          index_block_hash: hash('dddd1111'),
+          parent_index_block_hash: hash('dddd0000'),
+        })
+          .addTx({ tx_id: hash('aaaa1111'), sender_address: SENDER })
+          .addTxFtEvent({
+            asset_identifier: `${CONTRACT_ID}::orphaned`,
+            recipient: SENDER,
+            asset_event_type_id: DbAssetEventTypeId.Mint,
+          })
+          .build()
+      );
+
+      // Visible while its block is still the canonical tip.
+      const beforeReorg = await search('q=orphaned&type=token');
+      assert.deepEqual(types(beforeReorg.body), ['token']);
+
+      // A competing block at the same height, then one extending it, orphans the sighting.
+      await db.update(
+        new TestBlockBuilder({
+          block_height: 1,
+          block_hash: hash('bbbb9999'),
+          index_block_hash: hash('dddd9999'),
+          parent_index_block_hash: hash('dddd0000'),
+        })
+          .addTx({ tx_id: hash('aaaa9999'), sender_address: SENDER })
+          .addTxFtEvent({
+            asset_identifier: ASSET_ID,
+            recipient: SENDER,
+            asset_event_type_id: DbAssetEventTypeId.Mint,
+          })
+          .build()
+      );
+      await db.update(
+        new TestBlockBuilder({
+          block_height: 2,
+          block_hash: hash('bbbb2222'),
+          index_block_hash: hash('dddd2222'),
+          parent_index_block_hash: hash('dddd9999'),
+        }).build()
+      );
+
+      const afterReorg = await search('q=orphaned&type=token');
+      assert.equal(afterReorg.statusCode, 200);
+      assert.deepEqual(afterReorg.body.results, []);
+
+      // The row itself is kept, so the asset comes back if its transaction is ever mined.
+      const rows = await db.sql<{ asset_identifier: string }[]>`
+        SELECT asset_identifier FROM token_assets WHERE asset_identifier LIKE '%orphaned'
+      `;
+      assert.equal(rows.length, 1);
+
+      // The token seen on the winning fork is still returned.
+      const canonicalToken = await search('q=diko&type=token');
+      assert.deepEqual(types(canonicalToken.body), ['token']);
+      assert.equal(canonicalToken.body.results[0].result.asset_identifier, ASSET_ID);
+    });
+
+    test('keeps a token whose transaction is re-mined on the winning fork', async () => {
+      const remined = `${CONTRACT_ID}::remined`;
+      const mintTx = hash('aaaa1111');
+      const mint = (builder: TestBlockBuilder) =>
+        builder
+          .addTx({ tx_id: mintTx, sender_address: SENDER })
+          .addTxFtEvent({
+            asset_identifier: remined,
+            recipient: SENDER,
+            asset_event_type_id: DbAssetEventTypeId.Mint,
+          });
+
+      await db.update(
+        mint(
+          new TestBlockBuilder({
+            block_height: 1,
+            block_hash: hash('bbbb1111'),
+            index_block_hash: hash('dddd1111'),
+            parent_index_block_hash: hash('dddd0000'),
+          })
+        ).build()
+      );
+      // The winning fork carries the same transaction, which keeps its id because a Stacks
+      // transaction id hashes the transaction itself, not its position in a block.
+      await db.update(
+        mint(
+          new TestBlockBuilder({
+            block_height: 1,
+            block_hash: hash('bbbb9999'),
+            index_block_hash: hash('dddd9999'),
+            parent_index_block_hash: hash('dddd0000'),
+          })
+        ).build()
+      );
+      await db.update(
+        new TestBlockBuilder({
+          block_height: 2,
+          block_hash: hash('bbbb2222'),
+          index_block_hash: hash('dddd2222'),
+          parent_index_block_hash: hash('dddd9999'),
+        }).build()
+      );
+
+      // `token_assets` still points at the transaction from the orphaned block, but that id now
+      // resolves to a canonical row, so the asset stays visible with no maintenance of its own.
+      const res = await search('q=remined&type=token');
+      assert.deepEqual(types(res.body), ['token']);
+      assert.equal(res.body.results[0].result.asset_identifier, remined);
+    });
+
+    test('requires every asset to record a transaction', async () => {
+      // The backfill resolves one for every asset, so search never has to treat a missing
+      // transaction as visible.
+      await assert.rejects(
+        () => db.sql`
+          INSERT INTO token_assets (asset_identifier, asset_type, tx_id)
+          VALUES (${`${CONTRACT_ID}::legacy`}, 'ft', NULL)
+        `,
+        /not-null constraint/
+      );
     });
   });
 });

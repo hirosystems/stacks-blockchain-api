@@ -1419,6 +1419,7 @@ export interface FtEventInsertValues {
 export interface TokenAssetInsertValues {
   asset_identifier: string;
   asset_type: 'ft' | 'nft';
+  tx_id: PgBytea;
 }
 
 export interface SmartContractEventInsertValues {

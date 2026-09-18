@@ -3077,11 +3077,17 @@ export class PgStoreV3 extends BasePgStoreModule {
         // `principal_tx_counts` holds one row per principal ever seen, so this never touches the
         // transaction or event tables. Contract principals live here too and are excluded, since
         // they are reported as smart contracts instead.
+        // `count > 0` keeps orphaned principals out: a re-org decrements the count of every
+        // principal whose transactions it undid but leaves the row behind, so a principal seen
+        // only on a non-canonical fork survives here with a count of zero.
+        // Exact matches sort first so a complete address is never squeezed out of the limit by
+        // busier principals that merely share its prefix.
         const addresses = await sql<DbSearchAddress[]>`
           SELECT principal FROM principal_tx_counts
           WHERE principal LIKE ${escapeLikePattern(term.address.value) + '%'}
             AND principal NOT LIKE ${'%.%'}
-          ORDER BY count DESC, principal ASC
+            AND count > 0
+          ORDER BY (principal = ${term.address.value}) DESC, count DESC, principal ASC
           LIMIT ${limit}
         `;
         for (const result of addresses) {
@@ -3104,7 +3110,7 @@ export class PgStoreV3 extends BasePgStoreModule {
                   AND canonical = true
                   AND microblock_canonical = true
                 GROUP BY contract_id
-                ORDER BY max_block_height DESC
+                ORDER BY (contract_id = ${value}) DESC, max_block_height DESC
                 LIMIT ${limit}
               `
             : await sql<{ contract_id: string }[]>`
@@ -3117,30 +3123,72 @@ export class PgStoreV3 extends BasePgStoreModule {
                 ORDER BY ${nameRelevance(sql, 'contract_id', value, trigrams)}, max_block_height DESC
                 LIMIT ${limit}
               `;
-        for (const match of matches) {
-          const contract = await this.getSmartContract({ contractId: match.contract_id });
-          if (contract) {
-            bucket(matchQuality(contract.contract_id, term.smartContract)).push({
-              type: 'smart_contract',
-              result: contract,
-            });
+        if (matches.length > 0) {
+          // Resolved in one round trip rather than one per candidate: the matching rows carry the
+          // contract ids, but the response needs the deploy transaction's block position and
+          // clarity version, which only `txs` has.
+          const contracts = await sql<DbSmartContractDetail[]>`
+            SELECT DISTINCT ON (smart_contract_contract_id)
+              smart_contract_contract_id AS contract_id,
+              smart_contract_clarity_version AS clarity_version,
+              tx_id,
+              block_height,
+              block_hash,
+              index_block_hash,
+              block_time,
+              tx_index,
+              burn_block_height,
+              burn_block_time
+            FROM txs
+            WHERE smart_contract_contract_id IN ${sql(matches.map(m => m.contract_id))}
+              AND canonical = true
+              AND microblock_canonical = true
+              AND status = ${DbTxStatus.Success}
+            ORDER BY smart_contract_contract_id, block_height DESC, microblock_sequence DESC,
+              tx_index DESC
+          `;
+          // `DISTINCT ON` returns them grouped by contract id, so restore the ranked order.
+          const byContractId = new Map(contracts.map(contract => [contract.contract_id, contract]));
+          for (const match of matches) {
+            const contract = byContractId.get(match.contract_id);
+            if (contract) {
+              bucket(matchQuality(contract.contract_id, term.smartContract)).push({
+                type: 'smart_contract',
+                result: contract,
+              });
+            }
           }
         }
       }
 
       if (types.has('token') && term.token) {
         const { mode, value } = term.token;
+        // `token_assets` has no canonical flag of its own — a re-org must not delete rows, since
+        // the events that created them are never re-inserted — so canonicality is resolved through
+        // the transaction the asset was first seen in. An asset stranded on an orphaned fork has
+        // no canonical transaction and drops out here, and comes back on its own if that
+        // transaction is later mined, since a transaction id survives being re-mined.
+        const canonicalAsset = sql`
+          EXISTS (
+            SELECT 1 FROM txs
+            WHERE txs.tx_id = token_assets.tx_id
+              AND txs.canonical = true
+              AND txs.microblock_canonical = true
+          )
+        `;
         const tokens =
           mode === 'prefix'
             ? await sql<DbSearchTokenAsset[]>`
                 SELECT asset_identifier, asset_type FROM token_assets
                 WHERE asset_identifier LIKE ${escapeLikePattern(value) + '%'}
-                ORDER BY asset_identifier ASC
+                  AND ${canonicalAsset}
+                ORDER BY (asset_identifier = ${value}) DESC, asset_identifier ASC
                 LIMIT ${limit}
               `
             : await sql<DbSearchTokenAsset[]>`
                 SELECT asset_identifier, asset_type FROM token_assets
                 WHERE asset_identifier ILIKE ${'%' + escapeLikePattern(value) + '%'}
+                  AND ${canonicalAsset}
                 ORDER BY ${nameRelevance(sql, 'asset_identifier', value, trigrams)},
                   asset_identifier ASC
                 LIMIT ${limit}

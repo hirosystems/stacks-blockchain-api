@@ -104,6 +104,7 @@ import { MIGRATIONS_DIR, PgStore } from './pg-store.js';
 import * as zoneFileParser from 'zone-file';
 import { parseResolver, parseZoneFileTxt } from '../event-stream/bns/bns-helpers.js';
 import {
+  PgBytea,
   PgSqlClient,
   batchIterate,
   connectPostgres,
@@ -2968,7 +2969,7 @@ export class PgWriteStore extends PgStore {
     }
     await this.updateTokenAssets(
       sql,
-      values.map(value => value.asset_identifier),
+      values.map(value => ({ assetIdentifier: value.asset_identifier, txId: value.tx_id })),
       'ft'
     );
   }
@@ -2979,24 +2980,35 @@ export class PgWriteStore extends PgStore {
    *
    * Identifiers are deduplicated per call and inserted with `ON CONFLICT DO NOTHING`, so a block
    * costs one index probe per distinct asset it touched; almost always a conflict, since
-   * `token_assets` only grows when an asset is seen for the very first time. Rows are kept
-   * regardless of canonical status and are never removed on a re-org: an identifier that only ever
-   * appeared on an orphaned fork stays searchable, but every search result linking to it resolves
-   * against canonical data.
+   * `token_assets` only grows when an asset is seen for the very first time.
+   *
+   * Rows are written whatever the transaction's canonical status, and are never removed on a
+   * re-org, because a re-org does not re-insert these events: dropping the row would lose an asset
+   * whose block is later promoted. The recorded transaction is what makes that safe: search
+   * requires it to resolve to a canonical transaction, so an asset stranded on an orphaned fork
+   * stops being returned without being forgotten.
    * @param sql - The SQL client.
-   * @param assetIdentifiers - The asset identifiers seen, duplicates allowed.
+   * @param assets - The assets seen and the transaction each was seen in, duplicates allowed.
    * @param assetType - Whether these are fungible or non-fungible token assets.
    */
   async updateTokenAssets(
     sql: PgSqlClient,
-    assetIdentifiers: string[],
+    assets: { assetIdentifier: string; txId: PgBytea }[],
     assetType: 'ft' | 'nft'
   ): Promise<void> {
+    // First sighting wins, matching the `ON CONFLICT DO NOTHING` below.
+    const firstSeen = new Map<string, PgBytea>();
+    for (const asset of assets) {
+      if (!firstSeen.has(asset.assetIdentifier)) {
+        firstSeen.set(asset.assetIdentifier, asset.txId);
+      }
+    }
     const values = Array.from(
-      new Set(assetIdentifiers),
-      (asset_identifier): TokenAssetInsertValues => ({
+      firstSeen,
+      ([asset_identifier, tx_id]): TokenAssetInsertValues => ({
         asset_identifier,
         asset_type: assetType,
+        tx_id,
       })
     );
     for (const batch of batchIterate(values, INSERT_BATCH_SIZE)) {
@@ -3095,7 +3107,7 @@ export class PgWriteStore extends PgStore {
       }
       await this.updateTokenAssets(
         sql,
-        batch.map(event => event.asset_identifier),
+        batch.map(event => ({ assetIdentifier: event.asset_identifier, txId: event.tx_id })),
         'nft'
       );
     }

@@ -44,9 +44,10 @@ export const SearchRoutes: FastifyPluginAsync<
           'Searches for the blocks, transactions, addresses, smart contracts, and token assets ' +
           'that a term refers to. The term can be a complete identifier or the beginning of one: ' +
           'a block or transaction hash, a Stacks or Bitcoin block height, an address, a contract ' +
-          'id, or an asset identifier. Contract and asset names are also matched anywhere in the ' +
-          'name and tolerate small misspellings, so a term like `arkadiko` finds the contracts ' +
-          `and tokens named after it. At most ${SEARCH_RESULT_LIMIT} results are returned, best ` +
+          'id, or an asset identifier. Contract and asset names are matched anywhere in the name, ' +
+          'so a term like `arkadiko` finds the contracts and tokens named after it. Names must ' +
+          `contain the term; misspellings are not matched. At most ${SEARCH_RESULT_LIMIT} ` +
+          'results are returned, best ' +
           'match first; there is no pagination, so narrow the term to see something that did not ' +
           'surface. A term that matches nothing returns an empty list rather than an error. Only ' +
           'canonical, mined entities are searched.',

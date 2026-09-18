@@ -92,9 +92,13 @@ export function classifySearchTerm(rawTerm: string): SearchTerm | null {
   }
   const result: SearchTerm = {};
 
-  const hex = (term.startsWith('0x') || term.startsWith('0X') ? term.slice(2) : term).toLowerCase();
+  const hasHexPrefix = term.startsWith('0x') || term.startsWith('0X');
+  const hex = (hasHexPrefix ? term.slice(2) : term).toLowerCase();
   const isHexTerm = hex.length > 0 && HEX_TERM.test(term);
   const isFullHash = isHexTerm && hex.length === 64;
+  // Only a `0x`-prefixed full hash is unambiguously a hash. A bare 64-character hex string is also
+  // a syntactically valid Clarity asset name, so it still gets searched as a name.
+  const isUnambiguousHash = isFullHash && hasHexPrefix;
   if (isHexTerm && hex.length >= SEARCH_MIN_HASH_LENGTH && hex.length <= 64) {
     // An odd-length prefix is padded out to both ends of the range it covers, so `0xabc` matches
     // every hash from `0xabc0…0` through `0xabcf…f`.
@@ -125,7 +129,7 @@ export function classifySearchTerm(rawTerm: string): SearchTerm | null {
     }
   }
 
-  if (!isFullHash) {
+  if (!isUnambiguousHash) {
     // The portion before `::` names a contract, so `…token::diko` searches for the defining
     // contract as well as the asset.
     const separator = term.indexOf('::');

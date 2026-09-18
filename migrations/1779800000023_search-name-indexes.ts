@@ -80,5 +80,7 @@ export function down(pgm: MigrationBuilder): void {
     name: 'smart_contracts_contract_id_pattern_idx',
     ifExists: true,
   });
-  pgm.dropExtension('pg_trgm', { ifExists: true });
+  // The extension is deliberately left installed. `up` creates it with `IF NOT EXISTS`, so it may
+  // well predate this migration and be shared with objects this migration knows nothing about;
+  // dropping it could remove something another feature depends on, or fail outright.
 }
