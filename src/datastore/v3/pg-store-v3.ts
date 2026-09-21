@@ -3080,9 +3080,13 @@ export class PgStoreV3 extends BasePgStoreModule {
         // `principal_tx_counts` holds one row per principal ever seen, so this never touches the
         // transaction or event tables. Contract principals live here too and are excluded, since
         // they are reported as smart contracts instead.
-        // `count > 0` keeps orphaned principals out: a re-org decrements the count of every
-        // principal whose transactions it undid but leaves the row behind, so a principal seen
-        // only on a non-canonical fork survives here with a count of zero.
+        // `principal_tx_counts` supplies the prefix scan and the ranking, but it is not evidence
+        // that a principal is canonical: its count tracks only `principal_txs.canonical`, never
+        // `microblock_canonical`, and the original backfill counted rows of both kinds. So
+        // canonicality is confirmed against `principal_txs` itself, which the partial
+        // `(principal, ...) WHERE canonical AND microblock_canonical` index answers directly and
+        // which is the same pair of flags every other v3 principal query uses. `count > 0` stays
+        // as a cheap pre-filter that skips the probe for principals a re-org has already zeroed.
         // Exact matches sort first so a complete address is never squeezed out of the limit by
         // busier principals that merely share its prefix.
         const addresses = await sql<DbSearchAddress[]>`
@@ -3090,6 +3094,12 @@ export class PgStoreV3 extends BasePgStoreModule {
           WHERE principal LIKE ${escapeLikePattern(term.address.value) + '%'}
             AND principal NOT LIKE ${'%.%'}
             AND count > 0
+            AND EXISTS (
+              SELECT 1 FROM principal_txs
+              WHERE principal_txs.principal = principal_tx_counts.principal
+                AND principal_txs.canonical = true
+                AND principal_txs.microblock_canonical = true
+            )
           ORDER BY (principal = ${term.address.value}) DESC, count DESC, principal ASC
           LIMIT ${limit}
         `;

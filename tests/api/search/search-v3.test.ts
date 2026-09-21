@@ -665,6 +665,32 @@ describe('v3 search', () => {
       );
     });
 
+    test('does not return an address whose activity is only in an orphaned microblock', async () => {
+      const microblockOnly = 'ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM';
+      await seed();
+      // Count maintenance tracks `canonical` but never `microblock_canonical`, so a principal
+      // whose only activity sits in an orphaned microblock still carries a positive count. Written
+      // directly, since the API stopped ingesting microblocks at Nakamoto and can no longer
+      // produce this state, though historical rows still have it.
+      await db.sql`
+        INSERT INTO principal_txs (principal, tx_id, block_height, index_block_hash,
+          microblock_hash, microblock_sequence, tx_index, canonical, microblock_canonical)
+        VALUES (${microblockOnly}, ${hash('aaaa7777')}, 1, ${hash('dddd1111')},
+          ${hash('cccc1111')}, 0, 0, true, false)
+      `;
+      await db.sql`
+        INSERT INTO principal_tx_counts (principal, count) VALUES (${microblockOnly}, 1)
+      `;
+
+      const res = await search(`q=${microblockOnly}&type=address`);
+      assert.equal(res.statusCode, 200);
+      assert.deepEqual(res.body.results, []);
+
+      // A principal with canonical activity is unaffected.
+      const canonical = await search(`q=${SENDER}&type=address`);
+      assert.deepEqual(types(canonical.body), ['address']);
+    });
+
     test('does not return an address whose transactions were all orphaned', async () => {
       const orphaned = 'ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM';
       await db.update(
