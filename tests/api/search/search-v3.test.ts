@@ -625,6 +625,46 @@ describe('v3 search', () => {
       assert.equal(res.body.results[0].result.contract_id, exactContract);
     });
 
+    test('a successful contract is not crowded out by failed deploys', async () => {
+      // Failed deploys are recorded in `smart_contracts` too, so enough of them matching the term
+      // could fill the candidate limit and hide the real contract when details are resolved.
+      const builder = new TestBlockBuilder({
+        block_height: 1,
+        block_hash: hash('bbbb1111'),
+        index_block_hash: hash('dddd1111'),
+        parent_index_block_hash: hash('dddd0000'),
+      });
+      builder.addTx({
+        tx_id: hash('aaaa0000'),
+        tx_index: 0,
+        sender_address: SENDER,
+        type_id: DbTxTypeId.VersionedSmartContract,
+        status: DbTxStatus.Success,
+        smart_contract_contract_id: CONTRACT_ID,
+        smart_contract_source_code: '(define-public (hello) (ok u1))',
+        smart_contract_clarity_version: 3,
+      });
+      for (let i = 0; i < 21; i++) {
+        builder.addTx({
+          tx_id: `0xaaaa1111${i.toString(16).padStart(4, '0')}`.padEnd(66, '0'),
+          tx_index: i + 1,
+          sender_address: SENDER,
+          type_id: DbTxTypeId.VersionedSmartContract,
+          status: DbTxStatus.AbortByResponse,
+          smart_contract_contract_id: `${CONTRACT_ID}-failed-${i}`,
+          smart_contract_source_code: '(define-public (hello) (err u1))',
+          smart_contract_clarity_version: 3,
+        });
+      }
+      await db.update(builder.build());
+
+      const res = await search('q=arkadiko&type=smart_contract');
+      assert.deepEqual(
+        res.body.results.map((r: { result: { contract_id: string } }) => r.result.contract_id),
+        [CONTRACT_ID]
+      );
+    });
+
     test('does not return an address whose transactions were all orphaned', async () => {
       const orphaned = 'ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM';
       await db.update(
@@ -804,6 +844,67 @@ describe('v3 search', () => {
       const res = await search('q=remined&type=token');
       assert.deepEqual(types(res.body), ['token']);
       assert.equal(res.body.results[0].result.asset_identifier, remined);
+    });
+
+    test('a later canonical sighting takes over a stale reference', async () => {
+      const asset = `${CONTRACT_ID}::switched`;
+      const mint = (builder: TestBlockBuilder, txId: string) =>
+        builder.addTx({ tx_id: txId, sender_address: SENDER }).addTxFtEvent({
+          asset_identifier: asset,
+          recipient: SENDER,
+          asset_event_type_id: DbAssetEventTypeId.Mint,
+        });
+
+      await db.update(
+        mint(
+          new TestBlockBuilder({
+            block_height: 1,
+            block_hash: hash('bbbb1111'),
+            index_block_hash: hash('dddd1111'),
+            parent_index_block_hash: hash('dddd0000'),
+          }),
+          hash('aaaa1111')
+        ).build()
+      );
+      // Orphan that sighting, which leaves the recorded transaction non-canonical.
+      await db.update(
+        new TestBlockBuilder({
+          block_height: 1,
+          block_hash: hash('bbbb9999'),
+          index_block_hash: hash('dddd9999'),
+          parent_index_block_hash: hash('dddd0000'),
+        })
+          .addTx({ tx_id: hash('aaaa9999'), sender_address: SENDER })
+          .build()
+      );
+      await db.update(
+        new TestBlockBuilder({
+          block_height: 2,
+          block_hash: hash('bbbb2222'),
+          index_block_hash: hash('dddd2222'),
+          parent_index_block_hash: hash('dddd9999'),
+        }).build()
+      );
+      const orphaned = await search('q=switched&type=token');
+      assert.deepEqual(orphaned.body.results, []);
+
+      // The asset is emitted again on the winning chain by a *different* transaction, which takes
+      // over the stale reference.
+      await db.update(
+        mint(
+          new TestBlockBuilder({
+            block_height: 3,
+            block_hash: hash('bbbb3333'),
+            index_block_hash: hash('dddd3333'),
+            parent_index_block_hash: hash('dddd2222'),
+          }),
+          hash('aaaa3333')
+        ).build()
+      );
+
+      const repaired = await search('q=switched&type=token');
+      assert.deepEqual(types(repaired.body), ['token']);
+      assert.equal(repaired.body.results[0].result.asset_identifier, asset);
     });
 
     test('requires every asset to record a transaction', async () => {

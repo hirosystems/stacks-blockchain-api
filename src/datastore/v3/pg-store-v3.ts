@@ -100,7 +100,7 @@ import { DbEventTypeId, DbSignerKeyGrantKind, DbTxStatus, DbTxTypeId } from '../
 
 export class PgStoreV3 extends BasePgStoreModule {
   /** Cached result of {@link hasTrigramSupport}, resolved at most once per store. */
-  private trigramSupport?: Promise<boolean>;
+  private trigramSupport?: boolean;
 
   /**
    * Whether the `pg_trgm` extension is installed, which decides how search matches names.
@@ -112,20 +112,23 @@ export class PgStoreV3 extends BasePgStoreModule {
    * @returns Whether trigram matching is available.
    */
   private async hasTrigramSupport(): Promise<boolean> {
-    this.trigramSupport ??= this.sql<{ installed: boolean }[]>`
-      SELECT EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'pg_trgm') AS installed
-    `.then(result => {
-      const installed = result[0]?.installed ?? false;
-      if (!installed) {
+    // Only a resolved answer is cached. Caching the promise instead would pin a transient database
+    // failure for the life of the process, leaving every later search rejecting the same error
+    // long after the database recovered.
+    if (this.trigramSupport === undefined) {
+      const result = await this.sql<{ installed: boolean }[]>`
+        SELECT EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'pg_trgm') AS installed
+      `;
+      this.trigramSupport = result[0]?.installed ?? false;
+      if (!this.trigramSupport) {
         logger.warn(
           `The pg_trgm extension is not installed. Search will match contract and asset names by ` +
             `unindexed substring, which is slower and ranks by match position rather than ` +
             `similarity. Install pg_trgm and create the trigram indexes to enable it.`
         );
       }
-      return installed;
-    });
-    return await this.trigramSupport;
+    }
+    return this.trigramSupport;
   }
 
   /**
@@ -3097,7 +3100,10 @@ export class PgStoreV3 extends BasePgStoreModule {
 
       if (types.has('smart_contract') && term.smartContract) {
         // Contract ids are matched against `smart_contracts`, which holds one row per deploy and
-        // is small enough to index for substring search. The deploy transaction carries the block
+        // is small enough to index for substring search. Failed deploys are recorded there too, so
+        // candidates are filtered to successfully deployed contracts before the limit applies —
+        // otherwise a broad term could fill all 20 slots with failed deploys and hide a real
+        // contract when the details are resolved. The deploy transaction carries the block
         // position and clarity version the response needs, so each match is then resolved against
         // `txs` by contract id (at most one indexed lookup per match).
         const { mode, value } = term.smartContract;
@@ -3109,6 +3115,13 @@ export class PgStoreV3 extends BasePgStoreModule {
                 WHERE contract_id LIKE ${escapeLikePattern(value) + '%'}
                   AND canonical = true
                   AND microblock_canonical = true
+                  AND EXISTS (
+                    SELECT 1 FROM txs
+                    WHERE txs.tx_id = smart_contracts.tx_id
+                      AND txs.canonical = true
+                      AND txs.microblock_canonical = true
+                      AND txs.status = ${DbTxStatus.Success}
+                  )
                 GROUP BY contract_id
                 ORDER BY (contract_id = ${value}) DESC, max_block_height DESC
                 LIMIT ${limit}
@@ -3119,6 +3132,13 @@ export class PgStoreV3 extends BasePgStoreModule {
                 WHERE contract_id ILIKE ${'%' + escapeLikePattern(value) + '%'}
                   AND canonical = true
                   AND microblock_canonical = true
+                  AND EXISTS (
+                    SELECT 1 FROM txs
+                    WHERE txs.tx_id = smart_contracts.tx_id
+                      AND txs.canonical = true
+                      AND txs.microblock_canonical = true
+                      AND txs.status = ${DbTxStatus.Success}
+                  )
                 GROUP BY contract_id
                 ORDER BY ${nameRelevance(sql, 'contract_id', value, trigrams)}, max_block_height DESC
                 LIMIT ${limit}
