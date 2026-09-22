@@ -257,7 +257,7 @@ export const FaucetRoutes: FastifyPluginAsync<
       schema: {
         operationId: 'run_faucet_btc',
         summary: 'Get BTC regtest or signet tokens',
-        description: `Add 0.01 BTC token to the specified regtest or signet BTC address.
+        description: `Add 0.0001 BTC to the specified regtest or signet BTC address (0.01 BTC with \`large\`, 0.5 BTC with \`xlarge\`).
 
         The endpoint returns the transaction ID, which you can use to view the transaction in a regtest or signet
         Bitcoin block explorer. The tokens are delivered once the transaction has been included in a block.

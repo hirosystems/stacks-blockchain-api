@@ -2,7 +2,7 @@ import supertest from 'supertest';
 import * as btc from 'bitcoinjs-lib';
 import { STACKS_TESTNET } from '@stacks/network';
 import { startApiServer, ApiServer } from '../../../src/api/init.ts';
-import { getFaucetAccount } from '../../../src/btc-faucet.ts';
+import { getBtcBalance, getFaucetAccount, makeBtcFaucetPayment } from '../../../src/btc-faucet.ts';
 import { PgWriteStore } from '../../../src/datastore/pg-write-store.ts';
 import { DbFaucetRequestCurrency } from '../../../src/datastore/common.ts';
 import { ENV } from '../../../src/env.ts';
@@ -198,6 +198,17 @@ describe('BTC faucet', () => {
       );
       assert.equal(balanceResponse.status, 400);
     }
+    assert.equal(bitcoind.sentRawTxs.length, 0);
+  });
+
+  test('payment and balance helpers reject addresses not valid on the given network', async () => {
+    const signetAddress = makeRandomBtcAddress('p2wpkh', btc.networks.testnet);
+    const expected = { message: `Invalid BTC regtest or signet address: ${signetAddress}` };
+    await assert.rejects(getBtcBalance(btc.networks.regtest, signetAddress), expected);
+    await assert.rejects(
+      makeBtcFaucetPayment(btc.networks.regtest, signetAddress, 0.0001),
+      expected
+    );
     assert.equal(bitcoind.sentRawTxs.length, 0);
   });
 
