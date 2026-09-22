@@ -2,7 +2,7 @@ import supertest from 'supertest';
 import * as btc from 'bitcoinjs-lib';
 import { STACKS_TESTNET } from '@stacks/network';
 import { startApiServer, ApiServer } from '../../../src/api/init.ts';
-import { getFaucetAccount } from '../../../src/btc-faucet.ts';
+import { getBtcBalance, getFaucetAccount, makeBtcFaucetPayment } from '../../../src/btc-faucet.ts';
 import { PgWriteStore } from '../../../src/datastore/pg-write-store.ts';
 import { DbFaucetRequestCurrency } from '../../../src/datastore/common.ts';
 import { ENV } from '../../../src/env.ts';
@@ -134,9 +134,7 @@ describe('BTC faucet', () => {
 
     const secondTx = btc.Transaction.fromHex(secondResponse.body.raw_tx);
     const firstTxId = firstResponse.body.txid;
-    const spentTxIds = secondTx.ins.map(input =>
-      Buffer.from(input.hash).reverse().toString('hex')
-    );
+    const spentTxIds = secondTx.ins.map(input => Buffer.from(input.hash).reverse().toString('hex'));
     assert.deepEqual(spentTxIds, [firstTxId]);
   });
 
@@ -158,13 +156,60 @@ describe('BTC faucet', () => {
     assert.deepEqual(response.body, { error: 'address required', success: false });
   });
 
-  test('rejects non-regtest addresses', async () => {
-    const mainnetAddress = makeRandomBtcAddress('p2pkh', btc.networks.bitcoin);
-    const response = await supertest(api.server).post(
-      `/extended/v1/faucets/btc?address=${mainnetAddress}`
+  test('pays regtest and signet segwit addresses', async () => {
+    const cases = [
+      { network: btc.networks.regtest, prefix: 'bcrt1' },
+      // Signet shares testnet's address encoding.
+      { network: btc.networks.testnet, prefix: 'tb1' },
+    ];
+    for (const { network, prefix } of cases) {
+      const recipient = makeRandomBtcAddress('p2wpkh', network);
+      assert.ok(recipient.startsWith(prefix));
+      const response = await supertest(api.server).post(
+        `/extended/v1/faucets/btc?address=${recipient}`
+      );
+      assert.equal(response.status, 200);
+      const tx = btc.Transaction.fromHex(response.body.raw_tx);
+      const recipientScript = Buffer.from(btc.address.toOutputScript(recipient, network));
+      const recipientOutputs = tx.outs.filter(out =>
+        recipientScript.equals(Buffer.from(out.script))
+      );
+      assert.equal(recipientOutputs.length, 1);
+      assert.equal(recipientOutputs[0].value, 10_000n);
+      assert.equal(await getBalanceFromApi(recipient), 0.0001);
+    }
+  });
+
+  test('rejects mainnet addresses', async () => {
+    for (const mainnetAddress of [
+      makeRandomBtcAddress('p2pkh', btc.networks.bitcoin),
+      makeRandomBtcAddress('p2wpkh', btc.networks.bitcoin),
+    ]) {
+      const response = await supertest(api.server).post(
+        `/extended/v1/faucets/btc?address=${mainnetAddress}`
+      );
+      assert.equal(response.status, 400);
+      assert.deepEqual(response.body, {
+        error: 'Invalid BTC regtest or signet address',
+        success: false,
+      });
+      const balanceResponse = await supertest(api.server).get(
+        `/extended/v1/faucets/btc/${mainnetAddress}`
+      );
+      assert.equal(balanceResponse.status, 400);
+    }
+    assert.equal(bitcoind.sentRawTxs.length, 0);
+  });
+
+  test('payment and balance helpers reject addresses not valid on the given network', async () => {
+    const signetAddress = makeRandomBtcAddress('p2wpkh', btc.networks.testnet);
+    const expected = { message: `Invalid BTC regtest or signet address: ${signetAddress}` };
+    await assert.rejects(getBtcBalance(btc.networks.regtest, signetAddress), expected);
+    await assert.rejects(
+      makeBtcFaucetPayment(btc.networks.regtest, signetAddress, 0.0001),
+      expected
     );
-    assert.equal(response.status, 400);
-    assert.deepEqual(response.body, { error: 'Invalid BTC regtest address', success: false });
+    assert.equal(bitcoind.sentRawTxs.length, 0);
   });
 
   test('requests are rate limited per address', async () => {

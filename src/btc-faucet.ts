@@ -94,9 +94,25 @@ export function isValidBtcAddress(network: btc.Network, address: string): boolea
   }
 }
 
+/**
+ * Bitcoin networks whose addresses the faucet accepts. Signet shares testnet's address encodings
+ * (base58 prefixes and the `tb` bech32 HRP), so `btc.networks.testnet` validates signet addresses.
+ * Base58 addresses are identical across regtest and signet; only bech32 addresses differ (`bcrt1`
+ * vs `tb1`).
+ */
+const BTC_FAUCET_NETWORKS: btc.Network[] = [btc.networks.regtest, btc.networks.testnet];
+
+/**
+ * Returns the network whose encoding the given address uses if it is a valid regtest or signet
+ * address, or `undefined` otherwise.
+ */
+export function getBtcFaucetAddressNetwork(address: string): btc.Network | undefined {
+  return BTC_FAUCET_NETWORKS.find(network => isValidBtcAddress(network, address));
+}
+
 export async function getBtcBalance(network: btc.Network, address: string) {
   if (!isValidBtcAddress(network, address)) {
-    throw new Error(`Invalid BTC regtest address: ${address}`);
+    throw new Error(`Invalid BTC regtest or signet address: ${address}`);
   }
   const client = getRpcClient();
   const txOutSet = await getTxOutSet(client, address);
@@ -184,7 +200,7 @@ export async function makeBtcFaucetPayment(
   faucetAmount: number
 ): Promise<{ txId: string; rawTx: string; txFee: number }> {
   if (!isValidBtcAddress(network, address)) {
-    throw new Error(`Invalid BTC regtest address: ${address}`);
+    throw new Error(`Invalid BTC regtest or signet address: ${address}`);
   }
 
   const client = getRpcClient();

@@ -1,4 +1,3 @@
-import * as btc from 'bitcoinjs-lib';
 import PQueue from 'p-queue';
 import { BigNumber } from 'bignumber.js';
 import {
@@ -21,7 +20,7 @@ import {
   makeBtcFaucetPayment,
   getBtcBalance,
   getRpcClient,
-  isValidBtcAddress,
+  getBtcFaucetAddressNetwork,
 } from '../../../btc-faucet.js';
 import { DbFaucetRequestCurrency } from '../../../datastore/common.js';
 import { getChainIDNetwork, getStxFaucetNetwork, stxToMicroStx } from '../../../helpers.js';
@@ -257,30 +256,31 @@ export const FaucetRoutes: FastifyPluginAsync<
       preHandler: [btcFaucetEnabledMiddleware, missingBtcConfigMiddleware],
       schema: {
         operationId: 'run_faucet_btc',
-        summary: 'Get BTC regtest tokens',
-        description: `Add 0.01 BTC token to the specified regtest BTC address.
+        summary: 'Get BTC regtest or signet tokens',
+        description: `Add 0.0001 BTC to the specified regtest or signet BTC address (0.01 BTC with \`large\`, 0.5 BTC with \`xlarge\`).
 
-        The endpoint returns the transaction ID, which you can use to view the transaction in a regtest Bitcoin block
-        explorer. The tokens are delivered once the transaction has been included in a block.
+        The endpoint returns the transaction ID, which you can use to view the transaction in a regtest or signet
+        Bitcoin block explorer. The tokens are delivered once the transaction has been included in a block.
 
-        **Note:** This is a Bitcoin regtest-only endpoint. This endpoint will not work on the Bitcoin mainnet.`,
+        **Note:** This is a Bitcoin regtest/signet-only endpoint. This endpoint will not work on the Bitcoin mainnet.`,
         tags: ['Faucets'],
         querystring: Type.Object({
           address: Type.Optional(
             Type.String({
-              description: 'A valid regtest BTC address',
+              description: 'A valid regtest or signet BTC address',
               examples: ['2N4M94S1ZPt8HfxydXzL2P7qyzgVq7MHWts'],
             })
           ),
           large: Type.Optional(
             Type.Boolean({
-              description: 'Request a large amount of regtest BTC than the default',
+              description: 'Request a large amount of regtest or signet BTC than the default',
               default: false,
             })
           ),
           xlarge: Type.Optional(
             Type.Boolean({
-              description: 'Request an extra large amount of regtest BTC than the default',
+              description:
+                'Request an extra large amount of regtest or signet BTC than the default',
               default: false,
             })
           ),
@@ -289,7 +289,7 @@ export const FaucetRoutes: FastifyPluginAsync<
           Type.Object({
             address: Type.Optional(
               Type.String({
-                description: 'A valid regtest BTC address',
+                description: 'A valid regtest or signet BTC address',
                 examples: ['2N4M94S1ZPt8HfxydXzL2P7qyzgVq7MHWts'],
               })
             ),
@@ -307,7 +307,7 @@ export const FaucetRoutes: FastifyPluginAsync<
             {
               title: 'RunFaucetResponse',
               description:
-                'POST request that initiates a transfer of tokens to a specified Bitcoin regtest address',
+                'POST request that initiates a transfer of tokens to a specified Bitcoin regtest or signet address',
             }
           ),
           '4xx': Type.Object({
@@ -341,9 +341,10 @@ export const FaucetRoutes: FastifyPluginAsync<
             success: false,
           });
         }
-        if (!isValidBtcAddress(btc.networks.regtest, address)) {
+        const btcNetwork = getBtcFaucetAddressNetwork(address);
+        if (!btcNetwork) {
           return await reply.status(400).send({
-            error: 'Invalid BTC regtest address',
+            error: 'Invalid BTC regtest or signet address',
             success: false,
           });
         }
@@ -371,7 +372,7 @@ export const FaucetRoutes: FastifyPluginAsync<
           }
         }
 
-        const tx = await makeBtcFaucetPayment(btc.networks.regtest, address, btcAmount);
+        const tx = await makeBtcFaucetPayment(btcNetwork, address, btcAmount);
         await fastify.writeDb?.insertFaucetRequest({
           ip: `${ip}`,
           address: address,
@@ -400,7 +401,7 @@ export const FaucetRoutes: FastifyPluginAsync<
         tags: ['Faucets'],
         params: Type.Object({
           address: Type.String({
-            description: 'A valid regtest BTC address',
+            description: 'A valid regtest or signet BTC address',
             examples: ['2N4M94S1ZPt8HfxydXzL2P7qyzgVq7MHWts'],
           }),
         }),
@@ -417,7 +418,14 @@ export const FaucetRoutes: FastifyPluginAsync<
     },
     async (req, reply) => {
       const { address } = req.params;
-      const balance = await getBtcBalance(btc.networks.regtest, address);
+      const btcNetwork = getBtcFaucetAddressNetwork(address);
+      if (!btcNetwork) {
+        return await reply.status(400).send({
+          error: 'Invalid BTC regtest or signet address',
+          success: false,
+        });
+      }
+      const balance = await getBtcBalance(btcNetwork, address);
       await reply.send({ balance });
     }
   );
