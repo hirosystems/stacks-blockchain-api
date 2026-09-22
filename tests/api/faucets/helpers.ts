@@ -204,7 +204,17 @@ export class MockBitcoinRpc {
   private scanTxOutSet(scanObjects: string[]) {
     const address = /^addr\((.+)\)$/.exec(scanObjects[0])?.[1];
     if (!address) throw new Error(`Unsupported scanobjects: ${JSON.stringify(scanObjects)}`);
-    const script = Buffer.from(btc.address.toOutputScript(address, btc.networks.regtest));
+    // Accept both regtest (`bcrt1`) and signet (`tb1`, testnet encoding) addresses, like the faucet.
+    const network = [btc.networks.regtest, btc.networks.testnet].find(n => {
+      try {
+        btc.address.toOutputScript(address, n);
+        return true;
+      } catch {
+        return false;
+      }
+    });
+    if (!network) throw new Error(`Invalid address: ${address}`);
+    const script = Buffer.from(btc.address.toOutputScript(address, network));
 
     const spent = new Set<string>();
     for (const { tx } of this.txs.values()) {
