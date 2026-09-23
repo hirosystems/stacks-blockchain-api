@@ -33,6 +33,7 @@ import {
   BnsSubdomainInsertValues,
   BnsZonefileInsertValues,
   FtEventInsertValues,
+  TokenAssetInsertValues,
   NftEventInsertValues,
   SmartContractEventInsertValues,
   BurnchainBlockInsertValues,
@@ -103,6 +104,7 @@ import { MIGRATIONS_DIR, PgStore } from './pg-store.js';
 import * as zoneFileParser from 'zone-file';
 import { parseResolver, parseZoneFileTxt } from '../event-stream/bns/bns-helpers.js';
 import {
+  PgBytea,
   PgSqlClient,
   batchIterate,
   connectPostgres,
@@ -2965,6 +2967,80 @@ export class PgWriteStore extends PgStore {
       `;
       assert(res.count === batch.length, `Expecting ${batch.length} inserts, got ${res.count}`);
     }
+    await this.updateTokenAssets(
+      sql,
+      values.map(value => ({
+        assetIdentifier: value.asset_identifier,
+        txId: value.tx_id,
+        canonical: value.canonical && value.microblock_canonical,
+      })),
+      'ft'
+    );
+  }
+
+  /**
+   * Records the asset identifiers seen in a block's token events, so search can match a term
+   * against them without scanning the event tables.
+   *
+   * Identifiers are deduplicated per call and inserted with `ON CONFLICT DO NOTHING`, so a block
+   * costs one index probe per distinct asset it touched; almost always a conflict, since
+   * `token_assets` only grows when an asset is seen for the very first time.
+   *
+   * Rows are written whatever the transaction's canonical status, and are never removed on a
+   * re-org, because a re-org does not re-insert these events: dropping the row would lose an asset
+   * whose block is later promoted. The recorded transaction is what makes that safe: search
+   * requires it to resolve to a canonical transaction, so an asset stranded on an orphaned fork
+   * stops being returned without being forgotten.
+   * A canonical sighting also takes over an asset whose recorded transaction is no longer
+   * canonical, so a stale reference repairs itself the next time the asset is seen.
+   * @param sql - The SQL client.
+   * @param assets - The assets seen, the transaction each was seen in, and whether that sighting
+   * is canonical. Duplicates allowed.
+   * @param assetType - Whether these are fungible or non-fungible token assets.
+   */
+  async updateTokenAssets(
+    sql: PgSqlClient,
+    assets: { assetIdentifier: string; txId: PgBytea; canonical: boolean }[],
+    assetType: 'ft' | 'nft'
+  ): Promise<void> {
+    // One sighting per asset, preferring a canonical one from this batch.
+    const seen = new Map<string, { txId: PgBytea; canonical: boolean }>();
+    for (const asset of assets) {
+      const existing = seen.get(asset.assetIdentifier);
+      if (!existing || (!existing.canonical && asset.canonical)) {
+        seen.set(asset.assetIdentifier, { txId: asset.txId, canonical: asset.canonical });
+      }
+    }
+    const toValues = (canonical: boolean): TokenAssetInsertValues[] =>
+      Array.from(seen)
+        .filter(([, sighting]) => sighting.canonical === canonical)
+        .map(([asset_identifier, sighting]) => ({
+          asset_identifier,
+          asset_type: assetType,
+          tx_id: sighting.txId,
+        }));
+
+    // A canonical sighting replaces a recorded transaction that is no longer canonical, which is
+    // how an asset becomes visible again after the block it was first seen in loses a re-org.
+    for (const batch of batchIterate(toValues(true), INSERT_BATCH_SIZE)) {
+      await sql`
+        INSERT INTO token_assets ${sql(batch)}
+        ON CONFLICT (asset_identifier) DO UPDATE SET tx_id = EXCLUDED.tx_id
+        WHERE NOT EXISTS (
+          SELECT 1 FROM txs
+          WHERE txs.tx_id = token_assets.tx_id
+            AND txs.canonical = true
+            AND txs.microblock_canonical = true
+        )
+      `;
+    }
+    // A non-canonical sighting only records an asset that has never been seen at all.
+    for (const batch of batchIterate(toValues(false), INSERT_BATCH_SIZE)) {
+      await sql`
+        INSERT INTO token_assets ${sql(batch)}
+        ON CONFLICT (asset_identifier) DO NOTHING
+      `;
+    }
   }
 
   async updateNftEvents(sql: PgSqlClient, tx: DbTx, events: DbNftEvent[]) {
@@ -3053,6 +3129,15 @@ export class PgWriteStore extends PgStore {
             )
         `;
       }
+      await this.updateTokenAssets(
+        sql,
+        batch.map(event => ({
+          assetIdentifier: event.asset_identifier,
+          txId: event.tx_id,
+          canonical: event.canonical && tx.microblock_canonical,
+        })),
+        'nft'
+      );
     }
   }
 
