@@ -7,7 +7,9 @@ import {
 } from '../../api/schemas/v3/cursors.js';
 import { I32_MAX } from '../../helpers.js';
 import { InvalidRequestError, InvalidRequestErrorType } from '../../errors.js';
-import { DbBondLockupTx } from './types.js';
+import { PgSqlClient, PgSqlQuery } from '@stacks/api-toolkit';
+import { DbBondLockupTx, DbSearchHit } from './types.js';
+import { SearchMatchQuality, SearchTermText } from '../../api/search-term.js';
 
 const MAX_TX_INDEX = 0x7fff;
 
@@ -190,3 +192,71 @@ export function parseBondLockupTxs(value: unknown): DbBondLockupTx[] | null {
   }
   return value as DbBondLockupTx[];
 }
+
+/**
+ * Escapes the characters that are wildcards in a `LIKE`/`ILIKE` pattern, so a term is matched
+ * literally. Clarity names can contain underscores, which would otherwise match any character.
+ * @param value - The literal text to match.
+ * @returns The text with `LIKE` wildcards escaped.
+ */
+export const escapeLikePattern = (value: string): string =>
+  value.replace(/[\\%_]/g, char => `\\${char}`);
+
+/**
+ * The identity of a search hit within its entity type, used to drop the duplicates that arise when
+ * a term reaches the same entity through more than one branch.
+ * @param hit - The search hit.
+ * @returns A value identifying the hit among others of its type.
+ */
+export const searchHitId = (hit: DbSearchHit): string => {
+  switch (hit.type) {
+    case 'block':
+      return hit.result.index_block_hash;
+    case 'bitcoin_block':
+      return hit.result.burn_block_hash;
+    case 'transaction':
+      return hit.result.tx_id;
+    case 'address':
+      return hit.result.principal;
+    case 'smart_contract':
+      return hit.result.contract_id;
+    case 'token':
+      return hit.result.asset_identifier;
+  }
+};
+
+/**
+ * How closely a matched value answers the term that found it. A term is not distinguishable from a
+ * complete identifier by syntax alone, so a result equal to the term ranks as an exact match and
+ * everything else ranks by how the term was matched.
+ * @param value - The matched value.
+ * @param term - The text term that matched it.
+ * @returns The match quality to rank the result by.
+ */
+export const matchQuality = (value: string, term: SearchTermText): SearchMatchQuality =>
+  value === term.value ? 'exact' : term.mode;
+
+/**
+ * The `ORDER BY` expression that ranks a substring match on a name column.
+ *
+ * With `pg_trgm` installed this is the trigram similarity between the name and the term, which
+ * tolerates small misspellings. Without it, `similarity()` does not exist, so relevance is
+ * approximated from the match itself: the earlier the term appears in the name and the shorter the
+ * name is, the larger a share of the name the term accounts for. Callers append their own
+ * tie-breaker after this expression. The expressions are not aggregates, so this works both in a
+ * plain query and in one grouped by the name column.
+ * @param sql - The SQL client, used to build the fragment.
+ * @param column - The name column being matched.
+ * @param term - The search term.
+ * @param trigrams - Whether the `pg_trgm` extension is installed.
+ * @returns The ordering fragment.
+ */
+export const nameRelevance = (
+  sql: PgSqlClient,
+  column: 'contract_id' | 'asset_identifier',
+  term: string,
+  trigrams: boolean
+): PgSqlQuery =>
+  trigrams
+    ? sql`similarity(${sql(column)}, ${term}) DESC`
+    : sql`strpos(lower(${sql(column)}), lower(${term})) ASC, length(${sql(column)}) ASC`;

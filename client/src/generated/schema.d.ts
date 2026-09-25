@@ -1104,13 +1104,13 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Get BTC regtest tokens
-         * @description Add 0.01 BTC token to the specified regtest BTC address.
+         * Get BTC regtest or signet tokens
+         * @description Add 0.0001 BTC to the specified regtest or signet BTC address (0.01 BTC with `large`, 0.5 BTC with `xlarge`).
          *
-         *             The endpoint returns the transaction ID, which you can use to view the transaction in a regtest Bitcoin block
-         *             explorer. The tokens are delivered once the transaction has been included in a block.
+         *             The endpoint returns the transaction ID, which you can use to view the transaction in a regtest or signet
+         *             Bitcoin block explorer. The tokens are delivered once the transaction has been included in a block.
          *
-         *             **Note:** This is a Bitcoin regtest-only endpoint. This endpoint will not work on the Bitcoin mainnet.
+         *             **Note:** This is a Bitcoin regtest/signet-only endpoint. This endpoint will not work on the Bitcoin mainnet.
          */
         post: operations["run_faucet_btc"];
         delete?: never;
@@ -30510,13 +30510,13 @@ export interface operations {
         parameters: {
             query?: {
                 /**
-                 * @description A valid regtest BTC address
+                 * @description A valid regtest or signet BTC address
                  * @example 2N4M94S1ZPt8HfxydXzL2P7qyzgVq7MHWts
                  */
                 address?: string;
-                /** @description Request a large amount of regtest BTC than the default */
+                /** @description Request a large amount of regtest or signet BTC than the default */
                 large?: boolean;
-                /** @description Request an extra large amount of regtest BTC than the default */
+                /** @description Request an extra large amount of regtest or signet BTC than the default */
                 xlarge?: boolean;
             };
             header?: never;
@@ -30526,13 +30526,13 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": {
-                    /** @description A valid regtest BTC address */
+                    /** @description A valid regtest or signet BTC address */
                     address?: string;
                 } | null;
             };
         };
         responses: {
-            /** @description POST request that initiates a transfer of tokens to a specified Bitcoin regtest address */
+            /** @description POST request that initiates a transfer of tokens to a specified Bitcoin regtest or signet address */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -30573,7 +30573,7 @@ export interface operations {
             header?: never;
             path: {
                 /**
-                 * @description A valid regtest BTC address
+                 * @description A valid regtest or signet BTC address
                  * @example 2N4M94S1ZPt8HfxydXzL2P7qyzgVq7MHWts
                  */
                 address: string;
@@ -37510,8 +37510,21 @@ export interface operations {
                                     /** @description The total amount of STX that is locked up for this bond */
                                     stx: string;
                                 };
+                                rewards: {
+                                    btc: {
+                                        /** @description The lifetime sBTC reward sats the contract has distributed into this bond's reward pool */
+                                        distributed: string;
+                                        /** @description An estimate of the lifetime sBTC reward sats credited to this bond's participants. Never more than `distributed`, because each share is floored to whole sats and the rounding remainder stays in the pool. This is computed by flooring each distribution, while the contract floors each settlement interval, so it can under-report by a few sats and may read slightly below `claimed`. Use `distributed` and `claimed` where exactness matters */
+                                        accrued: string;
+                                        /** @description The lifetime sBTC reward sats this bond's participants have already claimed */
+                                        claimed: string;
+                                    };
+                                };
                                 paid_out: {
-                                    /** @description The total amount of BTC that has been paid out for this bond */
+                                    /**
+                                     * @deprecated
+                                     * @description The total amount of BTC that has been paid out for this bond. **Deprecated**: use `rewards.btc.distributed`, which this mirrors
+                                     */
                                     btc: string;
                                 };
                             };
@@ -37596,8 +37609,21 @@ export interface operations {
                                 /** @description The total amount of STX that is locked up for this bond */
                                 stx: string;
                             };
+                            rewards: {
+                                btc: {
+                                    /** @description The lifetime sBTC reward sats the contract has distributed into this bond's reward pool */
+                                    distributed: string;
+                                    /** @description An estimate of the lifetime sBTC reward sats credited to this bond's participants. Never more than `distributed`, because each share is floored to whole sats and the rounding remainder stays in the pool. This is computed by flooring each distribution, while the contract floors each settlement interval, so it can under-report by a few sats and may read slightly below `claimed`. Use `distributed` and `claimed` where exactness matters */
+                                    accrued: string;
+                                    /** @description The lifetime sBTC reward sats this bond's participants have already claimed */
+                                    claimed: string;
+                                };
+                            };
                             paid_out: {
-                                /** @description The total amount of BTC that has been paid out for this bond */
+                                /**
+                                 * @deprecated
+                                 * @description The total amount of BTC that has been paid out for this bond. **Deprecated**: use `rewards.btc.distributed`, which this mirrors
+                                 */
                                 btc: string;
                             };
                         };
