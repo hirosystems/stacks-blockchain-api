@@ -3,7 +3,7 @@ import { decodeTransaction, TxPayloadTypeID, PostConditionAssetInfoID } from '@s
 import type { DecodedTxResult, TxPayloadContractCall } from '@stacks/codec';
 import { STACKS_TESTNET } from '@stacks/network';
 import { startApiServer, ApiServer } from '../../../src/api/init.ts';
-import { FAUCET_TESTNET_KEYS } from '../../../src/api/routes/v1/faucets.ts';
+import { FAUCET_TESTNET_KEYS } from '../../../src/api/faucets/common.ts';
 import { PgWriteStore } from '../../../src/datastore/pg-write-store.ts';
 import { DbFaucetRequestCurrency } from '../../../src/datastore/common.ts';
 import { ENV } from '../../../src/env.ts';
@@ -117,6 +117,18 @@ describe('sBTC faucet', () => {
     assert.equal(response.status, 200);
     const tx = decodeContractCall(response.body.txRaw);
     assert.equal(tx.auth.origin_condition.tx_fee, '1000');
+  });
+
+  test('responds with a well-formed deprecation Warning header', async () => {
+    const response = await supertest(api.server).post(
+      `/extended/v1/faucets/sbtc?address=${RECIPIENT_ADDRESS}`
+    );
+    assert.equal(response.status, 200);
+    // RFC 9111 warn-text is a quoted-string: no unescaped `"` or `\` inside the quotes.
+    assert.match(
+      response.headers['warning'],
+      /^299 - "Deprecated: Use POST \/extended\/v3\/faucets\/sbtc instead\.[^"\\]*"$/
+    );
   });
 
   test('address is required', async () => {

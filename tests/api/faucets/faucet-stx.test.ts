@@ -3,7 +3,7 @@ import { decodeTransaction, TxPayloadTypeID } from '@stacks/codec';
 import type { DecodedTxResult, TxPayloadTokenTransfer } from '@stacks/codec';
 import { STACKS_MAINNET, STACKS_TESTNET } from '@stacks/network';
 import { startApiServer, ApiServer } from '../../../src/api/init.ts';
-import { FAUCET_TESTNET_KEYS } from '../../../src/api/routes/v1/faucets.ts';
+import { FAUCET_TESTNET_KEYS } from '../../../src/api/faucets/common.ts';
 import { PgWriteStore } from '../../../src/datastore/pg-write-store.ts';
 import { DbFaucetRequestCurrency } from '../../../src/datastore/common.ts';
 import { getStxFaucetNetwork, stxToMicroStx } from '../../../src/helpers.ts';
@@ -112,6 +112,18 @@ describe('STX faucet', () => {
     assert.equal(response.status, 200);
     const tx = decodeTokenTransfer(response.body.txRaw);
     assert.equal(tx.auth.origin_condition.tx_fee, '200');
+  });
+
+  test('responds with a well-formed deprecation Warning header', async () => {
+    const response = await supertest(api.server).post(
+      `/extended/v1/faucets/stx?address=${RECIPIENT_ADDRESS}`
+    );
+    assert.equal(response.status, 200);
+    // RFC 9111 warn-text is a quoted-string: no unescaped `"` or `\` inside the quotes.
+    assert.match(
+      response.headers['warning'],
+      /^299 - "Deprecated: Use POST \/extended\/v3\/faucets\/stx instead\.[^"\\]*"$/
+    );
   });
 
   test('address is required', async () => {
