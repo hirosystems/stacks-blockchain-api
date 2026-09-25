@@ -320,9 +320,16 @@ export const TxRoutes: FastifyPluginAsync<
       preHandler: handleMempoolCache,
       schema: {
         operationId: 'get_mempool_transaction_stats',
+        deprecated: true,
+        deprecatedMessage:
+          'Use /extended/v3/mempool instead. Note the response differs: fields are renamed and ' +
+          'regrouped, percentiles are discrete rather than interpolated, and tx age in blocks is ' +
+          'replaced by receipt_block_height.',
         summary: 'Get statistics for mempool transactions',
         description: `Queries for transactions counts, age (by block height), fees (simple average), and size.
-        All results broken down by transaction type and percentiles (p25, p50, p75, p95).`,
+        All results broken down by transaction type and percentiles (p25, p50, p75, p95).
+
+        **Deprecated:** use \`GET /extended/v3/mempool\` instead. Note the response differs: fields are renamed and regrouped, percentiles are discrete rather than interpolated, and tx age in blocks is replaced by \`receipt_block_height\`.`,
         tags: ['Transactions'],
         response: {
           200: MempoolStatsResponseSchema,

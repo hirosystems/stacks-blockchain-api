@@ -10,12 +10,38 @@ import {
 } from '../../schemas/v3/cursors.js';
 import { serializeDbMempoolTransactionSummary } from '../../serializers/v3/mempool-transactions.js';
 import { MempoolTransactionSummarySchema } from '../../schemas/v3/entities/mempool-transaction-summaries.js';
+import { MempoolSummarySchema } from '../../schemas/v3/entities/mempool-summary.js';
+import { serializeMempoolSummary } from '../../serializers/v3/mempool-summary.js';
 
 export const MempoolRoutes: FastifyPluginAsync<
   Record<never, never>,
   Server,
   TypeBoxTypeProvider
 > = async fastify => {
+  fastify.get(
+    '/mempool',
+    {
+      preHandler: handleMempoolCache,
+      schema: {
+        operationId: 'get_mempool_summary',
+        summary: 'Get mempool summary',
+        description:
+          'Retrieves a summary of the transactions currently pending in the mempool: how many ' +
+          'there are, and the fee, size, and receipt percentiles across them, both overall and ' +
+          'broken down by transaction type. Percentiles are discrete — each is a value some ' +
+          'pending transaction actually has, not an interpolation between two of them.',
+        tags: ['Mempool'],
+        response: {
+          200: MempoolSummarySchema,
+        },
+      },
+    },
+    async (_req, reply) => {
+      const rows = await fastify.db.v3.getMempoolSummary();
+      await reply.send(serializeMempoolSummary(rows));
+    }
+  );
+
   fastify.get(
     '/mempool/transactions',
     {
