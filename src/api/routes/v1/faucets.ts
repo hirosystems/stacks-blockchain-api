@@ -1,21 +1,8 @@
-import PQueue from 'p-queue';
-import { BigNumber } from 'bignumber.js';
-import {
-  ContractIdString,
-  getAddressFromPrivateKey,
-  makeContractCall,
-  makeSTXTokenTransfer,
-  noneCV,
-  Pc,
-  principalCV,
-  privateKeyToPublic,
-  publicKeyToHex,
-  SignedContractCallOptions,
-  SignedTokenTransferOptions,
-  StacksTransactionWire,
-  uintCV,
-} from '@stacks/transactions';
-import type { StacksNetwork } from '@stacks/network';
+import { FastifyPluginAsync, preHandlerHookHandler } from 'fastify';
+import { Type, TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
+import { fastifyFormbody } from '@fastify/formbody';
+import { Server } from 'node:http';
+import { logger } from '@stacks/api-toolkit';
 import {
   makeBtcFaucetPayment,
   getBtcBalance,
@@ -23,115 +10,39 @@ import {
   getBtcFaucetAddressNetwork,
 } from '../../../btc-faucet.js';
 import { DbFaucetRequestCurrency } from '../../../datastore/common.js';
-import { getChainIDNetwork, getStxFaucetNetwork, stxToMicroStx } from '../../../helpers.js';
-import { CoreRpcError, createCoreRpcClient, type CoreRpcClient } from '@stacks/rpc-client';
-import { isPgConnectionError, logger } from '@stacks/api-toolkit';
+import { getChainIDNetwork, getStxFaucetNetwork } from '../../../helpers.js';
 import { ENV } from '../../../env.js';
-import { FastifyPluginAsync, preHandlerHookHandler } from 'fastify';
-import { Type, TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
-import { fastifyFormbody } from '@fastify/formbody';
-import { Server } from 'node:http';
 import { OptionalNullable } from '../../schemas/v1/util.js';
 import { RunFaucetResponseSchema } from '../../schemas/v1/responses/responses.js';
+import { classifyFaucetError } from '../../faucets/errors.js';
+import {
+  btcFaucetRequestQueue,
+  calculateSTXFaucetAmount,
+  FAUCET_BTC_AMOUNT,
+  FAUCET_BTC_LARGE_AMOUNT,
+  FAUCET_BTC_XLARGE_AMOUNT,
+  FAUCET_DEFAULT_TRIGGER_COUNT,
+  FAUCET_DEFAULT_WINDOW,
+  FAUCET_STACKING_TRIGGER_COUNT,
+  FAUCET_STACKING_WINDOW,
+  getRequestIp,
+  isRateLimited,
+  sbtcFaucetRequestQueue,
+  sendSbtcFaucetTx,
+  sendStxFaucetTx,
+  stxFaucetRequestQueue,
+} from '../../faucets/common.js';
 
-const testnetAccounts = [
-  {
-    secretKey: 'cb3df38053d132895220b9ce471f6b676db5b9bf0b4adefb55f2118ece2478df01',
-    stacksAddress: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
-  },
-  {
-    secretKey: '21d43d2ae0da1d9d04cfcaac7d397a33733881081f0b2cd038062cf0ccbb752601',
-    stacksAddress: 'ST11NJTTKGVT6D1HY4NJRVQWMQM7TVAR091EJ8P2Y',
-  },
-  {
-    secretKey: 'c71700b07d520a8c9731e4d0f095aa6efb91e16e25fb27ce2b72e7b698f8127a01',
-    stacksAddress: 'ST1HB1T8WRNBYB0Y3T7WXZS38NKKPTBR3EG9EPJKR',
-  },
-  {
-    secretKey: 'e75dcb66f84287eaf347955e94fa04337298dbd95aa0dbb985771104ef1913db01',
-    stacksAddress: 'STRYYQQ9M8KAF4NS7WNZQYY59X93XEKR31JP64CP',
-  },
-  {
-    secretKey: 'ce109fee08860bb16337c76647dcbc02df0c06b455dd69bcf30af74d4eedd19301',
-    stacksAddress: 'STF9B75ADQAVXQHNEQ6KGHXTG7JP305J2GRWF3A2',
-  },
-  {
-    secretKey: '08c14a1eada0dd42b667b40f59f7c8dedb12113613448dc04980aea20b268ddb01',
-    stacksAddress: 'ST18MDW2PDTBSCR1ACXYRJP2JX70FWNM6YY2VX4SS',
-  },
-];
+export { FAUCET_TESTNET_KEYS } from '../../faucets/common.js';
 
-interface SeededAccount {
-  secretKey: string;
-  stacksAddress: string;
-  pubKey: string;
-}
-
-export const FAUCET_TESTNET_KEYS: SeededAccount[] = testnetAccounts.map(t => ({
-  secretKey: t.secretKey,
-  stacksAddress: t.stacksAddress,
-  pubKey: publicKeyToHex(privateKeyToPublic(t.secretKey)),
-}));
-
-function clientFromNetwork(network: StacksNetwork): CoreRpcClient {
-  return createCoreRpcClient({ baseUrl: network.client.baseUrl });
-}
-
-// Low-level socket error codes thrown when a backing node (bitcoind RPC or the Stacks core node
-// RPC) that a faucet depends on is down or unreachable.
-const NODE_CONNECTION_ERROR_CODES = [
-  'ECONNREFUSED',
-  'ECONNRESET',
-  'ETIMEDOUT',
-  'EHOSTUNREACH',
-  'ENOTFOUND',
-  'EAI_AGAIN',
-];
-
-/**
- * Detects whether an error was caused by an unreachable backing node. Node's socket errors expose a
- * `code`, but some HTTP clients (e.g. undici/`fetch`) nest the original error under `cause`, so we
- * check both, plus the message text as a last resort.
- */
-function isNodeConnectionError(error: unknown): boolean {
-  const err = error as (Error & { code?: string; cause?: { code?: string } }) | undefined;
-  const code = err?.code ?? err?.cause?.code;
-  if (code && NODE_CONNECTION_ERROR_CODES.includes(code)) {
-    return true;
-  }
-  const message = err?.message ?? '';
+/** Appended to each faucet route's `deprecatedMessage`, pointing callers at the v3 equivalent. */
+function deprecatedFor(v3Path: string): string {
   return (
-    NODE_CONNECTION_ERROR_CODES.some(c => message.includes(c)) || /fetch failed/i.test(message)
+    `Use POST ${v3Path} instead. It takes the address in a JSON body ({"address": ...}) ` +
+    'rather than the query string, sends a single fixed amount (no size or stacking options), ' +
+    'and returns a `transaction` object plus the amount sent instead of the transaction id and ' +
+    'raw transaction hex.'
   );
-}
-
-/**
- * Detects a failure caused by the faucet's own account running out of funds. This is an operational
- * condition (the faucet account needs refilling) rather than a client error. It surfaces as:
- *  - `NotEnoughFunds`: the Stacks node rejecting an STX/sBTC faucet transaction, and
- *  - `not enough total amount in utxo set`: the BTC faucet having no spendable UTXOs to build a tx
- *    (note the funds may be present but not yet spendable, e.g. immature coinbase or unconfirmed).
- */
-function isInsufficientFundsError(error: unknown): boolean {
-  if (getTxRejectionReason(error) === 'NotEnoughFunds') {
-    return true;
-  }
-  const message = (error as Error | undefined)?.message ?? '';
-  return message.includes('not enough total amount in utxo');
-}
-
-/**
- * Extracts the Stacks node's mempool rejection reason (e.g. `ConflictingNonceInMempool`) from a
- * failed `/v2/transactions` broadcast. The node responds `400` with a JSON body like
- * `{ error: 'transaction rejected', reason: 'TooMuchChaining', ... }`, which `CoreRpcError`
- * surfaces under `details.error`.
- */
-function getTxRejectionReason(error: unknown): string | undefined {
-  if (!(error instanceof CoreRpcError)) {
-    return undefined;
-  }
-  const body = (error.details as { error?: { reason?: unknown } } | undefined)?.error;
-  return typeof body?.reason === 'string' ? body.reason : undefined;
 }
 
 export const FaucetRoutes: FastifyPluginAsync<
@@ -157,39 +68,11 @@ export const FaucetRoutes: FastifyPluginAsync<
     if (statusCode && statusCode >= 400 && statusCode < 500) {
       return reply.send(error);
     }
-    if (isPgConnectionError(error)) {
-      logger.error(
-        error,
-        `Faucet request to ${req.method} ${req.url} failed: database unavailable`
-      );
-      return reply.status(503).send({
-        error: 'Faucet is temporarily unavailable, please try again later',
-        success: false,
-      });
-    }
-    if (isNodeConnectionError(error)) {
-      logger.error(
-        error,
-        `Faucet request to ${req.method} ${req.url} failed: backing node is unreachable`
-      );
-      return reply.status(503).send({
-        error: 'Faucet is temporarily unavailable, please try again later',
-        success: false,
-      });
-    }
-    if (isInsufficientFundsError(error)) {
-      logger.error(
-        error,
-        `Faucet request to ${req.method} ${req.url} failed: faucet account is out of funds`
-      );
-      return reply.status(503).send({
-        error: 'The faucet is temporarily out of funds, please try again later',
-        success: false,
-      });
-    }
-    logger.error(error, `Faucet request to ${req.method} ${req.url} failed`);
-    return reply.status(500).send({
-      error: 'Faucet request failed, please try again later',
+    const classified = classifyFaucetError(error);
+    const suffix = classified.logReason ? `: ${classified.logReason}` : '';
+    logger.error(error, `Faucet request to ${req.method} ${req.url} failed${suffix}`);
+    return reply.status(classified.statusCode).send({
+      error: classified.message,
       success: false,
     });
   });
@@ -248,19 +131,21 @@ export const FaucetRoutes: FastifyPluginAsync<
     }
   };
 
-  const btcFaucetRequestQueue = new PQueue({ concurrency: 1 });
-
   fastify.post(
     '/btc',
     {
       preHandler: [btcFaucetEnabledMiddleware, missingBtcConfigMiddleware],
       schema: {
         operationId: 'run_faucet_btc',
+        deprecated: true,
+        deprecatedMessage: deprecatedFor('/extended/v3/faucets/btc'),
         summary: 'Get BTC regtest or signet tokens',
         description: `Add 0.0001 BTC to the specified regtest or signet BTC address (0.01 BTC with \`large\`, 0.5 BTC with \`xlarge\`).
 
         The endpoint returns the transaction ID, which you can use to view the transaction in a regtest or signet
         Bitcoin block explorer. The tokens are delivered once the transaction has been included in a block.
+
+        **Deprecated:** use \`POST /extended/v3/faucets/btc\` instead.
 
         **Note:** This is a Bitcoin regtest/signet-only endpoint. This endpoint will not work on the Bitcoin mainnet.`,
         tags: ['Faucets'],
@@ -320,7 +205,7 @@ export const FaucetRoutes: FastifyPluginAsync<
     async (req, reply) => {
       await btcFaucetRequestQueue.add(async () => {
         const address = req.query.address || req.body?.address;
-        let btcAmount = 0.0001;
+        let btcAmount = FAUCET_BTC_AMOUNT;
 
         if (req.query.large && req.query.xlarge) {
           return await reply.status(400).send({
@@ -330,9 +215,9 @@ export const FaucetRoutes: FastifyPluginAsync<
         }
 
         if (req.query.large) {
-          btcAmount = 0.01;
+          btcAmount = FAUCET_BTC_LARGE_AMOUNT;
         } else if (req.query.xlarge) {
-          btcAmount = 0.5;
+          btcAmount = FAUCET_BTC_XLARGE_AMOUNT;
         }
 
         if (!address) {
@@ -348,10 +233,7 @@ export const FaucetRoutes: FastifyPluginAsync<
             success: false,
           });
         }
-        const forwardedFor = req.headers['x-forwarded-for'];
-        const ip =
-          (Array.isArray(forwardedFor) ? forwardedFor[0] : forwardedFor?.split(',')[0])?.trim() ??
-          req.ip;
+        const ip = getRequestIp(req.headers['x-forwarded-for'], req.ip);
         const now = Date.now();
 
         // Guard condition: requests are limited to 5 times per 5 minutes.
@@ -359,11 +241,8 @@ export const FaucetRoutes: FastifyPluginAsync<
         // we want to escalate and implement a per IP policy
         if (ENV.TESTNET_FAUCETS_RATE_LIMIT_ENABLED) {
           const lastRequests = await fastify.db.getBTCFaucetRequests(address);
-          const window = 5 * 60 * 1000; // 5 minutes
-          const requestsInWindow = lastRequests.results
-            .map(r => now - r.occurred_at)
-            .filter(r => r <= window);
-          if (requestsInWindow.length >= 5) {
+          const occurredAt = lastRequests.results.map(r => r.occurred_at);
+          if (isRateLimited(occurredAt, now, FAUCET_DEFAULT_WINDOW, FAUCET_DEFAULT_TRIGGER_COUNT)) {
             logger.warn(`BTC faucet rate limit hit for address ${address}`);
             return await reply.status(429).send({
               error: 'Too many requests',
@@ -430,91 +309,14 @@ export const FaucetRoutes: FastifyPluginAsync<
     }
   );
 
-  const stxFaucetRequestQueue = new PQueue({ concurrency: 1 });
-
-  const FAUCET_DEFAULT_STX_AMOUNT = stxToMicroStx(500);
-  const FAUCET_DEFAULT_WINDOW = 5 * 60 * 1000; // 5 minutes
-  const FAUCET_DEFAULT_TRIGGER_COUNT = 5;
-
-  const FAUCET_STACKING_WINDOW = 2 * 24 * 60 * 60 * 1000; // 2 days
-  const FAUCET_STACKING_TRIGGER_COUNT = 1;
-
-  const STX_FAUCET_NETWORK = () => getStxFaucetNetwork();
-  const STX_FAUCET_KEYS = (ENV.FAUCET_PRIVATE_KEY ?? FAUCET_TESTNET_KEYS[0].secretKey).split(',');
-
-  async function calculateSTXFaucetAmount(
-    network: StacksNetwork,
-    stacking: boolean
-  ): Promise<bigint> {
-    if (stacking) {
-      try {
-        const poxInfo = await clientFromNetwork(network).request('GET', '/v2/pox');
-        if (poxInfo.min_amount_ustx === undefined) {
-          return FAUCET_DEFAULT_STX_AMOUNT;
-        }
-        let stxAmount = BigInt(poxInfo.min_amount_ustx);
-        const padPercent = new BigNumber(0.2);
-        const padAmount = new BigNumber(stxAmount.toString())
-          .times(padPercent)
-          .integerValue()
-          .toString();
-        stxAmount = stxAmount + BigInt(padAmount);
-        return stxAmount;
-      } catch (_error) {
-        // ignore
-      }
-    }
-    return FAUCET_DEFAULT_STX_AMOUNT;
-  }
-
-  async function fetchNetworkChainID(network: StacksNetwork): Promise<number> {
-    const rpcClient = clientFromNetwork(network);
-    const info = await rpcClient.request('GET', '/v2/info');
-    return info.network_id;
-  }
-
-  async function buildSTXFaucetTx(
-    recipient: string,
-    amount: bigint,
-    network: StacksNetwork,
-    senderKey: string,
-    nonce: bigint,
-    fee?: bigint
-  ): Promise<StacksTransactionWire> {
-    try {
-      const options: SignedTokenTransferOptions = {
-        recipient,
-        amount,
-        senderKey,
-        network,
-        memo: 'faucet',
-        nonce,
-      };
-      if (fee) options.fee = fee;
-
-      // Detect possible custom network chain ID
-      network.chainId = await fetchNetworkChainID(network);
-
-      return await makeSTXTokenTransfer(options);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } catch (error: any) {
-      if (
-        fee === undefined &&
-        (error as Error).message &&
-        /estimating transaction fee|NoEstimateAvailable/.test(error.message)
-      ) {
-        return await buildSTXFaucetTx(recipient, amount, network, senderKey, nonce, 200n);
-      }
-      throw error;
-    }
-  }
-
   fastify.post(
     '/stx',
     {
       preHandler: stxFaucetEnabledMiddleware,
       schema: {
         operationId: 'run_faucet_stx',
+        deprecated: true,
+        deprecatedMessage: deprecatedFor('/extended/v3/faucets/stx'),
         summary: 'Get STX testnet tokens',
         description: `Add 500 STX tokens to the specified testnet address. Testnet STX addresses begin with \`ST\`. If the \`stacking\`
         parameter is set to \`true\`, the faucet will add the required number of tokens for individual stacking to the
@@ -526,6 +328,8 @@ export const FaucetRoutes: FastifyPluginAsync<
 
         A common reason for failed faucet transactions is that the faucet has run out of tokens. If you are experiencing
         failed faucet transactions to a testnet address, you can get help in [Discord](https://stacks.chat).
+
+        **Deprecated:** use \`POST /extended/v3/faucets/stx\` instead.
 
         **Note:** This is a testnet only endpoint. This endpoint will not work on the mainnet.`,
         tags: ['Faucets'],
@@ -591,10 +395,7 @@ export const FaucetRoutes: FastifyPluginAsync<
         // Guard condition: requests are limited to x times per y minutes.
         // Only based on address for now, but we're keeping the IP in case
         // we want to escalate and implement a per IP policy
-        const forwardedFor = req.headers['x-forwarded-for'];
-        const ip =
-          (Array.isArray(forwardedFor) ? forwardedFor[0] : forwardedFor?.split(',')[0])?.trim() ??
-          req.ip;
+        const ip = getRequestIp(req.headers['x-forwarded-for'], req.ip);
         const isStackingReq = req.query.stacking ?? false;
         const now = Date.now();
 
@@ -603,10 +404,8 @@ export const FaucetRoutes: FastifyPluginAsync<
           const [window, triggerCount] = isStackingReq
             ? [FAUCET_STACKING_WINDOW, FAUCET_STACKING_TRIGGER_COUNT]
             : [FAUCET_DEFAULT_WINDOW, FAUCET_DEFAULT_TRIGGER_COUNT];
-          const requestsInWindow = lastRequests.results
-            .map(r => now - r.occurred_at)
-            .filter(r => r <= window);
-          if (requestsInWindow.length >= triggerCount) {
+          const occurredAt = lastRequests.results.map(r => r.occurred_at);
+          if (isRateLimited(occurredAt, now, window, triggerCount)) {
             logger.warn(`StxFaucet rate limit hit for address ${recipientAddress}`);
             return await reply.status(429).send({
               error: 'Too many requests',
@@ -615,59 +414,11 @@ export const FaucetRoutes: FastifyPluginAsync<
           }
         }
 
-        // Start with a random key index. We will try others in order if this one fails.
-        let keyIndex = Math.round(Math.random() * (STX_FAUCET_KEYS.length - 1));
-        let keysAttempted = 0;
-        let sendSuccess: { txId: string; txRaw: string } | undefined;
-        const stxAmount = await calculateSTXFaucetAmount(STX_FAUCET_NETWORK(), isStackingReq);
-        const rpcClient = clientFromNetwork(STX_FAUCET_NETWORK());
-        do {
-          keysAttempted++;
-          const senderKey = STX_FAUCET_KEYS[keyIndex];
-          const senderAddress = getAddressFromPrivateKey(senderKey, 'testnet');
-          logger.debug(`StxFaucet attempting faucet transaction from sender: ${senderAddress}`);
-          const nonces = await fastify.db.getAddressNonces({ stxAddress: senderAddress });
-          const tx = await buildSTXFaucetTx(
-            recipientAddress,
-            stxAmount,
-            STX_FAUCET_NETWORK(),
-            senderKey,
-            BigInt(nonces.possibleNextNonce)
-          );
-          const rawTxHex = tx.serialize();
-          try {
-            const txId = await rpcClient.request('POST', '/v2/transactions', {
-              body: { tx: rawTxHex },
-            });
-            sendSuccess = { txId: `0x${txId}`, txRaw: rawTxHex };
-            logger.info(
-              `StxFaucet success. Sent ${stxAmount} uSTX from ${senderAddress} to ${recipientAddress} (txId: ${sendSuccess.txId}).`
-            );
-          } catch (error) {
-            const rejectionReason = getTxRejectionReason(error);
-            if (
-              rejectionReason === 'ConflictingNonceInMempool' ||
-              rejectionReason === 'TooMuchChaining' ||
-              rejectionReason === 'NotEnoughFunds'
-            ) {
-              if (keysAttempted == STX_FAUCET_KEYS.length) {
-                logger.warn(
-                  `StxFaucet attempts exhausted for all faucet keys. Last error: ${error}`
-                );
-                throw error;
-              }
-              // Try with the next key. Wrap around the keys array if necessary.
-              keyIndex++;
-              if (keyIndex >= STX_FAUCET_KEYS.length) keyIndex = 0;
-              logger.warn(
-                `StxFaucet transaction failed for sender ${senderAddress}, trying with next key: ${error}`
-              );
-            } else {
-              logger.warn(`StxFaucet unexpected error when sending transaction: ${error}`);
-              throw error;
-            }
-          }
-        } while (!sendSuccess);
+        const sent = await sendStxFaucetTx({
+          db: fastify.db,
+          recipientAddress,
+          amount: await calculateSTXFaucetAmount(getStxFaucetNetwork(), isStackingReq),
+        });
 
         await fastify.writeDb?.insertFaucetRequest({
           ip: `${ip}`,
@@ -677,63 +428,12 @@ export const FaucetRoutes: FastifyPluginAsync<
         });
         await reply.send({
           success: true,
-          txId: sendSuccess.txId,
-          txRaw: sendSuccess.txRaw,
+          txId: sent.txId,
+          txRaw: sent.rawTx,
         });
       });
     }
   );
-
-  const sbtcFaucetRequestQueue = new PQueue({ concurrency: 1 });
-
-  async function buildSBTCFaucetTx(
-    recipient: string,
-    amount: bigint,
-    network: StacksNetwork,
-    senderKey: string,
-    nonce: bigint,
-    fee?: bigint
-  ): Promise<StacksTransactionWire> {
-    const [contractId, assetName] = ENV.TESTNET_SBTC_FAUCET_ASSET_IDENTIFIER.split('::') as [
-      ContractIdString,
-      string,
-    ];
-    const [contractAddress, contractName] = contractId.split('.');
-    const senderAddress = getAddressFromPrivateKey(senderKey, 'testnet');
-    try {
-      const options: SignedContractCallOptions = {
-        contractAddress,
-        contractName,
-        functionName: 'transfer',
-        functionArgs: [
-          uintCV(amount),
-          principalCV(senderAddress),
-          principalCV(recipient),
-          noneCV(),
-        ],
-        senderKey,
-        network,
-        nonce,
-        postConditions: [Pc.principal(senderAddress).willSendEq(amount).ft(contractId, assetName)],
-      };
-      if (fee) options.fee = fee;
-
-      // Detect possible custom network chain ID
-      network.chainId = await fetchNetworkChainID(network);
-
-      return await makeContractCall(options);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } catch (error: any) {
-      if (
-        fee === undefined &&
-        (error as Error).message &&
-        /estimating transaction fee|NoEstimateAvailable/.test(error.message)
-      ) {
-        return await buildSBTCFaucetTx(recipient, amount, network, senderKey, nonce, 1000n);
-      }
-      throw error;
-    }
-  }
 
   fastify.post(
     '/sbtc',
@@ -741,6 +441,8 @@ export const FaucetRoutes: FastifyPluginAsync<
       preHandler: sbtcFaucetEnabledMiddleware,
       schema: {
         operationId: 'run_faucet_sbtc',
+        deprecated: true,
+        deprecatedMessage: deprecatedFor('/extended/v3/faucets/sbtc'),
         summary: 'Get sBTC testnet tokens',
         description: `Add sBTC tokens to the specified testnet address. The endpoint performs a SIP-010 \`transfer\`
         contract call on the configured testnet sBTC token contract. Testnet STX addresses begin with \`ST\`.
@@ -748,6 +450,8 @@ export const FaucetRoutes: FastifyPluginAsync<
         The endpoint returns the transaction ID, which you can use to view the transaction in the
         [Stacks Explorer](https://explorer.hiro.so/?chain=testnet). The tokens are delivered once the transaction has
         been included in a block.
+
+        **Deprecated:** use \`POST /extended/v3/faucets/sbtc\` instead.
 
         **Note:** This is a testnet only endpoint. This endpoint will not work on mainnet.`,
         tags: ['Faucets'],
@@ -783,18 +487,13 @@ export const FaucetRoutes: FastifyPluginAsync<
         // Guard condition: requests are limited to x times per y minutes.
         // Only based on address for now, but we're keeping the IP in case
         // we want to escalate and implement a per IP policy
-        const forwardedFor = req.headers['x-forwarded-for'];
-        const ip =
-          (Array.isArray(forwardedFor) ? forwardedFor[0] : forwardedFor?.split(',')[0])?.trim() ??
-          req.ip;
+        const ip = getRequestIp(req.headers['x-forwarded-for'], req.ip);
         const now = Date.now();
 
         if (ENV.TESTNET_FAUCETS_RATE_LIMIT_ENABLED) {
           const lastRequests = await fastify.db.getSBTCFaucetRequests(recipientAddress);
-          const requestsInWindow = lastRequests.results
-            .map(r => now - r.occurred_at)
-            .filter(r => r <= FAUCET_DEFAULT_WINDOW);
-          if (requestsInWindow.length >= FAUCET_DEFAULT_TRIGGER_COUNT) {
+          const occurredAt = lastRequests.results.map(r => r.occurred_at);
+          if (isRateLimited(occurredAt, now, FAUCET_DEFAULT_WINDOW, FAUCET_DEFAULT_TRIGGER_COUNT)) {
             logger.warn(`SbtcFaucet rate limit hit for address ${recipientAddress}`);
             return await reply.status(429).send({
               error: 'Too many requests',
@@ -803,28 +502,7 @@ export const FaucetRoutes: FastifyPluginAsync<
           }
         }
 
-        const senderKey = STX_FAUCET_KEYS[0];
-        const senderAddress = getAddressFromPrivateKey(senderKey, 'testnet');
-        const sbtcAmount = BigInt(ENV.TESTNET_SBTC_FAUCET_AMOUNT);
-        const network = STX_FAUCET_NETWORK();
-        const rpcClient = clientFromNetwork(network);
-
-        logger.debug(`SbtcFaucet attempting faucet transaction from sender: ${senderAddress}`);
-        const nonces = await fastify.db.getAddressNonces({ stxAddress: senderAddress });
-        const tx = await buildSBTCFaucetTx(
-          recipientAddress,
-          sbtcAmount,
-          network,
-          senderKey,
-          BigInt(nonces.possibleNextNonce)
-        );
-        const rawTxHex = tx.serialize();
-        const txId = await rpcClient.request('POST', '/v2/transactions', {
-          body: { tx: rawTxHex },
-        });
-        logger.info(
-          `SbtcFaucet success. Sent ${sbtcAmount} sBTC sats from ${senderAddress} to ${recipientAddress} (txId: 0x${txId}).`
-        );
+        const sent = await sendSbtcFaucetTx({ db: fastify.db, recipientAddress });
 
         await fastify.writeDb?.insertFaucetRequest({
           ip: `${ip}`,
@@ -834,8 +512,8 @@ export const FaucetRoutes: FastifyPluginAsync<
         });
         await reply.send({
           success: true,
-          txId: `0x${txId}`,
-          txRaw: rawTxHex,
+          txId: sent.txId,
+          txRaw: sent.rawTx,
         });
       });
     }

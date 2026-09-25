@@ -60,6 +60,7 @@ import { TokensStxRoutes } from './routes/v3/tokens-stx.js';
 import { TokensFtRoutes } from './routes/v3/tokens-ft.js';
 import { SmartContractsRoutes } from './routes/v3/smart-contracts.js';
 import { TokensNftRoutes } from './routes/v3/tokens-nft.js';
+import { FaucetsRoutes } from './routes/v3/faucets.js';
 
 export interface ApiServer {
   fastifyApp: FastifyInstance;
@@ -112,6 +113,7 @@ export const StacksApiRoutes: FastifyPluginAsync<
   await fastify.register(
     async fastify => {
       await fastify.register(BlocksRoutes);
+      await fastify.register(FaucetsRoutes);
       await fastify.register(MempoolRoutes);
       await fastify.register(PrincipalsRoutes);
       await fastify.register(SmartContractsRoutes);

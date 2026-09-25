@@ -3,7 +3,7 @@ import { decodeTransaction, TxPayloadTypeID } from '@stacks/codec';
 import type { DecodedTxResult, TxPayloadTokenTransfer } from '@stacks/codec';
 import { STACKS_MAINNET, STACKS_TESTNET } from '@stacks/network';
 import { startApiServer, ApiServer } from '../../../src/api/init.ts';
-import { FAUCET_TESTNET_KEYS } from '../../../src/api/routes/v1/faucets.ts';
+import { FAUCET_TESTNET_KEYS } from '../../../src/api/faucets/common.ts';
 import { PgWriteStore } from '../../../src/datastore/pg-write-store.ts';
 import { DbFaucetRequestCurrency } from '../../../src/datastore/common.ts';
 import { getStxFaucetNetwork, stxToMicroStx } from '../../../src/helpers.ts';

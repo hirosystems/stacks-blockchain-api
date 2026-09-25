@@ -209,8 +209,9 @@ const schema = Type.Object({
     default: '29c028009a8331358adcc61bb6397377c995d327ac0343ed8e8f1d4d3ef85c27',
   }),
   /**
-   * Enable faucet request rate limiting for all faucets (STX, BTC, sBTC). Set to `false` to disable
-   * rate limits in special testnet environments.
+   * Enable faucet request rate limiting for the deprecated v1 faucets (STX, BTC, sBTC). Set to
+   * `false` to disable rate limits in special testnet environments. The v3 faucets are not rate
+   * limited by the API; limits are enforced at the edge (Cloudflare).
    */
   TESTNET_FAUCETS_RATE_LIMIT_ENABLED: Type.Boolean({ default: true }),
   /** Enable the BTC regtest faucet endpoints on Stacks testnet. */
@@ -234,6 +235,16 @@ const schema = Type.Object({
   }),
   /** Amount of sBTC (in satoshis) sent per sBTC faucet request. */
   TESTNET_SBTC_FAUCET_AMOUNT: Type.Integer({ default: 10_000, minimum: 1 }),
+  /**
+   * Amount of BTC (in satoshis) sent per `/extended/v3/faucets/btc` request. The deprecated v1
+   * endpoint keeps its fixed default/`large`/`xlarge` amounts and ignores this.
+   */
+  TESTNET_BTC_FAUCET_AMOUNT: Type.Integer({ default: 10_000, minimum: 1 }),
+  /**
+   * Amount of STX (in micro-STX) sent per `/extended/v3/faucets/stx` request. The deprecated v1
+   * endpoint keeps its fixed default/`stacking` amounts and ignores this.
+   */
+  TESTNET_STX_FAUCET_AMOUNT: Type.Integer({ default: 500_000_000, minimum: 1 }),
   /**
    * A comma-separated list of STX private keys which will send faucet transactions to accounts that
    * request them. Attempts will always be made from the first account, only once transaction

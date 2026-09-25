@@ -3,7 +3,7 @@ import { decodeTransaction, TxPayloadTypeID, PostConditionAssetInfoID } from '@s
 import type { DecodedTxResult, TxPayloadContractCall } from '@stacks/codec';
 import { STACKS_TESTNET } from '@stacks/network';
 import { startApiServer, ApiServer } from '../../../src/api/init.ts';
-import { FAUCET_TESTNET_KEYS } from '../../../src/api/routes/v1/faucets.ts';
+import { FAUCET_TESTNET_KEYS } from '../../../src/api/faucets/common.ts';
 import { PgWriteStore } from '../../../src/datastore/pg-write-store.ts';
 import { DbFaucetRequestCurrency } from '../../../src/datastore/common.ts';
 import { ENV } from '../../../src/env.ts';
