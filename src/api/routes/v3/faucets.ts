@@ -122,6 +122,7 @@ export const FaucetsRoutes: FastifyPluginAsync<
         response: {
           200: FaucetBtcRunSchema,
           '4xx': FaucetErrorSchema,
+          '5xx': FaucetErrorSchema,
         },
       },
     },
@@ -161,6 +162,7 @@ export const FaucetsRoutes: FastifyPluginAsync<
         response: {
           200: FaucetStxRunSchema,
           '4xx': FaucetErrorSchema,
+          '5xx': FaucetErrorSchema,
         },
       },
     },
@@ -198,6 +200,7 @@ export const FaucetsRoutes: FastifyPluginAsync<
         response: {
           200: FaucetSbtcRunSchema,
           '4xx': FaucetErrorSchema,
+          '5xx': FaucetErrorSchema,
         },
       },
     },

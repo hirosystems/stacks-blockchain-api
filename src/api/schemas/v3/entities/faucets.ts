@@ -27,6 +27,13 @@ export const FaucetStacksRequestSchema = Type.Object(
 );
 export type FaucetStacksRequest = Static<typeof FaucetStacksRequestSchema>;
 
+/** Faucet transaction ids are always `0x`-prefixed, on Bitcoin as well as Stacks. */
+const FaucetTransactionIdSchema = Type.String({
+  ...TransactionIdSchema,
+  pattern: '^0x[a-fA-F0-9]{64}$',
+  description: 'Transaction ID, `0x`-prefixed on both chains',
+});
+
 /**
  * Faucet responses describe the broadcast transaction and the amount it sends. The amount is
  * grouped under the asset it is denominated in (the same `{ btc, stx, sbtc }` vocabulary the
@@ -35,7 +42,7 @@ export type FaucetStacksRequest = Static<typeof FaucetStacksRequestSchema>;
  */
 const FaucetTransaction = <TChain extends string>(chain: TChain) =>
   Type.Object({
-    tx_id: TransactionIdSchema,
+    tx_id: FaucetTransactionIdSchema,
     chain: Type.Literal(chain, {
       description: 'The chain the faucet transaction was broadcast to',
     }),
