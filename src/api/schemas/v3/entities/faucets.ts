@@ -18,7 +18,8 @@ export const FaucetStacksRequestSchema = Type.Object(
   {
     address: Type.String({
       minLength: 1,
-      description: 'A valid testnet Stacks address',
+      description:
+        'A testnet Stacks address (`ST…` or `SN…`), or a contract principal deployed by one',
       examples: ['ST3M7N9Q9HDRM7RVP1Q26P0EE69358PZZAZD7KMXQ'],
     }),
   },

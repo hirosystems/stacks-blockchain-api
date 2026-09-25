@@ -119,6 +119,18 @@ describe('sBTC faucet', () => {
     assert.equal(tx.auth.origin_condition.tx_fee, '1000');
   });
 
+  test('responds with a well-formed deprecation Warning header', async () => {
+    const response = await supertest(api.server).post(
+      `/extended/v1/faucets/sbtc?address=${RECIPIENT_ADDRESS}`
+    );
+    assert.equal(response.status, 200);
+    // RFC 9111 warn-text is a quoted-string: no unescaped `"` or `\` inside the quotes.
+    assert.match(
+      response.headers['warning'],
+      /^299 - "Deprecated: Use POST \/extended\/v3\/faucets\/sbtc instead\.[^"\\]*"$/
+    );
+  });
+
   test('address is required', async () => {
     const response = await supertest(api.server).post(`/extended/v1/faucets/sbtc`);
     assert.equal(response.status, 400);

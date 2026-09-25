@@ -2,20 +2,15 @@ import { FastifyPluginAsync, preHandlerHookHandler } from 'fastify';
 import { Server } from 'node:http';
 import { TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
 import { logger } from '@stacks/api-toolkit';
-import {
-  makeBtcFaucetPayment,
-  getRpcClient,
-  getBtcFaucetAddressNetwork,
-} from '../../../btc-faucet.js';
+import { getRpcClient, getBtcFaucetAddressNetwork } from '../../../btc-faucet.js';
 import { getChainIDNetwork } from '../../../helpers.js';
 import { ENV } from '../../../env.js';
 import { classifyFaucetError } from '../../faucets/errors.js';
 import {
-  btcFaucetRequestQueue,
-  sbtcFaucetRequestQueue,
+  isValidTestnetPrincipal,
+  sendBtcFaucetPayment,
   sendSbtcFaucetTx,
   sendStxFaucetTx,
-  stxFaucetRequestQueue,
 } from '../../faucets/common.js';
 import {
   FaucetBtcRequestSchema,
@@ -99,6 +94,14 @@ export const FaucetsRoutes: FastifyPluginAsync<
     }
   };
 
+  // Runs after body validation, so `address` is present and non-empty.
+  const stacksAddressMiddleware: preHandlerHookHandler = (req, reply, done) => {
+    if (!isValidTestnetPrincipal((req.body as { address: string }).address)) {
+      return reply.status(400).send({ error: 'Invalid testnet Stacks address' });
+    }
+    done();
+  };
+
   fastify.post(
     '/faucets/btc',
     {
@@ -129,14 +132,11 @@ export const FaucetsRoutes: FastifyPluginAsync<
         return await reply.status(400).send({ error: 'Invalid BTC regtest or signet address' });
       }
 
-      await btcFaucetRequestQueue.add(async () => {
-        const amountSats = ENV.TESTNET_BTC_FAUCET_AMOUNT;
-        const tx = await makeBtcFaucetPayment(btcNetwork, address, amountSats / 1e8);
-
-        await reply.send({
-          transaction: { tx_id: `0x${tx.txId}`, chain: 'bitcoin' },
-          amount: { btc: amountSats.toString() },
-        });
+      const amountSats = ENV.TESTNET_BTC_FAUCET_AMOUNT;
+      const tx = await sendBtcFaucetPayment(btcNetwork, address, amountSats / 1e8);
+      await reply.send({
+        transaction: { tx_id: `0x${tx.txId}`, chain: 'bitcoin' },
+        amount: { btc: amountSats.toString() },
       });
     }
   );
@@ -144,7 +144,7 @@ export const FaucetsRoutes: FastifyPluginAsync<
   fastify.post(
     '/faucets/stx',
     {
-      preHandler: stxFaucetEnabledMiddleware,
+      preHandler: [stxFaucetEnabledMiddleware, stacksAddressMiddleware],
       schema: {
         operationId: 'get_faucet_stx',
         summary: 'Get STX testnet tokens',
@@ -165,18 +165,14 @@ export const FaucetsRoutes: FastifyPluginAsync<
       },
     },
     async (req, reply) => {
-      const recipientAddress = req.body.address;
-
-      await stxFaucetRequestQueue.add(async () => {
-        const sent = await sendStxFaucetTx({
-          db: fastify.db,
-          recipientAddress,
-          amount: BigInt(ENV.TESTNET_STX_FAUCET_AMOUNT),
-        });
-        await reply.send({
-          transaction: { tx_id: sent.txId, chain: 'stacks' },
-          amount: { stx: sent.amount.toString() },
-        });
+      const sent = await sendStxFaucetTx({
+        db: fastify.db,
+        recipientAddress: req.body.address,
+        amount: BigInt(ENV.TESTNET_STX_FAUCET_AMOUNT),
+      });
+      await reply.send({
+        transaction: { tx_id: sent.txId, chain: 'stacks' },
+        amount: { stx: sent.amount.toString() },
       });
     }
   );
@@ -184,7 +180,7 @@ export const FaucetsRoutes: FastifyPluginAsync<
   fastify.post(
     '/faucets/sbtc',
     {
-      preHandler: sbtcFaucetEnabledMiddleware,
+      preHandler: [sbtcFaucetEnabledMiddleware, stacksAddressMiddleware],
       schema: {
         operationId: 'get_faucet_sbtc',
         summary: 'Get sBTC testnet tokens',
@@ -206,14 +202,10 @@ export const FaucetsRoutes: FastifyPluginAsync<
       },
     },
     async (req, reply) => {
-      const recipientAddress = req.body.address;
-
-      await sbtcFaucetRequestQueue.add(async () => {
-        const sent = await sendSbtcFaucetTx({ db: fastify.db, recipientAddress });
-        await reply.send({
-          transaction: { tx_id: sent.txId, chain: 'stacks' },
-          amount: { sbtc: sent.amount.toString() },
-        });
+      const sent = await sendSbtcFaucetTx({ db: fastify.db, recipientAddress: req.body.address });
+      await reply.send({
+        transaction: { tx_id: sent.txId, chain: 'stacks' },
+        amount: { sbtc: sent.amount.toString() },
       });
     }
   );

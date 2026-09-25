@@ -1,14 +1,10 @@
+import PQueue from 'p-queue';
 import { FastifyPluginAsync, preHandlerHookHandler } from 'fastify';
 import { Type, TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
 import { fastifyFormbody } from '@fastify/formbody';
 import { Server } from 'node:http';
 import { logger } from '@stacks/api-toolkit';
-import {
-  makeBtcFaucetPayment,
-  getBtcBalance,
-  getRpcClient,
-  getBtcFaucetAddressNetwork,
-} from '../../../btc-faucet.js';
+import { getBtcBalance, getRpcClient, getBtcFaucetAddressNetwork } from '../../../btc-faucet.js';
 import { DbFaucetRequestCurrency } from '../../../datastore/common.js';
 import { getChainIDNetwork, getStxFaucetNetwork } from '../../../helpers.js';
 import { ENV } from '../../../env.js';
@@ -16,7 +12,6 @@ import { OptionalNullable } from '../../schemas/v1/util.js';
 import { RunFaucetResponseSchema } from '../../schemas/v1/responses/responses.js';
 import { classifyFaucetError } from '../../faucets/errors.js';
 import {
-  btcFaucetRequestQueue,
   calculateSTXFaucetAmount,
   FAUCET_BTC_AMOUNT,
   FAUCET_BTC_LARGE_AMOUNT,
@@ -27,18 +22,18 @@ import {
   FAUCET_STACKING_WINDOW,
   getRequestIp,
   isRateLimited,
-  sbtcFaucetRequestQueue,
+  sendBtcFaucetPayment,
   sendSbtcFaucetTx,
   sendStxFaucetTx,
-  stxFaucetRequestQueue,
 } from '../../faucets/common.js';
 
 export { FAUCET_TESTNET_KEYS } from '../../faucets/common.js';
 
 /** Appended to each faucet route's `deprecatedMessage`, pointing callers at the v3 equivalent. */
 function deprecatedFor(v3Path: string): string {
+  // Rendered inside the quoted text of a `Warning` header, so it must not contain `"` or `\`.
   return (
-    `Use POST ${v3Path} instead. It takes the address in a JSON body ({"address": ...}) ` +
+    `Use POST ${v3Path} instead. It takes the address as an \`address\` field in a JSON body ` +
     'rather than the query string, sends a single fixed amount (no size or stacking options), ' +
     'and returns a `transaction` object plus the amount sent instead of the transaction id and ' +
     'raw transaction hex.'
@@ -131,6 +126,14 @@ export const FaucetRoutes: FastifyPluginAsync<
     }
   };
 
+  // v1 rate limiting reads an address's recorded requests, sends, then records the new one. Each
+  // faucet's requests run one at a time through that whole sequence so a burst cannot pass the
+  // check before the first request is recorded. (Sends are also serialized per sender account
+  // inside the shared send functions; these queues exist only for the v1 rate limit.)
+  const btcRateLimitQueue = new PQueue({ concurrency: 1 });
+  const stxRateLimitQueue = new PQueue({ concurrency: 1 });
+  const sbtcRateLimitQueue = new PQueue({ concurrency: 1 });
+
   fastify.post(
     '/btc',
     {
@@ -203,7 +206,7 @@ export const FaucetRoutes: FastifyPluginAsync<
       },
     },
     async (req, reply) => {
-      await btcFaucetRequestQueue.add(async () => {
+      await btcRateLimitQueue.add(async () => {
         const address = req.query.address || req.body?.address;
         let btcAmount = FAUCET_BTC_AMOUNT;
 
@@ -251,7 +254,7 @@ export const FaucetRoutes: FastifyPluginAsync<
           }
         }
 
-        const tx = await makeBtcFaucetPayment(btcNetwork, address, btcAmount);
+        const tx = await sendBtcFaucetPayment(btcNetwork, address, btcAmount);
         await fastify.writeDb?.insertFaucetRequest({
           ip: `${ip}`,
           address: address,
@@ -391,7 +394,7 @@ export const FaucetRoutes: FastifyPluginAsync<
         });
       }
 
-      await stxFaucetRequestQueue.add(async () => {
+      await stxRateLimitQueue.add(async () => {
         // Guard condition: requests are limited to x times per y minutes.
         // Only based on address for now, but we're keeping the IP in case
         // we want to escalate and implement a per IP policy
@@ -483,7 +486,7 @@ export const FaucetRoutes: FastifyPluginAsync<
         });
       }
 
-      await sbtcFaucetRequestQueue.add(async () => {
+      await sbtcRateLimitQueue.add(async () => {
         // Guard condition: requests are limited to x times per y minutes.
         // Only based on address for now, but we're keeping the IP in case
         // we want to escalate and implement a per IP policy

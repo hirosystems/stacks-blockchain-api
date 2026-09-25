@@ -33,6 +33,10 @@ export class MockStacksNode {
   feeEstimateResponse?: MockResponse;
   /** Queue of `/v2/transactions` response overrides, consumed one per request. */
   sendTxResponses: MockResponse[] = [];
+  /** Every request path received, in arrival order. */
+  readonly requestLog: string[] = [];
+  /** Delay before answering `/v2/fees/transaction`, to widen race windows in concurrency tests. */
+  feeEstimateDelayMs = 0;
 
   private server?: http.Server;
   port = 0;
@@ -58,6 +62,7 @@ export class MockStacksNode {
 
   private handleRequest(req: http.IncomingMessage, res: http.ServerResponse, body: Buffer): void {
     const path = new URL(req.url as string, `http://127.0.0.1:${this.port}`).pathname;
+    this.requestLog.push(path);
     if (path === '/v2/info') {
       return sendJson(res, 200, {
         network_id: 0x80000000,
@@ -73,15 +78,22 @@ export class MockStacksNode {
       return sendJson(res, 200, { min_amount_ustx: MOCK_POX_MIN_AMOUNT_USTX });
     }
     if (path === '/v2/fees/transaction') {
-      const override = this.feeEstimateResponse;
-      if (override) return sendJson(res, override.status, override.body);
-      return sendJson(res, 200, {
-        estimations: [
-          { fee: MOCK_FEE_ESTIMATE - 100 },
-          { fee: MOCK_FEE_ESTIMATE },
-          { fee: MOCK_FEE_ESTIMATE + 100 },
-        ],
-      });
+      const respond = () => {
+        const override = this.feeEstimateResponse;
+        if (override) return sendJson(res, override.status, override.body);
+        return sendJson(res, 200, {
+          estimations: [
+            { fee: MOCK_FEE_ESTIMATE - 100 },
+            { fee: MOCK_FEE_ESTIMATE },
+            { fee: MOCK_FEE_ESTIMATE + 100 },
+          ],
+        });
+      };
+      if (this.feeEstimateDelayMs > 0) {
+        setTimeout(respond, this.feeEstimateDelayMs);
+        return;
+      }
+      return respond();
     }
     if (path === '/v2/transactions') {
       // Broadcasts arrive in the JSON body form: `{ tx: <unprefixed tx hex> }`.

@@ -114,6 +114,30 @@ describe('STX faucet (v3)', () => {
     assert.equal(node.receivedTxs.length, 0);
   });
 
+  test('rejects addresses that are not valid testnet Stacks principals', async () => {
+    const invalid = [
+      'not-an-address',
+      // Valid mainnet address: must not be paid on testnet.
+      'SP3FBR2AGK5H9QBDH3EEN6DF8EK8JY7RX8QJ5SVTE',
+      // The recipient with its last character changed: bad c32 checksum.
+      'ST3M7N9Q9HDRM7RVP1Q26P0EE69358PZZAZD7KMXR',
+      // Contract principal deployed by a mainnet address.
+      'SP3FBR2AGK5H9QBDH3EEN6DF8EK8JY7RX8QJ5SVTE.some-contract',
+    ];
+    for (const address of invalid) {
+      const response = await requestFaucet({ address });
+      assert.equal(response.status, 400, address);
+      assert.deepEqual(response.body, { error: 'Invalid testnet Stacks address' }, address);
+    }
+    assert.equal(node.receivedTxs.length, 0);
+  });
+
+  test('accepts a testnet contract principal', async () => {
+    const response = await requestFaucet({ address: `${RECIPIENT_ADDRESS}.some-contract` });
+    assert.equal(response.status, 200);
+    assert.equal(node.receivedTxs.length, 1);
+  });
+
   test('a request without a body is rejected', async () => {
     const response = await requestFaucet();
     assert.equal(response.status, 400);
@@ -147,6 +171,60 @@ describe('STX faucet (v3)', () => {
     assert.equal(response.status, 415);
     assert.deepEqual(Object.keys(response.body), ['error']);
     assert.equal(node.receivedTxs.length, 0);
+  });
+
+  const buildAndBroadcastLog = () =>
+    node.requestLog.filter(path => path === '/v2/info' || path === '/v2/transactions');
+
+  test('concurrent requests from a single faucet key are serialized', async () => {
+    // A slow fee estimate widens the window in which unserialized requests would interleave.
+    node.feeEstimateDelayMs = 100;
+    const responses = await Promise.all([
+      requestFaucet({ address: RECIPIENT_ADDRESS }),
+      requestFaucet({ address: RECIPIENT_ADDRESS }),
+    ]);
+    assert.deepEqual(
+      responses.map(r => r.status),
+      [200, 200]
+    );
+    assert.deepEqual(buildAndBroadcastLog(), [
+      '/v2/info',
+      '/v2/transactions',
+      '/v2/info',
+      '/v2/transactions',
+    ]);
+  });
+
+  test('concurrent requests are spread across faucet keys and run in parallel', async () => {
+    ENV.FAUCET_PRIVATE_KEY = `${FAUCET_TESTNET_KEYS[0].secretKey},${FAUCET_TESTNET_KEYS[1].secretKey}`;
+    node.feeEstimateDelayMs = 100;
+    try {
+      const responses = await Promise.all([
+        requestFaucet({ address: RECIPIENT_ADDRESS }),
+        requestFaucet({ address: RECIPIENT_ADDRESS }),
+      ]);
+      assert.deepEqual(
+        responses.map(r => r.status),
+        [200, 200]
+      );
+      // Each request took the idle key rather than queueing behind the other.
+      const senders = [0, 1].map(
+        i => decodeBroadcastTransfer(node, i).auth.origin_condition.signer.address
+      );
+      assert.deepEqual(
+        new Set(senders),
+        new Set(FAUCET_TESTNET_KEYS.slice(0, 2).map(k => k.stacksAddress))
+      );
+      // Both transactions were built before either was broadcast.
+      assert.deepEqual(buildAndBroadcastLog(), [
+        '/v2/info',
+        '/v2/info',
+        '/v2/transactions',
+        '/v2/transactions',
+      ]);
+    } finally {
+      ENV.FAUCET_PRIVATE_KEY = undefined;
+    }
   });
 
   test('is not rate limited or recorded by the API', async () => {

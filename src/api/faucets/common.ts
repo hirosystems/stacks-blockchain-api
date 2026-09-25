@@ -1,6 +1,7 @@
 import PQueue from 'p-queue';
 import { BigNumber } from 'bignumber.js';
 import {
+  AddressVersion,
   ContractIdString,
   getAddressFromPrivateKey,
   makeContractCall,
@@ -18,9 +19,12 @@ import {
 import type { StacksNetwork } from '@stacks/network';
 import { createCoreRpcClient, type CoreRpcClient } from '@stacks/rpc-client';
 import { logger } from '@stacks/api-toolkit';
-import { getStxFaucetNetwork, stxToMicroStx } from '../../helpers.js';
+import { c32addressDecode } from 'c32check';
+import { getStxFaucetNetwork, isValidPrincipal, stxToMicroStx } from '../../helpers.js';
 import { ENV } from '../../env.js';
 import type { PgStore } from '../../datastore/pg-store.js';
+import type * as btc from 'bitcoinjs-lib';
+import { getFaucetAccount, makeBtcFaucetPayment } from '../../btc-faucet.js';
 import { getTxRejectionReason } from './errors.js';
 
 const testnetAccounts = [
@@ -70,19 +74,50 @@ export function getStxFaucetKeys(): string[] {
   return (ENV.FAUCET_PRIVATE_KEY ?? FAUCET_TESTNET_KEYS[0].secretKey).split(',');
 }
 
+/**
+ * Whether `principal` can receive testnet faucet funds: a checksum-valid testnet standard address
+ * (`ST…` single-sig or `SN…` multi-sig), or a contract principal deployed by one. Mainnet
+ * principals are rejected rather than paid on testnet.
+ */
+export function isValidTestnetPrincipal(principal: string): boolean {
+  if (!isValidPrincipal(principal)) {
+    return false;
+  }
+  const [version] = c32addressDecode(principal.split('.')[0]);
+  return version === AddressVersion.TestnetSingleSig || version === AddressVersion.TestnetMultiSig;
+}
+
 export function clientFromNetwork(network: StacksNetwork): CoreRpcClient {
   return createCoreRpcClient({ baseUrl: network.client.baseUrl });
 }
 
 /**
- * Serialization queues, shared by every API version's faucet routes. The STX and sBTC faucets
- * derive a sender nonce per request, so two concurrent requests against the same faucet account
- * would build conflicting transactions -- these must stay process-wide singletons rather than
- * per-plugin instances, now that v1 and v3 both expose the faucets.
+ * One serialization queue per faucet sender account, keyed by the account's address and shared by
+ * every asset and API version that sends from it. What must not run concurrently is two
+ * transactions from the same account: a Stacks account derives each transaction's nonce from its
+ * current state, and the BTC faucet selects UTXOs from its wallet. Requests from different
+ * accounts are independent, so with several faucet keys configured they proceed in parallel.
+ *
+ * STX and sBTC share the queue of the first key, since sBTC always sends from it. The BTC faucet
+ * has a single account; its p2pkh address is the same on regtest and signet, so one queue covers
+ * both.
  */
-export const btcFaucetRequestQueue = new PQueue({ concurrency: 1 });
-export const stxFaucetRequestQueue = new PQueue({ concurrency: 1 });
-export const sbtcFaucetRequestQueue = new PQueue({ concurrency: 1 });
+const senderQueues = new Map<string, PQueue>();
+
+export function getSenderQueue(senderAddress: string): PQueue {
+  let queue = senderQueues.get(senderAddress);
+  if (!queue) {
+    queue = new PQueue({ concurrency: 1 });
+    senderQueues.set(senderAddress, queue);
+  }
+  return queue;
+}
+
+/** Transactions running or waiting on the sender's queue. */
+function getSenderLoad(senderAddress: string): number {
+  const queue = senderQueues.get(senderAddress);
+  return queue ? queue.size + queue.pending : 0;
+}
 
 export const FAUCET_DEFAULT_STX_AMOUNT = stxToMicroStx(500);
 export const FAUCET_DEFAULT_WINDOW = 5 * 60 * 1000; // 5 minutes
@@ -264,32 +299,38 @@ export async function sendStxFaucetTx(opts: {
   const network = getStxFaucetNetwork();
   const rpcClient = clientFromNetwork(network);
 
-  // Start with a random key index. We will try others in order if this one fails.
-  let keyIndex = Math.round(Math.random() * (keys.length - 1));
-  let keysAttempted = 0;
+  // Try the least busy sender first, then the rest in order of load (ties broken randomly, so
+  // idle keys share the traffic). Each attempt holds only its own sender's queue.
+  const senders = keys
+    .map(key => {
+      const address = getAddressFromPrivateKey(key, 'testnet');
+      return { key, address, load: getSenderLoad(address), tieBreak: Math.random() };
+    })
+    .sort((a, b) => a.load - b.load || a.tieBreak - b.tieBreak);
+
   let sendSuccess: { txId: string; txRaw: string } | undefined;
-  do {
-    keysAttempted++;
-    const senderKey = keys[keyIndex];
-    const senderAddress = getAddressFromPrivateKey(senderKey, 'testnet');
-    logger.debug(`StxFaucet attempting faucet transaction from sender: ${senderAddress}`);
-    const nonces = await db.getAddressNonces({ stxAddress: senderAddress });
-    const tx = await buildSTXFaucetTx(
-      recipientAddress,
-      stxAmount,
-      network,
-      senderKey,
-      BigInt(nonces.possibleNextNonce)
-    );
-    const rawTxHex = tx.serialize();
+  for (const [attempt, sender] of senders.entries()) {
+    logger.debug(`StxFaucet attempting faucet transaction from sender: ${sender.address}`);
     try {
-      const txId = await rpcClient.request('POST', '/v2/transactions', {
-        body: { tx: rawTxHex },
+      sendSuccess = await getSenderQueue(sender.address).add(async () => {
+        const nonces = await db.getAddressNonces({ stxAddress: sender.address });
+        const tx = await buildSTXFaucetTx(
+          recipientAddress,
+          stxAmount,
+          network,
+          sender.key,
+          BigInt(nonces.possibleNextNonce)
+        );
+        const rawTxHex = tx.serialize();
+        const txId = await rpcClient.request('POST', '/v2/transactions', {
+          body: { tx: rawTxHex },
+        });
+        return { txId: `0x${txId}`, txRaw: rawTxHex };
       });
-      sendSuccess = { txId: `0x${txId}`, txRaw: rawTxHex };
       logger.info(
-        `StxFaucet success. Sent ${stxAmount} uSTX from ${senderAddress} to ${recipientAddress} (txId: ${sendSuccess.txId}).`
+        `StxFaucet success. Sent ${stxAmount} uSTX from ${sender.address} to ${recipientAddress} (txId: ${sendSuccess.txId}).`
       );
+      break;
     } catch (error) {
       const rejectionReason = getTxRejectionReason(error);
       if (
@@ -297,22 +338,23 @@ export async function sendStxFaucetTx(opts: {
         rejectionReason === 'TooMuchChaining' ||
         rejectionReason === 'NotEnoughFunds'
       ) {
-        if (keysAttempted == keys.length) {
+        if (attempt === senders.length - 1) {
           logger.warn(`StxFaucet attempts exhausted for all faucet keys. Last error: ${error}`);
           throw error;
         }
-        // Try with the next key. Wrap around the keys array if necessary.
-        keyIndex++;
-        if (keyIndex >= keys.length) keyIndex = 0;
         logger.warn(
-          `StxFaucet transaction failed for sender ${senderAddress}, trying with next key: ${error}`
+          `StxFaucet transaction failed for sender ${sender.address}, trying with next key: ${error}`
         );
       } else {
         logger.warn(`StxFaucet unexpected error when sending transaction: ${error}`);
         throw error;
       }
     }
-  } while (!sendSuccess);
+  }
+  if (!sendSuccess) {
+    // Unreachable: the loop either sends, or throws on its last attempt.
+    throw new Error('StxFaucet has no faucet keys configured');
+  }
 
   return { txId: sendSuccess.txId, rawTx: sendSuccess.txRaw, amount: stxAmount };
 }
@@ -333,20 +375,39 @@ export async function sendSbtcFaucetTx(opts: {
   const rpcClient = clientFromNetwork(network);
 
   logger.debug(`SbtcFaucet attempting faucet transaction from sender: ${senderAddress}`);
-  const nonces = await db.getAddressNonces({ stxAddress: senderAddress });
-  const tx = await buildSBTCFaucetTx(
-    recipientAddress,
-    sbtcAmount,
-    network,
-    senderKey,
-    BigInt(nonces.possibleNextNonce)
-  );
-  const rawTxHex = tx.serialize();
-  const txId = await rpcClient.request('POST', '/v2/transactions', {
-    body: { tx: rawTxHex },
+  const { txId, rawTxHex } = await getSenderQueue(senderAddress).add(async () => {
+    const nonces = await db.getAddressNonces({ stxAddress: senderAddress });
+    const tx = await buildSBTCFaucetTx(
+      recipientAddress,
+      sbtcAmount,
+      network,
+      senderKey,
+      BigInt(nonces.possibleNextNonce)
+    );
+    const rawTxHex = tx.serialize();
+    const txId = await rpcClient.request('POST', '/v2/transactions', {
+      body: { tx: rawTxHex },
+    });
+    return { txId, rawTxHex };
   });
   logger.info(
     `SbtcFaucet success. Sent ${sbtcAmount} sBTC sats from ${senderAddress} to ${recipientAddress} (txId: 0x${txId}).`
   );
   return { txId: `0x${txId}`, rawTx: rawTxHex, amount: sbtcAmount };
+}
+
+/**
+ * Pays `recipient` from the BTC faucet wallet, serialized on the faucet account's queue so that
+ * concurrent payments never select the same UTXOs.
+ */
+export async function sendBtcFaucetPayment(
+  network: btc.Network,
+  recipient: string,
+  /** Amount to send, in BTC. */
+  amount: number
+): ReturnType<typeof makeBtcFaucetPayment> {
+  const senderAddress = getFaucetAccount(network).address;
+  return await getSenderQueue(senderAddress).add(() =>
+    makeBtcFaucetPayment(network, recipient, amount)
+  );
 }

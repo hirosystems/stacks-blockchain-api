@@ -112,6 +112,15 @@ describe('sBTC faucet (v3)', () => {
     assert.equal(node.receivedTxs.length, 0);
   });
 
+  test('rejects addresses that are not valid testnet Stacks principals', async () => {
+    for (const address of ['not-an-address', 'SP3FBR2AGK5H9QBDH3EEN6DF8EK8JY7RX8QJ5SVTE']) {
+      const response = await requestFaucet({ address });
+      assert.equal(response.status, 400, address);
+      assert.deepEqual(response.body, { error: 'Invalid testnet Stacks address' }, address);
+    }
+    assert.equal(node.receivedTxs.length, 0);
+  });
+
   test('a query string address is not accepted', async () => {
     const response = await supertest(api.server).post(
       `/extended/v3/faucets/sbtc?address=${RECIPIENT_ADDRESS}`
@@ -142,6 +151,29 @@ describe('sBTC faucet (v3)', () => {
     // Only the seeded rows remain: v3 requests are not recorded.
     const requests = await db.getSBTCFaucetRequests(RECIPIENT_ADDRESS);
     assert.equal(requests.results.length, 5);
+  });
+
+  test('STX and sBTC requests from the shared faucet account are serialized', async () => {
+    // sBTC always sends from the first faucet key, which (as the only key configured) STX also
+    // uses. Both derive that account's nonce per request, so they share its queue: one must
+    // broadcast before the other starts building its transaction. A slow fee estimate widens the
+    // window in which unserialized requests would interleave.
+    node.feeEstimateDelayMs = 100;
+    const [stx, sbtc] = await Promise.all([
+      supertest(api.server).post('/extended/v3/faucets/stx').send({ address: RECIPIENT_ADDRESS }),
+      requestFaucet({ address: RECIPIENT_ADDRESS }),
+    ]);
+    assert.equal(stx.status, 200);
+    assert.equal(sbtc.status, 200);
+    const buildAndBroadcast = node.requestLog.filter(
+      path => path === '/v2/info' || path === '/v2/transactions'
+    );
+    assert.deepEqual(buildAndBroadcast, [
+      '/v2/info',
+      '/v2/transactions',
+      '/v2/info',
+      '/v2/transactions',
+    ]);
   });
 
   test('responds 503 out-of-funds when the node rejects with NotEnoughFunds', async () => {
