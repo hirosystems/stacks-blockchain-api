@@ -3274,11 +3274,24 @@ export class PgStoreV3 extends BasePgStoreModule {
    * Percentiles use `percentile_disc`, not `percentile_cont`: the result is a value some pending
    * transaction actually has, instead of an interpolation between two of them. That keeps fees as
    * exact µSTX integers a caller could actually pay.
-   * @returns Mempool totals and percentiles, keyed by `type_id` with `null` for the whole mempool.
+   * @returns Totals and percentiles, keyed by `type_id` with `null` for the reportable total.
    */
   async getMempoolSummary(): Promise<DbMempoolSummaryRow[]> {
+    // Only the types clients can broadcast. Coinbase, tenure-change, and poison-microblock
+    // transactions are miner-internal or (post-Nakamoto) unconstructible, so a node should never
+    // offer one to the mempool — but nothing on the write path enforces that, and the mempool
+    // garbage collector only prunes after ~42 hours. Scoping the aggregate here rather than
+    // trusting upstream keeps the grand total equal to the sum of the buckets the API exposes,
+    // instead of hiding an unreportable row inside the total.
+    //
     // `versioned-smart-contract` (type 6) reports as a regular `smart-contract` (type 1), matching
     // how transaction types are surfaced everywhere else in the API.
+    const reportableTypes = [
+      DbTxTypeId.TokenTransfer,
+      DbTxTypeId.SmartContract,
+      DbTxTypeId.ContractCall,
+      DbTxTypeId.VersionedSmartContract,
+    ];
     return await this.sql<DbMempoolSummaryRow[]>`
       WITH unpruned AS (
         SELECT
@@ -3289,6 +3302,7 @@ export class PgStoreV3 extends BasePgStoreModule {
           receipt_block_height
         FROM mempool_txs
         WHERE pruned = false
+          AND type_id IN ${this.sql(reportableTypes)}
       )
       SELECT
         type_id,

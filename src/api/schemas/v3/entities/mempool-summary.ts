@@ -68,18 +68,19 @@ export const MempoolSummarySchema = Type.Object(
       },
       {
         description:
-          'The same metrics broken down by transaction type. Only the types that can enter the ' +
-          'mempool are reported: coinbase, tenure-change, and poison-microblock transactions are ' +
-          'never broadcast by clients. Versioned smart-contract transactions are counted as ' +
-          '`smart_contract`.',
+          'The same metrics broken down by transaction type. Versioned smart-contract ' +
+          'transactions are counted as `smart_contract`.',
       }
     ),
   },
   {
     title: 'MempoolSummary',
     description:
-      'A summary of the pending transactions currently in the mempool. Top-level metrics cover ' +
-      'the whole mempool; `by_type` breaks them down by transaction type.',
+      'A summary of the transactions currently pending in the mempool. Top-level metrics cover ' +
+      'every pending transaction; `by_type` breaks the same metrics down by transaction type, so ' +
+      'the top-level `count` always equals the sum of the per-type counts. Only the types a ' +
+      'client can broadcast are reported: coinbase, tenure-change, and poison-microblock ' +
+      'transactions are miner-internal or no longer produced, and are excluded throughout.',
   }
 );
 export type MempoolSummary = Static<typeof MempoolSummarySchema>;

@@ -197,5 +197,49 @@ describe('v3 mempool summary', () => {
       // The pruned tx has by far the highest fee; if it leaked in it would surface at p95.
       assert.notEqual(body.fee_rate.p95, '999999');
     });
+
+    test('types the API does not report are excluded from the totals too', async () => {
+      // Coinbase, tenure-change, and poison-microblock transactions have no `by_type` bucket. A
+      // node should never offer one to the mempool, but the write path does not enforce that, so
+      // the aggregate scopes itself rather than trusting upstream — otherwise such a row would
+      // land in the top-level count with nowhere to see it, breaking count === sum(by_type).
+      const before = await getSummary(api);
+      // `mempool_txs` has a CHECK constraint per type, so these are inserted as valid transactions
+      // and then converted, supplying the payload columns their type requires.
+      await db.updateMempoolTxs({
+        mempoolTxs: [40, 41].map(n =>
+          testMempoolTx({
+            tx_id: hex(n),
+            type_id: DbTxTypeId.TokenTransfer,
+            sender_address: SENDER,
+            nonce: n,
+            fee_rate: 888888n,
+            receipt_time: 5000 + n,
+          })
+        ),
+      });
+      await db.sql`
+        UPDATE mempool_txs
+        SET type_id = ${DbTxTypeId.PoisonMicroblock},
+            poison_microblock_header_1 = '\\x00',
+            poison_microblock_header_2 = '\\x00'
+        WHERE tx_id = ${hex(40)}
+      `;
+      await db.sql`
+        UPDATE mempool_txs
+        SET type_id = ${DbTxTypeId.Coinbase}, coinbase_payload = '\\x00'
+        WHERE tx_id = ${hex(41)}
+      `;
+      const after = await getSummary(api);
+
+      assert.equal(after.count, before.count, 'unreportable types do not change the total');
+      const summed = Object.values<{ count: number }>(after.by_type).reduce(
+        (acc, b) => acc + b.count,
+        0
+      );
+      assert.equal(summed, after.count, 'count still equals the sum of the per-type counts');
+      // Their fee dwarfs everything else, so it would surface at p95 had they been counted.
+      assert.notEqual(after.fee_rate.p95, '888888');
+    });
   });
 });

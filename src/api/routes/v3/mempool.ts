@@ -28,7 +28,7 @@ export const MempoolRoutes: FastifyPluginAsync<
         description:
           'Retrieves a summary of the transactions currently pending in the mempool: how many ' +
           'there are, and the fee, size, and receipt percentiles across them, both overall and ' +
-          'broken down by transaction type. Percentiles are discrete — each is a value some ' +
+          'broken down by transaction type. Percentiles are discrete: each is a value some ' +
           'pending transaction actually has, not an interpolation between two of them.',
         tags: ['Mempool'],
         response: {
