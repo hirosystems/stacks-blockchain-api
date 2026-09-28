@@ -100,8 +100,11 @@ export interface paths {
         };
         /**
          * Get statistics for mempool transactions
+         * @deprecated
          * @description Queries for transactions counts, age (by block height), fees (simple average), and size.
          *             All results broken down by transaction type and percentiles (p25, p50, p75, p95).
+         *
+         *             **Deprecated:** use `GET /extended/v3/mempool` instead. Note the response differs: fields are renamed and regrouped, percentiles are discrete rather than interpolated, and tx age in blocks is replaced by `receipt_block_height`.
          */
         get: operations["get_mempool_transaction_stats"];
         put?: never;
@@ -935,6 +938,7 @@ export interface paths {
         };
         /**
          * Search
+         * @deprecated
          * @description Search blocks, transactions, contracts, or accounts by hash/ID
          */
         get: operations["search_by_id"];
@@ -1105,10 +1109,13 @@ export interface paths {
         put?: never;
         /**
          * Get BTC regtest or signet tokens
+         * @deprecated
          * @description Add 0.0001 BTC to the specified regtest or signet BTC address (0.01 BTC with `large`, 0.5 BTC with `xlarge`).
          *
          *             The endpoint returns the transaction ID, which you can use to view the transaction in a regtest or signet
          *             Bitcoin block explorer. The tokens are delivered once the transaction has been included in a block.
+         *
+         *             **Deprecated:** use `POST /extended/v3/faucets/btc` instead.
          *
          *             **Note:** This is a Bitcoin regtest/signet-only endpoint. This endpoint will not work on the Bitcoin mainnet.
          */
@@ -1151,6 +1158,7 @@ export interface paths {
         put?: never;
         /**
          * Get STX testnet tokens
+         * @deprecated
          * @description Add 500 STX tokens to the specified testnet address. Testnet STX addresses begin with `ST`. If the `stacking`
          *             parameter is set to `true`, the faucet will add the required number of tokens for individual stacking to the
          *             specified testnet address.
@@ -1161,6 +1169,8 @@ export interface paths {
          *
          *             A common reason for failed faucet transactions is that the faucet has run out of tokens. If you are experiencing
          *             failed faucet transactions to a testnet address, you can get help in [Discord](https://stacks.chat).
+         *
+         *             **Deprecated:** use `POST /extended/v3/faucets/stx` instead.
          *
          *             **Note:** This is a testnet only endpoint. This endpoint will not work on the mainnet.
          */
@@ -1182,12 +1192,15 @@ export interface paths {
         put?: never;
         /**
          * Get sBTC testnet tokens
+         * @deprecated
          * @description Add sBTC tokens to the specified testnet address. The endpoint performs a SIP-010 `transfer`
          *             contract call on the configured testnet sBTC token contract. Testnet STX addresses begin with `ST`.
          *
          *             The endpoint returns the transaction ID, which you can use to view the transaction in the
          *             [Stacks Explorer](https://explorer.hiro.so/?chain=testnet). The tokens are delivered once the transaction has
          *             been included in a block.
+         *
+         *             **Deprecated:** use `POST /extended/v3/faucets/sbtc` instead.
          *
          *             **Note:** This is a testnet only endpoint. This endpoint will not work on mainnet.
          */
@@ -1728,6 +1741,98 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/extended/v3/faucets/btc": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Get BTC regtest or signet tokens
+         * @description Sends BTC to the specified regtest or signet BTC address. The response reports the amount sent, in satoshis, and the transaction id, which you can use to view the transaction in a regtest or signet Bitcoin block explorer. The tokens are delivered once the transaction has been included in a block.
+         *
+         *     Each request sends a fixed amount configured by the API operator, which the response reports. If you need more for testing (for example, to enroll in a staking bond), reach out to request a custom faucet transaction.
+         *
+         *     **Note:** This is a Bitcoin regtest/signet-only endpoint. This endpoint will not work on Bitcoin mainnet.
+         */
+        post: operations["get_faucet_btc"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/extended/v3/faucets/stx": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Get STX testnet tokens
+         * @description Sends STX to the specified testnet address. Testnet STX addresses begin with `ST`. The response reports the amount sent, in µSTX, and the transaction id, which you can use to view the transaction in the [Stacks Explorer](https://explorer.hiro.so/?chain=testnet). The tokens are delivered once the transaction has been included in a block.
+         *
+         *     Each request sends a fixed amount configured by the API operator, which the response reports. If you need more for testing (for example, to enroll in a staking bond), reach out to request a custom faucet transaction.
+         *
+         *     **Note:** This is a testnet only endpoint. This endpoint will not work on mainnet.
+         */
+        post: operations["get_faucet_stx"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/extended/v3/faucets/sbtc": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Get sBTC testnet tokens
+         * @description Sends sBTC to the specified testnet address. The endpoint performs a SIP-010 `transfer` contract call on the configured testnet sBTC token contract. Testnet STX addresses begin with `ST`. The response reports the amount sent, in satoshis, and the transaction id, which you can use to view the transaction in the [Stacks Explorer](https://explorer.hiro.so/?chain=testnet). The tokens are delivered once the transaction has been included in a block.
+         *
+         *     Each request sends a fixed amount configured by the API operator, which the response reports. If you need more for testing (for example, to enroll in a staking bond), reach out to request a custom faucet transaction.
+         *
+         *     **Note:** This is a testnet only endpoint. This endpoint will not work on mainnet.
+         */
+        post: operations["get_faucet_sbtc"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/extended/v3/mempool": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get mempool summary
+         * @description Retrieves a summary of the transactions currently pending in the mempool: how many there are, and the fee, size, and receipt percentiles across them, both overall and broken down by transaction type. Percentiles are discrete: each is a value some pending transaction actually has, not an interpolation between two of them.
+         */
+        get: operations["get_mempool_summary"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/extended/v3/mempool/transactions": {
         parameters: {
             query?: never;
@@ -2020,6 +2125,26 @@ export interface paths {
          * @description Returns a list of pending mempool transactions that involve a principal — as the sender, a token-transfer recipient, the deployed contract, or the called contract.
          */
         get: operations["get_principal_mempool_transactions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/extended/v3/search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Search
+         * @description Searches for the blocks, transactions, addresses, smart contracts, and token assets that a term refers to. The term can be a complete identifier or the beginning of one: a block or transaction hash, a Stacks or Bitcoin block height, an address, a contract id, or an asset identifier. Contract and asset names are matched anywhere in the name, so a term like `arkadiko` finds the contracts and tokens named after it. Names must contain the term; misspellings are not matched. At most 20 results are returned, best match first; there is no pagination, so narrow the term to see something that did not surface. A term that matches nothing returns an empty list rather than an error. Only canonical, mined entities are searched.
+         */
+        get: operations["search"];
         put?: never;
         post?: never;
         delete?: never;
@@ -35680,6 +35805,413 @@ export interface operations {
             };
         };
     };
+    get_faucet_btc: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /**
+                     * @description A valid regtest or signet BTC address
+                     * @example 2N4M94S1ZPt8HfxydXzL2P7qyzgVq7MHWts
+                     */
+                    address: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        transaction: {
+                            /**
+                             * Transaction ID
+                             * @description Transaction ID, `0x`-prefixed on both chains
+                             * @example 0xf6bd5f4a7b26184a3466340b2e99fd003b4962c0e382a7e4b6a13df3dd7a91c6
+                             */
+                            tx_id: string;
+                            /**
+                             * @description The chain the faucet transaction was broadcast to
+                             * @enum {string}
+                             */
+                            chain: "bitcoin";
+                        };
+                        /** @description The amount sent by the faucet */
+                        amount: {
+                            /**
+                             * Amount
+                             * @description The BTC sent by the faucet, in satoshis
+                             * @example 10000
+                             */
+                            btc: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Error message */
+                        error: string;
+                    };
+                };
+            };
+            /** @description Default Response */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Error message */
+                        error: string;
+                    };
+                };
+            };
+        };
+    };
+    get_faucet_stx: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /**
+                     * @description A testnet Stacks address (`ST…` or `SN…`), or a contract principal deployed by one
+                     * @example ST3M7N9Q9HDRM7RVP1Q26P0EE69358PZZAZD7KMXQ
+                     */
+                    address: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        transaction: {
+                            /**
+                             * Transaction ID
+                             * @description Transaction ID, `0x`-prefixed on both chains
+                             * @example 0xf6bd5f4a7b26184a3466340b2e99fd003b4962c0e382a7e4b6a13df3dd7a91c6
+                             */
+                            tx_id: string;
+                            /**
+                             * @description The chain the faucet transaction was broadcast to
+                             * @enum {string}
+                             */
+                            chain: "stacks";
+                        };
+                        /** @description The amount sent by the faucet */
+                        amount: {
+                            /**
+                             * Amount
+                             * @description The STX sent by the faucet, in µSTX
+                             * @example 500000000
+                             */
+                            stx: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Error message */
+                        error: string;
+                    };
+                };
+            };
+            /** @description Default Response */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Error message */
+                        error: string;
+                    };
+                };
+            };
+        };
+    };
+    get_faucet_sbtc: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /**
+                     * @description A testnet Stacks address (`ST…` or `SN…`), or a contract principal deployed by one
+                     * @example ST3M7N9Q9HDRM7RVP1Q26P0EE69358PZZAZD7KMXQ
+                     */
+                    address: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        transaction: {
+                            /**
+                             * Transaction ID
+                             * @description Transaction ID, `0x`-prefixed on both chains
+                             * @example 0xf6bd5f4a7b26184a3466340b2e99fd003b4962c0e382a7e4b6a13df3dd7a91c6
+                             */
+                            tx_id: string;
+                            /**
+                             * @description The chain the faucet transaction was broadcast to
+                             * @enum {string}
+                             */
+                            chain: "stacks";
+                        };
+                        /** @description The amount sent by the faucet */
+                        amount: {
+                            /**
+                             * Amount
+                             * @description The sBTC sent by the faucet, in satoshis
+                             * @example 10000
+                             */
+                            sbtc: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Error message */
+                        error: string;
+                    };
+                };
+            };
+            /** @description Default Response */
+            "5XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Error message */
+                        error: string;
+                    };
+                };
+            };
+        };
+    };
+    get_mempool_summary: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description A summary of the transactions currently pending in the mempool. Top-level metrics cover every pending transaction; `by_type` breaks the same metrics down by transaction type, so the top-level `count` always equals the sum of the per-type counts. Only the types a client can broadcast are reported: coinbase, tenure-change, and poison-microblock transactions are miner-internal or no longer produced, and are excluded throughout. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /**
+                         * @description Number of pending transactions in this bucket
+                         * @example 1203
+                         */
+                        count: number;
+                        /** @description Transaction fee percentiles, in micro-STX (µSTX). Note that a fee is not a reliable predictor of inclusion on its own, since it does not account for execution cost. */
+                        fee_rate: {
+                            p25: string | null;
+                            p50: string | null;
+                            p75: string | null;
+                            p95: string | null;
+                        };
+                        /** @description Serialized transaction size percentiles, in bytes. */
+                        tx_size: {
+                            p25: number | null;
+                            p50: number | null;
+                            p75: number | null;
+                            p95: number | null;
+                        };
+                        /** @description Percentiles of the unix timestamp (in seconds) at which the attached Stacks node received each transaction. Subtract from the current time for an age. Note the direction: the oldest pending transactions are at `p25`, not `p95`. These timings differ between API instances, since they reflect p2p propagation to the attached node rather than consensus. */
+                        receipt_time: {
+                            p25: number | null;
+                            p50: number | null;
+                            p75: number | null;
+                            p95: number | null;
+                        };
+                        /** @description Percentiles of the Stacks block height that was the chain tip when the attached Stacks node received each transaction. Subtract from the current chain tip for an age in blocks. As with `receipt_time`, the oldest pending transactions are at `p25`. */
+                        receipt_block_height: {
+                            p25: number | null;
+                            p50: number | null;
+                            p75: number | null;
+                            p95: number | null;
+                        };
+                        /** @description The same metrics broken down by transaction type. Versioned smart-contract transactions are counted as `smart_contract`. */
+                        by_type: {
+                            token_transfer: {
+                                /**
+                                 * @description Number of pending transactions in this bucket
+                                 * @example 1203
+                                 */
+                                count: number;
+                                /** @description Transaction fee percentiles, in micro-STX (µSTX). Note that a fee is not a reliable predictor of inclusion on its own, since it does not account for execution cost. */
+                                fee_rate: {
+                                    p25: string | null;
+                                    p50: string | null;
+                                    p75: string | null;
+                                    p95: string | null;
+                                };
+                                /** @description Serialized transaction size percentiles, in bytes. */
+                                tx_size: {
+                                    p25: number | null;
+                                    p50: number | null;
+                                    p75: number | null;
+                                    p95: number | null;
+                                };
+                                /** @description Percentiles of the unix timestamp (in seconds) at which the attached Stacks node received each transaction. Subtract from the current time for an age. Note the direction: the oldest pending transactions are at `p25`, not `p95`. These timings differ between API instances, since they reflect p2p propagation to the attached node rather than consensus. */
+                                receipt_time: {
+                                    p25: number | null;
+                                    p50: number | null;
+                                    p75: number | null;
+                                    p95: number | null;
+                                };
+                                /** @description Percentiles of the Stacks block height that was the chain tip when the attached Stacks node received each transaction. Subtract from the current chain tip for an age in blocks. As with `receipt_time`, the oldest pending transactions are at `p25`. */
+                                receipt_block_height: {
+                                    p25: number | null;
+                                    p50: number | null;
+                                    p75: number | null;
+                                    p95: number | null;
+                                };
+                            };
+                            smart_contract: {
+                                /**
+                                 * @description Number of pending transactions in this bucket
+                                 * @example 1203
+                                 */
+                                count: number;
+                                /** @description Transaction fee percentiles, in micro-STX (µSTX). Note that a fee is not a reliable predictor of inclusion on its own, since it does not account for execution cost. */
+                                fee_rate: {
+                                    p25: string | null;
+                                    p50: string | null;
+                                    p75: string | null;
+                                    p95: string | null;
+                                };
+                                /** @description Serialized transaction size percentiles, in bytes. */
+                                tx_size: {
+                                    p25: number | null;
+                                    p50: number | null;
+                                    p75: number | null;
+                                    p95: number | null;
+                                };
+                                /** @description Percentiles of the unix timestamp (in seconds) at which the attached Stacks node received each transaction. Subtract from the current time for an age. Note the direction: the oldest pending transactions are at `p25`, not `p95`. These timings differ between API instances, since they reflect p2p propagation to the attached node rather than consensus. */
+                                receipt_time: {
+                                    p25: number | null;
+                                    p50: number | null;
+                                    p75: number | null;
+                                    p95: number | null;
+                                };
+                                /** @description Percentiles of the Stacks block height that was the chain tip when the attached Stacks node received each transaction. Subtract from the current chain tip for an age in blocks. As with `receipt_time`, the oldest pending transactions are at `p25`. */
+                                receipt_block_height: {
+                                    p25: number | null;
+                                    p50: number | null;
+                                    p75: number | null;
+                                    p95: number | null;
+                                };
+                            };
+                            contract_call: {
+                                /**
+                                 * @description Number of pending transactions in this bucket
+                                 * @example 1203
+                                 */
+                                count: number;
+                                /** @description Transaction fee percentiles, in micro-STX (µSTX). Note that a fee is not a reliable predictor of inclusion on its own, since it does not account for execution cost. */
+                                fee_rate: {
+                                    p25: string | null;
+                                    p50: string | null;
+                                    p75: string | null;
+                                    p95: string | null;
+                                };
+                                /** @description Serialized transaction size percentiles, in bytes. */
+                                tx_size: {
+                                    p25: number | null;
+                                    p50: number | null;
+                                    p75: number | null;
+                                    p95: number | null;
+                                };
+                                /** @description Percentiles of the unix timestamp (in seconds) at which the attached Stacks node received each transaction. Subtract from the current time for an age. Note the direction: the oldest pending transactions are at `p25`, not `p95`. These timings differ between API instances, since they reflect p2p propagation to the attached node rather than consensus. */
+                                receipt_time: {
+                                    p25: number | null;
+                                    p50: number | null;
+                                    p75: number | null;
+                                    p95: number | null;
+                                };
+                                /** @description Percentiles of the Stacks block height that was the chain tip when the attached Stacks node received each transaction. Subtract from the current chain tip for an age in blocks. As with `receipt_time`, the oldest pending transactions are at `p25`. */
+                                receipt_block_height: {
+                                    p25: number | null;
+                                    p50: number | null;
+                                    p75: number | null;
+                                    p95: number | null;
+                                };
+                            };
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: string;
+                        message?: string;
+                    } & {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
     get_mempool_transactions: {
         parameters: {
             query?: {
@@ -37337,6 +37869,410 @@ export interface operations {
                             status: "pending" | "dropped_replace_by_fee" | "dropped_replace_across_fork" | "dropped_too_expensive" | "dropped_stale_garbage_collect" | "dropped_problematic";
                             /** @enum {string} */
                             type: "tenure_change";
+                        })[];
+                    };
+                };
+            };
+            /** @description Default Response */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: string;
+                        message?: string;
+                    } & {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
+    search: {
+        parameters: {
+            query: {
+                /** @description The term to search for. Hex terms need at least 8 characters, addresses at least 6, and contract or asset names at least 3; block heights have no minimum. */
+                q: string;
+                /** @description Restricts results to these entity types. Provide them as repeated querystring values (`?type=block&type=transaction`) or as a single comma-separated value (`?type=block,transaction`). Defaults to every type the term could match. */
+                type?: ("block" | "bitcoin_block" | "transaction" | "address" | "smart_contract" | "token")[];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        results: ({
+                            /** @enum {string} */
+                            type: "block";
+                            /** BlockSummary */
+                            result: {
+                                /**
+                                 * Block height
+                                 * @description Block height
+                                 */
+                                height: number;
+                                /**
+                                 * Block hash
+                                 * @description Block hash
+                                 */
+                                hash: string;
+                                /** @description Index block hash of the block */
+                                index_hash: string;
+                                /** @description Unix timestamp (in seconds) indicating when this block was mined. */
+                                time: number;
+                            };
+                        } | {
+                            /** @enum {string} */
+                            type: "bitcoin_block";
+                            /** BitcoinBlockSummary */
+                            result: {
+                                /** @description Height of the Bitcoin block */
+                                height: number;
+                                /** @description Hash of the Bitcoin block */
+                                hash: string;
+                            };
+                        } | {
+                            /** @enum {string} */
+                            type: "transaction";
+                            result: {
+                                /** @description Transaction ID */
+                                tx_id: string;
+                                sender: {
+                                    /** @description Address of the transaction initiator */
+                                    address: string;
+                                    /** @description Nonce of the transaction initiator */
+                                    nonce: number;
+                                };
+                                sponsor: {
+                                    /** @description Address of the transaction initiator */
+                                    address: string;
+                                    /** @description Nonce of the transaction initiator */
+                                    nonce: number;
+                                } | null;
+                                /** @description Transaction fee as Integer string (64-bit unsigned integer). */
+                                fee_rate: string;
+                                block: {
+                                    /** @description Height of the block this transactions was associated with */
+                                    height: number;
+                                    /** @description Hash of the blocked this transactions was associated with */
+                                    hash: string;
+                                    /** @description Hash of the index block this transactions was associated with */
+                                    index_hash: string;
+                                    /** @description Unix timestamp (in seconds) indicating when this block was mined. */
+                                    time: number;
+                                    /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
+                                    tx_index: number;
+                                };
+                                bitcoin_block: {
+                                    /** @description Height of the anchor burn block. */
+                                    height: number;
+                                    /** @description Unix timestamp (in seconds) indicating when this block was mined. */
+                                    time: number;
+                                };
+                                /** @description Status of the transaction */
+                                status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
+                                /** @enum {string} */
+                                type: "token_transfer";
+                                token_transfer: {
+                                    recipient: string;
+                                    /** @description Transfer amount as Integer string (64-bit unsigned integer) */
+                                    amount: string;
+                                    memo: {
+                                        hex: string;
+                                        repr: string;
+                                    } | null;
+                                };
+                            } | {
+                                /** @description Transaction ID */
+                                tx_id: string;
+                                sender: {
+                                    /** @description Address of the transaction initiator */
+                                    address: string;
+                                    /** @description Nonce of the transaction initiator */
+                                    nonce: number;
+                                };
+                                sponsor: {
+                                    /** @description Address of the transaction initiator */
+                                    address: string;
+                                    /** @description Nonce of the transaction initiator */
+                                    nonce: number;
+                                } | null;
+                                /** @description Transaction fee as Integer string (64-bit unsigned integer). */
+                                fee_rate: string;
+                                block: {
+                                    /** @description Height of the block this transactions was associated with */
+                                    height: number;
+                                    /** @description Hash of the blocked this transactions was associated with */
+                                    hash: string;
+                                    /** @description Hash of the index block this transactions was associated with */
+                                    index_hash: string;
+                                    /** @description Unix timestamp (in seconds) indicating when this block was mined. */
+                                    time: number;
+                                    /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
+                                    tx_index: number;
+                                };
+                                bitcoin_block: {
+                                    /** @description Height of the anchor burn block. */
+                                    height: number;
+                                    /** @description Unix timestamp (in seconds) indicating when this block was mined. */
+                                    time: number;
+                                };
+                                /** @description Status of the transaction */
+                                status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
+                                /** @enum {string} */
+                                type: "smart_contract";
+                                smart_contract: {
+                                    clarity_version: number | null;
+                                    /** @description Contract identifier formatted as `<principaladdress>.<contract_name>` */
+                                    contract_id: string;
+                                };
+                            } | {
+                                /** @description Transaction ID */
+                                tx_id: string;
+                                sender: {
+                                    /** @description Address of the transaction initiator */
+                                    address: string;
+                                    /** @description Nonce of the transaction initiator */
+                                    nonce: number;
+                                };
+                                sponsor: {
+                                    /** @description Address of the transaction initiator */
+                                    address: string;
+                                    /** @description Nonce of the transaction initiator */
+                                    nonce: number;
+                                } | null;
+                                /** @description Transaction fee as Integer string (64-bit unsigned integer). */
+                                fee_rate: string;
+                                block: {
+                                    /** @description Height of the block this transactions was associated with */
+                                    height: number;
+                                    /** @description Hash of the blocked this transactions was associated with */
+                                    hash: string;
+                                    /** @description Hash of the index block this transactions was associated with */
+                                    index_hash: string;
+                                    /** @description Unix timestamp (in seconds) indicating when this block was mined. */
+                                    time: number;
+                                    /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
+                                    tx_index: number;
+                                };
+                                bitcoin_block: {
+                                    /** @description Height of the anchor burn block. */
+                                    height: number;
+                                    /** @description Unix timestamp (in seconds) indicating when this block was mined. */
+                                    time: number;
+                                };
+                                /** @description Status of the transaction */
+                                status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
+                                /** @enum {string} */
+                                type: "contract_call";
+                                contract_call: {
+                                    /** @description Contract identifier formatted as `<principaladdress>.<contract_name>` */
+                                    contract_id: string;
+                                    /** @description Name of the Clarity function to be invoked */
+                                    function_name: string;
+                                };
+                            } | {
+                                /** @description Transaction ID */
+                                tx_id: string;
+                                sender: {
+                                    /** @description Address of the transaction initiator */
+                                    address: string;
+                                    /** @description Nonce of the transaction initiator */
+                                    nonce: number;
+                                };
+                                sponsor: {
+                                    /** @description Address of the transaction initiator */
+                                    address: string;
+                                    /** @description Nonce of the transaction initiator */
+                                    nonce: number;
+                                } | null;
+                                /** @description Transaction fee as Integer string (64-bit unsigned integer). */
+                                fee_rate: string;
+                                block: {
+                                    /** @description Height of the block this transactions was associated with */
+                                    height: number;
+                                    /** @description Hash of the blocked this transactions was associated with */
+                                    hash: string;
+                                    /** @description Hash of the index block this transactions was associated with */
+                                    index_hash: string;
+                                    /** @description Unix timestamp (in seconds) indicating when this block was mined. */
+                                    time: number;
+                                    /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
+                                    tx_index: number;
+                                };
+                                bitcoin_block: {
+                                    /** @description Height of the anchor burn block. */
+                                    height: number;
+                                    /** @description Unix timestamp (in seconds) indicating when this block was mined. */
+                                    time: number;
+                                };
+                                /** @description Status of the transaction */
+                                status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
+                                /** @enum {string} */
+                                type: "poison_microblock";
+                            } | {
+                                /** @description Transaction ID */
+                                tx_id: string;
+                                sender: {
+                                    /** @description Address of the transaction initiator */
+                                    address: string;
+                                    /** @description Nonce of the transaction initiator */
+                                    nonce: number;
+                                };
+                                sponsor: {
+                                    /** @description Address of the transaction initiator */
+                                    address: string;
+                                    /** @description Nonce of the transaction initiator */
+                                    nonce: number;
+                                } | null;
+                                /** @description Transaction fee as Integer string (64-bit unsigned integer). */
+                                fee_rate: string;
+                                block: {
+                                    /** @description Height of the block this transactions was associated with */
+                                    height: number;
+                                    /** @description Hash of the blocked this transactions was associated with */
+                                    hash: string;
+                                    /** @description Hash of the index block this transactions was associated with */
+                                    index_hash: string;
+                                    /** @description Unix timestamp (in seconds) indicating when this block was mined. */
+                                    time: number;
+                                    /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
+                                    tx_index: number;
+                                };
+                                bitcoin_block: {
+                                    /** @description Height of the anchor burn block. */
+                                    height: number;
+                                    /** @description Unix timestamp (in seconds) indicating when this block was mined. */
+                                    time: number;
+                                };
+                                /** @description Status of the transaction */
+                                status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
+                                /** @enum {string} */
+                                type: "coinbase";
+                                coinbase: {
+                                    alt_recipient: string | null;
+                                };
+                            } | {
+                                /** @description Transaction ID */
+                                tx_id: string;
+                                sender: {
+                                    /** @description Address of the transaction initiator */
+                                    address: string;
+                                    /** @description Nonce of the transaction initiator */
+                                    nonce: number;
+                                };
+                                sponsor: {
+                                    /** @description Address of the transaction initiator */
+                                    address: string;
+                                    /** @description Nonce of the transaction initiator */
+                                    nonce: number;
+                                } | null;
+                                /** @description Transaction fee as Integer string (64-bit unsigned integer). */
+                                fee_rate: string;
+                                block: {
+                                    /** @description Height of the block this transactions was associated with */
+                                    height: number;
+                                    /** @description Hash of the blocked this transactions was associated with */
+                                    hash: string;
+                                    /** @description Hash of the index block this transactions was associated with */
+                                    index_hash: string;
+                                    /** @description Unix timestamp (in seconds) indicating when this block was mined. */
+                                    time: number;
+                                    /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
+                                    tx_index: number;
+                                };
+                                bitcoin_block: {
+                                    /** @description Height of the anchor burn block. */
+                                    height: number;
+                                    /** @description Unix timestamp (in seconds) indicating when this block was mined. */
+                                    time: number;
+                                };
+                                /** @description Status of the transaction */
+                                status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
+                                /** @enum {string} */
+                                type: "tenure_change";
+                                tenure_change: {
+                                    /** @description Cause of change in mining tenure. Depending on cause, tenure can be ended or extended. */
+                                    cause: "block_found" | "extended" | "extended_runtime" | "extended_read_count" | "extended_read_length" | "extended_write_count" | "extended_write_length";
+                                };
+                            };
+                        } | {
+                            /** @enum {string} */
+                            type: "address";
+                            /** AddressSummary */
+                            result: {
+                                /**
+                                 * Stacks Address
+                                 * @description Stacks Address
+                                 */
+                                principal: string;
+                            };
+                        } | {
+                            /** @enum {string} */
+                            type: "smart_contract";
+                            /** SmartContract */
+                            result: {
+                                /**
+                                 * Smart Contract ID
+                                 * @description Smart Contract ID
+                                 */
+                                contract_id: string;
+                                clarity_version: number | null;
+                                /**
+                                 * Transaction ID
+                                 * @description ID of the transaction that deployed this contract
+                                 */
+                                tx_id: string;
+                                block: {
+                                    /** @description Height of the block this transactions was associated with */
+                                    height: number;
+                                    /** @description Hash of the blocked this transactions was associated with */
+                                    hash: string;
+                                    /** @description Hash of the index block this transactions was associated with */
+                                    index_hash: string;
+                                    /** @description Unix timestamp (in seconds) indicating when this block was mined. */
+                                    time: number;
+                                    /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
+                                    tx_index: number;
+                                };
+                                bitcoin_block: {
+                                    /** @description Height of the anchor burn block. */
+                                    height: number;
+                                    /** @description Unix timestamp (in seconds) indicating when this block was mined. */
+                                    time: number;
+                                };
+                                /** @description The Clarity source code of the contract. Only present when requested via the `include=source_code` query param. */
+                                source_code?: string;
+                            };
+                        } | {
+                            /** @enum {string} */
+                            type: "token";
+                            /** TokenAsset */
+                            result: {
+                                /**
+                                 * Asset Identifier
+                                 * @description Asset Identifier
+                                 */
+                                asset_identifier: string;
+                                /** @description Whether the asset is a fungible or non-fungible token */
+                                asset_type: "ft" | "nft";
+                                /**
+                                 * Smart Contract ID
+                                 * @description Smart Contract ID
+                                 */
+                                contract_id: string;
+                                /** @description The name the asset is declared with on-chain. This is the identifier from the contract's token definition, not the display name or symbol the contract reports through `get-name` and `get-symbol`. */
+                                asset_name: string;
+                            };
                         })[];
                     };
                 };
