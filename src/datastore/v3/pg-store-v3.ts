@@ -3279,7 +3279,7 @@ export class PgStoreV3 extends BasePgStoreModule {
   async getMempoolSummary(): Promise<DbMempoolSummaryRow[]> {
     // Only the types clients can broadcast. Coinbase, tenure-change, and poison-microblock
     // transactions are miner-internal or (post-Nakamoto) unconstructible, so a node should never
-    // offer one to the mempool — but nothing on the write path enforces that, and the mempool
+    // offer one to the mempool, but nothing on the write path enforces that, and the mempool
     // garbage collector only prunes after ~42 hours. Scoping the aggregate here rather than
     // trusting upstream keeps the grand total equal to the sum of the buckets the API exposes,
     // instead of hiding an unreportable row inside the total.
