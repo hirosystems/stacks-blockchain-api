@@ -33,6 +33,7 @@ import {
   DbTransactionEvent,
   DbTransactionSummary,
   DbSearchAddress,
+  DbMempoolSummaryRow,
   DbSearchBitcoinBlock,
   DbSearchBlock,
   DbSearchHit,
@@ -3260,6 +3261,71 @@ export class PgStoreV3 extends BasePgStoreModule {
       WHERE token = ${args.token}
     `;
     return { total: result[0]?.total ?? '0' };
+  }
+
+  /**
+   * Summarizes the pending (unpruned) mempool: transaction counts plus fee, size, and receipt
+   * percentiles, for the whole mempool and broken down by transaction type.
+   *
+   * One pass over the unpruned mempool serves every bucket. `GROUPING SETS ((type_id), ())` emits
+   * the per-type rows and the whole-mempool row together, so the grand total is consistent with
+   * the parts by construction rather than by a second query.
+   *
+   * Percentiles use `percentile_disc`, not `percentile_cont`: the result is a value some pending
+   * transaction actually has, instead of an interpolation between two of them. That keeps fees as
+   * exact µSTX integers a caller could actually pay.
+   * @returns Totals and percentiles, keyed by `type_id` with `null` for the reportable total.
+   */
+  async getMempoolSummary(): Promise<DbMempoolSummaryRow[]> {
+    // Only the types clients can broadcast. Coinbase, tenure-change, and poison-microblock
+    // transactions are miner-internal or (post-Nakamoto) unconstructible, so a node should never
+    // offer one to the mempool, but nothing on the write path enforces that, and the mempool
+    // garbage collector only prunes after ~42 hours. Scoping the aggregate here rather than
+    // trusting upstream keeps the grand total equal to the sum of the buckets the API exposes,
+    // instead of hiding an unreportable row inside the total.
+    //
+    // `versioned-smart-contract` (type 6) reports as a regular `smart-contract` (type 1), matching
+    // how transaction types are surfaced everywhere else in the API.
+    const reportableTypes = [
+      DbTxTypeId.TokenTransfer,
+      DbTxTypeId.SmartContract,
+      DbTxTypeId.ContractCall,
+      DbTxTypeId.VersionedSmartContract,
+    ];
+    return await this.sql<DbMempoolSummaryRow[]>`
+      WITH unpruned AS (
+        SELECT
+          CASE type_id WHEN 6 THEN 1 ELSE type_id END AS type_id,
+          fee_rate,
+          tx_size,
+          receipt_time,
+          receipt_block_height
+        FROM mempool_txs
+        WHERE pruned = false
+          AND type_id IN ${this.sql(reportableTypes)}
+      )
+      SELECT
+        type_id,
+        COUNT(*)::integer AS count,
+        percentile_disc(0.25) WITHIN GROUP (ORDER BY fee_rate ASC)::text AS fee_rate_p25,
+        percentile_disc(0.50) WITHIN GROUP (ORDER BY fee_rate ASC)::text AS fee_rate_p50,
+        percentile_disc(0.75) WITHIN GROUP (ORDER BY fee_rate ASC)::text AS fee_rate_p75,
+        percentile_disc(0.95) WITHIN GROUP (ORDER BY fee_rate ASC)::text AS fee_rate_p95,
+        percentile_disc(0.25) WITHIN GROUP (ORDER BY tx_size ASC) AS tx_size_p25,
+        percentile_disc(0.50) WITHIN GROUP (ORDER BY tx_size ASC) AS tx_size_p50,
+        percentile_disc(0.75) WITHIN GROUP (ORDER BY tx_size ASC) AS tx_size_p75,
+        percentile_disc(0.95) WITHIN GROUP (ORDER BY tx_size ASC) AS tx_size_p95,
+        percentile_disc(0.25) WITHIN GROUP (ORDER BY receipt_time ASC) AS receipt_time_p25,
+        percentile_disc(0.50) WITHIN GROUP (ORDER BY receipt_time ASC) AS receipt_time_p50,
+        percentile_disc(0.75) WITHIN GROUP (ORDER BY receipt_time ASC) AS receipt_time_p75,
+        percentile_disc(0.95) WITHIN GROUP (ORDER BY receipt_time ASC) AS receipt_time_p95,
+        percentile_disc(0.25) WITHIN GROUP (ORDER BY receipt_block_height ASC) AS receipt_height_p25,
+        percentile_disc(0.50) WITHIN GROUP (ORDER BY receipt_block_height ASC) AS receipt_height_p50,
+        percentile_disc(0.75) WITHIN GROUP (ORDER BY receipt_block_height ASC) AS receipt_height_p75,
+        percentile_disc(0.95) WITHIN GROUP (ORDER BY receipt_block_height ASC) AS receipt_height_p95
+      FROM unpruned
+      GROUP BY GROUPING SETS ((type_id), ())
+    `;
   }
 
   /**

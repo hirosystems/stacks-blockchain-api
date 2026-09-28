@@ -512,3 +512,28 @@ export type DbSearchHit =
   | { type: 'address'; result: DbSearchAddress }
   | { type: 'smart_contract'; result: DbSmartContractDetail }
   | { type: 'token'; result: DbSearchTokenAsset };
+
+/**
+ * One row of the mempool summary aggregate. `type_id` is `null` on the grand-total row produced by
+ * the query's empty grouping set. Percentile columns are `null` when the bucket is empty.
+ */
+export interface DbMempoolSummaryRow {
+  type_id: DbTxTypeId | null;
+  count: number;
+  fee_rate_p25: string | null;
+  fee_rate_p50: string | null;
+  fee_rate_p75: string | null;
+  fee_rate_p95: string | null;
+  tx_size_p25: number | null;
+  tx_size_p50: number | null;
+  tx_size_p75: number | null;
+  tx_size_p95: number | null;
+  receipt_time_p25: number | null;
+  receipt_time_p50: number | null;
+  receipt_time_p75: number | null;
+  receipt_time_p95: number | null;
+  receipt_height_p25: number | null;
+  receipt_height_p50: number | null;
+  receipt_height_p75: number | null;
+  receipt_height_p95: number | null;
+}
