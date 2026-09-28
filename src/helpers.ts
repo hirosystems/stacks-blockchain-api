@@ -234,7 +234,11 @@ export function isValidPrincipal(
     return false;
   }
   if (principal.includes('.')) {
-    const [addr, contractName] = principal.split('.');
+    const parts = principal.split('.');
+    if (parts.length !== 2) {
+      return false;
+    }
+    const [addr, contractName] = parts;
     if (!isValidC32Address(addr)) {
       return false;
     }
