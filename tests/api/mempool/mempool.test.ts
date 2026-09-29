@@ -1809,16 +1809,17 @@ describe('mempool tests', () => {
     assert.equal(request.body.tx_status, 'dropped_replace_by_fee');
     assert.equal(request.body.replaced_by_tx_id, '0xff0002');
 
-    // Add yet another conflicting tx but our address is the sponsor. Since it has a lower fee, it
-    // will be immediately marked as RBFd by 0xff0002.
+    // Add yet another conflicting tx but our address is the sponsor, paying with its nonce = 1.
+    // Since it has a lower fee, it will be immediately marked as RBFd by 0xff0002.
     await db.updateMempoolTxs({
       mempoolTxs: [
         testMempoolTx({
           tx_id: `0xff0003`,
           sender_address: 'SP3FXEKSA6D4BW3TFP2BWTSREV6FY863Y90YY7D8G',
           sponsor_address: sender_address,
+          sponsor_nonce: 1,
           sponsored: true,
-          nonce: 1,
+          nonce: 0,
           fee_rate: 150n,
           type_id: DbTxTypeId.TokenTransfer,
         }),
@@ -1894,6 +1895,178 @@ describe('mempool tests', () => {
     request = await supertest(api.server).get(`/extended/v1/tx/0xff0003`);
     assert.equal(request.body.tx_status, 'dropped_replace_by_fee');
     assert.equal(request.body.replaced_by_tx_id, '0xff0002');
+  });
+
+  test('sponsored txs only conflict on the sponsor nonce they pay with', async () => {
+    const sponsor = 'ST332DWHNM323264X869MKXFZABSE5WZ60EA07TJ1';
+    const alice = 'ST3SW0AXHXFDHGQY2XMMDHN6T7VPY395WS7ZRGQCD';
+    await db.update(
+      new TestBlockBuilder({
+        block_height: 1,
+        index_block_hash: `0x0001`,
+        parent_index_block_hash: `0x0000`,
+      }).build()
+    );
+
+    // The sponsor's own tx uses its nonce 5. Alice's tx also has nonce 5, but that is Alice's
+    // nonce: the sponsor pays for it with its nonce 6, so neither replaces the other.
+    await db.updateMempoolTxs({
+      mempoolTxs: [
+        testMempoolTx({ tx_id: `0xff0001`, sender_address: sponsor, nonce: 5, fee_rate: 100n }),
+        testMempoolTx({
+          tx_id: `0xff0002`,
+          sender_address: alice,
+          nonce: 5,
+          sponsored: true,
+          sponsor_address: sponsor,
+          sponsor_nonce: 6,
+          fee_rate: 200n,
+        }),
+      ],
+    });
+    const request = await supertest(api.server).get(`/extended/v1/tx/mempool`);
+    assert.equal(request.body.total, 2);
+    for (const txId of ['0xff0001', '0xff0002']) {
+      const tx = await supertest(api.server).get(`/extended/v1/tx/${txId}`);
+      assert.equal(tx.body.tx_status, 'pending');
+      assert.equal(tx.body.replaced_by_tx_id, null);
+    }
+  });
+
+  test('sponsored tx replaces conflicting txs on both its origin and sponsor nonces', async () => {
+    const sponsor = 'ST332DWHNM323264X869MKXFZABSE5WZ60EA07TJ1';
+    const alice = 'ST3SW0AXHXFDHGQY2XMMDHN6T7VPY395WS7ZRGQCD';
+    const bob = 'ST2FY5WGSFA209NFHDT08NCB8Y9J3P1H19YR2D674';
+    await db.update(
+      new TestBlockBuilder({
+        block_height: 1,
+        index_block_hash: `0x0001`,
+        parent_index_block_hash: `0x0000`,
+      }).build()
+    );
+    await db.updateMempoolTxs({
+      mempoolTxs: [
+        // Uses the sponsor's nonce 3.
+        testMempoolTx({
+          tx_id: `0xff0001`,
+          sender_address: alice,
+          nonce: 0,
+          sponsored: true,
+          sponsor_address: sponsor,
+          sponsor_nonce: 3,
+          fee_rate: 500n,
+        }),
+        // Uses Bob's nonce 7.
+        testMempoolTx({ tx_id: `0xff0002`, sender_address: bob, nonce: 7, fee_rate: 100n }),
+      ],
+    });
+
+    // Uses both Bob's nonce 7 and the sponsor's nonce 3, outbidding both txs above.
+    await db.updateMempoolTxs({
+      mempoolTxs: [
+        testMempoolTx({
+          tx_id: `0xff0003`,
+          sender_address: bob,
+          nonce: 7,
+          sponsored: true,
+          sponsor_address: sponsor,
+          sponsor_nonce: 3,
+          fee_rate: 1000n,
+        }),
+      ],
+    });
+    const request = await supertest(api.server).get(`/extended/v1/tx/mempool`);
+    assert.equal(request.body.total, 1);
+    assert.equal(request.body.results[0].tx_id, '0xff0003');
+    for (const txId of ['0xff0001', '0xff0002']) {
+      const tx = await supertest(api.server).get(`/extended/v1/tx/${txId}`);
+      assert.equal(tx.body.tx_status, 'dropped_replace_by_fee');
+      assert.equal(tx.body.replaced_by_tx_id, '0xff0003');
+    }
+    const [chainTip] = await client<{ mempool_tx_count: number }[]>`
+      SELECT mempool_tx_count FROM chain_tip
+    `;
+    assert.equal(chainTip.mempool_tx_count, 1);
+  });
+
+  test('confirmed sponsored tx prunes and restores txs on both its nonces', async () => {
+    const sponsor = 'ST332DWHNM323264X869MKXFZABSE5WZ60EA07TJ1';
+    const bob = 'ST2FY5WGSFA209NFHDT08NCB8Y9J3P1H19YR2D674';
+    await db.update(
+      new TestBlockBuilder({
+        block_height: 1,
+        index_block_hash: `0x0001`,
+        parent_index_block_hash: `0x0000`,
+      }).build()
+    );
+    await db.updateMempoolTxs({
+      mempoolTxs: [
+        testMempoolTx({ tx_id: `0xff0001`, sender_address: bob, nonce: 7, fee_rate: 100n }),
+        testMempoolTx({ tx_id: `0xff0002`, sender_address: sponsor, nonce: 3, fee_rate: 100n }),
+        // Shares no nonce with the confirmed tx below: 7 is Bob's nonce, not the sponsor's.
+        testMempoolTx({ tx_id: `0xff0003`, sender_address: sponsor, nonce: 7, fee_rate: 100n }),
+      ],
+    });
+
+    // Confirm a tx that uses Bob's nonce 7 and the sponsor's nonce 3 without it ever touching the
+    // mempool.
+    await db.update(
+      new TestBlockBuilder({
+        block_height: 2,
+        index_block_hash: `0x0002`,
+        parent_index_block_hash: `0x0001`,
+      })
+        .addTx({
+          tx_id: `0xaa0001`,
+          sender_address: bob,
+          nonce: 7,
+          sponsored: true,
+          sponsor_address: sponsor,
+          sponsor_nonce: 3,
+          fee_rate: 200n,
+        })
+        .build()
+    );
+    let request = await supertest(api.server).get(`/extended/v1/tx/mempool`);
+    assert.equal(request.body.total, 1);
+    assert.equal(request.body.results[0].tx_id, '0xff0003');
+    for (const txId of ['0xff0001', '0xff0002']) {
+      const tx = await supertest(api.server).get(`/extended/v1/tx/${txId}`);
+      assert.equal(tx.body.tx_status, 'dropped_replace_by_fee');
+      assert.equal(tx.body.replaced_by_tx_id, '0xaa0001');
+    }
+
+    // Re-org block 2. The confirmed tx returns to the mempool, where it still outbids the txs on
+    // both of its nonces.
+    await db.update(
+      new TestBlockBuilder({
+        block_height: 2,
+        index_block_hash: `0x00b2`,
+        parent_index_block_hash: `0x0001`,
+      }).build()
+    );
+    await db.update(
+      new TestBlockBuilder({
+        block_height: 3,
+        index_block_hash: `0x00b3`,
+        parent_index_block_hash: `0x00b2`,
+      }).build()
+    );
+    request = await supertest(api.server).get(`/extended/v1/tx/mempool`);
+    assert.equal(request.body.total, 2);
+    assert.deepEqual(request.body.results.map((r: { tx_id: string }) => r.tx_id).sort(), [
+      '0xaa0001',
+      '0xff0003',
+    ]);
+    for (const txId of ['0xff0001', '0xff0002']) {
+      const tx = await supertest(api.server).get(`/extended/v1/tx/${txId}`);
+      assert.equal(tx.body.tx_status, 'dropped_replace_by_fee');
+      assert.equal(tx.body.replaced_by_tx_id, '0xaa0001');
+    }
+    const [chainTip] = await client<{ mempool_tx_count: number }[]>`
+      SELECT mempool_tx_count FROM chain_tip
+    `;
+    assert.equal(chainTip.mempool_tx_count, 2);
   });
 
   test('account estimated balance from mempool activity', async () => {
