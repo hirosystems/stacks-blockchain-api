@@ -3688,8 +3688,10 @@ export class PgWriteStore extends PgStore {
     // one with the highest fee in the mempool and RBF all the others. A tx that loses in any of its
     // slots is RBFd, since the node's mempool can't keep it alongside that slot's winner.
     //
-    // Note that we're not filtering by `pruned` when we look at the mempool, because we want the
-    // RBF data to be retroactively applied to all conflicting txs we've ever seen.
+    // Note that we're not filtering by `pruned` when we look for losers, because we want the RBF
+    // data to be retroactively applied to all conflicting txs we've ever seen. Only unpruned txs
+    // can win in the mempool, though: a tx pruned for losing one of its slots must not keep
+    // blocking its other slot.
     for (const batch of batchIterate(txIds, INSERT_BATCH_SIZE)) {
       await sql`
         WITH input_txids (tx_id) AS (
@@ -3743,6 +3745,7 @@ export class PgWriteStore extends PgStore {
         highest_fee_mempool_txs AS (
           SELECT DISTINCT ON (address, nonce) tx_id, address, nonce
           FROM same_slot_mempool_txs
+          WHERE pruned = false
           ORDER BY address, nonce, fee_rate DESC, receipt_time DESC
         ),
         winning_txs AS (

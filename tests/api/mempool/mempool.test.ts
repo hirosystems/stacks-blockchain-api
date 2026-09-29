@@ -1989,6 +1989,68 @@ describe('mempool tests', () => {
     assert.equal(chainTip.mempool_tx_count, 1);
   });
 
+  test('tx replaced on its sponsor nonce does not keep blocking its origin nonce', async () => {
+    const sponsor = 'ST332DWHNM323264X869MKXFZABSE5WZ60EA07TJ1';
+    const alice = 'ST3SW0AXHXFDHGQY2XMMDHN6T7VPY395WS7ZRGQCD';
+    const bob = 'ST2FY5WGSFA209NFHDT08NCB8Y9J3P1H19YR2D674';
+    await db.update(
+      new TestBlockBuilder({
+        block_height: 1,
+        index_block_hash: `0x0001`,
+        parent_index_block_hash: `0x0000`,
+      }).build()
+    );
+    await db.updateMempoolTxs({
+      mempoolTxs: [
+        testMempoolTx({
+          tx_id: `0xff0001`,
+          sender_address: alice,
+          nonce: 0,
+          sponsored: true,
+          sponsor_address: sponsor,
+          sponsor_nonce: 3,
+          fee_rate: 1000n,
+        }),
+      ],
+    });
+
+    // Loses the sponsor's nonce 3 to the tx above, which frees Bob's nonce 7.
+    await db.updateMempoolTxs({
+      mempoolTxs: [
+        testMempoolTx({
+          tx_id: `0xff0002`,
+          sender_address: bob,
+          nonce: 7,
+          sponsored: true,
+          sponsor_address: sponsor,
+          sponsor_nonce: 3,
+          fee_rate: 500n,
+        }),
+      ],
+    });
+    let tx = await supertest(api.server).get(`/extended/v1/tx/0xff0002`);
+    assert.equal(tx.body.tx_status, 'dropped_replace_by_fee');
+    assert.equal(tx.body.replaced_by_tx_id, '0xff0001');
+
+    // A lower fee tx on Bob's nonce 7 is not replaced by the already dropped tx.
+    await db.updateMempoolTxs({
+      mempoolTxs: [
+        testMempoolTx({ tx_id: `0xff0003`, sender_address: bob, nonce: 7, fee_rate: 200n }),
+      ],
+    });
+    const request = await supertest(api.server).get(`/extended/v1/tx/mempool`);
+    assert.equal(request.body.total, 2);
+    tx = await supertest(api.server).get(`/extended/v1/tx/0xff0003`);
+    assert.equal(tx.body.tx_status, 'pending');
+    assert.equal(tx.body.replaced_by_tx_id, null);
+    tx = await supertest(api.server).get(`/extended/v1/tx/0xff0002`);
+    assert.equal(tx.body.tx_status, 'dropped_replace_by_fee');
+    const [chainTip] = await client<{ mempool_tx_count: number }[]>`
+      SELECT mempool_tx_count FROM chain_tip
+    `;
+    assert.equal(chainTip.mempool_tx_count, 2);
+  });
+
   test('confirmed sponsored tx prunes and restores txs on both its nonces', async () => {
     const sponsor = 'ST332DWHNM323264X869MKXFZABSE5WZ60EA07TJ1';
     const bob = 'ST2FY5WGSFA209NFHDT08NCB8Y9J3P1H19YR2D674';
