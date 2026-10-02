@@ -107,6 +107,11 @@ export const OpenApiSchemaOptions: SwaggerOptions = {
         name: 'Proof of Transfer',
         description: 'Endpoints to get information about the Proof of Transfer consensus mechanism',
       },
+      {
+        name: 'Staking',
+        description:
+          'Read-only endpoints to obtain PoX-5 Bitcoin Staking details: bonds, allowlists, registrations, cycles, signers and rewards',
+      },
     ],
   },
 };
