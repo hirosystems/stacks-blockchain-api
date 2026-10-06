@@ -116,6 +116,21 @@ export const BlockPositionSchema = Type.Object({
 });
 export type BlockPosition = Static<typeof BlockPositionSchema>;
 
+export const BlockSummarySchema = Type.Object(
+  {
+    height: BlockHeightSchema,
+    hash: BlockHashSchema,
+    index_hash: Type.String({
+      description: 'Index block hash of the block',
+    }),
+    time: Type.Number({
+      description: 'Unix timestamp (in seconds) indicating when this block was mined.',
+    }),
+  },
+  { title: 'BlockSummary' }
+);
+export type BlockSummary = Static<typeof BlockSummarySchema>;
+
 export const TransactionPositionSchema = Type.Object({
   tx_id: TransactionIdSchema,
   event_index: Type.Integer({

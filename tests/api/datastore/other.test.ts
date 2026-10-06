@@ -188,6 +188,7 @@ describe('other tests', () => {
       index_block_hash: dbBlock1.index_block_hash,
       from_index_block_hash: dbBlock1.index_block_hash,
       mature_block_height: dbBlock1.block_height,
+      reward_index: 0,
       canonical: true,
       recipient: testAddr1,
       miner_address: testAddr1,

@@ -42,6 +42,7 @@ export enum ResourceType {
   BlockSignerSignature,
   FtBalance,
   NftBalance,
+  MinerReward,
 }
 
 export const pagingQueryLimits: Record<ResourceType, { defaultLimit: number; maxLimit: number }> = {
@@ -104,6 +105,10 @@ export const pagingQueryLimits: Record<ResourceType, { defaultLimit: number; max
   [ResourceType.NftBalance]: {
     defaultLimit: 100,
     maxLimit: 200,
+  },
+  [ResourceType.MinerReward]: {
+    defaultLimit: 20,
+    maxLimit: 50,
   },
 };
 

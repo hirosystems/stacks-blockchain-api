@@ -1100,13 +1100,14 @@ export function parseNewBlockMessage(
   logger.debug(`Received block ${msg.block_hash} (${msg.block_height}) from node`, dbBlock);
 
   const dbMinerRewards: DbMinerReward[] = [];
-  for (const minerReward of msg.matured_miner_rewards) {
+  for (const [rewardIndex, minerReward] of msg.matured_miner_rewards.entries()) {
     const dbMinerReward: DbMinerReward = {
       canonical: true,
       block_hash: minerReward.from_stacks_block_hash,
       index_block_hash: msg.index_block_hash,
       from_index_block_hash: minerReward.from_index_consensus_hash,
       mature_block_height: msg.block_height,
+      reward_index: rewardIndex,
       recipient: minerReward.recipient,
       // If `miner_address` is null then it means pre-Stacks2.1 data, and the `recipient` can be accurately used
       miner_address: minerReward.miner_address ?? minerReward.recipient,
