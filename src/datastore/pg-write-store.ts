@@ -366,6 +366,7 @@ export class PgWriteStore extends PgStore {
           q.enqueue(() => this.updateStxBalances(sql, data.txs, data.minerRewards));
           q.enqueue(() => this.updateStxSupply(sql, data.txs, data.minerRewards));
           q.enqueue(() => this.updateFtBalances(sql, data.txs));
+          q.enqueue(() => this.updatePrincipalMinerRewardTotals(sql, data.minerRewards));
         }
         if (data.poxSetSigners && data.poxSetSigners.signers) {
           const poxSet = data.poxSetSigners;
@@ -1816,6 +1817,7 @@ export class PgWriteStore extends PgStore {
         index_block_hash: minerReward.index_block_hash,
         from_index_block_hash: minerReward.from_index_block_hash,
         mature_block_height: minerReward.mature_block_height,
+        reward_index: minerReward.reward_index,
         canonical: minerReward.canonical,
         recipient: minerReward.recipient,
         // If `miner_address` is null then it means pre-Stacks2.1 data, and the `recipient` can be accurately used
@@ -1829,6 +1831,52 @@ export class PgWriteStore extends PgStore {
         INSERT INTO miner_rewards ${sql(values)}
       `;
     }
+  }
+
+  /**
+   * Adds a canonical block's matured miner rewards to each recipient's
+   * `principal_miner_reward_totals` row. Zero-value rewards add nothing to the amounts and aren't
+   * counted. Re-orgs apply the reverse delta in `markEntitiesCanonical`.
+   */
+  async updatePrincipalMinerRewardTotals(
+    sql: PgSqlClient,
+    minerRewards: DbMinerReward[]
+  ): Promise<void> {
+    const totals = new Map<
+      string,
+      { principal: string; reward_count: number; coinbase_amount: bigint; fees_amount: bigint }
+    >();
+    for (const reward of minerRewards) {
+      if (!reward.canonical) continue;
+      const total = totals.get(reward.recipient) ?? {
+        principal: reward.recipient,
+        reward_count: 0,
+        coinbase_amount: 0n,
+        fees_amount: 0n,
+      };
+      const fees =
+        reward.tx_fees_anchored +
+        reward.tx_fees_streamed_confirmed +
+        reward.tx_fees_streamed_produced;
+      if (reward.coinbase_amount + fees > 0n) total.reward_count += 1;
+      total.coinbase_amount += reward.coinbase_amount;
+      total.fees_amount += fees;
+      totals.set(reward.recipient, total);
+    }
+    if (totals.size === 0) return;
+    const values = Array.from(totals.values(), t => ({
+      principal: t.principal,
+      reward_count: t.reward_count,
+      coinbase_amount: t.coinbase_amount.toString(),
+      fees_amount: t.fees_amount.toString(),
+    }));
+    await sql`
+      INSERT INTO principal_miner_reward_totals ${sql(values)}
+      ON CONFLICT (principal) DO UPDATE SET
+        reward_count = principal_miner_reward_totals.reward_count + EXCLUDED.reward_count,
+        coinbase_amount = principal_miner_reward_totals.coinbase_amount + EXCLUDED.coinbase_amount,
+        fees_amount = principal_miner_reward_totals.fees_amount + EXCLUDED.fees_amount
+    `;
   }
 
   async updateBlock(sql: PgSqlClient, block: DbBlock): Promise<number> {
@@ -4550,6 +4598,37 @@ export class PgWriteStore extends PgStore {
           DO UPDATE
           SET balance = ft_balances.balance + EXCLUDED.balance
           RETURNING ft_balances.address
+        ),
+        reward_total_changes AS (
+          SELECT
+            recipient AS principal,
+            SUM(
+              CASE
+                WHEN coinbase_amount + tx_fees_anchored + tx_fees_streamed_confirmed
+                  + tx_fees_streamed_produced = 0 THEN 0
+                WHEN canonical THEN 1
+                ELSE -1
+              END
+            )::integer AS reward_count,
+            SUM(CASE WHEN canonical THEN coinbase_amount ELSE -coinbase_amount END)
+              AS coinbase_amount,
+            SUM(
+              (tx_fees_anchored + tx_fees_streamed_confirmed + tx_fees_streamed_produced)
+              * CASE WHEN canonical THEN 1 ELSE -1 END
+            ) AS fees_amount
+          FROM updated_rewards
+          GROUP BY recipient
+        ),
+        update_reward_totals AS (
+          INSERT INTO principal_miner_reward_totals (
+            principal, reward_count, coinbase_amount, fees_amount
+          )
+          SELECT * FROM reward_total_changes
+          ON CONFLICT (principal) DO UPDATE SET
+            reward_count = principal_miner_reward_totals.reward_count + EXCLUDED.reward_count,
+            coinbase_amount =
+              principal_miner_reward_totals.coinbase_amount + EXCLUDED.coinbase_amount,
+            fees_amount = principal_miner_reward_totals.fees_amount + EXCLUDED.fees_amount
         ),
         supply_change AS (
           SELECT SUM(CASE WHEN canonical THEN coinbase_amount ELSE -coinbase_amount END) AS delta

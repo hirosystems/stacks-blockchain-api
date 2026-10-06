@@ -1,6 +1,7 @@
 import {
   FtBalanceCursor,
   FtHolderCursor,
+  MinerRewardCursor,
   NftBalanceCursor,
   EventPositionCursor,
   TransactionCursor,
@@ -12,6 +13,7 @@ import { DbBondLockupTx, DbSearchHit } from './types.js';
 import { SearchMatchQuality, SearchTermText } from '../../api/search-term.js';
 
 const MAX_TX_INDEX = 0x7fff;
+const MAX_REWARD_INDEX = 0x7fff;
 
 export type TransactionCursorRow = {
   block_height: number;
@@ -112,6 +114,36 @@ export const resolveEventPositionCursor = async (
 
 export const encodeEventPositionCursor = (row: EventPositionCursorRow): EventPositionCursor =>
   `${row.block_height}:${row.microblock_sequence}:${row.tx_index}:${row.event_index}`;
+
+export type MinerRewardCursorRow = {
+  mature_block_height: number;
+  reward_index: number;
+};
+
+/**
+ * Parses a matured miner reward cursor (`mature_block_height:reward_index`).
+ * @param cursor - The miner reward cursor.
+ * @returns The miner reward cursor row.
+ */
+export const parseMinerRewardCursor = (cursor: MinerRewardCursor): MinerRewardCursorRow => {
+  const [heightStr, rewardIndexStr] = cursor.split(':');
+  const parsed = {
+    mature_block_height: parseInt(heightStr, 10),
+    reward_index: parseInt(rewardIndexStr, 10),
+  };
+  // `mature_block_height` is an integer and `reward_index` a smallint: reject values postgres
+  // would fail to compare against them, so they surface as a 400 instead of a 500.
+  if (parsed.mature_block_height > I32_MAX || parsed.reward_index > MAX_REWARD_INDEX) {
+    throw new InvalidRequestError(
+      `Cursor value out of range: ${cursor}`,
+      InvalidRequestErrorType.invalid_param
+    );
+  }
+  return parsed;
+};
+
+export const encodeMinerRewardCursor = (row: MinerRewardCursorRow): MinerRewardCursor =>
+  `${row.mature_block_height}:${row.reward_index}`;
 
 export type FtBalanceCursorRow = {
   balance: string;

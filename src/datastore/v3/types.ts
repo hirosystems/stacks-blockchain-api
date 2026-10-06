@@ -537,3 +537,31 @@ export interface DbMempoolSummaryRow {
   receipt_height_p75: number | null;
   receipt_height_p95: number | null;
 }
+
+/** A canonical matured miner reward credited to a principal. */
+export interface DbPrincipalMinerReward {
+  recipient: string;
+  miner_address: string;
+  /** Height of the block in which the reward matured. */
+  mature_block_height: number;
+  /** Position of the reward within its maturing block's matured rewards. */
+  reward_index: number;
+  mature_block_hash: string;
+  mature_index_block_hash: string;
+  mature_block_time: number;
+  source_block_height: number;
+  source_block_hash: string;
+  source_index_block_hash: string;
+  source_block_time: number;
+  coinbase_amount: string;
+  /** Sum of all the reward's transaction fees. */
+  fees_amount: string;
+}
+
+/** A principal's lifetime canonical matured miner rewards. */
+export interface DbPrincipalMiningSummary {
+  reward_count: number;
+  coinbase_amount: string;
+  /** Sum of all the reward's transaction fees. */
+  fees_amount: string;
+}

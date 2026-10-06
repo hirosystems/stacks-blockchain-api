@@ -17,6 +17,8 @@ import {
   DbPrincipalBondPosition,
   DbPrincipalFtBalance,
   DbPrincipalFtTransfer,
+  DbPrincipalMinerReward,
+  DbPrincipalMiningSummary,
   DbPrincipalNftBalance,
   DbPrincipalStakingSummary,
   DbPrincipalStxTransfer,
@@ -77,6 +79,7 @@ import type {
   BondCursor,
   FtBalanceCursor,
   FtHolderCursor,
+  MinerRewardCursor,
   NftBalanceCursor,
   SignerCursor,
   EventPositionCursor,
@@ -86,6 +89,7 @@ import type {
 import {
   encodeFtBalanceCursor,
   encodeFtHolderCursor,
+  encodeMinerRewardCursor,
   encodeNftBalanceCursor,
   encodeEventPositionCursor,
   encodeTransactionCursor,
@@ -93,6 +97,7 @@ import {
   parseBondLockupTxs,
   parseFtBalanceCursor,
   parseFtHolderCursor,
+  parseMinerRewardCursor,
   parseNftBalanceCursor,
   resolveEventPositionCursor,
   resolveTransactionCursor,
@@ -1909,6 +1914,132 @@ export class PgStoreV3 extends BasePgStoreModule {
         return null;
       }
       return { ...result[0], btc_lockup_txs: parseBondLockupTxs(result[0].btc_lockup_txs) };
+    });
+  }
+
+  /**
+   * Gets a principal's lifetime canonical matured miner rewards from the materialized
+   * `principal_miner_reward_totals` row. A principal that never received a reward reads as zeros.
+   * @param args - The arguments for the query.
+   * @returns The mining summary.
+   */
+  async getPrincipalMiningSummary(args: {
+    principal: Principal;
+  }): Promise<DbPrincipalMiningSummary> {
+    const [row] = await this.sql<DbPrincipalMiningSummary[]>`
+      SELECT
+        reward_count,
+        coinbase_amount::text,
+        fees_amount::text
+      FROM principal_miner_reward_totals
+      WHERE principal = ${args.principal}
+    `;
+    return (
+      row ?? {
+        reward_count: 0,
+        coinbase_amount: '0',
+        fees_amount: '0',
+      }
+    );
+  }
+
+  /**
+   * Gets the canonical matured miner rewards credited to a principal, most recent first,
+   * keyset-paginated by `(mature_block_height, reward_index)`. Zero-value rewards (typically a
+   * parent miner's empty share of streamed fees) are left out, as they are from the `total`.
+   * @param args - The arguments for the query.
+   * @returns The principal's matured miner rewards.
+   */
+  async getPrincipalMinerRewards(args: {
+    principal: Principal;
+    limit: number;
+    cursor?: MinerRewardCursor;
+  }): Promise<DbCursorPaginatedResult<DbPrincipalMinerReward>> {
+    return await this.sqlTransaction(async sql => {
+      const rewardFilter = sql`
+        recipient = ${args.principal}
+        AND canonical = true
+        AND coinbase_amount + tx_fees_anchored + tx_fees_streamed_confirmed
+          + tx_fees_streamed_produced > 0
+      `;
+      let cursorFilter = sql``;
+      if (args.cursor) {
+        const cursor = parseMinerRewardCursor(args.cursor);
+        cursorFilter = sql`
+          AND (mature_block_height, reward_index)
+              <= (${cursor.mature_block_height}, ${cursor.reward_index})
+        `;
+      }
+      const [countQuery] = await sql<{ total: number }[]>`
+        SELECT reward_count AS total
+        FROM principal_miner_reward_totals
+        WHERE principal = ${args.principal}
+      `;
+      const total = countQuery?.total ?? 0;
+      // Page through `miner_rewards` first so the block joins only run for the returned rows.
+      const resultQuery = await sql<DbPrincipalMinerReward[]>`
+        WITH rewards AS (
+          SELECT *
+          FROM miner_rewards
+          WHERE ${rewardFilter}
+            ${cursorFilter}
+          ORDER BY mature_block_height DESC, reward_index DESC
+          LIMIT ${args.limit + 1}
+        )
+        SELECT
+          r.recipient,
+          COALESCE(r.miner_address, r.recipient) AS miner_address,
+          r.mature_block_height,
+          r.reward_index,
+          mb.block_hash AS mature_block_hash,
+          r.index_block_hash AS mature_index_block_hash,
+          mb.block_time AS mature_block_time,
+          sb.block_height AS source_block_height,
+          r.block_hash AS source_block_hash,
+          r.from_index_block_hash AS source_index_block_hash,
+          sb.block_time AS source_block_time,
+          r.coinbase_amount::text AS coinbase_amount,
+          (r.tx_fees_anchored + r.tx_fees_streamed_confirmed + r.tx_fees_streamed_produced)::text
+            AS fees_amount
+        FROM rewards AS r
+        INNER JOIN blocks AS mb ON mb.index_block_hash = r.index_block_hash
+        INNER JOIN blocks AS sb ON sb.index_block_hash = r.from_index_block_hash
+        ORDER BY r.mature_block_height DESC, r.reward_index DESC
+      `;
+
+      const hasNextPage = resultQuery.count > args.limit;
+      const results = hasNextPage ? resultQuery.slice(0, args.limit) : resultQuery;
+
+      const nextResult = resultQuery[resultQuery.length - 1];
+      const nextCursor = hasNextPage && nextResult ? encodeMinerRewardCursor(nextResult) : null;
+
+      const firstResult = results[0];
+      const currentCursor = firstResult ? encodeMinerRewardCursor(firstResult) : null;
+
+      let prevCursor: string | null = null;
+      if (firstResult) {
+        const prevPageQuery = await sql<{ mature_block_height: number; reward_index: number }[]>`
+          SELECT mature_block_height, reward_index
+          FROM miner_rewards
+          WHERE ${rewardFilter}
+            AND (mature_block_height, reward_index)
+                > (${firstResult.mature_block_height}, ${firstResult.reward_index})
+          ORDER BY mature_block_height ASC, reward_index ASC
+          LIMIT ${args.limit}
+        `;
+        if (prevPageQuery.length > 0) {
+          prevCursor = encodeMinerRewardCursor(prevPageQuery[prevPageQuery.length - 1]);
+        }
+      }
+
+      return {
+        limit: args.limit,
+        next_cursor: nextCursor,
+        prev_cursor: prevCursor,
+        current_cursor: currentCursor,
+        total,
+        results,
+      };
     });
   }
 

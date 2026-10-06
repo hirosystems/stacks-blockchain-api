@@ -850,6 +850,7 @@ export class PgStore extends BasePgStore {
         from_index_block_hash: string;
         index_block_hash: string;
         mature_block_height: number;
+        reward_index: number;
         recipient: string;
         miner_address: string | null;
         coinbase_amount: number;
@@ -858,7 +859,7 @@ export class PgStore extends BasePgStore {
         tx_fees_streamed_produced: number;
       }[]
     >`
-      SELECT id, mature_block_height, recipient, miner_address, block_hash, index_block_hash, from_index_block_hash,
+      SELECT id, mature_block_height, reward_index, recipient, miner_address, block_hash, index_block_hash, from_index_block_hash,
         canonical, coinbase_amount, tx_fees_anchored, tx_fees_streamed_confirmed, tx_fees_streamed_produced
       FROM miner_rewards
       WHERE canonical = true AND mature_block_height = ${blockHeight}
@@ -871,6 +872,7 @@ export class PgStore extends BasePgStore {
         index_block_hash: r.index_block_hash,
         canonical: true,
         mature_block_height: r.mature_block_height,
+        reward_index: r.reward_index,
         recipient: r.recipient,
         // If `miner_address` is null then it means pre-Stacks2.1 data, and the `recipient` can be accurately used
         miner_address: r.miner_address ?? r.recipient,

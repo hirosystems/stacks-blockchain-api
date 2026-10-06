@@ -2,8 +2,7 @@ import { Static, Type } from '@sinclair/typebox';
 import {
   AddressSchema,
   AssetIdentifierSchema,
-  BlockHashSchema,
-  BlockHeightSchema,
+  BlockSummarySchema,
   SmartContractIdSchema,
 } from './common.js';
 import { SmartContractSchema } from './smart-contracts.js';
@@ -24,21 +23,6 @@ export const SearchEntityTypeSchema = Type.Union(
   }
 );
 export type SearchEntityType = Static<typeof SearchEntityTypeSchema>;
-
-export const BlockSummarySchema = Type.Object(
-  {
-    height: BlockHeightSchema,
-    hash: BlockHashSchema,
-    index_hash: Type.String({
-      description: 'Index block hash of the block',
-    }),
-    time: Type.Number({
-      description: 'Unix timestamp (in seconds) indicating when this block was mined.',
-    }),
-  },
-  { title: 'BlockSummary' }
-);
-export type BlockSummary = Static<typeof BlockSummarySchema>;
 
 export const BitcoinBlockSummarySchema = Type.Object(
   {

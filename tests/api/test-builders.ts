@@ -563,6 +563,7 @@ interface TestMinerRewardArgs {
   index_block_hash?: string;
   from_index_block_hash?: string;
   mature_block_height?: number;
+  reward_index?: number;
   canonical?: boolean;
   recipient?: string;
   coinbase_amount?: bigint;
@@ -582,6 +583,7 @@ function testMinerReward(args?: TestMinerRewardArgs): DbMinerReward {
     index_block_hash: args?.index_block_hash ?? INDEX_BLOCK_HASH,
     from_index_block_hash: args?.from_index_block_hash ?? INDEX_BLOCK_HASH,
     mature_block_height: args?.mature_block_height ?? BLOCK_HEIGHT,
+    reward_index: args?.reward_index ?? 0,
     canonical: args?.canonical ?? true,
     recipient: args?.recipient ?? MINER_RECIPIENT,
     miner_address: args?.recipient ?? MINER_RECIPIENT,
@@ -773,6 +775,7 @@ export class TestBlockBuilder {
   addMinerReward(args?: TestMinerRewardArgs): TestBlockBuilder {
     const defaultArgs: TestMinerRewardArgs = {
       mature_block_height: this.block.block_height,
+      reward_index: this.data.minerRewards.length,
       block_hash: this.block.block_hash,
       index_block_hash: this.block.index_block_hash,
     };

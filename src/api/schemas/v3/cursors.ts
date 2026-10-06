@@ -79,6 +79,13 @@ export const TransactionEventCursorSchema = Type.String({
 });
 export type TransactionEventCursor = Static<typeof TransactionEventCursorSchema>;
 
+export const MinerRewardCursorSchema = Type.String({
+  pattern: '^[0-9]+:[0-9]+$',
+  description:
+    'Cursor for paginating matured miner rewards. Format: mature_block_height:reward_index',
+});
+export type MinerRewardCursor = Static<typeof MinerRewardCursorSchema>;
+
 export const BondCursorSchema = Type.String({
   pattern: '^\\d+$',
   description: 'Cursor for paginating bonds. Format: bond_index',

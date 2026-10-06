@@ -19,6 +19,7 @@ import {
   CursorPaginatedResponse,
   FtBalanceCursorSchema,
   MempoolTransactionCursorSchema,
+  MinerRewardCursorSchema,
   NftBalanceCursorSchema,
   EventPositionCursorSchema,
   TransactionCursorSchema,
@@ -44,6 +45,14 @@ import {
   serializeDbPrincipalStakingSummary,
 } from '../../serializers/v3/bonds.js';
 import { handleChainTipCache } from '../../controllers/cache-controller.js';
+import {
+  PrincipalMinerRewardSchema,
+  PrincipalMiningSummarySchema,
+} from '../../schemas/v3/entities/principal-miner-rewards.js';
+import {
+  serializePrincipalMinerReward,
+  serializePrincipalMiningSummary,
+} from '../../serializers/v3/miner-rewards.js';
 import {
   PrincipalFtPositionSchema,
   PrincipalNftPositionSchema,
@@ -397,6 +406,70 @@ export const PrincipalsRoutes: FastifyPluginAsync<
           current: results.current_cursor,
         },
         results: results.results.map(serializeDbPrincipalBondPosition),
+      });
+    }
+  );
+
+  fastify.get(
+    '/principals/:principal/mining',
+    {
+      preHandler: handlePrincipalCache,
+      schema: {
+        operationId: 'get_principal_mining_summary',
+        summary: 'Get principal mining summary',
+        description:
+          "A one-call overview of a principal's mining: its lifetime matured miner rewards (coinbase and fees, in µSTX), counting only rewards on the canonical chain. The individual rewards are paginated at `/principals/:principal/mining/rewards`.",
+        tags: ['Accounts'],
+        params: Type.Object({ principal: PrincipalSchema }),
+        response: {
+          200: PrincipalMiningSummarySchema,
+        },
+      },
+    },
+    async (req, reply) => {
+      const summary = await fastify.db.v3.getPrincipalMiningSummary({
+        principal: req.params.principal,
+      });
+      await reply.send(serializePrincipalMiningSummary(summary));
+    }
+  );
+
+  fastify.get(
+    '/principals/:principal/mining/rewards',
+    {
+      preHandler: handlePrincipalCache,
+      schema: {
+        operationId: 'get_principal_mining_rewards',
+        summary: 'Get principal mining rewards',
+        description:
+          "Returns the matured miner rewards credited to a principal, most recent first. Miner rewards are credited to the recipient's STX balance when they mature, without a transaction or STX event, so they don't appear in the principal's transactions or transfers. Each reward reports the `block` it matured (and was credited) in and the `source_block` whose reward matured; a parent-miner share of fees reports the same `source_block` as the miner reward it was paid alongside. Only rewards on the canonical chain are listed; zero-value rewards are left out.",
+        tags: ['Accounts'],
+        params: Type.Object({ principal: PrincipalSchema }),
+        querystring: CursorPaginationQuerystring(MinerRewardCursorSchema, ResourceType.MinerReward),
+        response: {
+          200: CursorPaginatedResponse(
+            PrincipalMinerRewardSchema,
+            MinerRewardCursorSchema,
+            ResourceType.MinerReward
+          ),
+        },
+      },
+    },
+    async (req, reply) => {
+      const results = await fastify.db.v3.getPrincipalMinerRewards({
+        principal: req.params.principal,
+        limit: req.query.limit ?? getPagingQueryLimit(ResourceType.MinerReward),
+        cursor: req.query.cursor,
+      });
+      await reply.send({
+        limit: results.limit,
+        total: results.total,
+        cursor: {
+          next: results.next_cursor,
+          previous: results.prev_cursor,
+          current: results.current_cursor,
+        },
+        results: results.results.map(serializePrincipalMinerReward),
       });
     }
   );

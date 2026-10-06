@@ -109,6 +109,12 @@ export interface DbMinerReward {
   index_block_hash: string;
   from_index_block_hash: string;
   mature_block_height: number;
+  /**
+   * Position of this reward within the maturing block's `matured_miner_rewards` list. A block can
+   * mature several rewards for the same recipient (e.g. a miner's own reward plus its parent-miner
+   * share of streamed fees), so `(index_block_hash, reward_index)` is what identifies a reward.
+   */
+  reward_index: number;
   /** Set to `true` if entry corresponds to the canonical chain tip */
   canonical: boolean;
   /** STX principal */
@@ -1203,6 +1209,7 @@ export interface MinerRewardInsertValues {
   index_block_hash: PgBytea;
   from_index_block_hash: PgBytea;
   mature_block_height: number;
+  reward_index: number;
   canonical: boolean;
   recipient: string;
   miner_address: string | null;
