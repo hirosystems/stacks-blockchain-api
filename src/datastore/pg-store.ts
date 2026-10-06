@@ -4381,25 +4381,43 @@ export class PgStore extends BasePgStore {
 
   /**
    * Retrieves the last transaction IDs with STX, FT or NFT activity for a principal, with or
-   * without mempool transactions. Also returns the current PoX lock state so that ETags
-   * invalidate when STX unlock without a transaction being emitted, which happens both at a
-   * natural PoX cycle boundary and at a PoX version's forced-unlock height (e.g. the
-   * `pox_v4_unlock_height` set when a hard fork activates a new PoX contract).
+   * without mempool transactions. Also returns the current PoX lock state so that ETags invalidate
+   * when STX unlock without a transaction being emitted, which happens both at a natural PoX cycle
+   * boundary and at a PoX version's forced-unlock height (e.g. the `pox_v4_unlock_height` set when
+   * a hard fork activates a new PoX contract).
    *
-   * The lock state is derived from the same source the balance responses use for current-tip
-   * reads — the materialized `stx_locked_balances` table resolved against the `pox_state`
-   * forced-unlock heights (mirroring {@link resolveMaterializedStxLock}) — so the ETag can never
-   * report `locked` while the response body reports an unlocked balance. This covers every PoX
-   * version, including pox-5, whose locks are materialized from synthetic stake events.
+   * The lock state is derived from the same source the balance responses use for current-tip reads
+   * — the materialized `stx_locked_balances` table resolved against the `pox_state` forced-unlock
+   * heights (mirroring {@link resolveMaterializedStxLock}) — so the ETag can never report `locked`
+   * while the response body reports an unlocked balance. This covers every PoX version, including
+   * pox-5, whose locks are materialized from synthetic stake events.
+   *
+   * It also returns the latest canonical matured miner reward credited to the principal. Rewards
+   * change STX balances without a transaction (they're credited when they mature and debited again
+   * if their maturing block is re-orged out), so they need their own ETag component. The node only
+   * reports rewards once matured, so every canonical row is matured at the tip; the index block
+   * hash identifies the block they matured in, so both a new reward and a re-org that orphans or
+   * replaces the latest one change the value.
    * @param includeMempool - include mempool transactions
    * @returns the last confirmed and mempool transaction IDs for the principal, plus PoX lock state
+   * and the latest canonical matured miner reward
    */
   async getPrincipalLastActivityTxIds(
     principal: string,
     includeMempool: boolean = false
-  ): Promise<{ confirmed: string | null; mempool: string | null; pox_state: string | null }> {
+  ): Promise<{
+    confirmed: string | null;
+    mempool: string | null;
+    pox_state: string | null;
+    miner_reward: string | null;
+  }> {
     const result = await this.sql<
-      { confirmed: string | null; mempool: string | null; pox_state: string | null }[]
+      {
+        confirmed: string | null;
+        mempool: string | null;
+        pox_state: string | null;
+        miner_reward: string | null;
+      }[]
     >`
       SELECT (
           SELECT '0x' || encode(tx_id, 'hex') AS tx_id
@@ -4464,7 +4482,14 @@ export class PgStore extends BasePgStore {
             ) ps ON TRUE
             WHERE slb.principal = ${principal}
           ) lock
-        ) AS pox_state
+        ) AS pox_state,
+        (
+          SELECT mature_block_height::text || ':' || encode(index_block_hash, 'hex')
+          FROM miner_rewards
+          WHERE recipient = ${principal} AND canonical = true
+          ORDER BY mature_block_height DESC
+          LIMIT 1
+        ) AS miner_reward
     `;
     return result[0];
   }
