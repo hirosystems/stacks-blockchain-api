@@ -1192,4 +1192,135 @@ describe('cache-control tests', () => {
       .set('If-None-Match', unlockedMempoolEtag);
     assert.equal(cachedMempool.status, 304);
   });
+
+  test('principal cache control invalidates on matured miner rewards and their re-org', async () => {
+    const miner = 'ST28D4Q6RCQSJ6F7TEYWQDS4N1RXYEP9YBWMYSB97';
+    const url = `/extended/v3/principals/${miner}/balances/stx`;
+    const getBalance = async (etag?: string) => {
+      const req = supertest(api.server).get(url);
+      return etag ? req.set('If-None-Match', etag) : req;
+    };
+
+    // Block 1: the miner receives STX, so it has confirmed activity and an ETag.
+    await db.update(
+      new TestBlockBuilder({
+        block_height: 1,
+        index_block_hash: '0x01',
+        parent_index_block_hash: '0x00',
+      })
+        .addTx({ tx_id: '0x0001', token_transfer_recipient_address: miner })
+        .addTxStxEvent({ recipient: miner, amount: 5000n })
+        .build()
+    );
+    const initial = await getBalance();
+    assert.equal(initial.status, 200);
+    assert.equal(JSON.parse(initial.text).balance, '5000');
+    const initialEtag = initial.headers['etag'];
+    assert.ok(initialEtag);
+    assert.equal((await getBalance(initialEtag)).status, 304);
+
+    // Block 2: a miner reward matures. No transaction touches the miner, but its balance changes.
+    await db.update(
+      new TestBlockBuilder({
+        block_height: 2,
+        index_block_hash: '0x02',
+        parent_index_block_hash: '0x01',
+      })
+        .addMinerReward({
+          recipient: miner,
+          coinbase_amount: 1000n,
+          tx_fees_anchored: 0n,
+          tx_fees_streamed_confirmed: 0n,
+          tx_fees_streamed_produced: 0n,
+        })
+        .build()
+    );
+    const rewarded = await getBalance(initialEtag);
+    assert.equal(rewarded.status, 200);
+    assert.equal(JSON.parse(rewarded.text).balance, '6000');
+    const rewardedEtag = rewarded.headers['etag'];
+    assert.ok(rewardedEtag);
+    assert.notEqual(rewardedEtag, initialEtag);
+
+    // Unchanged state: the new ETag is a cache hit, even as the chain advances without rewards.
+    assert.equal((await getBalance(rewardedEtag)).status, 304);
+    await db.update(
+      new TestBlockBuilder({
+        block_height: 3,
+        index_block_hash: '0x03',
+        parent_index_block_hash: '0x02',
+      }).build()
+    );
+    assert.equal((await getBalance(rewardedEtag)).status, 304);
+
+    // Re-org: a longer fork from block 1 orphans block 2, rolling the reward back.
+    await db.update(
+      new TestBlockBuilder({
+        block_height: 2,
+        index_block_hash: '0x02bb',
+        parent_index_block_hash: '0x01',
+      }).build()
+    );
+    await db.update(
+      new TestBlockBuilder({
+        block_height: 3,
+        index_block_hash: '0x03bb',
+        parent_index_block_hash: '0x02bb',
+      }).build()
+    );
+    await db.update(
+      new TestBlockBuilder({
+        block_height: 4,
+        index_block_hash: '0x04bb',
+        parent_index_block_hash: '0x03bb',
+      }).build()
+    );
+    const rolledBack = await getBalance(rewardedEtag);
+    assert.equal(rolledBack.status, 200);
+    assert.equal(JSON.parse(rolledBack.text).balance, '5000');
+    const rolledBackEtag = rolledBack.headers['etag'];
+    assert.ok(rolledBackEtag);
+    assert.notEqual(rolledBackEtag, rewardedEtag);
+    assert.equal((await getBalance(rolledBackEtag)).status, 304);
+  });
+
+  test('principal cache control sets an ETag for reward-only principals', async () => {
+    const miner = 'ST28D4Q6RCQSJ6F7TEYWQDS4N1RXYEP9YBWMYSB97';
+    const url = `/extended/v3/principals/${miner}/balances/stx`;
+
+    await db.update(
+      new TestBlockBuilder({
+        block_height: 1,
+        index_block_hash: '0x01',
+        parent_index_block_hash: '0x00',
+      }).build()
+    );
+    // No activity yet: no ETag.
+    const empty = await supertest(api.server).get(url);
+    assert.equal(empty.status, 200);
+    assert.equal(empty.headers['etag'], undefined);
+
+    await db.update(
+      new TestBlockBuilder({
+        block_height: 2,
+        index_block_hash: '0x02',
+        parent_index_block_hash: '0x01',
+      })
+        .addMinerReward({
+          recipient: miner,
+          coinbase_amount: 1000n,
+          tx_fees_anchored: 0n,
+          tx_fees_streamed_confirmed: 0n,
+          tx_fees_streamed_produced: 0n,
+        })
+        .build()
+    );
+    const rewarded = await supertest(api.server).get(url);
+    assert.equal(rewarded.status, 200);
+    assert.equal(JSON.parse(rewarded.text).balance, '1000');
+    const etag = rewarded.headers['etag'];
+    assert.ok(etag);
+    const cached = await supertest(api.server).get(url).set('If-None-Match', etag);
+    assert.equal(cached.status, 304);
+  });
 });

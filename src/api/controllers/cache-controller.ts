@@ -183,9 +183,14 @@ async function calculateETag(
           principal,
           etagType == ETagType.principalMempool
         );
-        if (!activity.confirmed && !activity.mempool) return ETAG_EMPTY;
+        if (!activity.confirmed && !activity.mempool && !activity.miner_reward) return ETAG_EMPTY;
         return sha256(
-          `${activity.confirmed ?? ''}:${activity.mempool ?? ''}:${activity.pox_state ?? ''}`
+          [
+            activity.confirmed ?? '',
+            activity.mempool ?? '',
+            activity.pox_state ?? '',
+            activity.miner_reward ?? '',
+          ].join(':')
         );
       }
     }
