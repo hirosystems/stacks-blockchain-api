@@ -1,6 +1,6 @@
 {
   "name": "@hirosystems/stacks-blockchain-api",
-  "version": "9.4.0",
+  "version": "9.5.0",
   "type": "module",
   "main": "./lib/index.js",
   "scripts": {
