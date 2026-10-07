@@ -2013,6 +2013,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/extended/v3/principals/{principal}/mining": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get principal mining summary
+         * @description A one-call overview of a principal's mining: its lifetime matured miner rewards (coinbase and fees, in µSTX), counting only rewards on the canonical chain. The individual rewards are paginated at `/principals/:principal/mining/rewards`.
+         */
+        get: operations["get_principal_mining_summary"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/extended/v3/principals/{principal}/mining/rewards": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get principal mining rewards
+         * @description Returns the matured miner rewards credited to a principal, most recent first. Miner rewards are credited to the recipient's STX balance when they mature, without a transaction or STX event, so they don't appear in the principal's transactions or transfers. Each reward reports the `block` it matured (and was credited) in and the `source_block` whose reward matured; a parent-miner share of fees reports the same `source_block` as the miner reward it was paid alongside. Only rewards on the canonical chain are listed; zero-value rewards are left out.
+         */
+        get: operations["get_principal_mining_rewards"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/extended/v3/principals/{principal}/balances/stx": {
         parameters: {
             query?: never;
@@ -37343,6 +37383,184 @@ export interface operations {
                                     claimable: string;
                                 };
                             };
+                        }[];
+                    };
+                };
+            };
+            /** @description Default Response */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: string;
+                        message?: string;
+                    } & {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
+    get_principal_mining_summary: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                principal: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        rewards: {
+                            /** @description Number of non-zero matured miner rewards received */
+                            count: number;
+                            /**
+                             * Amount
+                             * @description Amount
+                             * @example 1000000
+                             */
+                            coinbase: string;
+                            /**
+                             * Amount
+                             * @description Transaction fees included in the reward, in µSTX
+                             * @example 1000000
+                             */
+                            fees: string;
+                            /**
+                             * Amount
+                             * @description Amount
+                             * @example 1000000
+                             */
+                            total: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: string;
+                        message?: string;
+                    } & {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
+    get_principal_mining_rewards: {
+        parameters: {
+            query?: {
+                /** @description Number of results per page */
+                limit?: number;
+                /** @description Cursor for paginating matured miner rewards. Format: mature_block_height:reward_index */
+                cursor?: string;
+            };
+            header?: never;
+            path: {
+                principal: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @example 1 */
+                        total: number;
+                        /**
+                         * @description Number of results per page
+                         * @default 20
+                         */
+                        limit: number;
+                        cursor: {
+                            next: string | null;
+                            previous: string | null;
+                            current: string | null;
+                        };
+                        results: {
+                            /**
+                             * @description Stable reward identifier: the index block hash of the block the reward matured in, followed by the reward position within that block. A block can mature more than one reward for the same recipient (its own miner reward plus its parent-miner share of fees).
+                             * @example 0x6b2c809627f2fd19991d8eb6ae034cb4cce1e1fc714aa77351506b9af1b2eb3b:0
+                             */
+                            id: string;
+                            recipient: string;
+                            miner: string;
+                            /** BlockSummary */
+                            block: {
+                                /**
+                                 * Block height
+                                 * @description Block height
+                                 * @example 777678
+                                 */
+                                height: number;
+                                /**
+                                 * Block hash
+                                 * @description Block hash
+                                 * @example 0xdaf79950c5e8bb0c620751333967cdd62297137cdaf79950c5e8bb0c62075133
+                                 */
+                                hash: string;
+                                /** @description Index block hash of the block */
+                                index_hash: string;
+                                /** @description Unix timestamp (in seconds) indicating when this block was mined. */
+                                time: number;
+                            };
+                            /** BlockSummary */
+                            source_block: {
+                                /**
+                                 * Block height
+                                 * @description Block height
+                                 * @example 777678
+                                 */
+                                height: number;
+                                /**
+                                 * Block hash
+                                 * @description Block hash
+                                 * @example 0xdaf79950c5e8bb0c620751333967cdd62297137cdaf79950c5e8bb0c62075133
+                                 */
+                                hash: string;
+                                /** @description Index block hash of the block */
+                                index_hash: string;
+                                /** @description Unix timestamp (in seconds) indicating when this block was mined. */
+                                time: number;
+                            };
+                            /**
+                             * Amount
+                             * @description Amount
+                             * @example 1000000
+                             */
+                            coinbase: string;
+                            /**
+                             * Amount
+                             * @description Transaction fees included in the reward, in µSTX
+                             * @example 1000000
+                             */
+                            fees: string;
+                            /**
+                             * Amount
+                             * @description Amount
+                             * @example 1000000
+                             */
+                            total: string;
                         }[];
                     };
                 };

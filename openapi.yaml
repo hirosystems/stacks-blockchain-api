@@ -4,7 +4,7 @@ info:
   description: Welcome to the API reference overview for the [Stacks Blockchain
     API](https://docs.hiro.so/stacks-blockchain-api). [Download Postman
     collection](https://hirosystems.github.io/stacks-blockchain-api/collection.json).
-  version: 9.4.0
+  version: 9.5.0
 components:
   schemas: {}
 paths:
@@ -6869,6 +6869,325 @@ paths:
                                 claimable:
                                   description: The sBTC reward sats currently claimable (accrued minus claimed)
                                   type: string
+        4XX:
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                title: Error Response
+                additionalProperties: true
+                type: object
+                required:
+                  - error
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+  /extended/v3/principals/{principal}/mining:
+    get:
+      operationId: get_principal_mining_summary
+      summary: Get principal mining summary
+      tags:
+        - Accounts
+      description: "A one-call overview of a principal's mining: its lifetime matured
+        miner rewards (coinbase and fees, in µSTX), counting only rewards on the
+        canonical chain. The individual rewards are paginated at
+        `/principals/:principal/mining/rewards`."
+      parameters:
+        - schema:
+            anyOf:
+              - pattern: ^[0123456789ABCDEFGHJKMNPQRSTVWXYZ]{28,41}$
+                title: Stacks Address
+                description: Stacks Address
+                examples:
+                  - SP318Q55DEKHRXJK696033DQN5C54D9K2EE6DHRWP
+                type: string
+              - pattern: ^[0123456789ABCDEFGHJKMNPQRSTVWXYZ]{28,41}.[a-zA-Z]([a-zA-Z0-9]|[-_]){0,39}$
+                title: Smart Contract ID
+                description: Smart Contract ID
+                examples:
+                  - SP000000000000000000002Q6VF78.pox-3
+                type: string
+          in: path
+          name: principal
+          required: true
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                title: PrincipalMiningSummary
+                type: object
+                required:
+                  - rewards
+                properties:
+                  rewards:
+                    type: object
+                    required:
+                      - count
+                      - coinbase
+                      - fees
+                      - total
+                    properties:
+                      count:
+                        description: Number of non-zero matured miner rewards received
+                        type: integer
+                      coinbase:
+                        pattern: ^[0-9]+$
+                        title: Amount
+                        description: Amount
+                        type: string
+                        example: "1000000"
+                      fees:
+                        pattern: ^[0-9]+$
+                        title: Amount
+                        description: Transaction fees included in the reward, in µSTX
+                        type: string
+                        example: "1000000"
+                      total:
+                        pattern: ^[0-9]+$
+                        title: Amount
+                        description: Amount
+                        type: string
+                        example: "1000000"
+        4XX:
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                title: Error Response
+                additionalProperties: true
+                type: object
+                required:
+                  - error
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+  /extended/v3/principals/{principal}/mining/rewards:
+    get:
+      operationId: get_principal_mining_rewards
+      summary: Get principal mining rewards
+      tags:
+        - Accounts
+      description: Returns the matured miner rewards credited to a principal, most
+        recent first. Miner rewards are credited to the recipient's STX balance
+        when they mature, without a transaction or STX event, so they don't
+        appear in the principal's transactions or transfers. Each reward reports
+        the `block` it matured (and was credited) in and the `source_block`
+        whose reward matured; a parent-miner share of fees reports the same
+        `source_block` as the miner reward it was paid alongside. Only rewards
+        on the canonical chain are listed; zero-value rewards are left out.
+      parameters:
+        - schema:
+            minimum: 1
+            default: 20
+            maximum: 50
+            type: integer
+          in: query
+          name: limit
+          required: false
+          description: Number of results per page
+        - schema:
+            pattern: ^[0-9]+:[0-9]+$
+            type: string
+          in: query
+          name: cursor
+          required: false
+          description: "Cursor for paginating matured miner rewards. Format:
+            mature_block_height:reward_index"
+        - schema:
+            anyOf:
+              - pattern: ^[0123456789ABCDEFGHJKMNPQRSTVWXYZ]{28,41}$
+                title: Stacks Address
+                description: Stacks Address
+                examples:
+                  - SP318Q55DEKHRXJK696033DQN5C54D9K2EE6DHRWP
+                type: string
+              - pattern: ^[0123456789ABCDEFGHJKMNPQRSTVWXYZ]{28,41}.[a-zA-Z]([a-zA-Z0-9]|[-_]){0,39}$
+                title: Smart Contract ID
+                description: Smart Contract ID
+                examples:
+                  - SP000000000000000000002Q6VF78.pox-3
+                type: string
+          in: path
+          name: principal
+          required: true
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - total
+                  - limit
+                  - cursor
+                  - results
+                properties:
+                  total:
+                    type: integer
+                    example: 1
+                  limit:
+                    minimum: 1
+                    default: 20
+                    maximum: 50
+                    description: Number of results per page
+                    type: integer
+                  cursor:
+                    type: object
+                    required:
+                      - next
+                      - previous
+                      - current
+                    properties:
+                      next:
+                        anyOf:
+                          - pattern: ^[0-9]+:[0-9]+$
+                            description: "Cursor for paginating matured miner rewards. Format:
+                              mature_block_height:reward_index"
+                            type: string
+                          - type: "null"
+                      previous:
+                        anyOf:
+                          - pattern: ^[0-9]+:[0-9]+$
+                            description: "Cursor for paginating matured miner rewards. Format:
+                              mature_block_height:reward_index"
+                            type: string
+                          - type: "null"
+                      current:
+                        anyOf:
+                          - pattern: ^[0-9]+:[0-9]+$
+                            description: "Cursor for paginating matured miner rewards. Format:
+                              mature_block_height:reward_index"
+                            type: string
+                          - type: "null"
+                  results:
+                    type: array
+                    items:
+                      title: PrincipalMinerReward
+                      type: object
+                      required:
+                        - id
+                        - recipient
+                        - miner
+                        - block
+                        - source_block
+                        - coinbase
+                        - fees
+                        - total
+                      properties:
+                        id:
+                          pattern: ^0x[0-9a-fA-F]{64}:[0-9]+$
+                          description: "Stable reward identifier: the index block hash of the block the
+                            reward matured in, followed by the reward position
+                            within that block. A block can mature more than one
+                            reward for the same recipient (its own miner reward
+                            plus its parent-miner share of fees)."
+                          type: string
+                          example: 0x6b2c809627f2fd19991d8eb6ae034cb4cce1e1fc714aa77351506b9af1b2eb3b:0
+                        recipient:
+                          anyOf:
+                            - pattern: ^[0123456789ABCDEFGHJKMNPQRSTVWXYZ]{28,41}$
+                              title: Stacks Address
+                              description: Stacks Address
+                              examples:
+                                - SP318Q55DEKHRXJK696033DQN5C54D9K2EE6DHRWP
+                              type: string
+                            - pattern: ^[0123456789ABCDEFGHJKMNPQRSTVWXYZ]{28,41}.[a-zA-Z]([a-zA-Z0-9]|[-_]){0,39}$
+                              title: Smart Contract ID
+                              description: Smart Contract ID
+                              examples:
+                                - SP000000000000000000002Q6VF78.pox-3
+                              type: string
+                        miner:
+                          anyOf:
+                            - pattern: ^[0123456789ABCDEFGHJKMNPQRSTVWXYZ]{28,41}$
+                              title: Stacks Address
+                              description: Stacks Address
+                              examples:
+                                - SP318Q55DEKHRXJK696033DQN5C54D9K2EE6DHRWP
+                              type: string
+                            - pattern: ^[0123456789ABCDEFGHJKMNPQRSTVWXYZ]{28,41}.[a-zA-Z]([a-zA-Z0-9]|[-_]){0,39}$
+                              title: Smart Contract ID
+                              description: Smart Contract ID
+                              examples:
+                                - SP000000000000000000002Q6VF78.pox-3
+                              type: string
+                        block:
+                          title: BlockSummary
+                          type: object
+                          required:
+                            - height
+                            - hash
+                            - index_hash
+                            - time
+                          properties:
+                            height:
+                              title: Block height
+                              description: Block height
+                              type: integer
+                              example: 777678
+                            hash:
+                              pattern: ^(0x)?[a-fA-F0-9]{64}$
+                              title: Block hash
+                              description: Block hash
+                              type: string
+                              example: "0xdaf79950c5e8bb0c620751333967cdd62297137cdaf79950c5e8bb0c62075133"
+                            index_hash:
+                              description: Index block hash of the block
+                              type: string
+                            time:
+                              description: Unix timestamp (in seconds) indicating when this block was mined.
+                              type: number
+                        source_block:
+                          title: BlockSummary
+                          type: object
+                          required:
+                            - height
+                            - hash
+                            - index_hash
+                            - time
+                          properties:
+                            height:
+                              title: Block height
+                              description: Block height
+                              type: integer
+                              example: 777678
+                            hash:
+                              pattern: ^(0x)?[a-fA-F0-9]{64}$
+                              title: Block hash
+                              description: Block hash
+                              type: string
+                              example: "0xdaf79950c5e8bb0c620751333967cdd62297137cdaf79950c5e8bb0c62075133"
+                            index_hash:
+                              description: Index block hash of the block
+                              type: string
+                            time:
+                              description: Unix timestamp (in seconds) indicating when this block was mined.
+                              type: number
+                        coinbase:
+                          pattern: ^[0-9]+$
+                          title: Amount
+                          description: Amount
+                          type: string
+                          example: "1000000"
+                        fees:
+                          pattern: ^[0-9]+$
+                          title: Amount
+                          description: Transaction fees included in the reward, in µSTX
+                          type: string
+                          example: "1000000"
+                        total:
+                          pattern: ^[0-9]+$
+                          title: Amount
+                          description: Amount
+                          type: string
+                          example: "1000000"
         4XX:
           description: Default Response
           content:
