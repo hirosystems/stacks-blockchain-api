@@ -1,8 +1,18 @@
 import { FastifyPluginAsync } from 'fastify';
 import { Server } from 'node:http';
 import { TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
+import { STACKS_MAINNET } from '@stacks/network';
 import { handleBurnchainChainTipCache } from '../../controllers/cache-controller.js';
 import { StakingRewardsSchema } from '../../schemas/v3/entities/staking-rewards.js';
+
+/**
+ * BTC burned on mainnet by the 2.0-era PoX sunset-ramp surcharge (bitcoin blocks ~766050-781550),
+ * in satoshis. The node never reported these burns in its burn block events, so they are added as a
+ * fixed historical total once the indexed burnchain has passed the sunset period.
+ */
+const MAINNET_SUNSET_BURN_AMOUNT = 489352064n;
+/** Mainnet epoch 2.1 activation burn height, where the PoX sunset surcharge ended. */
+const MAINNET_SUNSET_END_BURN_HEIGHT = 781551;
 
 export const StakingRewardsRoutes: FastifyPluginAsync<
   Record<never, never>,
@@ -28,11 +38,18 @@ export const StakingRewardsRoutes: FastifyPluginAsync<
     },
     async (_req, reply) => {
       const totals = await fastify.db.v3.getStakingRewards();
+      const sunsetBurnAmount =
+        fastify.chainId === STACKS_MAINNET.chainId &&
+        totals.burn_block_height >= MAINNET_SUNSET_END_BURN_HEIGHT
+          ? MAINNET_SUNSET_BURN_AMOUNT
+          : 0n;
+      const rewardAmount = BigInt(totals.reward_amount);
+      const burnAmount = BigInt(totals.burn_amount) + sunsetBurnAmount;
       await reply.send({
         btc: {
-          reward_amount: totals.reward_amount,
-          burn_amount: totals.burn_amount,
-          total_amount: (BigInt(totals.reward_amount) + BigInt(totals.burn_amount)).toString(),
+          reward_amount: rewardAmount.toString(),
+          burn_amount: burnAmount.toString(),
+          total_amount: (rewardAmount + burnAmount).toString(),
         },
       });
     }
