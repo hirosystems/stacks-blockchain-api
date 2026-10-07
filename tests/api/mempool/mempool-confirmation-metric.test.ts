@@ -27,7 +27,8 @@ describe('mempool confirmation time helpers', () => {
   });
 
   test('getEventReceiptTime falls back to the current time', () => {
-    for (const header of [undefined, '', 'not-a-date']) {
+    // Includes values that parse but don't fit a positive 32-bit integer of seconds.
+    for (const header of [undefined, '', 'not-a-date', '0', '999999999999999999', '1969-12-31']) {
       const before = Math.round(Date.now() / 1000);
       const receiptTime = getEventReceiptTime(header);
       const after = Math.round(Date.now() / 1000);
@@ -140,7 +141,7 @@ describe('mempool confirmation time ingestion', () => {
     });
 
     const emitted: { blockTime: number; txs: MinedMempoolTx[] }[] = [];
-    db.eventEmitter.on('mempoolTxsMined', info => emitted.push(info));
+    db.eventEmitter.on('mempoolTxsMined', info => emitted.push({ ...info, txs: [...info.txs] }));
 
     await db.update(
       new TestBlockBuilder({
@@ -174,5 +175,58 @@ describe('mempool confirmation time ingestion', () => {
         .build()
     );
     assert.equal(emitted.length, 1);
+  });
+
+  test('emits a mined tx that was already pruned by replace-by-fee', async () => {
+    const sender = 'SP3SBQ9PZEMBNBAWTR7FRPE3XK0EFW9JWVX4G80S2';
+    await db.update(new TestBlockBuilder({ block_height: 1, index_block_hash: '0x01' }).build());
+    await db.updateMempoolTxs({
+      mempoolTxs: [
+        testMempoolTx({
+          tx_id: '0xaa',
+          sender_address: sender,
+          nonce: 0,
+          fee_rate: 1n,
+          receipt_time: 1000,
+        }),
+      ],
+    });
+    // A higher fee tx for the same nonce slot replaces it.
+    await db.updateMempoolTxs({
+      mempoolTxs: [
+        testMempoolTx({
+          tx_id: '0xbb',
+          sender_address: sender,
+          nonce: 0,
+          fee_rate: 100n,
+          receipt_time: 1010,
+        }),
+      ],
+    });
+    const [replaced] = await client<{ pruned: boolean }[]>`
+      SELECT pruned FROM mempool_txs WHERE tx_id = '\\xaa'
+    `;
+    assert.equal(replaced.pruned, true);
+
+    const emitted: { blockTime: number; txs: MinedMempoolTx[] }[] = [];
+    db.eventEmitter.on('mempoolTxsMined', info => emitted.push({ ...info, txs: [...info.txs] }));
+
+    // The miner confirms the replaced tx anyway.
+    await db.update(
+      new TestBlockBuilder({
+        block_height: 2,
+        index_block_hash: '0x02',
+        parent_index_block_hash: '0x01',
+        block_time: 1030,
+      })
+        .addTx({ tx_id: '0xaa', sender_address: sender, nonce: 0 })
+        .build()
+    );
+    assert.deepEqual(emitted, [
+      {
+        blockTime: 1030,
+        txs: [{ tx_id: '0xaa', type_id: DbTxTypeId.TokenTransfer, receipt_time: 1000 }],
+      },
+    ]);
   });
 });

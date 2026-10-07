@@ -3,7 +3,7 @@ import * as net from 'net';
 import Fastify, { FastifyInstance, FastifyRequest, FastifyServerOptions } from 'fastify';
 import PQueue from 'p-queue';
 import * as prom from 'prom-client';
-import { BitVec, ChainID, assertNotNullish, getChainIDNetwork } from '../helpers.js';
+import { BitVec, ChainID, I32_MAX, assertNotNullish, getChainIDNetwork } from '../helpers.js';
 import {
   DbEventBase,
   DbSmartContractEvent,
@@ -104,13 +104,15 @@ export const SNP_TIMESTAMP_HEADER = 'x-snp-timestamp';
 /**
  * Resolves the unix time (in seconds) at which an event was first received. Uses the SNP timestamp
  * header when present (epoch milliseconds, or any `Date`-parseable string), falling back to the
- * current time for events posted directly by a Stacks node.
+ * current time for events posted directly by a Stacks node or when the header can't be stored as a
+ * positive 32-bit integer of seconds.
  */
 export function getEventReceiptTime(header: string | string[] | undefined): number {
   const value = Array.isArray(header) ? header[0] : header;
   if (value) {
     const ms = /^\d+$/.test(value) ? Number(value) : Date.parse(value);
-    if (Number.isFinite(ms)) return Math.round(ms / 1000);
+    const seconds = Math.round(ms / 1000);
+    if (Number.isFinite(seconds) && seconds > 0 && seconds <= I32_MAX) return seconds;
   }
   return Math.round(Date.now() / 1000);
 }

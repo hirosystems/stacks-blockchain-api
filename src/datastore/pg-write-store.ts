@@ -343,11 +343,17 @@ export class PgWriteStore extends PgStore {
           nonce: d.tx.nonce,
           sponsor_nonce: d.tx.sponsor_nonce,
         }));
-        const pruneResult = await this.pruneMempoolTxs(sql, prunableTxs);
-        // Only the txs included in this block were mined; the rest of the pruned txs were
-        // displaced from their nonce slots.
-        const blockTxIds = new Set(prunableTxs.map(tx => tx.txId));
-        minedMempoolTxs = pruneResult.prunedTxs.filter(tx => blockTxIds.has(tx.tx_id));
+        // Look up the mempool receipt data of this block's txs before pruning. Txs that were
+        // already pruned (e.g. replaced by fee or dropped) are included too, since a miner can
+        // still confirm them.
+        if (prunableTxs.length > 0 && !this.isEventReplay) {
+          minedMempoolTxs = await sql<MinedMempoolTx[]>`
+            SELECT tx_id, type_id, receipt_time
+            FROM mempool_txs
+            WHERE tx_id IN ${sql(prunableTxs.map(tx => tx.txId))}
+          `;
+        }
+        await this.pruneMempoolTxs(sql, prunableTxs);
       }
 
       if (isCanonical) {
@@ -444,7 +450,7 @@ export class PgWriteStore extends PgStore {
       }
     });
     if (skippedDuplicateBlock) return;
-    if (minedMempoolTxs.length > 0 && !this.isEventReplay) {
+    if (minedMempoolTxs.length > 0) {
       this.eventEmitter.emit('mempoolTxsMined', {
         blockTime: data.block.block_time,
         txs: minedMempoolTxs,
@@ -4393,8 +4399,8 @@ export class PgWriteStore extends PgStore {
   async pruneMempoolTxs(
     sql: PgSqlClient,
     transactions: TransactionHeader[]
-  ): Promise<{ removedTxs: string[]; prunedTxs: MinedMempoolTx[] }> {
-    if (transactions.length === 0) return { removedTxs: [], prunedTxs: [] };
+  ): Promise<{ removedTxs: string[] }> {
+    if (transactions.length === 0) return { removedTxs: [] };
     if (logger.isLevelEnabled('debug'))
       for (const tx of transactions)
         logger.debug(
@@ -4403,22 +4409,22 @@ export class PgWriteStore extends PgStore {
 
     // Prune confirmed txs from the mempool. Also prune transactions that share a nonce slot with
     // them. We'll recalculate replaced-by-fee data later when new block data is written to the DB.
-    const updateResults = await sql<MinedMempoolTx[]>`
+    const updateResults = await sql<{ tx_id: string }[]>`
       WITH ${this.sameNonceSlotMempoolTxIdsCte(sql, transactions)},
       pruned AS (
         UPDATE mempool_txs
         SET pruned = true, replaced_by_tx_id = NULL
         WHERE pruned = false AND tx_id IN (SELECT tx_id FROM affected_mempool_tx_ids)
-        RETURNING tx_id, type_id, receipt_time
+        RETURNING tx_id
       ),
       count_update AS (
         UPDATE chain_tip SET
           mempool_tx_count = mempool_tx_count - (SELECT COUNT(*) FROM pruned),
           mempool_updated_at = NOW()
       )
-      SELECT tx_id, type_id, receipt_time FROM pruned
+      SELECT tx_id FROM pruned
     `;
-    return { removedTxs: updateResults.map(r => r.tx_id), prunedTxs: updateResults };
+    return { removedTxs: updateResults.map(r => r.tx_id) };
   }
 
   /**
