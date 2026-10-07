@@ -1,7 +1,7 @@
 import supertest from 'supertest';
 import { afterEach, beforeEach, describe, test } from 'node:test';
 import assert from 'node:assert/strict';
-import { STACKS_TESTNET } from '@stacks/network';
+import { STACKS_MAINNET, STACKS_TESTNET } from '@stacks/network';
 import { ApiServer, startApiServer } from '../../../src/api/init.ts';
 import { EventStreamServer, startEventServer } from '../../../src/event-stream/event-server.ts';
 import { httpPostRequest } from '../../../src/helpers.ts';
@@ -179,6 +179,19 @@ describe('staking rewards totals', () => {
     assert.notEqual(afterMidFork.headers['etag'], etag2);
     assert.deepEqual(JSON.parse(afterMidFork.text), {
       btc: { reward_amount: '2511', burn_amount: '1349', total_amount: '3860' },
+    });
+  });
+
+  test('mainnet totals include the fixed PoX sunset burn', async () => {
+    await api.terminate();
+    api = await startApiServer({ datastore: db, chainId: STACKS_MAINNET.chainId });
+    assert.deepEqual(await getTotals(), {
+      btc: { reward_amount: '0', burn_amount: '489352064', total_amount: '489352064' },
+    });
+
+    await deliverBurnBlock({ hash: '0xaa01', height: 100, burnAmount: 500n, rewardAmount: 1000n });
+    assert.deepEqual(await getTotals(), {
+      btc: { reward_amount: '1000', burn_amount: '489352564', total_amount: '489353564' },
     });
   });
 
