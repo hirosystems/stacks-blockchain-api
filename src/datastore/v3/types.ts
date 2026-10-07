@@ -302,6 +302,8 @@ export interface DbStakingRewards {
   reward_amount: string;
   /** Total BTC burned by block commits, in satoshis. */
   burn_amount: string;
+  /** Highest ingested burn block height. */
+  burn_block_height: number;
 }
 
 export interface DbStakingSigner {

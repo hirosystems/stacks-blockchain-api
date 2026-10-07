@@ -182,16 +182,50 @@ describe('staking rewards totals', () => {
     });
   });
 
-  test('mainnet totals include the fixed PoX sunset burn', async () => {
+  test('mainnet totals include the fixed PoX sunset burn once past the sunset period', async () => {
     await api.terminate();
     api = await startApiServer({ datastore: db, chainId: STACKS_MAINNET.chainId });
     assert.deepEqual(await getTotals(), {
-      btc: { reward_amount: '0', burn_amount: '489352064', total_amount: '489352064' },
+      btc: { reward_amount: '0', burn_amount: '0', total_amount: '0' },
     });
 
-    await deliverBurnBlock({ hash: '0xaa01', height: 100, burnAmount: 500n, rewardAmount: 1000n });
+    // Last burn block of the sunset period: the surcharge is not counted yet.
+    await deliverBurnBlock({
+      hash: '0xaa01',
+      height: 781550,
+      burnAmount: 500n,
+      rewardAmount: 1000n,
+    });
+    const beforeEnd = await supertest(api.server).get(`/extended/v3/staking/rewards`);
+    assert.deepEqual(JSON.parse(beforeEnd.text), {
+      btc: { reward_amount: '1000', burn_amount: '500', total_amount: '1500' },
+    });
+
+    // Epoch 2.1 activation: the full surcharge is counted and the ETag invalidates.
+    await deliverBurnBlock({
+      hash: '0xaa02',
+      height: 781551,
+      burnAmount: 250n,
+      rewardAmount: 2000n,
+    });
+    const afterEnd = await supertest(api.server)
+      .get(`/extended/v3/staking/rewards`)
+      .set('If-None-Match', beforeEnd.headers['etag']);
+    assert.equal(afterEnd.status, 200);
+    assert.deepEqual(JSON.parse(afterEnd.text), {
+      btc: { reward_amount: '3000', burn_amount: '489352814', total_amount: '489355814' },
+    });
+  });
+
+  test('testnet totals never include the PoX sunset burn', async () => {
+    await deliverBurnBlock({
+      hash: '0xaa01',
+      height: 781551,
+      burnAmount: 500n,
+      rewardAmount: 1000n,
+    });
     assert.deepEqual(await getTotals(), {
-      btc: { reward_amount: '1000', burn_amount: '489352564', total_amount: '489353564' },
+      btc: { reward_amount: '1000', burn_amount: '500', total_amount: '1500' },
     });
   });
 
