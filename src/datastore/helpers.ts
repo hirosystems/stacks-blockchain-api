@@ -11,6 +11,7 @@ import {
   DbFaucetRequestCurrency,
   DbFtEvent,
   DbMempoolStats,
+  MinedMempoolTx,
   DbMempoolTx,
   DbMempoolTxRaw,
   DbMicroblock,
@@ -61,7 +62,7 @@ import type {
 import { getTxSenderAddress } from '../event-stream/reader.js';
 import postgres from 'postgres';
 import * as prom from 'prom-client';
-import { getAssetEventTypeString } from '../api/controllers/db-controller.js';
+import { getAssetEventTypeString, getTxTypeString } from '../api/controllers/db-controller.js';
 import { PgStoreEventEmitter } from './pg-store-event-emitter.js';
 import { logger, PgSqlClient } from '@stacks/api-toolkit';
 import PQueue from 'p-queue';
@@ -1343,6 +1344,24 @@ export function createDbTxFromCoreMsg(msg: CoreNodeParsedTxMessage): DbTxRaw {
   return dbTx;
 }
 
+/**
+ * Computes how long each mined tx waited in the mempool, in seconds, from its mempool receipt time
+ * to its block's timestamp. Returns nothing when the block is older than `maxLagSeconds`, which
+ * means the API is catching up to the chain tip. Negative durations caused by clock differences
+ * between the miner and the mempool observer are clamped to zero.
+ */
+export function getMempoolTxConfirmationTimes(
+  info: { blockTime: number; txs: MinedMempoolTx[] },
+  nowSeconds: number,
+  maxLagSeconds: number
+): { type: string; seconds: number }[] {
+  if (nowSeconds - info.blockTime > maxLagSeconds) return [];
+  return info.txs.map(tx => ({
+    type: getTxTypeString(tx.type_id),
+    seconds: Math.max(0, info.blockTime - tx.receipt_time),
+  }));
+}
+
 export function registerMempoolPromStats(pgEvents: PgStoreEventEmitter) {
   const mempoolTxCountGauge = new prom.Gauge({
     name: `mempool_tx_count`,
@@ -1363,6 +1382,12 @@ export function registerMempoolPromStats(pgEvents: PgStoreEventEmitter) {
     name: `mempool_tx_byte_size`,
     help: 'Average byte size of txs in the mempool, by tx type',
     labelNames: ['type', 'percentile'] as const,
+  });
+  const mempoolTxConfirmationHistogram = new prom.Histogram({
+    name: 'mempool_tx_confirmation_seconds',
+    help: 'Time between a tx first being received into the mempool and its block timestamp, by tx type',
+    labelNames: ['type'] as const,
+    buckets: [1, 2, 3, 4, 5, 7, 10, 15, 20, 30, 45, 60, 120, 300, 600, 1800, 3600, 7200, 21600],
   });
   const updatePromMempoolStats = (mempoolStats: DbMempoolStats) => {
     for (const txType in mempoolStats.tx_type_counts) {
@@ -1396,6 +1421,20 @@ export function registerMempoolPromStats(pgEvents: PgStoreEventEmitter) {
         logger.error(error, 'Error updating prometheus mempool stats');
       }
     });
+  });
+  pgEvents.addListener('mempoolTxsMined', info => {
+    try {
+      const times = getMempoolTxConfirmationTimes(
+        info,
+        Math.round(Date.now() / 1000),
+        ENV.MEMPOOL_CONFIRMATION_METRIC_MAX_LAG
+      );
+      for (const { type, seconds } of times) {
+        mempoolTxConfirmationHistogram.observe({ type }, seconds);
+      }
+    } catch (error) {
+      logger.error(error, 'Error updating prometheus mempool confirmation stats');
+    }
   });
 }
 

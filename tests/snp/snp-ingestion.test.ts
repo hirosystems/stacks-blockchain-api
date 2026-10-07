@@ -118,6 +118,18 @@ describe('SNP integration tests', { concurrency: 1 }, () => {
     assert.equal(chainTip.block_height, sampleEventsLastBlockHeight);
   });
 
+  test('mempool receipt times use SNP timestamps', async () => {
+    // The dump's events were received by SNP between these times, long before this test replayed
+    // them, so receipt times based on ingestion time would fall outside this window.
+    const dumpStart = Date.parse('2024-03-13T15:34:10Z') / 1000;
+    const dumpEnd = Date.parse('2024-03-13T15:37:22Z') / 1000;
+    const rows = await client<{ receipt_time: number }[]>`SELECT receipt_time FROM mempool_txs`;
+    assert.ok(rows.length > 0);
+    for (const { receipt_time } of rows) {
+      assert.ok(receipt_time >= dumpStart && receipt_time <= dumpEnd, `${receipt_time}`);
+    }
+  });
+
   test('test block API fetch', async () => {
     const response = await supertest(apiServer.server)
       .get(`/extended/v1/block/by_height/${sampleEventsLastBlockHeight}`)

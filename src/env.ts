@@ -200,6 +200,12 @@ const schema = Type.Object({
    * The maximum duration to wait for further mempool updates after the debounce interval.
    */
   MEMPOOL_STATS_DEBOUNCE_MAX_INTERVAL: Type.Integer({ default: 10000, minimum: 0 }),
+  /**
+   * Maximum age (in seconds) of a block, relative to the current time, for its mempool txs to be
+   * recorded in the `mempool_tx_confirmation_seconds` metric. Blocks ingested while catching up to
+   * the chain tip are skipped so they don't flood the metric with historical observations.
+   */
+  MEMPOOL_CONFIRMATION_METRIC_MAX_LAG: Type.Integer({ default: 300, minimum: 0 }),
 
   BTC_RPC_HOST: Type.String({ default: 'http://127.0.0.1' }),
   BTC_RPC_PORT: Type.Integer({ default: 18443, minimum: 0, maximum: 65535 }),
