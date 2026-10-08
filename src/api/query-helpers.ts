@@ -67,6 +67,78 @@ export function isValidTxId(tx_id: string) {
   }
 }
 
+const UNPREFIXED_HASH_REGEX = /^[a-fA-F0-9]{64}$/;
+
+/**
+ * Prefixes a raw URL component holding a 32-byte hex hash with `0x` if it lacks one. The value is
+ * percent-decoded before matching, since Fastify decodes it the same way before handing it to the
+ * route (`%30` + 63 hex digits is a bare hash). Any other or malformed value is returned unchanged.
+ */
+function prefixUnprefixedHash(value: string): string {
+  let decoded: string;
+  try {
+    decoded = decodeURIComponent(value);
+  } catch {
+    return value;
+  }
+  return UNPREFIXED_HASH_REGEX.test(decoded) ? `0x${decoded}` : value;
+}
+
+/**
+ * Builds an `onRequest` hook that answers with a `302` redirect to the same URL with `0x` added to
+ * every 32-byte hash (tx id or block hash) supplied without it, so clients can pass hashes either
+ * way while handlers, caches and the datastore only ever see the canonical prefixed form.
+ *
+ * Runs at `onRequest` so the redirect is issued before the ETag cache handlers and schema
+ * validation. Querystring values are rewritten in both repeated and comma-separated forms.
+ * @param opts - `params`: path parameter names that hold a hash (a value that is not a bare 64-char
+ * hex string, e.g. a block height or `latest`, is left alone); `query`: querystring parameter
+ * names that hold one or more hashes.
+ * @returns An `onRequest` hook that redirects when any listed parameter needs the prefix.
+ */
+export function redirectUnprefixedHashParams(opts: { params?: string[]; query?: string[] }) {
+  const pathParams = new Set((opts.params ?? []).map(p => `:${p}`));
+  const queryParams = new Set(opts.query ?? []);
+  return async (req: FastifyRequest, reply: FastifyReply) => {
+    const searchIndex = req.url.indexOf('?');
+    const path = searchIndex === -1 ? req.url : req.url.slice(0, searchIndex);
+    const search = searchIndex === -1 ? '' : req.url.slice(searchIndex + 1);
+    let changed = false;
+
+    // Route templates have no wildcards, so template segments line up with request segments.
+    const templateSegments = req.routeOptions.url?.split('/') ?? [];
+    const pathSegments = path.split('/').map((segment, i) => {
+      if (!pathParams.has(templateSegments[i])) return segment;
+      const prefixed = prefixUnprefixedHash(segment);
+      if (prefixed !== segment) changed = true;
+      return prefixed;
+    });
+
+    const searchPairs = search
+      ? search.split('&').map(pair => {
+          const eq = pair.indexOf('=');
+          if (eq === -1) return pair;
+          let key: string;
+          try {
+            key = decodeURIComponent(pair.slice(0, eq));
+          } catch {
+            return pair;
+          }
+          if (!queryParams.has(key)) return pair;
+          const values = pair.slice(eq + 1).split(/,|%2C/i);
+          const prefixed = values.map(prefixUnprefixedHash);
+          if (prefixed.every((v, i) => v === values[i])) return pair;
+          changed = true;
+          return `${pair.slice(0, eq)}=${prefixed.join(',')}`;
+        })
+      : [];
+
+    if (!changed) return;
+    const location = pathSegments.join('/') + (search ? `?${searchPairs.join('&')}` : '');
+    return reply.redirect(location, 302);
+  };
+}
+
 /**
  * Builds a `preValidation` hook that normalizes an array-typed querystring parameter accepted in
  * two forms: repeated (`?tx_id=A&tx_id=B`) and comma-separated (`?tx_id=A,B`).

@@ -23,7 +23,10 @@ import { MempoolTransactionSchema } from '../../schemas/v3/entities/mempool-tran
 import { NotFoundError } from '../../../errors.js';
 import { TransactionEventSchema } from '../../schemas/v3/entities/transaction-events.js';
 import { serializeDbTransactionEvent } from '../../serializers/v3/transaction-events.js';
-import { splitCommaSeparatedQueryParam } from '../../query-helpers.js';
+import {
+  redirectUnprefixedHashParams,
+  splitCommaSeparatedQueryParam,
+} from '../../query-helpers.js';
 import { TransactionIdsQuerystringParam } from '../../schemas/v3/params.js';
 
 export const TransactionsRoutes: FastifyPluginAsync<
@@ -71,6 +74,7 @@ export const TransactionsRoutes: FastifyPluginAsync<
   fastify.get(
     '/transactions/batch',
     {
+      onRequest: redirectUnprefixedHashParams({ query: ['tx_id'] }),
       preHandler: handleChainTipCache,
       preValidation: splitCommaSeparatedQueryParam('tx_id'),
       schema: {
@@ -111,6 +115,7 @@ export const TransactionsRoutes: FastifyPluginAsync<
   fastify.get(
     '/transactions/:tx_id',
     {
+      onRequest: redirectUnprefixedHashParams({ params: ['tx_id'] }),
       preHandler: handleTransactionCache,
       preValidation: splitCommaSeparatedQueryParam('include'),
       schema: {
@@ -155,6 +160,7 @@ export const TransactionsRoutes: FastifyPluginAsync<
   fastify.get(
     '/transactions/:tx_id/events',
     {
+      onRequest: redirectUnprefixedHashParams({ params: ['tx_id'] }),
       preHandler: handleTransactionCache,
       schema: {
         operationId: 'get_transaction_events',

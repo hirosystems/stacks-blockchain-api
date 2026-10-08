@@ -71,7 +71,10 @@ import {
 import { PrincipalNoncesSchema } from '../../schemas/v3/entities/principal-nonces.js';
 import { MempoolTransactionSummarySchema } from '../../schemas/v3/entities/mempool-transaction-summaries.js';
 import { serializeDbMempoolTransactionSummary } from '../../serializers/v3/mempool-transactions.js';
-import { splitCommaSeparatedQueryParam } from '../../query-helpers.js';
+import {
+  redirectUnprefixedHashParams,
+  splitCommaSeparatedQueryParam,
+} from '../../query-helpers.js';
 
 export const PrincipalsRoutes: FastifyPluginAsync<
   Record<never, never>,
@@ -260,6 +263,7 @@ export const PrincipalsRoutes: FastifyPluginAsync<
   fastify.get(
     '/principals/:principal/transactions/:tx_id/balance-changes',
     {
+      onRequest: redirectUnprefixedHashParams({ params: ['tx_id'] }),
       preHandler: handleTransactionCache,
       schema: {
         operationId: 'get_principal_transaction_balance_changes',
@@ -303,6 +307,7 @@ export const PrincipalsRoutes: FastifyPluginAsync<
   fastify.get(
     '/principals/:principal/balance-changes',
     {
+      onRequest: redirectUnprefixedHashParams({ query: ['tx_id'] }),
       preHandler: handlePrincipalCache,
       preValidation: splitCommaSeparatedQueryParam('tx_id'),
       schema: {
