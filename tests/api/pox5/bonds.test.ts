@@ -237,9 +237,9 @@ describe('pox-5 bonds (simulated ingestion)', () => {
     });
     const expected = {
       // Registration closes when cycle 7's prepare phase begins, 5 blocks before activation.
-      enrollment_cutoff: { bitcoin_height: 155, pox_cycle: 7 },
-      activation: { bitcoin_height: BOND_START_HEIGHT, pox_cycle: FIRST_REWARD_CYCLE },
-      unlock: { bitcoin_height: UNLOCK_BURN_HEIGHT, pox_cycle: UNLOCK_CYCLE },
+      enrollment_cutoff: { bitcoin_height: 155, pox_cycle: 7, time: null },
+      activation: { bitcoin_height: BOND_START_HEIGHT, pox_cycle: FIRST_REWARD_CYCLE, time: null },
+      unlock: { bitcoin_height: UNLOCK_BURN_HEIGHT, pox_cycle: UNLOCK_CYCLE, time: null },
     };
     const list = await getJson<CursorPaginated<BondSummaryItem>>(
       '/extended/v3/staking/bonds?limit=50'
@@ -247,6 +247,57 @@ describe('pox-5 bonds (simulated ingestion)', () => {
     assert.deepEqual(list.results.find(b => b.index === BOND_INDEX)?.schedule, expected);
     const bond = await getJson<BondDetail>(`/extended/v3/staking/bonds/${BOND_INDEX}`);
     assert.deepEqual(bond.schedule, expected);
+  });
+
+  test('schedule points carry the time of Bitcoin blocks the API has seen, null otherwise', async () => {
+    await db.setPoxConstants({
+      firstBurnchainBlockHeight: 0,
+      rewardCycleLength: 20,
+      preparePhaseBlockLength: 5,
+    });
+    // Stacks blocks anchored to the enrollment cutoff (155) and activation (160) heights carry
+    // those Bitcoin blocks' times. The unlock height (410) is still in the future.
+    const CUTOFF_TIME = 1_700_000_155;
+    const ACTIVATION_TIME = 1_700_000_160;
+    let parent = '0xb1';
+    for (const [height, burnHeight, burnTime] of [
+      [2, 155, CUTOFF_TIME],
+      [3, 160, ACTIVATION_TIME],
+    ]) {
+      const indexHash = `0xb${height}`;
+      await db.update(
+        new TestBlockBuilder({
+          block_height: height,
+          block_hash: indexHash,
+          index_block_hash: indexHash,
+          parent_block_hash: parent,
+          parent_index_block_hash: parent,
+          burn_block_height: burnHeight,
+          burn_block_time: burnTime,
+        }).build()
+      );
+      parent = indexHash;
+    }
+    const expected = {
+      enrollment_cutoff: { bitcoin_height: 155, pox_cycle: 7, time: CUTOFF_TIME },
+      activation: {
+        bitcoin_height: BOND_START_HEIGHT,
+        pox_cycle: FIRST_REWARD_CYCLE,
+        time: ACTIVATION_TIME,
+      },
+      unlock: { bitcoin_height: UNLOCK_BURN_HEIGHT, pox_cycle: UNLOCK_CYCLE, time: null },
+    };
+    const list = await getJson<CursorPaginated<BondSummaryItem>>(
+      '/extended/v3/staking/bonds?limit=50'
+    );
+    assert.deepEqual(list.results.find(b => b.index === BOND_INDEX)?.schedule, expected);
+    const bond = await getJson<BondDetail>(`/extended/v3/staking/bonds/${BOND_INDEX}`);
+    assert.deepEqual(bond.schedule, expected);
+    const events = await getJson<CursorPaginated<{ name: string; data: { schedule?: unknown } }>>(
+      `/extended/v3/staking/bonds/${BOND_INDEX}/events?limit=50`
+    );
+    const setup = events.results.find(e => e.name === Pox5EventName.SetupBond);
+    assert.deepEqual(setup?.data.schedule, expected);
   });
 
   test('the allowlist lists alice and bob (GET .../allowlist)', async () => {

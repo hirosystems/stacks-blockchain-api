@@ -1,4 +1,5 @@
 import { Static, Type } from '@sinclair/typebox';
+import { Nullable } from '../../v1/util.js';
 import { BitcoinBlockPositionSchema, BlockPositionSchema, BondIndexSchema } from './common.js';
 
 export const BondStatusSchema = Type.Union([
@@ -79,6 +80,15 @@ export const BondSchedulePointSchema = Type.Object({
   pox_cycle: Type.Integer({
     description: 'The PoX cycle of this point in the bond lifecycle',
   }),
+  time: Nullable(
+    Type.Integer({
+      description:
+        'Unix timestamp (in seconds) of the Bitcoin block at this height, as recorded in its ' +
+        'header. `null` for a block that has not been mined yet, or for a past block no Stacks ' +
+        'block anchored to (the API learns Bitcoin block times only from the Stacks blocks ' +
+        'anchored to them)',
+    })
+  ),
 });
 export type BondSchedulePoint = Static<typeof BondSchedulePointSchema>;
 

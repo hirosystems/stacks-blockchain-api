@@ -42,9 +42,9 @@ interface StakingCycleResponse {
   number: number;
   status: string;
   schedule: {
-    start: { bitcoin_height: number };
-    prepare_phase_start: { bitcoin_height: number };
-    end: { bitcoin_height: number };
+    start: { bitcoin_height: number; time: number | null };
+    prepare_phase_start: { bitcoin_height: number; time: number | null };
+    end: { bitcoin_height: number; time: number | null };
   };
   locked: {
     stx: { stx_only: string; bonds: string; total: string };
@@ -331,9 +331,9 @@ describe('staking cycle', () => {
       number: 10,
       status: 'reward_phase',
       schedule: {
-        start: { bitcoin_height: 1000 },
-        prepare_phase_start: { bitcoin_height: 1090 },
-        end: { bitcoin_height: 1099 },
+        start: { bitcoin_height: 1000, time: null },
+        prepare_phase_start: { bitcoin_height: 1090, time: null },
+        end: { bitcoin_height: 1099, time: null },
       },
       locked: {
         // alice only (bob's lock ended when the cycle started); bond 0 is the only bond covering
@@ -362,9 +362,9 @@ describe('staking cycle', () => {
     assert.equal(cycle.number, 9);
     assert.equal(cycle.status, 'finished');
     assert.deepEqual(cycle.schedule, {
-      start: { bitcoin_height: 900 },
-      prepare_phase_start: { bitcoin_height: 990 },
-      end: { bitcoin_height: 999 },
+      start: { bitcoin_height: 900, time: null },
+      prepare_phase_start: { bitcoin_height: 990, time: null },
+      end: { bitcoin_height: 999, time: null },
     });
     // STX-only from the latest calculation, bonds from the registrations of the bonds covering
     // the cycle (bond 0: 30M), BTC from the bond's latest distribution in the cycle.
@@ -393,9 +393,9 @@ describe('staking cycle', () => {
     assert.equal(cycle.number, 11);
     assert.equal(cycle.status, 'upcoming');
     assert.deepEqual(cycle.schedule, {
-      start: { bitcoin_height: 1100 },
-      prepare_phase_start: { bitcoin_height: 1190 },
-      end: { bitcoin_height: 1199 },
+      start: { bitcoin_height: 1100, time: null },
+      prepare_phase_start: { bitcoin_height: 1190, time: null },
+      end: { bitcoin_height: 1199, time: null },
     });
     // alice's lock (unlock 1500) is still live when cycle 11 starts; both bonds cover cycle 11.
     assert.deepEqual(cycle.locked, {
@@ -493,9 +493,9 @@ describe('staking cycle', () => {
     );
     const cycle = await getCycle('143');
     assert.deepEqual(cycle.schedule, {
-      start: { bitcoin_height: 966350 },
-      prepare_phase_start: { bitcoin_height: 968350 },
-      end: { bitcoin_height: 968449 },
+      start: { bitcoin_height: 966350, time: null },
+      prepare_phase_start: { bitcoin_height: 968350, time: null },
+      end: { bitcoin_height: 968449, time: null },
     });
     assert.equal(cycle.status, 'upcoming');
   });
@@ -903,6 +903,40 @@ describe('staking cycle', () => {
     assert.equal(next.locked.stx.stx_only, '50000000');
     assert.equal(next.participants.stakers.stx_only, 1);
     assert.equal(next.locked.stx.bonds, '42000000');
+  });
+
+  test('schedule points carry the time of canonical Bitcoin blocks the API has seen', async () => {
+    await db.setPoxConstants(CONSTANTS);
+    const burnTime = (burnHeight: number) => 1_700_000_000 + burnHeight * 600;
+    const block = (args: { height: number; parent: string; burnHeight: number; hash: string }) =>
+      new TestBlockBuilder({
+        block_height: args.height,
+        block_hash: args.hash,
+        index_block_hash: args.hash,
+        parent_block_hash: args.parent,
+        parent_index_block_hash: args.parent,
+        burn_block_height: args.burnHeight,
+        burn_block_time: burnTime(args.burnHeight),
+      }).build();
+    await db.update(block({ height: 1, parent: '0x00', burnHeight: 900, hash: '0x0001' }));
+    await db.update(block({ height: 2, parent: '0x0001', burnHeight: 990, hash: '0x0002' }));
+    // A fork anchored to 999 that loses: its Bitcoin block time must not be reported.
+    await db.update(block({ height: 3, parent: '0x0002', burnHeight: 999, hash: '0x0a03' }));
+    await db.update(block({ height: 3, parent: '0x0002', burnHeight: 1000, hash: '0x0b03' }));
+    await db.update(block({ height: 4, parent: '0x0b03', burnHeight: 1050, hash: '0x0b04' }));
+
+    // Cycle 9 is finished; no canonical Stacks block anchored to its last Bitcoin block (999).
+    assert.deepEqual((await getCycle('9')).schedule, {
+      start: { bitcoin_height: 900, time: burnTime(900) },
+      prepare_phase_start: { bitcoin_height: 990, time: burnTime(990) },
+      end: { bitcoin_height: 999, time: null },
+    });
+    // Cycle 10 is current: its start is past, its prepare phase and end are in the future.
+    assert.deepEqual((await getCycle('current')).schedule, {
+      start: { bitcoin_height: 1000, time: burnTime(1000) },
+      prepare_phase_start: { bitcoin_height: 1090, time: null },
+      end: { bitcoin_height: 1099, time: null },
+    });
   });
 
   test('serves a combined-tip ETag and answers 304 when unchanged', async () => {

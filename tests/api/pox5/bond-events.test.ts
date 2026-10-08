@@ -382,9 +382,9 @@ describe('pox-5 bond events', () => {
       early_unlock_bytes: '',
       schedule: {
         // Derived from the PoX constants: cycle 7's prepare phase starts 5 blocks before 160.
-        enrollment_cutoff: { bitcoin_height: 155, pox_cycle: 7 },
-        activation: { bitcoin_height: 160, pox_cycle: 8 },
-        unlock: { bitcoin_height: 410, pox_cycle: 20 },
+        enrollment_cutoff: { bitcoin_height: 155, pox_cycle: 7, time: null },
+        activation: { bitcoin_height: 160, pox_cycle: 8, time: null },
+        unlock: { bitcoin_height: 410, pox_cycle: 20, time: null },
       },
     });
   });

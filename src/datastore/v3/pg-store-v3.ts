@@ -1,6 +1,7 @@
 import { BasePgStoreModule, PgSqlClient, has0xPrefix, logger } from '@stacks/api-toolkit';
 import type postgres from 'postgres';
 import {
+  DbBitcoinBlockTimes,
   DbBond,
   DbBondAllowlistEntry,
   DbBondEvent,
@@ -103,6 +104,9 @@ import {
   resolveTransactionCursor,
 } from './helpers.js';
 import { DbEventTypeId, DbSignerKeyGrantKind, DbTxStatus, DbTxTypeId } from '../common.js';
+
+/** The largest value of a PostgreSQL `integer` column. */
+const PG_INTEGER_MAX = 2_147_483_647;
 
 export class PgStoreV3 extends BasePgStoreModule {
   /** Cached result of {@link hasTrigramSupport}, resolved at most once per store. */
@@ -2180,6 +2184,35 @@ export class PgStoreV3 extends BasePgStoreModule {
       SELECT burn_block_height FROM chain_tip
     `;
     return resolvePoxCycleSelector(poxConstants, selector, tip?.burn_block_height ?? 0);
+  }
+
+  /**
+   * The Bitcoin header timestamps of the given heights. The node reports a Bitcoin block's
+   * timestamp only on the Stacks blocks anchored to it (`/new_burn_block` carries none), so a
+   * height is present only when a canonical Stacks block used it as its burn view: future heights
+   * are always absent, and so is the occasional past height that no Stacks block anchored to (e.g.
+   * missed sortitions before Nakamoto). One `burn_block_height` index probe per height.
+   * @param heights - The Bitcoin heights to look up; duplicates are ignored.
+   * @returns The timestamps (unix seconds) keyed by Bitcoin height.
+   */
+  async getBitcoinBlockTimes(heights: number[]): Promise<DbBitcoinBlockTimes> {
+    // Heights outside PostgreSQL's integer range (e.g. a far-future cycle's schedule) can never be
+    // in `blocks`, and would fail the array cast.
+    const unique = [...new Set(heights)].filter(h => h >= 0 && h <= PG_INTEGER_MAX);
+    if (unique.length === 0) {
+      return new Map();
+    }
+    const rows = await this.sql<{ burn_block_height: number; burn_block_time: number }[]>`
+      SELECT h.burn_block_height, b.burn_block_time
+      FROM unnest(${this.sql.array(unique)}::int[]) AS h(burn_block_height)
+      CROSS JOIN LATERAL (
+        SELECT burn_block_time
+        FROM blocks
+        WHERE canonical = TRUE AND burn_block_height = h.burn_block_height
+        LIMIT 1
+      ) b
+    `;
+    return new Map(rows.map(r => [r.burn_block_height, r.burn_block_time]));
   }
 
   /**
