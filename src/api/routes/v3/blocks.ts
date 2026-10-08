@@ -13,6 +13,7 @@ import {
 import { BlockHeightOrHashSchema } from '../../schemas/v3/entities/common.js';
 import { parseBlockParam } from '../v2/schemas.js';
 import { InvalidRequestError, NotFoundError } from '../../../errors.js';
+import { redirectUnprefixedHashParams } from '../../query-helpers.js';
 
 export const BlocksRoutes: FastifyPluginAsync<
   Record<never, never>,
@@ -22,6 +23,7 @@ export const BlocksRoutes: FastifyPluginAsync<
   fastify.get(
     '/blocks/:height_or_hash/transactions',
     {
+      onRequest: redirectUnprefixedHashParams({ params: ['height_or_hash'] }),
       preHandler: handleBlockCache,
       schema: {
         operationId: 'get_block_transactions',
