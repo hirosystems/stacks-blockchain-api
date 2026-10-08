@@ -69,9 +69,19 @@ export function isValidTxId(tx_id: string) {
 
 const UNPREFIXED_HASH_REGEX = /^[a-fA-F0-9]{64}$/;
 
-/** Prefixes a 32-byte hex hash with `0x` if it lacks one; any other value is returned unchanged. */
+/**
+ * Prefixes a raw URL component holding a 32-byte hex hash with `0x` if it lacks one. The value is
+ * percent-decoded before matching, since Fastify decodes it the same way before handing it to the
+ * route (`%30` + 63 hex digits is a bare hash). Any other or malformed value is returned unchanged.
+ */
 function prefixUnprefixedHash(value: string): string {
-  return UNPREFIXED_HASH_REGEX.test(value) ? `0x${value}` : value;
+  let decoded: string;
+  try {
+    decoded = decodeURIComponent(value);
+  } catch {
+    return value;
+  }
+  return UNPREFIXED_HASH_REGEX.test(decoded) ? `0x${decoded}` : value;
 }
 
 /**

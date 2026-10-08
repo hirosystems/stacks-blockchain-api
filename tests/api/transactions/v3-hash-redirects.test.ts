@@ -71,6 +71,16 @@ describe('v3 unprefixed hash redirects', () => {
       `/extended/v3/blocks/${bare(BLOCK_HASH)}/transactions`,
       `/extended/v3/blocks/${BLOCK_HASH}/transactions`,
     ],
+    [
+      'percent-encoded transaction',
+      `/extended/v3/transactions/%30${bare(TX_1).slice(1)}`,
+      `/extended/v3/transactions/${TX_1}`,
+    ],
+    [
+      'percent-encoded block hash',
+      `/extended/v3/blocks/%30${bare(BLOCK_HASH).slice(1)}/transactions`,
+      `/extended/v3/blocks/${BLOCK_HASH}/transactions`,
+    ],
   ];
 
   for (const [name, url, location] of pathCases) {
@@ -101,6 +111,16 @@ describe('v3 unprefixed hash redirects', () => {
       'principal balance changes, other params kept in place',
       `/extended/v3/principals/${PRINCIPAL}/balance-changes?limit=5&tx_id=${bare(TX_1)}`,
       `/extended/v3/principals/${PRINCIPAL}/balance-changes?limit=5&tx_id=${TX_1}`,
+    ],
+    [
+      'batch, percent-encoded',
+      `/extended/v3/transactions/batch?tx_id=%30${bare(TX_1).slice(1)},${TX_2}`,
+      `/extended/v3/transactions/batch?tx_id=${TX_1},${TX_2}`,
+    ],
+    [
+      'batch, valueless and malformed params kept verbatim',
+      `/extended/v3/transactions/batch?flag&%E0=1&tx_id=${bare(TX_1)}`,
+      `/extended/v3/transactions/batch?flag&%E0=1&tx_id=${TX_1}`,
     ],
   ];
 
