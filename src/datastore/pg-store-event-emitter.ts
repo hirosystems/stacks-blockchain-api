@@ -1,5 +1,5 @@
 import { EventEmitter } from 'events';
-import { DbConfigState, DbMempoolStats } from './common.js';
+import { DbConfigState, DbMempoolStats, MinedMempoolTx } from './common.js';
 
 interface DataStoreEvents {
   txUpdate: (txId: string) => void;
@@ -12,6 +12,8 @@ interface DataStoreEvents {
   tokensUpdate: (contractID: string) => void;
   tokenMetadataUpdateQueued: (queueId: number) => void;
   mempoolStatsUpdate: (mempoolStats: DbMempoolStats) => void;
+  /** Emitted after a canonical block that confirmed mempool txs has been committed. */
+  mempoolTxsMined: (info: { blockTime: number; txs: MinedMempoolTx[] }) => void;
   configStateUpdate: (configState: DbConfigState) => void;
 }
 

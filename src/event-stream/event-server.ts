@@ -3,7 +3,7 @@ import * as net from 'net';
 import Fastify, { FastifyInstance, FastifyRequest, FastifyServerOptions } from 'fastify';
 import PQueue from 'p-queue';
 import * as prom from 'prom-client';
-import { BitVec, ChainID, assertNotNullish, getChainIDNetwork } from '../helpers.js';
+import { BitVec, ChainID, I32_MAX, assertNotNullish, getChainIDNetwork } from '../helpers.js';
 import {
   DbEventBase,
   DbSmartContractEvent,
@@ -92,6 +92,29 @@ export function eventErrorResponse(error: unknown): { error: string } {
     current = (current as { cause?: unknown }).cause;
   }
   return { error: normalizeErrorMessage(messages.join(': ')) };
+}
+
+/**
+ * Header the SNP stream handler sets on injected event requests, carrying the time SNP received the
+ * event from the Stacks node. SNP replays keep the original value, so it stays accurate while the
+ * API catches up to the chain tip.
+ */
+export const SNP_TIMESTAMP_HEADER = 'x-snp-timestamp';
+
+/**
+ * Resolves the unix time (in seconds) at which an event was first received. Uses the SNP timestamp
+ * header when present (epoch milliseconds, or any `Date`-parseable string), falling back to the
+ * current time for events posted directly by a Stacks node or when the header can't be stored as a
+ * positive 32-bit integer of seconds.
+ */
+export function getEventReceiptTime(header: string | string[] | undefined): number {
+  const value = Array.isArray(header) ? header[0] : header;
+  if (value) {
+    const ms = /^\d+$/.test(value) ? Number(value) : Date.parse(value);
+    const seconds = Math.round(ms / 1000);
+    if (Number.isFinite(seconds) && seconds > 0 && seconds <= I32_MAX) return seconds;
+  }
+  return Math.round(Date.now() / 1000);
 }
 
 /** Collapse all runs of whitespace (incl. newlines) to single spaces and trim. */
@@ -183,9 +206,12 @@ async function handleBurnBlockMessage(
   });
 }
 
-async function handleMempoolTxsMessage(rawTxs: string[], db: PgWriteStore): Promise<void> {
+async function handleMempoolTxsMessage(
+  rawTxs: string[],
+  receiptDate: number,
+  db: PgWriteStore
+): Promise<void> {
   logger.debug(`Received ${rawTxs.length} mempool transactions`);
-  const receiptDate = Math.round(Date.now() / 1000);
   const decodedTxs = rawTxs.map(str => {
     const parsedTx = decodeTransaction(str);
     const txSender = getTxSenderAddress(parsedTx);
@@ -619,7 +645,7 @@ interface EventMessageHandler {
     msg: NewBlockMessage,
     db: PgWriteStore
   ): Promise<void> | void;
-  handleMempoolTxs(rawTxs: string[], db: PgWriteStore): Promise<void> | void;
+  handleMempoolTxs(rawTxs: string[], receiptTime: number, db: PgWriteStore): Promise<void> | void;
   handleBurnBlock(msg: NewBurnBlockMessage, db: PgWriteStore): Promise<void> | void;
   handleDroppedMempoolTxs(msg: DropMempoolTxMessage, db: PgWriteStore): Promise<void> | void;
   handleNewAttachment(msg: AttachmentsNewMessage[], db: PgWriteStore): Promise<void> | void;
@@ -708,9 +734,11 @@ function createMessageProcessorQueue(db: PgWriteStore): EventMessageHandler {
           throw e;
         });
     },
-    handleMempoolTxs: (rawTxs: string[], db: PgWriteStore) => {
+    handleMempoolTxs: (rawTxs: string[], receiptTime: number, db: PgWriteStore) => {
       return secondaryQueue
-        .add(() => observeEvent('mempool_txs', () => handleMempoolTxsMessage(rawTxs, db)))
+        .add(() =>
+          observeEvent('mempool_txs', () => handleMempoolTxsMessage(rawTxs, receiptTime, db))
+        )
         .catch(e => {
           logger.error(e, 'Error processing core node mempool message');
           throw e;
@@ -867,7 +895,8 @@ export async function startEventServer(opts: {
   app.post('/new_mempool_tx', async (req, res) => {
     try {
       const rawTxs = req.body as string[];
-      await messageHandler.handleMempoolTxs(rawTxs, db);
+      const receiptTime = getEventReceiptTime(req.headers[SNP_TIMESTAMP_HEADER]);
+      await messageHandler.handleMempoolTxs(rawTxs, receiptTime, db);
       await handleRawEventRequest(req);
       await res.status(200).send({ result: 'ok' });
     } catch (error) {

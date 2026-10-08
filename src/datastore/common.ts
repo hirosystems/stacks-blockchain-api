@@ -288,6 +288,14 @@ export interface DbTxGlobalStatus {
   microblock_hash?: string;
 }
 
+/** A mempool tx that was pruned because a canonical block confirmed it. */
+export interface MinedMempoolTx {
+  tx_id: string;
+  type_id: DbTxTypeId;
+  /** Unix time (seconds) at which the tx was first received into the mempool. */
+  receipt_time: number;
+}
+
 export interface DbMempoolStats {
   tx_type_counts: Record<string, number>;
   tx_simple_fee_averages: Record<

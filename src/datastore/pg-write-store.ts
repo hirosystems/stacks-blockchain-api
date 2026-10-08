@@ -54,6 +54,7 @@ import {
   DbTxRaw,
   DbMempoolTxRaw,
   DbChainTip,
+  MinedMempoolTx,
   NftCustodyInsertValues,
   DataStoreBnsBlockTxData,
   DbPox4SyntheticEvent,
@@ -302,6 +303,7 @@ export class PgWriteStore extends PgStore {
 
   async update(data: DataStoreBlockUpdateData): Promise<void> {
     let garbageCollectedMempoolTxs: string[] = [];
+    let minedMempoolTxs: MinedMempoolTx[] = [];
     let reorg: ReOrgUpdatedEntities = newReOrgUpdatedEntities();
     let isCanonical = true;
     let skippedDuplicateBlock = false;
@@ -341,6 +343,16 @@ export class PgWriteStore extends PgStore {
           nonce: d.tx.nonce,
           sponsor_nonce: d.tx.sponsor_nonce,
         }));
+        // Look up the mempool receipt data of this block's txs before pruning. Txs that were
+        // already pruned (e.g. replaced by fee or dropped) are included too, since a miner can
+        // still confirm them.
+        if (prunableTxs.length > 0 && !this.isEventReplay) {
+          minedMempoolTxs = await sql<MinedMempoolTx[]>`
+            SELECT tx_id, type_id, receipt_time
+            FROM mempool_txs
+            WHERE tx_id IN ${sql(prunableTxs.map(tx => tx.txId))}
+          `;
+        }
         await this.pruneMempoolTxs(sql, prunableTxs);
       }
 
@@ -438,6 +450,12 @@ export class PgWriteStore extends PgStore {
       }
     });
     if (skippedDuplicateBlock) return;
+    if (minedMempoolTxs.length > 0) {
+      this.eventEmitter.emit('mempoolTxsMined', {
+        blockTime: data.block.block_time,
+        txs: minedMempoolTxs,
+      });
+    }
     if (isCanonical) {
       await this.redisNotifier?.notify(
         {

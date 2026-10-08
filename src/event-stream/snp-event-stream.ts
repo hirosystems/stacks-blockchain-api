@@ -1,7 +1,7 @@
 import { SERVER_VERSION } from '@stacks/api-toolkit';
 import { logger as defaultLogger } from '@stacks/api-toolkit';
 import { EventEmitter } from 'node:events';
-import { EventStreamServer } from './event-server.js';
+import { EventStreamServer, SNP_TIMESTAMP_HEADER } from './event-server.js';
 import { PgWriteStore } from '../datastore/pg-write-store.js';
 import { StacksMessageStream, MessagePath } from '@stacks/node-publisher-client';
 import { ENV } from '../env.js';
@@ -70,7 +70,7 @@ export class SnpEventStreamHandler {
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  async handleMsg(messageId: string, _timestamp: string, path: string, body: any) {
+  async handleMsg(messageId: string, timestamp: string, path: string, body: any) {
     this.logger.debug(`Received SNP stream event ${path}, msgId: ${messageId}`);
     let response;
 
@@ -79,6 +79,7 @@ export class SnpEventStreamHandler {
         method: 'POST',
         url: path,
         payload: body,
+        headers: { [SNP_TIMESTAMP_HEADER]: timestamp },
       });
     } catch (error) {
       const errorMessage = `Failed to process SNP message ${messageId} at path ${path}: ${error}`;
