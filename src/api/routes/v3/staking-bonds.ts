@@ -51,6 +51,7 @@ export const StakingBondsRoutes: FastifyPluginAsync<
         limit: req.query.limit ?? getPagingQueryLimit(ResourceType.Tx),
         cursor: req.query.cursor,
       });
+      const poxConstants = await fastify.db.getPoxConstants();
       await reply.send({
         limit: results.limit,
         total: results.total,
@@ -59,7 +60,9 @@ export const StakingBondsRoutes: FastifyPluginAsync<
           previous: results.prev_cursor,
           current: results.current_cursor,
         },
-        results: results.results.map(r => serializeDbBondSummary(r, results.burn_block_height)),
+        results: results.results.map(r =>
+          serializeDbBondSummary(r, results.burn_block_height, poxConstants)
+        ),
       });
     }
   );
@@ -86,7 +89,9 @@ export const StakingBondsRoutes: FastifyPluginAsync<
       if (!bond) {
         throw new NotFoundError('Bond not found');
       }
-      await reply.send(serializeDbBond(bond, bond.burn_block_height));
+      await reply.send(
+        serializeDbBond(bond, bond.burn_block_height, await fastify.db.getPoxConstants())
+      );
     }
   );
 
@@ -118,6 +123,7 @@ export const StakingBondsRoutes: FastifyPluginAsync<
         limit: req.query.limit ?? getPagingQueryLimit(ResourceType.Tx),
         cursor: req.query.cursor,
       });
+      const poxConstants = await fastify.db.getPoxConstants();
       await reply.send({
         limit: results.limit,
         total: results.total,
@@ -126,7 +132,7 @@ export const StakingBondsRoutes: FastifyPluginAsync<
           previous: results.prev_cursor,
           current: results.current_cursor,
         },
-        results: results.results.map(r => serializeDbBondEvent(r)),
+        results: results.results.map(r => serializeDbBondEvent(r, poxConstants)),
       });
     }
   );

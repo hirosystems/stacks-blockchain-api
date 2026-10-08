@@ -69,11 +69,16 @@ interface BondSummaryItem {
     btc_capacity: string;
   };
   registrations: { allowed_count: number; registered_count: number };
+  schedule: Record<'enrollment_cutoff' | 'activation' | 'unlock', BondSchedulePoint>;
   balances: {
     locked: { btc: string; stx: string };
     rewards: { btc: { distributed: string; accrued: string; claimed: string } };
     paid_out: { btc: string };
   };
+}
+interface BondSchedulePoint {
+  bitcoin_height: number;
+  pox_cycle: number;
 }
 interface BondDetail extends BondSummaryItem {
   transaction: { tx_id: string };
@@ -221,6 +226,27 @@ describe('pox-5 bonds (simulated ingestion)', () => {
     assert.equal(BigInt(bond.parameters.btc_capacity), EXPECTED_BTC_CAPACITY);
     // Links back to the setup-bond transaction.
     assert.equal(normalizeTxId(bond.transaction.tx_id), normalizeTxId(SETUP_TX_ID));
+  });
+
+  test('the bond schedule reports its enrollment cutoff (GET .../bonds and .../bonds/:index)', async () => {
+    // A testnet-like geometry where the bond's start height (160) opens reward cycle 8.
+    await db.setPoxConstants({
+      firstBurnchainBlockHeight: 0,
+      rewardCycleLength: 20,
+      preparePhaseBlockLength: 5,
+    });
+    const expected = {
+      // Registration closes when cycle 7's prepare phase begins, 5 blocks before activation.
+      enrollment_cutoff: { bitcoin_height: 155, pox_cycle: 7 },
+      activation: { bitcoin_height: BOND_START_HEIGHT, pox_cycle: FIRST_REWARD_CYCLE },
+      unlock: { bitcoin_height: UNLOCK_BURN_HEIGHT, pox_cycle: UNLOCK_CYCLE },
+    };
+    const list = await getJson<CursorPaginated<BondSummaryItem>>(
+      '/extended/v3/staking/bonds?limit=50'
+    );
+    assert.deepEqual(list.results.find(b => b.index === BOND_INDEX)?.schedule, expected);
+    const bond = await getJson<BondDetail>(`/extended/v3/staking/bonds/${BOND_INDEX}`);
+    assert.deepEqual(bond.schedule, expected);
   });
 
   test('the allowlist lists alice and bob (GET .../allowlist)', async () => {

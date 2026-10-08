@@ -82,10 +82,20 @@ export const BondSchedulePointSchema = Type.Object({
 });
 export type BondSchedulePoint = Static<typeof BondSchedulePointSchema>;
 
-export const BondScheduleSchema = Type.Object({
-  activation: BondSchedulePointSchema,
-  unlock: BondSchedulePointSchema,
-});
+export const BondScheduleSchema = Type.Object(
+  {
+    enrollment_cutoff: BondSchedulePointSchema,
+    activation: BondSchedulePointSchema,
+    unlock: BondSchedulePointSchema,
+  },
+  {
+    description:
+      "The bond's lifecycle timeline. Each point is the first Bitcoin height of a new phase: " +
+      '`enrollment_cutoff` is the first height at which `register-for-bond` is rejected (the ' +
+      'prepare phase before activation, so enrollment is open strictly before it), `activation` ' +
+      'is the first height the bond is active, and `unlock` the first height it is unlocked.',
+  }
+);
 export type BondSchedule = Static<typeof BondScheduleSchema>;
 
 export const BondSummarySchema = Type.Object({

@@ -206,6 +206,24 @@ export function getPoxCycleSchedule(c: PoxConstants, cycle: number): PoxCycleSch
 }
 
 /**
+ * The first Bitcoin height at which pox-5 rejects `register-for-bond` for a bond: the start of the
+ * prepare phase that ends the cycle before the bond activates. The contract rejects registration
+ * during any prepare phase (`verify-not-prepare-phase`) and from the bond's start height on, and a
+ * bond always starts on a reward cycle boundary, so the prepare phase is what closes enrollment.
+ * Exclusive, like the bond's other schedule points: enrollment is open strictly before it.
+ */
+export function getBondEnrollmentCutoff(
+  c: PoxConstants,
+  bondStartHeight: number,
+  firstRewardCycle: number
+): { bitcoinHeight: number; poxCycle: number } {
+  return {
+    bitcoinHeight: bondStartHeight - c.preparePhaseBlockLength,
+    poxCycle: firstRewardCycle - 1,
+  };
+}
+
+/**
  * Where a reward cycle stands relative to the burn tip. `prepare_phase` is the cycle's final
  * `preparePhaseBlockLength` blocks, during which the next cycle's reward set is selected and the
  * pox contract rejects stacking operations.
