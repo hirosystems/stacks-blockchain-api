@@ -10,6 +10,7 @@ import {
   PoxInfoClient,
   burnHeightToRewardCycle,
   ensurePoxConstants,
+  getBondEnrollmentCutoff,
   getPoxCyclePhase,
   getPoxCycleSchedule,
   poxConstantsFromNodeInfo,
@@ -300,5 +301,15 @@ describe('pox cycle arithmetic', () => {
       endBitcoinHeight: 1099,
     });
     assert.equal(getPoxCyclePhase(small, 10, 1095), 'prepare_phase');
+  });
+
+  test('closes bond enrollment at the prepare phase before the bond activates', () => {
+    // A bond activating at the start of cycle 144 stops accepting registrations when cycle 143's
+    // prepare phase begins, the first height `verify-not-prepare-phase` rejects.
+    const cutoff = getBondEnrollmentCutoff(c, rewardCycleToBurnHeight(c, 144), 144);
+    assert.deepEqual(cutoff, { bitcoinHeight: 968350, poxCycle: 143 });
+    assert.equal(cutoff.bitcoinHeight, getPoxCycleSchedule(c, 143).preparePhaseStartBitcoinHeight);
+    assert.equal(getPoxCyclePhase(c, 143, cutoff.bitcoinHeight - 1), 'reward_phase');
+    assert.equal(getPoxCyclePhase(c, 143, cutoff.bitcoinHeight), 'prepare_phase');
   });
 });

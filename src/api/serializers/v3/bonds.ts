@@ -13,6 +13,7 @@ import {
   DbBondLockupType,
   DbPrincipalBondPositionStatus,
 } from '../../../datastore/common.js';
+import { getBondEnrollmentCutoff, PoxConstants } from '../../../datastore/pox-constants.js';
 import {
   Pox5EventAddToAllowlist,
   Pox5EventAnnounceL1EarlyExit,
@@ -59,12 +60,20 @@ function serializeBondStatus(summary: DbBondSummary, currentBurnBlockHeight: num
 /**
  * Serializes a database bond summary to a API bond summary.
  * @param summary - The database bond summary to serialize.
+ * @param currentBurnBlockHeight - The Bitcoin height of the chain tip, for the bond's status.
+ * @param poxConstants - The network's PoX constants, for the bond's enrollment cutoff.
  * @returns The API bond summary.
  */
 export function serializeDbBondSummary(
   summary: DbBondSummary,
-  currentBurnBlockHeight: number
+  currentBurnBlockHeight: number,
+  poxConstants: PoxConstants
 ): BondSummary {
+  const enrollmentCutoff = getBondEnrollmentCutoff(
+    poxConstants,
+    summary.bond_start_height,
+    summary.first_reward_cycle
+  );
   return {
     index: summary.bond_index,
     pox_version: 'pox5',
@@ -80,6 +89,10 @@ export function serializeDbBondSummary(
       registered_count: summary.registered_count,
     },
     schedule: {
+      enrollment_cutoff: {
+        bitcoin_height: enrollmentCutoff.bitcoinHeight,
+        pox_cycle: enrollmentCutoff.poxCycle,
+      },
       activation: {
         bitcoin_height: summary.bond_start_height,
         pox_cycle: summary.first_reward_cycle,
@@ -111,11 +124,17 @@ export function serializeDbBondSummary(
 /**
  * Serializes a database bond to a API bond.
  * @param bond - The database bond to serialize.
+ * @param currentBurnBlockHeight - The Bitcoin height of the chain tip, for the bond's status.
+ * @param poxConstants - The network's PoX constants, for the bond's enrollment cutoff.
  * @returns The API bond.
  */
-export function serializeDbBond(bond: DbBond, currentBurnBlockHeight: number): Bond {
+export function serializeDbBond(
+  bond: DbBond,
+  currentBurnBlockHeight: number,
+  poxConstants: PoxConstants
+): Bond {
   return {
-    ...serializeDbBondSummary(bond, currentBurnBlockHeight),
+    ...serializeDbBondSummary(bond, currentBurnBlockHeight, poxConstants),
     transaction: {
       tx_id: bond.tx_id,
       block: {
@@ -138,9 +157,10 @@ export function serializeDbBond(bond: DbBond, currentBurnBlockHeight: number): B
  * same vocabulary as the bond, allowlist, and registration entities (grouped `{ btc, stx }` string
  * amounts, integer heights and cycles) instead of passing the raw synthetic event fields through,
  * and carry only what the event uniquely records — details available on a resource endpoint (e.g.
- * a registration's proven L1 lockup outputs) are not repeated here.
+ * a registration's proven L1 lockup outputs) are not repeated here. The PoX constants derive the
+ * `setup-bond` schedule's enrollment cutoff, which the event itself does not record.
  */
-export function serializeDbBondEvent(event: DbBondEvent): BondEvent {
+export function serializeDbBondEvent(event: DbBondEvent, poxConstants: PoxConstants): BondEvent {
   const base = {
     bond_index: parseInt((event.data as { bond_index: string }).bond_index),
     transaction: {
@@ -162,6 +182,11 @@ export function serializeDbBondEvent(event: DbBondEvent): BondEvent {
   switch (event.name) {
     case Pox5EventName.SetupBond: {
       const data = event.data as unknown as Pox5EventSetupBond['data'];
+      const enrollmentCutoff = getBondEnrollmentCutoff(
+        poxConstants,
+        parseInt(data.bond_start_height),
+        parseInt(data.first_reward_cycle)
+      );
       return {
         ...base,
         name: Pox5EventName.SetupBond,
@@ -173,6 +198,10 @@ export function serializeDbBondEvent(event: DbBondEvent): BondEvent {
           },
           early_unlock_bytes: data.early_unlock_bytes,
           schedule: {
+            enrollment_cutoff: {
+              bitcoin_height: enrollmentCutoff.bitcoinHeight,
+              pox_cycle: enrollmentCutoff.poxCycle,
+            },
             activation: {
               bitcoin_height: parseInt(data.bond_start_height),
               pox_cycle: parseInt(data.first_reward_cycle),

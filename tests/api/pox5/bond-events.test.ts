@@ -271,6 +271,12 @@ describe('pox-5 bond events', () => {
       skipMigrations: true,
     });
     api = await startApiServer({ datastore: db, chainId: STACKS_TESTNET.chainId });
+    // A testnet-like geometry where the bond's start height (160) opens reward cycle 8.
+    await db.setPoxConstants({
+      firstBurnchainBlockHeight: 0,
+      rewardCycleLength: 20,
+      preparePhaseBlockLength: 5,
+    });
     await ingestScenario();
   });
 
@@ -375,6 +381,8 @@ describe('pox-5 bond events', () => {
       },
       early_unlock_bytes: '',
       schedule: {
+        // Derived from the PoX constants: cycle 7's prepare phase starts 5 blocks before 160.
+        enrollment_cutoff: { bitcoin_height: 155, pox_cycle: 7 },
         activation: { bitcoin_height: 160, pox_cycle: 8 },
         unlock: { bitcoin_height: 410, pox_cycle: 20 },
       },
