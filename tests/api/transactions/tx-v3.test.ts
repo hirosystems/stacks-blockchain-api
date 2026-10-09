@@ -117,11 +117,13 @@ describe('v3 transactions', () => {
           hash: '0x0002',
           index_hash: '0x0002',
           time: 2000,
+          time_iso: '1970-01-01T00:33:20.000Z',
           tx_index: 0,
         },
         bitcoin_block: {
           height: 2,
           time: 2000,
+          time_iso: '1970-01-01T00:33:20.000Z',
         },
         sender: {
           address: 'SP466FNC0P7JWTNM2R9T199QRZN1MYEDTAR0KP27',
@@ -147,11 +149,13 @@ describe('v3 transactions', () => {
           hash: '0x0001',
           index_hash: '0x0001',
           time: 1000,
+          time_iso: '1970-01-01T00:16:40.000Z',
           tx_index: 0,
         },
         bitcoin_block: {
           height: 1,
           time: 1000,
+          time_iso: '1970-01-01T00:16:40.000Z',
         },
         sender: {
           address: 'SP466FNC0P7JWTNM2R9T199QRZN1MYEDTAR0KP27',

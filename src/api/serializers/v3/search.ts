@@ -1,3 +1,4 @@
+import { unixEpochToIso } from '../../../helpers.js';
 import { DbSearchHit } from '../../../datastore/v3/types.js';
 import { SearchResult } from '../../schemas/v3/entities/search.js';
 import { serializeDbSmartContract } from './smart-contracts.js';
@@ -18,6 +19,7 @@ export function serializeDbSearchHit(hit: DbSearchHit): SearchResult {
           hash: hit.result.block_hash,
           index_hash: hit.result.index_block_hash,
           time: hit.result.block_time,
+          time_iso: unixEpochToIso(hit.result.block_time),
         },
       };
     case 'bitcoin_block':

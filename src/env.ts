@@ -302,6 +302,16 @@ const schema = Type.Object({
   REDIS_COMMAND_TIMEOUT: Type.Integer({ default: 5000, minimum: 0 }),
   REDIS_MAX_RETRIES: Type.Integer({ default: 20, minimum: 0 }),
   REDIS_QUEUE_MAXLEN: Type.Integer({ default: 10000, minimum: 0 }),
+
+  /**
+   * Future Bitcoin block times (e.g. the `projected_time` of bond and PoX cycle schedule points)
+   * are extrapolated from the pace of the trailing `BITCOIN_BLOCK_TIME_PROJECTION_WINDOW` Bitcoin
+   * blocks. On mainnet, blocks past the next difficulty retarget are assumed to arrive every
+   * `BITCOIN_BLOCK_TIME_TARGET_SECONDS`; the target is also the fallback when the API has not seen
+   * enough blocks to measure a pace.
+   */
+  BITCOIN_BLOCK_TIME_PROJECTION_WINDOW: Type.Integer({ default: 2016, minimum: 1 }),
+  BITCOIN_BLOCK_TIME_TARGET_SECONDS: Type.Integer({ default: 600, minimum: 1 }),
 });
 
 type Env = Static<typeof schema>;

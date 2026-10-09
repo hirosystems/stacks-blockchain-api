@@ -363,12 +363,6 @@ export interface DbCycleSigner {
   signer_managers: DbCycleSignerManager[];
 }
 
-/**
- * Bitcoin header timestamps (unix seconds) keyed by Bitcoin height, for the heights the API has
- * seen anchor a canonical Stacks block (see `PgStoreV3.getBitcoinBlockTimes`).
- */
-export type DbBitcoinBlockTimes = ReadonlyMap<number, number>;
-
 /** A per-cycle summary of pox-5 staking (see `PgStoreV3.getStakingCycle`). */
 export interface DbStakingCycle {
   number: number;

@@ -1,6 +1,10 @@
 import { Static, Type } from '@sinclair/typebox';
-import { Nullable } from '../../v1/util.js';
-import { BitcoinBlockPositionSchema, BlockPositionSchema, BondIndexSchema } from './common.js';
+import {
+  BitcoinBlockPositionSchema,
+  BlockPositionSchema,
+  BondIndexSchema,
+  SchedulePointTimesSchema,
+} from './common.js';
 
 export const BondStatusSchema = Type.Union([
   Type.Literal('upcoming'),
@@ -73,23 +77,17 @@ export const BondParametersSchema = Type.Object({
 export type BondParameters = Static<typeof BondParametersSchema>;
 
 /** A point on the bond's lifecycle timeline: a Bitcoin height and its PoX cycle. */
-export const BondSchedulePointSchema = Type.Object({
-  bitcoin_height: Type.Integer({
-    description: 'The Bitcoin height of this point in the bond lifecycle',
+export const BondSchedulePointSchema = Type.Composite([
+  Type.Object({
+    bitcoin_height: Type.Integer({
+      description: 'The Bitcoin height of this point in the bond lifecycle',
+    }),
+    pox_cycle: Type.Integer({
+      description: 'The PoX cycle of this point in the bond lifecycle',
+    }),
   }),
-  pox_cycle: Type.Integer({
-    description: 'The PoX cycle of this point in the bond lifecycle',
-  }),
-  time: Nullable(
-    Type.Integer({
-      description:
-        'Unix timestamp (in seconds) of the Bitcoin block at this height, as recorded in its ' +
-        'header. `null` for a block that has not been mined yet, or for a past block no Stacks ' +
-        'block anchored to (the API learns Bitcoin block times only from the Stacks blocks ' +
-        'anchored to them)',
-    })
-  ),
-});
+  SchedulePointTimesSchema,
+]);
 export type BondSchedulePoint = Static<typeof BondSchedulePointSchema>;
 
 export const BondScheduleSchema = Type.Object(

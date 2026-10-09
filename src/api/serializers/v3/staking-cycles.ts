@@ -1,4 +1,5 @@
-import { DbBitcoinBlockTimes, DbCycleSigner, DbStakingCycle } from '../../../datastore/v3/types.js';
+import { DbCycleSigner, DbStakingCycle } from '../../../datastore/v3/types.js';
+import { ScheduleTimes, serializeSchedulePointTimes } from './bitcoin-block-times.js';
 import { CycleSigner, StakingCycle } from '../../schemas/v3/entities/staking-cycles.js';
 
 export function serializeDbCycleSigner(signer: DbCycleSigner, cycleNumber: number): CycleSigner {
@@ -50,11 +51,11 @@ export function getDbStakingCycleScheduleHeights(cycle: DbStakingCycle): number[
 
 export function serializeDbStakingCycle(
   cycle: DbStakingCycle,
-  bitcoinBlockTimes: DbBitcoinBlockTimes
+  scheduleTimes: ScheduleTimes
 ): StakingCycle {
   const point = (bitcoinHeight: number) => ({
     bitcoin_height: bitcoinHeight,
-    time: bitcoinBlockTimes.get(bitcoinHeight) ?? null,
+    ...serializeSchedulePointTimes(scheduleTimes, bitcoinHeight),
   });
   return {
     number: cycle.number,

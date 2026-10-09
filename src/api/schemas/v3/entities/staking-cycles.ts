@@ -1,6 +1,12 @@
 import { Static, Type } from '@sinclair/typebox';
 import { Nullable } from '../../v1/util.js';
-import { AmountSchema, BondIndexSchema, PrincipalSchema, TransactionIdSchema } from './common.js';
+import {
+  AmountSchema,
+  BondIndexSchema,
+  PrincipalSchema,
+  SchedulePointTimesSchema,
+  TransactionIdSchema,
+} from './common.js';
 
 /** A live `grant-signer-key` authorization held by a signer manager. */
 export const SignerKeyGrantSchema = Type.Object(
@@ -115,18 +121,12 @@ export const StakingCycleStatusSchema = Type.Union(
 export type StakingCycleStatus = Static<typeof StakingCycleStatusSchema>;
 
 /** A point on a cycle's timeline. */
-export const CycleSchedulePointSchema = Type.Object({
-  bitcoin_height: Type.Integer({ description: 'The Bitcoin height of this point' }),
-  time: Nullable(
-    Type.Integer({
-      description:
-        'Unix timestamp (in seconds) of the Bitcoin block at this height, as recorded in its ' +
-        'header. `null` for a block that has not been mined yet, or for a past block no Stacks ' +
-        'block anchored to (the API learns Bitcoin block times only from the Stacks blocks ' +
-        'anchored to them)',
-    })
-  ),
-});
+export const CycleSchedulePointSchema = Type.Composite([
+  Type.Object({
+    bitcoin_height: Type.Integer({ description: 'The Bitcoin height of this point' }),
+  }),
+  SchedulePointTimesSchema,
+]);
 
 /** A per-cycle summary of pox-5 staking: what is locked, who participates, and the rewards. */
 export const StakingCycleSchema = Type.Object(

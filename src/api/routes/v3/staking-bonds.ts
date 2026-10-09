@@ -26,6 +26,7 @@ import {
   serializeDbBondRegistrationSummary,
   serializeDbBondSummary,
 } from '../../serializers/v3/bonds.js';
+import { getBitcoinBlockTimeProjectionConfig } from '../../../datastore/bitcoin-block-time.js';
 import { NotFoundError } from '../../../errors.js';
 
 export const StakingBondsRoutes: FastifyPluginAsync<
@@ -33,6 +34,7 @@ export const StakingBondsRoutes: FastifyPluginAsync<
   Server,
   TypeBoxTypeProvider
 > = async fastify => {
+  const projectionConfig = getBitcoinBlockTimeProjectionConfig(fastify.chainId);
   fastify.get(
     '/staking/bonds',
     {
@@ -55,9 +57,13 @@ export const StakingBondsRoutes: FastifyPluginAsync<
           cursor: req.query.cursor,
         });
         const poxConstants = await fastify.db.getPoxConstants();
-        const bitcoinBlockTimes = await fastify.db.v3.getBitcoinBlockTimes(
-          results.results.flatMap(r => getDbBondScheduleHeights(poxConstants, r))
-        );
+        const scheduleTimes = {
+          times: await fastify.db.v3.getBitcoinBlockTimes(
+            results.results.flatMap(r => getDbBondScheduleHeights(poxConstants, r)),
+            projectionConfig.paceWindowBlocks
+          ),
+          config: projectionConfig,
+        };
         return {
           limit: results.limit,
           total: results.total,
@@ -67,7 +73,7 @@ export const StakingBondsRoutes: FastifyPluginAsync<
             current: results.current_cursor,
           },
           results: results.results.map(r =>
-            serializeDbBondSummary(r, results.burn_block_height, poxConstants, bitcoinBlockTimes)
+            serializeDbBondSummary(r, results.burn_block_height, poxConstants, scheduleTimes)
           ),
         };
       });
@@ -99,10 +105,14 @@ export const StakingBondsRoutes: FastifyPluginAsync<
           throw new NotFoundError('Bond not found');
         }
         const poxConstants = await fastify.db.getPoxConstants();
-        const bitcoinBlockTimes = await fastify.db.v3.getBitcoinBlockTimes(
-          getDbBondScheduleHeights(poxConstants, bond)
-        );
-        return serializeDbBond(bond, bond.burn_block_height, poxConstants, bitcoinBlockTimes);
+        const scheduleTimes = {
+          times: await fastify.db.v3.getBitcoinBlockTimes(
+            getDbBondScheduleHeights(poxConstants, bond),
+            projectionConfig.paceWindowBlocks
+          ),
+          config: projectionConfig,
+        };
+        return serializeDbBond(bond, bond.burn_block_height, poxConstants, scheduleTimes);
       });
       await reply.send(response);
     }
@@ -138,9 +148,13 @@ export const StakingBondsRoutes: FastifyPluginAsync<
           cursor: req.query.cursor,
         });
         const poxConstants = await fastify.db.getPoxConstants();
-        const bitcoinBlockTimes = await fastify.db.v3.getBitcoinBlockTimes(
-          results.results.flatMap(r => getDbBondEventScheduleHeights(poxConstants, r))
-        );
+        const scheduleTimes = {
+          times: await fastify.db.v3.getBitcoinBlockTimes(
+            results.results.flatMap(r => getDbBondEventScheduleHeights(poxConstants, r)),
+            projectionConfig.paceWindowBlocks
+          ),
+          config: projectionConfig,
+        };
         return {
           limit: results.limit,
           total: results.total,
@@ -149,9 +163,7 @@ export const StakingBondsRoutes: FastifyPluginAsync<
             previous: results.prev_cursor,
             current: results.current_cursor,
           },
-          results: results.results.map(r =>
-            serializeDbBondEvent(r, poxConstants, bitcoinBlockTimes)
-          ),
+          results: results.results.map(r => serializeDbBondEvent(r, poxConstants, scheduleTimes)),
         };
       });
       await reply.send(response);

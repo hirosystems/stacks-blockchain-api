@@ -38,13 +38,55 @@ const TIP = 1050;
 const BOND_ACTIVE = { index: 0, first_cycle: 8, unlock_cycle: 20, start: 800, unlock: 2000 };
 const BOND_UPCOMING = { index: 1, first_cycle: 11, unlock_cycle: 23, start: 1100, unlock: 2300 };
 
+interface CycleSchedulePoint {
+  bitcoin_height: number;
+  time: number | null;
+  time_iso: string | null;
+  projected_time: number | null;
+  projected_time_iso: string | null;
+}
+
+/** A schedule point with no time at all. */
+const NO_TIME = { time: null, time_iso: null, projected_time: null, projected_time_iso: null };
+const iso = (time: number) => new Date(time * 1000).toISOString();
+/** A schedule point whose Bitcoin block was mined at `time`. */
+const confirmedAt = (time: number) => ({
+  ...NO_TIME,
+  time,
+  time_iso: iso(time),
+});
+/** A schedule point whose Bitcoin block is projected to be mined at `time`. */
+const projectedAt = (time: number) => ({
+  ...NO_TIME,
+  projected_time: time,
+  projected_time_iso: iso(time),
+});
+
+/** The Bitcoin time every fixture Stacks block carries (the test builder's default). */
+const FIXTURE_BURN_TIME = 94869286;
+
+/**
+ * A schedule point as the fixture reports it. No fixture Stacks block anchors to a schedule
+ * height, so past points have no time; and since every fixture block carries the same Bitcoin
+ * time, no pace can be measured and future points are projected from the tip at the 10-minute
+ * target.
+ */
+function fixturePoint(bitcoinHeight: number): CycleSchedulePoint {
+  return {
+    bitcoin_height: bitcoinHeight,
+    ...(bitcoinHeight > TIP
+      ? projectedAt(FIXTURE_BURN_TIME + (bitcoinHeight - TIP) * 600)
+      : NO_TIME),
+  };
+}
+
 interface StakingCycleResponse {
   number: number;
   status: string;
   schedule: {
-    start: { bitcoin_height: number; time: number | null };
-    prepare_phase_start: { bitcoin_height: number; time: number | null };
-    end: { bitcoin_height: number; time: number | null };
+    start: CycleSchedulePoint;
+    prepare_phase_start: CycleSchedulePoint;
+    end: CycleSchedulePoint;
   };
   locked: {
     stx: { stx_only: string; bonds: string; total: string };
@@ -331,9 +373,9 @@ describe('staking cycle', () => {
       number: 10,
       status: 'reward_phase',
       schedule: {
-        start: { bitcoin_height: 1000, time: null },
-        prepare_phase_start: { bitcoin_height: 1090, time: null },
-        end: { bitcoin_height: 1099, time: null },
+        start: fixturePoint(1000),
+        prepare_phase_start: fixturePoint(1090),
+        end: fixturePoint(1099),
       },
       locked: {
         // alice only (bob's lock ended when the cycle started); bond 0 is the only bond covering
@@ -362,9 +404,9 @@ describe('staking cycle', () => {
     assert.equal(cycle.number, 9);
     assert.equal(cycle.status, 'finished');
     assert.deepEqual(cycle.schedule, {
-      start: { bitcoin_height: 900, time: null },
-      prepare_phase_start: { bitcoin_height: 990, time: null },
-      end: { bitcoin_height: 999, time: null },
+      start: fixturePoint(900),
+      prepare_phase_start: fixturePoint(990),
+      end: fixturePoint(999),
     });
     // STX-only from the latest calculation, bonds from the registrations of the bonds covering
     // the cycle (bond 0: 30M), BTC from the bond's latest distribution in the cycle.
@@ -393,9 +435,9 @@ describe('staking cycle', () => {
     assert.equal(cycle.number, 11);
     assert.equal(cycle.status, 'upcoming');
     assert.deepEqual(cycle.schedule, {
-      start: { bitcoin_height: 1100, time: null },
-      prepare_phase_start: { bitcoin_height: 1190, time: null },
-      end: { bitcoin_height: 1199, time: null },
+      start: fixturePoint(1100),
+      prepare_phase_start: fixturePoint(1190),
+      end: fixturePoint(1199),
     });
     // alice's lock (unlock 1500) is still live when cycle 11 starts; both bonds cover cycle 11.
     assert.deepEqual(cycle.locked, {
@@ -493,9 +535,9 @@ describe('staking cycle', () => {
     );
     const cycle = await getCycle('143');
     assert.deepEqual(cycle.schedule, {
-      start: { bitcoin_height: 966350, time: null },
-      prepare_phase_start: { bitcoin_height: 968350, time: null },
-      end: { bitcoin_height: 968449, time: null },
+      start: fixturePoint(966350),
+      prepare_phase_start: fixturePoint(968350),
+      end: fixturePoint(968449),
     });
     assert.equal(cycle.status, 'upcoming');
   });
@@ -905,9 +947,10 @@ describe('staking cycle', () => {
     assert.equal(next.locked.stx.bonds, '42000000');
   });
 
-  test('schedule points carry the time of canonical Bitcoin blocks the API has seen', async () => {
+  test('schedule points carry confirmed times of canonical past blocks and projections of future ones', async () => {
     await db.setPoxConstants(CONSTANTS);
-    const burnTime = (burnHeight: number) => 1_700_000_000 + burnHeight * 600;
+    // Bitcoin blocks every 9 minutes.
+    const burnTime = (burnHeight: number) => 1_700_000_000 + burnHeight * 540;
     const block = (args: { height: number; parent: string; burnHeight: number; hash: string }) =>
       new TestBlockBuilder({
         block_height: args.height,
@@ -925,17 +968,29 @@ describe('staking cycle', () => {
     await db.update(block({ height: 3, parent: '0x0002', burnHeight: 1000, hash: '0x0b03' }));
     await db.update(block({ height: 4, parent: '0x0b03', burnHeight: 1050, hash: '0x0b04' }));
 
-    // Cycle 9 is finished; no canonical Stacks block anchored to its last Bitcoin block (999).
+    // Cycle 9 is finished; no canonical Stacks block anchored to its last Bitcoin block (999), so
+    // that point has no time at all.
     assert.deepEqual((await getCycle('9')).schedule, {
-      start: { bitcoin_height: 900, time: burnTime(900) },
-      prepare_phase_start: { bitcoin_height: 990, time: burnTime(990) },
-      end: { bitcoin_height: 999, time: null },
+      start: { bitcoin_height: 900, ...confirmedAt(burnTime(900)) },
+      prepare_phase_start: { bitcoin_height: 990, ...confirmedAt(burnTime(990)) },
+      end: { bitcoin_height: 999, ...NO_TIME },
     });
-    // Cycle 10 is current: its start is past, its prepare phase and end are in the future.
+    // Cycle 10 is current: its start is past, its prepare phase and end are projected from the
+    // tip (1050) at the pace measured since the oldest known block (900): 9 minutes.
     assert.deepEqual((await getCycle('current')).schedule, {
-      start: { bitcoin_height: 1000, time: burnTime(1000) },
-      prepare_phase_start: { bitcoin_height: 1090, time: null },
-      end: { bitcoin_height: 1099, time: null },
+      start: { bitcoin_height: 1000, ...confirmedAt(burnTime(1000)) },
+      prepare_phase_start: { bitcoin_height: 1090, ...projectedAt(burnTime(1090)) },
+      end: { bitcoin_height: 1099, ...projectedAt(burnTime(1099)) },
+    });
+  });
+
+  test('a cycle too far out to date has no projection', async () => {
+    await db.setPoxConstants(CONSTANTS);
+    await db.update(nextBlock().build());
+    assert.deepEqual((await getCycle('999999999')).schedule, {
+      start: { bitcoin_height: 99999999900, ...NO_TIME },
+      prepare_phase_start: { bitcoin_height: 99999999990, ...NO_TIME },
+      end: { bitcoin_height: 99999999999, ...NO_TIME },
     });
   });
 

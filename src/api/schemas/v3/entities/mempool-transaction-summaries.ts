@@ -29,6 +29,10 @@ export const BaseMempoolTransactionSummarySchema = Type.Object({
     description:
       'A unix timestamp (in seconds) indicating when the transaction broadcast was received by the node.',
   }),
+  receipt_time_iso: Type.String({
+    description: 'The `receipt_time` as an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) UTC timestamp.',
+    examples: ['2026-10-08T19:18:41.000Z'],
+  }),
   receipt_block_height: Type.Integer({
     description: 'Height of the block this transaction was received by the node',
   }),

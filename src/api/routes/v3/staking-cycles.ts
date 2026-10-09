@@ -15,6 +15,7 @@ import {
   serializeDbCycleSigner,
   serializeDbStakingCycle,
 } from '../../serializers/v3/staking-cycles.js';
+import { getBitcoinBlockTimeProjectionConfig } from '../../../datastore/bitcoin-block-time.js';
 import { InvalidRequestError, NotFoundError } from '../../../errors.js';
 
 export const StakingCyclesRoutes: FastifyPluginAsync<
@@ -22,6 +23,7 @@ export const StakingCyclesRoutes: FastifyPluginAsync<
   Server,
   TypeBoxTypeProvider
 > = async fastify => {
+  const projectionConfig = getBitcoinBlockTimeProjectionConfig(fastify.chainId);
   fastify.get(
     '/staking/cycles/:cycle_number',
     {
@@ -46,10 +48,14 @@ export const StakingCyclesRoutes: FastifyPluginAsync<
         if (!cycle) {
           throw new NotFoundError('PoX cycle not found');
         }
-        const bitcoinBlockTimes = await fastify.db.v3.getBitcoinBlockTimes(
-          getDbStakingCycleScheduleHeights(cycle)
-        );
-        return serializeDbStakingCycle(cycle, bitcoinBlockTimes);
+        const scheduleTimes = {
+          times: await fastify.db.v3.getBitcoinBlockTimes(
+            getDbStakingCycleScheduleHeights(cycle),
+            projectionConfig.paceWindowBlocks
+          ),
+          config: projectionConfig,
+        };
+        return serializeDbStakingCycle(cycle, scheduleTimes);
       });
       await reply.send(response);
     }
