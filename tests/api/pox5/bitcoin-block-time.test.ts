@@ -69,8 +69,15 @@ describe('bitcoin block time projections', () => {
     assert.equal(projectBitcoinBlockTime(TIMES, MAINNET, 4030), null);
     assert.equal(projectBitcoinBlockTime(TIMES, MAINNET, 100), null);
     assert.equal(projectBitcoinBlockTime({ ...TIMES, tip: null }, MAINNET, 5000), null);
-    // Past the latest date JavaScript can represent.
+    // Past the end of year 9999, where ISO 8601 renderings switch to expanded years.
+    assert.equal(projectBitcoinBlockTime(TIMES, MAINNET, 1_000_000_000), null);
     assert.equal(projectBitcoinBlockTime(TIMES, MAINNET, 99_999_999_999), null);
+    // The last block projected within year 9999 still has a projection.
+    const tip = TIMES.tip!;
+    const lastHeight = 4031 + Math.floor((253_402_300_799 - (tip.time + 540)) / 600);
+    const last = projectBitcoinBlockTime(TIMES, MAINNET, lastHeight);
+    assert.ok(last !== null && new Date(last * 1000).toISOString().startsWith('9999-'));
+    assert.equal(projectBitcoinBlockTime(TIMES, MAINNET, lastHeight + 1), null);
   });
 
   test('the config reverts to the target after retargets on mainnet only', () => {

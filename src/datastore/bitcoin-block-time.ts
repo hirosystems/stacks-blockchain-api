@@ -5,8 +5,12 @@ import { MAINNET_CHAIN_ID } from './pox-constants.js';
 /** Bitcoin retargets its difficulty every 2016 blocks, at heights that are multiples of it. */
 export const BITCOIN_DIFFICULTY_PERIOD = 2016;
 
-/** The latest time a JavaScript `Date` (and so an ISO 8601 rendering) can represent. */
-const MAX_DATE_UNIX_SECONDS = 8_640_000_000_000;
+/**
+ * The latest time with a four-digit-year ISO 8601 rendering (9999-12-31T23:59:59Z). Past it,
+ * `toISOString()` switches to the expanded `+YYYYYY` year form the API's `YYYY-MM-DDTHH:mm:ss.sssZ`
+ * format does not allow.
+ */
+const MAX_PROJECTION_UNIX_SECONDS = 253_402_300_799;
 
 /** How future Bitcoin block times are extrapolated. */
 export interface BitcoinBlockTimeProjectionConfig {
@@ -76,7 +80,7 @@ export function getBitcoinBlockPace(
  * (the first block of the next difficulty period is the first mined at the new difficulty).
  * Anchored on the tip rather than the wall clock, so it only changes when the chain does.
  * @returns Unix seconds, or `null` for a height at or below the tip (or with no tip), and for one
- * so far out its projection passes the latest representable date (e.g. a far-future cycle number).
+ * so far out its projection passes the end of year 9999 (e.g. a far-future cycle number).
  */
 export function projectBitcoinBlockTime(
   times: BitcoinBlockTimes,
@@ -99,5 +103,5 @@ export function projectBitcoinBlockTime(
     projection = tip.time + (height - tip.height) * pace;
   }
   projection = Math.round(projection);
-  return projection <= MAX_DATE_UNIX_SECONDS ? projection : null;
+  return projection <= MAX_PROJECTION_UNIX_SECONDS ? projection : null;
 }

@@ -106,7 +106,7 @@ export const TimeIsoSchema = Type.String({
  * When a schedule point's Bitcoin block was, or is projected to be, mined. Each pair is set or
  * `null` together, and at most one pair is set: `time` / `time_iso` once the block has been mined,
  * `projected_time` / `projected_time_iso` while it has not. Both pairs are `null` for a past block
- * no Stacks block anchored to, and for one too far in the future to date.
+ * no Stacks block anchored to, and for one projected past the end of year 9999.
  */
 export const SchedulePointTimesSchema = Type.Object({
   time: Type.Union([Type.Integer(), Type.Null()], {
@@ -127,7 +127,7 @@ export const SchedulePointTimesSchema = Type.Object({
       'extrapolated from the recent Bitcoin block pace (on mainnet, from the pace of the current ' +
       'difficulty period until its retarget, and the 10-minute target after it). Projections ' +
       'further out are less precise, by days for blocks months away. `null` once the block has ' +
-      'been mined.',
+      'been mined, and for a block projected past the end of year 9999.',
   }),
   projected_time_iso: Type.Union([Type.String(), Type.Null()], {
     description:
