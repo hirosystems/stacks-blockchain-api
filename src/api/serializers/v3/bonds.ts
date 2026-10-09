@@ -1,3 +1,4 @@
+import { unixEpochToIso } from '../../../helpers.js';
 import {
   DbBond,
   DbBondAllowlistEntry,
@@ -14,6 +15,7 @@ import {
   DbPrincipalBondPositionStatus,
 } from '../../../datastore/common.js';
 import { getBondEnrollmentCutoff, PoxConstants } from '../../../datastore/pox-constants.js';
+import { ScheduleTimes, serializeSchedulePointTimes } from './bitcoin-block-times.js';
 import {
   Pox5EventAddToAllowlist,
   Pox5EventAnnounceL1EarlyExit,
@@ -25,7 +27,7 @@ import {
   Pox5EventUnstakeSbtc,
   Pox5EventUpdateBondRegistration,
 } from '@stacks/codec';
-import { Bond, BondSummary } from '../../schemas/v3/entities/bonds.js';
+import { Bond, BondSchedule, BondSummary } from '../../schemas/v3/entities/bonds.js';
 import { BondStatus } from '../../schemas/v3/entities/bonds.js';
 import { BondEvent } from '../../schemas/v3/entities/bond-events.js';
 import { BondAllowlist } from '../../schemas/v3/entities/bond-allowlist-entries.js';
@@ -57,23 +59,101 @@ function serializeBondStatus(summary: DbBondSummary, currentBurnBlockHeight: num
   return 'unlocked';
 }
 
+/** The bond terms its schedule is derived from, as recorded by `setup-bond`. */
+interface BondTerms {
+  bondStartHeight: number;
+  firstRewardCycle: number;
+  unlockBurnHeight: number;
+  unlockCycle: number;
+}
+
+function dbBondTerms(summary: DbBondSummary): BondTerms {
+  return {
+    bondStartHeight: summary.bond_start_height,
+    firstRewardCycle: summary.first_reward_cycle,
+    unlockBurnHeight: summary.unlock_burn_height,
+    unlockCycle: summary.unlock_cycle,
+  };
+}
+
+function setupBondTerms(data: Pox5EventSetupBond['data']): BondTerms {
+  return {
+    bondStartHeight: parseInt(data.bond_start_height),
+    firstRewardCycle: parseInt(data.first_reward_cycle),
+    unlockBurnHeight: parseInt(data.unlock_burn_height),
+    unlockCycle: parseInt(data.unlock_cycle),
+  };
+}
+
+/** The Bitcoin heights of a bond's schedule points, in schedule order. */
+function bondScheduleHeights(poxConstants: PoxConstants, terms: BondTerms): number[] {
+  const enrollmentCutoff = getBondEnrollmentCutoff(
+    poxConstants,
+    terms.bondStartHeight,
+    terms.firstRewardCycle
+  );
+  return [enrollmentCutoff.bitcoinHeight, terms.bondStartHeight, terms.unlockBurnHeight];
+}
+
+/**
+ * The Bitcoin heights whose times a bond summary's schedule needs, for the caller to resolve with
+ * `PgStoreV3.getBitcoinBlockTimes` before serializing.
+ */
+export function getDbBondScheduleHeights(
+  poxConstants: PoxConstants,
+  summary: DbBondSummary
+): number[] {
+  return bondScheduleHeights(poxConstants, dbBondTerms(summary));
+}
+
+/** As `getDbBondScheduleHeights`, for the schedule a `setup-bond` event carries (none otherwise). */
+export function getDbBondEventScheduleHeights(
+  poxConstants: PoxConstants,
+  event: DbBondEvent
+): number[] {
+  if (event.name !== Pox5EventName.SetupBond) {
+    return [];
+  }
+  const data = event.data as unknown as Pox5EventSetupBond['data'];
+  return bondScheduleHeights(poxConstants, setupBondTerms(data));
+}
+
+function serializeBondSchedule(
+  poxConstants: PoxConstants,
+  scheduleTimes: ScheduleTimes,
+  terms: BondTerms
+): BondSchedule {
+  const enrollmentCutoff = getBondEnrollmentCutoff(
+    poxConstants,
+    terms.bondStartHeight,
+    terms.firstRewardCycle
+  );
+  const point = (bitcoinHeight: number, poxCycle: number) => ({
+    bitcoin_height: bitcoinHeight,
+    pox_cycle: poxCycle,
+    ...serializeSchedulePointTimes(scheduleTimes, bitcoinHeight),
+  });
+  return {
+    enrollment_cutoff: point(enrollmentCutoff.bitcoinHeight, enrollmentCutoff.poxCycle),
+    activation: point(terms.bondStartHeight, terms.firstRewardCycle),
+    unlock: point(terms.unlockBurnHeight, terms.unlockCycle),
+  };
+}
+
 /**
  * Serializes a database bond summary to a API bond summary.
  * @param summary - The database bond summary to serialize.
  * @param currentBurnBlockHeight - The Bitcoin height of the chain tip, for the bond's status.
  * @param poxConstants - The network's PoX constants, for the bond's enrollment cutoff.
+ * @param scheduleTimes - Resolves the schedule's times (heights from `getDbBondScheduleHeights`).
  * @returns The API bond summary.
  */
 export function serializeDbBondSummary(
   summary: DbBondSummary,
   currentBurnBlockHeight: number,
-  poxConstants: PoxConstants
+  poxConstants: PoxConstants,
+  scheduleTimes: ScheduleTimes
 ): BondSummary {
-  const enrollmentCutoff = getBondEnrollmentCutoff(
-    poxConstants,
-    summary.bond_start_height,
-    summary.first_reward_cycle
-  );
   return {
     index: summary.bond_index,
     pox_version: 'pox5',
@@ -88,20 +168,7 @@ export function serializeDbBondSummary(
       allowed_count: summary.allowed_count,
       registered_count: summary.registered_count,
     },
-    schedule: {
-      enrollment_cutoff: {
-        bitcoin_height: enrollmentCutoff.bitcoinHeight,
-        pox_cycle: enrollmentCutoff.poxCycle,
-      },
-      activation: {
-        bitcoin_height: summary.bond_start_height,
-        pox_cycle: summary.first_reward_cycle,
-      },
-      unlock: {
-        bitcoin_height: summary.unlock_burn_height,
-        pox_cycle: summary.unlock_cycle,
-      },
-    },
+    schedule: serializeBondSchedule(poxConstants, scheduleTimes, dbBondTerms(summary)),
     balances: {
       locked: {
         btc: summary.btc_locked,
@@ -126,15 +193,17 @@ export function serializeDbBondSummary(
  * @param bond - The database bond to serialize.
  * @param currentBurnBlockHeight - The Bitcoin height of the chain tip, for the bond's status.
  * @param poxConstants - The network's PoX constants, for the bond's enrollment cutoff.
+ * @param scheduleTimes - Resolves the schedule's times (heights from `getDbBondScheduleHeights`).
  * @returns The API bond.
  */
 export function serializeDbBond(
   bond: DbBond,
   currentBurnBlockHeight: number,
-  poxConstants: PoxConstants
+  poxConstants: PoxConstants,
+  scheduleTimes: ScheduleTimes
 ): Bond {
   return {
-    ...serializeDbBondSummary(bond, currentBurnBlockHeight, poxConstants),
+    ...serializeDbBondSummary(bond, currentBurnBlockHeight, poxConstants, scheduleTimes),
     transaction: {
       tx_id: bond.tx_id,
       block: {
@@ -142,11 +211,13 @@ export function serializeDbBond(
         hash: bond.block_hash,
         index_hash: bond.index_block_hash,
         time: bond.block_time,
+        time_iso: unixEpochToIso(bond.block_time),
         tx_index: bond.tx_index,
       },
       bitcoin_block: {
         height: bond.burn_block_height,
         time: bond.burn_block_time,
+        time_iso: unixEpochToIso(bond.burn_block_time),
       },
     },
   };
@@ -158,9 +229,14 @@ export function serializeDbBond(
  * amounts, integer heights and cycles) instead of passing the raw synthetic event fields through,
  * and carry only what the event uniquely records — details available on a resource endpoint (e.g.
  * a registration's proven L1 lockup outputs) are not repeated here. The PoX constants derive the
- * `setup-bond` schedule's enrollment cutoff, which the event itself does not record.
+ * `setup-bond` schedule's enrollment cutoff, which the event itself does not record, and the
+ * schedule's times from `scheduleTimes` (heights from `getDbBondEventScheduleHeights`).
  */
-export function serializeDbBondEvent(event: DbBondEvent, poxConstants: PoxConstants): BondEvent {
+export function serializeDbBondEvent(
+  event: DbBondEvent,
+  poxConstants: PoxConstants,
+  scheduleTimes: ScheduleTimes
+): BondEvent {
   const base = {
     bond_index: parseInt((event.data as { bond_index: string }).bond_index),
     transaction: {
@@ -172,21 +248,18 @@ export function serializeDbBondEvent(event: DbBondEvent, poxConstants: PoxConsta
       hash: event.block_hash,
       index_hash: event.index_block_hash,
       time: event.block_time,
+      time_iso: unixEpochToIso(event.block_time),
       tx_index: event.tx_index,
     },
     bitcoin_block: {
       height: event.burn_block_height,
       time: event.burn_block_time,
+      time_iso: unixEpochToIso(event.burn_block_time),
     },
   };
   switch (event.name) {
     case Pox5EventName.SetupBond: {
       const data = event.data as unknown as Pox5EventSetupBond['data'];
-      const enrollmentCutoff = getBondEnrollmentCutoff(
-        poxConstants,
-        parseInt(data.bond_start_height),
-        parseInt(data.first_reward_cycle)
-      );
       return {
         ...base,
         name: Pox5EventName.SetupBond,
@@ -197,20 +270,7 @@ export function serializeDbBondEvent(event: DbBondEvent, poxConstants: PoxConsta
             minimum_stx_ratio: parseInt(data.min_ustx_ratio),
           },
           early_unlock_bytes: data.early_unlock_bytes,
-          schedule: {
-            enrollment_cutoff: {
-              bitcoin_height: enrollmentCutoff.bitcoinHeight,
-              pox_cycle: enrollmentCutoff.poxCycle,
-            },
-            activation: {
-              bitcoin_height: parseInt(data.bond_start_height),
-              pox_cycle: parseInt(data.first_reward_cycle),
-            },
-            unlock: {
-              bitcoin_height: parseInt(data.unlock_burn_height),
-              pox_cycle: parseInt(data.unlock_cycle),
-            },
-          },
+          schedule: serializeBondSchedule(poxConstants, scheduleTimes, setupBondTerms(data)),
         },
       };
     }

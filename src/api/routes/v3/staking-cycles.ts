@@ -11,9 +11,11 @@ import {
 import { CycleSelectorParamSchema, parseCycleSelector } from '../../schemas/v3/params.js';
 import { CycleSignerSchema, StakingCycleSchema } from '../../schemas/v3/entities/staking-cycles.js';
 import {
+  getDbStakingCycleScheduleHeights,
   serializeDbCycleSigner,
   serializeDbStakingCycle,
 } from '../../serializers/v3/staking-cycles.js';
+import { getBitcoinBlockTimeProjectionConfig } from '../../../datastore/bitcoin-block-time.js';
 import { InvalidRequestError, NotFoundError } from '../../../errors.js';
 
 export const StakingCyclesRoutes: FastifyPluginAsync<
@@ -21,6 +23,7 @@ export const StakingCyclesRoutes: FastifyPluginAsync<
   Server,
   TypeBoxTypeProvider
 > = async fastify => {
+  const projectionConfig = getBitcoinBlockTimeProjectionConfig(fastify.chainId);
   fastify.get(
     '/staking/cycles/:cycle_number',
     {
@@ -37,14 +40,24 @@ export const StakingCyclesRoutes: FastifyPluginAsync<
       },
     },
     async (req, reply) => {
-      const cycle = await fastify.db.v3.getStakingCycle({
-        selector: parseCycleSelector(req.params.cycle_number),
-        poxConstants: await fastify.db.getPoxConstants(),
+      const response = await fastify.db.sqlTransaction(async _sql => {
+        const cycle = await fastify.db.v3.getStakingCycle({
+          selector: parseCycleSelector(req.params.cycle_number),
+          poxConstants: await fastify.db.getPoxConstants(),
+        });
+        if (!cycle) {
+          throw new NotFoundError('PoX cycle not found');
+        }
+        const scheduleTimes = {
+          times: await fastify.db.v3.getBitcoinBlockTimes(
+            getDbStakingCycleScheduleHeights(cycle),
+            projectionConfig.paceWindowBlocks
+          ),
+          config: projectionConfig,
+        };
+        return serializeDbStakingCycle(cycle, scheduleTimes);
       });
-      if (!cycle) {
-        throw new NotFoundError('PoX cycle not found');
-      }
-      await reply.send(serializeDbStakingCycle(cycle));
+      await reply.send(response);
     }
   );
 

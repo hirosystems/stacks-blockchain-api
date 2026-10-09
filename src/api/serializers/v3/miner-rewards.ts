@@ -1,3 +1,4 @@
+import { unixEpochToIso } from '../../../helpers.js';
 import {
   PrincipalMinerReward,
   PrincipalMiningSummary,
@@ -31,12 +32,14 @@ export function serializePrincipalMinerReward(
       hash: reward.mature_block_hash,
       index_hash: reward.mature_index_block_hash,
       time: reward.mature_block_time,
+      time_iso: unixEpochToIso(reward.mature_block_time),
     },
     source_block: {
       height: reward.source_block_height,
       hash: reward.source_block_hash,
       index_hash: reward.source_index_block_hash,
       time: reward.source_block_time,
+      time_iso: unixEpochToIso(reward.source_block_time),
     },
     ...serializeRewardAmounts(reward),
   };
