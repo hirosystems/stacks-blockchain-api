@@ -2242,7 +2242,7 @@ export interface paths {
         };
         /**
          * Get bond
-         * @description Get bond
+         * @description Get a bond. A bond that has not been set up yet but still can be (its activation height is ahead of the chain tip) is returned with a `projected` status and only the schedule pox-5 will assign it, which follows from its index.
          */
         get: operations["get_bond"];
         put?: never;
@@ -35590,6 +35590,8 @@ export interface operations {
                                 index_hash: string;
                                 /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                                 time: number;
+                                /** @description The `time` as an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) UTC timestamp. */
+                                time_iso: string;
                                 /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                                 tx_index: number;
                             };
@@ -35598,6 +35600,8 @@ export interface operations {
                                 height: number;
                                 /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                                 time: number;
+                                /** @description The `time` as an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) UTC timestamp. */
+                                time_iso: string;
                             };
                             /** @description Status of the transaction */
                             status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
@@ -35638,6 +35642,8 @@ export interface operations {
                                 index_hash: string;
                                 /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                                 time: number;
+                                /** @description The `time` as an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) UTC timestamp. */
+                                time_iso: string;
                                 /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                                 tx_index: number;
                             };
@@ -35646,6 +35652,8 @@ export interface operations {
                                 height: number;
                                 /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                                 time: number;
+                                /** @description The `time` as an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) UTC timestamp. */
+                                time_iso: string;
                             };
                             /** @description Status of the transaction */
                             status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
@@ -35682,6 +35690,8 @@ export interface operations {
                                 index_hash: string;
                                 /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                                 time: number;
+                                /** @description The `time` as an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) UTC timestamp. */
+                                time_iso: string;
                                 /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                                 tx_index: number;
                             };
@@ -35690,6 +35700,8 @@ export interface operations {
                                 height: number;
                                 /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                                 time: number;
+                                /** @description The `time` as an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) UTC timestamp. */
+                                time_iso: string;
                             };
                             /** @description Status of the transaction */
                             status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
@@ -35727,6 +35739,8 @@ export interface operations {
                                 index_hash: string;
                                 /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                                 time: number;
+                                /** @description The `time` as an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) UTC timestamp. */
+                                time_iso: string;
                                 /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                                 tx_index: number;
                             };
@@ -35735,6 +35749,8 @@ export interface operations {
                                 height: number;
                                 /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                                 time: number;
+                                /** @description The `time` as an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) UTC timestamp. */
+                                time_iso: string;
                             };
                             /** @description Status of the transaction */
                             status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
@@ -35766,6 +35782,8 @@ export interface operations {
                                 index_hash: string;
                                 /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                                 time: number;
+                                /** @description The `time` as an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) UTC timestamp. */
+                                time_iso: string;
                                 /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                                 tx_index: number;
                             };
@@ -35774,6 +35792,8 @@ export interface operations {
                                 height: number;
                                 /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                                 time: number;
+                                /** @description The `time` as an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) UTC timestamp. */
+                                time_iso: string;
                             };
                             /** @description Status of the transaction */
                             status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
@@ -35808,6 +35828,8 @@ export interface operations {
                                 index_hash: string;
                                 /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                                 time: number;
+                                /** @description The `time` as an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) UTC timestamp. */
+                                time_iso: string;
                                 /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                                 tx_index: number;
                             };
@@ -35816,6 +35838,8 @@ export interface operations {
                                 height: number;
                                 /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                                 time: number;
+                                /** @description The `time` as an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) UTC timestamp. */
+                                time_iso: string;
                             };
                             /** @description Status of the transaction */
                             status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
@@ -36304,6 +36328,8 @@ export interface operations {
                             fee_rate: string;
                             /** @description A unix timestamp (in seconds) indicating when the transaction broadcast was received by the node. */
                             receipt_time: number;
+                            /** @description The `receipt_time` as an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) UTC timestamp. */
+                            receipt_time_iso: string;
                             /** @description Height of the block this transaction was received by the node */
                             receipt_block_height: number;
                             /** @description Status of the mempool transaction */
@@ -36338,6 +36364,8 @@ export interface operations {
                             fee_rate: string;
                             /** @description A unix timestamp (in seconds) indicating when the transaction broadcast was received by the node. */
                             receipt_time: number;
+                            /** @description The `receipt_time` as an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) UTC timestamp. */
+                            receipt_time_iso: string;
                             /** @description Height of the block this transaction was received by the node */
                             receipt_block_height: number;
                             /** @description Status of the mempool transaction */
@@ -36368,6 +36396,8 @@ export interface operations {
                             fee_rate: string;
                             /** @description A unix timestamp (in seconds) indicating when the transaction broadcast was received by the node. */
                             receipt_time: number;
+                            /** @description The `receipt_time` as an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) UTC timestamp. */
+                            receipt_time_iso: string;
                             /** @description Height of the block this transaction was received by the node */
                             receipt_block_height: number;
                             /** @description Status of the mempool transaction */
@@ -36399,6 +36429,8 @@ export interface operations {
                             fee_rate: string;
                             /** @description A unix timestamp (in seconds) indicating when the transaction broadcast was received by the node. */
                             receipt_time: number;
+                            /** @description The `receipt_time` as an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) UTC timestamp. */
+                            receipt_time_iso: string;
                             /** @description Height of the block this transaction was received by the node */
                             receipt_block_height: number;
                             /** @description Status of the mempool transaction */
@@ -36424,6 +36456,8 @@ export interface operations {
                             fee_rate: string;
                             /** @description A unix timestamp (in seconds) indicating when the transaction broadcast was received by the node. */
                             receipt_time: number;
+                            /** @description The `receipt_time` as an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) UTC timestamp. */
+                            receipt_time_iso: string;
                             /** @description Height of the block this transaction was received by the node */
                             receipt_block_height: number;
                             /** @description Status of the mempool transaction */
@@ -36449,6 +36483,8 @@ export interface operations {
                             fee_rate: string;
                             /** @description A unix timestamp (in seconds) indicating when the transaction broadcast was received by the node. */
                             receipt_time: number;
+                            /** @description The `receipt_time` as an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) UTC timestamp. */
+                            receipt_time_iso: string;
                             /** @description Height of the block this transaction was received by the node */
                             receipt_block_height: number;
                             /** @description Status of the mempool transaction */
@@ -36537,6 +36573,8 @@ export interface operations {
                                     index_hash: string;
                                     /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                                     time: number;
+                                    /** @description The `time` as an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) UTC timestamp. */
+                                    time_iso: string;
                                     /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                                     tx_index: number;
                                 };
@@ -36545,6 +36583,8 @@ export interface operations {
                                     height: number;
                                     /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                                     time: number;
+                                    /** @description The `time` as an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) UTC timestamp. */
+                                    time_iso: string;
                                 };
                                 /** @description Status of the transaction */
                                 status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
@@ -36585,6 +36625,8 @@ export interface operations {
                                     index_hash: string;
                                     /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                                     time: number;
+                                    /** @description The `time` as an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) UTC timestamp. */
+                                    time_iso: string;
                                     /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                                     tx_index: number;
                                 };
@@ -36593,6 +36635,8 @@ export interface operations {
                                     height: number;
                                     /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                                     time: number;
+                                    /** @description The `time` as an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) UTC timestamp. */
+                                    time_iso: string;
                                 };
                                 /** @description Status of the transaction */
                                 status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
@@ -36629,6 +36673,8 @@ export interface operations {
                                     index_hash: string;
                                     /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                                     time: number;
+                                    /** @description The `time` as an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) UTC timestamp. */
+                                    time_iso: string;
                                     /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                                     tx_index: number;
                                 };
@@ -36637,6 +36683,8 @@ export interface operations {
                                     height: number;
                                     /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                                     time: number;
+                                    /** @description The `time` as an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) UTC timestamp. */
+                                    time_iso: string;
                                 };
                                 /** @description Status of the transaction */
                                 status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
@@ -36674,6 +36722,8 @@ export interface operations {
                                     index_hash: string;
                                     /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                                     time: number;
+                                    /** @description The `time` as an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) UTC timestamp. */
+                                    time_iso: string;
                                     /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                                     tx_index: number;
                                 };
@@ -36682,6 +36732,8 @@ export interface operations {
                                     height: number;
                                     /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                                     time: number;
+                                    /** @description The `time` as an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) UTC timestamp. */
+                                    time_iso: string;
                                 };
                                 /** @description Status of the transaction */
                                 status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
@@ -36713,6 +36765,8 @@ export interface operations {
                                     index_hash: string;
                                     /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                                     time: number;
+                                    /** @description The `time` as an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) UTC timestamp. */
+                                    time_iso: string;
                                     /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                                     tx_index: number;
                                 };
@@ -36721,6 +36775,8 @@ export interface operations {
                                     height: number;
                                     /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                                     time: number;
+                                    /** @description The `time` as an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) UTC timestamp. */
+                                    time_iso: string;
                                 };
                                 /** @description Status of the transaction */
                                 status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
@@ -36755,6 +36811,8 @@ export interface operations {
                                     index_hash: string;
                                     /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                                     time: number;
+                                    /** @description The `time` as an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) UTC timestamp. */
+                                    time_iso: string;
                                     /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                                     tx_index: number;
                                 };
@@ -36763,6 +36821,8 @@ export interface operations {
                                     height: number;
                                     /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                                     time: number;
+                                    /** @description The `time` as an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) UTC timestamp. */
+                                    time_iso: string;
                                 };
                                 /** @description Status of the transaction */
                                 status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
@@ -36880,6 +36940,11 @@ export interface operations {
                                 index_hash: string;
                                 /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                                 time: number;
+                                /**
+                                 * @description The `time` as an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) UTC timestamp.
+                                 * @example 2026-10-08T19:18:41.000Z
+                                 */
+                                time_iso: string;
                                 /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                                 tx_index: number;
                             };
@@ -36970,6 +37035,11 @@ export interface operations {
                                 index_hash: string;
                                 /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                                 time: number;
+                                /**
+                                 * @description The `time` as an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) UTC timestamp.
+                                 * @example 2026-10-08T19:18:41.000Z
+                                 */
+                                time_iso: string;
                                 /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                                 tx_index: number;
                             };
@@ -37061,6 +37131,11 @@ export interface operations {
                                 index_hash: string;
                                 /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                                 time: number;
+                                /**
+                                 * @description The `time` as an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) UTC timestamp.
+                                 * @example 2026-10-08T19:18:41.000Z
+                                 */
+                                time_iso: string;
                                 /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                                 tx_index: number;
                             };
@@ -37523,6 +37598,11 @@ export interface operations {
                                 index_hash: string;
                                 /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                                 time: number;
+                                /**
+                                 * @description The `time` as an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) UTC timestamp.
+                                 * @example 2026-10-08T19:18:41.000Z
+                                 */
+                                time_iso: string;
                             };
                             /** BlockSummary */
                             source_block: {
@@ -37542,6 +37622,11 @@ export interface operations {
                                 index_hash: string;
                                 /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                                 time: number;
+                                /**
+                                 * @description The `time` as an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) UTC timestamp.
+                                 * @example 2026-10-08T19:18:41.000Z
+                                 */
+                                time_iso: string;
                             };
                             /**
                              * Amount
@@ -37936,6 +38021,8 @@ export interface operations {
                             fee_rate: string;
                             /** @description A unix timestamp (in seconds) indicating when the transaction broadcast was received by the node. */
                             receipt_time: number;
+                            /** @description The `receipt_time` as an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) UTC timestamp. */
+                            receipt_time_iso: string;
                             /** @description Height of the block this transaction was received by the node */
                             receipt_block_height: number;
                             /** @description Status of the mempool transaction */
@@ -37970,6 +38057,8 @@ export interface operations {
                             fee_rate: string;
                             /** @description A unix timestamp (in seconds) indicating when the transaction broadcast was received by the node. */
                             receipt_time: number;
+                            /** @description The `receipt_time` as an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) UTC timestamp. */
+                            receipt_time_iso: string;
                             /** @description Height of the block this transaction was received by the node */
                             receipt_block_height: number;
                             /** @description Status of the mempool transaction */
@@ -38000,6 +38089,8 @@ export interface operations {
                             fee_rate: string;
                             /** @description A unix timestamp (in seconds) indicating when the transaction broadcast was received by the node. */
                             receipt_time: number;
+                            /** @description The `receipt_time` as an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) UTC timestamp. */
+                            receipt_time_iso: string;
                             /** @description Height of the block this transaction was received by the node */
                             receipt_block_height: number;
                             /** @description Status of the mempool transaction */
@@ -38031,6 +38122,8 @@ export interface operations {
                             fee_rate: string;
                             /** @description A unix timestamp (in seconds) indicating when the transaction broadcast was received by the node. */
                             receipt_time: number;
+                            /** @description The `receipt_time` as an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) UTC timestamp. */
+                            receipt_time_iso: string;
                             /** @description Height of the block this transaction was received by the node */
                             receipt_block_height: number;
                             /** @description Status of the mempool transaction */
@@ -38056,6 +38149,8 @@ export interface operations {
                             fee_rate: string;
                             /** @description A unix timestamp (in seconds) indicating when the transaction broadcast was received by the node. */
                             receipt_time: number;
+                            /** @description The `receipt_time` as an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) UTC timestamp. */
+                            receipt_time_iso: string;
                             /** @description Height of the block this transaction was received by the node */
                             receipt_block_height: number;
                             /** @description Status of the mempool transaction */
@@ -38081,6 +38176,8 @@ export interface operations {
                             fee_rate: string;
                             /** @description A unix timestamp (in seconds) indicating when the transaction broadcast was received by the node. */
                             receipt_time: number;
+                            /** @description The `receipt_time` as an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) UTC timestamp. */
+                            receipt_time_iso: string;
                             /** @description Height of the block this transaction was received by the node */
                             receipt_block_height: number;
                             /** @description Status of the mempool transaction */
@@ -38147,6 +38244,8 @@ export interface operations {
                                 index_hash: string;
                                 /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                                 time: number;
+                                /** @description The `time` as an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) UTC timestamp. */
+                                time_iso: string;
                             };
                         } | {
                             /** @enum {string} */
@@ -38187,6 +38286,8 @@ export interface operations {
                                     index_hash: string;
                                     /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                                     time: number;
+                                    /** @description The `time` as an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) UTC timestamp. */
+                                    time_iso: string;
                                     /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                                     tx_index: number;
                                 };
@@ -38195,6 +38296,8 @@ export interface operations {
                                     height: number;
                                     /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                                     time: number;
+                                    /** @description The `time` as an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) UTC timestamp. */
+                                    time_iso: string;
                                 };
                                 /** @description Status of the transaction */
                                 status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
@@ -38235,6 +38338,8 @@ export interface operations {
                                     index_hash: string;
                                     /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                                     time: number;
+                                    /** @description The `time` as an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) UTC timestamp. */
+                                    time_iso: string;
                                     /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                                     tx_index: number;
                                 };
@@ -38243,6 +38348,8 @@ export interface operations {
                                     height: number;
                                     /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                                     time: number;
+                                    /** @description The `time` as an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) UTC timestamp. */
+                                    time_iso: string;
                                 };
                                 /** @description Status of the transaction */
                                 status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
@@ -38279,6 +38386,8 @@ export interface operations {
                                     index_hash: string;
                                     /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                                     time: number;
+                                    /** @description The `time` as an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) UTC timestamp. */
+                                    time_iso: string;
                                     /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                                     tx_index: number;
                                 };
@@ -38287,6 +38396,8 @@ export interface operations {
                                     height: number;
                                     /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                                     time: number;
+                                    /** @description The `time` as an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) UTC timestamp. */
+                                    time_iso: string;
                                 };
                                 /** @description Status of the transaction */
                                 status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
@@ -38324,6 +38435,8 @@ export interface operations {
                                     index_hash: string;
                                     /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                                     time: number;
+                                    /** @description The `time` as an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) UTC timestamp. */
+                                    time_iso: string;
                                     /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                                     tx_index: number;
                                 };
@@ -38332,6 +38445,8 @@ export interface operations {
                                     height: number;
                                     /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                                     time: number;
+                                    /** @description The `time` as an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) UTC timestamp. */
+                                    time_iso: string;
                                 };
                                 /** @description Status of the transaction */
                                 status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
@@ -38363,6 +38478,8 @@ export interface operations {
                                     index_hash: string;
                                     /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                                     time: number;
+                                    /** @description The `time` as an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) UTC timestamp. */
+                                    time_iso: string;
                                     /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                                     tx_index: number;
                                 };
@@ -38371,6 +38488,8 @@ export interface operations {
                                     height: number;
                                     /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                                     time: number;
+                                    /** @description The `time` as an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) UTC timestamp. */
+                                    time_iso: string;
                                 };
                                 /** @description Status of the transaction */
                                 status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
@@ -38405,6 +38524,8 @@ export interface operations {
                                     index_hash: string;
                                     /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                                     time: number;
+                                    /** @description The `time` as an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) UTC timestamp. */
+                                    time_iso: string;
                                     /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                                     tx_index: number;
                                 };
@@ -38413,6 +38534,8 @@ export interface operations {
                                     height: number;
                                     /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                                     time: number;
+                                    /** @description The `time` as an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) UTC timestamp. */
+                                    time_iso: string;
                                 };
                                 /** @description Status of the transaction */
                                 status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
@@ -38459,6 +38582,8 @@ export interface operations {
                                     index_hash: string;
                                     /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                                     time: number;
+                                    /** @description The `time` as an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) UTC timestamp. */
+                                    time_iso: string;
                                     /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                                     tx_index: number;
                                 };
@@ -38467,6 +38592,8 @@ export interface operations {
                                     height: number;
                                     /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                                     time: number;
+                                    /** @description The `time` as an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) UTC timestamp. */
+                                    time_iso: string;
                                 };
                                 /** @description The Clarity source code of the contract. Only present when requested via the `include=source_code` query param. */
                                 source_code?: string;
@@ -38558,6 +38685,11 @@ export interface operations {
                             index_hash: string;
                             /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                             time: number;
+                            /**
+                             * @description The `time` as an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) UTC timestamp.
+                             * @example 2026-10-08T19:18:41.000Z
+                             */
+                            time_iso: string;
                             /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                             tx_index: number;
                         };
@@ -38566,6 +38698,11 @@ export interface operations {
                             height: number;
                             /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                             time: number;
+                            /**
+                             * @description The `time` as an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) UTC timestamp.
+                             * @example 2026-10-08T19:18:41.000Z
+                             */
+                            time_iso: string;
                         };
                         /** @description The Clarity source code of the contract. Only present when requested via the `include=source_code` query param. */
                         source_code?: string;
@@ -38643,18 +38780,67 @@ export interface operations {
                                 /** @description The number of registrations for this bond */
                                 registered_count: number;
                             };
+                            /** @description The bond's lifecycle timeline. Each point is the first Bitcoin height of a new phase: `enrollment_cutoff` is the first height at which `register-for-bond` is rejected (the prepare phase before activation, so enrollment is open strictly before it), `activation` is the first height the bond is active, and `unlock` the first height it is unlocked. */
                             schedule: {
+                                enrollment_cutoff: {
+                                    /** @description The Bitcoin height of this point in the bond lifecycle */
+                                    bitcoin_height: number;
+                                    /** @description The PoX cycle of this point in the bond lifecycle */
+                                    pox_cycle: number;
+                                    /** @description Unix timestamp (in seconds) of when the Bitcoin block was mined, once it has been. The API learns Bitcoin block times only from the Stacks blocks anchored to them: for a block a Stacks block anchored to, this is the time recorded in its header; for a past block none anchored to (e.g. a missed sortition), it is an estimate, interpolated between the nearest anchored blocks before and after it. `null` for a block that has not been mined yet, and for a past block older than any Stacks block. */
+                                    time: number | null;
+                                    /**
+                                     * @description The `time` as an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) UTC timestamp; `null` with it.
+                                     * @example 2026-10-08T19:18:41.000Z
+                                     */
+                                    time_iso: string | null;
+                                    /** @description Unix timestamp (in seconds) of when a future Bitcoin block is projected to be mined, extrapolated from the recent Bitcoin block pace (on mainnet, from the pace of the current difficulty period until its retarget, and the 10-minute target after it). Projections further out are less precise, by days for blocks months away. `null` once the block has been mined, and for a block projected past the end of year 9999. */
+                                    projected_time: number | null;
+                                    /**
+                                     * @description The `projected_time` as an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) UTC timestamp; `null` with it.
+                                     * @example 2027-03-01T08:30:00.000Z
+                                     */
+                                    projected_time_iso: string | null;
+                                };
                                 activation: {
                                     /** @description The Bitcoin height of this point in the bond lifecycle */
                                     bitcoin_height: number;
                                     /** @description The PoX cycle of this point in the bond lifecycle */
                                     pox_cycle: number;
+                                    /** @description Unix timestamp (in seconds) of when the Bitcoin block was mined, once it has been. The API learns Bitcoin block times only from the Stacks blocks anchored to them: for a block a Stacks block anchored to, this is the time recorded in its header; for a past block none anchored to (e.g. a missed sortition), it is an estimate, interpolated between the nearest anchored blocks before and after it. `null` for a block that has not been mined yet, and for a past block older than any Stacks block. */
+                                    time: number | null;
+                                    /**
+                                     * @description The `time` as an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) UTC timestamp; `null` with it.
+                                     * @example 2026-10-08T19:18:41.000Z
+                                     */
+                                    time_iso: string | null;
+                                    /** @description Unix timestamp (in seconds) of when a future Bitcoin block is projected to be mined, extrapolated from the recent Bitcoin block pace (on mainnet, from the pace of the current difficulty period until its retarget, and the 10-minute target after it). Projections further out are less precise, by days for blocks months away. `null` once the block has been mined, and for a block projected past the end of year 9999. */
+                                    projected_time: number | null;
+                                    /**
+                                     * @description The `projected_time` as an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) UTC timestamp; `null` with it.
+                                     * @example 2027-03-01T08:30:00.000Z
+                                     */
+                                    projected_time_iso: string | null;
                                 };
                                 unlock: {
                                     /** @description The Bitcoin height of this point in the bond lifecycle */
                                     bitcoin_height: number;
                                     /** @description The PoX cycle of this point in the bond lifecycle */
                                     pox_cycle: number;
+                                    /** @description Unix timestamp (in seconds) of when the Bitcoin block was mined, once it has been. The API learns Bitcoin block times only from the Stacks blocks anchored to them: for a block a Stacks block anchored to, this is the time recorded in its header; for a past block none anchored to (e.g. a missed sortition), it is an estimate, interpolated between the nearest anchored blocks before and after it. `null` for a block that has not been mined yet, and for a past block older than any Stacks block. */
+                                    time: number | null;
+                                    /**
+                                     * @description The `time` as an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) UTC timestamp; `null` with it.
+                                     * @example 2026-10-08T19:18:41.000Z
+                                     */
+                                    time_iso: string | null;
+                                    /** @description Unix timestamp (in seconds) of when a future Bitcoin block is projected to be mined, extrapolated from the recent Bitcoin block pace (on mainnet, from the pace of the current difficulty period until its retarget, and the 10-minute target after it). Projections further out are less precise, by days for blocks months away. `null` once the block has been mined, and for a block projected past the end of year 9999. */
+                                    projected_time: number | null;
+                                    /**
+                                     * @description The `projected_time` as an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) UTC timestamp; `null` with it.
+                                     * @example 2027-03-01T08:30:00.000Z
+                                     */
+                                    projected_time_iso: string | null;
                                 };
                             };
                             balances: {
@@ -38742,18 +38928,49 @@ export interface operations {
                             /** @description The number of registrations for this bond */
                             registered_count: number;
                         };
+                        /** @description The bond's lifecycle timeline. Each point is the first Bitcoin height of a new phase: `enrollment_cutoff` is the first height at which `register-for-bond` is rejected (the prepare phase before activation, so enrollment is open strictly before it), `activation` is the first height the bond is active, and `unlock` the first height it is unlocked. */
                         schedule: {
+                            enrollment_cutoff: {
+                                /** @description The Bitcoin height of this point in the bond lifecycle */
+                                bitcoin_height: number;
+                                /** @description The PoX cycle of this point in the bond lifecycle */
+                                pox_cycle: number;
+                                /** @description Unix timestamp (in seconds) of when the Bitcoin block was mined, once it has been. The API learns Bitcoin block times only from the Stacks blocks anchored to them: for a block a Stacks block anchored to, this is the time recorded in its header; for a past block none anchored to (e.g. a missed sortition), it is an estimate, interpolated between the nearest anchored blocks before and after it. `null` for a block that has not been mined yet, and for a past block older than any Stacks block. */
+                                time: number | null;
+                                /** @description The `time` as an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) UTC timestamp; `null` with it. */
+                                time_iso: string | null;
+                                /** @description Unix timestamp (in seconds) of when a future Bitcoin block is projected to be mined, extrapolated from the recent Bitcoin block pace (on mainnet, from the pace of the current difficulty period until its retarget, and the 10-minute target after it). Projections further out are less precise, by days for blocks months away. `null` once the block has been mined, and for a block projected past the end of year 9999. */
+                                projected_time: number | null;
+                                /** @description The `projected_time` as an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) UTC timestamp; `null` with it. */
+                                projected_time_iso: string | null;
+                            };
                             activation: {
                                 /** @description The Bitcoin height of this point in the bond lifecycle */
                                 bitcoin_height: number;
                                 /** @description The PoX cycle of this point in the bond lifecycle */
                                 pox_cycle: number;
+                                /** @description Unix timestamp (in seconds) of when the Bitcoin block was mined, once it has been. The API learns Bitcoin block times only from the Stacks blocks anchored to them: for a block a Stacks block anchored to, this is the time recorded in its header; for a past block none anchored to (e.g. a missed sortition), it is an estimate, interpolated between the nearest anchored blocks before and after it. `null` for a block that has not been mined yet, and for a past block older than any Stacks block. */
+                                time: number | null;
+                                /** @description The `time` as an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) UTC timestamp; `null` with it. */
+                                time_iso: string | null;
+                                /** @description Unix timestamp (in seconds) of when a future Bitcoin block is projected to be mined, extrapolated from the recent Bitcoin block pace (on mainnet, from the pace of the current difficulty period until its retarget, and the 10-minute target after it). Projections further out are less precise, by days for blocks months away. `null` once the block has been mined, and for a block projected past the end of year 9999. */
+                                projected_time: number | null;
+                                /** @description The `projected_time` as an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) UTC timestamp; `null` with it. */
+                                projected_time_iso: string | null;
                             };
                             unlock: {
                                 /** @description The Bitcoin height of this point in the bond lifecycle */
                                 bitcoin_height: number;
                                 /** @description The PoX cycle of this point in the bond lifecycle */
                                 pox_cycle: number;
+                                /** @description Unix timestamp (in seconds) of when the Bitcoin block was mined, once it has been. The API learns Bitcoin block times only from the Stacks blocks anchored to them: for a block a Stacks block anchored to, this is the time recorded in its header; for a past block none anchored to (e.g. a missed sortition), it is an estimate, interpolated between the nearest anchored blocks before and after it. `null` for a block that has not been mined yet, and for a past block older than any Stacks block. */
+                                time: number | null;
+                                /** @description The `time` as an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) UTC timestamp; `null` with it. */
+                                time_iso: string | null;
+                                /** @description Unix timestamp (in seconds) of when a future Bitcoin block is projected to be mined, extrapolated from the recent Bitcoin block pace (on mainnet, from the pace of the current difficulty period until its retarget, and the 10-minute target after it). Projections further out are less precise, by days for blocks months away. `null` once the block has been mined, and for a block projected past the end of year 9999. */
+                                projected_time: number | null;
+                                /** @description The `projected_time` as an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) UTC timestamp; `null` with it. */
+                                projected_time_iso: string | null;
                             };
                         };
                         balances: {
@@ -38793,6 +39010,8 @@ export interface operations {
                                 index_hash: string;
                                 /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                                 time: number;
+                                /** @description The `time` as an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) UTC timestamp. */
+                                time_iso: string;
                                 /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                                 tx_index: number;
                             };
@@ -38801,6 +39020,58 @@ export interface operations {
                                 height: number;
                                 /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                                 time: number;
+                                /** @description The `time` as an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) UTC timestamp. */
+                                time_iso: string;
+                            };
+                        };
+                    } | {
+                        /** @description The index of the bond in the PoX-5 bond list */
+                        index: number;
+                        /** @enum {string} */
+                        status: "projected";
+                        /** @description The bond's lifecycle timeline. Each point is the first Bitcoin height of a new phase: `enrollment_cutoff` is the first height at which `register-for-bond` is rejected (the prepare phase before activation, so enrollment is open strictly before it), `activation` is the first height the bond is active, and `unlock` the first height it is unlocked. */
+                        schedule: {
+                            enrollment_cutoff: {
+                                /** @description The Bitcoin height of this point in the bond lifecycle */
+                                bitcoin_height: number;
+                                /** @description The PoX cycle of this point in the bond lifecycle */
+                                pox_cycle: number;
+                                /** @description Unix timestamp (in seconds) of when the Bitcoin block was mined, once it has been. The API learns Bitcoin block times only from the Stacks blocks anchored to them: for a block a Stacks block anchored to, this is the time recorded in its header; for a past block none anchored to (e.g. a missed sortition), it is an estimate, interpolated between the nearest anchored blocks before and after it. `null` for a block that has not been mined yet, and for a past block older than any Stacks block. */
+                                time: number | null;
+                                /** @description The `time` as an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) UTC timestamp; `null` with it. */
+                                time_iso: string | null;
+                                /** @description Unix timestamp (in seconds) of when a future Bitcoin block is projected to be mined, extrapolated from the recent Bitcoin block pace (on mainnet, from the pace of the current difficulty period until its retarget, and the 10-minute target after it). Projections further out are less precise, by days for blocks months away. `null` once the block has been mined, and for a block projected past the end of year 9999. */
+                                projected_time: number | null;
+                                /** @description The `projected_time` as an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) UTC timestamp; `null` with it. */
+                                projected_time_iso: string | null;
+                            };
+                            activation: {
+                                /** @description The Bitcoin height of this point in the bond lifecycle */
+                                bitcoin_height: number;
+                                /** @description The PoX cycle of this point in the bond lifecycle */
+                                pox_cycle: number;
+                                /** @description Unix timestamp (in seconds) of when the Bitcoin block was mined, once it has been. The API learns Bitcoin block times only from the Stacks blocks anchored to them: for a block a Stacks block anchored to, this is the time recorded in its header; for a past block none anchored to (e.g. a missed sortition), it is an estimate, interpolated between the nearest anchored blocks before and after it. `null` for a block that has not been mined yet, and for a past block older than any Stacks block. */
+                                time: number | null;
+                                /** @description The `time` as an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) UTC timestamp; `null` with it. */
+                                time_iso: string | null;
+                                /** @description Unix timestamp (in seconds) of when a future Bitcoin block is projected to be mined, extrapolated from the recent Bitcoin block pace (on mainnet, from the pace of the current difficulty period until its retarget, and the 10-minute target after it). Projections further out are less precise, by days for blocks months away. `null` once the block has been mined, and for a block projected past the end of year 9999. */
+                                projected_time: number | null;
+                                /** @description The `projected_time` as an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) UTC timestamp; `null` with it. */
+                                projected_time_iso: string | null;
+                            };
+                            unlock: {
+                                /** @description The Bitcoin height of this point in the bond lifecycle */
+                                bitcoin_height: number;
+                                /** @description The PoX cycle of this point in the bond lifecycle */
+                                pox_cycle: number;
+                                /** @description Unix timestamp (in seconds) of when the Bitcoin block was mined, once it has been. The API learns Bitcoin block times only from the Stacks blocks anchored to them: for a block a Stacks block anchored to, this is the time recorded in its header; for a past block none anchored to (e.g. a missed sortition), it is an estimate, interpolated between the nearest anchored blocks before and after it. `null` for a block that has not been mined yet, and for a past block older than any Stacks block. */
+                                time: number | null;
+                                /** @description The `time` as an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) UTC timestamp; `null` with it. */
+                                time_iso: string | null;
+                                /** @description Unix timestamp (in seconds) of when a future Bitcoin block is projected to be mined, extrapolated from the recent Bitcoin block pace (on mainnet, from the pace of the current difficulty period until its retarget, and the 10-minute target after it). Projections further out are less precise, by days for blocks months away. `null` once the block has been mined, and for a block projected past the end of year 9999. */
+                                projected_time: number | null;
+                                /** @description The `projected_time` as an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) UTC timestamp; `null` with it. */
+                                projected_time_iso: string | null;
                             };
                         };
                     };
@@ -38881,6 +39152,8 @@ export interface operations {
                                 index_hash: string;
                                 /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                                 time: number;
+                                /** @description The `time` as an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) UTC timestamp. */
+                                time_iso: string;
                                 /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                                 tx_index: number;
                             };
@@ -38889,6 +39162,8 @@ export interface operations {
                                 height: number;
                                 /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                                 time: number;
+                                /** @description The `time` as an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) UTC timestamp. */
+                                time_iso: string;
                             };
                             data: {
                                 parameters: {
@@ -38901,18 +39176,49 @@ export interface operations {
                                 };
                                 /** @description Hex string of the Bitcoin script subscript guarding the early-exit branch of the L1 lockup */
                                 early_unlock_bytes: string;
+                                /** @description The bond's lifecycle timeline. Each point is the first Bitcoin height of a new phase: `enrollment_cutoff` is the first height at which `register-for-bond` is rejected (the prepare phase before activation, so enrollment is open strictly before it), `activation` is the first height the bond is active, and `unlock` the first height it is unlocked. */
                                 schedule: {
+                                    enrollment_cutoff: {
+                                        /** @description The Bitcoin height of this point in the bond lifecycle */
+                                        bitcoin_height: number;
+                                        /** @description The PoX cycle of this point in the bond lifecycle */
+                                        pox_cycle: number;
+                                        /** @description Unix timestamp (in seconds) of when the Bitcoin block was mined, once it has been. The API learns Bitcoin block times only from the Stacks blocks anchored to them: for a block a Stacks block anchored to, this is the time recorded in its header; for a past block none anchored to (e.g. a missed sortition), it is an estimate, interpolated between the nearest anchored blocks before and after it. `null` for a block that has not been mined yet, and for a past block older than any Stacks block. */
+                                        time: number | null;
+                                        /** @description The `time` as an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) UTC timestamp; `null` with it. */
+                                        time_iso: string | null;
+                                        /** @description Unix timestamp (in seconds) of when a future Bitcoin block is projected to be mined, extrapolated from the recent Bitcoin block pace (on mainnet, from the pace of the current difficulty period until its retarget, and the 10-minute target after it). Projections further out are less precise, by days for blocks months away. `null` once the block has been mined, and for a block projected past the end of year 9999. */
+                                        projected_time: number | null;
+                                        /** @description The `projected_time` as an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) UTC timestamp; `null` with it. */
+                                        projected_time_iso: string | null;
+                                    };
                                     activation: {
                                         /** @description The Bitcoin height of this point in the bond lifecycle */
                                         bitcoin_height: number;
                                         /** @description The PoX cycle of this point in the bond lifecycle */
                                         pox_cycle: number;
+                                        /** @description Unix timestamp (in seconds) of when the Bitcoin block was mined, once it has been. The API learns Bitcoin block times only from the Stacks blocks anchored to them: for a block a Stacks block anchored to, this is the time recorded in its header; for a past block none anchored to (e.g. a missed sortition), it is an estimate, interpolated between the nearest anchored blocks before and after it. `null` for a block that has not been mined yet, and for a past block older than any Stacks block. */
+                                        time: number | null;
+                                        /** @description The `time` as an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) UTC timestamp; `null` with it. */
+                                        time_iso: string | null;
+                                        /** @description Unix timestamp (in seconds) of when a future Bitcoin block is projected to be mined, extrapolated from the recent Bitcoin block pace (on mainnet, from the pace of the current difficulty period until its retarget, and the 10-minute target after it). Projections further out are less precise, by days for blocks months away. `null` once the block has been mined, and for a block projected past the end of year 9999. */
+                                        projected_time: number | null;
+                                        /** @description The `projected_time` as an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) UTC timestamp; `null` with it. */
+                                        projected_time_iso: string | null;
                                     };
                                     unlock: {
                                         /** @description The Bitcoin height of this point in the bond lifecycle */
                                         bitcoin_height: number;
                                         /** @description The PoX cycle of this point in the bond lifecycle */
                                         pox_cycle: number;
+                                        /** @description Unix timestamp (in seconds) of when the Bitcoin block was mined, once it has been. The API learns Bitcoin block times only from the Stacks blocks anchored to them: for a block a Stacks block anchored to, this is the time recorded in its header; for a past block none anchored to (e.g. a missed sortition), it is an estimate, interpolated between the nearest anchored blocks before and after it. `null` for a block that has not been mined yet, and for a past block older than any Stacks block. */
+                                        time: number | null;
+                                        /** @description The `time` as an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) UTC timestamp; `null` with it. */
+                                        time_iso: string | null;
+                                        /** @description Unix timestamp (in seconds) of when a future Bitcoin block is projected to be mined, extrapolated from the recent Bitcoin block pace (on mainnet, from the pace of the current difficulty period until its retarget, and the 10-minute target after it). Projections further out are less precise, by days for blocks months away. `null` once the block has been mined, and for a block projected past the end of year 9999. */
+                                        projected_time: number | null;
+                                        /** @description The `projected_time` as an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) UTC timestamp; `null` with it. */
+                                        projected_time_iso: string | null;
                                     };
                                 };
                             };
@@ -38939,6 +39245,8 @@ export interface operations {
                                 index_hash: string;
                                 /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                                 time: number;
+                                /** @description The `time` as an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) UTC timestamp. */
+                                time_iso: string;
                                 /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                                 tx_index: number;
                             };
@@ -38947,6 +39255,8 @@ export interface operations {
                                 height: number;
                                 /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                                 time: number;
+                                /** @description The `time` as an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) UTC timestamp. */
+                                time_iso: string;
                             };
                             data: {
                                 staker: string;
@@ -38975,6 +39285,8 @@ export interface operations {
                                 index_hash: string;
                                 /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                                 time: number;
+                                /** @description The `time` as an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) UTC timestamp. */
+                                time_iso: string;
                                 /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                                 tx_index: number;
                             };
@@ -38983,6 +39295,8 @@ export interface operations {
                                 height: number;
                                 /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                                 time: number;
+                                /** @description The `time` as an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) UTC timestamp. */
+                                time_iso: string;
                             };
                             data: {
                                 staker: string;
@@ -39024,6 +39338,8 @@ export interface operations {
                                 index_hash: string;
                                 /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                                 time: number;
+                                /** @description The `time` as an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) UTC timestamp. */
+                                time_iso: string;
                                 /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                                 tx_index: number;
                             };
@@ -39032,6 +39348,8 @@ export interface operations {
                                 height: number;
                                 /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                                 time: number;
+                                /** @description The `time` as an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) UTC timestamp. */
+                                time_iso: string;
                             };
                             data: {
                                 staker: string;
@@ -39075,6 +39393,8 @@ export interface operations {
                                 index_hash: string;
                                 /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                                 time: number;
+                                /** @description The `time` as an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) UTC timestamp. */
+                                time_iso: string;
                                 /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                                 tx_index: number;
                             };
@@ -39083,6 +39403,8 @@ export interface operations {
                                 height: number;
                                 /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                                 time: number;
+                                /** @description The `time` as an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) UTC timestamp. */
+                                time_iso: string;
                             };
                             data: {
                                 /** @description The staker exiting the bond early */
@@ -39121,6 +39443,8 @@ export interface operations {
                                 index_hash: string;
                                 /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                                 time: number;
+                                /** @description The `time` as an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) UTC timestamp. */
+                                time_iso: string;
                                 /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                                 tx_index: number;
                             };
@@ -39129,6 +39453,8 @@ export interface operations {
                                 height: number;
                                 /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                                 time: number;
+                                /** @description The `time` as an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) UTC timestamp. */
+                                time_iso: string;
                             };
                             data: {
                                 /** @description The staker withdrawing sBTC from the bond */
@@ -39175,6 +39501,8 @@ export interface operations {
                                 index_hash: string;
                                 /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                                 time: number;
+                                /** @description The `time` as an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) UTC timestamp. */
+                                time_iso: string;
                                 /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                                 tx_index: number;
                             };
@@ -39183,6 +39511,8 @@ export interface operations {
                                 height: number;
                                 /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                                 time: number;
+                                /** @description The `time` as an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) UTC timestamp. */
+                                time_iso: string;
                             };
                             data: {
                                 /** @description The `calculate-rewards` call this distribution was emitted by, from the `calculate-rewards` event in the same transaction. */
@@ -39238,6 +39568,8 @@ export interface operations {
                                 index_hash: string;
                                 /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                                 time: number;
+                                /** @description The `time` as an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) UTC timestamp. */
+                                time_iso: string;
                                 /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                                 tx_index: number;
                             };
@@ -39246,6 +39578,8 @@ export interface operations {
                                 height: number;
                                 /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                                 time: number;
+                                /** @description The `time` as an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) UTC timestamp. */
+                                time_iso: string;
                             };
                             data: {
                                 /** @description The signer manager that claimed on behalf of the staker */
@@ -39577,14 +39911,56 @@ export interface operations {
                             start: {
                                 /** @description The Bitcoin height of this point */
                                 bitcoin_height: number;
+                                /** @description Unix timestamp (in seconds) of when the Bitcoin block was mined, once it has been. The API learns Bitcoin block times only from the Stacks blocks anchored to them: for a block a Stacks block anchored to, this is the time recorded in its header; for a past block none anchored to (e.g. a missed sortition), it is an estimate, interpolated between the nearest anchored blocks before and after it. `null` for a block that has not been mined yet, and for a past block older than any Stacks block. */
+                                time: number | null;
+                                /**
+                                 * @description The `time` as an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) UTC timestamp; `null` with it.
+                                 * @example 2026-10-08T19:18:41.000Z
+                                 */
+                                time_iso: string | null;
+                                /** @description Unix timestamp (in seconds) of when a future Bitcoin block is projected to be mined, extrapolated from the recent Bitcoin block pace (on mainnet, from the pace of the current difficulty period until its retarget, and the 10-minute target after it). Projections further out are less precise, by days for blocks months away. `null` once the block has been mined, and for a block projected past the end of year 9999. */
+                                projected_time: number | null;
+                                /**
+                                 * @description The `projected_time` as an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) UTC timestamp; `null` with it.
+                                 * @example 2027-03-01T08:30:00.000Z
+                                 */
+                                projected_time_iso: string | null;
                             };
                             prepare_phase_start: {
                                 /** @description The Bitcoin height of this point */
                                 bitcoin_height: number;
+                                /** @description Unix timestamp (in seconds) of when the Bitcoin block was mined, once it has been. The API learns Bitcoin block times only from the Stacks blocks anchored to them: for a block a Stacks block anchored to, this is the time recorded in its header; for a past block none anchored to (e.g. a missed sortition), it is an estimate, interpolated between the nearest anchored blocks before and after it. `null` for a block that has not been mined yet, and for a past block older than any Stacks block. */
+                                time: number | null;
+                                /**
+                                 * @description The `time` as an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) UTC timestamp; `null` with it.
+                                 * @example 2026-10-08T19:18:41.000Z
+                                 */
+                                time_iso: string | null;
+                                /** @description Unix timestamp (in seconds) of when a future Bitcoin block is projected to be mined, extrapolated from the recent Bitcoin block pace (on mainnet, from the pace of the current difficulty period until its retarget, and the 10-minute target after it). Projections further out are less precise, by days for blocks months away. `null` once the block has been mined, and for a block projected past the end of year 9999. */
+                                projected_time: number | null;
+                                /**
+                                 * @description The `projected_time` as an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) UTC timestamp; `null` with it.
+                                 * @example 2027-03-01T08:30:00.000Z
+                                 */
+                                projected_time_iso: string | null;
                             };
                             end: {
                                 /** @description The Bitcoin height of this point */
                                 bitcoin_height: number;
+                                /** @description Unix timestamp (in seconds) of when the Bitcoin block was mined, once it has been. The API learns Bitcoin block times only from the Stacks blocks anchored to them: for a block a Stacks block anchored to, this is the time recorded in its header; for a past block none anchored to (e.g. a missed sortition), it is an estimate, interpolated between the nearest anchored blocks before and after it. `null` for a block that has not been mined yet, and for a past block older than any Stacks block. */
+                                time: number | null;
+                                /**
+                                 * @description The `time` as an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) UTC timestamp; `null` with it.
+                                 * @example 2026-10-08T19:18:41.000Z
+                                 */
+                                time_iso: string | null;
+                                /** @description Unix timestamp (in seconds) of when a future Bitcoin block is projected to be mined, extrapolated from the recent Bitcoin block pace (on mainnet, from the pace of the current difficulty period until its retarget, and the 10-minute target after it). Projections further out are less precise, by days for blocks months away. `null` once the block has been mined, and for a block projected past the end of year 9999. */
+                                projected_time: number | null;
+                                /**
+                                 * @description The `projected_time` as an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) UTC timestamp; `null` with it.
+                                 * @example 2027-03-01T08:30:00.000Z
+                                 */
+                                projected_time_iso: string | null;
                             };
                         };
                         /** @description The assets locked by staking for this cycle */
@@ -39976,6 +40352,11 @@ export interface operations {
                                 index_hash: string;
                                 /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                                 time: number;
+                                /**
+                                 * @description The `time` as an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) UTC timestamp.
+                                 * @example 2026-10-08T19:18:41.000Z
+                                 */
+                                time_iso: string;
                                 /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                                 tx_index: number;
                             };
@@ -39984,6 +40365,11 @@ export interface operations {
                                 height: number;
                                 /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                                 time: number;
+                                /**
+                                 * @description The `time` as an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) UTC timestamp.
+                                 * @example 2026-10-08T19:18:41.000Z
+                                 */
+                                time_iso: string;
                             };
                         };
                     };
@@ -40360,6 +40746,11 @@ export interface operations {
                                 index_hash: string;
                                 /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                                 time: number;
+                                /**
+                                 * @description The `time` as an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) UTC timestamp.
+                                 * @example 2026-10-08T19:18:41.000Z
+                                 */
+                                time_iso: string;
                                 /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                                 tx_index: number;
                             };
@@ -40442,6 +40833,8 @@ export interface operations {
                                 index_hash: string;
                                 /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                                 time: number;
+                                /** @description The `time` as an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) UTC timestamp. */
+                                time_iso: string;
                                 /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                                 tx_index: number;
                             };
@@ -40450,6 +40843,8 @@ export interface operations {
                                 height: number;
                                 /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                                 time: number;
+                                /** @description The `time` as an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) UTC timestamp. */
+                                time_iso: string;
                             };
                             /** @description Status of the transaction */
                             status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
@@ -40490,6 +40885,8 @@ export interface operations {
                                 index_hash: string;
                                 /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                                 time: number;
+                                /** @description The `time` as an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) UTC timestamp. */
+                                time_iso: string;
                                 /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                                 tx_index: number;
                             };
@@ -40498,6 +40895,8 @@ export interface operations {
                                 height: number;
                                 /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                                 time: number;
+                                /** @description The `time` as an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) UTC timestamp. */
+                                time_iso: string;
                             };
                             /** @description Status of the transaction */
                             status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
@@ -40534,6 +40933,8 @@ export interface operations {
                                 index_hash: string;
                                 /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                                 time: number;
+                                /** @description The `time` as an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) UTC timestamp. */
+                                time_iso: string;
                                 /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                                 tx_index: number;
                             };
@@ -40542,6 +40943,8 @@ export interface operations {
                                 height: number;
                                 /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                                 time: number;
+                                /** @description The `time` as an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) UTC timestamp. */
+                                time_iso: string;
                             };
                             /** @description Status of the transaction */
                             status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
@@ -40579,6 +40982,8 @@ export interface operations {
                                 index_hash: string;
                                 /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                                 time: number;
+                                /** @description The `time` as an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) UTC timestamp. */
+                                time_iso: string;
                                 /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                                 tx_index: number;
                             };
@@ -40587,6 +40992,8 @@ export interface operations {
                                 height: number;
                                 /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                                 time: number;
+                                /** @description The `time` as an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) UTC timestamp. */
+                                time_iso: string;
                             };
                             /** @description Status of the transaction */
                             status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
@@ -40618,6 +41025,8 @@ export interface operations {
                                 index_hash: string;
                                 /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                                 time: number;
+                                /** @description The `time` as an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) UTC timestamp. */
+                                time_iso: string;
                                 /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                                 tx_index: number;
                             };
@@ -40626,6 +41035,8 @@ export interface operations {
                                 height: number;
                                 /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                                 time: number;
+                                /** @description The `time` as an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) UTC timestamp. */
+                                time_iso: string;
                             };
                             /** @description Status of the transaction */
                             status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
@@ -40660,6 +41071,8 @@ export interface operations {
                                 index_hash: string;
                                 /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                                 time: number;
+                                /** @description The `time` as an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) UTC timestamp. */
+                                time_iso: string;
                                 /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                                 tx_index: number;
                             };
@@ -40668,6 +41081,8 @@ export interface operations {
                                 height: number;
                                 /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                                 time: number;
+                                /** @description The `time` as an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) UTC timestamp. */
+                                time_iso: string;
                             };
                             /** @description Status of the transaction */
                             status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
@@ -40742,6 +41157,8 @@ export interface operations {
                                 index_hash: string;
                                 /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                                 time: number;
+                                /** @description The `time` as an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) UTC timestamp. */
+                                time_iso: string;
                                 /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                                 tx_index: number;
                             };
@@ -40750,6 +41167,8 @@ export interface operations {
                                 height: number;
                                 /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                                 time: number;
+                                /** @description The `time` as an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) UTC timestamp. */
+                                time_iso: string;
                             };
                             /** @description Status of the transaction */
                             status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
@@ -40790,6 +41209,8 @@ export interface operations {
                                 index_hash: string;
                                 /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                                 time: number;
+                                /** @description The `time` as an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) UTC timestamp. */
+                                time_iso: string;
                                 /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                                 tx_index: number;
                             };
@@ -40798,6 +41219,8 @@ export interface operations {
                                 height: number;
                                 /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                                 time: number;
+                                /** @description The `time` as an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) UTC timestamp. */
+                                time_iso: string;
                             };
                             /** @description Status of the transaction */
                             status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
@@ -40834,6 +41257,8 @@ export interface operations {
                                 index_hash: string;
                                 /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                                 time: number;
+                                /** @description The `time` as an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) UTC timestamp. */
+                                time_iso: string;
                                 /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                                 tx_index: number;
                             };
@@ -40842,6 +41267,8 @@ export interface operations {
                                 height: number;
                                 /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                                 time: number;
+                                /** @description The `time` as an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) UTC timestamp. */
+                                time_iso: string;
                             };
                             /** @description Status of the transaction */
                             status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
@@ -40879,6 +41306,8 @@ export interface operations {
                                 index_hash: string;
                                 /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                                 time: number;
+                                /** @description The `time` as an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) UTC timestamp. */
+                                time_iso: string;
                                 /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                                 tx_index: number;
                             };
@@ -40887,6 +41316,8 @@ export interface operations {
                                 height: number;
                                 /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                                 time: number;
+                                /** @description The `time` as an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) UTC timestamp. */
+                                time_iso: string;
                             };
                             /** @description Status of the transaction */
                             status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
@@ -40918,6 +41349,8 @@ export interface operations {
                                 index_hash: string;
                                 /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                                 time: number;
+                                /** @description The `time` as an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) UTC timestamp. */
+                                time_iso: string;
                                 /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                                 tx_index: number;
                             };
@@ -40926,6 +41359,8 @@ export interface operations {
                                 height: number;
                                 /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                                 time: number;
+                                /** @description The `time` as an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) UTC timestamp. */
+                                time_iso: string;
                             };
                             /** @description Status of the transaction */
                             status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
@@ -40960,6 +41395,8 @@ export interface operations {
                                 index_hash: string;
                                 /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                                 time: number;
+                                /** @description The `time` as an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) UTC timestamp. */
+                                time_iso: string;
                                 /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                                 tx_index: number;
                             };
@@ -40968,6 +41405,8 @@ export interface operations {
                                 height: number;
                                 /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                                 time: number;
+                                /** @description The `time` as an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) UTC timestamp. */
+                                time_iso: string;
                             };
                             /** @description Status of the transaction */
                             status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
@@ -41047,6 +41486,8 @@ export interface operations {
                             index_hash: string;
                             /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                             time: number;
+                            /** @description The `time` as an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) UTC timestamp. */
+                            time_iso: string;
                             /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                             tx_index: number;
                         };
@@ -41055,6 +41496,8 @@ export interface operations {
                             height: number;
                             /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                             time: number;
+                            /** @description The `time` as an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) UTC timestamp. */
+                            time_iso: string;
                         };
                         /** @description Status of the transaction */
                         status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
@@ -41227,6 +41670,8 @@ export interface operations {
                             index_hash: string;
                             /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                             time: number;
+                            /** @description The `time` as an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) UTC timestamp. */
+                            time_iso: string;
                             /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                             tx_index: number;
                         };
@@ -41235,6 +41680,8 @@ export interface operations {
                             height: number;
                             /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                             time: number;
+                            /** @description The `time` as an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) UTC timestamp. */
+                            time_iso: string;
                         };
                         /** @description Status of the transaction */
                         status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
@@ -41404,6 +41851,8 @@ export interface operations {
                             index_hash: string;
                             /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                             time: number;
+                            /** @description The `time` as an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) UTC timestamp. */
+                            time_iso: string;
                             /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                             tx_index: number;
                         };
@@ -41412,6 +41861,8 @@ export interface operations {
                             height: number;
                             /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                             time: number;
+                            /** @description The `time` as an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) UTC timestamp. */
+                            time_iso: string;
                         };
                         /** @description Status of the transaction */
                         status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
@@ -41585,6 +42036,8 @@ export interface operations {
                             index_hash: string;
                             /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                             time: number;
+                            /** @description The `time` as an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) UTC timestamp. */
+                            time_iso: string;
                             /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                             tx_index: number;
                         };
@@ -41593,6 +42046,8 @@ export interface operations {
                             height: number;
                             /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                             time: number;
+                            /** @description The `time` as an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) UTC timestamp. */
+                            time_iso: string;
                         };
                         /** @description Status of the transaction */
                         status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
@@ -41755,6 +42210,8 @@ export interface operations {
                             index_hash: string;
                             /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                             time: number;
+                            /** @description The `time` as an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) UTC timestamp. */
+                            time_iso: string;
                             /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                             tx_index: number;
                         };
@@ -41763,6 +42220,8 @@ export interface operations {
                             height: number;
                             /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                             time: number;
+                            /** @description The `time` as an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) UTC timestamp. */
+                            time_iso: string;
                         };
                         /** @description Status of the transaction */
                         status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
@@ -41941,6 +42400,8 @@ export interface operations {
                             index_hash: string;
                             /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                             time: number;
+                            /** @description The `time` as an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) UTC timestamp. */
+                            time_iso: string;
                             /** @description Index of the transaction, indicating the order. Starts at `0` and increases with each transaction */
                             tx_index: number;
                         };
@@ -41949,6 +42410,8 @@ export interface operations {
                             height: number;
                             /** @description Unix timestamp (in seconds) indicating when this block was mined. */
                             time: number;
+                            /** @description The `time` as an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) UTC timestamp. */
+                            time_iso: string;
                         };
                         /** @description Status of the transaction */
                         status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
@@ -42110,6 +42573,8 @@ export interface operations {
                         fee_rate: string;
                         /** @description A unix timestamp (in seconds) indicating when the transaction broadcast was received by the node. */
                         receipt_time: number;
+                        /** @description The `receipt_time` as an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) UTC timestamp. */
+                        receipt_time_iso: string;
                         /** @description Height of the block this transaction was received by the node */
                         receipt_block_height: number;
                         /** @description Status of the mempool transaction */
@@ -42252,6 +42717,8 @@ export interface operations {
                         fee_rate: string;
                         /** @description A unix timestamp (in seconds) indicating when the transaction broadcast was received by the node. */
                         receipt_time: number;
+                        /** @description The `receipt_time` as an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) UTC timestamp. */
+                        receipt_time_iso: string;
                         /** @description Height of the block this transaction was received by the node */
                         receipt_block_height: number;
                         /** @description Status of the mempool transaction */
@@ -42391,6 +42858,8 @@ export interface operations {
                         fee_rate: string;
                         /** @description A unix timestamp (in seconds) indicating when the transaction broadcast was received by the node. */
                         receipt_time: number;
+                        /** @description The `receipt_time` as an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) UTC timestamp. */
+                        receipt_time_iso: string;
                         /** @description Height of the block this transaction was received by the node */
                         receipt_block_height: number;
                         /** @description Status of the mempool transaction */
@@ -42534,6 +43003,8 @@ export interface operations {
                         fee_rate: string;
                         /** @description A unix timestamp (in seconds) indicating when the transaction broadcast was received by the node. */
                         receipt_time: number;
+                        /** @description The `receipt_time` as an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) UTC timestamp. */
+                        receipt_time_iso: string;
                         /** @description Height of the block this transaction was received by the node */
                         receipt_block_height: number;
                         /** @description Status of the mempool transaction */
@@ -42666,6 +43137,8 @@ export interface operations {
                         fee_rate: string;
                         /** @description A unix timestamp (in seconds) indicating when the transaction broadcast was received by the node. */
                         receipt_time: number;
+                        /** @description The `receipt_time` as an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) UTC timestamp. */
+                        receipt_time_iso: string;
                         /** @description Height of the block this transaction was received by the node */
                         receipt_block_height: number;
                         /** @description Status of the mempool transaction */
@@ -42798,6 +43271,8 @@ export interface operations {
                         fee_rate: string;
                         /** @description A unix timestamp (in seconds) indicating when the transaction broadcast was received by the node. */
                         receipt_time: number;
+                        /** @description The `receipt_time` as an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) UTC timestamp. */
+                        receipt_time_iso: string;
                         /** @description Height of the block this transaction was received by the node */
                         receipt_block_height: number;
                         /** @description Status of the mempool transaction */
