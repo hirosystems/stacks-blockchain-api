@@ -111,11 +111,12 @@ export const TimeIsoSchema = Type.String({
 export const SchedulePointTimesSchema = Type.Object({
   time: Type.Union([Type.Integer(), Type.Null()], {
     description:
-      'Unix timestamp (in seconds) recorded in the Bitcoin block header, once the block has been ' +
-      'mined. The API learns Bitcoin block times only from the Stacks blocks anchored to them, so ' +
-      'for a past block no Stacks block anchored to (e.g. a missed sortition) this is an ' +
-      'estimate, interpolated between the nearest anchored blocks before and after it. `null` ' +
-      'for a block that has not been mined yet, and for a past block older than any Stacks block.',
+      'Unix timestamp (in seconds) of when the Bitcoin block was mined, once it has been. The API ' +
+      'learns Bitcoin block times only from the Stacks blocks anchored to them: for a block a ' +
+      'Stacks block anchored to, this is the time recorded in its header; for a past block none ' +
+      'anchored to (e.g. a missed sortition), it is an estimate, interpolated between the nearest ' +
+      'anchored blocks before and after it. `null` for a block that has not been mined yet, and ' +
+      'for a past block older than any Stacks block.',
   }),
   time_iso: Type.Union([Type.String(), Type.Null()], {
     description:
