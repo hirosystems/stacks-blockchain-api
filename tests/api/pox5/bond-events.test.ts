@@ -385,7 +385,7 @@ describe('pox-5 bond events', () => {
       early_unlock_bytes: '',
       schedule: {
         // Derived from the PoX constants: cycle 7's prepare phase starts 5 blocks before 160. Every
-        // point is behind the fixture's Bitcoin tip (713000) and no Stacks block anchored to it.
+        // point is behind the fixture's Bitcoin tip (713000) and older than any Stacks block.
         enrollment_cutoff: { bitcoin_height: 155, pox_cycle: 7, ...NO_TIME },
         activation: { bitcoin_height: 160, pox_cycle: 8, ...NO_TIME },
         unlock: { bitcoin_height: 410, pox_cycle: 20, ...NO_TIME },

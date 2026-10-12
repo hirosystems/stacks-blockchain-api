@@ -65,19 +65,23 @@ const projectedAt = (time: number) => ({
 /** The Bitcoin time every fixture Stacks block carries (the test builder's default). */
 const FIXTURE_BURN_TIME = 94869286;
 
+/** The oldest Bitcoin height a fixture Stacks block anchors to. */
+const FIXTURE_FIRST_ANCHOR = 950;
+
 /**
  * A schedule point as the fixture reports it. No fixture Stacks block anchors to a schedule
- * height, so past points have no time; and since every fixture block carries the same Bitcoin
- * time, no pace can be measured and future points are projected from the tip at the 10-minute
- * target.
+ * height, so past points are interpolated between the fixture's anchors (all carrying the same
+ * Bitcoin time), and those before its first anchor have no time; and since no pace can be
+ * measured, future points are projected from the tip at the 10-minute target.
  */
 function fixturePoint(bitcoinHeight: number): CycleSchedulePoint {
-  return {
-    bitcoin_height: bitcoinHeight,
-    ...(bitcoinHeight > TIP
-      ? projectedAt(FIXTURE_BURN_TIME + (bitcoinHeight - TIP) * 600)
-      : NO_TIME),
-  };
+  let times: Omit<CycleSchedulePoint, 'bitcoin_height'> = NO_TIME;
+  if (bitcoinHeight > TIP) {
+    times = projectedAt(FIXTURE_BURN_TIME + (bitcoinHeight - TIP) * 600);
+  } else if (bitcoinHeight > FIXTURE_FIRST_ANCHOR) {
+    times = confirmedAt(FIXTURE_BURN_TIME);
+  }
+  return { bitcoin_height: bitcoinHeight, ...times };
 }
 
 interface StakingCycleResponse {
@@ -951,7 +955,13 @@ describe('staking cycle', () => {
     await db.setPoxConstants(CONSTANTS);
     // Bitcoin blocks every 9 minutes.
     const burnTime = (burnHeight: number) => 1_700_000_000 + burnHeight * 540;
-    const block = (args: { height: number; parent: string; burnHeight: number; hash: string }) =>
+    const block = (args: {
+      height: number;
+      parent: string;
+      burnHeight: number;
+      hash: string;
+      burnTime?: number;
+    }) =>
       new TestBlockBuilder({
         block_height: args.height,
         block_hash: args.hash,
@@ -959,21 +969,23 @@ describe('staking cycle', () => {
         parent_block_hash: args.parent,
         parent_index_block_hash: args.parent,
         burn_block_height: args.burnHeight,
-        burn_block_time: burnTime(args.burnHeight),
+        burn_block_time: args.burnTime ?? burnTime(args.burnHeight),
       }).build();
     await db.update(block({ height: 1, parent: '0x00', burnHeight: 900, hash: '0x0001' }));
     await db.update(block({ height: 2, parent: '0x0001', burnHeight: 990, hash: '0x0002' }));
     // A fork anchored to 999 that loses: its Bitcoin block time must not be reported.
-    await db.update(block({ height: 3, parent: '0x0002', burnHeight: 999, hash: '0x0a03' }));
+    await db.update(
+      block({ height: 3, parent: '0x0002', burnHeight: 999, hash: '0x0a03', burnTime: 1 })
+    );
     await db.update(block({ height: 3, parent: '0x0002', burnHeight: 1000, hash: '0x0b03' }));
     await db.update(block({ height: 4, parent: '0x0b03', burnHeight: 1050, hash: '0x0b04' }));
 
     // Cycle 9 is finished; no canonical Stacks block anchored to its last Bitcoin block (999), so
-    // that point has no time at all.
+    // that point's time is interpolated between the canonical anchors at 990 and 1000.
     assert.deepEqual((await getCycle('9')).schedule, {
       start: { bitcoin_height: 900, ...confirmedAt(burnTime(900)) },
       prepare_phase_start: { bitcoin_height: 990, ...confirmedAt(burnTime(990)) },
-      end: { bitcoin_height: 999, ...NO_TIME },
+      end: { bitcoin_height: 999, ...confirmedAt(burnTime(999)) },
     });
     // Cycle 10 is current: its start is past, its prepare phase and end are projected from the
     // tip (1050) at the pace measured since the oldest known block (900): 9 minutes.

@@ -255,8 +255,8 @@ describe('pox-5 bonds (simulated ingestion)', () => {
       rewardCycleLength: 20,
       preparePhaseBlockLength: 5,
     });
-    // Every point is behind the fixture's Bitcoin tip (713000), and no Stacks block anchored to
-    // any of them, so none has a time.
+    // Every point is behind the fixture's Bitcoin tip (713000), and older than any Stacks block
+    // (so neither confirmed nor interpolable), so none has a time.
     const expected = {
       // Registration closes when cycle 7's prepare phase begins, 5 blocks before activation.
       enrollment_cutoff: { bitcoin_height: 155, pox_cycle: 7, ...NO_TIME },

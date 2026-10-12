@@ -12,12 +12,18 @@ export interface ScheduleTimes {
   config: BitcoinBlockTimeProjectionConfig;
 }
 
-/** The confirmed and projected times of a schedule point at a Bitcoin height. */
+/**
+ * The times of a schedule point at a Bitcoin height: its header time (or, for a past block the
+ * API has none for, its interpolated time) once mined, its projected time until then.
+ */
 export function serializeSchedulePointTimes(
   scheduleTimes: ScheduleTimes,
   bitcoinHeight: number
 ): SchedulePointTimes {
-  const time = scheduleTimes.times.confirmed.get(bitcoinHeight) ?? null;
+  const time =
+    scheduleTimes.times.confirmed.get(bitcoinHeight) ??
+    scheduleTimes.times.interpolated.get(bitcoinHeight) ??
+    null;
   const projectedTime = projectBitcoinBlockTime(
     scheduleTimes.times,
     scheduleTimes.config,

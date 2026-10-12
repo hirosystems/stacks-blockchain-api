@@ -71,7 +71,11 @@ import {
   resolvePoxCycleSelector,
 } from '../pox-constants.js';
 import { DbBondLockupType } from '../common.js';
-import { BitcoinBlockTimeSample, BitcoinBlockTimes } from '../bitcoin-block-time.js';
+import {
+  BitcoinBlockTimeSample,
+  BitcoinBlockTimes,
+  interpolateBitcoinBlockTime,
+} from '../bitcoin-block-time.js';
 import { BlockIdParam } from '../../api/routes/v2/schemas.js';
 import { InvalidRequestError, InvalidRequestErrorType } from '../../errors.js';
 import { TransactionIncludeField } from '../../api/schemas/v3/entities/transactions.js';
@@ -2223,13 +2227,15 @@ export class PgStoreV3 extends BasePgStoreModule {
 
   /**
    * What the times of the given Bitcoin heights resolve against: the confirmed header times of
-   * those heights, plus the samples future times are projected from (the tip, and the start of the
-   * trailing pace window; see `projectBitcoinBlockTime`).
+   * those heights, interpolated times of the past ones without one, plus the samples future times
+   * are projected from (the tip, and the start of the trailing pace window; see
+   * `projectBitcoinBlockTime`).
    *
    * The node reports a Bitcoin block's time only on the Stacks blocks anchored to it
    * (`/new_burn_block` carries none), so a height is confirmed only when a canonical Stacks block
    * used it as its burn view: future heights never are, and neither is the occasional past height
-   * no Stacks block anchored to (e.g. missed sortitions before Nakamoto). The tip is the Stacks
+   * no Stacks block anchored to (e.g. missed sortitions before Nakamoto). Those past heights are
+   * interpolated between the nearest anchored heights around them instead. The tip is the Stacks
    * chain tip's burn view, so the result only changes when the Stacks chain does. Every lookup is a
    * `burn_block_height` index probe that stops at the first canonical row.
    * @param heights - The Bitcoin heights to resolve; duplicates are ignored.
@@ -2288,8 +2294,55 @@ export class PgStoreV3 extends BasePgStoreModule {
                 LIMIT 1
               ) b
             `;
+      const confirmedTimes = new Map(confirmed.map(r => [r.burn_block_height, r.burn_block_time]));
+
+      // Past heights without a confirmed time sit between two anchored heights: the tip (itself
+      // anchored) bounds them from above.
+      const unanchored = tip ? unique.filter(h => h < tip.height && !confirmedTimes.has(h)) : [];
+      const neighbors =
+        unanchored.length === 0
+          ? []
+          : await sql<
+              {
+                height: number;
+                before_height: number;
+                before_time: number;
+                after_height: number;
+                after_time: number;
+              }[]
+            >`
+              SELECT h.height,
+                bb.burn_block_height AS before_height, bb.burn_block_time AS before_time,
+                ba.burn_block_height AS after_height, ba.burn_block_time AS after_time
+              FROM unnest(${sql.array(unanchored)}::int[]) AS h(height)
+              CROSS JOIN LATERAL (
+                SELECT burn_block_height, burn_block_time
+                FROM blocks
+                WHERE canonical = TRUE AND burn_block_height < h.height
+                ORDER BY burn_block_height DESC
+                LIMIT 1
+              ) bb
+              CROSS JOIN LATERAL (
+                SELECT burn_block_height, burn_block_time
+                FROM blocks
+                WHERE canonical = TRUE AND burn_block_height > h.height
+                ORDER BY burn_block_height ASC
+                LIMIT 1
+              ) ba
+            `;
+      const interpolated = new Map(
+        neighbors.map(r => [
+          r.height,
+          interpolateBitcoinBlockTime(
+            { height: r.before_height, time: r.before_time },
+            { height: r.after_height, time: r.after_time },
+            r.height
+          ),
+        ])
+      );
       return {
-        confirmed: new Map(confirmed.map(r => [r.burn_block_height, r.burn_block_time])),
+        confirmed: confirmedTimes,
+        interpolated,
         tip: tip ?? null,
         paceWindowStart,
       };
