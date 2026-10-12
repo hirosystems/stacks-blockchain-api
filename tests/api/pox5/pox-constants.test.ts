@@ -11,6 +11,8 @@ import {
   burnHeightToRewardCycle,
   ensurePoxConstants,
   getBondEnrollmentCutoff,
+  getPox5BondScheduleTerms,
+  getPox5FirstBondPeriodCycle,
   getPoxCyclePhase,
   getPoxCycleSchedule,
   poxConstantsFromNodeInfo,
@@ -311,5 +313,23 @@ describe('pox cycle arithmetic', () => {
     assert.equal(cutoff.bitcoinHeight, getPoxCycleSchedule(c, 143).preparePhaseStartBitcoinHeight);
     assert.equal(getPoxCyclePhase(c, 143, cutoff.bitcoinHeight - 1), 'reward_phase');
     assert.equal(getPoxCyclePhase(c, 143, cutoff.bitcoinHeight), 'prepare_phase');
+  });
+
+  test('projects a bond schedule from its index, anchored on any set-up bond', () => {
+    // A bond period 0 at cycle 133 puts bond 5 at cycle 143 and unlocks it 12 cycles later.
+    const firstBondPeriodCycle = getPox5FirstBondPeriodCycle({
+      bondIndex: 5,
+      firstRewardCycle: 143,
+    });
+    assert.equal(firstBondPeriodCycle, 133);
+    assert.equal(getPox5FirstBondPeriodCycle({ bondIndex: 0, firstRewardCycle: 133 }), 133);
+    assert.deepEqual(getPox5BondScheduleTerms(c, firstBondPeriodCycle, 5), {
+      bondStartHeight: 966350,
+      firstRewardCycle: 143,
+      unlockBurnHeight: 991550,
+      unlockCycle: 155,
+    });
+    // Consecutive bonds start 2 cycles apart.
+    assert.equal(getPox5BondScheduleTerms(c, firstBondPeriodCycle, 6).firstRewardCycle, 145);
   });
 });

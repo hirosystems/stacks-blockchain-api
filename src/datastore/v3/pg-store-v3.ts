@@ -1549,8 +1549,43 @@ export class PgStoreV3 extends BasePgStoreModule {
         LIMIT 1
       `;
       return result[0]
-        ? { ...result[0], burn_block_height: chainTip[0]?.burn_block_height ?? 0 }
+        ? {
+            ...result[0],
+            // `bigint` columns, which postgres.js returns as strings.
+            block_time: Number(result[0].block_time),
+            burn_block_time: Number(result[0].burn_block_time),
+            burn_block_height: chainTip[0]?.burn_block_height ?? 0,
+          }
         : null;
+    });
+  }
+
+  /**
+   * Gets a set-up bond to anchor the pox-5 bond period schedule on (see
+   * `getPox5FirstBondPeriodCycle`), for projecting bonds that are not set up yet, along with the
+   * chain tip's Bitcoin height. Any canonical bond works; the lowest index is the cheapest read.
+   * @returns The anchor bond, or `null` when no bond has been set up yet.
+   */
+  async getBondPeriodAnchor(): Promise<{
+    bond_index: number;
+    first_reward_cycle: number;
+    burn_block_height: number;
+  } | null> {
+    return await this.sqlTransaction(async sql => {
+      const result = await sql<
+        { bond_index: number; first_reward_cycle: number; burn_block_height: number }[]
+      >`
+        SELECT b.bond_index, b.first_reward_cycle, t.burn_block_height
+        FROM chain_tip t
+        CROSS JOIN LATERAL (
+          SELECT bond_index, first_reward_cycle
+          FROM bonds
+          WHERE canonical = true AND microblock_canonical = true
+          ORDER BY bond_index ASC
+          LIMIT 1
+        ) b
+      `;
+      return result[0] ?? null;
     });
   }
 

@@ -27,7 +27,7 @@ import {
   Pox5EventUnstakeSbtc,
   Pox5EventUpdateBondRegistration,
 } from '@stacks/codec';
-import { Bond, BondSchedule, BondSummary } from '../../schemas/v3/entities/bonds.js';
+import { Bond, BondSchedule, BondSummary, ProjectedBond } from '../../schemas/v3/entities/bonds.js';
 import { BondStatus } from '../../schemas/v3/entities/bonds.js';
 import { BondEvent } from '../../schemas/v3/entities/bond-events.js';
 import { BondAllowlist } from '../../schemas/v3/entities/bond-allowlist-entries.js';
@@ -59,8 +59,11 @@ function serializeBondStatus(summary: DbBondSummary, currentBurnBlockHeight: num
   return 'unlocked';
 }
 
-/** The bond terms its schedule is derived from, as recorded by `setup-bond`. */
-interface BondTerms {
+/**
+ * The bond terms its schedule is derived from, as recorded by `setup-bond` (or as pox-5 will assign
+ * them, for a bond not set up yet: `getPox5BondScheduleTerms`).
+ */
+export interface BondTerms {
   bondStartHeight: number;
   firstRewardCycle: number;
   unlockBurnHeight: number;
@@ -104,6 +107,14 @@ export function getDbBondScheduleHeights(
   summary: DbBondSummary
 ): number[] {
   return bondScheduleHeights(poxConstants, dbBondTerms(summary));
+}
+
+/** As `getDbBondScheduleHeights`, for a bond not set up yet. */
+export function getProjectedBondScheduleHeights(
+  poxConstants: PoxConstants,
+  terms: BondTerms
+): number[] {
+  return bondScheduleHeights(poxConstants, terms);
 }
 
 /** As `getDbBondScheduleHeights`, for the schedule a `setup-bond` event carries (none otherwise). */
@@ -220,6 +231,28 @@ export function serializeDbBond(
         time_iso: unixEpochToIso(bond.burn_block_time),
       },
     },
+  };
+}
+
+/**
+ * Serializes a bond that has not been set up yet: only its index-derived schedule is known.
+ * @param bondIndex - The bond's index.
+ * @param poxConstants - The network's PoX constants, for the bond's enrollment cutoff.
+ * @param scheduleTimes - Resolves the schedule's times (heights from
+ * `getProjectedBondScheduleHeights`).
+ * @param terms - The schedule pox-5 assigns the index (`getPox5BondScheduleTerms`).
+ * @returns The API projected bond.
+ */
+export function serializeProjectedBond(
+  bondIndex: number,
+  poxConstants: PoxConstants,
+  scheduleTimes: ScheduleTimes,
+  terms: BondTerms
+): ProjectedBond {
+  return {
+    index: bondIndex,
+    status: 'projected',
+    schedule: serializeBondSchedule(poxConstants, scheduleTimes, terms),
   };
 }
 

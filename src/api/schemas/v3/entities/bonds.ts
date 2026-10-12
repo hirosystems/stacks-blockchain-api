@@ -135,3 +135,19 @@ export const BondSchema = Type.Composite([
   }),
 ]);
 export type Bond = Static<typeof BondSchema>;
+
+export const ProjectedBondSchema = Type.Object(
+  {
+    index: BondIndexSchema,
+    status: Type.Literal('projected'),
+    schedule: BondScheduleSchema,
+  },
+  {
+    description:
+      'A bond that has not been set up yet. Its schedule is projected from its index under the ' +
+      "current PoX version's rules (pox-5 starts a new bond every 2 reward cycles), so it carries " +
+      'no `pox_version`: the bond may end up set up under a later version, or never. Its ' +
+      "parameters and allowlist are not known until it's set up.",
+  }
+);
+export type ProjectedBond = Static<typeof ProjectedBondSchema>;

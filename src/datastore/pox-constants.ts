@@ -223,6 +223,48 @@ export function getBondEnrollmentCutoff(
   };
 }
 
+/** Reward cycles between consecutive pox-5 bond start cycles (`BOND_GAP_CYCLES` in pox-5). */
+export const POX5_BOND_GAP_CYCLES = 2;
+
+/** Reward cycles a pox-5 bond stays locked for (`BOND_LENGTH_CYCLES` in pox-5). */
+export const POX5_BOND_LENGTH_CYCLES = 12;
+
+/**
+ * The reward cycle pox-5's bond period 0 starts at (its `first-bond-period-cycle`), derived from
+ * any set-up bond: pox-5 starts bond `i` at `first-bond-period-cycle + i * BOND_GAP_CYCLES`.
+ */
+export function getPox5FirstBondPeriodCycle(bond: {
+  bondIndex: number;
+  firstRewardCycle: number;
+}): number {
+  return bond.firstRewardCycle - bond.bondIndex * POX5_BOND_GAP_CYCLES;
+}
+
+/**
+ * The schedule pox-5 assigns a bond index whether or not it has been set up yet
+ * (`bond-period-to-reward-cycle` / `bond-period-to-burn-height` and the `unlock-cycle` that
+ * `setup-bond` derives). It only depends on the index, so a future bond's is known in advance.
+ */
+export function getPox5BondScheduleTerms(
+  c: PoxConstants,
+  firstBondPeriodCycle: number,
+  bondIndex: number
+): {
+  bondStartHeight: number;
+  firstRewardCycle: number;
+  unlockBurnHeight: number;
+  unlockCycle: number;
+} {
+  const firstRewardCycle = firstBondPeriodCycle + bondIndex * POX5_BOND_GAP_CYCLES;
+  const unlockCycle = firstRewardCycle + POX5_BOND_LENGTH_CYCLES;
+  return {
+    bondStartHeight: rewardCycleToBurnHeight(c, firstRewardCycle),
+    firstRewardCycle,
+    unlockBurnHeight: rewardCycleToBurnHeight(c, unlockCycle),
+    unlockCycle,
+  };
+}
+
 /**
  * Where a reward cycle stands relative to the burn tip. `prepare_phase` is the cycle's final
  * `preparePhaseBlockLength` blocks, during which the next cycle's reward set is selected and the
