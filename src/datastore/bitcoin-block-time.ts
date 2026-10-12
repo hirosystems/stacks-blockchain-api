@@ -50,6 +50,13 @@ export interface BitcoinBlockTimeSample {
 export interface BitcoinBlockTimes {
   /** Header times of the requested heights that a canonical Stacks block anchored to. */
   confirmed: ReadonlyMap<number, number>;
+  /**
+   * Estimated times of the requested past heights no canonical Stacks block anchored to (e.g.
+   * missed sortitions before Nakamoto), interpolated between the nearest anchored heights on
+   * either side (see `interpolateBitcoinBlockTime`). Heights before the oldest anchored one have
+   * none.
+   */
+  interpolated: ReadonlyMap<number, number>;
   /** The Bitcoin block of the Stacks chain tip's burn view; `null` before any block. */
   tip: BitcoinBlockTimeSample | null;
   /**
@@ -57,6 +64,21 @@ export interface BitcoinBlockTimes {
    * known one on a younger chain): the start of the window the pace is measured over.
    */
   paceWindowStart: BitcoinBlockTimeSample | null;
+}
+
+/**
+ * Estimates when a past Bitcoin block the API has no header time for was mined, linearly between
+ * the nearest known blocks before and after it. Header times are miner-set and only roughly
+ * increasing, so the estimate is typically within a block interval of the real header time.
+ * @returns Unix seconds.
+ */
+export function interpolateBitcoinBlockTime(
+  before: BitcoinBlockTimeSample,
+  after: BitcoinBlockTimeSample,
+  height: number
+): number {
+  const fraction = (height - before.height) / (after.height - before.height);
+  return Math.round(before.time + (after.time - before.time) * fraction);
 }
 
 /** The measured seconds per Bitcoin block over the pace window, or the target if unmeasurable. */

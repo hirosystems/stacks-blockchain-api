@@ -10,6 +10,7 @@ import {
   projectBitcoinBlockTime,
   getBitcoinBlockPace,
   getBitcoinBlockTimeProjectionConfig,
+  interpolateBitcoinBlockTime,
 } from '../../../src/datastore/bitcoin-block-time.ts';
 
 /**
@@ -30,6 +31,7 @@ const OTHER_NETWORK: BitcoinBlockTimeProjectionConfig = {
 /** A tip two blocks before the 4032 retarget, after a window mined at 9 minutes per block. */
 const TIMES: BitcoinBlockTimes = {
   confirmed: new Map(),
+  interpolated: new Map(),
   tip: { height: 4030, time: 1_000_000 + 2016 * 540 },
   paceWindowStart: { height: 2014, time: 1_000_000 },
 };
@@ -78,6 +80,17 @@ describe('bitcoin block time projections', () => {
     const last = projectBitcoinBlockTime(TIMES, MAINNET, lastHeight);
     assert.ok(last !== null && new Date(last * 1000).toISOString().startsWith('9999-'));
     assert.equal(projectBitcoinBlockTime(TIMES, MAINNET, lastHeight + 1), null);
+  });
+
+  test('past blocks without a known time are interpolated between their neighbors', () => {
+    const before = { height: 100, time: 10_000 };
+    const after = { height: 104, time: 12_000 };
+    assert.equal(interpolateBitcoinBlockTime(before, after, 101), 10_500);
+    assert.equal(interpolateBitcoinBlockTime(before, after, 103), 11_500);
+    // Rounded to whole seconds.
+    assert.equal(interpolateBitcoinBlockTime(before, { height: 103, time: 10_001 }, 101), 10_000);
+    // Miner-set header times can run backwards; the estimate stays between the two.
+    assert.equal(interpolateBitcoinBlockTime(before, { height: 102, time: 9_000 }, 101), 9_500);
   });
 
   test('the config reverts to the target after retargets on mainnet only', () => {
@@ -142,18 +155,60 @@ describe('bitcoin block time samples (PgStoreV3.getBitcoinBlockTimes)', () => {
         [300, 30_000],
       ])
     );
+    // 200 is past but unanchored: interpolated between 195 and 220. 400 is beyond the tip.
+    assert.deepEqual(times.interpolated, new Map([[200, 20_000]]));
   });
 
-  test('a chain younger than the window measures from its oldest known block', async () => {
+  test('past heights older than any anchored block are not interpolated', async () => {
     await anchor(100, 10_000);
     await anchor(150, 15_000);
-    const times = await db.v3.getBitcoinBlockTimes([], 2016);
-    assert.deepEqual(times.tip, { height: 150, time: 15_000 });
-    assert.deepEqual(times.paceWindowStart, { height: 100, time: 10_000 });
+    const times = await db.v3.getBitcoinBlockTimes([50, 120], 2016);
+    assert.deepEqual(times.confirmed, new Map());
+    assert.deepEqual(times.interpolated, new Map([[120, 12_000]]));
+  });
+
+  test('interpolation skips non-canonical anchors', async () => {
+    const block = (args: {
+      height: number;
+      hash: string;
+      parent: string;
+      burnHeight: number;
+      burnTime: number;
+    }) =>
+      new TestBlockBuilder({
+        block_height: args.height,
+        block_hash: args.hash,
+        index_block_hash: args.hash,
+        parent_block_hash: args.parent,
+        parent_index_block_hash: args.parent,
+        burn_block_height: args.burnHeight,
+        burn_block_time: args.burnTime,
+      }).build();
+    await db.update(
+      block({ height: 1, hash: '0x0001', parent: '0x00', burnHeight: 100, burnTime: 10_000 })
+    );
+    // A fork anchored to 105 with an outlying header time, orphaned by the longer chain below.
+    await db.update(
+      block({ height: 2, hash: '0x0a02', parent: '0x0001', burnHeight: 105, burnTime: 99_999 })
+    );
+    await db.update(
+      block({ height: 2, hash: '0x0b02', parent: '0x0001', burnHeight: 110, burnTime: 11_000 })
+    );
+    await db.update(
+      block({ height: 3, hash: '0x0b03', parent: '0x0b02', burnHeight: 120, burnTime: 12_000 })
+    );
+    const times = await db.v3.getBitcoinBlockTimes([105], 2016);
+    assert.deepEqual(times.confirmed, new Map());
+    assert.deepEqual(times.interpolated, new Map([[105, 10_500]]));
   });
 
   test('an empty chain has no samples', async () => {
     const times = await db.v3.getBitcoinBlockTimes([100], 2016);
-    assert.deepEqual(times, { confirmed: new Map(), tip: null, paceWindowStart: null });
+    assert.deepEqual(times, {
+      confirmed: new Map(),
+      interpolated: new Map(),
+      tip: null,
+      paceWindowStart: null,
+    });
   });
 });
