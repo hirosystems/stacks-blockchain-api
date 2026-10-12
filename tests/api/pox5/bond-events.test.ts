@@ -23,6 +23,9 @@ const BOB = 'ST11NJTTKGVT6D1HY4NJRVQWMQM7TVAR091EJ8P2Y';
 const SIGNER = `${ADMIN}.signer-manager`;
 const NEW_SIGNER = `${ADMIN}.signer-manager-2`;
 
+/** A schedule point with no time at all. */
+const NO_TIME = { time: null, time_iso: null, projected_time: null, projected_time_iso: null };
+
 const SETUP_TX_ID = '0x' + '11'.repeat(32);
 const REGISTER_TX_ID = '0x' + '22'.repeat(32);
 const REGISTER_L1_TX_ID = '0x' + '33'.repeat(32);
@@ -381,10 +384,11 @@ describe('pox-5 bond events', () => {
       },
       early_unlock_bytes: '',
       schedule: {
-        // Derived from the PoX constants: cycle 7's prepare phase starts 5 blocks before 160.
-        enrollment_cutoff: { bitcoin_height: 155, pox_cycle: 7 },
-        activation: { bitcoin_height: 160, pox_cycle: 8 },
-        unlock: { bitcoin_height: 410, pox_cycle: 20 },
+        // Derived from the PoX constants: cycle 7's prepare phase starts 5 blocks before 160. Every
+        // point is behind the fixture's Bitcoin tip (713000) and no Stacks block anchored to it.
+        enrollment_cutoff: { bitcoin_height: 155, pox_cycle: 7, ...NO_TIME },
+        activation: { bitcoin_height: 160, pox_cycle: 8, ...NO_TIME },
+        unlock: { bitcoin_height: 410, pox_cycle: 20, ...NO_TIME },
       },
     });
   });

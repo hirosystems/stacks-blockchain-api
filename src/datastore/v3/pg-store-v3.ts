@@ -71,6 +71,7 @@ import {
   resolvePoxCycleSelector,
 } from '../pox-constants.js';
 import { DbBondLockupType } from '../common.js';
+import { BitcoinBlockTimeSample, BitcoinBlockTimes } from '../bitcoin-block-time.js';
 import { BlockIdParam } from '../../api/routes/v2/schemas.js';
 import { InvalidRequestError, InvalidRequestErrorType } from '../../errors.js';
 import { TransactionIncludeField } from '../../api/schemas/v3/entities/transactions.js';
@@ -103,6 +104,9 @@ import {
   resolveTransactionCursor,
 } from './helpers.js';
 import { DbEventTypeId, DbSignerKeyGrantKind, DbTxStatus, DbTxTypeId } from '../common.js';
+
+/** The largest value of a PostgreSQL `integer` column. */
+const PG_INTEGER_MAX = 2_147_483_647;
 
 export class PgStoreV3 extends BasePgStoreModule {
   /** Cached result of {@link hasTrigramSupport}, resolved at most once per store. */
@@ -2180,6 +2184,81 @@ export class PgStoreV3 extends BasePgStoreModule {
       SELECT burn_block_height FROM chain_tip
     `;
     return resolvePoxCycleSelector(poxConstants, selector, tip?.burn_block_height ?? 0);
+  }
+
+  /**
+   * What the times of the given Bitcoin heights resolve against: the confirmed header times of
+   * those heights, plus the samples future times are projected from (the tip, and the start of the
+   * trailing pace window; see `projectBitcoinBlockTime`).
+   *
+   * The node reports a Bitcoin block's time only on the Stacks blocks anchored to it
+   * (`/new_burn_block` carries none), so a height is confirmed only when a canonical Stacks block
+   * used it as its burn view: future heights never are, and neither is the occasional past height
+   * no Stacks block anchored to (e.g. missed sortitions before Nakamoto). The tip is the Stacks
+   * chain tip's burn view, so the result only changes when the Stacks chain does. Every lookup is a
+   * `burn_block_height` index probe that stops at the first canonical row.
+   * @param heights - The Bitcoin heights to resolve; duplicates are ignored.
+   * @param paceWindowBlocks - How far behind the tip the pace window starts.
+   */
+  async getBitcoinBlockTimes(
+    heights: number[],
+    paceWindowBlocks: number
+  ): Promise<BitcoinBlockTimes> {
+    return await this.sqlTransaction(async sql => {
+      const [tip] = await sql<{ height: number; time: number }[]>`
+        SELECT b.burn_block_height AS height, b.burn_block_time AS time
+        FROM chain_tip t
+        CROSS JOIN LATERAL (
+          SELECT burn_block_height, burn_block_time
+          FROM blocks
+          WHERE canonical = TRUE AND burn_block_height = t.burn_block_height
+          LIMIT 1
+        ) b
+      `;
+      let paceWindowStart: BitcoinBlockTimeSample | null = null;
+      if (tip) {
+        const [windowStart] = await sql<{ height: number; time: number }[]>`
+          SELECT burn_block_height AS height, burn_block_time AS time
+          FROM blocks
+          WHERE canonical = TRUE AND burn_block_height <= ${tip.height - paceWindowBlocks}
+          ORDER BY burn_block_height DESC
+          LIMIT 1
+        `;
+        // A chain younger than the window measures its pace from its oldest known block.
+        const [oldest] = windowStart
+          ? [windowStart]
+          : await sql<{ height: number; time: number }[]>`
+              SELECT burn_block_height AS height, burn_block_time AS time
+              FROM blocks
+              WHERE canonical = TRUE
+              ORDER BY burn_block_height ASC
+              LIMIT 1
+            `;
+        paceWindowStart = oldest ?? null;
+      }
+
+      // Heights outside PostgreSQL's integer range (e.g. a far-future cycle's schedule) can never
+      // be in `blocks`, and would fail the array cast.
+      const unique = [...new Set(heights)].filter(h => h >= 0 && h <= PG_INTEGER_MAX);
+      const confirmed =
+        unique.length === 0
+          ? []
+          : await sql<{ burn_block_height: number; burn_block_time: number }[]>`
+              SELECT h.burn_block_height, b.burn_block_time
+              FROM unnest(${sql.array(unique)}::int[]) AS h(burn_block_height)
+              CROSS JOIN LATERAL (
+                SELECT burn_block_time
+                FROM blocks
+                WHERE canonical = TRUE AND burn_block_height = h.burn_block_height
+                LIMIT 1
+              ) b
+            `;
+      return {
+        confirmed: new Map(confirmed.map(r => [r.burn_block_height, r.burn_block_time])),
+        tip: tip ?? null,
+        paceWindowStart,
+      };
+    });
   }
 
   /**

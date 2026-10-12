@@ -1,3 +1,4 @@
+import { unixEpochToIso } from '../../../helpers.js';
 import {
   BaseTransactionSummary,
   CoinbaseTransactionSummary,
@@ -110,11 +111,13 @@ export function serializeDbTransactionSummary(summary: DbTransactionSummary): Tr
       hash: summary.block_hash,
       index_hash: summary.index_block_hash,
       time: summary.block_time,
+      time_iso: unixEpochToIso(summary.block_time),
       tx_index: summary.tx_index,
     },
     bitcoin_block: {
       height: summary.burn_block_height,
       time: summary.burn_block_time,
+      time_iso: unixEpochToIso(summary.burn_block_time),
     },
     status: serializeDbTransactionStatus(summary.status),
   };

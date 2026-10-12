@@ -1,3 +1,4 @@
+import { unixEpochToIso } from '../../../helpers.js';
 import { PrincipalFtTransfer } from '../../schemas/v3/entities/principal-ft-transfers.js';
 import { DbPrincipalFtTransfer } from '../../../datastore/v3/types.js';
 
@@ -20,6 +21,7 @@ export function serializePrincipalFtTransfer(transfer: DbPrincipalFtTransfer): P
       hash: transfer.block_hash,
       index_hash: transfer.index_block_hash,
       time: transfer.block_time,
+      time_iso: unixEpochToIso(transfer.block_time),
       tx_index: transfer.tx_index,
     },
   };

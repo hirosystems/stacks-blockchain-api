@@ -17,6 +17,8 @@ import { BondRegistrationSchema } from '../../schemas/v3/entities/bond-registrat
 import { BondRegistrationSummarySchema } from '../../schemas/v3/entities/bond-registration-summaries.js';
 import { BondIndexSchema, PrincipalSchema } from '../../schemas/v3/entities/common.js';
 import {
+  getDbBondEventScheduleHeights,
+  getDbBondScheduleHeights,
   serializeDbBond,
   serializeDbBondAllowlistEntry,
   serializeDbBondEvent,
@@ -24,6 +26,7 @@ import {
   serializeDbBondRegistrationSummary,
   serializeDbBondSummary,
 } from '../../serializers/v3/bonds.js';
+import { getBitcoinBlockTimeProjectionConfig } from '../../../datastore/bitcoin-block-time.js';
 import { NotFoundError } from '../../../errors.js';
 
 export const StakingBondsRoutes: FastifyPluginAsync<
@@ -31,6 +34,7 @@ export const StakingBondsRoutes: FastifyPluginAsync<
   Server,
   TypeBoxTypeProvider
 > = async fastify => {
+  const projectionConfig = getBitcoinBlockTimeProjectionConfig(fastify.chainId);
   fastify.get(
     '/staking/bonds',
     {
@@ -47,23 +51,33 @@ export const StakingBondsRoutes: FastifyPluginAsync<
       },
     },
     async (req, reply) => {
-      const results = await fastify.db.v3.getBondSummaries({
-        limit: req.query.limit ?? getPagingQueryLimit(ResourceType.Tx),
-        cursor: req.query.cursor,
+      const response = await fastify.db.sqlTransaction(async _sql => {
+        const results = await fastify.db.v3.getBondSummaries({
+          limit: req.query.limit ?? getPagingQueryLimit(ResourceType.Tx),
+          cursor: req.query.cursor,
+        });
+        const poxConstants = await fastify.db.getPoxConstants();
+        const scheduleTimes = {
+          times: await fastify.db.v3.getBitcoinBlockTimes(
+            results.results.flatMap(r => getDbBondScheduleHeights(poxConstants, r)),
+            projectionConfig.paceWindowBlocks
+          ),
+          config: projectionConfig,
+        };
+        return {
+          limit: results.limit,
+          total: results.total,
+          cursor: {
+            next: results.next_cursor,
+            previous: results.prev_cursor,
+            current: results.current_cursor,
+          },
+          results: results.results.map(r =>
+            serializeDbBondSummary(r, results.burn_block_height, poxConstants, scheduleTimes)
+          ),
+        };
       });
-      const poxConstants = await fastify.db.getPoxConstants();
-      await reply.send({
-        limit: results.limit,
-        total: results.total,
-        cursor: {
-          next: results.next_cursor,
-          previous: results.prev_cursor,
-          current: results.current_cursor,
-        },
-        results: results.results.map(r =>
-          serializeDbBondSummary(r, results.burn_block_height, poxConstants)
-        ),
-      });
+      await reply.send(response);
     }
   );
 
@@ -85,13 +99,22 @@ export const StakingBondsRoutes: FastifyPluginAsync<
       },
     },
     async (req, reply) => {
-      const bond = await fastify.db.v3.getBond({ bondIndex: req.params.bond_index });
-      if (!bond) {
-        throw new NotFoundError('Bond not found');
-      }
-      await reply.send(
-        serializeDbBond(bond, bond.burn_block_height, await fastify.db.getPoxConstants())
-      );
+      const response = await fastify.db.sqlTransaction(async _sql => {
+        const bond = await fastify.db.v3.getBond({ bondIndex: req.params.bond_index });
+        if (!bond) {
+          throw new NotFoundError('Bond not found');
+        }
+        const poxConstants = await fastify.db.getPoxConstants();
+        const scheduleTimes = {
+          times: await fastify.db.v3.getBitcoinBlockTimes(
+            getDbBondScheduleHeights(poxConstants, bond),
+            projectionConfig.paceWindowBlocks
+          ),
+          config: projectionConfig,
+        };
+        return serializeDbBond(bond, bond.burn_block_height, poxConstants, scheduleTimes);
+      });
+      await reply.send(response);
     }
   );
 
@@ -118,22 +141,32 @@ export const StakingBondsRoutes: FastifyPluginAsync<
       },
     },
     async (req, reply) => {
-      const results = await fastify.db.v3.getBondEvents({
-        bondIndex: req.params.bond_index,
-        limit: req.query.limit ?? getPagingQueryLimit(ResourceType.Tx),
-        cursor: req.query.cursor,
+      const response = await fastify.db.sqlTransaction(async _sql => {
+        const results = await fastify.db.v3.getBondEvents({
+          bondIndex: req.params.bond_index,
+          limit: req.query.limit ?? getPagingQueryLimit(ResourceType.Tx),
+          cursor: req.query.cursor,
+        });
+        const poxConstants = await fastify.db.getPoxConstants();
+        const scheduleTimes = {
+          times: await fastify.db.v3.getBitcoinBlockTimes(
+            results.results.flatMap(r => getDbBondEventScheduleHeights(poxConstants, r)),
+            projectionConfig.paceWindowBlocks
+          ),
+          config: projectionConfig,
+        };
+        return {
+          limit: results.limit,
+          total: results.total,
+          cursor: {
+            next: results.next_cursor,
+            previous: results.prev_cursor,
+            current: results.current_cursor,
+          },
+          results: results.results.map(r => serializeDbBondEvent(r, poxConstants, scheduleTimes)),
+        };
       });
-      const poxConstants = await fastify.db.getPoxConstants();
-      await reply.send({
-        limit: results.limit,
-        total: results.total,
-        cursor: {
-          next: results.next_cursor,
-          previous: results.prev_cursor,
-          current: results.current_cursor,
-        },
-        results: results.results.map(r => serializeDbBondEvent(r, poxConstants)),
-      });
+      await reply.send(response);
     }
   );
 

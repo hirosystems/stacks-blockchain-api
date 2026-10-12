@@ -112,6 +112,7 @@ describe('v3 mempool', () => {
         sponsor: null,
         fee_rate: '100',
         receipt_time: 2000,
+        receipt_time_iso: '1970-01-01T00:33:20.000Z',
         receipt_block_height: 1,
         contract_call: {
           contract_id: 'SP000000000000000000002Q6VF78.pox-4',
@@ -129,6 +130,7 @@ describe('v3 mempool', () => {
         sponsor: null,
         fee_rate: '250',
         receipt_time: 1000,
+        receipt_time_iso: '1970-01-01T00:16:40.000Z',
         receipt_block_height: 1,
         token_transfer: {
           recipient: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',

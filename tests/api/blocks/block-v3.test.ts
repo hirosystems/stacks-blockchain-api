@@ -152,11 +152,13 @@ describe('v3 blocks', () => {
           hash: hex(1),
           index_hash: hex(1),
           time: 1000,
+          time_iso: '1970-01-01T00:16:40.000Z',
           tx_index: 1,
         },
         bitcoin_block: {
           height: 1,
           time: 1000,
+          time_iso: '1970-01-01T00:16:40.000Z',
         },
         sender: {
           address: SENDER,
@@ -182,11 +184,13 @@ describe('v3 blocks', () => {
           hash: hex(1),
           index_hash: hex(1),
           time: 1000,
+          time_iso: '1970-01-01T00:16:40.000Z',
           tx_index: 0,
         },
         bitcoin_block: {
           height: 1,
           time: 1000,
+          time_iso: '1970-01-01T00:16:40.000Z',
         },
         sender: {
           address: SENDER,

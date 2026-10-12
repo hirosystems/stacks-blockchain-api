@@ -79,6 +79,10 @@ interface BondSummaryItem {
 interface BondSchedulePoint {
   bitcoin_height: number;
   pox_cycle: number;
+  time: number | null;
+  time_iso: string | null;
+  projected_time: number | null;
+  projected_time_iso: string | null;
 }
 interface BondDetail extends BondSummaryItem {
   transaction: { tx_id: string };
@@ -122,6 +126,22 @@ interface StakingSummary {
   stx: { locked: string; rewards: { btc: BtcRewardsItem } };
   bonds: { count: number; locked: { btc: string; stx: string }; rewards: { btc: BtcRewardsItem } };
 }
+
+/** A schedule point with no time at all. */
+const NO_TIME = { time: null, time_iso: null, projected_time: null, projected_time_iso: null };
+const iso = (time: number) => new Date(time * 1000).toISOString();
+/** A schedule point whose Bitcoin block was mined at `time`. */
+const confirmedAt = (time: number) => ({
+  ...NO_TIME,
+  time,
+  time_iso: iso(time),
+});
+/** A schedule point whose Bitcoin block is projected to be mined at `time`. */
+const projectedAt = (time: number) => ({
+  ...NO_TIME,
+  projected_time: time,
+  projected_time_iso: iso(time),
+});
 
 const normalizeTxId = (txid: string) => txid.replace(/^0x/, '').toLowerCase();
 
@@ -235,11 +255,21 @@ describe('pox-5 bonds (simulated ingestion)', () => {
       rewardCycleLength: 20,
       preparePhaseBlockLength: 5,
     });
+    // Every point is behind the fixture's Bitcoin tip (713000), and no Stacks block anchored to
+    // any of them, so none has a time.
     const expected = {
       // Registration closes when cycle 7's prepare phase begins, 5 blocks before activation.
-      enrollment_cutoff: { bitcoin_height: 155, pox_cycle: 7 },
-      activation: { bitcoin_height: BOND_START_HEIGHT, pox_cycle: FIRST_REWARD_CYCLE },
-      unlock: { bitcoin_height: UNLOCK_BURN_HEIGHT, pox_cycle: UNLOCK_CYCLE },
+      enrollment_cutoff: { bitcoin_height: 155, pox_cycle: 7, ...NO_TIME },
+      activation: {
+        bitcoin_height: BOND_START_HEIGHT,
+        pox_cycle: FIRST_REWARD_CYCLE,
+        ...NO_TIME,
+      },
+      unlock: {
+        bitcoin_height: UNLOCK_BURN_HEIGHT,
+        pox_cycle: UNLOCK_CYCLE,
+        ...NO_TIME,
+      },
     };
     const list = await getJson<CursorPaginated<BondSummaryItem>>(
       '/extended/v3/staking/bonds?limit=50'
@@ -247,6 +277,68 @@ describe('pox-5 bonds (simulated ingestion)', () => {
     assert.deepEqual(list.results.find(b => b.index === BOND_INDEX)?.schedule, expected);
     const bond = await getJson<BondDetail>(`/extended/v3/staking/bonds/${BOND_INDEX}`);
     assert.deepEqual(bond.schedule, expected);
+  });
+
+  test('schedule points carry confirmed times of past blocks and projections of future ones', async () => {
+    await db.setPoxConstants({
+      firstBurnchainBlockHeight: 0,
+      rewardCycleLength: 20,
+      preparePhaseBlockLength: 5,
+    });
+    // Bitcoin blocks every 9 minutes. Stacks blocks anchored to 150, the enrollment cutoff (155)
+    // and activation (160) heights carry those blocks' times and move the Bitcoin tip to 160; the
+    // unlock height (410) is still in the future.
+    const burnTime = (burnHeight: number) => 1_700_000_000 + burnHeight * 540;
+    let parent = '0xb1';
+    for (const [height, burnHeight] of [
+      [2, 150],
+      [3, 155],
+      [4, 160],
+    ]) {
+      const indexHash = `0xb${height}`;
+      await db.update(
+        new TestBlockBuilder({
+          block_height: height,
+          block_hash: indexHash,
+          index_block_hash: indexHash,
+          parent_block_hash: parent,
+          parent_index_block_hash: parent,
+          burn_block_height: burnHeight,
+          burn_block_time: burnTime(burnHeight),
+        }).build()
+      );
+      parent = indexHash;
+    }
+    const expected = {
+      enrollment_cutoff: {
+        bitcoin_height: 155,
+        pox_cycle: 7,
+        ...confirmedAt(burnTime(155)),
+      },
+      activation: {
+        bitcoin_height: BOND_START_HEIGHT,
+        pox_cycle: FIRST_REWARD_CYCLE,
+        ...confirmedAt(burnTime(BOND_START_HEIGHT)),
+      },
+      // The chain is younger than the pace window, so the pace (9 minutes) is measured from its
+      // oldest Bitcoin block (150) to the tip (160) and extrapolated from the tip's time.
+      unlock: {
+        bitcoin_height: UNLOCK_BURN_HEIGHT,
+        pox_cycle: UNLOCK_CYCLE,
+        ...projectedAt(burnTime(UNLOCK_BURN_HEIGHT)),
+      },
+    };
+    const list = await getJson<CursorPaginated<BondSummaryItem>>(
+      '/extended/v3/staking/bonds?limit=50'
+    );
+    assert.deepEqual(list.results.find(b => b.index === BOND_INDEX)?.schedule, expected);
+    const bond = await getJson<BondDetail>(`/extended/v3/staking/bonds/${BOND_INDEX}`);
+    assert.deepEqual(bond.schedule, expected);
+    const events = await getJson<CursorPaginated<{ name: string; data: { schedule?: unknown } }>>(
+      `/extended/v3/staking/bonds/${BOND_INDEX}/events?limit=50`
+    );
+    const setup = events.results.find(e => e.name === Pox5EventName.SetupBond);
+    assert.deepEqual(setup?.data.schedule, expected);
   });
 
   test('the allowlist lists alice and bob (GET .../allowlist)', async () => {

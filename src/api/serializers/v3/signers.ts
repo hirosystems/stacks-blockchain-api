@@ -1,3 +1,4 @@
+import { unixEpochToIso } from '../../../helpers.js';
 import {
   DbSignerStaker,
   DbStakingSigner,
@@ -37,11 +38,13 @@ export function serializeDbStakingSignerDetail(signer: DbStakingSignerDetail): S
         hash: signer.block_hash,
         index_hash: signer.index_block_hash,
         time: signer.block_time,
+        time_iso: unixEpochToIso(signer.block_time),
         tx_index: signer.tx_index,
       },
       bitcoin_block: {
         height: signer.burn_block_height,
         time: signer.burn_block_time,
+        time_iso: unixEpochToIso(signer.burn_block_time),
       },
     },
   };
