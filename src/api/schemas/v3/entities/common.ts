@@ -131,6 +131,19 @@ export const BlockSummarySchema = Type.Object(
 );
 export type BlockSummary = Static<typeof BlockSummarySchema>;
 
+export const BitcoinBlockSummarySchema = Type.Object(
+  {
+    height: Type.Integer({
+      description: 'Height of the Bitcoin block',
+    }),
+    hash: Type.String({
+      description: 'Hash of the Bitcoin block',
+    }),
+  },
+  { title: 'BitcoinBlockSummary' }
+);
+export type BitcoinBlockSummary = Static<typeof BitcoinBlockSummarySchema>;
+
 export const TransactionPositionSchema = Type.Object({
   tx_id: TransactionIdSchema,
   event_index: Type.Integer({

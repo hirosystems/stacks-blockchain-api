@@ -1,4 +1,6 @@
 import {
+  BitcoinBlockCursor,
+  BlockCursor,
   FtBalanceCursor,
   FtHolderCursor,
   MinerRewardCursor,
@@ -144,6 +146,24 @@ export const parseMinerRewardCursor = (cursor: MinerRewardCursor): MinerRewardCu
 
 export const encodeMinerRewardCursor = (row: MinerRewardCursorRow): MinerRewardCursor =>
   `${row.mature_block_height}:${row.reward_index}`;
+
+/**
+ * Parses a block height cursor, shared by the Stacks and Bitcoin block lists.
+ * @param cursor - The block height cursor.
+ * @returns The block height.
+ */
+export const parseBlockHeightCursor = (cursor: BlockCursor | BitcoinBlockCursor): number => {
+  const height = parseInt(cursor, 10);
+  // Heights are integer columns: reject values postgres would fail to compare against them, so
+  // they surface as a 400 instead of a 500.
+  if (height > I32_MAX) {
+    throw new InvalidRequestError(
+      `Cursor value out of range: ${cursor}`,
+      InvalidRequestErrorType.invalid_param
+    );
+  }
+  return height;
+};
 
 export type FtBalanceCursorRow = {
   balance: string;

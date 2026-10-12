@@ -478,16 +478,16 @@ export interface DbSmartContractDetail {
   source_code?: string;
 }
 
-/** A Stacks block matched by a search, reduced to what identifies and locates it. */
-export interface DbSearchBlock {
+/** A Stacks block, reduced to what identifies and locates it. */
+export interface DbBlockSummary {
   block_height: number;
   block_hash: string;
   index_block_hash: string;
   block_time: number;
 }
 
-/** A Bitcoin block matched by a search. */
-export interface DbSearchBitcoinBlock {
+/** A Bitcoin block, reduced to what identifies it. */
+export interface DbBitcoinBlockSummary {
   burn_block_height: number;
   burn_block_hash: string;
 }
@@ -508,8 +508,8 @@ export interface DbSearchTokenAsset {
  * already ranked, so the API layer only has to serialize them.
  */
 export type DbSearchHit =
-  | { type: 'block'; result: DbSearchBlock }
-  | { type: 'bitcoin_block'; result: DbSearchBitcoinBlock }
+  | { type: 'block'; result: DbBlockSummary }
+  | { type: 'bitcoin_block'; result: DbBitcoinBlockSummary }
   | { type: 'transaction'; result: DbTransactionSummary }
   | { type: 'address'; result: DbSearchAddress }
   | { type: 'smart_contract'; result: DbSmartContractDetail }

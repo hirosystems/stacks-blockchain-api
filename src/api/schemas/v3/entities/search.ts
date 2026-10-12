@@ -2,6 +2,7 @@ import { Static, Type } from '@sinclair/typebox';
 import {
   AddressSchema,
   AssetIdentifierSchema,
+  BitcoinBlockSummarySchema,
   BlockSummarySchema,
   SmartContractIdSchema,
 } from './common.js';
@@ -23,19 +24,6 @@ export const SearchEntityTypeSchema = Type.Union(
   }
 );
 export type SearchEntityType = Static<typeof SearchEntityTypeSchema>;
-
-export const BitcoinBlockSummarySchema = Type.Object(
-  {
-    height: Type.Integer({
-      description: 'Height of the Bitcoin block',
-    }),
-    hash: Type.String({
-      description: 'Hash of the Bitcoin block',
-    }),
-  },
-  { title: 'BitcoinBlockSummary' }
-);
-export type BitcoinBlockSummary = Static<typeof BitcoinBlockSummarySchema>;
 
 export const AddressSummarySchema = Type.Object(
   {

@@ -32,6 +32,148 @@ describe('v3 blocks', () => {
     await migrate('down');
   });
 
+  async function seedBlocks(count: number) {
+    for (let height = 1; height <= count; height++) {
+      await db.update(
+        new TestBlockBuilder({
+          block_height: height,
+          block_hash: hex(0xb000 + height),
+          index_block_hash: hex(height),
+          parent_index_block_hash: hex(height - 1),
+          parent_block_hash: hex(0xb000 + height - 1),
+          block_time: 1000 + height,
+        }).build()
+      );
+    }
+  }
+
+  describe('/v3/blocks', () => {
+    test('returns an empty page when there are no blocks', async () => {
+      const response = await api.fastifyApp.inject({ method: 'GET', url: '/extended/v3/blocks' });
+      assert.equal(response.statusCode, 200);
+      assert.deepEqual(JSON.parse(response.body), {
+        limit: 20,
+        total: 0,
+        cursor: { next: null, previous: null, current: null },
+        results: [],
+      });
+    });
+
+    test('returns block summaries newest first', async () => {
+      await seedBlocks(3);
+      const response = await api.fastifyApp.inject({ method: 'GET', url: '/extended/v3/blocks' });
+      assert.equal(response.statusCode, 200);
+      const body = JSON.parse(response.body);
+      assert.equal(body.total, 3);
+      assert.deepEqual(body.cursor, { next: null, previous: null, current: '3' });
+      assert.deepEqual(body.results, [
+        { height: 3, hash: hex(0xb003), index_hash: hex(3), time: 1003 },
+        { height: 2, hash: hex(0xb002), index_hash: hex(2), time: 1002 },
+        { height: 1, hash: hex(0xb001), index_hash: hex(1), time: 1001 },
+      ]);
+    });
+
+    test('paginates with cursors', async () => {
+      await seedBlocks(5);
+      const page = async (cursor?: string) => {
+        const response = await api.fastifyApp.inject({
+          method: 'GET',
+          url: `/extended/v3/blocks?limit=2${cursor ? `&cursor=${cursor}` : ''}`,
+        });
+        assert.equal(response.statusCode, 200);
+        return JSON.parse(response.body);
+      };
+
+      const first = await page();
+      assert.equal(first.total, 5);
+      assert.deepEqual(
+        first.results.map((r: { height: number }) => r.height),
+        [5, 4]
+      );
+      assert.deepEqual(first.cursor, { next: '3', previous: null, current: '5' });
+
+      const second = await page(first.cursor.next);
+      assert.deepEqual(
+        second.results.map((r: { height: number }) => r.height),
+        [3, 2]
+      );
+      assert.deepEqual(second.cursor, { next: '1', previous: '5', current: '3' });
+
+      const last = await page(second.cursor.next);
+      assert.deepEqual(
+        last.results.map((r: { height: number }) => r.height),
+        [1]
+      );
+      assert.deepEqual(last.cursor, { next: null, previous: '3', current: '1' });
+
+      const back = await page(last.cursor.previous);
+      assert.deepEqual(back, second);
+    });
+
+    test('rejects invalid cursors', async () => {
+      const malformed = await api.fastifyApp.inject({
+        method: 'GET',
+        url: '/extended/v3/blocks?cursor=abc',
+      });
+      assert.equal(malformed.statusCode, 400);
+
+      const outOfRange = await api.fastifyApp.inject({
+        method: 'GET',
+        url: `/extended/v3/blocks?cursor=${I32_MAX + 1}`,
+      });
+      assert.equal(outOfRange.statusCode, 400);
+    });
+  });
+
+  describe('/v3/blocks/:height_or_hash', () => {
+    test('returns a block by height, hash, index hash, and latest', async () => {
+      await seedBlocks(3);
+      const expected = { height: 2, hash: hex(0xb002), index_hash: hex(2), time: 1002 };
+      for (const id of ['2', hex(0xb002), hex(2), hex(2).slice(2)]) {
+        const response = await api.fastifyApp.inject({
+          method: 'GET',
+          url: `/extended/v3/blocks/${id}`,
+        });
+        if (!id.startsWith('0x') && id.length === 64) {
+          // Unprefixed hashes redirect to the prefixed form.
+          assert.equal(response.statusCode, 302);
+          assert.equal(response.headers['location'], `/extended/v3/blocks/0x${id}`);
+          continue;
+        }
+        assert.equal(response.statusCode, 200);
+        assert.deepEqual(JSON.parse(response.body), expected);
+      }
+
+      const latest = await api.fastifyApp.inject({
+        method: 'GET',
+        url: '/extended/v3/blocks/latest',
+      });
+      assert.equal(latest.statusCode, 200);
+      assert.equal(JSON.parse(latest.body).height, 3);
+    });
+
+    test('returns 404 for a missing block and 400 for an invalid id', async () => {
+      await seedBlocks(1);
+      const byHeight = await api.fastifyApp.inject({
+        method: 'GET',
+        url: '/extended/v3/blocks/99',
+      });
+      assert.equal(byHeight.statusCode, 404);
+
+      const byHash = await api.fastifyApp.inject({
+        method: 'GET',
+        url: `/extended/v3/blocks/${hex(0xdead)}`,
+      });
+      assert.equal(byHash.statusCode, 404);
+
+      const invalid = await api.fastifyApp.inject({
+        method: 'GET',
+        url: '/extended/v3/blocks/not-a-block',
+      });
+      assert.equal(invalid.statusCode, 400);
+    });
+  });
+
   describe('/v3/blocks/:height_or_hash/transactions', () => {
     test('should return 404 for a missing block', async () => {
       const byHeight = await api.fastifyApp.inject({

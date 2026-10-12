@@ -1,5 +1,6 @@
 import { DbSearchHit } from '../../../datastore/v3/types.js';
 import { SearchResult } from '../../schemas/v3/entities/search.js';
+import { serializeDbBitcoinBlockSummary, serializeDbBlockSummary } from './blocks.js';
 import { serializeDbSmartContract } from './smart-contracts.js';
 import { serializeDbTransactionSummary } from './transactions.js';
 
@@ -11,23 +12,9 @@ import { serializeDbTransactionSummary } from './transactions.js';
 export function serializeDbSearchHit(hit: DbSearchHit): SearchResult {
   switch (hit.type) {
     case 'block':
-      return {
-        type: 'block',
-        result: {
-          height: hit.result.block_height,
-          hash: hit.result.block_hash,
-          index_hash: hit.result.index_block_hash,
-          time: hit.result.block_time,
-        },
-      };
+      return { type: 'block', result: serializeDbBlockSummary(hit.result) };
     case 'bitcoin_block':
-      return {
-        type: 'bitcoin_block',
-        result: {
-          height: hit.result.burn_block_height,
-          hash: hit.result.burn_block_hash,
-        },
-      };
+      return { type: 'bitcoin_block', result: serializeDbBitcoinBlockSummary(hit.result) };
     case 'transaction':
       return { type: 'transaction', result: serializeDbTransactionSummary(hit.result) };
     case 'address':

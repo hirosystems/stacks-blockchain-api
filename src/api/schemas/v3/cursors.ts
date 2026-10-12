@@ -135,3 +135,16 @@ export const StakerCursorSchema = Type.String({
     "Cursor for paginating a signer's stakers (sorted by staker). Format: staker principal",
 });
 export type StakerCursor = Static<typeof StakerCursorSchema>;
+
+export const BlockCursorSchema = Type.String({
+  pattern: '^[0-9]{1,10}$',
+  description: 'Cursor for paginating Stacks blocks (sorted by height, descending). Format: height',
+});
+export type BlockCursor = Static<typeof BlockCursorSchema>;
+
+export const BitcoinBlockCursorSchema = Type.String({
+  pattern: '^[0-9]{1,10}$',
+  description:
+    'Cursor for paginating Bitcoin blocks (sorted by height, descending). Format: height',
+});
+export type BitcoinBlockCursor = Static<typeof BitcoinBlockCursorSchema>;
