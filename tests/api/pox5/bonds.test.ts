@@ -2607,7 +2607,7 @@ describe('pox-5 projected bonds (GET .../bonds/:index)', () => {
       },
     });
 
-    // An index below the anchor's projects too, while its activation is still ahead of the tip.
+    // A lower index than the anchor bond's projects too, while its activation is ahead of the tip.
     const bond0 = await getBond(0);
     assert.equal(bond0.status, 200);
     assert.equal(bond0.body.status, 'projected');
@@ -2638,6 +2638,13 @@ describe('pox-5 projected bonds (GET .../bonds/:index)', () => {
     const bond3 = await getBond(3);
     assert.equal(bond3.status, 200);
     assert.equal(bond3.body.status, 'projected');
+  });
+
+  test('a negative index is never projected', async () => {
+    // With the tip at 100, index -1 (cycle 6, height 120) would still be ahead of it.
+    await ingestBlock({ height: 1, hash: '0xa1', burnHeight: 100, setupBondIndex: 0 });
+    assert.equal((await getBond(-1)).status, 404);
+    assert.equal((await getBond(1)).body.status, 'projected');
   });
 
   test('no bond is projected before any bond has been set up', async () => {

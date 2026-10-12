@@ -118,7 +118,11 @@ export const StakingBondsRoutes: FastifyPluginAsync<
         const poxConstants = await fastify.db.getPoxConstants();
         if (!bond) {
           // Project the bond from its index, anchored on any set-up bond. Past its activation
-          // height `setup-bond` can no longer create it, so it will never exist.
+          // height `setup-bond` can no longer create it, so it will never exist; neither can a
+          // negative index, as pox-5 bond indexes are unsigned.
+          if (bondIndex < 0) {
+            throw new NotFoundError('Bond not found');
+          }
           const anchor = await fastify.db.v3.getBondPeriodAnchor();
           if (!anchor) {
             throw new NotFoundError('Bond not found');
