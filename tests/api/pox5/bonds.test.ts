@@ -341,6 +341,65 @@ describe('pox-5 bonds (simulated ingestion)', () => {
     assert.deepEqual(setup?.data.schedule, expected);
   });
 
+  test('schedule points on unanchored past blocks carry interpolated times', async () => {
+    await db.setPoxConstants({
+      firstBurnchainBlockHeight: 0,
+      rewardCycleLength: 20,
+      preparePhaseBlockLength: 5,
+    });
+    // Bitcoin blocks every 9 minutes. Stacks blocks anchor only to 150 and 160, so the enrollment
+    // cutoff (155) has no reported time and is interpolated between them; activation (160) is
+    // confirmed and the unlock height (410) is still projected.
+    const burnTime = (burnHeight: number) => 1_700_000_000 + burnHeight * 540;
+    let parent = '0xb1';
+    for (const [height, burnHeight] of [
+      [2, 150],
+      [3, 160],
+    ]) {
+      const indexHash = `0xb${height}`;
+      await db.update(
+        new TestBlockBuilder({
+          block_height: height,
+          block_hash: indexHash,
+          index_block_hash: indexHash,
+          parent_block_hash: parent,
+          parent_index_block_hash: parent,
+          burn_block_height: burnHeight,
+          burn_block_time: burnTime(burnHeight),
+        }).build()
+      );
+      parent = indexHash;
+    }
+    const expected = {
+      enrollment_cutoff: {
+        bitcoin_height: 155,
+        pox_cycle: 7,
+        ...confirmedAt(burnTime(155)),
+      },
+      activation: {
+        bitcoin_height: BOND_START_HEIGHT,
+        pox_cycle: FIRST_REWARD_CYCLE,
+        ...confirmedAt(burnTime(BOND_START_HEIGHT)),
+      },
+      unlock: {
+        bitcoin_height: UNLOCK_BURN_HEIGHT,
+        pox_cycle: UNLOCK_CYCLE,
+        ...projectedAt(burnTime(UNLOCK_BURN_HEIGHT)),
+      },
+    };
+    const list = await getJson<CursorPaginated<BondSummaryItem>>(
+      '/extended/v3/staking/bonds?limit=50'
+    );
+    assert.deepEqual(list.results.find(b => b.index === BOND_INDEX)?.schedule, expected);
+    const bond = await getJson<BondDetail>(`/extended/v3/staking/bonds/${BOND_INDEX}`);
+    assert.deepEqual(bond.schedule, expected);
+    const events = await getJson<CursorPaginated<{ name: string; data: { schedule?: unknown } }>>(
+      `/extended/v3/staking/bonds/${BOND_INDEX}/events?limit=50`
+    );
+    const setup = events.results.find(e => e.name === Pox5EventName.SetupBond);
+    assert.deepEqual(setup?.data.schedule, expected);
+  });
+
   test('the allowlist lists alice and bob (GET .../allowlist)', async () => {
     const list = await getJson<CursorPaginated<BondAllowlistEntry>>(
       `/extended/v3/staking/bonds/${BOND_INDEX}/allowlist?limit=50`

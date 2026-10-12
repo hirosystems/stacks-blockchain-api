@@ -70,15 +70,15 @@ const FIXTURE_FIRST_ANCHOR = 950;
 
 /**
  * A schedule point as the fixture reports it. No fixture Stacks block anchors to a schedule
- * height, so past points are interpolated between the fixture's anchors (all carrying the same
- * Bitcoin time), and those before its first anchor have no time; and since no pace can be
+ * height, so past points from its first anchor on are interpolated between the fixture's anchors
+ * (all carrying the same Bitcoin time), and those before it have no time; and since no pace can be
  * measured, future points are projected from the tip at the 10-minute target.
  */
 function fixturePoint(bitcoinHeight: number): CycleSchedulePoint {
   let times: Omit<CycleSchedulePoint, 'bitcoin_height'> = NO_TIME;
   if (bitcoinHeight > TIP) {
     times = projectedAt(FIXTURE_BURN_TIME + (bitcoinHeight - TIP) * 600);
-  } else if (bitcoinHeight > FIXTURE_FIRST_ANCHOR) {
+  } else if (bitcoinHeight >= FIXTURE_FIRST_ANCHOR) {
     times = confirmedAt(FIXTURE_BURN_TIME);
   }
   return { bitcoin_height: bitcoinHeight, ...times };
