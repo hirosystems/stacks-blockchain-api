@@ -62,7 +62,6 @@
     "@stacks/api-toolkit": "1.13.0",
     "@stacks/codec": "2.1.0",
     "@stacks/common": "7.5.0",
-    "@stacks/encryption": "7.5.0",
     "@stacks/network": "7.5.0",
     "@stacks/node-publisher-client": "2.3.0",
     "@stacks/rpc-client": "2.0.1",
