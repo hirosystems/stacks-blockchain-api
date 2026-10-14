@@ -42,6 +42,16 @@ describe('v3 blocks', () => {
           parent_index_block_hash: hex(height - 1),
           parent_block_hash: hex(0xb000 + height - 1),
           block_time: 1000 + height,
+          tenure_height: 500 + height,
+          burn_block_height: 100 + height,
+          burn_block_hash: hex(0xbb00 + height),
+          burn_block_time: 2000 + height,
+          tx_total_size: 300 + height,
+          execution_cost_read_count: 10 + height,
+          execution_cost_read_length: 20 + height,
+          execution_cost_runtime: 30 + height,
+          execution_cost_write_count: 40 + height,
+          execution_cost_write_length: 50 + height,
         }).build()
       );
     }
@@ -152,6 +162,23 @@ describe('v3 blocks', () => {
         index_hash: hex(2),
         time: 1002,
         time_iso: '1970-01-01T00:16:42.000Z',
+        parent_block: { hash: hex(0xb001), index_hash: hex(1) },
+        tenure_height: 502,
+        bitcoin_block: {
+          height: 102,
+          hash: hex(0xbb00 + 2),
+          time: 2002,
+          time_iso: '1970-01-01T00:33:22.000Z',
+        },
+        tx_count: 0,
+        size: 302,
+        execution_cost: {
+          read_count: 12,
+          read_length: 22,
+          runtime: 32,
+          write_count: 42,
+          write_length: 52,
+        },
       };
       for (const id of ['2', hex(0xb002), hex(2), hex(2).slice(2)]) {
         const response = await api.fastifyApp.inject({
@@ -174,6 +201,23 @@ describe('v3 blocks', () => {
       });
       assert.equal(latest.statusCode, 200);
       assert.equal(JSON.parse(latest.body).height, 3);
+    });
+
+    test('falls back to the block height as the tenure height before Nakamoto', async () => {
+      await seedBlocks(2);
+      // Block 2 is a Nakamoto block (it has a signer bitvec); neither has a recorded tenure height.
+      await db.sql`UPDATE blocks SET tenure_height = NULL`;
+      await db.sql`UPDATE blocks SET signer_bitvec = '1' WHERE block_height = 2`;
+      const preNakamoto = await api.fastifyApp.inject({
+        method: 'GET',
+        url: '/extended/v3/blocks/1',
+      });
+      assert.equal(JSON.parse(preNakamoto.body).tenure_height, 1);
+      const nakamoto = await api.fastifyApp.inject({
+        method: 'GET',
+        url: '/extended/v3/blocks/2',
+      });
+      assert.equal(JSON.parse(nakamoto.body).tenure_height, null);
     });
 
     test('returns 404 for a missing block and 400 for an invalid id', async () => {

@@ -1,5 +1,10 @@
 import { unixEpochToIso } from '../../../helpers.js';
-import { DbBitcoinBlockSummary, DbBlockSummary } from '../../../datastore/v3/types.js';
+import {
+  DbBitcoinBlockSummary,
+  DbBlockDetail,
+  DbBlockSummary,
+} from '../../../datastore/v3/types.js';
+import { Block } from '../../schemas/v3/entities/blocks.js';
 import {
   BitcoinBlock,
   BitcoinBlockSummary,
@@ -19,6 +24,38 @@ export function serializeDbBlockSummary(block: DbBlockSummary): BlockSummary {
     index_hash: block.index_block_hash,
     time: block.block_time,
     time_iso: unixEpochToIso(block.block_time),
+  };
+}
+
+/**
+ * Serializes a database Stacks block into a block entity.
+ * @param block - The database block.
+ * @returns The serialized block.
+ */
+export function serializeDbBlock(block: DbBlockDetail): Block {
+  return {
+    ...serializeDbBlockSummary(block),
+    parent_block: {
+      hash: block.parent_block_hash,
+      index_hash: block.parent_index_block_hash,
+    },
+    // Before Nakamoto (no signer bitvec) every block was its own tenure.
+    tenure_height: block.tenure_height ?? (block.signer_bitvec ? null : block.block_height),
+    bitcoin_block: {
+      height: block.burn_block_height,
+      hash: block.burn_block_hash,
+      time: block.burn_block_time,
+      time_iso: unixEpochToIso(block.burn_block_time),
+    },
+    tx_count: block.tx_count,
+    size: block.tx_total_size,
+    execution_cost: {
+      read_count: Number(block.execution_cost_read_count),
+      read_length: Number(block.execution_cost_read_length),
+      runtime: Number(block.execution_cost_runtime),
+      write_count: Number(block.execution_cost_write_count),
+      write_length: Number(block.execution_cost_write_length),
+    },
   };
 }
 

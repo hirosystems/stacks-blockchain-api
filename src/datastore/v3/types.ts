@@ -486,6 +486,26 @@ export interface DbBlockSummary {
   block_time: number;
 }
 
+/** A Stacks block with its details. */
+export interface DbBlockDetail extends DbBlockSummary {
+  parent_block_hash: string;
+  parent_index_block_hash: string;
+  tenure_height: number | null;
+  /** Set on Nakamoto blocks only; tells pre-Nakamoto blocks apart for `tenure_height`. */
+  signer_bitvec: string | null;
+  burn_block_height: number;
+  burn_block_hash: string;
+  burn_block_time: number;
+  tx_count: number;
+  tx_total_size: number | null;
+  // BIGINT columns: Postgres returns them as decimal strings.
+  execution_cost_read_count: string;
+  execution_cost_read_length: string;
+  execution_cost_runtime: string;
+  execution_cost_write_count: string;
+  execution_cost_write_length: string;
+}
+
 /** A Bitcoin block, reduced to what identifies it. */
 export interface DbBitcoinBlockSummary {
   burn_block_height: number;

@@ -37,6 +37,7 @@ import {
   DbSearchAddress,
   DbMempoolSummaryRow,
   DbBitcoinBlockSummary,
+  DbBlockDetail,
   DbBlockSummary,
   DbSearchHit,
   DbSearchTokenAsset,
@@ -1059,11 +1060,11 @@ export class PgStoreV3 extends BasePgStoreModule {
   }
 
   /**
-   * Gets the summary of a single canonical Stacks block.
+   * Gets a single canonical Stacks block with its details.
    * @param args - The arguments for the query.
-   * @returns The block summary, or `undefined` if no canonical block matches.
+   * @returns The block, or `undefined` if no canonical block matches.
    */
-  async getBlockSummary(args: { block: BlockIdParam }): Promise<DbBlockSummary | undefined> {
+  async getBlock(args: { block: BlockIdParam }): Promise<DbBlockDetail | undefined> {
     const filter =
       args.block.type === 'latest'
         ? this.sql`canonical = true ORDER BY block_height DESC`
@@ -1075,8 +1076,14 @@ export class PgStoreV3 extends BasePgStoreModule {
           : args.block.type === 'height'
             ? this.sql`block_height = ${args.block.height} AND canonical = true`
             : this.sql`block_time = ${args.block.timestamp} AND canonical = true`;
-    const result = await this.sql<DbBlockSummary[]>`
-      SELECT block_height, block_hash, index_block_hash, block_time
+    const result = await this.sql<DbBlockDetail[]>`
+      SELECT
+        block_height, block_hash, index_block_hash, block_time,
+        parent_block_hash, parent_index_block_hash, tenure_height, signer_bitvec,
+        burn_block_height, burn_block_hash, burn_block_time,
+        tx_count, tx_total_size,
+        execution_cost_read_count, execution_cost_read_length, execution_cost_runtime,
+        execution_cost_write_count, execution_cost_write_length
       FROM blocks
       WHERE ${filter}
       LIMIT 1

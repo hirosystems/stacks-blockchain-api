@@ -1,6 +1,7 @@
 import { handleBlockCache, handleChainTipCache } from '../../controllers/cache-controller.js';
 import { serializeDbTransactionSummary } from '../../serializers/v3/transactions.js';
-import { serializeDbBlockSummary } from '../../serializers/v3/blocks.js';
+import { serializeDbBlock, serializeDbBlockSummary } from '../../serializers/v3/blocks.js';
+import { BlockSchema } from '../../schemas/v3/entities/blocks.js';
 import { FastifyPluginAsync } from 'fastify';
 import { Type, TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
 import { Server } from 'node:http';
@@ -64,25 +65,25 @@ export const BlocksRoutes: FastifyPluginAsync<
         operationId: 'get_stacks_block',
         summary: 'Get block',
         description:
-          'Retrieves the summary of a single canonical Stacks block, by height, block hash, ' +
+          'Retrieves a single canonical Stacks block with its details, by height, block hash, ' +
           'index block hash, or `latest`',
         tags: ['Blocks'],
         params: Type.Object({
           height_or_hash: BlockHeightOrHashSchema,
         }),
         response: {
-          200: BlockSummarySchema,
+          200: BlockSchema,
         },
       },
     },
     async (req, reply) => {
-      const block = await fastify.db.v3.getBlockSummary({
+      const block = await fastify.db.v3.getBlock({
         block: parseBlockParam(req.params.height_or_hash),
       });
       if (!block) {
         throw new NotFoundError('Block not found');
       }
-      await reply.send(serializeDbBlockSummary(block));
+      await reply.send(serializeDbBlock(block));
     }
   );
 
