@@ -1161,6 +1161,9 @@ export class PgStoreV3 extends BasePgStoreModule {
             : undefined;
     // Bitcoin block times are not stored, so there is nothing to look a timestamp up against.
     if (!filter) return undefined;
+    // A height outside the integer column's range (e.g. a far-future one) is never stored, and
+    // would fail the comparison in postgres.
+    if (args.block.type === 'height' && args.block.height > PG_INTEGER_MAX) return undefined;
     const result = await this.sql<DbBitcoinBlockSummary[]>`
       SELECT burn_block_height, burn_block_hash
       FROM burn_blocks
@@ -2493,15 +2496,12 @@ export class PgStoreV3 extends BasePgStoreModule {
     paceWindowBlocks: number
   ): Promise<BitcoinBlockTimes> {
     return await this.sqlTransaction(async sql => {
+      // Read through the tip block itself: `chain_tip.burn_block_height` also advances on
+      // `/new_burn_block`, ahead of any Stacks block anchored to that Bitcoin block.
       const [tip] = await sql<{ height: number; time: number }[]>`
         SELECT b.burn_block_height AS height, b.burn_block_time AS time
         FROM chain_tip t
-        CROSS JOIN LATERAL (
-          SELECT burn_block_height, burn_block_time
-          FROM blocks
-          WHERE canonical = TRUE AND burn_block_height = t.burn_block_height
-          LIMIT 1
-        ) b
+        INNER JOIN blocks b ON b.index_block_hash = t.index_block_hash
       `;
       let paceWindowStart: BitcoinBlockTimeSample | null = null;
       if (tip) {

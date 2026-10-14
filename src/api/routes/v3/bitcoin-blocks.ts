@@ -1,10 +1,7 @@
 import { FastifyPluginAsync } from 'fastify';
 import { Type, TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
 import { Server } from 'node:http';
-import {
-  handleBurnchainChainTipCache,
-  handleChainTipWithBurnchainTipCache,
-} from '../../controllers/cache-controller.js';
+import { handleChainTipWithBurnchainTipCache } from '../../controllers/cache-controller.js';
 import { getPagingQueryLimit, ResourceType } from '../../pagination.js';
 import {
   BitcoinBlockCursorSchema,
@@ -13,14 +10,12 @@ import {
   CursorPaginationQuerystring,
 } from '../../schemas/v3/cursors.js';
 import {
-  BitcoinBlockSummarySchema,
+  BitcoinBlockSchema,
   BlockHeightOrHashSchema,
   BlockSummarySchema,
 } from '../../schemas/v3/entities/common.js';
-import {
-  serializeDbBitcoinBlockSummary,
-  serializeDbBlockSummary,
-} from '../../serializers/v3/blocks.js';
+import { serializeBitcoinBlock, serializeDbBlockSummary } from '../../serializers/v3/blocks.js';
+import { getBitcoinBlockTimeProjectionConfig } from '../../../datastore/bitcoin-block-time.js';
 import { parseBlockParam } from '../v2/schemas.js';
 import { NotFoundError } from '../../../errors.js';
 import { redirectUnprefixedHashParams } from '../../query-helpers.js';
@@ -30,19 +25,33 @@ export const BitcoinBlocksRoutes: FastifyPluginAsync<
   Server,
   TypeBoxTypeProvider
 > = async fastify => {
+  const projectionConfig = getBitcoinBlockTimeProjectionConfig(fastify.chainId);
+
+  /** Resolves the times of a set of Bitcoin heights, for {@link serializeBitcoinBlock}. */
+  const getTimes = async (heights: number[]) => ({
+    times: await fastify.db.v3.getBitcoinBlockTimes(heights, projectionConfig.paceWindowBlocks),
+    config: projectionConfig,
+  });
+
   fastify.get(
     '/bitcoin-blocks',
     {
-      preHandler: handleBurnchainChainTipCache,
+      // Times are learned from the Stacks blocks anchored to each Bitcoin block, and projections
+      // follow the Stacks tip, so both tips feed the ETag.
+      preHandler: handleChainTipWithBurnchainTipCache,
       schema: {
         operationId: 'get_bitcoin_blocks',
         summary: 'Get Bitcoin blocks',
-        description: 'Retrieves the summaries of canonical Bitcoin blocks, newest first',
+        description:
+          'Retrieves canonical Bitcoin blocks, newest first. Each block carries its header time ' +
+          'once the API has learned it from a Stacks block anchored to it, an interpolated time ' +
+          'for a past block no Stacks block anchored to, and a projected time for the newest ' +
+          'blocks no Stacks block has anchored to yet.',
         tags: ['Bitcoin Blocks'],
         querystring: CursorPaginationQuerystring(BitcoinBlockCursorSchema, ResourceType.BurnBlock),
         response: {
           200: CursorPaginatedResponse(
-            BitcoinBlockSummarySchema,
+            BitcoinBlockSchema,
             BitcoinBlockCursorSchema,
             ResourceType.BurnBlock
           ),
@@ -50,20 +59,24 @@ export const BitcoinBlocksRoutes: FastifyPluginAsync<
       },
     },
     async (req, reply) => {
-      const results = await fastify.db.v3.getBitcoinBlockSummaries({
-        limit: req.query.limit ?? getPagingQueryLimit(ResourceType.BurnBlock),
-        cursor: req.query.cursor,
+      const response = await fastify.db.sqlTransaction(async _sql => {
+        const results = await fastify.db.v3.getBitcoinBlockSummaries({
+          limit: req.query.limit ?? getPagingQueryLimit(ResourceType.BurnBlock),
+          cursor: req.query.cursor,
+        });
+        const times = await getTimes(results.results.map(r => r.burn_block_height));
+        return {
+          limit: results.limit,
+          total: results.total,
+          cursor: {
+            next: results.next_cursor,
+            previous: results.prev_cursor,
+            current: results.current_cursor,
+          },
+          results: results.results.map(r => serializeBitcoinBlock(r, times)),
+        };
       });
-      await reply.send({
-        limit: results.limit,
-        total: results.total,
-        cursor: {
-          next: results.next_cursor,
-          previous: results.prev_cursor,
-          current: results.current_cursor,
-        },
-        results: results.results.map(r => serializeDbBitcoinBlockSummary(r)),
-      });
+      await reply.send(response);
     }
   );
 
@@ -71,29 +84,45 @@ export const BitcoinBlocksRoutes: FastifyPluginAsync<
     '/bitcoin-blocks/:height_or_hash',
     {
       onRequest: redirectUnprefixedHashParams({ params: ['height_or_hash'] }),
-      preHandler: handleBurnchainChainTipCache,
+      preHandler: handleChainTipWithBurnchainTipCache,
       schema: {
         operationId: 'get_bitcoin_block',
         summary: 'Get Bitcoin block',
         description:
-          'Retrieves the summary of a single canonical Bitcoin block, by height, hash, or `latest`',
+          'Retrieves a single canonical Bitcoin block, by height, hash, or `latest`, with its time ' +
+          '(see the Bitcoin blocks list). A height above the Bitcoin tip returns the future block ' +
+          'with no hash and its projected time.',
         tags: ['Bitcoin Blocks'],
         params: Type.Object({
           height_or_hash: BlockHeightOrHashSchema,
         }),
         response: {
-          200: BitcoinBlockSummarySchema,
+          200: BitcoinBlockSchema,
         },
       },
     },
     async (req, reply) => {
-      const block = await fastify.db.v3.getBitcoinBlockSummary({
-        block: parseBlockParam(req.params.height_or_hash),
-      });
-      if (!block) {
+      const blockId = parseBlockParam(req.params.height_or_hash);
+      const response = await fastify.db.sqlTransaction(async _sql => {
+        const block = await fastify.db.v3.getBitcoinBlockSummary({ block: blockId });
+        if (block) {
+          return serializeBitcoinBlock(block, await getTimes([block.burn_block_height]));
+        }
+        // A height above the Bitcoin tip is a future block: it has no hash yet, only a projection.
+        if (blockId.type === 'height') {
+          const tip = await fastify.db.v3.getBitcoinBlockSummary({
+            block: { type: 'latest', latest: true },
+          });
+          if (tip && blockId.height > tip.burn_block_height) {
+            return serializeBitcoinBlock(
+              { burn_block_height: blockId.height, burn_block_hash: null },
+              await getTimes([blockId.height])
+            );
+          }
+        }
         throw new NotFoundError('Bitcoin block not found');
-      }
-      await reply.send(serializeDbBitcoinBlockSummary(block));
+      });
+      await reply.send(response);
     }
   );
 

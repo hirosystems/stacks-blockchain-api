@@ -8,6 +8,9 @@ import { hex } from '../test-helpers.ts';
 import { TestBlockBuilder } from '../test-builders.ts';
 import { I32_MAX } from '../../../src/helpers.ts';
 
+/** The times of a Bitcoin block the API has learned no time for. */
+const NO_TIME = { time: null, time_iso: null, projected_time: null, projected_time_iso: null };
+
 describe('v3 bitcoin blocks', () => {
   let db: PgWriteStore;
   let api: ApiServer;
@@ -35,6 +38,8 @@ describe('v3 bitcoin blocks', () => {
       burnAmount: 0n,
       rewardAmount: 0n,
     });
+    // As `/new_burn_block` ingestion does.
+    await db.updateBurnChainBlockHeight({ blockHeight: height });
   }
 
   async function getJson(url: string) {
@@ -61,8 +66,8 @@ describe('v3 bitcoin blocks', () => {
       const first = await getJson('/extended/v3/bitcoin-blocks?limit=2');
       assert.equal(first.total, 5);
       assert.deepEqual(first.results, [
-        { height: 105, hash: hex(0xbb00 + 105) },
-        { height: 104, hash: hex(0xbb00 + 104) },
+        { height: 105, hash: hex(0xbb00 + 105), ...NO_TIME },
+        { height: 104, hash: hex(0xbb00 + 104), ...NO_TIME },
       ]);
       assert.deepEqual(first.cursor, { next: '102', previous: null, current: '105' });
 
@@ -100,8 +105,8 @@ describe('v3 bitcoin blocks', () => {
       let body = await getJson('/extended/v3/bitcoin-blocks');
       assert.equal(body.total, 2);
       assert.deepEqual(body.results, [
-        { height: 101, hash: hex(0xf101) },
-        { height: 100, hash: hex(0xbb00 + 100) },
+        { height: 101, hash: hex(0xf101), ...NO_TIME },
+        { height: 100, hash: hex(0xbb00 + 100), ...NO_TIME },
       ]);
 
       // Re-delivering the canonical block is idempotent.
@@ -113,7 +118,7 @@ describe('v3 bitcoin blocks', () => {
       await addBitcoinBlock(101);
       body = await getJson('/extended/v3/bitcoin-blocks');
       assert.equal(body.total, 2);
-      assert.deepEqual(body.results[0], { height: 101, hash: hex(0xbb00 + 101) });
+      assert.deepEqual(body.results[0], { height: 101, hash: hex(0xbb00 + 101), ...NO_TIME });
     });
 
     test('rejects invalid cursors', async () => {
@@ -281,16 +286,155 @@ describe('v3 bitcoin blocks', () => {
     });
   });
 
+  describe('Bitcoin block times', () => {
+    const iso = (time: number) => new Date(time * 1000).toISOString();
+    const confirmed = (time: number) => ({
+      time,
+      time_iso: iso(time),
+      projected_time: null,
+      projected_time_iso: null,
+    });
+    const projected = (time: number) => ({
+      time: null,
+      time_iso: null,
+      projected_time: time,
+      projected_time_iso: iso(time),
+    });
+
+    let stacksHeight = 0;
+    async function anchorStacksBlock(burnBlockHeight: number, burnBlockTime: number) {
+      stacksHeight += 1;
+      await db.update(
+        new TestBlockBuilder({
+          block_height: stacksHeight,
+          block_hash: hex(0xb000 + stacksHeight),
+          index_block_hash: hex(stacksHeight),
+          parent_index_block_hash: hex(stacksHeight - 1),
+          parent_block_hash: hex(0xb000 + stacksHeight - 1),
+          burn_block_height: burnBlockHeight,
+          burn_block_hash: hex(0xbb00 + burnBlockHeight),
+          burn_block_time: burnBlockTime,
+        }).build()
+      );
+    }
+
+    // Bitcoin blocks 99-105, with Stacks blocks anchored to 100, 102 and 104 at 500 seconds per
+    // Bitcoin block. 99 predates every anchor, 101 and 103 missed theirs, and 105 is too new to
+    // have one yet.
+    async function seed() {
+      stacksHeight = 0;
+      for (const height of [99, 100, 101, 102, 103, 104]) {
+        await addBitcoinBlock(height);
+      }
+      await anchorStacksBlock(100, 10_000);
+      await anchorStacksBlock(102, 11_000);
+      await anchorStacksBlock(104, 12_000);
+      await addBitcoinBlock(105);
+    }
+
+    test('lists header, interpolated, and projected times', async () => {
+      await seed();
+      const body = await getJson('/extended/v3/bitcoin-blocks');
+      assert.equal(body.total, 7);
+      assert.deepEqual(body.results, [
+        // Mined, but no Stacks block has anchored to it yet: projected from the tip at the pace.
+        { height: 105, hash: hex(0xbb00 + 105), ...projected(12_500) },
+        { height: 104, hash: hex(0xbb00 + 104), ...confirmed(12_000) },
+        { height: 103, hash: hex(0xbb00 + 103), ...confirmed(11_500) },
+        { height: 102, hash: hex(0xbb00 + 102), ...confirmed(11_000) },
+        { height: 101, hash: hex(0xbb00 + 101), ...confirmed(10_500) },
+        { height: 100, hash: hex(0xbb00 + 100), ...confirmed(10_000) },
+        // Older than any anchored block: nothing to interpolate from.
+        { height: 99, hash: hex(0xbb00 + 99), ...NO_TIME },
+      ]);
+    });
+
+    test('a block gets its header time once a Stacks block anchors to it', async () => {
+      await seed();
+      const before = await api.fastifyApp.inject({
+        method: 'GET',
+        url: '/extended/v3/bitcoin-blocks?limit=1',
+      });
+      const etag = before.headers['etag'] as string;
+      assert.ok(etag);
+      assert.deepEqual(JSON.parse(before.body).results[0], {
+        height: 105,
+        hash: hex(0xbb00 + 105),
+        ...projected(12_500),
+      });
+
+      await anchorStacksBlock(105, 12_400);
+      const after = await api.fastifyApp.inject({
+        method: 'GET',
+        url: '/extended/v3/bitcoin-blocks?limit=1',
+        headers: { 'if-none-match': etag },
+      });
+      assert.equal(after.statusCode, 200);
+      assert.notEqual(after.headers['etag'], etag);
+      assert.deepEqual(JSON.parse(after.body).results[0], {
+        height: 105,
+        hash: hex(0xbb00 + 105),
+        ...confirmed(12_400),
+      });
+    });
+
+    test('a single block carries its time', async () => {
+      await seed();
+      assert.deepEqual(await getJson('/extended/v3/bitcoin-blocks/103'), {
+        height: 103,
+        hash: hex(0xbb00 + 103),
+        ...confirmed(11_500),
+      });
+      assert.deepEqual(await getJson('/extended/v3/bitcoin-blocks/latest'), {
+        height: 105,
+        hash: hex(0xbb00 + 105),
+        ...projected(12_500),
+      });
+    });
+
+    test('a height above the tip is a future block with a projected time', async () => {
+      await seed();
+      assert.deepEqual(await getJson('/extended/v3/bitcoin-blocks/110'), {
+        height: 110,
+        hash: null,
+        ...projected(15_000),
+      });
+      // So far out its projection passes the end of year 9999, and past the integer column range.
+      assert.deepEqual(await getJson('/extended/v3/bitcoin-blocks/2147483648'), {
+        height: 2147483648,
+        hash: null,
+        ...NO_TIME,
+      });
+      // Future blocks are only reachable by height: they have no hash, and stay out of the list.
+      const byHash = await api.fastifyApp.inject({
+        method: 'GET',
+        url: `/extended/v3/bitcoin-blocks/${hex(0xbb00 + 110)}`,
+      });
+      assert.equal(byHash.statusCode, 404);
+      assert.equal((await getJson('/extended/v3/bitcoin-blocks')).total, 7);
+    });
+
+    test('a missing height at or below the tip is not found', async () => {
+      await seed();
+      const response = await api.fastifyApp.inject({
+        method: 'GET',
+        url: '/extended/v3/bitcoin-blocks/98',
+      });
+      assert.equal(response.statusCode, 404);
+    });
+  });
+
   describe('/v3/bitcoin-blocks/:height_or_hash', () => {
     test('returns a block by height, hash, and latest', async () => {
       await addBitcoinBlock(100);
       await addBitcoinBlock(101);
-      const expected = { height: 100, hash: hex(0xbb00 + 100) };
+      const expected = { height: 100, hash: hex(0xbb00 + 100), ...NO_TIME };
       assert.deepEqual(await getJson('/extended/v3/bitcoin-blocks/100'), expected);
       assert.deepEqual(await getJson(`/extended/v3/bitcoin-blocks/${hex(0xbb00 + 100)}`), expected);
       assert.deepEqual(await getJson('/extended/v3/bitcoin-blocks/latest'), {
         height: 101,
         hash: hex(0xbb00 + 101),
+        ...NO_TIME,
       });
 
       const unprefixed = await api.fastifyApp.inject({
