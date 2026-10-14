@@ -177,6 +177,48 @@ export const BlockSummarySchema = Type.Object(
 );
 export type BlockSummary = Static<typeof BlockSummarySchema>;
 
+export const BitcoinBlockSummarySchema = Type.Object(
+  {
+    height: Type.Integer({
+      description: 'Height of the Bitcoin block',
+    }),
+    hash: Type.String({
+      description: 'Hash of the Bitcoin block',
+    }),
+  },
+  { title: 'BitcoinBlockSummary' }
+);
+export type BitcoinBlockSummary = Static<typeof BitcoinBlockSummarySchema>;
+
+/**
+ * A Bitcoin block with its time: the header time (or an interpolated estimate) once known, a
+ * projection until then. A future height has no `hash` yet.
+ */
+export const BitcoinBlockSchema = Type.Object(
+  {
+    height: Type.Integer({
+      description: 'Height of the Bitcoin block',
+    }),
+    hash: Type.Union([Type.String(), Type.Null()], {
+      description: 'Hash of the Bitcoin block; `null` for a future block that has not been mined.',
+    }),
+    time: SchedulePointTimesSchema.properties.time,
+    time_iso: SchedulePointTimesSchema.properties.time_iso,
+    projected_time: Type.Union([Type.Integer(), Type.Null()], {
+      description:
+        'Unix timestamp (in seconds) of when the Bitcoin block is projected to be mined, ' +
+        'extrapolated from the recent Bitcoin block pace (on mainnet, from the pace of the current ' +
+        'difficulty period until its retarget, and the 10-minute target after it). Set for a ' +
+        'future block, and for the newest mined blocks whose time the API has not learned yet ' +
+        '(no Stacks block has anchored to them); `null` whenever `time` is set, and for a block ' +
+        'projected past the end of year 9999.',
+    }),
+    projected_time_iso: SchedulePointTimesSchema.properties.projected_time_iso,
+  },
+  { title: 'BitcoinBlock' }
+);
+export type BitcoinBlock = Static<typeof BitcoinBlockSchema>;
+
 export const TransactionPositionSchema = Type.Object({
   tx_id: TransactionIdSchema,
   event_index: Type.Integer({

@@ -3443,7 +3443,7 @@ export class PgWriteStore extends PgStore {
   }): Promise<void> {
     return await this.sqlWriteTransaction(async sql => {
       // Same-height fork handling; see `updateBurnchainRewards` for the reasoning. Orphaned
-      // amounts leave the materialized network staking totals.
+      // blocks and amounts leave the materialized burn block count and network staking totals.
       await sql`
         WITH orphaned AS (
           UPDATE burn_blocks
@@ -3454,6 +3454,7 @@ export class PgWriteStore extends PgStore {
           RETURNING burn_amount, reward_amount
         )
         UPDATE chain_tip SET
+          burn_block_count = burn_block_count - (SELECT COUNT(*) FROM orphaned),
           staking_burn_amount = staking_burn_amount
             - (SELECT COALESCE(SUM(burn_amount), 0) FROM orphaned),
           staking_reward_amount = staking_reward_amount
@@ -3477,6 +3478,7 @@ export class PgWriteStore extends PgStore {
           RETURNING burn_amount, reward_amount
         )
         UPDATE chain_tip SET
+          burn_block_count = burn_block_count + (SELECT COUNT(*) FROM ins),
           staking_burn_amount = staking_burn_amount
             + (SELECT COALESCE(SUM(burn_amount), 0) FROM ins),
           staking_reward_amount = staking_reward_amount
