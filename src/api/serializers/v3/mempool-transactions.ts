@@ -1,3 +1,4 @@
+import { unixEpochToIso } from '../../../helpers.js';
 import { DbMempoolTransaction, DbMempoolTransactionSummary } from '../../../datastore/v3/types.js';
 import { DbTxStatus, DbTxTypeId } from '../../../datastore/common.js';
 import {
@@ -72,6 +73,7 @@ export function serializeDbMempoolTransactionSummary(
         : null,
     fee_rate: summary.fee_rate,
     receipt_time: summary.receipt_time,
+    receipt_time_iso: unixEpochToIso(summary.receipt_time),
     receipt_block_height: summary.receipt_block_height,
     status: serializeDbMempoolTransactionStatus(summary.status),
   };

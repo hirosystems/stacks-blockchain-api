@@ -1,5 +1,10 @@
 import { Static, Type } from '@sinclair/typebox';
-import { BitcoinBlockPositionSchema, BlockPositionSchema, BondIndexSchema } from './common.js';
+import {
+  BitcoinBlockPositionSchema,
+  BlockPositionSchema,
+  BondIndexSchema,
+  SchedulePointTimesSchema,
+} from './common.js';
 
 export const BondStatusSchema = Type.Union([
   Type.Literal('upcoming'),
@@ -72,14 +77,17 @@ export const BondParametersSchema = Type.Object({
 export type BondParameters = Static<typeof BondParametersSchema>;
 
 /** A point on the bond's lifecycle timeline: a Bitcoin height and its PoX cycle. */
-export const BondSchedulePointSchema = Type.Object({
-  bitcoin_height: Type.Integer({
-    description: 'The Bitcoin height of this point in the bond lifecycle',
+export const BondSchedulePointSchema = Type.Composite([
+  Type.Object({
+    bitcoin_height: Type.Integer({
+      description: 'The Bitcoin height of this point in the bond lifecycle',
+    }),
+    pox_cycle: Type.Integer({
+      description: 'The PoX cycle of this point in the bond lifecycle',
+    }),
   }),
-  pox_cycle: Type.Integer({
-    description: 'The PoX cycle of this point in the bond lifecycle',
-  }),
-});
+  SchedulePointTimesSchema,
+]);
 export type BondSchedulePoint = Static<typeof BondSchedulePointSchema>;
 
 export const BondScheduleSchema = Type.Object(
@@ -127,3 +135,19 @@ export const BondSchema = Type.Composite([
   }),
 ]);
 export type Bond = Static<typeof BondSchema>;
+
+export const ProjectedBondSchema = Type.Object(
+  {
+    index: BondIndexSchema,
+    status: Type.Literal('projected'),
+    schedule: BondScheduleSchema,
+  },
+  {
+    description:
+      'A bond that has not been set up yet. Its schedule is projected from its index under the ' +
+      "current PoX version's rules (pox-5 starts a new bond every 2 reward cycles), so it carries " +
+      'no `pox_version`: the bond may end up set up under a later version, or never. Its ' +
+      "parameters and allowlist are not known until it's set up.",
+  }
+);
+export type ProjectedBond = Static<typeof ProjectedBondSchema>;

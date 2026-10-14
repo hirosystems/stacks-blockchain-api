@@ -1,3 +1,4 @@
+import { unixEpochToIso } from '../../../helpers.js';
 import { ClarityTypeID, decodeClarityValue, memoToString } from '@stacks/codec';
 import {
   PrincipalStxTransfer,
@@ -54,6 +55,7 @@ export function serializePrincipalStxTransfer(
       hash: transfer.block_hash,
       index_hash: transfer.index_block_hash,
       time: transfer.block_time,
+      time_iso: unixEpochToIso(transfer.block_time),
       tx_index: transfer.tx_index,
     },
   };

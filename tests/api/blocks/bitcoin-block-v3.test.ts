@@ -168,8 +168,20 @@ describe('v3 bitcoin blocks', () => {
       const first = await getJson('/extended/v3/bitcoin-blocks/100/blocks?limit=2');
       assert.equal(first.total, 3);
       assert.deepEqual(first.results, [
-        { height: 3, hash: hex(0xb003), index_hash: hex(3), time: 1003 },
-        { height: 2, hash: hex(0xb002), index_hash: hex(2), time: 1002 },
+        {
+          height: 3,
+          hash: hex(0xb003),
+          index_hash: hex(3),
+          time: 1003,
+          time_iso: '1970-01-01T00:16:43.000Z',
+        },
+        {
+          height: 2,
+          hash: hex(0xb002),
+          index_hash: hex(2),
+          time: 1002,
+          time_iso: '1970-01-01T00:16:42.000Z',
+        },
       ]);
       assert.deepEqual(first.cursor, { next: '1', previous: null, current: '3' });
 

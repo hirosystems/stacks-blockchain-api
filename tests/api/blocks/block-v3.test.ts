@@ -67,9 +67,27 @@ describe('v3 blocks', () => {
       assert.equal(body.total, 3);
       assert.deepEqual(body.cursor, { next: null, previous: null, current: '3' });
       assert.deepEqual(body.results, [
-        { height: 3, hash: hex(0xb003), index_hash: hex(3), time: 1003 },
-        { height: 2, hash: hex(0xb002), index_hash: hex(2), time: 1002 },
-        { height: 1, hash: hex(0xb001), index_hash: hex(1), time: 1001 },
+        {
+          height: 3,
+          hash: hex(0xb003),
+          index_hash: hex(3),
+          time: 1003,
+          time_iso: '1970-01-01T00:16:43.000Z',
+        },
+        {
+          height: 2,
+          hash: hex(0xb002),
+          index_hash: hex(2),
+          time: 1002,
+          time_iso: '1970-01-01T00:16:42.000Z',
+        },
+        {
+          height: 1,
+          hash: hex(0xb001),
+          index_hash: hex(1),
+          time: 1001,
+          time_iso: '1970-01-01T00:16:41.000Z',
+        },
       ]);
     });
 
@@ -128,7 +146,13 @@ describe('v3 blocks', () => {
   describe('/v3/blocks/:height_or_hash', () => {
     test('returns a block by height, hash, index hash, and latest', async () => {
       await seedBlocks(3);
-      const expected = { height: 2, hash: hex(0xb002), index_hash: hex(2), time: 1002 };
+      const expected = {
+        height: 2,
+        hash: hex(0xb002),
+        index_hash: hex(2),
+        time: 1002,
+        time_iso: '1970-01-01T00:16:42.000Z',
+      };
       for (const id of ['2', hex(0xb002), hex(2), hex(2).slice(2)]) {
         const response = await api.fastifyApp.inject({
           method: 'GET',
@@ -294,11 +318,13 @@ describe('v3 blocks', () => {
           hash: hex(1),
           index_hash: hex(1),
           time: 1000,
+          time_iso: '1970-01-01T00:16:40.000Z',
           tx_index: 1,
         },
         bitcoin_block: {
           height: 1,
           time: 1000,
+          time_iso: '1970-01-01T00:16:40.000Z',
         },
         sender: {
           address: SENDER,
@@ -324,11 +350,13 @@ describe('v3 blocks', () => {
           hash: hex(1),
           index_hash: hex(1),
           time: 1000,
+          time_iso: '1970-01-01T00:16:40.000Z',
           tx_index: 0,
         },
         bitcoin_block: {
           height: 1,
           time: 1000,
+          time_iso: '1970-01-01T00:16:40.000Z',
         },
         sender: {
           address: SENDER,

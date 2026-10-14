@@ -71,6 +71,11 @@ import {
   resolvePoxCycleSelector,
 } from '../pox-constants.js';
 import { DbBondLockupType } from '../common.js';
+import {
+  BitcoinBlockTimeSample,
+  BitcoinBlockTimes,
+  interpolateBitcoinBlockTime,
+} from '../bitcoin-block-time.js';
 import { BlockIdParam } from '../../api/routes/v2/schemas.js';
 import { InvalidRequestError, InvalidRequestErrorType } from '../../errors.js';
 import { TransactionIncludeField } from '../../api/schemas/v3/entities/transactions.js';
@@ -106,6 +111,9 @@ import {
   resolveTransactionCursor,
 } from './helpers.js';
 import { DbEventTypeId, DbSignerKeyGrantKind, DbTxStatus, DbTxTypeId } from '../common.js';
+
+/** The largest value of a PostgreSQL `integer` column. */
+const PG_INTEGER_MAX = 2_147_483_647;
 
 export class PgStoreV3 extends BasePgStoreModule {
   /** Cached result of {@link hasTrigramSupport}, resolved at most once per store. */
@@ -1792,8 +1800,43 @@ export class PgStoreV3 extends BasePgStoreModule {
         LIMIT 1
       `;
       return result[0]
-        ? { ...result[0], burn_block_height: chainTip[0]?.burn_block_height ?? 0 }
+        ? {
+            ...result[0],
+            // `bigint` columns, which postgres.js returns as strings.
+            block_time: Number(result[0].block_time),
+            burn_block_time: Number(result[0].burn_block_time),
+            burn_block_height: chainTip[0]?.burn_block_height ?? 0,
+          }
         : null;
+    });
+  }
+
+  /**
+   * Gets a set-up bond to anchor the pox-5 bond period schedule on (see
+   * `getPox5FirstBondPeriodCycle`), for projecting bonds that are not set up yet, along with the
+   * chain tip's Bitcoin height. Any canonical bond works; the lowest index is the cheapest read.
+   * @returns The anchor bond, or `null` when no bond has been set up yet.
+   */
+  async getBondPeriodAnchor(): Promise<{
+    bond_index: number;
+    first_reward_cycle: number;
+    burn_block_height: number;
+  } | null> {
+    return await this.sqlTransaction(async sql => {
+      const result = await sql<
+        { bond_index: number; first_reward_cycle: number; burn_block_height: number }[]
+      >`
+        SELECT b.bond_index, b.first_reward_cycle, t.burn_block_height
+        FROM chain_tip t
+        CROSS JOIN LATERAL (
+          SELECT bond_index, first_reward_cycle
+          FROM bonds
+          WHERE canonical = true AND microblock_canonical = true
+          ORDER BY bond_index ASC
+          LIMIT 1
+        ) b
+      `;
+      return result[0] ?? null;
     });
   }
 
@@ -2427,6 +2470,130 @@ export class PgStoreV3 extends BasePgStoreModule {
       SELECT burn_block_height FROM chain_tip
     `;
     return resolvePoxCycleSelector(poxConstants, selector, tip?.burn_block_height ?? 0);
+  }
+
+  /**
+   * What the times of the given Bitcoin heights resolve against: the confirmed header times of
+   * those heights, interpolated times of the past ones without one, plus the samples future times
+   * are projected from (the tip, and the start of the trailing pace window; see
+   * `projectBitcoinBlockTime`).
+   *
+   * The node reports a Bitcoin block's time only on the Stacks blocks anchored to it
+   * (`/new_burn_block` carries none), so a height is confirmed only when a canonical Stacks block
+   * used it as its burn view: future heights never are, and neither is the occasional past height
+   * no Stacks block anchored to (e.g. missed sortitions before Nakamoto). Those past heights are
+   * interpolated between the nearest anchored heights around them instead. The tip is the Stacks
+   * chain tip's burn view, so the result only changes when the Stacks chain does. Every lookup is a
+   * `burn_block_height` index probe that stops at the first canonical row.
+   * @param heights - The Bitcoin heights to resolve; duplicates are ignored.
+   * @param paceWindowBlocks - How far behind the tip the pace window starts.
+   */
+  async getBitcoinBlockTimes(
+    heights: number[],
+    paceWindowBlocks: number
+  ): Promise<BitcoinBlockTimes> {
+    return await this.sqlTransaction(async sql => {
+      const [tip] = await sql<{ height: number; time: number }[]>`
+        SELECT b.burn_block_height AS height, b.burn_block_time AS time
+        FROM chain_tip t
+        CROSS JOIN LATERAL (
+          SELECT burn_block_height, burn_block_time
+          FROM blocks
+          WHERE canonical = TRUE AND burn_block_height = t.burn_block_height
+          LIMIT 1
+        ) b
+      `;
+      let paceWindowStart: BitcoinBlockTimeSample | null = null;
+      if (tip) {
+        const [windowStart] = await sql<{ height: number; time: number }[]>`
+          SELECT burn_block_height AS height, burn_block_time AS time
+          FROM blocks
+          WHERE canonical = TRUE AND burn_block_height <= ${tip.height - paceWindowBlocks}
+          ORDER BY burn_block_height DESC
+          LIMIT 1
+        `;
+        // A chain younger than the window measures its pace from its oldest known block.
+        const [oldest] = windowStart
+          ? [windowStart]
+          : await sql<{ height: number; time: number }[]>`
+              SELECT burn_block_height AS height, burn_block_time AS time
+              FROM blocks
+              WHERE canonical = TRUE
+              ORDER BY burn_block_height ASC
+              LIMIT 1
+            `;
+        paceWindowStart = oldest ?? null;
+      }
+
+      // Heights outside PostgreSQL's integer range (e.g. a far-future cycle's schedule) can never
+      // be in `blocks`, and would fail the array cast.
+      const unique = [...new Set(heights)].filter(h => h >= 0 && h <= PG_INTEGER_MAX);
+      const confirmed =
+        unique.length === 0
+          ? []
+          : await sql<{ burn_block_height: number; burn_block_time: number }[]>`
+              SELECT h.burn_block_height, b.burn_block_time
+              FROM unnest(${sql.array(unique)}::int[]) AS h(burn_block_height)
+              CROSS JOIN LATERAL (
+                SELECT burn_block_time
+                FROM blocks
+                WHERE canonical = TRUE AND burn_block_height = h.burn_block_height
+                LIMIT 1
+              ) b
+            `;
+      const confirmedTimes = new Map(confirmed.map(r => [r.burn_block_height, r.burn_block_time]));
+
+      // Past heights without a confirmed time sit between two anchored heights: the tip (itself
+      // anchored) bounds them from above.
+      const unanchored = tip ? unique.filter(h => h < tip.height && !confirmedTimes.has(h)) : [];
+      const neighbors =
+        unanchored.length === 0
+          ? []
+          : await sql<
+              {
+                height: number;
+                before_height: number;
+                before_time: number;
+                after_height: number;
+                after_time: number;
+              }[]
+            >`
+              SELECT h.height,
+                bb.burn_block_height AS before_height, bb.burn_block_time AS before_time,
+                ba.burn_block_height AS after_height, ba.burn_block_time AS after_time
+              FROM unnest(${sql.array(unanchored)}::int[]) AS h(height)
+              CROSS JOIN LATERAL (
+                SELECT burn_block_height, burn_block_time
+                FROM blocks
+                WHERE canonical = TRUE AND burn_block_height < h.height
+                ORDER BY burn_block_height DESC
+                LIMIT 1
+              ) bb
+              CROSS JOIN LATERAL (
+                SELECT burn_block_height, burn_block_time
+                FROM blocks
+                WHERE canonical = TRUE AND burn_block_height > h.height
+                ORDER BY burn_block_height ASC
+                LIMIT 1
+              ) ba
+            `;
+      const interpolated = new Map(
+        neighbors.map(r => [
+          r.height,
+          interpolateBitcoinBlockTime(
+            { height: r.before_height, time: r.before_time },
+            { height: r.after_height, time: r.after_time },
+            r.height
+          ),
+        ])
+      );
+      return {
+        confirmed: confirmedTimes,
+        interpolated,
+        tip: tip ?? null,
+        paceWindowStart,
+      };
+    });
   }
 
   /**

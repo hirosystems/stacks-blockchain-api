@@ -1,3 +1,4 @@
+import { unixEpochToIso } from '../../../helpers.js';
 import { DbBitcoinBlockSummary, DbBlockSummary } from '../../../datastore/v3/types.js';
 import { BitcoinBlockSummary, BlockSummary } from '../../schemas/v3/entities/common.js';
 
@@ -12,6 +13,7 @@ export function serializeDbBlockSummary(block: DbBlockSummary): BlockSummary {
     hash: block.block_hash,
     index_hash: block.index_block_hash,
     time: block.block_time,
+    time_iso: unixEpochToIso(block.block_time),
   };
 }
 

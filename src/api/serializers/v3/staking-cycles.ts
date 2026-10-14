@@ -1,4 +1,5 @@
 import { DbCycleSigner, DbStakingCycle } from '../../../datastore/v3/types.js';
+import { ScheduleTimes, serializeSchedulePointTimes } from './bitcoin-block-times.js';
 import { CycleSigner, StakingCycle } from '../../schemas/v3/entities/staking-cycles.js';
 
 export function serializeDbCycleSigner(signer: DbCycleSigner, cycleNumber: number): CycleSigner {
@@ -36,14 +37,33 @@ export function serializeDbCycleSigner(signer: DbCycleSigner, cycleNumber: numbe
   };
 }
 
-export function serializeDbStakingCycle(cycle: DbStakingCycle): StakingCycle {
+/**
+ * The Bitcoin heights whose times a cycle's schedule needs, for the caller to resolve with
+ * `PgStoreV3.getBitcoinBlockTimes` before serializing.
+ */
+export function getDbStakingCycleScheduleHeights(cycle: DbStakingCycle): number[] {
+  return [
+    cycle.schedule.startBitcoinHeight,
+    cycle.schedule.preparePhaseStartBitcoinHeight,
+    cycle.schedule.endBitcoinHeight,
+  ];
+}
+
+export function serializeDbStakingCycle(
+  cycle: DbStakingCycle,
+  scheduleTimes: ScheduleTimes
+): StakingCycle {
+  const point = (bitcoinHeight: number) => ({
+    bitcoin_height: bitcoinHeight,
+    ...serializeSchedulePointTimes(scheduleTimes, bitcoinHeight),
+  });
   return {
     number: cycle.number,
     status: cycle.status,
     schedule: {
-      start: { bitcoin_height: cycle.schedule.startBitcoinHeight },
-      prepare_phase_start: { bitcoin_height: cycle.schedule.preparePhaseStartBitcoinHeight },
-      end: { bitcoin_height: cycle.schedule.endBitcoinHeight },
+      start: point(cycle.schedule.startBitcoinHeight),
+      prepare_phase_start: point(cycle.schedule.preparePhaseStartBitcoinHeight),
+      end: point(cycle.schedule.endBitcoinHeight),
     },
     locked: {
       stx: {

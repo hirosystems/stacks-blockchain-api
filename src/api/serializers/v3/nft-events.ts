@@ -1,3 +1,4 @@
+import { unixEpochToIso } from '../../../helpers.js';
 import { NftHistoryEvent } from '../../schemas/v3/entities/nft-events.js';
 import { DbNftHistoryEvent } from '../../../datastore/v3/types.js';
 
@@ -19,6 +20,7 @@ export function serializeNftHistoryEvent(event: DbNftHistoryEvent): NftHistoryEv
       hash: event.block_hash,
       index_hash: event.index_block_hash,
       time: event.block_time,
+      time_iso: unixEpochToIso(event.block_time),
       tx_index: event.tx_index,
     },
   };
