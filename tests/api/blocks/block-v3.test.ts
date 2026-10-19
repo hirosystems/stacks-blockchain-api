@@ -248,6 +248,15 @@ describe('v3 blocks', () => {
         url: '/extended/v3/blocks/not-a-block',
       });
       assert.equal(invalid.statusCode, 400);
+
+      // Heights past the integer column range are rejected rather than failing in postgres.
+      for (const url of [
+        `/extended/v3/blocks/${I32_MAX + 1}`,
+        `/extended/v3/blocks/${I32_MAX + 1}/transactions`,
+      ]) {
+        const outOfRange = await api.fastifyApp.inject({ method: 'GET', url });
+        assert.equal(outOfRange.statusCode, 400, url);
+      }
     });
   });
 

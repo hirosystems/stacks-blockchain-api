@@ -1,4 +1,5 @@
 import { Static, Type } from '@sinclair/typebox';
+import { I32_MAX } from '../../../../helpers.js';
 
 export const AddressSchema = Type.String({
   pattern: '^[0123456789ABCDEFGHJKMNPQRSTVWXYZ]{28,41}$',
@@ -56,7 +57,14 @@ export const BlockHeightOrHashSchema = Type.Union([
   // Hash must come before height so the AJV union matches a hex string before attempting
   // integer coercion (which would otherwise turn '0x…deadbeef' into 3735928559).
   BlockHashSchema,
-  BlockHeightSchema,
+  // Heights are PostgreSQL `integer` columns: a larger one would fail the comparison with a 500.
+  Type.Integer({
+    title: 'Block height',
+    description: 'Block height',
+    examples: [777678],
+    minimum: 0,
+    maximum: I32_MAX,
+  }),
 ]);
 export type BlockHeightOrHash = Static<typeof BlockHeightOrHashSchema>;
 

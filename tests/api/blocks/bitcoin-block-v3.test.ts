@@ -419,13 +419,21 @@ describe('v3 bitcoin blocks', () => {
         ...projected(15_000),
         ...NONE_ANCHORED,
       });
-      // So far out its projection passes the end of year 9999, and past the integer column range.
-      assert.deepEqual(await getJson('/extended/v3/bitcoin-blocks/2147483648'), {
-        height: 2147483648,
+      // So far out its projection passes the end of year 9999.
+      assert.deepEqual(await getJson(`/extended/v3/bitcoin-blocks/${I32_MAX}`), {
+        height: I32_MAX,
         hash: null,
         ...NO_TIME,
         ...NONE_ANCHORED,
       });
+      // Heights past the integer column range are rejected.
+      for (const url of [
+        `/extended/v3/bitcoin-blocks/${I32_MAX + 1}`,
+        `/extended/v3/bitcoin-blocks/${I32_MAX + 1}/blocks`,
+      ]) {
+        const outOfRange = await api.fastifyApp.inject({ method: 'GET', url });
+        assert.equal(outOfRange.statusCode, 400, url);
+      }
       // Future blocks are only reachable by height: they have no hash, and stay out of the list.
       const byHash = await api.fastifyApp.inject({
         method: 'GET',

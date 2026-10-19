@@ -1165,9 +1165,6 @@ export class PgStoreV3 extends BasePgStoreModule {
             : undefined;
     // Bitcoin block times are not stored, so there is nothing to look a timestamp up against.
     if (!filter) return undefined;
-    // A height outside the integer column's range (e.g. a far-future one) is never stored, and
-    // would fail the comparison in postgres.
-    if (args.block.type === 'height' && args.block.height > PG_INTEGER_MAX) return undefined;
     const result = await this.sql<DbBitcoinBlockSummary[]>`
       SELECT burn_block_height, burn_block_hash
       FROM burn_blocks
