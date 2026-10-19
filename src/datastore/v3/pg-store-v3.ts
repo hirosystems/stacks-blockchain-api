@@ -43,6 +43,8 @@ import {
   DbSearchTokenAsset,
 } from './types.js';
 import {
+  BLOCK_COLUMNS,
+  BLOCK_SUMMARY_COLUMNS,
   BOND_ALLOWLIST_ENTRY_COLUMNS,
   BOND_COLUMNS,
   BOND_EVENT_COLUMNS,
@@ -1019,7 +1021,7 @@ export class PgStoreV3 extends BasePgStoreModule {
         SELECT block_count AS total FROM chain_tip
       `;
       const resultQuery = await sql<DbBlockSummary[]>`
-        SELECT block_height, block_hash, index_block_hash, block_time
+        SELECT ${sql(BLOCK_SUMMARY_COLUMNS)}
         FROM blocks
         WHERE canonical = true
           ${cursorFilter}
@@ -1077,13 +1079,7 @@ export class PgStoreV3 extends BasePgStoreModule {
             ? this.sql`block_height = ${args.block.height} AND canonical = true`
             : this.sql`block_time = ${args.block.timestamp} AND canonical = true`;
     const result = await this.sql<DbBlockDetail[]>`
-      SELECT
-        block_height, block_hash, index_block_hash, block_time,
-        parent_block_hash, parent_index_block_hash, tenure_height, signer_bitvec,
-        burn_block_height, burn_block_hash, burn_block_time,
-        tx_count, tx_total_size,
-        execution_cost_read_count, execution_cost_read_length, execution_cost_runtime,
-        execution_cost_write_count, execution_cost_write_length
+      SELECT ${this.sql(BLOCK_COLUMNS)}
       FROM blocks
       WHERE ${filter}
       LIMIT 1
@@ -1209,7 +1205,7 @@ export class PgStoreV3 extends BasePgStoreModule {
           AND burn_block_hash = ${burnBlockHash}
       `;
       const resultQuery = await sql<DbBlockSummary[]>`
-        SELECT block_height, block_hash, index_block_hash, block_time
+        SELECT ${sql(BLOCK_SUMMARY_COLUMNS)}
         FROM blocks
         WHERE canonical = true
           AND burn_block_hash = ${burnBlockHash}
@@ -2294,10 +2290,20 @@ export class PgStoreV3 extends BasePgStoreModule {
           mb.block_hash AS mature_block_hash,
           r.index_block_hash AS mature_index_block_hash,
           mb.block_time AS mature_block_time,
+          mb.tenure_height AS mature_tenure_height,
+          mb.signer_bitvec AS mature_signer_bitvec,
+          mb.tx_count AS mature_tx_count,
+          mb.burn_block_height AS mature_burn_block_height,
+          mb.burn_block_hash AS mature_burn_block_hash,
           sb.block_height AS source_block_height,
           r.block_hash AS source_block_hash,
           r.from_index_block_hash AS source_index_block_hash,
           sb.block_time AS source_block_time,
+          sb.tenure_height AS source_tenure_height,
+          sb.signer_bitvec AS source_signer_bitvec,
+          sb.tx_count AS source_tx_count,
+          sb.burn_block_height AS source_burn_block_height,
+          sb.burn_block_hash AS source_burn_block_hash,
           r.coinbase_amount::text AS coinbase_amount,
           (r.tx_fees_anchored + r.tx_fees_streamed_confirmed + r.tx_fees_streamed_produced)::text
             AS fees_amount
@@ -3566,7 +3572,7 @@ export class PgStoreV3 extends BasePgStoreModule {
       if (types.has('block')) {
         if (term.blockHeight !== undefined) {
           const blocks = await sql<DbBlockSummary[]>`
-            SELECT block_height, block_hash, index_block_hash, block_time
+            SELECT ${sql(BLOCK_SUMMARY_COLUMNS)}
             FROM blocks
             WHERE block_height = ${term.blockHeight} AND canonical = true
             LIMIT 1
@@ -3575,7 +3581,7 @@ export class PgStoreV3 extends BasePgStoreModule {
         }
         if (term.hash) {
           const blocks = await sql<DbBlockSummary[]>`
-            SELECT block_height, block_hash, index_block_hash, block_time
+            SELECT ${sql(BLOCK_SUMMARY_COLUMNS)}
             FROM blocks
             WHERE canonical = true
               AND (

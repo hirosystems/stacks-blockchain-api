@@ -83,6 +83,9 @@ describe('v3 blocks', () => {
           index_hash: hex(3),
           time: 1003,
           time_iso: '1970-01-01T00:16:43.000Z',
+          tenure_height: 503,
+          tx_count: 0,
+          bitcoin_block: { height: 103, hash: hex(0xbb00 + 3) },
         },
         {
           height: 2,
@@ -90,6 +93,9 @@ describe('v3 blocks', () => {
           index_hash: hex(2),
           time: 1002,
           time_iso: '1970-01-01T00:16:42.000Z',
+          tenure_height: 502,
+          tx_count: 0,
+          bitcoin_block: { height: 102, hash: hex(0xbb00 + 2) },
         },
         {
           height: 1,
@@ -97,6 +103,9 @@ describe('v3 blocks', () => {
           index_hash: hex(1),
           time: 1001,
           time_iso: '1970-01-01T00:16:41.000Z',
+          tenure_height: 501,
+          tx_count: 0,
+          bitcoin_block: { height: 101, hash: hex(0xbb00 + 1) },
         },
       ]);
     });

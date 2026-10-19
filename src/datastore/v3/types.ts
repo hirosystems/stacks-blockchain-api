@@ -484,19 +484,19 @@ export interface DbBlockSummary {
   block_hash: string;
   index_block_hash: string;
   block_time: number;
+  tenure_height: number | null;
+  /** Set on Nakamoto blocks only; tells pre-Nakamoto blocks apart for `tenure_height`. */
+  signer_bitvec: string | null;
+  tx_count: number;
+  burn_block_height: number;
+  burn_block_hash: string;
 }
 
 /** A Stacks block with its details. */
 export interface DbBlockDetail extends DbBlockSummary {
   parent_block_hash: string;
   parent_index_block_hash: string;
-  tenure_height: number | null;
-  /** Set on Nakamoto blocks only; tells pre-Nakamoto blocks apart for `tenure_height`. */
-  signer_bitvec: string | null;
-  burn_block_height: number;
-  burn_block_hash: string;
   burn_block_time: number;
-  tx_count: number;
   tx_total_size: number | null;
   // BIGINT columns: Postgres returns them as decimal strings.
   execution_cost_read_count: string;
@@ -571,10 +571,20 @@ export interface DbPrincipalMinerReward {
   mature_block_hash: string;
   mature_index_block_hash: string;
   mature_block_time: number;
+  mature_tenure_height: number | null;
+  mature_signer_bitvec: string | null;
+  mature_tx_count: number;
+  mature_burn_block_height: number;
+  mature_burn_block_hash: string;
   source_block_height: number;
   source_block_hash: string;
   source_index_block_hash: string;
   source_block_time: number;
+  source_tenure_height: number | null;
+  source_signer_bitvec: string | null;
+  source_tx_count: number;
+  source_burn_block_height: number;
+  source_burn_block_hash: string;
   coinbase_amount: string;
   /** Sum of all the reward's transaction fees. */
   fees_amount: string;

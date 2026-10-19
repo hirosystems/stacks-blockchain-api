@@ -172,6 +172,23 @@ export const BlockSummarySchema = Type.Object(
       description: 'Unix timestamp (in seconds) indicating when this block was mined.',
     }),
     time_iso: TimeIsoSchema,
+    tenure_height: Type.Union([Type.Integer(), Type.Null()], {
+      description:
+        'The tenure height (AKA coinbase height) of this block. Before Nakamoto every block was ' +
+        'its own tenure, so this is the block height. `null` for a Nakamoto block indexed before ' +
+        'tenure heights were recorded.',
+    }),
+    tx_count: Type.Integer({
+      description: 'Number of transactions included in the block',
+    }),
+    bitcoin_block: Type.Object({
+      height: Type.Integer({
+        description: 'Height of the Bitcoin block this block is anchored to',
+      }),
+      hash: Type.String({
+        description: 'Hash of the Bitcoin block this block is anchored to',
+      }),
+    }),
   },
   { title: 'BlockSummary' }
 );

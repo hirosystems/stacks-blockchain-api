@@ -1,4 +1,4 @@
-import { unixEpochToIso } from '../../../helpers.js';
+import { serializeDbBlockSummary } from './blocks.js';
 import {
   PrincipalMinerReward,
   PrincipalMiningSummary,
@@ -27,20 +27,28 @@ export function serializePrincipalMinerReward(
     id: `${reward.mature_index_block_hash}:${reward.reward_index}`,
     recipient: reward.recipient,
     miner: reward.miner_address,
-    block: {
-      height: reward.mature_block_height,
-      hash: reward.mature_block_hash,
-      index_hash: reward.mature_index_block_hash,
-      time: reward.mature_block_time,
-      time_iso: unixEpochToIso(reward.mature_block_time),
-    },
-    source_block: {
-      height: reward.source_block_height,
-      hash: reward.source_block_hash,
-      index_hash: reward.source_index_block_hash,
-      time: reward.source_block_time,
-      time_iso: unixEpochToIso(reward.source_block_time),
-    },
+    block: serializeDbBlockSummary({
+      block_height: reward.mature_block_height,
+      block_hash: reward.mature_block_hash,
+      index_block_hash: reward.mature_index_block_hash,
+      block_time: reward.mature_block_time,
+      tenure_height: reward.mature_tenure_height,
+      signer_bitvec: reward.mature_signer_bitvec,
+      tx_count: reward.mature_tx_count,
+      burn_block_height: reward.mature_burn_block_height,
+      burn_block_hash: reward.mature_burn_block_hash,
+    }),
+    source_block: serializeDbBlockSummary({
+      block_height: reward.source_block_height,
+      block_hash: reward.source_block_hash,
+      index_block_hash: reward.source_index_block_hash,
+      block_time: reward.source_block_time,
+      tenure_height: reward.source_tenure_height,
+      signer_bitvec: reward.source_signer_bitvec,
+      tx_count: reward.source_tx_count,
+      burn_block_height: reward.source_burn_block_height,
+      burn_block_hash: reward.source_burn_block_hash,
+    }),
     ...serializeRewardAmounts(reward),
   };
 }

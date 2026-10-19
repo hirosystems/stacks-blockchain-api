@@ -179,6 +179,9 @@ describe('v3 bitcoin blocks', () => {
           index_hash: hex(3),
           time: 1003,
           time_iso: '1970-01-01T00:16:43.000Z',
+          tenure_height: 3,
+          tx_count: 0,
+          bitcoin_block: { height: 100, hash: hex(0xbb00 + 100) },
         },
         {
           height: 2,
@@ -186,6 +189,9 @@ describe('v3 bitcoin blocks', () => {
           index_hash: hex(2),
           time: 1002,
           time_iso: '1970-01-01T00:16:42.000Z',
+          tenure_height: 2,
+          tx_count: 0,
+          bitcoin_block: { height: 100, hash: hex(0xbb00 + 100) },
         },
       ]);
       assert.deepEqual(first.cursor, { next: '1', previous: null, current: '3' });

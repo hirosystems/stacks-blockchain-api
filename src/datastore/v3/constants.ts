@@ -198,3 +198,28 @@ export const STAKING_SIGNER_COLUMNS = [
   'block_height',
   'burn_block_height',
 ];
+
+export const BLOCK_SUMMARY_COLUMNS = [
+  'block_height',
+  'block_hash',
+  'index_block_hash',
+  'block_time',
+  'tenure_height',
+  'signer_bitvec',
+  'tx_count',
+  'burn_block_height',
+  'burn_block_hash',
+];
+
+export const BLOCK_COLUMNS = [
+  ...BLOCK_SUMMARY_COLUMNS,
+  'parent_block_hash',
+  'parent_index_block_hash',
+  'burn_block_time',
+  'tx_total_size',
+  'execution_cost_read_count',
+  'execution_cost_read_length',
+  'execution_cost_runtime',
+  'execution_cost_write_count',
+  'execution_cost_write_length',
+];
