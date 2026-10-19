@@ -36,6 +36,7 @@ import {
   DbTransactionSummary,
   DbSearchAddress,
   DbMempoolSummaryRow,
+  DbBitcoinBlockStacksBlockCounts,
   DbBitcoinBlockSummary,
   DbBlockDetail,
   DbBlockSummary,
@@ -1174,6 +1175,40 @@ export class PgStoreV3 extends BasePgStoreModule {
       LIMIT 1
     `;
     return result[0];
+  }
+
+  /**
+   * Counts the canonical Stacks blocks, and their transactions, anchored to each of a set of
+   * Bitcoin blocks. A single range scan of the `burn_block_height` index over the blocks' heights:
+   * a page of Bitcoin blocks covers a contiguous height range. Matching on the hash too keeps a
+   * Stacks block anchored to an orphaned Bitcoin block at the same height out of the counts.
+   * @param blocks - The Bitcoin blocks.
+   * @returns The counts by Bitcoin block hash; blocks no Stacks block anchored to are absent.
+   */
+  async getBitcoinBlockStacksBlockCounts(
+    blocks: DbBitcoinBlockSummary[]
+  ): Promise<Map<string, DbBitcoinBlockStacksBlockCounts>> {
+    if (blocks.length === 0) return new Map();
+    const heights = blocks.map(b => b.burn_block_height);
+    const result = await this.sql<
+      ({ burn_block_hash: string } & DbBitcoinBlockStacksBlockCounts)[]
+    >`
+      SELECT
+        burn_block_hash,
+        COUNT(*)::int AS stacks_block_count,
+        SUM(tx_count)::int AS tx_count
+      FROM blocks
+      WHERE canonical = true
+        AND burn_block_height BETWEEN ${Math.min(...heights)} AND ${Math.max(...heights)}
+        AND burn_block_hash IN ${this.sql(blocks.map(b => b.burn_block_hash))}
+      GROUP BY burn_block_hash
+    `;
+    return new Map(
+      result.map(r => [
+        r.burn_block_hash,
+        { stacks_block_count: r.stacks_block_count, tx_count: r.tx_count },
+      ])
+    );
   }
 
   /**

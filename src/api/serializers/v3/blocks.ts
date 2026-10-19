@@ -1,5 +1,6 @@
 import { unixEpochToIso } from '../../../helpers.js';
 import {
+  DbBitcoinBlockStacksBlockCounts,
   DbBitcoinBlockSummary,
   DbBlockDetail,
   DbBlockSummary,
@@ -76,19 +77,24 @@ export function serializeDbBitcoinBlockSummary(block: DbBitcoinBlockSummary): Bi
 }
 
 /**
- * Serializes a Bitcoin block with its time: the header (or interpolated) time once known, a
- * projection until then.
+ * Serializes a Bitcoin block with its time (the header or interpolated time once known, a
+ * projection until then) and what the Stacks blocks anchored to it add up to.
  * @param block - The Bitcoin block; a future one has no hash yet.
  * @param times - The Bitcoin block times resolved for the block's height.
+ * @param counts - The Stacks block counts by Bitcoin block hash; absent means none anchored.
  * @returns The serialized Bitcoin block.
  */
 export function serializeBitcoinBlock(
   block: { burn_block_height: number; burn_block_hash: string | null },
-  times: ScheduleTimes
+  times: ScheduleTimes,
+  counts: ReadonlyMap<string, DbBitcoinBlockStacksBlockCounts>
 ): BitcoinBlock {
+  const blockCounts = block.burn_block_hash ? counts.get(block.burn_block_hash) : undefined;
   return {
     height: block.burn_block_height,
     hash: block.burn_block_hash,
     ...serializeSchedulePointTimes(times, block.burn_block_height),
+    stacks_block_count: blockCounts?.stacks_block_count ?? 0,
+    tx_count: blockCounts?.tx_count ?? 0,
   };
 }

@@ -512,6 +512,12 @@ export interface DbBitcoinBlockSummary {
   burn_block_hash: string;
 }
 
+/** What the canonical Stacks blocks anchored to a Bitcoin block add up to. */
+export interface DbBitcoinBlockStacksBlockCounts {
+  stacks_block_count: number;
+  tx_count: number;
+}
+
 /** A standard address matched by a search. */
 export interface DbSearchAddress {
   principal: string;

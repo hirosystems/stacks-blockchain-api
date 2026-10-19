@@ -231,6 +231,16 @@ export const BitcoinBlockSchema = Type.Object(
         'projected past the end of year 9999.',
     }),
     projected_time_iso: SchedulePointTimesSchema.properties.projected_time_iso,
+    stacks_block_count: Type.Integer({
+      description:
+        'Number of canonical Stacks blocks anchored to this Bitcoin block. `0` for a block no ' +
+        'Stacks block anchored to (e.g. a missed sortition), one too new to have any yet, and a ' +
+        'future block.',
+    }),
+    tx_count: Type.Integer({
+      description:
+        'Number of transactions in the canonical Stacks blocks anchored to this Bitcoin block',
+    }),
   },
   { title: 'BitcoinBlock' }
 );

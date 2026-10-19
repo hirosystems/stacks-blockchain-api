@@ -65,6 +65,7 @@ export const BitcoinBlocksRoutes: FastifyPluginAsync<
           cursor: req.query.cursor,
         });
         const times = await getTimes(results.results.map(r => r.burn_block_height));
+        const counts = await fastify.db.v3.getBitcoinBlockStacksBlockCounts(results.results);
         return {
           limit: results.limit,
           total: results.total,
@@ -73,7 +74,7 @@ export const BitcoinBlocksRoutes: FastifyPluginAsync<
             previous: results.prev_cursor,
             current: results.current_cursor,
           },
-          results: results.results.map(r => serializeBitcoinBlock(r, times)),
+          results: results.results.map(r => serializeBitcoinBlock(r, times, counts)),
         };
       });
       await reply.send(response);
@@ -106,7 +107,11 @@ export const BitcoinBlocksRoutes: FastifyPluginAsync<
       const response = await fastify.db.sqlTransaction(async _sql => {
         const block = await fastify.db.v3.getBitcoinBlockSummary({ block: blockId });
         if (block) {
-          return serializeBitcoinBlock(block, await getTimes([block.burn_block_height]));
+          return serializeBitcoinBlock(
+            block,
+            await getTimes([block.burn_block_height]),
+            await fastify.db.v3.getBitcoinBlockStacksBlockCounts([block])
+          );
         }
         // A height above the Bitcoin tip is a future block: it has no hash yet, only a projection.
         if (blockId.type === 'height') {
@@ -116,7 +121,8 @@ export const BitcoinBlocksRoutes: FastifyPluginAsync<
           if (tip && blockId.height > tip.burn_block_height) {
             return serializeBitcoinBlock(
               { burn_block_height: blockId.height, burn_block_hash: null },
-              await getTimes([blockId.height])
+              await getTimes([blockId.height]),
+              new Map()
             );
           }
         }
