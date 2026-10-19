@@ -37,6 +37,7 @@ export const TX_SUMMARY_COLUMNS = [
   'contract_call_function_name',
   'coinbase_alt_recipient',
   'tenure_change_cause',
+  'event_count',
 ];
 
 // Heavy columns (post_conditions, raw_result, smart_contract_source_code,
@@ -46,7 +47,6 @@ export const TX_COLUMNS = [
   ...TX_SUMMARY_COLUMNS,
   'parent_block_hash',
   'parent_index_block_hash',
-  'event_count',
   'execution_cost_read_count',
   'execution_cost_read_length',
   'execution_cost_runtime',

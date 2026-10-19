@@ -51,11 +51,11 @@ export interface DbTransactionSummary extends DbTxLocation {
   contract_call_function_name: string | null;
   coinbase_alt_recipient: string | null;
   tenure_change_cause: number | null;
+  event_count: number;
 }
 
 export interface DbTransaction extends DbTransactionSummary {
   post_conditions: string;
-  event_count: number;
   execution_cost_read_count: number;
   execution_cost_read_length: number;
   execution_cost_runtime: number;

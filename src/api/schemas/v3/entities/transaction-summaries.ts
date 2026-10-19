@@ -56,6 +56,9 @@ export const BaseTransactionSummarySchema = Type.Object({
   block: BlockPositionSchema,
   bitcoin_block: BitcoinBlockPositionSchema,
   status: TransactionStatusSchema,
+  event_count: Type.Integer({
+    description: 'Number of events in the transaction',
+  }),
 });
 export type BaseTransactionSummary = Static<typeof BaseTransactionSummarySchema>;
 
