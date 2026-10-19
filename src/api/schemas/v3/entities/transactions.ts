@@ -31,9 +31,6 @@ const BaseTransactionSchema = Type.Composite([
         description: 'Only present when requested via the `include=post_conditions` query param.',
       })
     ),
-    event_count: Type.Integer({
-      description: 'Number of events in the transaction',
-    }),
     execution_cost: ExecutionCostSchema,
     vm_error: Nullable(
       Type.String({

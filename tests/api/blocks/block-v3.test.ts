@@ -118,6 +118,7 @@ describe('v3 blocks', () => {
             burn_block_time: 1000,
             tx_index: 1,
             fee_rate: 75n,
+            event_count: 2,
             type_id: DbTxTypeId.TokenTransfer,
             status: DbTxStatus.Success,
             sender_address: SENDER,
@@ -166,6 +167,7 @@ describe('v3 blocks', () => {
         },
         sponsor: null,
         fee_rate: '75',
+        event_count: 2,
         token_transfer: {
           recipient: RECIPIENT,
           amount: '100',
@@ -198,6 +200,7 @@ describe('v3 blocks', () => {
         },
         sponsor: null,
         fee_rate: '50',
+        event_count: 0,
         coinbase: {
           alt_recipient: null,
         },

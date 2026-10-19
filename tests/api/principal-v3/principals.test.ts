@@ -164,6 +164,7 @@ describe('principals', () => {
           },
           sponsor: null,
           fee_rate: '50',
+          event_count: 0,
           block: {
             height: 2,
             hash: hex(2),
@@ -211,6 +212,7 @@ describe('principals', () => {
           },
           sponsor: null,
           fee_rate: '50',
+          event_count: 0,
           block: {
             height: 1,
             hash: hex(1),

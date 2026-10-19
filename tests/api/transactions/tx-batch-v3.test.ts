@@ -101,6 +101,7 @@ describe('v3 transactions batch', () => {
         .addTx({
           tx_id: TX_3,
           tx_index: 0,
+          event_count: 4,
           block_hash: '0x0002',
           index_block_hash: '0x0002',
           type_id: DbTxTypeId.Coinbase,
@@ -137,13 +138,13 @@ describe('v3 transactions batch', () => {
       body.results.map((r: { tx_id: string }) => r.tx_id),
       [TX_3, TX_1]
     );
-    // Summary shape, not full transaction: no event_count / execution_cost / post_conditions.
+    // Summary shape, not full transaction: no execution_cost / post_conditions.
     const summary = body.results[0];
     assert.equal(summary.block.height, 2);
     assert.equal(summary.sender.address, SENDER);
     assert.equal(summary.status, 'success');
     assert.equal(summary.type, 'coinbase');
-    assert.equal('event_count' in summary, false);
+    assert.equal(summary.event_count, 4);
     assert.equal('execution_cost' in summary, false);
   });
 
