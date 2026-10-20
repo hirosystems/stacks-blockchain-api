@@ -100,11 +100,16 @@ describe('v2-proxy tests', () => {
     };
     // Exact bytes of the node's response, which must be returned verbatim.
     node.state.body = JSON.stringify(nodeResponse, null, 2);
-    const request = JSON.stringify({
-      estimated_len: 350,
-      transaction_payload:
-        '021af942874ce525e87f21bbe8c121b12fac831d02f4086765742d696e666f0b7570646174652d696e666f00000000',
-    });
+    // Formatted so a proxy that parses and re-serializes the request body would fail the assertion.
+    const request = JSON.stringify(
+      {
+        estimated_len: 350,
+        transaction_payload:
+          '021af942874ce525e87f21bbe8c121b12fac831d02f4086765742d696e666f0b7570646174652d696e666f00000000',
+      },
+      null,
+      2
+    );
     const res = await supertest(api.server)
       .post('/v2/fees/transaction')
       .set('Content-Type', 'application/json')
