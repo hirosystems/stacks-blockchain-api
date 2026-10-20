@@ -11,7 +11,8 @@ import {
   BitcoinBlockSummary,
   BlockSummary,
 } from '../../schemas/v3/entities/common.js';
-import { ScheduleTimes, serializeSchedulePointTimes } from './bitcoin-block-times.js';
+import { projectBitcoinBlockTime } from '../../../datastore/bitcoin-block-time.js';
+import { ScheduleTimes } from './bitcoin-block-times.js';
 
 /**
  * Serializes a database Stacks block summary into a block summary entity.
@@ -19,12 +20,14 @@ import { ScheduleTimes, serializeSchedulePointTimes } from './bitcoin-block-time
  * @returns The serialized block summary.
  */
 export function serializeDbBlockSummary(block: DbBlockSummary): BlockSummary {
+  // Legacy rows recorded no Stacks block time (`0`): fall back to the Bitcoin block's, as v1/v2 do.
+  const time = block.block_time || block.burn_block_time;
   return {
     height: block.block_height,
     hash: block.block_hash,
     index_hash: block.index_block_hash,
-    time: block.block_time,
-    time_iso: unixEpochToIso(block.block_time),
+    time,
+    time_iso: unixEpochToIso(time),
     // Before Nakamoto (no signer bitvec) every block was its own tenure.
     tenure_height: block.tenure_height ?? (block.signer_bitvec ? null : block.block_height),
     tx_count: block.tx_count,
@@ -94,20 +97,22 @@ export function serializeBitcoinBlock(
   counts: ReadonlyMap<string, DbBitcoinBlockStacksBlockCounts>
 ): BitcoinBlock {
   const blockCounts = block.burn_block_hash ? counts.get(block.burn_block_hash) : undefined;
-  // A stored header time is exact; without one, the time is interpolated or projected.
-  const blockTimes =
-    block.burn_block_time !== null
-      ? {
-          time: block.burn_block_time,
-          time_iso: unixEpochToIso(block.burn_block_time),
-          projected_time: null,
-          projected_time_iso: null,
-        }
-      : serializeSchedulePointTimes(times, block.burn_block_height);
+  // A stored header time is exact. Without one, the time can only be interpolated or projected:
+  // every Stacks block records its header time on its own Bitcoin block, so a confirmed time
+  // `times` matched at this height belongs to a rival block (e.g. one this block replaced).
+  let time: number | null = block.burn_block_time;
+  let projectedTime: number | null = null;
+  if (time === null) {
+    time = times.times.interpolated.get(block.burn_block_height) ?? null;
+    projectedTime = projectBitcoinBlockTime(times.times, times.config, block.burn_block_height);
+  }
   return {
     height: block.burn_block_height,
     hash: block.burn_block_hash,
-    ...blockTimes,
+    time,
+    time_iso: time !== null ? unixEpochToIso(time) : null,
+    projected_time: projectedTime,
+    projected_time_iso: projectedTime !== null ? unixEpochToIso(projectedTime) : null,
     stacks_block_count: blockCounts?.stacks_block_count ?? 0,
     tx_count: blockCounts?.tx_count ?? 0,
   };

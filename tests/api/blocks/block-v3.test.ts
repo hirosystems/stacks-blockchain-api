@@ -212,6 +212,27 @@ describe('v3 blocks', () => {
       assert.equal(JSON.parse(latest.body).height, 3);
     });
 
+    test('falls back to the Bitcoin block time for legacy blocks without a block time', async () => {
+      await seedBlocks(2);
+      // Legacy rows recorded no Stacks block time.
+      await db.sql`UPDATE blocks SET block_time = 0 WHERE block_height = 2`;
+      const burnTime = { time: 2002, time_iso: '1970-01-01T00:33:22.000Z' };
+      const pick = (block: { time: number; time_iso: string }) => ({
+        time: block.time,
+        time_iso: block.time_iso,
+      });
+      const detail = await api.fastifyApp.inject({
+        method: 'GET',
+        url: '/extended/v3/blocks/2',
+      });
+      assert.deepEqual(pick(JSON.parse(detail.body)), burnTime);
+      const list = await api.fastifyApp.inject({ method: 'GET', url: '/extended/v3/blocks' });
+      const listed = JSON.parse(list.body).results;
+      assert.deepEqual(pick(listed[0]), burnTime);
+      // Blocks that recorded a time keep it.
+      assert.deepEqual(pick(listed[1]), { time: 1001, time_iso: '1970-01-01T00:16:41.000Z' });
+    });
+
     test('falls back to the block height as the tenure height before Nakamoto', async () => {
       await seedBlocks(2);
       // Block 2 is a Nakamoto block (it has a signer bitvec); neither has a recorded tenure height.

@@ -2326,6 +2326,7 @@ export class PgStoreV3 extends BasePgStoreModule {
           mb.tx_count AS mature_tx_count,
           mb.burn_block_height AS mature_burn_block_height,
           mb.burn_block_hash AS mature_burn_block_hash,
+          mb.burn_block_time AS mature_burn_block_time,
           sb.block_height AS source_block_height,
           r.block_hash AS source_block_hash,
           r.from_index_block_hash AS source_index_block_hash,
@@ -2335,6 +2336,7 @@ export class PgStoreV3 extends BasePgStoreModule {
           sb.tx_count AS source_tx_count,
           sb.burn_block_height AS source_burn_block_height,
           sb.burn_block_hash AS source_burn_block_hash,
+          sb.burn_block_time AS source_burn_block_time,
           r.coinbase_amount::text AS coinbase_amount,
           (r.tx_fees_anchored + r.tx_fees_streamed_confirmed + r.tx_fees_streamed_produced)::text
             AS fees_amount

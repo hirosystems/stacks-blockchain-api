@@ -209,13 +209,13 @@ export const BLOCK_SUMMARY_COLUMNS = [
   'tx_count',
   'burn_block_height',
   'burn_block_hash',
+  'burn_block_time',
 ];
 
 export const BLOCK_COLUMNS = [
   ...BLOCK_SUMMARY_COLUMNS,
   'parent_block_hash',
   'parent_index_block_hash',
-  'burn_block_time',
   'tx_total_size',
   'execution_cost_read_count',
   'execution_cost_read_length',

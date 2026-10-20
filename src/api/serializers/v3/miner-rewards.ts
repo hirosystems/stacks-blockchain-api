@@ -37,6 +37,7 @@ export function serializePrincipalMinerReward(
       tx_count: reward.mature_tx_count,
       burn_block_height: reward.mature_burn_block_height,
       burn_block_hash: reward.mature_burn_block_hash,
+      burn_block_time: reward.mature_burn_block_time,
     }),
     source_block: serializeDbBlockSummary({
       block_height: reward.source_block_height,
@@ -48,6 +49,7 @@ export function serializePrincipalMinerReward(
       tx_count: reward.source_tx_count,
       burn_block_height: reward.source_burn_block_height,
       burn_block_hash: reward.source_burn_block_hash,
+      burn_block_time: reward.source_burn_block_time,
     }),
     ...serializeRewardAmounts(reward),
   };

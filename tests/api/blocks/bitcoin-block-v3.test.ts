@@ -593,6 +593,15 @@ describe('v3 bitcoin blocks', () => {
       const body = await getJson('/extended/v3/bitcoin-blocks?limit=1');
       assert.deepEqual(counts(body), [[102, 0, 0]]);
       assert.equal(body.results[0].hash, hex(0xf102));
+      // Nor does the replacement take the orphaned block's header time, which Stacks block 3
+      // (still canonical here) reported at the same height: its own time is unknown.
+      const detail = await getJson('/extended/v3/bitcoin-blocks/102');
+      for (const block of [body.results[0], detail]) {
+        assert.deepEqual(
+          [block.hash, block.time, block.time_iso, block.projected_time, block.projected_time_iso],
+          [hex(0xf102), null, null, null, null]
+        );
+      }
     });
   });
 

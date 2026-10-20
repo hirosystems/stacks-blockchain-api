@@ -490,13 +490,14 @@ export interface DbBlockSummary {
   tx_count: number;
   burn_block_height: number;
   burn_block_hash: string;
+  /** Also stands in for `block_time` on legacy rows that recorded none (`0`). */
+  burn_block_time: number;
 }
 
 /** A Stacks block with its details. */
 export interface DbBlockDetail extends DbBlockSummary {
   parent_block_hash: string;
   parent_index_block_hash: string;
-  burn_block_time: number;
   tx_total_size: number | null;
   // BIGINT columns: Postgres returns them as decimal strings.
   execution_cost_read_count: string;
@@ -588,6 +589,7 @@ export interface DbPrincipalMinerReward {
   mature_tx_count: number;
   mature_burn_block_height: number;
   mature_burn_block_hash: string;
+  mature_burn_block_time: number;
   source_block_height: number;
   source_block_hash: string;
   source_index_block_hash: string;
@@ -597,6 +599,7 @@ export interface DbPrincipalMinerReward {
   source_tx_count: number;
   source_burn_block_height: number;
   source_burn_block_hash: string;
+  source_burn_block_time: number;
   coinbase_amount: string;
   /** Sum of all the reward's transaction fees. */
   fees_amount: string;
