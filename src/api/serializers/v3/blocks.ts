@@ -79,21 +79,35 @@ export function serializeDbBitcoinBlockSummary(block: DbBitcoinBlockSummary): Bi
 /**
  * Serializes a Bitcoin block with its time (the header or interpolated time once known, a
  * projection until then) and what the Stacks blocks anchored to it add up to.
- * @param block - The Bitcoin block; a future one has no hash yet.
+ * @param block - The Bitcoin block; a future one has no hash or time yet.
  * @param times - The Bitcoin block times resolved for the block's height.
  * @param counts - The Stacks block counts by Bitcoin block hash; absent means none anchored.
  * @returns The serialized Bitcoin block.
  */
 export function serializeBitcoinBlock(
-  block: { burn_block_height: number; burn_block_hash: string | null },
+  block: {
+    burn_block_height: number;
+    burn_block_hash: string | null;
+    burn_block_time: number | null;
+  },
   times: ScheduleTimes,
   counts: ReadonlyMap<string, DbBitcoinBlockStacksBlockCounts>
 ): BitcoinBlock {
   const blockCounts = block.burn_block_hash ? counts.get(block.burn_block_hash) : undefined;
+  // A stored header time is exact; without one, the time is interpolated or projected.
+  const blockTimes =
+    block.burn_block_time !== null
+      ? {
+          time: block.burn_block_time,
+          time_iso: unixEpochToIso(block.burn_block_time),
+          projected_time: null,
+          projected_time_iso: null,
+        }
+      : serializeSchedulePointTimes(times, block.burn_block_height);
   return {
     height: block.burn_block_height,
     hash: block.burn_block_hash,
-    ...serializeSchedulePointTimes(times, block.burn_block_height),
+    ...blockTimes,
     stacks_block_count: blockCounts?.stacks_block_count ?? 0,
     tx_count: blockCounts?.tx_count ?? 0,
   };

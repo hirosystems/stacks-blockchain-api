@@ -27,9 +27,15 @@ export const BitcoinBlocksRoutes: FastifyPluginAsync<
 > = async fastify => {
   const projectionConfig = getBitcoinBlockTimeProjectionConfig(fastify.chainId);
 
-  /** Resolves the times of a set of Bitcoin heights, for {@link serializeBitcoinBlock}. */
+  /**
+   * Resolves the interpolated or projected times of the Bitcoin heights without a stored header
+   * time, for {@link serializeBitcoinBlock}. Nothing to look up when every block has one.
+   */
   const getTimes = async (heights: number[]) => ({
-    times: await fastify.db.v3.getBitcoinBlockTimes(heights, projectionConfig.paceWindowBlocks),
+    times:
+      heights.length > 0
+        ? await fastify.db.v3.getBitcoinBlockTimes(heights, projectionConfig.paceWindowBlocks)
+        : { confirmed: new Map(), interpolated: new Map(), tip: null, paceWindowStart: null },
     config: projectionConfig,
   });
 
@@ -64,7 +70,10 @@ export const BitcoinBlocksRoutes: FastifyPluginAsync<
           limit: req.query.limit ?? getPagingQueryLimit(ResourceType.BurnBlock),
           cursor: req.query.cursor,
         });
-        const times = await getTimes(results.results.map(r => r.burn_block_height));
+        // Only blocks without a stored header time need one interpolated or projected.
+        const times = await getTimes(
+          results.results.filter(r => r.burn_block_time === null).map(r => r.burn_block_height)
+        );
         const counts = await fastify.db.v3.getBitcoinBlockStacksBlockCounts(results.results);
         return {
           limit: results.limit,
@@ -109,7 +118,7 @@ export const BitcoinBlocksRoutes: FastifyPluginAsync<
         if (block) {
           return serializeBitcoinBlock(
             block,
-            await getTimes([block.burn_block_height]),
+            await getTimes(block.burn_block_time === null ? [block.burn_block_height] : []),
             await fastify.db.v3.getBitcoinBlockStacksBlockCounts([block])
           );
         }
@@ -120,7 +129,7 @@ export const BitcoinBlocksRoutes: FastifyPluginAsync<
           });
           if (tip && blockId.height > tip.burn_block_height) {
             return serializeBitcoinBlock(
-              { burn_block_height: blockId.height, burn_block_hash: null },
+              { burn_block_height: blockId.height, burn_block_hash: null, burn_block_time: null },
               await getTimes([blockId.height]),
               new Map()
             );

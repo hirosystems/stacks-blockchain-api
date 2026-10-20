@@ -512,6 +512,12 @@ export interface DbBitcoinBlockSummary {
   burn_block_hash: string;
 }
 
+/** A Bitcoin block with its stored header time. */
+export interface DbBitcoinBlock extends DbBitcoinBlockSummary {
+  /** Unix seconds, learned from the first Stacks block anchored to it; `null` until then. */
+  burn_block_time: number | null;
+}
+
 /** What the canonical Stacks blocks anchored to a Bitcoin block add up to. */
 export interface DbBitcoinBlockStacksBlockCounts {
   stacks_block_count: number;

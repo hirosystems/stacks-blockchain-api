@@ -37,6 +37,7 @@ import {
   DbSearchAddress,
   DbMempoolSummaryRow,
   DbBitcoinBlockStacksBlockCounts,
+  DbBitcoinBlock,
   DbBitcoinBlockSummary,
   DbBlockDetail,
   DbBlockSummary,
@@ -1096,7 +1097,7 @@ export class PgStoreV3 extends BasePgStoreModule {
   async getBitcoinBlockSummaries(args: {
     limit: number;
     cursor?: BitcoinBlockCursor;
-  }): Promise<DbCursorPaginatedResult<DbBitcoinBlockSummary>> {
+  }): Promise<DbCursorPaginatedResult<DbBitcoinBlock>> {
     return await this.sqlTransaction(async sql => {
       const limit = args.limit;
       const cursorFilter = args.cursor
@@ -1106,8 +1107,8 @@ export class PgStoreV3 extends BasePgStoreModule {
       const totalQuery = await sql<{ total: number }[]>`
         SELECT burn_block_count AS total FROM chain_tip
       `;
-      const resultQuery = await sql<DbBitcoinBlockSummary[]>`
-        SELECT burn_block_height, burn_block_hash
+      const resultQuery = await sql<DbBitcoinBlock[]>`
+        SELECT burn_block_height, burn_block_hash, burn_block_time
         FROM burn_blocks
         WHERE canonical = true
           ${cursorFilter}
@@ -1152,9 +1153,7 @@ export class PgStoreV3 extends BasePgStoreModule {
    * @param args - The arguments for the query.
    * @returns The Bitcoin block summary, or `undefined` if no canonical block matches.
    */
-  async getBitcoinBlockSummary(args: {
-    block: BlockIdParam;
-  }): Promise<DbBitcoinBlockSummary | undefined> {
+  async getBitcoinBlockSummary(args: { block: BlockIdParam }): Promise<DbBitcoinBlock | undefined> {
     const filter =
       args.block.type === 'latest'
         ? this.sql`canonical = true ORDER BY burn_block_height DESC`
@@ -1165,8 +1164,8 @@ export class PgStoreV3 extends BasePgStoreModule {
             : undefined;
     // Bitcoin block times are not stored, so there is nothing to look a timestamp up against.
     if (!filter) return undefined;
-    const result = await this.sql<DbBitcoinBlockSummary[]>`
-      SELECT burn_block_height, burn_block_hash
+    const result = await this.sql<DbBitcoinBlock[]>`
+      SELECT burn_block_height, burn_block_hash, burn_block_time
       FROM burn_blocks
       WHERE ${filter}
       LIMIT 1

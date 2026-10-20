@@ -1927,6 +1927,15 @@ export class PgWriteStore extends PgStore {
       INSERT INTO blocks ${sql(values)}
       ON CONFLICT (index_block_hash) DO NOTHING
     `;
+    if (result.count > 0) {
+      // The node reports a Bitcoin block's header time only on the Stacks blocks anchored to it.
+      // The first one to arrive records it; a Bitcoin block not ingested yet picks it up on insert.
+      await sql`
+        UPDATE burn_blocks
+        SET burn_block_time = ${block.burn_block_time}
+        WHERE burn_block_hash = ${block.burn_block_hash} AND burn_block_time IS NULL
+      `;
+    }
     return result.count;
   }
 
@@ -3483,6 +3492,15 @@ export class PgWriteStore extends PgStore {
             + (SELECT COALESCE(SUM(burn_amount), 0) FROM ins),
           staking_reward_amount = staking_reward_amount
             + (SELECT COALESCE(SUM(reward_amount), 0) FROM ins)
+      `;
+      // A Stacks block anchored to this Bitcoin block may have been ingested first: take the header
+      // time it reported.
+      await sql`
+        UPDATE burn_blocks
+        SET burn_block_time = (
+          SELECT burn_block_time FROM blocks WHERE burn_block_hash = ${burnchainBlockHash} LIMIT 1
+        )
+        WHERE burn_block_hash = ${burnchainBlockHash} AND burn_block_time IS NULL
       `;
     });
   }

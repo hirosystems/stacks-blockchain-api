@@ -6,6 +6,7 @@ import { STACKS_TESTNET } from '@stacks/network';
 import * as assert from 'node:assert/strict';
 import { hex } from '../test-helpers.ts';
 import { TestBlockBuilder } from '../test-builders.ts';
+import { BACKFILL_BURN_BLOCK_TIMES_SQL } from '../../../migrations/1779800000030_burn-blocks-time.ts';
 import { I32_MAX } from '../../../src/helpers.ts';
 
 /** The times of a Bitcoin block the API has learned no time for. */
@@ -450,6 +451,87 @@ describe('v3 bitcoin blocks', () => {
         url: '/extended/v3/bitcoin-blocks/98',
       });
       assert.equal(response.statusCode, 404);
+    });
+  });
+
+  describe('stored header times', () => {
+    async function addStacksBlock(height: number, burnBlockHeight: number, burnBlockTime: number) {
+      await db.update(
+        new TestBlockBuilder({
+          block_height: height,
+          block_hash: hex(0xb000 + height),
+          index_block_hash: hex(height),
+          parent_index_block_hash: hex(height - 1),
+          parent_block_hash: hex(0xb000 + height - 1),
+          burn_block_height: burnBlockHeight,
+          burn_block_hash: hex(0xbb00 + burnBlockHeight),
+          burn_block_time: burnBlockTime,
+        }).build()
+      );
+    }
+
+    const storedTimes = async () =>
+      (
+        await db.sql<{ burn_block_height: number; burn_block_time: number | null }[]>`
+          SELECT burn_block_height, burn_block_time
+          FROM burn_blocks
+          ORDER BY burn_block_height, burn_block_hash
+        `
+      ).map(r => [r.burn_block_height, r.burn_block_time]);
+
+    test('records the time whichever of the two blocks arrives first', async () => {
+      // Bitcoin block first, then its Stacks blocks: the first Stacks block's time sticks.
+      await addBitcoinBlock(100);
+      await addStacksBlock(1, 100, 10_000);
+      await addStacksBlock(2, 100, 10_000);
+      // A Stacks block ahead of its Bitcoin block: the Bitcoin block takes its time on insert.
+      await addStacksBlock(3, 101, 10_600);
+      await addBitcoinBlock(101);
+      // No Stacks block anchored to 102.
+      await addBitcoinBlock(102);
+      assert.deepEqual(await storedTimes(), [
+        [100, 10_000],
+        [101, 10_600],
+        [102, null],
+      ]);
+    });
+
+    test('keeps the recorded time through re-deliveries and forks', async () => {
+      await addBitcoinBlock(100);
+      await addStacksBlock(1, 100, 10_000);
+      // A same-height replacement orphans the Bitcoin block; the time stays with its hash.
+      await addBitcoinBlock(100, hex(0xf100));
+      await addBitcoinBlock(100);
+      // Ordered by hash: the original block (…bb64) before its replacement (…f100).
+      assert.deepEqual(await storedTimes(), [
+        [100, 10_000],
+        [100, null],
+      ]);
+    });
+
+    test('the migration backfills times from the anchored Stacks blocks', async () => {
+      await addBitcoinBlock(100);
+      await addBitcoinBlock(101);
+      await addStacksBlock(1, 100, 10_000);
+      await db.sql`UPDATE burn_blocks SET burn_block_time = NULL`;
+      await db.sql.unsafe(BACKFILL_BURN_BLOCK_TIMES_SQL);
+      assert.deepEqual(await storedTimes(), [
+        [100, 10_000],
+        [101, null],
+      ]);
+    });
+
+    test('a stored time is served even when no canonical Stacks block anchors it', async () => {
+      await addBitcoinBlock(100);
+      await addStacksBlock(1, 100, 10_000);
+      await addBitcoinBlock(101);
+      // The Stacks block anchored to 101 is later orphaned; the header time it reported is still
+      // the Bitcoin block's.
+      await addStacksBlock(2, 101, 10_600);
+      await db.sql`UPDATE blocks SET canonical = false WHERE block_height = 2`;
+      const body = await getJson('/extended/v3/bitcoin-blocks/101');
+      assert.equal(body.time, 10_600);
+      assert.equal(body.projected_time, null);
     });
   });
 
