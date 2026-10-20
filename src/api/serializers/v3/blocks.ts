@@ -15,19 +15,31 @@ import { projectBitcoinBlockTime } from '../../../datastore/bitcoin-block-time.j
 import { ScheduleTimes } from './bitcoin-block-times.js';
 
 /**
+ * A Stacks block's `time` and `time_iso`. Legacy rows recorded no Stacks block time (`0`): those
+ * fall back to the time of the Bitcoin block the block is anchored to, as v1 and v2 do.
+ * @param blockTime - The recorded Stacks block time, in unix seconds.
+ * @param burnBlockTime - The anchor Bitcoin block's time, in unix seconds.
+ * @returns The block time, in unix seconds and as ISO 8601.
+ */
+export function serializeStacksBlockTime(
+  blockTime: number,
+  burnBlockTime: number
+): { time: number; time_iso: string } {
+  const time = blockTime || burnBlockTime;
+  return { time, time_iso: unixEpochToIso(time) };
+}
+
+/**
  * Serializes a database Stacks block summary into a block summary entity.
  * @param block - The database block summary.
  * @returns The serialized block summary.
  */
 export function serializeDbBlockSummary(block: DbBlockSummary): BlockSummary {
-  // Legacy rows recorded no Stacks block time (`0`): fall back to the Bitcoin block's, as v1/v2 do.
-  const time = block.block_time || block.burn_block_time;
   return {
     height: block.block_height,
     hash: block.block_hash,
     index_hash: block.index_block_hash,
-    time,
-    time_iso: unixEpochToIso(time),
+    ...serializeStacksBlockTime(block.block_time, block.burn_block_time),
     // Before Nakamoto (no signer bitvec) every block was its own tenure.
     tenure_height: block.tenure_height ?? (block.signer_bitvec ? null : block.block_height),
     tx_count: block.tx_count,

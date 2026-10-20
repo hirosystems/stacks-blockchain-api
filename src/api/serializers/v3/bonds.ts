@@ -39,6 +39,7 @@ import {
   PrincipalBondPositionStatus,
   PrincipalStakingSummary,
 } from '../../schemas/v3/entities/principal-bond-positions.js';
+import { serializeStacksBlockTime } from './blocks.js';
 
 /** Build the `{ accrued, claimed, claimable }` sBTC reward triple from running totals. */
 function serializeBtcRewards(accrued: string, claimed: string): BtcRewards {
@@ -221,8 +222,7 @@ export function serializeDbBond(
         height: bond.block_height,
         hash: bond.block_hash,
         index_hash: bond.index_block_hash,
-        time: bond.block_time,
-        time_iso: unixEpochToIso(bond.block_time),
+        ...serializeStacksBlockTime(bond.block_time, bond.burn_block_time),
         tx_index: bond.tx_index,
       },
       bitcoin_block: {
@@ -280,8 +280,7 @@ export function serializeDbBondEvent(
       height: event.block_height,
       hash: event.block_hash,
       index_hash: event.index_block_hash,
-      time: event.block_time,
-      time_iso: unixEpochToIso(event.block_time),
+      ...serializeStacksBlockTime(event.block_time, event.burn_block_time),
       tx_index: event.tx_index,
     },
     bitcoin_block: {

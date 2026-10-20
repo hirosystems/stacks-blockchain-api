@@ -107,6 +107,7 @@ export interface DbPrincipalStxTransfer {
   block_height: number;
   block_hash: string;
   block_time: number;
+  burn_block_time: number;
   index_block_hash: string;
   microblock_sequence: number;
   tx_index: number;
@@ -422,6 +423,7 @@ export interface DbPrincipalFtTransfer {
   block_height: number;
   block_hash: string;
   block_time: number;
+  burn_block_time: number;
   index_block_hash: string;
   microblock_sequence: number;
   tx_index: number;
@@ -437,6 +439,7 @@ export interface DbNftHistoryEvent {
   block_height: number;
   block_hash: string;
   block_time: number;
+  burn_block_time: number;
   index_block_hash: string;
   microblock_sequence: number;
   tx_index: number;

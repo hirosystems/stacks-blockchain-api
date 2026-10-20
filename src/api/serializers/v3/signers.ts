@@ -9,6 +9,7 @@ import {
   StakingSigner,
   StakingSignerDetail,
 } from '../../schemas/v3/entities/staking-signers.js';
+import { serializeStacksBlockTime } from './blocks.js';
 
 export function serializeDbStakingSigner(signer: DbStakingSigner): StakingSigner {
   return {
@@ -37,8 +38,7 @@ export function serializeDbStakingSignerDetail(signer: DbStakingSignerDetail): S
         height: signer.block_height,
         hash: signer.block_hash,
         index_hash: signer.index_block_hash,
-        time: signer.block_time,
-        time_iso: unixEpochToIso(signer.block_time),
+        ...serializeStacksBlockTime(signer.block_time, signer.burn_block_time),
         tx_index: signer.tx_index,
       },
       bitcoin_block: {
