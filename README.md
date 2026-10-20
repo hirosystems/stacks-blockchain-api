@@ -27,7 +27,7 @@ A Fastify-based REST API with real-time WebSocket and Socket.IO support for the 
 - **Real-time streaming** — subscribe to blocks, mempool transactions, address activity, STX balance changes, and NFT events via WebSocket (JSON-RPC) or Socket.IO
 - **Client library** — type-safe TypeScript/JS client for REST and real-time APIs ([`@stacks/blockchain-api-client`](client/README.md))
 - **OpenAPI specification** — auto-generated from route definitions; powers Redoc documentation, Postman collections, and the TypeScript client
-- **Stacks node RPC proxy** — transparently proxies requests to the underlying Stacks node's `/v2/*` endpoints, with optional fee estimation
+- **Stacks node RPC proxy** — transparently proxies requests to the underlying Stacks node's `/v2/*` endpoints
 - **Multiple run modes** — default (read-write), read-only, and write-only modes for flexible scaling
 - **Prometheus metrics** — built-in `/metrics` endpoint for monitoring
 - **SNP integration** — Stacks Nakamoto Protocol event streaming via Redis
@@ -138,8 +138,6 @@ A `PG_PRIMARY_*` prefix is available for all PostgreSQL variables to configure a
 |----------|-------------|---------|
 | `STACKS_CORE_PROXY_HOST` | Proxy host (falls back to RPC host) | — |
 | `STACKS_CORE_PROXY_PORT` | Proxy port (falls back to RPC port) | — |
-| `STACKS_CORE_PROXY_BODY_LIMIT` | Proxy body limit (bytes) | `10000000` |
-| `STACKS_CORE_FEE_ESTIMATOR_ENABLED` | Enable fee estimator proxy | `false` |
 
 ### Redis (optional)
 

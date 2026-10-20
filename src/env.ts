@@ -83,11 +83,6 @@ const schema = Type.Object({
    */
   STACKS_API_STORE_RAW_EVENTS: Type.Boolean({ default: true }),
   /**
-   * Configure a path to a file containing additional stacks-node `POST /v2/tranascation` URLs for
-   * the /v2 proxy to mutlicast. The file should be a newline-delimited list of URLs.
-   */
-  STACKS_API_EXTRA_TX_ENDPOINTS_FILE: Type.Optional(Type.String()),
-  /**
    * Master switch for all deprecated API endpoints. Enabled by default. Set to `false` to disable
    * every endpoint marked as deprecated at once; disabled endpoints respond with `410 Gone`.
    * Intended to be flipped at a planned sunset date.
@@ -131,10 +126,6 @@ const schema = Type.Object({
    * `STACKS_CORE_RPC_PORT`.
    */
   STACKS_CORE_PROXY_PORT: Type.Optional(Type.Integer({ minimum: 0, maximum: 65535 })),
-  /**
-   * Stacks core RPC proxy body size limit. Defaults to 10MB.
-   */
-  STACKS_CORE_PROXY_BODY_LIMIT: Type.Integer({ default: 10000000, minimum: 0 }),
   /** Configure the chainID/networkID; testnet: 0x80000000, mainnet: 0x00000001 */
   STACKS_CHAIN_ID: Type.String({ default: '0x80000000' }),
   /**
@@ -161,34 +152,6 @@ const schema = Type.Object({
 
   STACKS_FAUCET_NODE_HOST: Type.Optional(Type.String()),
   STACKS_FAUCET_NODE_PORT: Type.Optional(Type.Integer({ minimum: 0, maximum: 65535 })),
-
-  /**
-   * Enables the enhanced transaction fee estimator that will alter results for
-   * `/v2/fees/transaction`.
-   */
-  STACKS_CORE_FEE_ESTIMATOR_ENABLED: Type.Boolean({ default: false }),
-  /**
-   * Multiplier for all fee estimations returned by Stacks core. Must be between 0.0 and 1.0.
-   */
-  STACKS_CORE_FEE_ESTIMATION_MODIFIER: Type.Number({ default: 1.0, minimum: 0 }),
-  /**
-   * How many past tenures the fee estimator will look at to determine if there is a fee market for
-   * transactions.
-   */
-  STACKS_CORE_FEE_PAST_TENURE_FULLNESS_WINDOW: Type.Integer({ default: 5, minimum: 0 }),
-  /**
-   * Percentage at which past tenure cost dimensions will be considered "full".
-   */
-  STACKS_CORE_FEE_PAST_DIMENSION_FULLNESS_THRESHOLD: Type.Number({ default: 0.9, minimum: 0 }),
-  /**
-   * Percentage at which current cost tenures will be considered "busy" in order to determine if we
-   * should check previous tenures for a fee market.
-   */
-  STACKS_CORE_FEE_CURRENT_DIMENSION_FULLNESS_THRESHOLD: Type.Number({ default: 0.5, minimum: 0 }),
-  /**
-   * Minimum number of blocks the current tenure must have in order to check for "busyness".
-   */
-  STACKS_CORE_FEE_CURRENT_BLOCK_COUNT_MINIMUM: Type.Integer({ default: 5, minimum: 0 }),
 
   /**
    * To avoid running unnecessary mempool stats during transaction influx, we use a debounce
