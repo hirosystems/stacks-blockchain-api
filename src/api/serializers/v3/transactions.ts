@@ -39,6 +39,7 @@ import {
 } from '@stacks/codec';
 import { serializePostCondition, serializePostConditionMode } from './post-conditions.js';
 import { serializeDbMempoolTransaction } from './mempool-transactions.js';
+import { serializeStacksBlockTime } from './blocks.js';
 
 /**
  * Serializes a database transaction summary status into a transaction summary status.
@@ -110,8 +111,7 @@ export function serializeDbTransactionSummary(summary: DbTransactionSummary): Tr
       height: summary.block_height,
       hash: summary.block_hash,
       index_hash: summary.index_block_hash,
-      time: summary.block_time,
-      time_iso: unixEpochToIso(summary.block_time),
+      ...serializeStacksBlockTime(summary.block_time, summary.burn_block_time),
       tx_index: summary.tx_index,
     },
     bitcoin_block: {

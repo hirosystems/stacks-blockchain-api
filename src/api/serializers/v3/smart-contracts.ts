@@ -1,6 +1,7 @@
 import { unixEpochToIso } from '../../../helpers.js';
 import { DbSmartContractDetail } from '../../../datastore/v3/types.js';
 import { SmartContract } from '../../schemas/v3/entities/smart-contracts.js';
+import { serializeStacksBlockTime } from './blocks.js';
 
 /**
  * Serializes a database smart contract into a smart contract response entity. `source_code` is
@@ -18,8 +19,7 @@ export function serializeDbSmartContract(contract: DbSmartContractDetail): Smart
       height: contract.block_height,
       hash: contract.block_hash,
       index_hash: contract.index_block_hash,
-      time: contract.block_time,
-      time_iso: unixEpochToIso(contract.block_time),
+      ...serializeStacksBlockTime(contract.block_time, contract.burn_block_time),
       tx_index: contract.tx_index,
     },
     bitcoin_block: {

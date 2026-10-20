@@ -37,6 +37,8 @@ describe('principal mining', () => {
       parent_index_block_hash: hex(parentId),
       parent_block_hash: hex(parentId),
       block_time: 1_700_000_000 + id,
+      burn_block_height: 100 + id,
+      burn_block_hash: hex(0xbb00 + id),
     });
 
   const get = (url: string, headers: Record<string, string> = {}) =>
@@ -185,6 +187,9 @@ describe('principal mining', () => {
           index_hash: hex(4),
           time: 1_700_000_004,
           time_iso: '2023-11-14T22:13:24.000Z',
+          tenure_height: 4,
+          tx_count: 0,
+          bitcoin_block: { height: 104, hash: hex(0xbb00 + 4) },
         },
         source_block: {
           height: 2,
@@ -192,6 +197,9 @@ describe('principal mining', () => {
           index_hash: hex(2),
           time: 1_700_000_002,
           time_iso: '2023-11-14T22:13:22.000Z',
+          tenure_height: 2,
+          tx_count: 0,
+          bitcoin_block: { height: 102, hash: hex(0xbb00 + 2) },
         },
         coinbase: '1000',
         fees: '0',
@@ -207,6 +215,9 @@ describe('principal mining', () => {
           index_hash: hex(3),
           time: 1_700_000_003,
           time_iso: '2023-11-14T22:13:23.000Z',
+          tenure_height: 3,
+          tx_count: 0,
+          bitcoin_block: { height: 103, hash: hex(0xbb00 + 3) },
         },
         source_block: {
           height: 1,
@@ -214,6 +225,9 @@ describe('principal mining', () => {
           index_hash: hex(1),
           time: 1_700_000_001,
           time_iso: '2023-11-14T22:13:21.000Z',
+          tenure_height: 1,
+          tx_count: 0,
+          bitcoin_block: { height: 101, hash: hex(0xbb00 + 1) },
         },
         coinbase: '0',
         fees: '7',
@@ -229,6 +243,9 @@ describe('principal mining', () => {
           index_hash: hex(3),
           time: 1_700_000_003,
           time_iso: '2023-11-14T22:13:23.000Z',
+          tenure_height: 3,
+          tx_count: 0,
+          bitcoin_block: { height: 103, hash: hex(0xbb00 + 3) },
         },
         source_block: {
           height: 1,
@@ -236,6 +253,9 @@ describe('principal mining', () => {
           index_hash: hex(1),
           time: 1_700_000_001,
           time_iso: '2023-11-14T22:13:21.000Z',
+          tenure_height: 1,
+          tx_count: 0,
+          bitcoin_block: { height: 101, hash: hex(0xbb00 + 1) },
         },
         coinbase: '1000',
         fees: '15',

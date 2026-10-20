@@ -159,6 +159,18 @@ describe('bitcoin block time samples (PgStoreV3.getBitcoinBlockTimes)', () => {
     assert.deepEqual(times.interpolated, new Map([[200, 20_000]]));
   });
 
+  test('the tip stays on the Stacks tip block when a newer Bitcoin block arrives first', async () => {
+    await anchor(100, 10_000);
+    await anchor(200, 20_000);
+    // `/new_burn_block` advances `chain_tip.burn_block_height` before any Stacks block anchors to
+    // the new Bitcoin block.
+    await db.updateBurnChainBlockHeight({ blockHeight: 201 });
+    const times = await db.v3.getBitcoinBlockTimes([150, 201], 100);
+    assert.deepEqual(times.tip, { height: 200, time: 20_000 });
+    assert.deepEqual(times.paceWindowStart, { height: 100, time: 10_000 });
+    assert.deepEqual(times.interpolated, new Map([[150, 15_000]]));
+  });
+
   test('past heights older than any anchored block are not interpolated', async () => {
     await anchor(100, 10_000);
     await anchor(150, 15_000);

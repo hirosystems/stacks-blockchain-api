@@ -1,6 +1,6 @@
-import { unixEpochToIso } from '../../../helpers.js';
 import { NftHistoryEvent } from '../../schemas/v3/entities/nft-events.js';
 import { DbNftHistoryEvent } from '../../../datastore/v3/types.js';
+import { serializeStacksBlockTime } from './blocks.js';
 
 /**
  * Serializes a database NFT event into an NFT history event response entity.
@@ -19,8 +19,7 @@ export function serializeNftHistoryEvent(event: DbNftHistoryEvent): NftHistoryEv
       height: event.block_height,
       hash: event.block_hash,
       index_hash: event.index_block_hash,
-      time: event.block_time,
-      time_iso: unixEpochToIso(event.block_time),
+      ...serializeStacksBlockTime(event.block_time, event.burn_block_time),
       tx_index: event.tx_index,
     },
   };
