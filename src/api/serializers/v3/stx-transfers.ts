@@ -1,4 +1,3 @@
-import { unixEpochToIso } from '../../../helpers.js';
 import { ClarityTypeID, decodeClarityValue, memoToString } from '@stacks/codec';
 import {
   PrincipalStxTransfer,
@@ -6,6 +5,7 @@ import {
 } from '../../schemas/v3/entities/principal-stx-transfers.js';
 import { DbPrincipalStxTransfer } from '../../../datastore/v3/types.js';
 import { Static } from '@sinclair/typebox';
+import { serializeStacksBlockTime } from './blocks.js';
 
 type DecodedMemo = Static<typeof PrincipalStxTransferSchema>['memo'];
 
@@ -54,8 +54,7 @@ export function serializePrincipalStxTransfer(
       height: transfer.block_height,
       hash: transfer.block_hash,
       index_hash: transfer.index_block_hash,
-      time: transfer.block_time,
-      time_iso: unixEpochToIso(transfer.block_time),
+      ...serializeStacksBlockTime(transfer.block_time, transfer.burn_block_time),
       tx_index: transfer.tx_index,
     },
   };

@@ -30,14 +30,14 @@
     "lib"
   ],
   "dependencies": {
-    "eventemitter3": "^4.0.7",
+    "eventemitter3": "^5.0.4",
     "jsonrpc-lite": "^2.2.0",
-    "openapi-fetch": "^0.10.5",
-    "socket.io-client": "^4.8.3"
+    "openapi-fetch": "^0.17.0",
+    "socket.io-client": "^4.8.4"
   },
   "devDependencies": {
-    "@types/node": "24.12.0",
-    "concurrently": "10.0.5",
+    "@types/node": "24.19.2",
+    "concurrently": "10.0.6",
     "cpx": "1.5.0",
     "http-server": "14.1.1",
     "microbundle": "0.15.1",

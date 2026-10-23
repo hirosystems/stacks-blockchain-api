@@ -1,4 +1,5 @@
 import { Static, Type } from '@sinclair/typebox';
+import { I32_MAX } from '../../../../helpers.js';
 
 export const AddressSchema = Type.String({
   pattern: '^[0123456789ABCDEFGHJKMNPQRSTVWXYZ]{28,41}$',
@@ -56,7 +57,14 @@ export const BlockHeightOrHashSchema = Type.Union([
   // Hash must come before height so the AJV union matches a hex string before attempting
   // integer coercion (which would otherwise turn '0x…deadbeef' into 3735928559).
   BlockHashSchema,
-  BlockHeightSchema,
+  // Heights are PostgreSQL `integer` columns: a larger one would fail the comparison with a 500.
+  Type.Integer({
+    title: 'Block height',
+    description: 'Block height',
+    examples: [777678],
+    minimum: 0,
+    maximum: I32_MAX,
+  }),
 ]);
 export type BlockHeightOrHash = Static<typeof BlockHeightOrHashSchema>;
 
@@ -172,10 +180,79 @@ export const BlockSummarySchema = Type.Object(
       description: 'Unix timestamp (in seconds) indicating when this block was mined.',
     }),
     time_iso: TimeIsoSchema,
+    tenure_height: Type.Union([Type.Integer(), Type.Null()], {
+      description:
+        'The tenure height (AKA coinbase height) of this block. Before Nakamoto every block was ' +
+        'its own tenure, so this is the block height. `null` for a Nakamoto block indexed before ' +
+        'tenure heights were recorded.',
+    }),
+    tx_count: Type.Integer({
+      description: 'Number of transactions included in the block',
+    }),
+    bitcoin_block: Type.Object({
+      height: Type.Integer({
+        description: 'Height of the Bitcoin block this block is anchored to',
+      }),
+      hash: Type.String({
+        description: 'Hash of the Bitcoin block this block is anchored to',
+      }),
+    }),
   },
   { title: 'BlockSummary' }
 );
 export type BlockSummary = Static<typeof BlockSummarySchema>;
+
+export const BitcoinBlockSummarySchema = Type.Object(
+  {
+    height: Type.Integer({
+      description: 'Height of the Bitcoin block',
+    }),
+    hash: Type.String({
+      description: 'Hash of the Bitcoin block',
+    }),
+  },
+  { title: 'BitcoinBlockSummary' }
+);
+export type BitcoinBlockSummary = Static<typeof BitcoinBlockSummarySchema>;
+
+/**
+ * A Bitcoin block with its time: the header time (or an interpolated estimate) once known, a
+ * projection until then. A future height has no `hash` yet.
+ */
+export const BitcoinBlockSchema = Type.Object(
+  {
+    height: Type.Integer({
+      description: 'Height of the Bitcoin block',
+    }),
+    hash: Type.Union([Type.String(), Type.Null()], {
+      description: 'Hash of the Bitcoin block; `null` for a future block that has not been mined.',
+    }),
+    time: SchedulePointTimesSchema.properties.time,
+    time_iso: SchedulePointTimesSchema.properties.time_iso,
+    projected_time: Type.Union([Type.Integer(), Type.Null()], {
+      description:
+        'Unix timestamp (in seconds) of when the Bitcoin block is projected to be mined, ' +
+        'extrapolated from the recent Bitcoin block pace (on mainnet, from the pace of the current ' +
+        'difficulty period until its retarget, and the 10-minute target after it). Set for a ' +
+        'future block, and for the newest mined blocks whose time the API has not learned yet ' +
+        '(no Stacks block has anchored to them); `null` whenever `time` is set, and for a block ' +
+        'projected past the end of year 9999.',
+    }),
+    projected_time_iso: SchedulePointTimesSchema.properties.projected_time_iso,
+    stacks_block_count: Type.Integer({
+      description:
+        'Number of canonical Stacks blocks anchored to this Bitcoin block. `0` for a block no ' +
+        'Stacks block anchored to (e.g. a missed sortition), one too new to have any yet, and a ' +
+        'future block.',
+    }),
+    tx_count: Type.Integer({
+      description:
+        'Number of transactions in the canonical Stacks blocks anchored to this Bitcoin block',
+    }),
+  },
+  { title: 'BitcoinBlock' }
+);
+export type BitcoinBlock = Static<typeof BitcoinBlockSchema>;
 
 export const TransactionPositionSchema = Type.Object({
   tx_id: TransactionIdSchema,

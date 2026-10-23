@@ -81,6 +81,7 @@ describe('v3 transactions', () => {
             tx_id: '0x0002',
             tx_index: 0,
             fee_rate: 50n,
+            event_count: 3,
             block_hash: '0x0002',
             index_block_hash: '0x0002',
             block_time: 2000,
@@ -131,6 +132,7 @@ describe('v3 transactions', () => {
         },
         sponsor: null,
         fee_rate: '50',
+        event_count: 3,
         token_transfer: {
           recipient: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
           amount: '100',
@@ -163,6 +165,7 @@ describe('v3 transactions', () => {
         },
         sponsor: null,
         fee_rate: '50',
+        event_count: 0,
         coinbase: {
           alt_recipient: null,
         },

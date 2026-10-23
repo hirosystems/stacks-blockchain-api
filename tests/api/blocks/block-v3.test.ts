@@ -32,6 +32,255 @@ describe('v3 blocks', () => {
     await migrate('down');
   });
 
+  async function seedBlocks(count: number) {
+    for (let height = 1; height <= count; height++) {
+      await db.update(
+        new TestBlockBuilder({
+          block_height: height,
+          block_hash: hex(0xb000 + height),
+          index_block_hash: hex(height),
+          parent_index_block_hash: hex(height - 1),
+          parent_block_hash: hex(0xb000 + height - 1),
+          block_time: 1000 + height,
+          tenure_height: 500 + height,
+          burn_block_height: 100 + height,
+          burn_block_hash: hex(0xbb00 + height),
+          burn_block_time: 2000 + height,
+          tx_total_size: 300 + height,
+          execution_cost_read_count: 10 + height,
+          execution_cost_read_length: 20 + height,
+          execution_cost_runtime: 30 + height,
+          execution_cost_write_count: 40 + height,
+          execution_cost_write_length: 50 + height,
+        }).build()
+      );
+    }
+  }
+
+  describe('/v3/blocks', () => {
+    test('returns an empty page when there are no blocks', async () => {
+      const response = await api.fastifyApp.inject({ method: 'GET', url: '/extended/v3/blocks' });
+      assert.equal(response.statusCode, 200);
+      assert.deepEqual(JSON.parse(response.body), {
+        limit: 20,
+        total: 0,
+        cursor: { next: null, previous: null, current: null },
+        results: [],
+      });
+    });
+
+    test('returns block summaries newest first', async () => {
+      await seedBlocks(3);
+      const response = await api.fastifyApp.inject({ method: 'GET', url: '/extended/v3/blocks' });
+      assert.equal(response.statusCode, 200);
+      const body = JSON.parse(response.body);
+      assert.equal(body.total, 3);
+      assert.deepEqual(body.cursor, { next: null, previous: null, current: '3' });
+      assert.deepEqual(body.results, [
+        {
+          height: 3,
+          hash: hex(0xb003),
+          index_hash: hex(3),
+          time: 1003,
+          time_iso: '1970-01-01T00:16:43.000Z',
+          tenure_height: 503,
+          tx_count: 0,
+          bitcoin_block: { height: 103, hash: hex(0xbb00 + 3) },
+        },
+        {
+          height: 2,
+          hash: hex(0xb002),
+          index_hash: hex(2),
+          time: 1002,
+          time_iso: '1970-01-01T00:16:42.000Z',
+          tenure_height: 502,
+          tx_count: 0,
+          bitcoin_block: { height: 102, hash: hex(0xbb00 + 2) },
+        },
+        {
+          height: 1,
+          hash: hex(0xb001),
+          index_hash: hex(1),
+          time: 1001,
+          time_iso: '1970-01-01T00:16:41.000Z',
+          tenure_height: 501,
+          tx_count: 0,
+          bitcoin_block: { height: 101, hash: hex(0xbb00 + 1) },
+        },
+      ]);
+    });
+
+    test('paginates with cursors', async () => {
+      await seedBlocks(5);
+      const page = async (cursor?: string) => {
+        const response = await api.fastifyApp.inject({
+          method: 'GET',
+          url: `/extended/v3/blocks?limit=2${cursor ? `&cursor=${cursor}` : ''}`,
+        });
+        assert.equal(response.statusCode, 200);
+        return JSON.parse(response.body);
+      };
+
+      const first = await page();
+      assert.equal(first.total, 5);
+      assert.deepEqual(
+        first.results.map((r: { height: number }) => r.height),
+        [5, 4]
+      );
+      assert.deepEqual(first.cursor, { next: '3', previous: null, current: '5' });
+
+      const second = await page(first.cursor.next);
+      assert.deepEqual(
+        second.results.map((r: { height: number }) => r.height),
+        [3, 2]
+      );
+      assert.deepEqual(second.cursor, { next: '1', previous: '5', current: '3' });
+
+      const last = await page(second.cursor.next);
+      assert.deepEqual(
+        last.results.map((r: { height: number }) => r.height),
+        [1]
+      );
+      assert.deepEqual(last.cursor, { next: null, previous: '3', current: '1' });
+
+      const back = await page(last.cursor.previous);
+      assert.deepEqual(back, second);
+    });
+
+    test('rejects invalid cursors', async () => {
+      const malformed = await api.fastifyApp.inject({
+        method: 'GET',
+        url: '/extended/v3/blocks?cursor=abc',
+      });
+      assert.equal(malformed.statusCode, 400);
+
+      const outOfRange = await api.fastifyApp.inject({
+        method: 'GET',
+        url: `/extended/v3/blocks?cursor=${I32_MAX + 1}`,
+      });
+      assert.equal(outOfRange.statusCode, 400);
+    });
+  });
+
+  describe('/v3/blocks/:height_or_hash', () => {
+    test('returns a block by height, hash, index hash, and latest', async () => {
+      await seedBlocks(3);
+      const expected = {
+        height: 2,
+        hash: hex(0xb002),
+        index_hash: hex(2),
+        time: 1002,
+        time_iso: '1970-01-01T00:16:42.000Z',
+        parent_block: { hash: hex(0xb001), index_hash: hex(1) },
+        tenure_height: 502,
+        bitcoin_block: {
+          height: 102,
+          hash: hex(0xbb00 + 2),
+          time: 2002,
+          time_iso: '1970-01-01T00:33:22.000Z',
+        },
+        tx_count: 0,
+        size: 302,
+        execution_cost: {
+          read_count: 12,
+          read_length: 22,
+          runtime: 32,
+          write_count: 42,
+          write_length: 52,
+        },
+      };
+      for (const id of ['2', hex(0xb002), hex(2), hex(2).slice(2)]) {
+        const response = await api.fastifyApp.inject({
+          method: 'GET',
+          url: `/extended/v3/blocks/${id}`,
+        });
+        if (!id.startsWith('0x') && id.length === 64) {
+          // Unprefixed hashes redirect to the prefixed form.
+          assert.equal(response.statusCode, 302);
+          assert.equal(response.headers['location'], `/extended/v3/blocks/0x${id}`);
+          continue;
+        }
+        assert.equal(response.statusCode, 200);
+        assert.deepEqual(JSON.parse(response.body), expected);
+      }
+
+      const latest = await api.fastifyApp.inject({
+        method: 'GET',
+        url: '/extended/v3/blocks/latest',
+      });
+      assert.equal(latest.statusCode, 200);
+      assert.equal(JSON.parse(latest.body).height, 3);
+    });
+
+    test('falls back to the Bitcoin block time for legacy blocks without a block time', async () => {
+      await seedBlocks(2);
+      // Legacy rows recorded no Stacks block time.
+      await db.sql`UPDATE blocks SET block_time = 0 WHERE block_height = 2`;
+      const burnTime = { time: 2002, time_iso: '1970-01-01T00:33:22.000Z' };
+      const pick = (block: { time: number; time_iso: string }) => ({
+        time: block.time,
+        time_iso: block.time_iso,
+      });
+      const detail = await api.fastifyApp.inject({
+        method: 'GET',
+        url: '/extended/v3/blocks/2',
+      });
+      assert.deepEqual(pick(JSON.parse(detail.body)), burnTime);
+      const list = await api.fastifyApp.inject({ method: 'GET', url: '/extended/v3/blocks' });
+      const listed = JSON.parse(list.body).results;
+      assert.deepEqual(pick(listed[0]), burnTime);
+      // Blocks that recorded a time keep it.
+      assert.deepEqual(pick(listed[1]), { time: 1001, time_iso: '1970-01-01T00:16:41.000Z' });
+    });
+
+    test('falls back to the block height as the tenure height before Nakamoto', async () => {
+      await seedBlocks(2);
+      // Block 2 is a Nakamoto block (it has a signer bitvec); neither has a recorded tenure height.
+      await db.sql`UPDATE blocks SET tenure_height = NULL`;
+      await db.sql`UPDATE blocks SET signer_bitvec = '1' WHERE block_height = 2`;
+      const preNakamoto = await api.fastifyApp.inject({
+        method: 'GET',
+        url: '/extended/v3/blocks/1',
+      });
+      assert.equal(JSON.parse(preNakamoto.body).tenure_height, 1);
+      const nakamoto = await api.fastifyApp.inject({
+        method: 'GET',
+        url: '/extended/v3/blocks/2',
+      });
+      assert.equal(JSON.parse(nakamoto.body).tenure_height, null);
+    });
+
+    test('returns 404 for a missing block and 400 for an invalid id', async () => {
+      await seedBlocks(1);
+      const byHeight = await api.fastifyApp.inject({
+        method: 'GET',
+        url: '/extended/v3/blocks/99',
+      });
+      assert.equal(byHeight.statusCode, 404);
+
+      const byHash = await api.fastifyApp.inject({
+        method: 'GET',
+        url: `/extended/v3/blocks/${hex(0xdead)}`,
+      });
+      assert.equal(byHash.statusCode, 404);
+
+      const invalid = await api.fastifyApp.inject({
+        method: 'GET',
+        url: '/extended/v3/blocks/not-a-block',
+      });
+      assert.equal(invalid.statusCode, 400);
+
+      // Heights past the integer column range are rejected rather than failing in postgres.
+      for (const url of [
+        `/extended/v3/blocks/${I32_MAX + 1}`,
+        `/extended/v3/blocks/${I32_MAX + 1}/transactions`,
+      ]) {
+        const outOfRange = await api.fastifyApp.inject({ method: 'GET', url });
+        assert.equal(outOfRange.statusCode, 400, url);
+      }
+    });
+  });
+
   describe('/v3/blocks/:height_or_hash/transactions', () => {
     test('should return 404 for a missing block', async () => {
       const byHeight = await api.fastifyApp.inject({
@@ -118,6 +367,7 @@ describe('v3 blocks', () => {
             burn_block_time: 1000,
             tx_index: 1,
             fee_rate: 75n,
+            event_count: 2,
             type_id: DbTxTypeId.TokenTransfer,
             status: DbTxStatus.Success,
             sender_address: SENDER,
@@ -166,6 +416,7 @@ describe('v3 blocks', () => {
         },
         sponsor: null,
         fee_rate: '75',
+        event_count: 2,
         token_transfer: {
           recipient: RECIPIENT,
           amount: '100',
@@ -198,6 +449,7 @@ describe('v3 blocks', () => {
         },
         sponsor: null,
         fee_rate: '50',
+        event_count: 0,
         coinbase: {
           alt_recipient: null,
         },

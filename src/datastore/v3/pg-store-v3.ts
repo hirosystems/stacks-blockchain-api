@@ -36,12 +36,17 @@ import {
   DbTransactionSummary,
   DbSearchAddress,
   DbMempoolSummaryRow,
-  DbSearchBitcoinBlock,
-  DbSearchBlock,
+  DbBitcoinBlockStacksBlockCounts,
+  DbBitcoinBlock,
+  DbBitcoinBlockSummary,
+  DbBlockDetail,
+  DbBlockSummary,
   DbSearchHit,
   DbSearchTokenAsset,
 } from './types.js';
 import {
+  BLOCK_COLUMNS,
+  BLOCK_SUMMARY_COLUMNS,
   BOND_ALLOWLIST_ENTRY_COLUMNS,
   BOND_COLUMNS,
   BOND_EVENT_COLUMNS,
@@ -81,6 +86,8 @@ import { InvalidRequestError, InvalidRequestErrorType } from '../../errors.js';
 import { TransactionIncludeField } from '../../api/schemas/v3/entities/transactions.js';
 import { SmartContractIncludeField } from '../../api/schemas/v3/entities/smart-contracts.js';
 import type {
+  BitcoinBlockCursor,
+  BlockCursor,
   BondCursor,
   FtBalanceCursor,
   FtHolderCursor,
@@ -99,6 +106,7 @@ import {
   encodeEventPositionCursor,
   encodeTransactionCursor,
   EventPositionCursorRow,
+  parseBlockHeightCursor,
   parseBondLockupTxs,
   parseFtBalanceCursor,
   parseFtHolderCursor,
@@ -450,6 +458,7 @@ export class PgStoreV3 extends BasePgStoreModule {
             se.block_height,
             t.block_hash,
             t.block_time,
+            t.burn_block_time,
             se.index_block_hash,
             se.microblock_sequence,
             se.tx_index,
@@ -989,6 +998,282 @@ export class PgStoreV3 extends BasePgStoreModule {
         prev_cursor: prevCursor,
         current_cursor: currentCursor,
         total: tx_count,
+        results,
+      };
+    });
+  }
+
+  /**
+   * Gets the summaries of canonical Stacks blocks, newest first.
+   * @param args - The arguments for the query.
+   * @returns The block summaries.
+   */
+  async getBlockSummaries(args: {
+    limit: number;
+    cursor?: BlockCursor;
+  }): Promise<DbCursorPaginatedResult<DbBlockSummary>> {
+    return await this.sqlTransaction(async sql => {
+      const limit = args.limit;
+      const cursorFilter = args.cursor
+        ? sql`AND block_height <= ${parseBlockHeightCursor(args.cursor)}`
+        : sql``;
+
+      // Stacks heights are contiguous with one canonical block each, so the materialized block
+      // count is the number of canonical blocks.
+      const totalQuery = await sql<{ total: number }[]>`
+        SELECT block_count AS total FROM chain_tip
+      `;
+      const resultQuery = await sql<DbBlockSummary[]>`
+        SELECT ${sql(BLOCK_SUMMARY_COLUMNS)}
+        FROM blocks
+        WHERE canonical = true
+          ${cursorFilter}
+        ORDER BY block_height DESC
+        LIMIT ${limit + 1}
+      `;
+
+      const hasNextPage = resultQuery.count > limit;
+      const results = hasNextPage ? resultQuery.slice(0, limit) : resultQuery;
+      const firstResult = results[0];
+      const extraResult = hasNextPage ? resultQuery[limit] : null;
+
+      let prevCursor: string | null = null;
+      if (firstResult) {
+        const prevPageQuery = await sql<{ block_height: number }[]>`
+          SELECT block_height
+          FROM blocks
+          WHERE canonical = true
+            AND block_height > ${firstResult.block_height}
+          ORDER BY block_height ASC
+          LIMIT ${limit}
+        `;
+        prevCursor =
+          prevPageQuery.length > 0
+            ? prevPageQuery[prevPageQuery.length - 1].block_height.toString()
+            : null;
+      }
+
+      return {
+        limit,
+        next_cursor: extraResult ? extraResult.block_height.toString() : null,
+        prev_cursor: prevCursor,
+        current_cursor: firstResult ? firstResult.block_height.toString() : null,
+        total: totalQuery[0]?.total ?? 0,
+        results,
+      };
+    });
+  }
+
+  /**
+   * Gets a single canonical Stacks block with its details.
+   * @param args - The arguments for the query.
+   * @returns The block, or `undefined` if no canonical block matches.
+   */
+  async getBlock(args: { block: BlockIdParam }): Promise<DbBlockDetail | undefined> {
+    const filter =
+      args.block.type === 'latest'
+        ? this.sql`canonical = true ORDER BY block_height DESC`
+        : args.block.type === 'hash'
+          ? this.sql`(
+              block_hash = ${normalizeHashString(args.block.hash)}
+              OR index_block_hash = ${normalizeHashString(args.block.hash)}
+            ) AND canonical = true`
+          : args.block.type === 'height'
+            ? this.sql`block_height = ${args.block.height} AND canonical = true`
+            : this.sql`block_time = ${args.block.timestamp} AND canonical = true`;
+    const result = await this.sql<DbBlockDetail[]>`
+      SELECT ${this.sql(BLOCK_COLUMNS)}
+      FROM blocks
+      WHERE ${filter}
+      LIMIT 1
+    `;
+    return result[0];
+  }
+
+  /**
+   * Gets the summaries of canonical Bitcoin blocks, newest first.
+   * @param args - The arguments for the query.
+   * @returns The Bitcoin block summaries.
+   */
+  async getBitcoinBlockSummaries(args: {
+    limit: number;
+    cursor?: BitcoinBlockCursor;
+  }): Promise<DbCursorPaginatedResult<DbBitcoinBlock>> {
+    return await this.sqlTransaction(async sql => {
+      const limit = args.limit;
+      const cursorFilter = args.cursor
+        ? sql`AND burn_block_height <= ${parseBlockHeightCursor(args.cursor)}`
+        : sql``;
+
+      const totalQuery = await sql<{ total: number }[]>`
+        SELECT burn_block_count AS total FROM chain_tip
+      `;
+      const resultQuery = await sql<DbBitcoinBlock[]>`
+        SELECT burn_block_height, burn_block_hash, burn_block_time
+        FROM burn_blocks
+        WHERE canonical = true
+          ${cursorFilter}
+        ORDER BY burn_block_height DESC
+        LIMIT ${limit + 1}
+      `;
+
+      const hasNextPage = resultQuery.count > limit;
+      const results = hasNextPage ? resultQuery.slice(0, limit) : resultQuery;
+      const firstResult = results[0];
+      const extraResult = hasNextPage ? resultQuery[limit] : null;
+
+      let prevCursor: string | null = null;
+      if (firstResult) {
+        const prevPageQuery = await sql<{ burn_block_height: number }[]>`
+          SELECT burn_block_height
+          FROM burn_blocks
+          WHERE canonical = true
+            AND burn_block_height > ${firstResult.burn_block_height}
+          ORDER BY burn_block_height ASC
+          LIMIT ${limit}
+        `;
+        prevCursor =
+          prevPageQuery.length > 0
+            ? prevPageQuery[prevPageQuery.length - 1].burn_block_height.toString()
+            : null;
+      }
+
+      return {
+        limit,
+        next_cursor: extraResult ? extraResult.burn_block_height.toString() : null,
+        prev_cursor: prevCursor,
+        current_cursor: firstResult ? firstResult.burn_block_height.toString() : null,
+        total: totalQuery[0]?.total ?? 0,
+        results,
+      };
+    });
+  }
+
+  /**
+   * Gets the summary of a single canonical Bitcoin block.
+   * @param args - The arguments for the query.
+   * @returns The Bitcoin block summary, or `undefined` if no canonical block matches.
+   */
+  async getBitcoinBlockSummary(args: { block: BlockIdParam }): Promise<DbBitcoinBlock | undefined> {
+    const filter =
+      args.block.type === 'latest'
+        ? this.sql`canonical = true ORDER BY burn_block_height DESC`
+        : args.block.type === 'hash'
+          ? this.sql`burn_block_hash = ${normalizeHashString(args.block.hash)} AND canonical = true`
+          : args.block.type === 'height'
+            ? this.sql`burn_block_height = ${args.block.height} AND canonical = true`
+            : undefined;
+    // Bitcoin block times are not stored, so there is nothing to look a timestamp up against.
+    if (!filter) return undefined;
+    const result = await this.sql<DbBitcoinBlock[]>`
+      SELECT burn_block_height, burn_block_hash, burn_block_time
+      FROM burn_blocks
+      WHERE ${filter}
+      LIMIT 1
+    `;
+    return result[0];
+  }
+
+  /**
+   * Counts the canonical Stacks blocks, and their transactions, anchored to each of a set of
+   * Bitcoin blocks. A single range scan of the `burn_block_height` index over the blocks' heights:
+   * a page of Bitcoin blocks covers a contiguous height range. Matching on the hash too keeps a
+   * Stacks block anchored to an orphaned Bitcoin block at the same height out of the counts.
+   * @param blocks - The Bitcoin blocks.
+   * @returns The counts by Bitcoin block hash; blocks no Stacks block anchored to are absent.
+   */
+  async getBitcoinBlockStacksBlockCounts(
+    blocks: DbBitcoinBlockSummary[]
+  ): Promise<Map<string, DbBitcoinBlockStacksBlockCounts>> {
+    if (blocks.length === 0) return new Map();
+    const heights = blocks.map(b => b.burn_block_height);
+    const result = await this.sql<
+      ({ burn_block_hash: string } & DbBitcoinBlockStacksBlockCounts)[]
+    >`
+      SELECT
+        burn_block_hash,
+        COUNT(*)::int AS stacks_block_count,
+        SUM(tx_count)::int AS tx_count
+      FROM blocks
+      WHERE canonical = true
+        AND burn_block_height BETWEEN ${Math.min(...heights)} AND ${Math.max(...heights)}
+        AND burn_block_hash IN ${this.sql(blocks.map(b => b.burn_block_hash))}
+      GROUP BY burn_block_hash
+    `;
+    return new Map(
+      result.map(r => [
+        r.burn_block_hash,
+        { stacks_block_count: r.stacks_block_count, tx_count: r.tx_count },
+      ])
+    );
+  }
+
+  /**
+   * Gets the summaries of the canonical Stacks blocks confirmed by a canonical Bitcoin block,
+   * newest first.
+   * @param args - The arguments for the query.
+   * @returns The block summaries, or `undefined` if no canonical Bitcoin block matches.
+   */
+  async getBitcoinBlockStacksBlockSummaries(args: {
+    block: BlockIdParam;
+    limit: number;
+    cursor?: BlockCursor;
+  }): Promise<DbCursorPaginatedResult<DbBlockSummary> | undefined> {
+    return await this.sqlTransaction(async sql => {
+      const bitcoinBlock = await this.getBitcoinBlockSummary({ block: args.block });
+      if (!bitcoinBlock) return undefined;
+      const burnBlockHash = bitcoinBlock.burn_block_hash;
+
+      const limit = args.limit;
+      const cursorFilter = args.cursor
+        ? sql`AND block_height <= ${parseBlockHeightCursor(args.cursor)}`
+        : sql``;
+
+      // Bounded by the Stacks blocks of a single Bitcoin block, so a direct count stays cheap.
+      const totalQuery = await sql<{ total: number }[]>`
+        SELECT COUNT(*)::int AS total
+        FROM blocks
+        WHERE canonical = true
+          AND burn_block_hash = ${burnBlockHash}
+      `;
+      const resultQuery = await sql<DbBlockSummary[]>`
+        SELECT ${sql(BLOCK_SUMMARY_COLUMNS)}
+        FROM blocks
+        WHERE canonical = true
+          AND burn_block_hash = ${burnBlockHash}
+          ${cursorFilter}
+        ORDER BY block_height DESC
+        LIMIT ${limit + 1}
+      `;
+
+      const hasNextPage = resultQuery.count > limit;
+      const results = hasNextPage ? resultQuery.slice(0, limit) : resultQuery;
+      const firstResult = results[0];
+      const extraResult = hasNextPage ? resultQuery[limit] : null;
+
+      let prevCursor: string | null = null;
+      if (firstResult) {
+        const prevPageQuery = await sql<{ block_height: number }[]>`
+          SELECT block_height
+          FROM blocks
+          WHERE canonical = true
+            AND burn_block_hash = ${burnBlockHash}
+            AND block_height > ${firstResult.block_height}
+          ORDER BY block_height ASC
+          LIMIT ${limit}
+        `;
+        prevCursor =
+          prevPageQuery.length > 0
+            ? prevPageQuery[prevPageQuery.length - 1].block_height.toString()
+            : null;
+      }
+
+      return {
+        limit,
+        next_cursor: extraResult ? extraResult.block_height.toString() : null,
+        prev_cursor: prevCursor,
+        current_cursor: firstResult ? firstResult.block_height.toString() : null,
+        total: totalQuery[0]?.total ?? 0,
         results,
       };
     });
@@ -2037,10 +2322,22 @@ export class PgStoreV3 extends BasePgStoreModule {
           mb.block_hash AS mature_block_hash,
           r.index_block_hash AS mature_index_block_hash,
           mb.block_time AS mature_block_time,
+          mb.tenure_height AS mature_tenure_height,
+          mb.signer_bitvec AS mature_signer_bitvec,
+          mb.tx_count AS mature_tx_count,
+          mb.burn_block_height AS mature_burn_block_height,
+          mb.burn_block_hash AS mature_burn_block_hash,
+          mb.burn_block_time AS mature_burn_block_time,
           sb.block_height AS source_block_height,
           r.block_hash AS source_block_hash,
           r.from_index_block_hash AS source_index_block_hash,
           sb.block_time AS source_block_time,
+          sb.tenure_height AS source_tenure_height,
+          sb.signer_bitvec AS source_signer_bitvec,
+          sb.tx_count AS source_tx_count,
+          sb.burn_block_height AS source_burn_block_height,
+          sb.burn_block_hash AS source_burn_block_hash,
+          sb.burn_block_time AS source_burn_block_time,
           r.coinbase_amount::text AS coinbase_amount,
           (r.tx_fees_anchored + r.tx_fees_streamed_confirmed + r.tx_fees_streamed_produced)::text
             AS fees_amount
@@ -2246,15 +2543,12 @@ export class PgStoreV3 extends BasePgStoreModule {
     paceWindowBlocks: number
   ): Promise<BitcoinBlockTimes> {
     return await this.sqlTransaction(async sql => {
+      // Read through the tip block itself: `chain_tip.burn_block_height` also advances on
+      // `/new_burn_block`, ahead of any Stacks block anchored to that Bitcoin block.
       const [tip] = await sql<{ height: number; time: number }[]>`
         SELECT b.burn_block_height AS height, b.burn_block_time AS time
         FROM chain_tip t
-        CROSS JOIN LATERAL (
-          SELECT burn_block_height, burn_block_time
-          FROM blocks
-          WHERE canonical = TRUE AND burn_block_height = t.burn_block_height
-          LIMIT 1
-        ) b
+        INNER JOIN blocks b ON b.index_block_hash = t.index_block_hash
       `;
       let paceWindowStart: BitcoinBlockTimeSample | null = null;
       if (tip) {
@@ -3074,6 +3368,7 @@ export class PgStoreV3 extends BasePgStoreModule {
           fe.block_height,
           t.block_hash,
           t.block_time,
+          t.burn_block_time,
           fe.index_block_hash,
           fe.microblock_sequence,
           fe.tx_index,
@@ -3311,8 +3606,8 @@ export class PgStoreV3 extends BasePgStoreModule {
     return await this.sqlTransaction(async sql => {
       if (types.has('block')) {
         if (term.blockHeight !== undefined) {
-          const blocks = await sql<DbSearchBlock[]>`
-            SELECT block_height, block_hash, index_block_hash, block_time
+          const blocks = await sql<DbBlockSummary[]>`
+            SELECT ${sql(BLOCK_SUMMARY_COLUMNS)}
             FROM blocks
             WHERE block_height = ${term.blockHeight} AND canonical = true
             LIMIT 1
@@ -3320,8 +3615,8 @@ export class PgStoreV3 extends BasePgStoreModule {
           exact.push(...blocks.map(result => ({ type: 'block' as const, result })));
         }
         if (term.hash) {
-          const blocks = await sql<DbSearchBlock[]>`
-            SELECT block_height, block_hash, index_block_hash, block_time
+          const blocks = await sql<DbBlockSummary[]>`
+            SELECT ${sql(BLOCK_SUMMARY_COLUMNS)}
             FROM blocks
             WHERE canonical = true
               AND (
@@ -3339,7 +3634,7 @@ export class PgStoreV3 extends BasePgStoreModule {
 
       if (types.has('bitcoin_block')) {
         if (term.blockHeight !== undefined) {
-          const burnBlocks = await sql<DbSearchBitcoinBlock[]>`
+          const burnBlocks = await sql<DbBitcoinBlockSummary[]>`
             SELECT burn_block_height, burn_block_hash
             FROM burn_blocks
             WHERE burn_block_height = ${term.blockHeight} AND canonical = true
@@ -3348,7 +3643,7 @@ export class PgStoreV3 extends BasePgStoreModule {
           exact.push(...burnBlocks.map(result => ({ type: 'bitcoin_block' as const, result })));
         }
         if (term.hash) {
-          const burnBlocks = await sql<DbSearchBitcoinBlock[]>`
+          const burnBlocks = await sql<DbBitcoinBlockSummary[]>`
             SELECT burn_block_height, burn_block_hash
             FROM burn_blocks
             WHERE canonical = true
@@ -3706,6 +4001,7 @@ export class PgStoreV3 extends BasePgStoreModule {
         ne.block_height,
         t.block_hash,
         t.block_time,
+        t.burn_block_time,
         ne.index_block_hash,
         ne.microblock_sequence,
         ne.tx_index,

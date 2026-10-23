@@ -19,3 +19,14 @@ updates:
       interval: "daily"
     # Disable version updates for npm dependencies
     open-pull-requests-limit: 0
+
+  # Maintain the Node.js base image in the Dockerfile (tag + digest)
+  - package-ecosystem: "docker"
+    target-branch: "main"
+    directory: "/"
+    schedule:
+      interval: "daily"
+    ignore:
+      # Node major upgrades are done manually
+      - dependency-name: "node"
+        update-types: ["version-update:semver-major"]

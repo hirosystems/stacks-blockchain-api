@@ -51,11 +51,11 @@ export interface DbTransactionSummary extends DbTxLocation {
   contract_call_function_name: string | null;
   coinbase_alt_recipient: string | null;
   tenure_change_cause: number | null;
+  event_count: number;
 }
 
 export interface DbTransaction extends DbTransactionSummary {
   post_conditions: string;
-  event_count: number;
   execution_cost_read_count: number;
   execution_cost_read_length: number;
   execution_cost_runtime: number;
@@ -107,6 +107,7 @@ export interface DbPrincipalStxTransfer {
   block_height: number;
   block_hash: string;
   block_time: number;
+  burn_block_time: number;
   index_block_hash: string;
   microblock_sequence: number;
   tx_index: number;
@@ -422,6 +423,7 @@ export interface DbPrincipalFtTransfer {
   block_height: number;
   block_hash: string;
   block_time: number;
+  burn_block_time: number;
   index_block_hash: string;
   microblock_sequence: number;
   tx_index: number;
@@ -437,6 +439,7 @@ export interface DbNftHistoryEvent {
   block_height: number;
   block_hash: string;
   block_time: number;
+  burn_block_time: number;
   index_block_hash: string;
   microblock_sequence: number;
   tx_index: number;
@@ -478,18 +481,51 @@ export interface DbSmartContractDetail {
   source_code?: string;
 }
 
-/** A Stacks block matched by a search, reduced to what identifies and locates it. */
-export interface DbSearchBlock {
+/** A Stacks block, reduced to what identifies and locates it. */
+export interface DbBlockSummary {
   block_height: number;
   block_hash: string;
   index_block_hash: string;
   block_time: number;
-}
-
-/** A Bitcoin block matched by a search. */
-export interface DbSearchBitcoinBlock {
+  tenure_height: number | null;
+  /** Set on Nakamoto blocks only; tells pre-Nakamoto blocks apart for `tenure_height`. */
+  signer_bitvec: string | null;
+  tx_count: number;
   burn_block_height: number;
   burn_block_hash: string;
+  /** Also stands in for `block_time` on legacy rows that recorded none (`0`). */
+  burn_block_time: number;
+}
+
+/** A Stacks block with its details. */
+export interface DbBlockDetail extends DbBlockSummary {
+  parent_block_hash: string;
+  parent_index_block_hash: string;
+  tx_total_size: number | null;
+  // BIGINT columns: Postgres returns them as decimal strings.
+  execution_cost_read_count: string;
+  execution_cost_read_length: string;
+  execution_cost_runtime: string;
+  execution_cost_write_count: string;
+  execution_cost_write_length: string;
+}
+
+/** A Bitcoin block, reduced to what identifies it. */
+export interface DbBitcoinBlockSummary {
+  burn_block_height: number;
+  burn_block_hash: string;
+}
+
+/** A Bitcoin block with its stored header time. */
+export interface DbBitcoinBlock extends DbBitcoinBlockSummary {
+  /** Unix seconds, learned from the first Stacks block anchored to it; `null` until then. */
+  burn_block_time: number | null;
+}
+
+/** What the canonical Stacks blocks anchored to a Bitcoin block add up to. */
+export interface DbBitcoinBlockStacksBlockCounts {
+  stacks_block_count: number;
+  tx_count: number;
 }
 
 /** A standard address matched by a search. */
@@ -508,8 +544,8 @@ export interface DbSearchTokenAsset {
  * already ranked, so the API layer only has to serialize them.
  */
 export type DbSearchHit =
-  | { type: 'block'; result: DbSearchBlock }
-  | { type: 'bitcoin_block'; result: DbSearchBitcoinBlock }
+  | { type: 'block'; result: DbBlockSummary }
+  | { type: 'bitcoin_block'; result: DbBitcoinBlockSummary }
   | { type: 'transaction'; result: DbTransactionSummary }
   | { type: 'address'; result: DbSearchAddress }
   | { type: 'smart_contract'; result: DbSmartContractDetail }
@@ -551,10 +587,22 @@ export interface DbPrincipalMinerReward {
   mature_block_hash: string;
   mature_index_block_hash: string;
   mature_block_time: number;
+  mature_tenure_height: number | null;
+  mature_signer_bitvec: string | null;
+  mature_tx_count: number;
+  mature_burn_block_height: number;
+  mature_burn_block_hash: string;
+  mature_burn_block_time: number;
   source_block_height: number;
   source_block_hash: string;
   source_index_block_hash: string;
   source_block_time: number;
+  source_tenure_height: number | null;
+  source_signer_bitvec: string | null;
+  source_tx_count: number;
+  source_burn_block_height: number;
+  source_burn_block_hash: string;
+  source_burn_block_time: number;
   coinbase_amount: string;
   /** Sum of all the reward's transaction fees. */
   fees_amount: string;

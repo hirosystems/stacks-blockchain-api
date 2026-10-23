@@ -39,6 +39,7 @@ import {
 } from '@stacks/codec';
 import { serializePostCondition, serializePostConditionMode } from './post-conditions.js';
 import { serializeDbMempoolTransaction } from './mempool-transactions.js';
+import { serializeStacksBlockTime } from './blocks.js';
 
 /**
  * Serializes a database transaction summary status into a transaction summary status.
@@ -110,8 +111,7 @@ export function serializeDbTransactionSummary(summary: DbTransactionSummary): Tr
       height: summary.block_height,
       hash: summary.block_hash,
       index_hash: summary.index_block_hash,
-      time: summary.block_time,
-      time_iso: unixEpochToIso(summary.block_time),
+      ...serializeStacksBlockTime(summary.block_time, summary.burn_block_time),
       tx_index: summary.tx_index,
     },
     bitcoin_block: {
@@ -120,6 +120,7 @@ export function serializeDbTransactionSummary(summary: DbTransactionSummary): Tr
       time_iso: unixEpochToIso(summary.burn_block_time),
     },
     status: serializeDbTransactionStatus(summary.status),
+    event_count: summary.event_count,
   };
   switch (summary.type_id) {
     case DbTxTypeId.TokenTransfer: {
@@ -241,7 +242,6 @@ export function serializeDbTransaction(
       hash: transaction.parent_block_hash,
       index_hash: transaction.parent_index_block_hash,
     },
-    event_count: transaction.event_count,
     // execution_cost_* arrive as decimal strings from Postgres (BIGINT). Coerce to ints
     // to match the response schema; v1/v2 do the same in `datastore/helpers.ts`.
     execution_cost: {

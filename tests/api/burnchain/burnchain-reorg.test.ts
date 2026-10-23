@@ -1,4 +1,8 @@
-import { DbBurnBlockPoxTx, DbBurnchainReward, DbRewardSlotHolder } from '../../../src/datastore/common.ts';
+import {
+  DbBurnBlockPoxTx,
+  DbBurnchainReward,
+  DbRewardSlotHolder,
+} from '../../../src/datastore/common.ts';
 import { PgWriteStore } from '../../../src/datastore/pg-write-store.ts';
 import { MIGRATIONS_DIR } from '../../../src/datastore/pg-store.ts';
 import { getConnectionArgs } from '../../../src/datastore/connection.ts';
@@ -116,7 +120,12 @@ describe('burnchain re-org handling', () => {
   }
 
   async function rewardRows(): Promise<
-    { burn_block_hash: string; burn_block_height: number; reward_index: number; canonical: boolean }[]
+    {
+      burn_block_hash: string;
+      burn_block_height: number;
+      reward_index: number;
+      canonical: boolean;
+    }[]
   > {
     return await client`
       SELECT burn_block_hash, burn_block_height, reward_index, canonical
@@ -220,17 +229,22 @@ describe('burnchain re-org handling', () => {
     assert.ok(holders.every(h => h.canonical));
 
     const burnBlocks = await burnchainBlockRows();
-    assert.deepEqual([...burnBlocks], [
-      {
-        burn_block_hash: '0xaa01',
-        burn_block_height: 100,
-        burn_amount: '5000',
-        reward_amount: '2000',
-        canonical: true,
-      },
-    ]);
+    assert.deepEqual(
+      [...burnBlocks],
+      [
+        {
+          burn_block_hash: '0xaa01',
+          burn_block_height: 100,
+          burn_amount: '5000',
+          reward_amount: '2000',
+          canonical: true,
+        },
+      ]
+    );
 
-    const poxTxs = await client<{ count: string }[]>`SELECT COUNT(*)::text AS count FROM burn_block_pox_txs`;
+    const poxTxs = await client<
+      { count: string }[]
+    >`SELECT COUNT(*)::text AS count FROM burn_block_pox_txs`;
     assert.equal(poxTxs[0].count, '2');
     assert.equal(await poxTxCount(ADDR_1), 1);
     assert.equal(await poxTxCount(ADDR_2), 1);
@@ -299,22 +313,25 @@ describe('burnchain re-org handling', () => {
     assert.equal(await poxTxCount(ADDR_1), 0);
     // The zero-recipient block still persists its burned amount.
     const burnBlocks = await burnchainBlockRows();
-    assert.deepEqual([...burnBlocks], [
-      {
-        burn_block_hash: '0xaa01',
-        burn_block_height: 100,
-        burn_amount: '0',
-        reward_amount: '1000',
-        canonical: false,
-      },
-      {
-        burn_block_hash: '0xbb01',
-        burn_block_height: 100,
-        burn_amount: '40000',
-        reward_amount: '0',
-        canonical: true,
-      },
-    ]);
+    assert.deepEqual(
+      [...burnBlocks],
+      [
+        {
+          burn_block_hash: '0xaa01',
+          burn_block_height: 100,
+          burn_amount: '0',
+          reward_amount: '1000',
+          canonical: false,
+        },
+        {
+          burn_block_hash: '0xbb01',
+          burn_block_height: 100,
+          burn_amount: '40000',
+          reward_amount: '0',
+          canonical: true,
+        },
+      ]
+    );
   });
 
   test('forking back to a previously orphaned burn block restores it', async () => {
@@ -622,19 +639,36 @@ describe('burnchain re-org handling', () => {
 
   test('burnchain blocks migration backfills burn amounts from raw events', async () => {
     const burnBlocksMigration = '1779800000015_burn-blocks';
+    // Later migrations that alter `burn_blocks`, re-run after it to restore their columns.
+    const burnBlocksFollowUpMigrations = ['1779800000030_burn-blocks-time'];
     // Raw `/new_burn_block` payloads: a fork at height 100 (0xbb01 received last wins by arrival
     // order), a re-delivered duplicate of 0xbb01 (latest payload per hash wins), and a
     // zero-recipient prepare-phase-style block at 101 whose burn amount only exists here.
     const rawEvents = [
-      { hash: '0xaa01', height: 100, burn: 1000, recipients: [] as { recipient: string; amt: number }[] },
-      { hash: '0xbb01', height: 100, burn: 2000, recipients: [
-        { recipient: ADDR_1, amt: 500 },
-        { recipient: ADDR_2, amt: 700 },
-      ] },
-      { hash: '0xbb01', height: 100, burn: 2000, recipients: [
-        { recipient: ADDR_1, amt: 500 },
-        { recipient: ADDR_2, amt: 700 },
-      ] },
+      {
+        hash: '0xaa01',
+        height: 100,
+        burn: 1000,
+        recipients: [] as { recipient: string; amt: number }[],
+      },
+      {
+        hash: '0xbb01',
+        height: 100,
+        burn: 2000,
+        recipients: [
+          { recipient: ADDR_1, amt: 500 },
+          { recipient: ADDR_2, amt: 700 },
+        ],
+      },
+      {
+        hash: '0xbb01',
+        height: 100,
+        burn: 2000,
+        recipients: [
+          { recipient: ADDR_1, amt: 500 },
+          { recipient: ADDR_2, amt: 700 },
+        ],
+      },
       { hash: '0xcc01', height: 101, burn: 30000, recipients: [] },
     ];
     for (const e of rawEvents) {
@@ -728,10 +762,13 @@ describe('burnchain re-org handling', () => {
         burn_block_height: 105,
       }).build()
     );
-    // Re-run only the burn_blocks migration (the delivery above also wrote to the live
+    // Re-run only the burn_blocks migrations (the delivery above also wrote to the live
     // table; drop it so the migration recreates and backfills from scratch).
     await client`DROP TABLE burn_blocks`;
-    await client`DELETE FROM pgmigrations WHERE name = ${burnBlocksMigration}`;
+    await client`
+      DELETE FROM pgmigrations
+      WHERE name IN ${client([burnBlocksMigration, ...burnBlocksFollowUpMigrations])}
+    `;
     await runMigrations(MIGRATIONS_DIR, 'up', getConnectionArgs());
 
     const burnBlocks = await burnchainBlockRows();
