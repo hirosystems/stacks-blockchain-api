@@ -4,7 +4,7 @@ info:
   description: Welcome to the API reference overview for the [Stacks Blockchain
     API](https://docs.hiro.so/stacks-blockchain-api). [Download Postman
     collection](https://hirosystems.github.io/stacks-blockchain-api/collection.json).
-  version: 9.6.0
+  version: 9.7.0
 components:
   schemas: {}
 paths:
@@ -2157,6 +2157,785 @@ paths:
                     type: string
                   message:
                     type: string
+  /extended/v3/bitcoin-blocks:
+    get:
+      operationId: get_bitcoin_blocks
+      summary: Get Bitcoin blocks
+      tags:
+        - Bitcoin Blocks
+      description: Retrieves canonical Bitcoin blocks, newest first. Each block
+        carries its header time once the API has learned it from a Stacks block
+        anchored to it, an interpolated time for a past block no Stacks block
+        anchored to, and a projected time for the newest blocks no Stacks block
+        has anchored to yet.
+      parameters:
+        - schema:
+            minimum: 1
+            default: 20
+            maximum: 30
+            type: integer
+          in: query
+          name: limit
+          required: false
+          description: Number of results per page
+        - schema:
+            pattern: ^[0-9]{1,10}$
+            type: string
+          in: query
+          name: cursor
+          required: false
+          description: "Cursor for paginating Bitcoin blocks (sorted by height,
+            descending). Format: height"
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - total
+                  - limit
+                  - cursor
+                  - results
+                properties:
+                  total:
+                    type: integer
+                    example: 1
+                  limit:
+                    minimum: 1
+                    default: 20
+                    maximum: 30
+                    description: Number of results per page
+                    type: integer
+                  cursor:
+                    type: object
+                    required:
+                      - next
+                      - previous
+                      - current
+                    properties:
+                      next:
+                        anyOf:
+                          - pattern: ^[0-9]{1,10}$
+                            description: "Cursor for paginating Bitcoin blocks (sorted by height,
+                              descending). Format: height"
+                            type: string
+                          - type: "null"
+                      previous:
+                        anyOf:
+                          - pattern: ^[0-9]{1,10}$
+                            description: "Cursor for paginating Bitcoin blocks (sorted by height,
+                              descending). Format: height"
+                            type: string
+                          - type: "null"
+                      current:
+                        anyOf:
+                          - pattern: ^[0-9]{1,10}$
+                            description: "Cursor for paginating Bitcoin blocks (sorted by height,
+                              descending). Format: height"
+                            type: string
+                          - type: "null"
+                  results:
+                    type: array
+                    items:
+                      title: BitcoinBlock
+                      type: object
+                      required:
+                        - height
+                        - hash
+                        - time
+                        - time_iso
+                        - projected_time
+                        - projected_time_iso
+                        - stacks_block_count
+                        - tx_count
+                      properties:
+                        height:
+                          description: Height of the Bitcoin block
+                          type: integer
+                        hash:
+                          description: Hash of the Bitcoin block; `null` for a future block that has not
+                            been mined.
+                          anyOf:
+                            - type: string
+                            - type: "null"
+                        time:
+                          description: "Unix timestamp (in seconds) of when the Bitcoin block was mined,
+                            once it has been. The API learns Bitcoin block times
+                            only from the Stacks blocks anchored to them: for a
+                            block a Stacks block anchored to, this is the time
+                            recorded in its header; for a past block none
+                            anchored to (e.g. a missed sortition), it is an
+                            estimate, interpolated between the nearest anchored
+                            blocks before and after it. `null` for a block that
+                            has not been mined yet, and for a past block older
+                            than any Stacks block."
+                          anyOf:
+                            - type: integer
+                            - type: "null"
+                        time_iso:
+                          description: The `time` as an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) UTC timestamp;
+                            `null` with it.
+                          anyOf:
+                            - type: string
+                            - type: "null"
+                          example: 2026-10-08T19:18:41.000Z
+                        projected_time:
+                          description: Unix timestamp (in seconds) of when the Bitcoin block is projected
+                            to be mined, extrapolated from the recent Bitcoin
+                            block pace (on mainnet, from the pace of the current
+                            difficulty period until its retarget, and the
+                            10-minute target after it). Set for a future block,
+                            and for the newest mined blocks whose time the API
+                            has not learned yet (no Stacks block has anchored to
+                            them); `null` whenever `time` is set, and for a
+                            block projected past the end of year 9999.
+                          anyOf:
+                            - type: integer
+                            - type: "null"
+                        projected_time_iso:
+                          description: The `projected_time` as an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) UTC
+                            timestamp; `null` with it.
+                          anyOf:
+                            - type: string
+                            - type: "null"
+                          example: 2027-03-01T08:30:00.000Z
+                        stacks_block_count:
+                          description: Number of canonical Stacks blocks anchored to this Bitcoin block.
+                            `0` for a block no Stacks block anchored to (e.g. a
+                            missed sortition), one too new to have any yet, and
+                            a future block.
+                          type: integer
+                        tx_count:
+                          description: Number of transactions in the canonical Stacks blocks anchored to
+                            this Bitcoin block
+                          type: integer
+        4XX:
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                title: Error Response
+                additionalProperties: true
+                type: object
+                required:
+                  - error
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+  /extended/v3/bitcoin-blocks/{height_or_hash}:
+    get:
+      operationId: get_bitcoin_block
+      summary: Get Bitcoin block
+      tags:
+        - Bitcoin Blocks
+      description: Retrieves a single canonical Bitcoin block, by height, hash, or
+        `latest`, with its time (see the Bitcoin blocks list). A height above
+        the Bitcoin tip returns the future block with no hash and its projected
+        time.
+      parameters:
+        - schema:
+            anyOf:
+              - type: string
+                enum:
+                  - latest
+              - pattern: ^(0x)?[a-fA-F0-9]{64}$
+                title: Block hash
+                description: Block hash
+                examples:
+                  - "0xdaf79950c5e8bb0c620751333967cdd62297137cdaf79950c5e8bb0c\
+                    62075133"
+                type: string
+              - title: Block height
+                description: Block height
+                examples:
+                  - 777678
+                minimum: 0
+                maximum: 2147483647
+                type: integer
+          in: path
+          name: height_or_hash
+          required: true
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                title: BitcoinBlock
+                type: object
+                required:
+                  - height
+                  - hash
+                  - time
+                  - time_iso
+                  - projected_time
+                  - projected_time_iso
+                  - stacks_block_count
+                  - tx_count
+                properties:
+                  height:
+                    description: Height of the Bitcoin block
+                    type: integer
+                  hash:
+                    description: Hash of the Bitcoin block; `null` for a future block that has not
+                      been mined.
+                    anyOf:
+                      - type: string
+                      - type: "null"
+                  time:
+                    description: "Unix timestamp (in seconds) of when the Bitcoin block was mined,
+                      once it has been. The API learns Bitcoin block times only
+                      from the Stacks blocks anchored to them: for a block a
+                      Stacks block anchored to, this is the time recorded in its
+                      header; for a past block none anchored to (e.g. a missed
+                      sortition), it is an estimate, interpolated between the
+                      nearest anchored blocks before and after it. `null` for a
+                      block that has not been mined yet, and for a past block
+                      older than any Stacks block."
+                    anyOf:
+                      - type: integer
+                      - type: "null"
+                  time_iso:
+                    description: The `time` as an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) UTC timestamp;
+                      `null` with it.
+                    anyOf:
+                      - type: string
+                      - type: "null"
+                    example: 2026-10-08T19:18:41.000Z
+                  projected_time:
+                    description: Unix timestamp (in seconds) of when the Bitcoin block is projected
+                      to be mined, extrapolated from the recent Bitcoin block
+                      pace (on mainnet, from the pace of the current difficulty
+                      period until its retarget, and the 10-minute target after
+                      it). Set for a future block, and for the newest mined
+                      blocks whose time the API has not learned yet (no Stacks
+                      block has anchored to them); `null` whenever `time` is
+                      set, and for a block projected past the end of year 9999.
+                    anyOf:
+                      - type: integer
+                      - type: "null"
+                  projected_time_iso:
+                    description: The `projected_time` as an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) UTC
+                      timestamp; `null` with it.
+                    anyOf:
+                      - type: string
+                      - type: "null"
+                    example: 2027-03-01T08:30:00.000Z
+                  stacks_block_count:
+                    description: Number of canonical Stacks blocks anchored to this Bitcoin block.
+                      `0` for a block no Stacks block anchored to (e.g. a missed
+                      sortition), one too new to have any yet, and a future
+                      block.
+                    type: integer
+                  tx_count:
+                    description: Number of transactions in the canonical Stacks blocks anchored to
+                      this Bitcoin block
+                    type: integer
+        4XX:
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                title: Error Response
+                additionalProperties: true
+                type: object
+                required:
+                  - error
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+  /extended/v3/bitcoin-blocks/{height_or_hash}/blocks:
+    get:
+      operationId: get_bitcoin_block_stacks_blocks
+      summary: Get Bitcoin block Stacks blocks
+      tags:
+        - Bitcoin Blocks
+      description: Retrieves the summaries of the canonical Stacks blocks confirmed by
+        a single canonical Bitcoin block, newest first
+      parameters:
+        - schema:
+            minimum: 1
+            default: 20
+            maximum: 30
+            type: integer
+          in: query
+          name: limit
+          required: false
+          description: Number of results per page
+        - schema:
+            pattern: ^[0-9]{1,10}$
+            type: string
+          in: query
+          name: cursor
+          required: false
+          description: "Cursor for paginating Stacks blocks (sorted by height,
+            descending). Format: height"
+        - schema:
+            anyOf:
+              - type: string
+                enum:
+                  - latest
+              - pattern: ^(0x)?[a-fA-F0-9]{64}$
+                title: Block hash
+                description: Block hash
+                examples:
+                  - "0xdaf79950c5e8bb0c620751333967cdd62297137cdaf79950c5e8bb0c\
+                    62075133"
+                type: string
+              - title: Block height
+                description: Block height
+                examples:
+                  - 777678
+                minimum: 0
+                maximum: 2147483647
+                type: integer
+          in: path
+          name: height_or_hash
+          required: true
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - total
+                  - limit
+                  - cursor
+                  - results
+                properties:
+                  total:
+                    type: integer
+                    example: 1
+                  limit:
+                    minimum: 1
+                    default: 20
+                    maximum: 30
+                    description: Number of results per page
+                    type: integer
+                  cursor:
+                    type: object
+                    required:
+                      - next
+                      - previous
+                      - current
+                    properties:
+                      next:
+                        anyOf:
+                          - pattern: ^[0-9]{1,10}$
+                            description: "Cursor for paginating Stacks blocks (sorted by height,
+                              descending). Format: height"
+                            type: string
+                          - type: "null"
+                      previous:
+                        anyOf:
+                          - pattern: ^[0-9]{1,10}$
+                            description: "Cursor for paginating Stacks blocks (sorted by height,
+                              descending). Format: height"
+                            type: string
+                          - type: "null"
+                      current:
+                        anyOf:
+                          - pattern: ^[0-9]{1,10}$
+                            description: "Cursor for paginating Stacks blocks (sorted by height,
+                              descending). Format: height"
+                            type: string
+                          - type: "null"
+                  results:
+                    type: array
+                    items:
+                      title: BlockSummary
+                      type: object
+                      required:
+                        - height
+                        - hash
+                        - index_hash
+                        - time
+                        - time_iso
+                        - tenure_height
+                        - tx_count
+                        - bitcoin_block
+                      properties:
+                        height:
+                          title: Block height
+                          description: Block height
+                          type: integer
+                          example: 777678
+                        hash:
+                          pattern: ^(0x)?[a-fA-F0-9]{64}$
+                          title: Block hash
+                          description: Block hash
+                          type: string
+                          example: "0xdaf79950c5e8bb0c620751333967cdd62297137cdaf79950c5e8bb0c62075133"
+                        index_hash:
+                          description: Index block hash of the block
+                          type: string
+                        time:
+                          description: Unix timestamp (in seconds) indicating when this block was mined.
+                          type: number
+                        time_iso:
+                          description: The `time` as an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) UTC timestamp.
+                          type: string
+                          example: 2026-10-08T19:18:41.000Z
+                        tenure_height:
+                          description: The tenure height (AKA coinbase height) of this block. Before
+                            Nakamoto every block was its own tenure, so this is
+                            the block height. `null` for a Nakamoto block
+                            indexed before tenure heights were recorded.
+                          anyOf:
+                            - type: integer
+                            - type: "null"
+                        tx_count:
+                          description: Number of transactions included in the block
+                          type: integer
+                        bitcoin_block:
+                          type: object
+                          required:
+                            - height
+                            - hash
+                          properties:
+                            height:
+                              description: Height of the Bitcoin block this block is anchored to
+                              type: integer
+                            hash:
+                              description: Hash of the Bitcoin block this block is anchored to
+                              type: string
+        4XX:
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                title: Error Response
+                additionalProperties: true
+                type: object
+                required:
+                  - error
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+  /extended/v3/blocks:
+    get:
+      operationId: get_stacks_blocks
+      summary: Get blocks
+      tags:
+        - Blocks
+      description: Retrieves the summaries of canonical Stacks blocks, newest first
+      parameters:
+        - schema:
+            minimum: 1
+            default: 20
+            maximum: 30
+            type: integer
+          in: query
+          name: limit
+          required: false
+          description: Number of results per page
+        - schema:
+            pattern: ^[0-9]{1,10}$
+            type: string
+          in: query
+          name: cursor
+          required: false
+          description: "Cursor for paginating Stacks blocks (sorted by height,
+            descending). Format: height"
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - total
+                  - limit
+                  - cursor
+                  - results
+                properties:
+                  total:
+                    type: integer
+                    example: 1
+                  limit:
+                    minimum: 1
+                    default: 20
+                    maximum: 30
+                    description: Number of results per page
+                    type: integer
+                  cursor:
+                    type: object
+                    required:
+                      - next
+                      - previous
+                      - current
+                    properties:
+                      next:
+                        anyOf:
+                          - pattern: ^[0-9]{1,10}$
+                            description: "Cursor for paginating Stacks blocks (sorted by height,
+                              descending). Format: height"
+                            type: string
+                          - type: "null"
+                      previous:
+                        anyOf:
+                          - pattern: ^[0-9]{1,10}$
+                            description: "Cursor for paginating Stacks blocks (sorted by height,
+                              descending). Format: height"
+                            type: string
+                          - type: "null"
+                      current:
+                        anyOf:
+                          - pattern: ^[0-9]{1,10}$
+                            description: "Cursor for paginating Stacks blocks (sorted by height,
+                              descending). Format: height"
+                            type: string
+                          - type: "null"
+                  results:
+                    type: array
+                    items:
+                      title: BlockSummary
+                      type: object
+                      required:
+                        - height
+                        - hash
+                        - index_hash
+                        - time
+                        - time_iso
+                        - tenure_height
+                        - tx_count
+                        - bitcoin_block
+                      properties:
+                        height:
+                          title: Block height
+                          description: Block height
+                          type: integer
+                          example: 777678
+                        hash:
+                          pattern: ^(0x)?[a-fA-F0-9]{64}$
+                          title: Block hash
+                          description: Block hash
+                          type: string
+                          example: "0xdaf79950c5e8bb0c620751333967cdd62297137cdaf79950c5e8bb0c62075133"
+                        index_hash:
+                          description: Index block hash of the block
+                          type: string
+                        time:
+                          description: Unix timestamp (in seconds) indicating when this block was mined.
+                          type: number
+                        time_iso:
+                          description: The `time` as an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) UTC timestamp.
+                          type: string
+                          example: 2026-10-08T19:18:41.000Z
+                        tenure_height:
+                          description: The tenure height (AKA coinbase height) of this block. Before
+                            Nakamoto every block was its own tenure, so this is
+                            the block height. `null` for a Nakamoto block
+                            indexed before tenure heights were recorded.
+                          anyOf:
+                            - type: integer
+                            - type: "null"
+                        tx_count:
+                          description: Number of transactions included in the block
+                          type: integer
+                        bitcoin_block:
+                          type: object
+                          required:
+                            - height
+                            - hash
+                          properties:
+                            height:
+                              description: Height of the Bitcoin block this block is anchored to
+                              type: integer
+                            hash:
+                              description: Hash of the Bitcoin block this block is anchored to
+                              type: string
+        4XX:
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                title: Error Response
+                additionalProperties: true
+                type: object
+                required:
+                  - error
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+  /extended/v3/blocks/{height_or_hash}:
+    get:
+      operationId: get_stacks_block
+      summary: Get block
+      tags:
+        - Blocks
+      description: Retrieves a single canonical Stacks block with its details, by
+        height, block hash, index block hash, or `latest`
+      parameters:
+        - schema:
+            anyOf:
+              - type: string
+                enum:
+                  - latest
+              - pattern: ^(0x)?[a-fA-F0-9]{64}$
+                title: Block hash
+                description: Block hash
+                examples:
+                  - "0xdaf79950c5e8bb0c620751333967cdd62297137cdaf79950c5e8bb0c\
+                    62075133"
+                type: string
+              - title: Block height
+                description: Block height
+                examples:
+                  - 777678
+                minimum: 0
+                maximum: 2147483647
+                type: integer
+          in: path
+          name: height_or_hash
+          required: true
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                title: Block
+                type: object
+                required:
+                  - height
+                  - hash
+                  - index_hash
+                  - time
+                  - time_iso
+                  - tenure_height
+                  - tx_count
+                  - bitcoin_block
+                  - parent_block
+                  - size
+                  - execution_cost
+                properties:
+                  height:
+                    title: Block height
+                    description: Block height
+                    type: integer
+                    example: 777678
+                  hash:
+                    pattern: ^(0x)?[a-fA-F0-9]{64}$
+                    title: Block hash
+                    description: Block hash
+                    type: string
+                    example: "0xdaf79950c5e8bb0c620751333967cdd62297137cdaf79950c5e8bb0c62075133"
+                  index_hash:
+                    description: Index block hash of the block
+                    type: string
+                  time:
+                    description: Unix timestamp (in seconds) indicating when this block was mined.
+                    type: number
+                  time_iso:
+                    description: The `time` as an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) UTC timestamp.
+                    type: string
+                    example: 2026-10-08T19:18:41.000Z
+                  tenure_height:
+                    description: The tenure height (AKA coinbase height) of this block. Before
+                      Nakamoto every block was its own tenure, so this is the
+                      block height. `null` for a Nakamoto block indexed before
+                      tenure heights were recorded.
+                    anyOf:
+                      - type: integer
+                      - type: "null"
+                  tx_count:
+                    description: Number of transactions included in the block
+                    type: integer
+                  bitcoin_block:
+                    type: object
+                    required:
+                      - height
+                      - hash
+                      - time
+                      - time_iso
+                    properties:
+                      height:
+                        description: Height of the Bitcoin block this block is anchored to
+                        type: integer
+                      hash:
+                        description: Hash of the Bitcoin block this block is anchored to
+                        type: string
+                      time:
+                        description: Unix timestamp (in seconds) of the Bitcoin block header.
+                        type: integer
+                      time_iso:
+                        description: The `time` as an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) UTC timestamp.
+                        type: string
+                        example: 2026-10-08T19:18:41.000Z
+                  parent_block:
+                    type: object
+                    required:
+                      - hash
+                      - index_hash
+                    properties:
+                      hash:
+                        pattern: ^(0x)?[a-fA-F0-9]{64}$
+                        title: Block hash
+                        description: Block hash
+                        type: string
+                        example: "0xdaf79950c5e8bb0c620751333967cdd62297137cdaf79950c5e8bb0c62075133"
+                      index_hash:
+                        description: Index block hash of the parent block
+                        type: string
+                  size:
+                    anyOf:
+                      - description: Total size of the transactions in the block, in bytes. `null` for a
+                          block indexed before sizes were recorded.
+                        type: integer
+                      - type: "null"
+                  execution_cost:
+                    type: object
+                    required:
+                      - read_count
+                      - read_length
+                      - runtime
+                      - write_count
+                      - write_length
+                    properties:
+                      read_count:
+                        description: Number of reads in the transaction
+                        type: integer
+                      read_length:
+                        description: Length of reads in the transaction
+                        type: integer
+                      runtime:
+                        description: Runtime of the transaction
+                        type: integer
+                      write_count:
+                        description: Number of writes in the transaction
+                        type: integer
+                      write_length:
+                        description: Length of writes in the transaction
+                        type: integer
+        4XX:
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                title: Error Response
+                additionalProperties: true
+                type: object
+                required:
+                  - error
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
   /extended/v3/blocks/{height_or_hash}/transactions:
     get:
       operationId: get_block_transactions
@@ -2198,6 +2977,8 @@ paths:
                 description: Block height
                 examples:
                   - 777678
+                minimum: 0
+                maximum: 2147483647
                 type: integer
           in: path
           name: height_or_hash
@@ -2267,6 +3048,7 @@ paths:
                             - block
                             - bitcoin_block
                             - status
+                            - event_count
                             - type
                             - token_transfer
                           properties:
@@ -2366,6 +3148,9 @@ paths:
                                 - type: string
                                   enum:
                                     - problematic_skipped
+                            event_count:
+                              description: Number of events in the transaction
+                              type: integer
                             type:
                               type: string
                               enum:
@@ -2405,6 +3190,7 @@ paths:
                             - block
                             - bitcoin_block
                             - status
+                            - event_count
                             - type
                             - smart_contract
                           properties:
@@ -2504,6 +3290,9 @@ paths:
                                 - type: string
                                   enum:
                                     - problematic_skipped
+                            event_count:
+                              description: Number of events in the transaction
+                              type: integer
                             type:
                               type: string
                               enum:
@@ -2542,6 +3331,7 @@ paths:
                             - block
                             - bitcoin_block
                             - status
+                            - event_count
                             - type
                             - contract_call
                           properties:
@@ -2641,6 +3431,9 @@ paths:
                                 - type: string
                                   enum:
                                     - problematic_skipped
+                            event_count:
+                              description: Number of events in the transaction
+                              type: integer
                             type:
                               type: string
                               enum:
@@ -2669,6 +3462,7 @@ paths:
                             - block
                             - bitcoin_block
                             - status
+                            - event_count
                             - type
                           properties:
                             tx_id:
@@ -2767,6 +3561,9 @@ paths:
                                 - type: string
                                   enum:
                                     - problematic_skipped
+                            event_count:
+                              description: Number of events in the transaction
+                              type: integer
                             type:
                               type: string
                               enum:
@@ -2782,6 +3579,7 @@ paths:
                             - block
                             - bitcoin_block
                             - status
+                            - event_count
                             - type
                             - coinbase
                           properties:
@@ -2881,6 +3679,9 @@ paths:
                                 - type: string
                                   enum:
                                     - problematic_skipped
+                            event_count:
+                              description: Number of events in the transaction
+                              type: integer
                             type:
                               type: string
                               enum:
@@ -2911,6 +3712,7 @@ paths:
                             - block
                             - bitcoin_block
                             - status
+                            - event_count
                             - type
                             - tenure_change
                           properties:
@@ -3010,6 +3812,9 @@ paths:
                                 - type: string
                                   enum:
                                     - problematic_skipped
+                            event_count:
+                              description: Number of events in the transaction
+                              type: integer
                             type:
                               type: string
                               enum:
@@ -4867,6 +5672,7 @@ paths:
                                 - block
                                 - bitcoin_block
                                 - status
+                                - event_count
                                 - type
                                 - token_transfer
                               properties:
@@ -4966,6 +5772,9 @@ paths:
                                     - type: string
                                       enum:
                                         - problematic_skipped
+                                event_count:
+                                  description: Number of events in the transaction
+                                  type: integer
                                 type:
                                   type: string
                                   enum:
@@ -5005,6 +5814,7 @@ paths:
                                 - block
                                 - bitcoin_block
                                 - status
+                                - event_count
                                 - type
                                 - smart_contract
                               properties:
@@ -5104,6 +5914,9 @@ paths:
                                     - type: string
                                       enum:
                                         - problematic_skipped
+                                event_count:
+                                  description: Number of events in the transaction
+                                  type: integer
                                 type:
                                   type: string
                                   enum:
@@ -5142,6 +5955,7 @@ paths:
                                 - block
                                 - bitcoin_block
                                 - status
+                                - event_count
                                 - type
                                 - contract_call
                               properties:
@@ -5241,6 +6055,9 @@ paths:
                                     - type: string
                                       enum:
                                         - problematic_skipped
+                                event_count:
+                                  description: Number of events in the transaction
+                                  type: integer
                                 type:
                                   type: string
                                   enum:
@@ -5269,6 +6086,7 @@ paths:
                                 - block
                                 - bitcoin_block
                                 - status
+                                - event_count
                                 - type
                               properties:
                                 tx_id:
@@ -5367,6 +6185,9 @@ paths:
                                     - type: string
                                       enum:
                                         - problematic_skipped
+                                event_count:
+                                  description: Number of events in the transaction
+                                  type: integer
                                 type:
                                   type: string
                                   enum:
@@ -5382,6 +6203,7 @@ paths:
                                 - block
                                 - bitcoin_block
                                 - status
+                                - event_count
                                 - type
                                 - coinbase
                               properties:
@@ -5481,6 +6303,9 @@ paths:
                                     - type: string
                                       enum:
                                         - problematic_skipped
+                                event_count:
+                                  description: Number of events in the transaction
+                                  type: integer
                                 type:
                                   type: string
                                   enum:
@@ -5511,6 +6336,7 @@ paths:
                                 - block
                                 - bitcoin_block
                                 - status
+                                - event_count
                                 - type
                                 - tenure_change
                               properties:
@@ -5610,6 +6436,9 @@ paths:
                                     - type: string
                                       enum:
                                         - problematic_skipped
+                                event_count:
+                                  description: Number of events in the transaction
+                                  type: integer
                                 type:
                                   type: string
                                   enum:
@@ -7328,6 +8157,9 @@ paths:
                             - index_hash
                             - time
                             - time_iso
+                            - tenure_height
+                            - tx_count
+                            - bitcoin_block
                           properties:
                             height:
                               title: Block height
@@ -7350,6 +8182,29 @@ paths:
                               description: The `time` as an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) UTC timestamp.
                               type: string
                               example: 2026-10-08T19:18:41.000Z
+                            tenure_height:
+                              description: The tenure height (AKA coinbase height) of this block. Before
+                                Nakamoto every block was its own tenure, so this
+                                is the block height. `null` for a Nakamoto block
+                                indexed before tenure heights were recorded.
+                              anyOf:
+                                - type: integer
+                                - type: "null"
+                            tx_count:
+                              description: Number of transactions included in the block
+                              type: integer
+                            bitcoin_block:
+                              type: object
+                              required:
+                                - height
+                                - hash
+                              properties:
+                                height:
+                                  description: Height of the Bitcoin block this block is anchored to
+                                  type: integer
+                                hash:
+                                  description: Hash of the Bitcoin block this block is anchored to
+                                  type: string
                         source_block:
                           title: BlockSummary
                           type: object
@@ -7359,6 +8214,9 @@ paths:
                             - index_hash
                             - time
                             - time_iso
+                            - tenure_height
+                            - tx_count
+                            - bitcoin_block
                           properties:
                             height:
                               title: Block height
@@ -7381,6 +8239,29 @@ paths:
                               description: The `time` as an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) UTC timestamp.
                               type: string
                               example: 2026-10-08T19:18:41.000Z
+                            tenure_height:
+                              description: The tenure height (AKA coinbase height) of this block. Before
+                                Nakamoto every block was its own tenure, so this
+                                is the block height. `null` for a Nakamoto block
+                                indexed before tenure heights were recorded.
+                              anyOf:
+                                - type: integer
+                                - type: "null"
+                            tx_count:
+                              description: Number of transactions included in the block
+                              type: integer
+                            bitcoin_block:
+                              type: object
+                              required:
+                                - height
+                                - hash
+                              properties:
+                                height:
+                                  description: Height of the Bitcoin block this block is anchored to
+                                  type: integer
+                                hash:
+                                  description: Hash of the Bitcoin block this block is anchored to
+                                  type: string
                         coinbase:
                           pattern: ^[0-9]+$
                           title: Amount
@@ -8732,6 +9613,9 @@ paths:
                                 - index_hash
                                 - time
                                 - time_iso
+                                - tenure_height
+                                - tx_count
+                                - bitcoin_block
                               properties:
                                 height:
                                   title: Block height
@@ -8758,6 +9642,30 @@ paths:
                                   examples:
                                     - 2026-10-08T19:18:41.000Z
                                   type: string
+                                tenure_height:
+                                  description: The tenure height (AKA coinbase height) of this block. Before
+                                    Nakamoto every block was its own tenure, so
+                                    this is the block height. `null` for a
+                                    Nakamoto block indexed before tenure heights
+                                    were recorded.
+                                  anyOf:
+                                    - type: integer
+                                    - type: "null"
+                                tx_count:
+                                  description: Number of transactions included in the block
+                                  type: integer
+                                bitcoin_block:
+                                  type: object
+                                  required:
+                                    - height
+                                    - hash
+                                  properties:
+                                    height:
+                                      description: Height of the Bitcoin block this block is anchored to
+                                      type: integer
+                                    hash:
+                                      description: Hash of the Bitcoin block this block is anchored to
+                                      type: string
                         - title: BitcoinBlockSearchResult
                           type: object
                           required:
@@ -8804,6 +9712,7 @@ paths:
                                     - block
                                     - bitcoin_block
                                     - status
+                                    - event_count
                                     - type
                                     - token_transfer
                                   properties:
@@ -8903,6 +9812,9 @@ paths:
                                         - type: string
                                           enum:
                                             - problematic_skipped
+                                    event_count:
+                                      description: Number of events in the transaction
+                                      type: integer
                                     type:
                                       type: string
                                       enum:
@@ -8942,6 +9854,7 @@ paths:
                                     - block
                                     - bitcoin_block
                                     - status
+                                    - event_count
                                     - type
                                     - smart_contract
                                   properties:
@@ -9041,6 +9954,9 @@ paths:
                                         - type: string
                                           enum:
                                             - problematic_skipped
+                                    event_count:
+                                      description: Number of events in the transaction
+                                      type: integer
                                     type:
                                       type: string
                                       enum:
@@ -9081,6 +9997,7 @@ paths:
                                     - block
                                     - bitcoin_block
                                     - status
+                                    - event_count
                                     - type
                                     - contract_call
                                   properties:
@@ -9180,6 +10097,9 @@ paths:
                                         - type: string
                                           enum:
                                             - problematic_skipped
+                                    event_count:
+                                      description: Number of events in the transaction
+                                      type: integer
                                     type:
                                       type: string
                                       enum:
@@ -9208,6 +10128,7 @@ paths:
                                     - block
                                     - bitcoin_block
                                     - status
+                                    - event_count
                                     - type
                                   properties:
                                     tx_id:
@@ -9306,6 +10227,9 @@ paths:
                                         - type: string
                                           enum:
                                             - problematic_skipped
+                                    event_count:
+                                      description: Number of events in the transaction
+                                      type: integer
                                     type:
                                       type: string
                                       enum:
@@ -9321,6 +10245,7 @@ paths:
                                     - block
                                     - bitcoin_block
                                     - status
+                                    - event_count
                                     - type
                                     - coinbase
                                   properties:
@@ -9420,6 +10345,9 @@ paths:
                                         - type: string
                                           enum:
                                             - problematic_skipped
+                                    event_count:
+                                      description: Number of events in the transaction
+                                      type: integer
                                     type:
                                       type: string
                                       enum:
@@ -9451,6 +10379,7 @@ paths:
                                     - block
                                     - bitcoin_block
                                     - status
+                                    - event_count
                                     - type
                                     - tenure_change
                                   properties:
@@ -9550,6 +10479,9 @@ paths:
                                         - type: string
                                           enum:
                                             - problematic_skipped
+                                    event_count:
+                                      description: Number of events in the transaction
+                                      type: integer
                                     type:
                                       type: string
                                       enum:
@@ -14515,6 +15447,7 @@ paths:
                             - block
                             - bitcoin_block
                             - status
+                            - event_count
                             - type
                             - token_transfer
                           properties:
@@ -14614,6 +15547,9 @@ paths:
                                 - type: string
                                   enum:
                                     - problematic_skipped
+                            event_count:
+                              description: Number of events in the transaction
+                              type: integer
                             type:
                               type: string
                               enum:
@@ -14653,6 +15589,7 @@ paths:
                             - block
                             - bitcoin_block
                             - status
+                            - event_count
                             - type
                             - smart_contract
                           properties:
@@ -14752,6 +15689,9 @@ paths:
                                 - type: string
                                   enum:
                                     - problematic_skipped
+                            event_count:
+                              description: Number of events in the transaction
+                              type: integer
                             type:
                               type: string
                               enum:
@@ -14790,6 +15730,7 @@ paths:
                             - block
                             - bitcoin_block
                             - status
+                            - event_count
                             - type
                             - contract_call
                           properties:
@@ -14889,6 +15830,9 @@ paths:
                                 - type: string
                                   enum:
                                     - problematic_skipped
+                            event_count:
+                              description: Number of events in the transaction
+                              type: integer
                             type:
                               type: string
                               enum:
@@ -14917,6 +15861,7 @@ paths:
                             - block
                             - bitcoin_block
                             - status
+                            - event_count
                             - type
                           properties:
                             tx_id:
@@ -15015,6 +15960,9 @@ paths:
                                 - type: string
                                   enum:
                                     - problematic_skipped
+                            event_count:
+                              description: Number of events in the transaction
+                              type: integer
                             type:
                               type: string
                               enum:
@@ -15030,6 +15978,7 @@ paths:
                             - block
                             - bitcoin_block
                             - status
+                            - event_count
                             - type
                             - coinbase
                           properties:
@@ -15129,6 +16078,9 @@ paths:
                                 - type: string
                                   enum:
                                     - problematic_skipped
+                            event_count:
+                              description: Number of events in the transaction
+                              type: integer
                             type:
                               type: string
                               enum:
@@ -15159,6 +16111,7 @@ paths:
                             - block
                             - bitcoin_block
                             - status
+                            - event_count
                             - type
                             - tenure_change
                           properties:
@@ -15258,6 +16211,9 @@ paths:
                                 - type: string
                                   enum:
                                     - problematic_skipped
+                            event_count:
+                              description: Number of events in the transaction
+                              type: integer
                             type:
                               type: string
                               enum:
@@ -15370,6 +16326,7 @@ paths:
                             - block
                             - bitcoin_block
                             - status
+                            - event_count
                             - type
                             - token_transfer
                           properties:
@@ -15469,6 +16426,9 @@ paths:
                                 - type: string
                                   enum:
                                     - problematic_skipped
+                            event_count:
+                              description: Number of events in the transaction
+                              type: integer
                             type:
                               type: string
                               enum:
@@ -15508,6 +16468,7 @@ paths:
                             - block
                             - bitcoin_block
                             - status
+                            - event_count
                             - type
                             - smart_contract
                           properties:
@@ -15607,6 +16568,9 @@ paths:
                                 - type: string
                                   enum:
                                     - problematic_skipped
+                            event_count:
+                              description: Number of events in the transaction
+                              type: integer
                             type:
                               type: string
                               enum:
@@ -15645,6 +16609,7 @@ paths:
                             - block
                             - bitcoin_block
                             - status
+                            - event_count
                             - type
                             - contract_call
                           properties:
@@ -15744,6 +16709,9 @@ paths:
                                 - type: string
                                   enum:
                                     - problematic_skipped
+                            event_count:
+                              description: Number of events in the transaction
+                              type: integer
                             type:
                               type: string
                               enum:
@@ -15772,6 +16740,7 @@ paths:
                             - block
                             - bitcoin_block
                             - status
+                            - event_count
                             - type
                           properties:
                             tx_id:
@@ -15870,6 +16839,9 @@ paths:
                                 - type: string
                                   enum:
                                     - problematic_skipped
+                            event_count:
+                              description: Number of events in the transaction
+                              type: integer
                             type:
                               type: string
                               enum:
@@ -15885,6 +16857,7 @@ paths:
                             - block
                             - bitcoin_block
                             - status
+                            - event_count
                             - type
                             - coinbase
                           properties:
@@ -15984,6 +16957,9 @@ paths:
                                 - type: string
                                   enum:
                                     - problematic_skipped
+                            event_count:
+                              description: Number of events in the transaction
+                              type: integer
                             type:
                               type: string
                               enum:
@@ -16014,6 +16990,7 @@ paths:
                             - block
                             - bitcoin_block
                             - status
+                            - event_count
                             - type
                             - tenure_change
                           properties:
@@ -16113,6 +17090,9 @@ paths:
                                 - type: string
                                   enum:
                                     - problematic_skipped
+                            event_count:
+                              description: Number of events in the transaction
+                              type: integer
                             type:
                               type: string
                               enum:
@@ -16221,8 +17201,8 @@ paths:
                           - block
                           - bitcoin_block
                           - status
-                          - parent_block
                           - event_count
+                          - parent_block
                           - execution_cost
                           - vm_error
                           - type
@@ -16324,6 +17304,9 @@ paths:
                               - type: string
                                 enum:
                                   - problematic_skipped
+                          event_count:
+                            description: Number of events in the transaction
+                            type: integer
                           parent_block:
                             type: object
                             required:
@@ -16701,9 +17684,6 @@ paths:
                                       type: string
                                       enum:
                                         - pox
-                          event_count:
-                            description: Number of events in the transaction
-                            type: integer
                           execution_cost:
                             type: object
                             required:
@@ -16781,8 +17761,8 @@ paths:
                           - block
                           - bitcoin_block
                           - status
-                          - parent_block
                           - event_count
+                          - parent_block
                           - execution_cost
                           - vm_error
                           - type
@@ -16884,6 +17864,9 @@ paths:
                               - type: string
                                 enum:
                                   - problematic_skipped
+                          event_count:
+                            description: Number of events in the transaction
+                            type: integer
                           parent_block:
                             type: object
                             required:
@@ -17261,9 +18244,6 @@ paths:
                                       type: string
                                       enum:
                                         - pox
-                          event_count:
-                            description: Number of events in the transaction
-                            type: integer
                           execution_cost:
                             type: object
                             required:
@@ -17334,8 +18314,8 @@ paths:
                           - block
                           - bitcoin_block
                           - status
-                          - parent_block
                           - event_count
+                          - parent_block
                           - execution_cost
                           - vm_error
                           - type
@@ -17437,6 +18417,9 @@ paths:
                               - type: string
                                 enum:
                                   - problematic_skipped
+                          event_count:
+                            description: Number of events in the transaction
+                            type: integer
                           parent_block:
                             type: object
                             required:
@@ -17814,9 +18797,6 @@ paths:
                                       type: string
                                       enum:
                                         - pox
-                          event_count:
-                            description: Number of events in the transaction
-                            type: integer
                           execution_cost:
                             type: object
                             required:
@@ -17896,8 +18876,8 @@ paths:
                           - block
                           - bitcoin_block
                           - status
-                          - parent_block
                           - event_count
+                          - parent_block
                           - execution_cost
                           - vm_error
                           - type
@@ -17998,6 +18978,9 @@ paths:
                               - type: string
                                 enum:
                                   - problematic_skipped
+                          event_count:
+                            description: Number of events in the transaction
+                            type: integer
                           parent_block:
                             type: object
                             required:
@@ -18375,9 +19358,6 @@ paths:
                                       type: string
                                       enum:
                                         - pox
-                          event_count:
-                            description: Number of events in the transaction
-                            type: integer
                           execution_cost:
                             type: object
                             required:
@@ -18430,8 +19410,8 @@ paths:
                           - block
                           - bitcoin_block
                           - status
-                          - parent_block
                           - event_count
+                          - parent_block
                           - execution_cost
                           - vm_error
                           - type
@@ -18533,6 +19513,9 @@ paths:
                               - type: string
                                 enum:
                                   - problematic_skipped
+                          event_count:
+                            description: Number of events in the transaction
+                            type: integer
                           parent_block:
                             type: object
                             required:
@@ -18910,9 +19893,6 @@ paths:
                                       type: string
                                       enum:
                                         - pox
-                          event_count:
-                            description: Number of events in the transaction
-                            type: integer
                           execution_cost:
                             type: object
                             required:
@@ -19022,8 +20002,8 @@ paths:
                           - block
                           - bitcoin_block
                           - status
-                          - parent_block
                           - event_count
+                          - parent_block
                           - execution_cost
                           - vm_error
                           - type
@@ -19125,6 +20105,9 @@ paths:
                               - type: string
                                 enum:
                                   - problematic_skipped
+                          event_count:
+                            description: Number of events in the transaction
+                            type: integer
                           parent_block:
                             type: object
                             required:
@@ -19502,9 +20485,6 @@ paths:
                                       type: string
                                       enum:
                                         - pox
-                          event_count:
-                            description: Number of events in the transaction
-                            type: integer
                           execution_cost:
                             type: object
                             required:
