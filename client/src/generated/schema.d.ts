@@ -1721,6 +1721,106 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/extended/v3/bitcoin-blocks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Bitcoin blocks
+         * @description Retrieves canonical Bitcoin blocks, newest first. Each block carries its header time once the API has learned it from a Stacks block anchored to it, an interpolated time for a past block no Stacks block anchored to, and a projected time for the newest blocks no Stacks block has anchored to yet.
+         */
+        get: operations["get_bitcoin_blocks"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/extended/v3/bitcoin-blocks/{height_or_hash}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Bitcoin block
+         * @description Retrieves a single canonical Bitcoin block, by height, hash, or `latest`, with its time (see the Bitcoin blocks list). A height above the Bitcoin tip returns the future block with no hash and its projected time.
+         */
+        get: operations["get_bitcoin_block"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/extended/v3/bitcoin-blocks/{height_or_hash}/blocks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Bitcoin block Stacks blocks
+         * @description Retrieves the summaries of the canonical Stacks blocks confirmed by a single canonical Bitcoin block, newest first
+         */
+        get: operations["get_bitcoin_block_stacks_blocks"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/extended/v3/blocks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get blocks
+         * @description Retrieves the summaries of canonical Stacks blocks, newest first
+         */
+        get: operations["get_stacks_blocks"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/extended/v3/blocks/{height_or_hash}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get block
+         * @description Retrieves a single canonical Stacks block with its details, by height, block hash, index block hash, or `latest`
+         */
+        get: operations["get_stacks_block"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/extended/v3/blocks/{height_or_hash}/transactions": {
         parameters: {
             query?: never;
@@ -35529,6 +35629,411 @@ export interface operations {
             };
         };
     };
+    get_bitcoin_blocks: {
+        parameters: {
+            query?: {
+                /** @description Number of results per page */
+                limit?: number;
+                /** @description Cursor for paginating Bitcoin blocks (sorted by height, descending). Format: height */
+                cursor?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @example 1 */
+                        total: number;
+                        /**
+                         * @description Number of results per page
+                         * @default 20
+                         */
+                        limit: number;
+                        cursor: {
+                            next: string | null;
+                            previous: string | null;
+                            current: string | null;
+                        };
+                        results: {
+                            /** @description Height of the Bitcoin block */
+                            height: number;
+                            /** @description Hash of the Bitcoin block; `null` for a future block that has not been mined. */
+                            hash: string | null;
+                            /** @description Unix timestamp (in seconds) of when the Bitcoin block was mined, once it has been. The API learns Bitcoin block times only from the Stacks blocks anchored to them: for a block a Stacks block anchored to, this is the time recorded in its header; for a past block none anchored to (e.g. a missed sortition), it is an estimate, interpolated between the nearest anchored blocks before and after it. `null` for a block that has not been mined yet, and for a past block older than any Stacks block. */
+                            time: number | null;
+                            /**
+                             * @description The `time` as an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) UTC timestamp; `null` with it.
+                             * @example 2026-10-08T19:18:41.000Z
+                             */
+                            time_iso: string | null;
+                            /** @description Unix timestamp (in seconds) of when the Bitcoin block is projected to be mined, extrapolated from the recent Bitcoin block pace (on mainnet, from the pace of the current difficulty period until its retarget, and the 10-minute target after it). Set for a future block, and for the newest mined blocks whose time the API has not learned yet (no Stacks block has anchored to them); `null` whenever `time` is set, and for a block projected past the end of year 9999. */
+                            projected_time: number | null;
+                            /**
+                             * @description The `projected_time` as an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) UTC timestamp; `null` with it.
+                             * @example 2027-03-01T08:30:00.000Z
+                             */
+                            projected_time_iso: string | null;
+                            /** @description Number of canonical Stacks blocks anchored to this Bitcoin block. `0` for a block no Stacks block anchored to (e.g. a missed sortition), one too new to have any yet, and a future block. */
+                            stacks_block_count: number;
+                            /** @description Number of transactions in the canonical Stacks blocks anchored to this Bitcoin block */
+                            tx_count: number;
+                        }[];
+                    };
+                };
+            };
+            /** @description Default Response */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: string;
+                        message?: string;
+                    } & {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
+    get_bitcoin_block: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                height_or_hash: "latest" | string | number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Height of the Bitcoin block */
+                        height: number;
+                        /** @description Hash of the Bitcoin block; `null` for a future block that has not been mined. */
+                        hash: string | null;
+                        /** @description Unix timestamp (in seconds) of when the Bitcoin block was mined, once it has been. The API learns Bitcoin block times only from the Stacks blocks anchored to them: for a block a Stacks block anchored to, this is the time recorded in its header; for a past block none anchored to (e.g. a missed sortition), it is an estimate, interpolated between the nearest anchored blocks before and after it. `null` for a block that has not been mined yet, and for a past block older than any Stacks block. */
+                        time: number | null;
+                        /**
+                         * @description The `time` as an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) UTC timestamp; `null` with it.
+                         * @example 2026-10-08T19:18:41.000Z
+                         */
+                        time_iso: string | null;
+                        /** @description Unix timestamp (in seconds) of when the Bitcoin block is projected to be mined, extrapolated from the recent Bitcoin block pace (on mainnet, from the pace of the current difficulty period until its retarget, and the 10-minute target after it). Set for a future block, and for the newest mined blocks whose time the API has not learned yet (no Stacks block has anchored to them); `null` whenever `time` is set, and for a block projected past the end of year 9999. */
+                        projected_time: number | null;
+                        /**
+                         * @description The `projected_time` as an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) UTC timestamp; `null` with it.
+                         * @example 2027-03-01T08:30:00.000Z
+                         */
+                        projected_time_iso: string | null;
+                        /** @description Number of canonical Stacks blocks anchored to this Bitcoin block. `0` for a block no Stacks block anchored to (e.g. a missed sortition), one too new to have any yet, and a future block. */
+                        stacks_block_count: number;
+                        /** @description Number of transactions in the canonical Stacks blocks anchored to this Bitcoin block */
+                        tx_count: number;
+                    };
+                };
+            };
+            /** @description Default Response */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: string;
+                        message?: string;
+                    } & {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
+    get_bitcoin_block_stacks_blocks: {
+        parameters: {
+            query?: {
+                /** @description Number of results per page */
+                limit?: number;
+                /** @description Cursor for paginating Stacks blocks (sorted by height, descending). Format: height */
+                cursor?: string;
+            };
+            header?: never;
+            path: {
+                height_or_hash: "latest" | string | number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @example 1 */
+                        total: number;
+                        /**
+                         * @description Number of results per page
+                         * @default 20
+                         */
+                        limit: number;
+                        cursor: {
+                            next: string | null;
+                            previous: string | null;
+                            current: string | null;
+                        };
+                        results: {
+                            /**
+                             * Block height
+                             * @description Block height
+                             * @example 777678
+                             */
+                            height: number;
+                            /**
+                             * Block hash
+                             * @description Block hash
+                             * @example 0xdaf79950c5e8bb0c620751333967cdd62297137cdaf79950c5e8bb0c62075133
+                             */
+                            hash: string;
+                            /** @description Index block hash of the block */
+                            index_hash: string;
+                            /** @description Unix timestamp (in seconds) indicating when this block was mined. */
+                            time: number;
+                            /**
+                             * @description The `time` as an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) UTC timestamp.
+                             * @example 2026-10-08T19:18:41.000Z
+                             */
+                            time_iso: string;
+                            /** @description The tenure height (AKA coinbase height) of this block. Before Nakamoto every block was its own tenure, so this is the block height. `null` for a Nakamoto block indexed before tenure heights were recorded. */
+                            tenure_height: number | null;
+                            /** @description Number of transactions included in the block */
+                            tx_count: number;
+                            bitcoin_block: {
+                                /** @description Height of the Bitcoin block this block is anchored to */
+                                height: number;
+                                /** @description Hash of the Bitcoin block this block is anchored to */
+                                hash: string;
+                            };
+                        }[];
+                    };
+                };
+            };
+            /** @description Default Response */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: string;
+                        message?: string;
+                    } & {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
+    get_stacks_blocks: {
+        parameters: {
+            query?: {
+                /** @description Number of results per page */
+                limit?: number;
+                /** @description Cursor for paginating Stacks blocks (sorted by height, descending). Format: height */
+                cursor?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @example 1 */
+                        total: number;
+                        /**
+                         * @description Number of results per page
+                         * @default 20
+                         */
+                        limit: number;
+                        cursor: {
+                            next: string | null;
+                            previous: string | null;
+                            current: string | null;
+                        };
+                        results: {
+                            /**
+                             * Block height
+                             * @description Block height
+                             * @example 777678
+                             */
+                            height: number;
+                            /**
+                             * Block hash
+                             * @description Block hash
+                             * @example 0xdaf79950c5e8bb0c620751333967cdd62297137cdaf79950c5e8bb0c62075133
+                             */
+                            hash: string;
+                            /** @description Index block hash of the block */
+                            index_hash: string;
+                            /** @description Unix timestamp (in seconds) indicating when this block was mined. */
+                            time: number;
+                            /**
+                             * @description The `time` as an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) UTC timestamp.
+                             * @example 2026-10-08T19:18:41.000Z
+                             */
+                            time_iso: string;
+                            /** @description The tenure height (AKA coinbase height) of this block. Before Nakamoto every block was its own tenure, so this is the block height. `null` for a Nakamoto block indexed before tenure heights were recorded. */
+                            tenure_height: number | null;
+                            /** @description Number of transactions included in the block */
+                            tx_count: number;
+                            bitcoin_block: {
+                                /** @description Height of the Bitcoin block this block is anchored to */
+                                height: number;
+                                /** @description Hash of the Bitcoin block this block is anchored to */
+                                hash: string;
+                            };
+                        }[];
+                    };
+                };
+            };
+            /** @description Default Response */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: string;
+                        message?: string;
+                    } & {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
+    get_stacks_block: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                height_or_hash: "latest" | string | number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /**
+                         * Block height
+                         * @description Block height
+                         * @example 777678
+                         */
+                        height: number;
+                        /**
+                         * Block hash
+                         * @description Block hash
+                         * @example 0xdaf79950c5e8bb0c620751333967cdd62297137cdaf79950c5e8bb0c62075133
+                         */
+                        hash: string;
+                        /** @description Index block hash of the block */
+                        index_hash: string;
+                        /** @description Unix timestamp (in seconds) indicating when this block was mined. */
+                        time: number;
+                        /**
+                         * @description The `time` as an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) UTC timestamp.
+                         * @example 2026-10-08T19:18:41.000Z
+                         */
+                        time_iso: string;
+                        /** @description The tenure height (AKA coinbase height) of this block. Before Nakamoto every block was its own tenure, so this is the block height. `null` for a Nakamoto block indexed before tenure heights were recorded. */
+                        tenure_height: number | null;
+                        /** @description Number of transactions included in the block */
+                        tx_count: number;
+                        bitcoin_block: {
+                            /** @description Height of the Bitcoin block this block is anchored to */
+                            height: number;
+                            /** @description Hash of the Bitcoin block this block is anchored to */
+                            hash: string;
+                            /** @description Unix timestamp (in seconds) of the Bitcoin block header. */
+                            time: number;
+                            /**
+                             * @description The `time` as an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) UTC timestamp.
+                             * @example 2026-10-08T19:18:41.000Z
+                             */
+                            time_iso: string;
+                        };
+                        parent_block: {
+                            /**
+                             * Block hash
+                             * @description Block hash
+                             * @example 0xdaf79950c5e8bb0c620751333967cdd62297137cdaf79950c5e8bb0c62075133
+                             */
+                            hash: string;
+                            /** @description Index block hash of the parent block */
+                            index_hash: string;
+                        };
+                        size: number | null;
+                        execution_cost: {
+                            /** @description Number of reads in the transaction */
+                            read_count: number;
+                            /** @description Length of reads in the transaction */
+                            read_length: number;
+                            /** @description Runtime of the transaction */
+                            runtime: number;
+                            /** @description Number of writes in the transaction */
+                            write_count: number;
+                            /** @description Length of writes in the transaction */
+                            write_length: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: string;
+                        message?: string;
+                    } & {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
     get_block_transactions: {
         parameters: {
             query?: {
@@ -35605,6 +36110,8 @@ export interface operations {
                             };
                             /** @description Status of the transaction */
                             status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
+                            /** @description Number of events in the transaction */
+                            event_count: number;
                             /** @enum {string} */
                             type: "token_transfer";
                             token_transfer: {
@@ -35657,6 +36164,8 @@ export interface operations {
                             };
                             /** @description Status of the transaction */
                             status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
+                            /** @description Number of events in the transaction */
+                            event_count: number;
                             /** @enum {string} */
                             type: "smart_contract";
                             smart_contract: {
@@ -35705,6 +36214,8 @@ export interface operations {
                             };
                             /** @description Status of the transaction */
                             status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
+                            /** @description Number of events in the transaction */
+                            event_count: number;
                             /** @enum {string} */
                             type: "contract_call";
                             contract_call: {
@@ -35754,6 +36265,8 @@ export interface operations {
                             };
                             /** @description Status of the transaction */
                             status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
+                            /** @description Number of events in the transaction */
+                            event_count: number;
                             /** @enum {string} */
                             type: "poison_microblock";
                         } | {
@@ -35797,6 +36310,8 @@ export interface operations {
                             };
                             /** @description Status of the transaction */
                             status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
+                            /** @description Number of events in the transaction */
+                            event_count: number;
                             /** @enum {string} */
                             type: "coinbase";
                             coinbase: {
@@ -35843,6 +36358,8 @@ export interface operations {
                             };
                             /** @description Status of the transaction */
                             status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
+                            /** @description Number of events in the transaction */
+                            event_count: number;
                             /** @enum {string} */
                             type: "tenure_change";
                             tenure_change: {
@@ -36588,6 +37105,8 @@ export interface operations {
                                 };
                                 /** @description Status of the transaction */
                                 status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
+                                /** @description Number of events in the transaction */
+                                event_count: number;
                                 /** @enum {string} */
                                 type: "token_transfer";
                                 token_transfer: {
@@ -36640,6 +37159,8 @@ export interface operations {
                                 };
                                 /** @description Status of the transaction */
                                 status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
+                                /** @description Number of events in the transaction */
+                                event_count: number;
                                 /** @enum {string} */
                                 type: "smart_contract";
                                 smart_contract: {
@@ -36688,6 +37209,8 @@ export interface operations {
                                 };
                                 /** @description Status of the transaction */
                                 status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
+                                /** @description Number of events in the transaction */
+                                event_count: number;
                                 /** @enum {string} */
                                 type: "contract_call";
                                 contract_call: {
@@ -36737,6 +37260,8 @@ export interface operations {
                                 };
                                 /** @description Status of the transaction */
                                 status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
+                                /** @description Number of events in the transaction */
+                                event_count: number;
                                 /** @enum {string} */
                                 type: "poison_microblock";
                             } | {
@@ -36780,6 +37305,8 @@ export interface operations {
                                 };
                                 /** @description Status of the transaction */
                                 status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
+                                /** @description Number of events in the transaction */
+                                event_count: number;
                                 /** @enum {string} */
                                 type: "coinbase";
                                 coinbase: {
@@ -36826,6 +37353,8 @@ export interface operations {
                                 };
                                 /** @description Status of the transaction */
                                 status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
+                                /** @description Number of events in the transaction */
+                                event_count: number;
                                 /** @enum {string} */
                                 type: "tenure_change";
                                 tenure_change: {
@@ -37603,6 +38132,16 @@ export interface operations {
                                  * @example 2026-10-08T19:18:41.000Z
                                  */
                                 time_iso: string;
+                                /** @description The tenure height (AKA coinbase height) of this block. Before Nakamoto every block was its own tenure, so this is the block height. `null` for a Nakamoto block indexed before tenure heights were recorded. */
+                                tenure_height: number | null;
+                                /** @description Number of transactions included in the block */
+                                tx_count: number;
+                                bitcoin_block: {
+                                    /** @description Height of the Bitcoin block this block is anchored to */
+                                    height: number;
+                                    /** @description Hash of the Bitcoin block this block is anchored to */
+                                    hash: string;
+                                };
                             };
                             /** BlockSummary */
                             source_block: {
@@ -37627,6 +38166,16 @@ export interface operations {
                                  * @example 2026-10-08T19:18:41.000Z
                                  */
                                 time_iso: string;
+                                /** @description The tenure height (AKA coinbase height) of this block. Before Nakamoto every block was its own tenure, so this is the block height. `null` for a Nakamoto block indexed before tenure heights were recorded. */
+                                tenure_height: number | null;
+                                /** @description Number of transactions included in the block */
+                                tx_count: number;
+                                bitcoin_block: {
+                                    /** @description Height of the Bitcoin block this block is anchored to */
+                                    height: number;
+                                    /** @description Hash of the Bitcoin block this block is anchored to */
+                                    hash: string;
+                                };
                             };
                             /**
                              * Amount
@@ -38246,6 +38795,16 @@ export interface operations {
                                 time: number;
                                 /** @description The `time` as an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) UTC timestamp. */
                                 time_iso: string;
+                                /** @description The tenure height (AKA coinbase height) of this block. Before Nakamoto every block was its own tenure, so this is the block height. `null` for a Nakamoto block indexed before tenure heights were recorded. */
+                                tenure_height: number | null;
+                                /** @description Number of transactions included in the block */
+                                tx_count: number;
+                                bitcoin_block: {
+                                    /** @description Height of the Bitcoin block this block is anchored to */
+                                    height: number;
+                                    /** @description Hash of the Bitcoin block this block is anchored to */
+                                    hash: string;
+                                };
                             };
                         } | {
                             /** @enum {string} */
@@ -38301,6 +38860,8 @@ export interface operations {
                                 };
                                 /** @description Status of the transaction */
                                 status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
+                                /** @description Number of events in the transaction */
+                                event_count: number;
                                 /** @enum {string} */
                                 type: "token_transfer";
                                 token_transfer: {
@@ -38353,6 +38914,8 @@ export interface operations {
                                 };
                                 /** @description Status of the transaction */
                                 status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
+                                /** @description Number of events in the transaction */
+                                event_count: number;
                                 /** @enum {string} */
                                 type: "smart_contract";
                                 smart_contract: {
@@ -38401,6 +38964,8 @@ export interface operations {
                                 };
                                 /** @description Status of the transaction */
                                 status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
+                                /** @description Number of events in the transaction */
+                                event_count: number;
                                 /** @enum {string} */
                                 type: "contract_call";
                                 contract_call: {
@@ -38450,6 +39015,8 @@ export interface operations {
                                 };
                                 /** @description Status of the transaction */
                                 status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
+                                /** @description Number of events in the transaction */
+                                event_count: number;
                                 /** @enum {string} */
                                 type: "poison_microblock";
                             } | {
@@ -38493,6 +39060,8 @@ export interface operations {
                                 };
                                 /** @description Status of the transaction */
                                 status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
+                                /** @description Number of events in the transaction */
+                                event_count: number;
                                 /** @enum {string} */
                                 type: "coinbase";
                                 coinbase: {
@@ -38539,6 +39108,8 @@ export interface operations {
                                 };
                                 /** @description Status of the transaction */
                                 status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
+                                /** @description Number of events in the transaction */
+                                event_count: number;
                                 /** @enum {string} */
                                 type: "tenure_change";
                                 tenure_change: {
@@ -40848,6 +41419,8 @@ export interface operations {
                             };
                             /** @description Status of the transaction */
                             status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
+                            /** @description Number of events in the transaction */
+                            event_count: number;
                             /** @enum {string} */
                             type: "token_transfer";
                             token_transfer: {
@@ -40900,6 +41473,8 @@ export interface operations {
                             };
                             /** @description Status of the transaction */
                             status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
+                            /** @description Number of events in the transaction */
+                            event_count: number;
                             /** @enum {string} */
                             type: "smart_contract";
                             smart_contract: {
@@ -40948,6 +41523,8 @@ export interface operations {
                             };
                             /** @description Status of the transaction */
                             status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
+                            /** @description Number of events in the transaction */
+                            event_count: number;
                             /** @enum {string} */
                             type: "contract_call";
                             contract_call: {
@@ -40997,6 +41574,8 @@ export interface operations {
                             };
                             /** @description Status of the transaction */
                             status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
+                            /** @description Number of events in the transaction */
+                            event_count: number;
                             /** @enum {string} */
                             type: "poison_microblock";
                         } | {
@@ -41040,6 +41619,8 @@ export interface operations {
                             };
                             /** @description Status of the transaction */
                             status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
+                            /** @description Number of events in the transaction */
+                            event_count: number;
                             /** @enum {string} */
                             type: "coinbase";
                             coinbase: {
@@ -41086,6 +41667,8 @@ export interface operations {
                             };
                             /** @description Status of the transaction */
                             status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
+                            /** @description Number of events in the transaction */
+                            event_count: number;
                             /** @enum {string} */
                             type: "tenure_change";
                             tenure_change: {
@@ -41172,6 +41755,8 @@ export interface operations {
                             };
                             /** @description Status of the transaction */
                             status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
+                            /** @description Number of events in the transaction */
+                            event_count: number;
                             /** @enum {string} */
                             type: "token_transfer";
                             token_transfer: {
@@ -41224,6 +41809,8 @@ export interface operations {
                             };
                             /** @description Status of the transaction */
                             status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
+                            /** @description Number of events in the transaction */
+                            event_count: number;
                             /** @enum {string} */
                             type: "smart_contract";
                             smart_contract: {
@@ -41272,6 +41859,8 @@ export interface operations {
                             };
                             /** @description Status of the transaction */
                             status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
+                            /** @description Number of events in the transaction */
+                            event_count: number;
                             /** @enum {string} */
                             type: "contract_call";
                             contract_call: {
@@ -41321,6 +41910,8 @@ export interface operations {
                             };
                             /** @description Status of the transaction */
                             status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
+                            /** @description Number of events in the transaction */
+                            event_count: number;
                             /** @enum {string} */
                             type: "poison_microblock";
                         } | {
@@ -41364,6 +41955,8 @@ export interface operations {
                             };
                             /** @description Status of the transaction */
                             status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
+                            /** @description Number of events in the transaction */
+                            event_count: number;
                             /** @enum {string} */
                             type: "coinbase";
                             coinbase: {
@@ -41410,6 +42003,8 @@ export interface operations {
                             };
                             /** @description Status of the transaction */
                             status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
+                            /** @description Number of events in the transaction */
+                            event_count: number;
                             /** @enum {string} */
                             type: "tenure_change";
                             tenure_change: {
@@ -41501,6 +42096,8 @@ export interface operations {
                         };
                         /** @description Status of the transaction */
                         status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
+                        /** @description Number of events in the transaction */
+                        event_count: number;
                         parent_block: {
                             /** @description Hash of the parent block */
                             hash: string;
@@ -41613,8 +42210,6 @@ export interface operations {
                             /** @enum {string} */
                             type: "pox";
                         })[];
-                        /** @description Number of events in the transaction */
-                        event_count: number;
                         execution_cost: {
                             /** @description Number of reads in the transaction */
                             read_count: number;
@@ -41685,6 +42280,8 @@ export interface operations {
                         };
                         /** @description Status of the transaction */
                         status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
+                        /** @description Number of events in the transaction */
+                        event_count: number;
                         parent_block: {
                             /** @description Hash of the parent block */
                             hash: string;
@@ -41797,8 +42394,6 @@ export interface operations {
                             /** @enum {string} */
                             type: "pox";
                         })[];
-                        /** @description Number of events in the transaction */
-                        event_count: number;
                         execution_cost: {
                             /** @description Number of reads in the transaction */
                             read_count: number;
@@ -41866,6 +42461,8 @@ export interface operations {
                         };
                         /** @description Status of the transaction */
                         status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
+                        /** @description Number of events in the transaction */
+                        event_count: number;
                         parent_block: {
                             /** @description Hash of the parent block */
                             hash: string;
@@ -41978,8 +42575,6 @@ export interface operations {
                             /** @enum {string} */
                             type: "pox";
                         })[];
-                        /** @description Number of events in the transaction */
-                        event_count: number;
                         execution_cost: {
                             /** @description Number of reads in the transaction */
                             read_count: number;
@@ -42051,6 +42646,8 @@ export interface operations {
                         };
                         /** @description Status of the transaction */
                         status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
+                        /** @description Number of events in the transaction */
+                        event_count: number;
                         parent_block: {
                             /** @description Hash of the parent block */
                             hash: string;
@@ -42163,8 +42760,6 @@ export interface operations {
                             /** @enum {string} */
                             type: "pox";
                         })[];
-                        /** @description Number of events in the transaction */
-                        event_count: number;
                         execution_cost: {
                             /** @description Number of reads in the transaction */
                             read_count: number;
@@ -42225,6 +42820,8 @@ export interface operations {
                         };
                         /** @description Status of the transaction */
                         status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
+                        /** @description Number of events in the transaction */
+                        event_count: number;
                         parent_block: {
                             /** @description Hash of the parent block */
                             hash: string;
@@ -42337,8 +42934,6 @@ export interface operations {
                             /** @enum {string} */
                             type: "pox";
                         })[];
-                        /** @description Number of events in the transaction */
-                        event_count: number;
                         execution_cost: {
                             /** @description Number of reads in the transaction */
                             read_count: number;
@@ -42415,6 +43010,8 @@ export interface operations {
                         };
                         /** @description Status of the transaction */
                         status: "success" | "abort_by_response" | "abort_by_post_condition" | "problematic_skipped";
+                        /** @description Number of events in the transaction */
+                        event_count: number;
                         parent_block: {
                             /** @description Hash of the parent block */
                             hash: string;
@@ -42527,8 +43124,6 @@ export interface operations {
                             /** @enum {string} */
                             type: "pox";
                         })[];
-                        /** @description Number of events in the transaction */
-                        event_count: number;
                         execution_cost: {
                             /** @description Number of reads in the transaction */
                             read_count: number;
