@@ -7,6 +7,12 @@ on:
         required: true
         type: string
 
+# Serialize runs for the same version so concurrent dispatches cannot both pass
+# verification; the queued run then sees the first run's draft and fails.
+concurrency:
+  group: release-${{ inputs.version }}
+  cancel-in-progress: false
+
 jobs:
   verify:
     # Only `main` may be released, and the checked-out commit must already carry the requested
@@ -14,7 +20,8 @@ jobs:
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      # Draft releases are only listed for tokens with write access.
+      contents: write
     steps:
       - name: Checkout release commit
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
@@ -34,14 +41,24 @@ jobs:
             fi
           done
 
-      - name: Check tag does not already exist
+      - name: Check tag and release do not already exist
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           VERSION: ${{ inputs.version }}
         run: |
           set -euo pipefail
-          if gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/v${VERSION}" >/dev/null 2>&1; then
+          # Assign before testing so any API failure aborts the step instead of
+          # being read as "not found".
+          refs="$(gh api "repos/${GITHUB_REPOSITORY}/git/matching-refs/tags/v${VERSION}" --jq '.[].ref')"
+          if grep -Fxq "refs/tags/v${VERSION}" <<< "$refs"; then
             echo "::error::tag v${VERSION} already exists; it must be created by publishing the draft release"
+            exit 1
+          fi
+          # Drafts have no tag yet, so an existing draft must be rejected too or a
+          # re-run would overwrite its images with a different commit.
+          releases="$(gh api --paginate "repos/${GITHUB_REPOSITORY}/releases" --jq '.[].tag_name')"
+          if grep -Fxq "v${VERSION}" <<< "$releases"; then
+            echo "::error::a release (possibly a draft) for v${VERSION} already exists; delete it before re-running"
             exit 1
           fi
 
@@ -180,10 +197,11 @@ jobs:
           # Fill the template: VERSION, date, and the auto-generated changelog.
           # The tag does not exist yet, so the notes are generated against the
           # release commit; the API computes the previous tag automatically.
-          export VERSION
-          export RELEASE_DATE="$(date -u +%Y-%m-%d)"
-          export CHANGELOG="$(gh api "repos/${GITHUB_REPOSITORY}/releases/generate-notes" \
+          # Assign before exporting: `export X="$(cmd)"` masks cmd's exit status.
+          RELEASE_DATE="$(date -u +%Y-%m-%d)"
+          CHANGELOG="$(gh api "repos/${GITHUB_REPOSITORY}/releases/generate-notes" \
             -f tag_name="v$VERSION" -f target_commitish="$GITHUB_SHA" --jq '.body')"
+          export VERSION RELEASE_DATE CHANGELOG
 
           envsubst '${VERSION} ${RELEASE_DATE} ${CHANGELOG}' \
             < .github/RELEASE_TEMPLATE.md > release-notes.md
