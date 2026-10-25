@@ -4,6 +4,12 @@ import { FastifyPluginAsync } from 'fastify';
 declare module 'fastify' {
   interface FastifySchema {
     deprecatedMessage?: string;
+    /**
+     * Marks a `deprecated` route that keeps serving when `ENABLE_DEPRECATED_ENDPOINTS` is off. It
+     * still gets the `Warning` header and is still hidden from the OpenAPI spec; it is only exempt
+     * from the `410 Gone` sunset kill switch.
+     */
+    deprecatedExemptFromSunset?: boolean;
   }
 }
 
@@ -11,20 +17,21 @@ const pluginCb: FastifyPluginAsync<{
   defaultDeprecatedMessage: string;
   /**
    * When `false`, every route whose schema is marked `deprecated` is disabled and responds with
-   * `410 Gone`. Defaults to enabled when omitted.
+   * `410 Gone`, unless it is also marked `deprecatedExemptFromSunset`. Defaults to enabled when
+   * omitted.
    */
   enableDeprecatedEndpoints?: boolean;
 }> = async (fastify, options) => {
   // When deprecated endpoints are disabled (e.g. past a sunset date), short-circuit any route
-  // whose schema is marked `deprecated` with a `410 Gone` before its handler (and any DB work)
-  // runs. `onRequest` is the earliest hook with `routeOptions` populated.
+  // whose schema is marked `deprecated` (and not `deprecatedExemptFromSunset`) with a `410 Gone`
+  // before its handler (and any DB work) runs. `onRequest` is the earliest hook with
+  // `routeOptions` populated.
   if (options.enableDeprecatedEndpoints === false) {
     fastify.addHook('onRequest', async (request, reply) => {
-      if (request.routeOptions.schema?.deprecated) {
+      const schema = request.routeOptions.schema;
+      if (schema?.deprecated && !schema.deprecatedExemptFromSunset) {
         const message =
-          request.routeOptions.schema.deprecatedMessage ??
-          options.defaultDeprecatedMessage ??
-          'Endpoint is deprecated';
+          schema.deprecatedMessage ?? options.defaultDeprecatedMessage ?? 'Endpoint is deprecated';
         return reply.code(410).send({
           error: 'Gone',
           message: `This endpoint has been disabled. ${message}`,
@@ -58,6 +65,9 @@ const pluginCb: FastifyPluginAsync<{
  *
  * If `enableDeprecatedEndpoints` is `false`, all deprecated routes are disabled and respond with
  * `410 Gone` instead of executing. This is the master kill-switch flipped at a sunset date.
+ * Routes that also set `deprecatedExemptFromSunset: true` are exempt and keep serving (still with
+ * the `Warning` header): use it for endpoints that are deprecated in favor of a newer version but
+ * are not part of the planned sunset.
  */
 const DeprecationPlugin = fp(pluginCb);
 

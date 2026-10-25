@@ -23,8 +23,12 @@ export const BurnBlockRoutesV2: FastifyPluginAsync<
       preHandler: handleChainTipCache,
       schema: {
         operationId: 'get_burn_blocks',
+        deprecated: true,
+        deprecatedExemptFromSunset: true,
+        deprecatedMessage:
+          'Use GET /extended/v3/bitcoin-blocks instead. It is cursor-paginated (no offset).',
         summary: 'Get burn blocks',
-        description: `Retrieves a list of recent burn blocks`,
+        description: `Retrieves a list of recent burn blocks. **Deprecated:** use \`GET /extended/v3/bitcoin-blocks\` instead.`,
         tags: ['Burn Blocks'],
         querystring: Type.Object({
           limit: LimitParam(ResourceType.BurnBlock),
@@ -58,8 +62,11 @@ export const BurnBlockRoutesV2: FastifyPluginAsync<
       },
       schema: {
         operationId: 'get_burn_block',
+        deprecated: true,
+        deprecatedExemptFromSunset: true,
+        deprecatedMessage: 'Use GET /extended/v3/bitcoin-blocks/{height_or_hash} instead.',
         summary: 'Get burn block',
-        description: `Retrieves a single burn block`,
+        description: `Retrieves a single burn block. **Deprecated:** use \`GET /extended/v3/bitcoin-blocks/{height_or_hash}\` instead.`,
         tags: ['Burn Blocks'],
         params: BurnBlockParamsSchema,
         response: {
@@ -88,8 +95,12 @@ export const BurnBlockRoutesV2: FastifyPluginAsync<
       },
       schema: {
         operationId: 'get_blocks_by_burn_block',
+        deprecated: true,
+        deprecatedExemptFromSunset: true,
+        deprecatedMessage:
+          'Use GET /extended/v3/bitcoin-blocks/{height_or_hash}/blocks instead. It is cursor-paginated (no offset).',
         summary: 'Get blocks by burn block',
-        description: `Retrieves a list of blocks confirmed by a specific burn block`,
+        description: `Retrieves a list of blocks confirmed by a specific burn block. **Deprecated:** use \`GET /extended/v3/bitcoin-blocks/{height_or_hash}/blocks\` instead.`,
         tags: ['Burn Blocks'],
         params: BurnBlockParamsSchema,
         querystring: Type.Object({

@@ -205,6 +205,7 @@ export async function startApiServer(opts: {
 
   // Middleware to annotate http responses with deprecation warnings, and to disable deprecated
   // endpoints entirely (410 Gone) once `ENABLE_DEPRECATED_ENDPOINTS` is flipped off at sunset.
+  // Routes marked `deprecatedExemptFromSunset` keep serving (with the warning) when it is off.
   await fastify.register(DeprecationPlugin, {
     defaultDeprecatedMessage: 'See https://docs.hiro.so/stacks/api for more information',
     enableDeprecatedEndpoints: ENV.ENABLE_DEPRECATED_ENDPOINTS,

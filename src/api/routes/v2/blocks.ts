@@ -36,8 +36,12 @@ export const BlockRoutesV2: FastifyPluginAsync<
       preHandler: handleChainTipCache,
       schema: {
         operationId: 'get_blocks',
+        deprecated: true,
+        deprecatedExemptFromSunset: true,
+        deprecatedMessage:
+          'Use GET /extended/v3/blocks instead. It is cursor-paginated (no offset).',
         summary: 'Get blocks',
-        description: `Retrieves a list of recently mined blocks`,
+        description: `Retrieves a list of recently mined blocks. **Deprecated:** use \`GET /extended/v3/blocks\` instead.`,
         tags: ['Blocks'],
         querystring: Type.Object({
           limit: LimitParam(ResourceType.Block),
@@ -145,8 +149,11 @@ export const BlockRoutesV2: FastifyPluginAsync<
       },
       schema: {
         operationId: 'get_block',
+        deprecated: true,
+        deprecatedExemptFromSunset: true,
+        deprecatedMessage: 'Use GET /extended/v3/blocks/{height_or_hash} instead.',
         summary: 'Get block',
-        description: `Retrieves a single block`,
+        description: `Retrieves a single block. **Deprecated:** use \`GET /extended/v3/blocks/{height_or_hash}\` instead.`,
         tags: ['Blocks'],
         params: BlockParamsSchema,
         response: {
@@ -175,6 +182,9 @@ export const BlockRoutesV2: FastifyPluginAsync<
       schema: {
         operationId: 'get_transactions_by_block',
         deprecated: true,
+        deprecatedExemptFromSunset: true,
+        deprecatedMessage:
+          'Use GET /extended/v3/blocks/{height_or_hash}/transactions instead. It is cursor-paginated (no offset).',
         summary: 'Get transactions by block',
         description: `Retrieves transactions confirmed in a single block. **Deprecated:** use \`GET /extended/v3/blocks/{height_or_hash}/transactions\` instead.`,
         tags: ['Transactions'],
