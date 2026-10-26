@@ -1,27 +1,19 @@
 import supertest from 'supertest';
-import {
-  DbBlock,
-  DbTxRaw,
-  DbTxTypeId,
-  DbStxEvent,
-  DbEventTypeId,
-  DbAssetEventTypeId,
-  DbMinerReward,
-} from '../../../src/datastore/common.ts';
+import { DbAssetEventTypeId } from '../../../src/datastore/common.ts';
 import { startApiServer, ApiServer } from '../../../src/api/init.ts';
-import { I32_MAX, microStxToStx, STACKS_DECIMAL_PLACES } from '../../../src/helpers.ts';
+import { microStxToStx, STACKS_DECIMAL_PLACES } from '../../../src/helpers.ts';
 import { FEE_RATE } from '../../../src/api/routes/v1/fee-rate.ts';
 import { PgWriteStore } from '../../../src/datastore/pg-write-store.ts';
 import { getPagingQueryLimit, ResourceType } from '../../../src/api/pagination.ts';
-import { PgSqlClient, bufferToHex } from '@stacks/api-toolkit';
 import { migrate } from '../../test-helpers.ts';
+import { TestBlockBuilder } from '../test-builders.ts';
+import { hex } from '../test-helpers.ts';
 import { beforeEach, afterEach, describe, test } from 'node:test';
 import assert from 'node:assert/strict';
 import { STACKS_TESTNET } from '@stacks/network';
 
 describe('other tests', () => {
   let db: PgWriteStore;
-  let client: PgSqlClient;
   let api: ApiServer;
 
   beforeEach(async () => {
@@ -31,7 +23,6 @@ describe('other tests', () => {
       withNotifier: false,
       skipMigrations: true,
     });
-    client = db.sql;
     api = await startApiServer({ datastore: db, chainId: STACKS_TESTNET.chainId });
   });
 
@@ -42,107 +33,20 @@ describe('other tests', () => {
   });
 
   test('stx-supply', async () => {
-    const testAddr1 = 'testAddr1';
-    const dbBlock1: DbBlock = {
-      block_hash: '0x0123',
-      index_block_hash: '0x1234',
-      parent_index_block_hash: '0x00',
-      parent_block_hash: '0x5678',
-      parent_microblock_hash: '',
-      parent_microblock_sequence: 0,
-      block_height: 1,
-      tenure_height: 1,
-      block_time: 39486,
-      burn_block_time: 39486,
-      burn_block_hash: '0x1234',
-      burn_block_height: 123,
-      miner_txid: '0x4321',
-      canonical: true,
-      execution_cost_read_count: 0,
-      execution_cost_read_length: 0,
-      execution_cost_runtime: 0,
-      execution_cost_write_count: 0,
-      execution_cost_write_length: 0,
-      tx_count: 1,
-      tx_total_size: 1,
-      signer_bitvec: null,
-      signer_signatures: null,
-    };
-    const tx: DbTxRaw = {
-      tx_id: '0x1234',
-      tx_index: 4,
-      anchor_mode: 3,
-      nonce: 0,
-      raw_tx: '',
-      index_block_hash: dbBlock1.index_block_hash,
-      block_hash: dbBlock1.block_hash,
-      block_height: dbBlock1.block_height,
-      block_time: dbBlock1.burn_block_time,
-      burn_block_height: dbBlock1.burn_block_height,
-      burn_block_time: dbBlock1.burn_block_time,
-      parent_burn_block_time: 0,
-      type_id: DbTxTypeId.Coinbase,
-      coinbase_payload: bufferToHex(Buffer.from('coinbase hi')),
-      status: 1,
-      raw_result: '0x0100000000000000000000000000000001', // u1
-      canonical: true,
-      microblock_canonical: true,
-      microblock_sequence: I32_MAX,
-      microblock_hash: '',
-      parent_index_block_hash: '',
-      parent_block_hash: '',
-      post_conditions: '0x01f5',
-      fee_rate: 1234n,
-      sponsored: false,
-      sponsor_address: undefined,
-      sender_address: testAddr1,
-      origin_hash_mode: 1,
-      event_count: 5,
-      execution_cost_read_count: 0,
-      execution_cost_read_length: 0,
-      execution_cost_runtime: 0,
-      execution_cost_write_count: 0,
-      execution_cost_write_length: 0,
-      vm_error: null,
-    };
-    const stxMintEvent1: DbStxEvent = {
-      event_index: 0,
-      tx_id: tx.tx_id,
-      tx_index: tx.tx_index,
-      block_height: tx.block_height,
-      canonical: true,
-      asset_event_type_id: DbAssetEventTypeId.Mint,
-      recipient: tx.sender_address,
-      event_type: DbEventTypeId.StxAsset,
-      amount: 230_000_000_000_000n,
-    };
-    const stxMintEvent2: DbStxEvent = {
-      ...stxMintEvent1,
-      amount: 5_000_000_000_000n,
-    };
-    await db.update({
-      block: dbBlock1,
-      minerRewards: [],
-      txs: [
-        {
-          tx: tx,
-          stxEvents: [stxMintEvent1, stxMintEvent2],
-          stxLockEvents: [],
-          ftEvents: [],
-          nftEvents: [],
-          contractLogEvents: [],
-          names: [],
-          namespaces: [],
-          smartContracts: [],
-          pox2Events: [],
-          pox3Events: [],
-          pox4Events: [],
-          pox5Events: [],
-        },
-      ],
-    });
+    const stxMintAmount1 = 230_000_000_000_000n;
+    const stxMintAmount2 = 5_000_000_000_000n;
+    await db.update(
+      new TestBlockBuilder({
+        block_height: 1,
+        index_block_hash: hex(1),
+        parent_index_block_hash: hex(0),
+      })
+        .addTx({ tx_id: hex(0x11) })
+        .addTxStxEvent({ asset_event_type_id: DbAssetEventTypeId.Mint, amount: stxMintAmount1 })
+        .addTxStxEvent({ asset_event_type_id: DbAssetEventTypeId.Mint, amount: stxMintAmount2 })
+        .build()
+    );
 
-    const expectedTotalStx1 = stxMintEvent1.amount + stxMintEvent2.amount;
     const result1 = await supertest(api.server).get(`/extended/v1/stx_supply`);
     assert.equal(result1.status, 200);
     assert.equal(result1.type, 'application/json');
@@ -157,19 +61,18 @@ describe('other tests', () => {
     assert.deepEqual(JSON.parse(result1.text), expectedResp1);
 
     // ensure burned STX reduce the unlocked stx supply
-    const stxBurnEvent1: DbStxEvent = {
-      event_index: 0,
-      tx_id: tx.tx_id,
-      tx_index: tx.tx_index,
-      block_height: tx.block_height,
-      canonical: true,
-      asset_event_type_id: DbAssetEventTypeId.Burn,
-      sender: tx.sender_address,
-      event_type: DbEventTypeId.StxAsset,
-      amount: 10_000_000_000_000n,
-    };
-    await db.updateStxEvents(client, [{ tx, stxEvents: [stxBurnEvent1] }]);
-    const expectedTotalStx2 = stxMintEvent1.amount + stxMintEvent2.amount - stxBurnEvent1.amount;
+    const stxBurnAmount = 10_000_000_000_000n;
+    await db.update(
+      new TestBlockBuilder({
+        block_height: 2,
+        index_block_hash: hex(2),
+        parent_index_block_hash: hex(1),
+      })
+        .addTx({ tx_id: hex(0x22) })
+        .addTxStxEvent({ asset_event_type_id: DbAssetEventTypeId.Burn, amount: stxBurnAmount })
+        .build()
+    );
+    const expectedTotalStx2 = stxMintAmount1 + stxMintAmount2 - stxBurnAmount;
     const result2 = await supertest(api.server).get(`/extended/v1/stx_supply`);
     assert.equal(result2.status, 200);
     assert.equal(result2.type, 'application/json');
@@ -178,31 +81,27 @@ describe('other tests', () => {
       total_stx: microStxToStx(expectedTotalStx2),
       unlocked_stx: microStxToStx(expectedTotalStx2),
       total_stx_year_2050: '2318000000.000000',
-      block_height: dbBlock1.block_height,
+      block_height: 2,
     };
     assert.deepEqual(JSON.parse(result2.text), expectedResp2);
 
-    // ensure miner coinbase rewards are included
-    const minerReward1: DbMinerReward = {
-      block_hash: dbBlock1.block_hash,
-      index_block_hash: dbBlock1.index_block_hash,
-      from_index_block_hash: dbBlock1.index_block_hash,
-      mature_block_height: dbBlock1.block_height,
-      reward_index: 0,
-      canonical: true,
-      recipient: testAddr1,
-      miner_address: testAddr1,
-      coinbase_amount: 15_000_000_000_000n,
-      tx_fees_anchored: 1_000_000_000_000n,
-      tx_fees_streamed_confirmed: 2_000_000_000_000n,
-      tx_fees_streamed_produced: 3_000_000_000_000n,
-    };
-    await db.updateMinerRewards(client, [minerReward1]);
-    const expectedTotalStx3 =
-      stxMintEvent1.amount +
-      stxMintEvent2.amount -
-      stxBurnEvent1.amount +
-      minerReward1.coinbase_amount;
+    // ensure matured miner coinbase rewards are included, but not tx fees
+    const coinbaseAmount = 15_000_000_000_000n;
+    await db.update(
+      new TestBlockBuilder({
+        block_height: 3,
+        index_block_hash: hex(3),
+        parent_index_block_hash: hex(2),
+      })
+        .addMinerReward({
+          coinbase_amount: coinbaseAmount,
+          tx_fees_anchored: 1_000_000_000_000n,
+          tx_fees_streamed_confirmed: 2_000_000_000_000n,
+          tx_fees_streamed_produced: 3_000_000_000_000n,
+        })
+        .build()
+    );
+    const expectedTotalStx3 = stxMintAmount1 + stxMintAmount2 - stxBurnAmount + coinbaseAmount;
     const result3 = await supertest(api.server).get(`/extended/v1/stx_supply`);
     assert.equal(result3.status, 200);
     assert.equal(result3.type, 'application/json');
@@ -211,9 +110,20 @@ describe('other tests', () => {
       total_stx: microStxToStx(expectedTotalStx3),
       total_stx_year_2050: '2318000000.000000',
       unlocked_stx: microStxToStx(expectedTotalStx3),
-      block_height: dbBlock1.block_height,
+      block_height: 3,
     };
     assert.deepEqual(JSON.parse(result3.text), expectedResp3);
+
+    // a height at the tip is served from the chain_tip counter
+    const resultAtTip = await supertest(api.server).get(`/extended/v1/stx_supply?height=3`);
+    assert.equal(resultAtTip.status, 200);
+    assert.deepEqual(JSON.parse(resultAtTip.text), expectedResp3);
+
+    // an earlier height still returns the historical supply
+    const resultHistorical = await supertest(api.server).get(`/extended/v1/stx_supply?height=1`);
+    assert.equal(resultHistorical.status, 200);
+    assert.deepEqual(JSON.parse(resultHistorical.text), expectedResp1);
+    assert.notEqual(JSON.parse(resultHistorical.text).total_stx, expectedResp3.total_stx);
 
     const result4 = await supertest(api.server).get(`/extended/v1/stx_supply/total/plain`);
     assert.equal(result4.status, 200);
@@ -241,7 +151,7 @@ describe('other tests', () => {
       }).format(parseInt(microStxToStx(expectedTotalStx3))),
       totalStacksYear2050: '2318000000.000000',
       totalStacksYear2050Formatted: '2,318,000,000.000000',
-      blockHeight: dbBlock1.block_height.toString(),
+      blockHeight: '3',
     };
     assert.deepEqual(JSON.parse(result6.text), expectedResp6);
   });

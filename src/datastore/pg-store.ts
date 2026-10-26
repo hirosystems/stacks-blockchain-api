@@ -2478,14 +2478,23 @@ export class PgStore extends BasePgStore {
     };
   }
 
+  /**
+   * Returns the unlocked STX supply (mints − burns + matured coinbase rewards). At or above the
+   * chain tip this reads the materialized `chain_tip.stx_supply` counter; earlier heights fall
+   * back to aggregating `stx_events` and `miner_rewards` up to the requested height.
+   */
   async getUnlockedStxSupply(args?: {
     blockHeight?: number;
   }): Promise<{ stx: bigint; blockHeight: number }> {
     return await this.sqlTransaction(async sql => {
-      const atBlockHeight =
-        args?.blockHeight !== undefined
-          ? args.blockHeight
-          : (await this.getChainTip(sql)).block_height;
+      const tip = await this.getChainTip(sql);
+      if (args?.blockHeight === undefined || args.blockHeight >= tip.block_height) {
+        return {
+          stx: BigInt(tip.stx_supply),
+          blockHeight: args?.blockHeight ?? tip.block_height,
+        };
+      }
+      const atBlockHeight = args.blockHeight;
       const atMatureBlockHeight = atBlockHeight;
       const result = await sql<{ amount: string }[]>`
         SELECT SUM(amount) amount
