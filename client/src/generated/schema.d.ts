@@ -540,7 +540,7 @@ export interface paths {
         /**
          * Get recent blocks
          * @deprecated
-         * @description Retrieves a list of recently mined blocks. **This endpoint is deprecated in favor of `get_blocks`.**
+         * @description Retrieves a list of recently mined blocks. **This endpoint is deprecated in favor of `get_stacks_blocks`.**
          */
         get: operations["get_block_list"];
         put?: never;
@@ -561,7 +561,7 @@ export interface paths {
         /**
          * Get block by height
          * @deprecated
-         * @description Retrieves block details of a specific block at a given block height. **This endpoint is deprecated in favor of `get_block`.**
+         * @description Retrieves block details of a specific block at a given block height. **This endpoint is deprecated in favor of `get_stacks_block`.**
          */
         get: operations["get_block_by_height"];
         put?: never;
@@ -582,7 +582,7 @@ export interface paths {
         /**
          * Get block by burnchain height
          * @deprecated
-         * @description Retrieves block details of a specific block for a given burn chain height. **This endpoint is deprecated in favor of `get_blocks_by_burn_block`.**
+         * @description Retrieves block details of a specific block for a given burn chain height. **This endpoint is deprecated in favor of `get_bitcoin_block_stacks_blocks`.**
          */
         get: operations["get_block_by_burn_block_height"];
         put?: never;
@@ -603,7 +603,7 @@ export interface paths {
         /**
          * Get block by hash
          * @deprecated
-         * @description Retrieves block details of a specific block for a given chain height. **This endpoint is deprecated in favor of `get_block`.**
+         * @description Retrieves block details of a specific block for a given chain height. **This endpoint is deprecated in favor of `get_stacks_block`.**
          */
         get: operations["get_block_by_hash"];
         put?: never;
@@ -624,7 +624,7 @@ export interface paths {
         /**
          * Get block by burnchain block hash
          * @deprecated
-         * @description Retrieves block details of a specific block for a given burnchain block hash. **This endpoint is deprecated in favor of `get_blocks_by_burn_block`.**
+         * @description Retrieves block details of a specific block for a given burnchain block hash. **This endpoint is deprecated in favor of `get_bitcoin_block_stacks_blocks`.**
          */
         get: operations["get_block_by_burn_block_hash"];
         put?: never;
@@ -1220,7 +1220,8 @@ export interface paths {
         };
         /**
          * Get blocks
-         * @description Retrieves a list of recently mined blocks
+         * @deprecated
+         * @description Retrieves a list of recently mined blocks. **Deprecated:** use `GET /extended/v3/blocks` instead.
          */
         get: operations["get_blocks"];
         put?: never;
@@ -1280,7 +1281,8 @@ export interface paths {
         };
         /**
          * Get block
-         * @description Retrieves a single block
+         * @deprecated
+         * @description Retrieves a single block. **Deprecated:** use `GET /extended/v3/blocks/{height_or_hash}` instead.
          */
         get: operations["get_block"];
         put?: never;
@@ -1341,7 +1343,8 @@ export interface paths {
         };
         /**
          * Get burn blocks
-         * @description Retrieves a list of recent burn blocks
+         * @deprecated
+         * @description Retrieves a list of recent burn blocks. **Deprecated:** use `GET /extended/v3/bitcoin-blocks` instead.
          */
         get: operations["get_burn_blocks"];
         put?: never;
@@ -1361,7 +1364,8 @@ export interface paths {
         };
         /**
          * Get burn block
-         * @description Retrieves a single burn block
+         * @deprecated
+         * @description Retrieves a single burn block. **Deprecated:** use `GET /extended/v3/bitcoin-blocks/{height_or_hash}` instead.
          */
         get: operations["get_burn_block"];
         put?: never;
@@ -1381,7 +1385,8 @@ export interface paths {
         };
         /**
          * Get blocks by burn block
-         * @description Retrieves a list of blocks confirmed by a specific burn block
+         * @deprecated
+         * @description Retrieves a list of blocks confirmed by a specific burn block. **Deprecated:** use `GET /extended/v3/bitcoin-blocks/{height_or_hash}/blocks` instead.
          */
         get: operations["get_blocks_by_burn_block"];
         put?: never;
