@@ -8,7 +8,7 @@ import { TestBlockBuilder } from '../test-builders.ts';
 import { DbTxStatus, DbTxTypeId } from '../../../src/datastore/common.ts';
 import { stringAsciiCV, uintCV } from '@stacks/transactions';
 import { bufferToHex } from '@stacks/api-toolkit';
-import { hex } from '../test-helpers.ts';
+import { assertTxTypeCountsConsistent, hex } from '../test-helpers.ts';
 import { I32_MAX } from '../../../src/helpers.ts';
 
 describe('v3 transactions', () => {
@@ -357,6 +357,44 @@ describe('v3 transactions', () => {
       });
     });
 
+    test('should count genesis boot transactions adopted by block 1 in filtered totals', async () => {
+      const block0 = new TestBlockBuilder({ block_height: 0, index_block_hash: hex(0xb0) })
+        .addTx({ tx_id: hex(0xb001), tx_index: 0, type_id: DbTxTypeId.TokenTransfer })
+        .addTx({
+          tx_id: hex(0xb002),
+          tx_index: 1,
+          type_id: DbTxTypeId.SmartContract,
+          smart_contract_contract_id: 'SP000000000000000000002Q6VF78.boot',
+          smart_contract_source_code: '(define-public (f) (ok true))',
+        })
+        .build();
+      await db.update(block0);
+      await db.update(
+        new TestBlockBuilder({
+          block_height: 1,
+          index_block_hash: hex(1),
+          parent_index_block_hash: block0.block.index_block_hash,
+          parent_block_hash: block0.block.block_hash,
+        })
+          .addTx({ tx_id: hex(0x100), tx_index: 0, type_id: DbTxTypeId.Coinbase })
+          .build()
+      );
+      await assertTxTypeCountsConsistent(db);
+
+      const response = await api.fastifyApp.inject({
+        method: 'GET',
+        url: '/extended/v3/transactions',
+        query: { type: 'smart_contract' },
+      });
+      assert.equal(response.statusCode, 200);
+      const body = JSON.parse(response.body);
+      assert.equal(body.total, 1);
+      assert.deepEqual(
+        body.results.map((r: { tx_id: string }) => r.tx_id),
+        [hex(0xb002)]
+      );
+    });
+
     describe('type filter', () => {
       // Blocks 1-4 each hold a coinbase at index 0 and a token transfer at index 1. Block 2 adds a
       // contract call and block 3 a versioned contract deployment, both at index 2.
@@ -485,6 +523,14 @@ describe('v3 transactions', () => {
           body.results.map((r: { tx_id: string }) => r.tx_id),
           [hex(0x301)]
         );
+      });
+
+      test('should report the real total on an empty page past every match', async () => {
+        // Block 2's contract call is the only one, and it is newer than the cursor.
+        const body = await fetch({ type: 'contract_call', cursor: '1:0:1' });
+        assert.equal(body.total, 1);
+        assert.equal(body.results.length, 0);
+        assert.deepEqual(body.cursor, { next: null, previous: null, current: null });
       });
 
       test('should return an empty page with a zero total for an absent type', async () => {

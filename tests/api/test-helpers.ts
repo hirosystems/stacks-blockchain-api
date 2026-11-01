@@ -91,8 +91,9 @@ export async function getCurrentStxBalance(db: PgStore, address: string) {
 }
 
 /**
- * Asserts that the materialized `tx_type_counts` match a fresh count of canonical txs per type,
- * and that they add up to `chain_tip.tx_count`. Run after re-orgs, which apply delta updates.
+ * Asserts that the materialized `tx_type_counts` match a fresh count of canonical txs per type. Run
+ * after re-orgs, which apply delta updates. Not compared against `chain_tip.tx_count`, which
+ * leaves out the genesis boot txs.
  */
 export async function assertTxTypeCountsConsistent(db: PgStore) {
   const expected = await db.sql<{ type_id: number; count: number }[]>`
@@ -109,10 +110,5 @@ export async function assertTxTypeCountsConsistent(db: PgStore) {
   assert.deepEqual(
     actual.map(r => ({ ...r })),
     expected.map(r => ({ ...r }))
-  );
-  const [{ tx_count }] = await db.sql<{ tx_count: number }[]>`SELECT tx_count FROM chain_tip`;
-  assert.equal(
-    actual.reduce((sum, r) => sum + r.count, 0),
-    tx_count
   );
 }

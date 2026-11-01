@@ -384,6 +384,11 @@ describe('v3 mempool', () => {
         current: `1000:${hex(1)}`,
       });
 
+      // A cursor older than every match yields an empty page, but not an empty list.
+      const pastEnd = await fetch({ type: 'contract_call', cursor: `500:${hex(0)}` });
+      assert.equal(pastEnd.total, 3);
+      assert.equal(pastEnd.results.length, 0);
+
       const both = await fetch({ type: 'contract_call,token_transfer' });
       assert.equal(both.total, 6);
       assert.equal(both.results.length, 6);

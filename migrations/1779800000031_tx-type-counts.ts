@@ -7,8 +7,9 @@ export const shorthands: ColumnDefinitions | undefined = undefined;
  *
  * `tx_type_counts` materializes the number of canonical transactions per `type_id`, so a
  * type-filtered list reports its `total` by summing a handful of rows instead of a `COUNT(*)` over
- * `txs`. Its rows always add up to `chain_tip.tx_count`: they are maintained alongside it, on block
- * ingestion and delta-corrected on re-orgs.
+ * `txs`. Maintained on block ingestion and delta-corrected on re-orgs, alongside
+ * `chain_tip.tx_count`. Unlike `tx_count`, it also counts the genesis boot transactions that block 1
+ * adopts from block 0, so its rows match a `COUNT(*)` of canonical `txs` exactly.
  *
  * The index lets each requested type be paged in canonical order without walking past the rows of
  * every other type, which matters for rare types like `smart_contract`.

@@ -270,7 +270,11 @@ export class PgStoreV3 extends BasePgStoreModule {
 
       const hasNextPage = resultQuery.count > args.limit;
       const results = hasNextPage ? resultQuery.slice(0, args.limit) : resultQuery;
-      const total = resultQuery.count > 0 ? resultQuery[0].total : 0;
+      // An empty page doesn't mean an empty list: the cursor can sit past every matching row.
+      const total =
+        resultQuery.count > 0
+          ? resultQuery[0].total
+          : ((await sql<{ total: number }[]>`SELECT (${totalQuery}) AS total`)[0]?.total ?? 0);
 
       const nextResult = resultQuery[resultQuery.length - 1];
       const nextCursor = hasNextPage && nextResult ? encodeTransactionCursor(nextResult) : null;
@@ -827,7 +831,11 @@ export class PgStoreV3 extends BasePgStoreModule {
 
       const hasNextPage = resultQuery.count > args.limit;
       const results = hasNextPage ? resultQuery.slice(0, args.limit) : resultQuery;
-      const total = resultQuery.count > 0 ? resultQuery[0].total : 0;
+      // An empty page doesn't mean an empty list: the cursor can sit past every matching row.
+      const total =
+        resultQuery.count > 0
+          ? resultQuery[0].total
+          : ((await sql<{ total: number }[]>`SELECT (${totalQuery}) AS total`)[0]?.total ?? 0);
       const firstResult = results[0];
       const extraResult = hasNextPage ? resultQuery[args.limit] : null;
 
