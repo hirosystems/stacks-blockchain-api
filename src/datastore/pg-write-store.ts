@@ -444,6 +444,7 @@ export class PgWriteStore extends PgStore {
             tx_count = (SELECT tx_count FROM new_tx_count),
             bond_count = (SELECT bond_count FROM new_bond_count)
         `;
+        await this.updateTxTypeCounts(sql, data.txs);
         if (this.metrics) {
           this.metrics.blockHeight.set(data.block.block_height);
         }
@@ -1849,6 +1850,23 @@ export class PgWriteStore extends PgStore {
         INSERT INTO miner_rewards ${sql(values)}
       `;
     }
+  }
+
+  /**
+   * Adds a canonical block's transactions to the per-type `tx_type_counts`, mirroring the
+   * `chain_tip.tx_count` increment. Re-orgs apply the reverse delta in `markEntitiesCanonical`.
+   */
+  async updateTxTypeCounts(sql: PgSqlClient, txs: DataStoreTxEventData[]): Promise<void> {
+    const counts = new Map<number, number>();
+    for (const { tx } of txs) {
+      counts.set(tx.type_id, (counts.get(tx.type_id) ?? 0) + 1);
+    }
+    if (counts.size === 0) return;
+    const values = [...counts].map(([type_id, count]) => ({ type_id, count }));
+    await sql`
+      INSERT INTO tx_type_counts ${sql(values)}
+      ON CONFLICT (type_id) DO UPDATE SET count = tx_type_counts.count + EXCLUDED.count
+    `;
   }
 
   /**
@@ -4526,7 +4544,15 @@ export class PgWriteStore extends PgStore {
           SET canonical = ${canonical}
           WHERE index_block_hash = ${indexBlockHash} AND canonical != ${canonical}
           RETURNING tx_id, sender_address, nonce, sponsor_address, sponsor_nonce, fee_rate, sponsored,
-            canonical
+            canonical, type_id
+        ),
+        -- Mirrors the chain_tip.tx_count delta applied from updatedEntities after the re-org.
+        update_tx_type_counts AS (
+          INSERT INTO tx_type_counts (type_id, count)
+          SELECT type_id, SUM(CASE WHEN canonical THEN 1 ELSE -1 END)
+          FROM updated_txs
+          GROUP BY type_id
+          ON CONFLICT (type_id) DO UPDATE SET count = tx_type_counts.count + EXCLUDED.count
         ),
         affected_addresses AS (
             SELECT 

@@ -357,6 +357,152 @@ describe('v3 transactions', () => {
       });
     });
 
+    describe('type filter', () => {
+      // Blocks 1-4 each hold a coinbase at index 0 and a token transfer at index 1. Block 2 adds a
+      // contract call and block 3 a versioned contract deployment, both at index 2.
+      beforeEach(async () => {
+        for (let height = 1; height <= 4; height++) {
+          const builder = new TestBlockBuilder({
+            block_height: height,
+            index_block_hash: hex(height),
+            parent_index_block_hash: hex(height - 1),
+            parent_block_hash: hex(height - 1),
+          })
+            .addTx({ tx_id: hex(height * 0x100), tx_index: 0, type_id: DbTxTypeId.Coinbase })
+            .addTx({
+              tx_id: hex(height * 0x100 + 1),
+              tx_index: 1,
+              type_id: DbTxTypeId.TokenTransfer,
+            });
+          if (height === 2) {
+            builder.addTx({
+              tx_id: hex(height * 0x100 + 2),
+              tx_index: 2,
+              type_id: DbTxTypeId.ContractCall,
+              contract_call_contract_id: 'SP000000000000000000002Q6VF78.pox-4',
+              contract_call_function_name: 'stack-stx',
+              contract_call_function_args: bufferToHex(createClarityValueArray(uintCV(1))),
+            });
+          }
+          if (height === 3) {
+            builder.addTx({
+              tx_id: hex(height * 0x100 + 2),
+              tx_index: 2,
+              type_id: DbTxTypeId.VersionedSmartContract,
+              smart_contract_contract_id: 'SP466FNC0P7JWTNM2R9T199QRZN1MYEDTAR0KP27.contract',
+              smart_contract_source_code: '(define-public (f) (ok true))',
+              smart_contract_clarity_version: 2,
+            });
+          }
+          await db.update(builder.build());
+        }
+      });
+
+      const fetch = async (query: Record<string, string | string[]>) => {
+        const response = await api.fastifyApp.inject({
+          method: 'GET',
+          url: '/extended/v3/transactions',
+          query,
+        });
+        assert.equal(response.statusCode, 200);
+        return JSON.parse(response.body);
+      };
+
+      test('should return only transactions of the requested type', async () => {
+        const body = await fetch({ type: 'token_transfer' });
+        assert.equal(body.total, 4);
+        assert.deepEqual(
+          body.results.map((r: { tx_id: string }) => r.tx_id),
+          [hex(0x401), hex(0x301), hex(0x201), hex(0x101)]
+        );
+        assert.ok(body.results.every((r: { type: string }) => r.type === 'token_transfer'));
+
+        const unfiltered = await fetch({});
+        assert.equal(unfiltered.total, 10);
+      });
+
+      test('should merge several types in chain order', async () => {
+        // `smart_contract` also covers versioned deployments.
+        for (const query of [
+          { type: 'coinbase,smart_contract' },
+          { type: ['coinbase', 'smart_contract'] },
+        ]) {
+          const body = await fetch(query);
+          assert.equal(body.total, 5);
+          assert.deepEqual(
+            body.results.map((r: { tx_id: string }) => r.tx_id),
+            [hex(0x400), hex(0x302), hex(0x300), hex(0x200), hex(0x100)]
+          );
+        }
+      });
+
+      test('should paginate filtered results', async () => {
+        const page1 = await fetch({ type: 'token_transfer,contract_call', limit: '2' });
+        assert.equal(page1.total, 5);
+        assert.deepEqual(
+          page1.results.map((r: { tx_id: string }) => r.tx_id),
+          [hex(0x401), hex(0x301)]
+        );
+        assert.deepEqual(page1.cursor, { next: '2:0:2', previous: null, current: '4:0:1' });
+
+        const page2 = await fetch({
+          type: 'token_transfer,contract_call',
+          limit: '2',
+          cursor: page1.cursor.next,
+        });
+        assert.equal(page2.total, 5);
+        assert.deepEqual(
+          page2.results.map((r: { tx_id: string }) => r.tx_id),
+          [hex(0x202), hex(0x201)]
+        );
+        assert.deepEqual(page2.cursor, { next: '1:0:1', previous: '4:0:1', current: '2:0:2' });
+
+        const page3 = await fetch({
+          type: 'token_transfer,contract_call',
+          limit: '2',
+          cursor: page2.cursor.next,
+        });
+        assert.deepEqual(
+          page3.results.map((r: { tx_id: string }) => r.tx_id),
+          [hex(0x101)]
+        );
+        assert.deepEqual(page3.cursor, { next: null, previous: '2:0:2', current: '1:0:1' });
+      });
+
+      test('should resume from a cursor taken without the filter', async () => {
+        const body = await fetch({ type: 'coinbase', cursor: '3:0:1' });
+        assert.deepEqual(
+          body.results.map((r: { tx_id: string }) => r.tx_id),
+          [hex(0x300), hex(0x200), hex(0x100)]
+        );
+      });
+
+      test('should treat a block-boundary cursor matching another type as the top of the block', async () => {
+        // 3:0:0 is block 3's coinbase. Filtered to token transfers it must not be taken as an exact
+        // position, or block 3's token transfer at index 1 would be skipped.
+        const body = await fetch({ type: 'token_transfer', cursor: '3:0:0', limit: '1' });
+        assert.deepEqual(
+          body.results.map((r: { tx_id: string }) => r.tx_id),
+          [hex(0x301)]
+        );
+      });
+
+      test('should return an empty page with a zero total for an absent type', async () => {
+        const body = await fetch({ type: 'tenure_change' });
+        assert.equal(body.total, 0);
+        assert.equal(body.results.length, 0);
+      });
+
+      test('should reject an unknown type', async () => {
+        const response = await api.fastifyApp.inject({
+          method: 'GET',
+          url: '/extended/v3/transactions',
+          query: { type: 'token_transfer,nope' },
+        });
+        assert.equal(response.statusCode, 400);
+      });
+    });
+
     test('should return 304 when ETag matches and refresh ETag when chain tip changes', async () => {
       await db.update(
         new TestBlockBuilder({

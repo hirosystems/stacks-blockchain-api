@@ -29,7 +29,7 @@ import { bnsNameCV, I32_MAX } from '../../../src/helpers.ts';
 import { TestBlockBuilder } from '../test-builders.ts';
 import { PgSqlClient, bufferToHex } from '@stacks/api-toolkit';
 import { migrate } from '../../test-helpers.ts';
-import { getCurrentStxBalance } from '../test-helpers.ts';
+import { assertTxTypeCountsConsistent, getCurrentStxBalance } from '../test-helpers.ts';
 import { beforeEach, afterEach, describe, test } from 'node:test';
 import { STACKS_MAINNET } from '@stacks/network';
 
@@ -4653,6 +4653,9 @@ describe('postgres datastore', () => {
       const holderBalance = await getCurrentStxBalance(db, holder.address);
       assert.equal(holder.balance, holderBalance.balance.toString());
     }
+
+    // Per-type tx counts track the orphaned and restored txs alongside chain_tip.tx_count
+    await assertTxTypeCountsConsistent(db);
   });
 
   test('pg balance reorg handling', async () => {

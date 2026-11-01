@@ -113,3 +113,42 @@ export function parseCycleSelector(param: string): PoxCycleSelector {
   if (param === 'current' || param === 'previous' || param === 'next') return param;
   return parseInt(param, 10);
 }
+
+/** Transaction types a list can be filtered by. */
+export const TransactionTypeSchema = Type.Union([
+  Type.Literal('token_transfer'),
+  Type.Literal('smart_contract'),
+  Type.Literal('contract_call'),
+  Type.Literal('poison_microblock'),
+  Type.Literal('coinbase'),
+  Type.Literal('tenure_change'),
+]);
+export type TransactionType = Static<typeof TransactionTypeSchema>;
+
+/** The transaction types clients can broadcast, and so the only ones that reach the mempool. */
+export const MempoolTransactionTypeSchema = Type.Union([
+  Type.Literal('token_transfer'),
+  Type.Literal('smart_contract'),
+  Type.Literal('contract_call'),
+]);
+
+/**
+ * Querystring parameter restricting a transaction list to some transaction types. Accepted
+ * repeated (`?type=A&type=B`) or comma-separated (`?type=A,B`); routes using it must register the
+ * `splitCommaSeparatedQueryParam('type')` `preValidation` hook.
+ * @param typeSchema - The types the list can contain
+ * @returns The optional `type` array schema.
+ */
+export const TransactionTypesQuerystringParam = <T extends TSchema>(typeSchema: T) =>
+  Type.Optional(
+    Type.Array(typeSchema, {
+      minItems: 1,
+      uniqueItems: true,
+      description:
+        'Restricts results to these transaction types; `total` counts only the matching ' +
+        'transactions. Provide them as repeated querystring values ' +
+        '(`?type=coinbase&type=token_transfer`) or as a single comma-separated value ' +
+        '(`?type=coinbase,token_transfer`). Defaults to every type. `smart_contract` includes ' +
+        'versioned contract deployments, and `coinbase` includes every coinbase variant.',
+    })
+  );

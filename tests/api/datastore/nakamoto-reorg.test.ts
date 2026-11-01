@@ -3,6 +3,7 @@ import { PgWriteStore } from '../../../src/datastore/pg-write-store.ts';
 import { DbTxStatus } from '../../../src/datastore/common.ts';
 import { TestBlockBuilder, testMempoolTx } from '../test-builders.ts';
 import { migrate } from '../../test-helpers.ts';
+import { assertTxTypeCountsConsistent } from '../test-helpers.ts';
 import { beforeEach, afterEach, describe, test } from 'node:test';
 
 describe('nakamoto re-org handling', () => {
@@ -47,6 +48,7 @@ describe('nakamoto re-org handling', () => {
   });
 
   afterEach(async () => {
+    await assertTxTypeCountsConsistent(db);
     await db.close();
     await migrate('down');
   });

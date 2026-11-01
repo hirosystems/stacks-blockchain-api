@@ -180,18 +180,59 @@ export class PgStoreV3 extends BasePgStoreModule {
   }
 
   /**
-   * Gets the summaries for all transactions.
+   * Gets the summaries for all transactions, optionally restricted to a set of transaction types.
+   *
+   * Cursors are chain positions, so they stay valid when the type filter changes: a cursor taken
+   * from the unfiltered list resumes the filtered one at the same spot.
    * @param args - The arguments for the query.
    * @returns The summaries for all transactions.
    */
   async getTransactionSummaries(args: {
     limit: number;
     cursor?: TransactionCursor;
+    typeIds?: DbTxTypeId[];
   }): Promise<DbCursorPaginatedResult<DbTransactionSummary>> {
+    const typeIds = args.typeIds?.length ? [...new Set(args.typeIds)] : undefined;
     return await this.sqlTransaction(async sql => {
-      let cursorFilter = sql``;
+      const typeFilter = typeIds ? sql`AND type_id IN ${sql(typeIds)}` : sql``;
+
+      // Canonical txs matching the type filter, ordered by chain position. A filtered read is split
+      // into one branch per type so each walks the `(type_id, block_height, ...)` index in order
+      // and stops after `limit` rows, instead of scanning past every row of the other types.
+      const orderedTxs = (
+        columns: string[],
+        positionFilter: postgres.Fragment,
+        direction: 'ASC' | 'DESC',
+        limit: number
+      ) => {
+        const orderBy =
+          direction === 'DESC'
+            ? sql`ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC`
+            : sql`ORDER BY block_height ASC, microblock_sequence ASC, tx_index ASC`;
+        const select = (branchTypeFilter: postgres.Fragment) => sql`
+          SELECT ${sql(columns)}
+          FROM txs
+          WHERE canonical = true
+            AND microblock_canonical = true
+            ${branchTypeFilter}
+            ${positionFilter}
+          ${orderBy}
+          LIMIT ${limit}
+        `;
+        if (!typeIds || typeIds.length === 1) {
+          return select(typeFilter);
+        }
+        const branches = typeIds
+          .map(typeId => sql`(${select(sql`AND type_id = ${typeId}`)})`)
+          .reduce((acc, branch) => sql`${acc} UNION ALL ${branch}`);
+        return sql`SELECT * FROM (${branches}) AS t ${orderBy} LIMIT ${limit}`;
+      };
+
+      let positionFilter = sql``;
       if (args.cursor) {
         const cursor = await resolveTransactionCursor(args.cursor, async cursor => {
+          // Must honor the type filter: a block-boundary cursor that only matches a tx of another
+          // type has to resolve to the top of the block, not to that tx's position.
           const exactCursorQuery = await sql<{ exists: boolean }[]>`
             SELECT EXISTS (
               SELECT 1
@@ -200,27 +241,31 @@ export class PgStoreV3 extends BasePgStoreModule {
                 AND microblock_canonical = true
                 AND (block_height, microblock_sequence, tx_index)
                     = (${cursor.block_height}, ${cursor.microblock_sequence}, ${cursor.tx_index})
+                ${typeFilter}
             ) AS exists
           `;
           return exactCursorQuery[0]?.exists ?? false;
         });
-        cursorFilter = sql`
+        positionFilter = sql`
           AND (block_height, microblock_sequence, tx_index)
               <= (${cursor.block_height}, ${cursor.microblock_sequence}, ${cursor.tx_index})
         `;
       }
+      const totalQuery = typeIds
+        ? sql`
+            SELECT COALESCE(SUM(count), 0)::int
+            FROM tx_type_counts
+            WHERE type_id IN ${sql(typeIds)}
+          `
+        : sql`SELECT tx_count FROM chain_tip`;
       const resultQuery = await sql<
         (DbTransactionSummary & { microblock_sequence: number; total: number })[]
       >`
-        SELECT
-          ${sql(TX_SUMMARY_COLUMNS)},
-          (SELECT tx_count FROM chain_tip) AS total
-        FROM txs
-        WHERE canonical = true
-          AND microblock_canonical = true
-          ${cursorFilter}
+        SELECT page.*, (${totalQuery}) AS total
+        FROM (
+          ${orderedTxs([...new Set(TX_SUMMARY_COLUMNS)], positionFilter, 'DESC', args.limit + 1)}
+        ) AS page
         ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC
-        LIMIT ${args.limit + 1}
       `;
 
       const hasNextPage = resultQuery.count > args.limit;
@@ -238,18 +283,19 @@ export class PgStoreV3 extends BasePgStoreModule {
         const prevPageQuery = await sql<
           { block_height: number; microblock_sequence: number; tx_index: number }[]
         >`
-          SELECT block_height, microblock_sequence, tx_index
-          FROM txs
-          WHERE canonical = true
-            AND microblock_canonical = true
-            AND (block_height, microblock_sequence, tx_index)
-                > (
-                  ${firstResult.block_height},
-                  ${firstResult.microblock_sequence},
-                  ${firstResult.tx_index}
-                )
-          ORDER BY block_height ASC, microblock_sequence ASC, tx_index ASC
-          LIMIT ${args.limit}
+          ${orderedTxs(
+            ['block_height', 'microblock_sequence', 'tx_index'],
+            sql`
+              AND (block_height, microblock_sequence, tx_index)
+                  > (
+                    ${firstResult.block_height},
+                    ${firstResult.microblock_sequence},
+                    ${firstResult.tx_index}
+                  )
+            `,
+            'ASC',
+            args.limit
+          )}
         `;
         if (prevPageQuery.length > 0) {
           const prevPage = prevPageQuery[prevPageQuery.length - 1];
@@ -737,18 +783,27 @@ export class PgStoreV3 extends BasePgStoreModule {
   }
 
   /**
-   * Gets the summaries for all mempool transactions.
+   * Gets the summaries for all mempool transactions, optionally restricted to a set of transaction
+   * types.
    * @param args - The arguments for the query.
    * @returns The summaries for all mempool transactions.
    */
   async getMempoolTransactionSummaries(args: {
     limit: number;
     cursor?: string;
+    typeIds?: DbTxTypeId[];
   }): Promise<DbCursorPaginatedResult<DbMempoolTransactionSummary>> {
     return await this.sqlTransaction(async sql => {
       const encodeMempoolTxSummaryCursor = (
         tx: Pick<DbMempoolTransactionSummary, 'receipt_time' | 'tx_id'>
       ) => `${tx.receipt_time}:${tx.tx_id}`;
+
+      // The unpruned mempool is small enough that a filtered total is a cheap `COUNT(*)`, so it
+      // isn't worth materializing per-type counts next to `chain_tip.mempool_tx_count`.
+      const typeFilter = args.typeIds?.length ? sql`AND type_id IN ${sql(args.typeIds)}` : sql``;
+      const totalQuery = args.typeIds?.length
+        ? sql`SELECT COUNT(*)::int FROM mempool_txs WHERE pruned = false ${typeFilter}`
+        : sql`SELECT mempool_tx_count FROM chain_tip`;
 
       let cursorFilter = sql``;
       if (args.cursor) {
@@ -761,9 +816,10 @@ export class PgStoreV3 extends BasePgStoreModule {
       const resultQuery = await sql<(DbMempoolTransactionSummary & { total: number })[]>`
         SELECT
           ${sql(MEMPOOL_TX_SUMMARY_COLUMNS)},
-          (SELECT mempool_tx_count FROM chain_tip) AS total
+          (${totalQuery}) AS total
         FROM mempool_txs
         WHERE pruned = false
+          ${typeFilter}
           ${cursorFilter}
         ORDER BY receipt_time DESC, tx_id DESC
         LIMIT ${args.limit + 1}
@@ -783,6 +839,7 @@ export class PgStoreV3 extends BasePgStoreModule {
           SELECT receipt_time, tx_id
           FROM mempool_txs
           WHERE pruned = false
+            ${typeFilter}
             AND (receipt_time, tx_id) > (${firstResult.receipt_time}, ${firstResult.tx_id})
           ORDER BY receipt_time ASC, tx_id ASC
           LIMIT ${args.limit}
