@@ -406,6 +406,112 @@ describe('v3 mempool', () => {
       assert.equal(invalid.statusCode, 400);
     });
 
+    test('should sort by fee', async () => {
+      await db.update(
+        new TestBlockBuilder({
+          block_height: 1,
+          index_block_hash: hex(1),
+          parent_index_block_hash: hex(0),
+          parent_block_hash: hex(0),
+        })
+          .addTx({ tx_id: hex(0xaa), sender_address: BLOCK_SENDER, nonce: 0 })
+          .build()
+      );
+      // Fees deliberately disagree with receipt order, and txs 2-4 tie so `tx_id` breaks the tie.
+      const fees: Record<number, bigint> = { 1: 500n, 2: 300n, 3: 300n, 4: 300n, 5: 100n, 6: 900n };
+      const txs = Object.entries(fees).map(([i, fee]) =>
+        Number(i) % 2 === 1
+          ? testMempoolTx({
+              tx_id: hex(Number(i)),
+              receipt_time: Number(i) * 1000,
+              nonce: Number(i),
+              fee_rate: fee,
+              type_id: DbTxTypeId.ContractCall,
+              contract_call_contract_id: 'SP000000000000000000002Q6VF78.pox-4',
+              contract_call_function_name: 'stack-stx',
+            })
+          : testMempoolTx({
+              tx_id: hex(Number(i)),
+              receipt_time: Number(i) * 1000,
+              nonce: Number(i),
+              fee_rate: fee,
+            })
+      );
+      await db.updateMempoolTxs({ mempoolTxs: txs });
+
+      const fetch = async (query: Record<string, string>) => {
+        const response = await api.fastifyApp.inject({
+          method: 'GET',
+          url: '/extended/v3/mempool/transactions',
+          query,
+        });
+        assert.equal(response.statusCode, 200);
+        return JSON.parse(response.body);
+      };
+      const ids = (body: { results: { tx_id: string }[] }) => body.results.map(r => r.tx_id);
+
+      const page1 = await fetch({ sort_by: 'fee', limit: '3' });
+      assert.equal(page1.total, 6);
+      assert.deepEqual(ids(page1), [hex(6), hex(1), hex(4)]);
+      assert.deepEqual(
+        page1.results.map((r: { fee_rate: string }) => r.fee_rate),
+        ['900', '500', '300']
+      );
+      assert.deepEqual(page1.cursor, {
+        next: `fee:300:${hex(3)}`,
+        previous: null,
+        current: `fee:900:${hex(6)}`,
+      });
+
+      // The page boundary falls inside the run of equal fees.
+      const page2 = await fetch({ sort_by: 'fee', limit: '3', cursor: page1.cursor.next });
+      assert.deepEqual(ids(page2), [hex(3), hex(2), hex(5)]);
+      assert.deepEqual(page2.cursor, {
+        next: null,
+        previous: `fee:900:${hex(6)}`,
+        current: `fee:300:${hex(3)}`,
+      });
+
+      // The previous cursor of a page that starts inside the tie steps back exactly one page.
+      const mid = await fetch({ sort_by: 'fee', limit: '2', cursor: `fee:300:${hex(3)}` });
+      assert.deepEqual(ids(mid), [hex(3), hex(2)]);
+      assert.equal(mid.cursor.previous, `fee:500:${hex(1)}`);
+      const back = await fetch({ sort_by: 'fee', limit: '2', cursor: mid.cursor.previous });
+      assert.deepEqual(ids(back), [hex(1), hex(4)]);
+
+      // Combines with the type filter.
+      const calls = await fetch({ sort_by: 'fee', type: 'contract_call' });
+      assert.equal(calls.total, 3);
+      assert.deepEqual(ids(calls), [hex(1), hex(3), hex(5)]);
+
+      // The explicit default matches the implicit one.
+      const byReceipt = await fetch({ sort_by: 'receipt_time', limit: '2' });
+      assert.deepEqual(ids(byReceipt), [hex(6), hex(5)]);
+      assert.equal(byReceipt.cursor.next, `4000:${hex(4)}`);
+
+      // A cursor only pages the order it was returned for.
+      const mismatches = [
+        { sort_by: 'fee', cursor: byReceipt.cursor.next },
+        { cursor: page1.cursor.next },
+        { sort_by: 'receipt_time', cursor: page1.cursor.next },
+      ];
+      for (const query of mismatches) {
+        const response = await api.fastifyApp.inject({
+          method: 'GET',
+          url: '/extended/v3/mempool/transactions',
+          query,
+        });
+        assert.equal(response.statusCode, 400);
+      }
+
+      const invalid = await api.fastifyApp.inject({
+        method: 'GET',
+        url: '/extended/v3/mempool/transactions',
+        query: { sort_by: 'size' },
+      });
+      assert.equal(invalid.statusCode, 400);
+    });
+
     test('should return 304 when ETag matches and refresh ETag on mempool changes', async () => {
       const tx1 = hex(0x3001);
       const tx2 = hex(0x3002);

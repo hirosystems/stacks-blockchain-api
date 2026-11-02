@@ -6,18 +6,20 @@ import { getPagingQueryLimit, ResourceType } from '../../pagination.js';
 import {
   CursorPaginatedResponse,
   CursorPaginationQuerystring,
-  MempoolTransactionCursorSchema,
+  MempoolTransactionListCursorSchema,
 } from '../../schemas/v3/cursors.js';
 import { serializeDbMempoolTransactionSummary } from '../../serializers/v3/mempool-transactions.js';
 import { MempoolTransactionSummarySchema } from '../../schemas/v3/entities/mempool-transaction-summaries.js';
 import { MempoolSummarySchema } from '../../schemas/v3/entities/mempool-summary.js';
 import { serializeMempoolSummary } from '../../serializers/v3/mempool-summary.js';
 import {
+  MempoolTransactionSortBySchema,
   MempoolTransactionTypeSchema,
   TransactionTypesQuerystringParam,
 } from '../../schemas/v3/params.js';
 import { getTxTypeId } from '../../controllers/db-controller.js';
 import { splitCommaSeparatedQueryParam } from '../../query-helpers.js';
+import { InvalidRequestError, InvalidRequestErrorType } from '../../../errors.js';
 
 export const MempoolRoutes: FastifyPluginAsync<
   Record<never, never>,
@@ -58,28 +60,39 @@ export const MempoolRoutes: FastifyPluginAsync<
         summary: 'Get mempool transactions',
         description:
           'Retrieves a list of recently broadcasted transactions, optionally restricted to some ' +
-          'transaction types',
+          'transaction types and sorted by fee instead of receipt time',
         tags: ['Mempool'],
         querystring: Type.Composite([
-          CursorPaginationQuerystring(MempoolTransactionCursorSchema, ResourceType.Tx),
+          CursorPaginationQuerystring(MempoolTransactionListCursorSchema, ResourceType.Tx),
           Type.Object({
             type: TransactionTypesQuerystringParam(MempoolTransactionTypeSchema),
+            sort_by: Type.Optional(MempoolTransactionSortBySchema),
           }),
         ]),
         response: {
           200: CursorPaginatedResponse(
             MempoolTransactionSummarySchema,
-            MempoolTransactionCursorSchema,
+            MempoolTransactionListCursorSchema,
             ResourceType.Tx
           ),
         },
       },
     },
     async (req, reply) => {
+      const sortBy = req.query.sort_by ?? 'receipt_time';
+      // Both cursor formats share a shape, so a cursor from the other order would page from a
+      // meaningless position instead of failing.
+      if (req.query.cursor && req.query.cursor.startsWith('fee:') !== (sortBy === 'fee')) {
+        throw new InvalidRequestError(
+          `The cursor does not belong to the \`${sortBy}\` sort order`,
+          InvalidRequestErrorType.invalid_query
+        );
+      }
       const results = await fastify.db.v3.getMempoolTransactionSummaries({
         limit: req.query.limit ?? getPagingQueryLimit(ResourceType.Tx),
         cursor: req.query.cursor,
         typeIds: req.query.type?.flatMap(t => getTxTypeId(t)),
+        sortBy,
       });
       await reply.send({
         limit: results.limit,
