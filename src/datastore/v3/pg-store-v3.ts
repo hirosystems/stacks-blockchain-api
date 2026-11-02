@@ -790,7 +790,9 @@ export class PgStoreV3 extends BasePgStoreModule {
 
   /**
    * Gets the summaries for all mempool transactions, optionally restricted to a set of transaction
-   * types.
+   * types. Keyset-paginated by `(receipt_time, tx_id)`, or by `(fee_rate, tx_id)` when sorted by
+   * fee, whose cursors carry a `fee:` prefix. Descending unless `order` is `asc`; a cursor is a
+   * position, so it pages either direction.
    * @param args - The arguments for the query.
    * @returns The summaries for all mempool transactions.
    */
@@ -798,11 +800,23 @@ export class PgStoreV3 extends BasePgStoreModule {
     limit: number;
     cursor?: string;
     typeIds?: DbTxTypeId[];
+    sortBy?: 'receipt_time' | 'fee';
+    order?: 'asc' | 'desc';
   }): Promise<DbCursorPaginatedResult<DbMempoolTransactionSummary>> {
     return await this.sqlTransaction(async sql => {
+      const byFee = args.sortBy === 'fee';
       const encodeMempoolTxSummaryCursor = (
-        tx: Pick<DbMempoolTransactionSummary, 'receipt_time' | 'tx_id'>
-      ) => `${tx.receipt_time}:${tx.tx_id}`;
+        tx: Pick<DbMempoolTransactionSummary, 'fee_rate' | 'receipt_time' | 'tx_id'>
+      ) => (byFee ? `fee:${tx.fee_rate}:${tx.tx_id}` : `${tx.receipt_time}:${tx.tx_id}`);
+      const sortKey = (tx: Pick<DbMempoolTransactionSummary, 'fee_rate' | 'receipt_time'>) =>
+        byFee ? sql`${tx.fee_rate}::bigint` : sql`${tx.receipt_time}`;
+      const sortColumn = byFee ? sql`fee_rate` : sql`receipt_time`;
+      // The previous page walks back from the current one, so it compares and sorts the other way.
+      const asc = args.order === 'asc';
+      const pageDirection = asc ? sql`ASC` : sql`DESC`;
+      const pageComparison = asc ? sql`>=` : sql`<=`;
+      const prevDirection = asc ? sql`DESC` : sql`ASC`;
+      const prevComparison = asc ? sql`<` : sql`>`;
 
       // The unpruned mempool is small enough that a filtered total is a cheap `COUNT(*)`, so it
       // isn't worth materializing per-type counts next to `chain_tip.mempool_tx_count`.
@@ -813,9 +827,10 @@ export class PgStoreV3 extends BasePgStoreModule {
 
       let cursorFilter = sql``;
       if (args.cursor) {
-        const [receiptTime, txId] = args.cursor.split(':');
+        const [value, txId] = args.cursor.replace(/^fee:/, '').split(':');
+        const cursorKey = byFee ? sql`${value}::bigint` : sql`${parseInt(value, 10)}`;
         cursorFilter = sql`
-          AND (receipt_time, tx_id) <= (${parseInt(receiptTime, 10)}, ${txId})
+          AND (${sortColumn}, tx_id) ${pageComparison} (${cursorKey}, ${txId})
         `;
       }
 
@@ -827,7 +842,7 @@ export class PgStoreV3 extends BasePgStoreModule {
         WHERE pruned = false
           ${typeFilter}
           ${cursorFilter}
-        ORDER BY receipt_time DESC, tx_id DESC
+        ORDER BY ${sortColumn} ${pageDirection}, tx_id ${pageDirection}
         LIMIT ${args.limit + 1}
       `;
 
@@ -844,14 +859,14 @@ export class PgStoreV3 extends BasePgStoreModule {
       let prevCursor: string | null = null;
       if (firstResult) {
         const prevPageQuery = await sql<
-          Pick<DbMempoolTransactionSummary, 'receipt_time' | 'tx_id'>[]
+          Pick<DbMempoolTransactionSummary, 'fee_rate' | 'receipt_time' | 'tx_id'>[]
         >`
-          SELECT receipt_time, tx_id
+          SELECT fee_rate, receipt_time, tx_id
           FROM mempool_txs
           WHERE pruned = false
             ${typeFilter}
-            AND (receipt_time, tx_id) > (${firstResult.receipt_time}, ${firstResult.tx_id})
-          ORDER BY receipt_time ASC, tx_id ASC
+            AND (${sortColumn}, tx_id) ${prevComparison} (${sortKey(firstResult)}, ${firstResult.tx_id})
+          ORDER BY ${sortColumn} ${prevDirection}, tx_id ${prevDirection}
           LIMIT ${args.limit}
         `;
         prevCursor =

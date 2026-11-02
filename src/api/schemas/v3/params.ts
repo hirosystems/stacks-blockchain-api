@@ -132,6 +132,32 @@ export const MempoolTransactionTypeSchema = Type.Union([
   Type.Literal('contract_call'),
 ]);
 
+/** The orders `/extended/v3/mempool/transactions` can list pending transactions in. */
+export const MempoolTransactionSortBySchema = Type.Union(
+  [Type.Literal('receipt_time'), Type.Literal('fee')],
+  {
+    default: 'receipt_time',
+    description:
+      'Field to list pending transactions by, in the direction set by `order`: `receipt_time` is ' +
+      'when the transaction was received, `fee` its total fee (not fee per byte). Ties break by ' +
+      '`tx_id` in the same direction. A cursor only pages the `sort_by` it was returned for, but ' +
+      'pages from its position in either `order`.',
+  }
+);
+export type MempoolTransactionSortBy = Static<typeof MempoolTransactionSortBySchema>;
+
+/** The directions `/extended/v3/mempool/transactions` can list pending transactions in. */
+export const MempoolTransactionOrderSchema = Type.Union(
+  [Type.Literal('asc'), Type.Literal('desc')],
+  {
+    default: 'desc',
+    description:
+      'Direction to list pending transactions in: `desc` puts the most recent or highest fee ' +
+      'first, `asc` the oldest or lowest fee first.',
+  }
+);
+export type MempoolTransactionOrder = Static<typeof MempoolTransactionOrderSchema>;
+
 /**
  * Querystring parameter restricting a transaction list to some transaction types. Accepted
  * repeated (`?type=A&type=B`) or comma-separated (`?type=A,B`); routes using it must register the
