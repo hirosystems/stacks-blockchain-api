@@ -183,7 +183,9 @@ export class PgStoreV3 extends BasePgStoreModule {
    * Gets the summaries for all transactions, optionally restricted to a set of transaction types.
    *
    * Cursors are chain positions, so they stay valid when the type filter changes: a cursor taken
-   * from the unfiltered list resumes the filtered one at the same spot.
+   * from the unfiltered list resumes the filtered one at the same spot. The exception is a
+   * `height:0:0` cursor whose transaction isn't of a requested type: like any `height:0:0` cursor
+   * with no exact match, it resumes at the top of that block.
    * @param args - The arguments for the query.
    * @returns The summaries for all transactions.
    */

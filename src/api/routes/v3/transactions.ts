@@ -50,7 +50,9 @@ export const TransactionsRoutes: FastifyPluginAsync<
         description:
           'Retrieves a list of recently mined transactions, optionally restricted to some ' +
           'transaction types. Cursors are chain positions, so a cursor stays valid when the ' +
-          '`type` filter changes: it resumes the new list at the same point in the chain.',
+          '`type` filter changes: it resumes the new list at the same point in the chain. A ' +
+          '`height:0:0` cursor with no transaction of a requested type at that exact position ' +
+          'resumes at the top of that block instead.',
         tags: ['Transactions'],
         querystring: Type.Composite([
           CursorPaginationQuerystring(TransactionCursorSchema, ResourceType.Tx),

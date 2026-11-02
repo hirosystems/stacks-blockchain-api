@@ -48,9 +48,12 @@ describe('nakamoto re-org handling', () => {
   });
 
   afterEach(async () => {
-    await assertTxTypeCountsConsistent(db);
-    await db.close();
-    await migrate('down');
+    try {
+      await assertTxTypeCountsConsistent(db);
+    } finally {
+      await db.close();
+      await migrate('down');
+    }
   });
 
   test('switches to a same-height sibling block immediately', async () => {
