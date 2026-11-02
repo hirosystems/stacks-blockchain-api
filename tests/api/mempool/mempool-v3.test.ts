@@ -406,7 +406,11 @@ describe('v3 mempool', () => {
       assert.equal(invalid.statusCode, 400);
     });
 
-    test('should sort by fee', async () => {
+    /**
+     * Seeds six pending txs whose fees disagree with their receipt order, with txs 2-4 tied on fee
+     * so `tx_id` breaks the tie. Odd txs are contract calls, even ones token transfers.
+     */
+    const seedSortFixture = async () => {
       await db.update(
         new TestBlockBuilder({
           block_height: 1,
@@ -417,7 +421,6 @@ describe('v3 mempool', () => {
           .addTx({ tx_id: hex(0xaa), sender_address: BLOCK_SENDER, nonce: 0 })
           .build()
       );
-      // Fees deliberately disagree with receipt order, and txs 2-4 tie so `tx_id` breaks the tie.
       const fees: Record<number, bigint> = { 1: 500n, 2: 300n, 3: 300n, 4: 300n, 5: 100n, 6: 900n };
       const txs = Object.entries(fees).map(([i, fee]) =>
         Number(i) % 2 === 1
@@ -449,6 +452,11 @@ describe('v3 mempool', () => {
         return JSON.parse(response.body);
       };
       const ids = (body: { results: { tx_id: string }[] }) => body.results.map(r => r.tx_id);
+      return { fetch, ids };
+    };
+
+    test('should sort by fee', async () => {
+      const { fetch, ids } = await seedSortFixture();
 
       const page1 = await fetch({ sort_by: 'fee', limit: '3' });
       assert.equal(page1.total, 6);
@@ -514,6 +522,76 @@ describe('v3 mempool', () => {
         method: 'GET',
         url: '/extended/v3/mempool/transactions',
         query: { sort_by: 'size' },
+      });
+      assert.equal(invalid.statusCode, 400);
+    });
+
+    test('should sort in ascending order', async () => {
+      const { fetch, ids } = await seedSortFixture();
+
+      const page1 = await fetch({ sort_by: 'fee', order: 'asc', limit: '3' });
+      assert.equal(page1.total, 6);
+      assert.deepEqual(ids(page1), [hex(5), hex(2), hex(3)]);
+      assert.deepEqual(page1.cursor, {
+        next: `fee:300:${hex(4)}`,
+        previous: null,
+        current: `fee:100:${hex(5)}`,
+      });
+
+      // The page boundary falls inside the run of equal fees, which break by ascending `tx_id`.
+      const page2 = await fetch({
+        sort_by: 'fee',
+        order: 'asc',
+        limit: '3',
+        cursor: page1.cursor.next,
+      });
+      assert.deepEqual(ids(page2), [hex(4), hex(1), hex(6)]);
+      assert.deepEqual(page2.cursor, {
+        next: null,
+        previous: `fee:100:${hex(5)}`,
+        current: `fee:300:${hex(4)}`,
+      });
+
+      // The previous cursor of a page that starts inside the tie steps back exactly one page.
+      const mid = await fetch({
+        sort_by: 'fee',
+        order: 'asc',
+        limit: '2',
+        cursor: `fee:300:${hex(3)}`,
+      });
+      assert.deepEqual(ids(mid), [hex(3), hex(4)]);
+      assert.equal(mid.cursor.previous, `fee:100:${hex(5)}`);
+      const back = await fetch({
+        sort_by: 'fee',
+        order: 'asc',
+        limit: '2',
+        cursor: mid.cursor.previous,
+      });
+      assert.deepEqual(ids(back), [hex(5), hex(2)]);
+
+      const byReceipt = await fetch({ order: 'asc', limit: '4' });
+      assert.deepEqual(ids(byReceipt), [hex(1), hex(2), hex(3), hex(4)]);
+      assert.equal(byReceipt.cursor.next, `5000:${hex(5)}`);
+      const byReceipt2 = await fetch({ order: 'asc', limit: '4', cursor: byReceipt.cursor.next });
+      assert.deepEqual(ids(byReceipt2), [hex(5), hex(6)]);
+      assert.equal(byReceipt2.cursor.next, null);
+      assert.equal(byReceipt2.cursor.previous, `1000:${hex(1)}`);
+
+      // A cursor is a position, so one returned for the descending order pages upward from it.
+      const desc = await fetch({ limit: '2' });
+      assert.equal(desc.cursor.next, `4000:${hex(4)}`);
+      const flipped = await fetch({ order: 'asc', cursor: desc.cursor.next });
+      assert.deepEqual(ids(flipped), [hex(4), hex(5), hex(6)]);
+
+      // Combines with the type filter.
+      const calls = await fetch({ sort_by: 'fee', order: 'asc', type: 'contract_call' });
+      assert.equal(calls.total, 3);
+      assert.deepEqual(ids(calls), [hex(5), hex(3), hex(1)]);
+
+      const invalid = await api.fastifyApp.inject({
+        method: 'GET',
+        url: '/extended/v3/mempool/transactions',
+        query: { order: 'up' },
       });
       assert.equal(invalid.statusCode, 400);
     });

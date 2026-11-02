@@ -790,8 +790,9 @@ export class PgStoreV3 extends BasePgStoreModule {
 
   /**
    * Gets the summaries for all mempool transactions, optionally restricted to a set of transaction
-   * types. Keyset-paginated by `(receipt_time, tx_id)` descending, or by `(fee_rate, tx_id)`
-   * descending when sorted by fee, whose cursors carry a `fee:` prefix.
+   * types. Keyset-paginated by `(receipt_time, tx_id)`, or by `(fee_rate, tx_id)` when sorted by
+   * fee, whose cursors carry a `fee:` prefix. Descending unless `order` is `asc`; a cursor is a
+   * position, so it pages either direction.
    * @param args - The arguments for the query.
    * @returns The summaries for all mempool transactions.
    */
@@ -800,6 +801,7 @@ export class PgStoreV3 extends BasePgStoreModule {
     cursor?: string;
     typeIds?: DbTxTypeId[];
     sortBy?: 'receipt_time' | 'fee';
+    order?: 'asc' | 'desc';
   }): Promise<DbCursorPaginatedResult<DbMempoolTransactionSummary>> {
     return await this.sqlTransaction(async sql => {
       const byFee = args.sortBy === 'fee';
@@ -809,6 +811,12 @@ export class PgStoreV3 extends BasePgStoreModule {
       const sortKey = (tx: Pick<DbMempoolTransactionSummary, 'fee_rate' | 'receipt_time'>) =>
         byFee ? sql`${tx.fee_rate}::bigint` : sql`${tx.receipt_time}`;
       const sortColumn = byFee ? sql`fee_rate` : sql`receipt_time`;
+      // The previous page walks back from the current one, so it compares and sorts the other way.
+      const asc = args.order === 'asc';
+      const pageDirection = asc ? sql`ASC` : sql`DESC`;
+      const pageComparison = asc ? sql`>=` : sql`<=`;
+      const prevDirection = asc ? sql`DESC` : sql`ASC`;
+      const prevComparison = asc ? sql`<` : sql`>`;
 
       // The unpruned mempool is small enough that a filtered total is a cheap `COUNT(*)`, so it
       // isn't worth materializing per-type counts next to `chain_tip.mempool_tx_count`.
@@ -822,7 +830,7 @@ export class PgStoreV3 extends BasePgStoreModule {
         const [value, txId] = args.cursor.replace(/^fee:/, '').split(':');
         const cursorKey = byFee ? sql`${value}::bigint` : sql`${parseInt(value, 10)}`;
         cursorFilter = sql`
-          AND (${sortColumn}, tx_id) <= (${cursorKey}, ${txId})
+          AND (${sortColumn}, tx_id) ${pageComparison} (${cursorKey}, ${txId})
         `;
       }
 
@@ -834,7 +842,7 @@ export class PgStoreV3 extends BasePgStoreModule {
         WHERE pruned = false
           ${typeFilter}
           ${cursorFilter}
-        ORDER BY ${sortColumn} DESC, tx_id DESC
+        ORDER BY ${sortColumn} ${pageDirection}, tx_id ${pageDirection}
         LIMIT ${args.limit + 1}
       `;
 
@@ -857,8 +865,8 @@ export class PgStoreV3 extends BasePgStoreModule {
           FROM mempool_txs
           WHERE pruned = false
             ${typeFilter}
-            AND (${sortColumn}, tx_id) > (${sortKey(firstResult)}, ${firstResult.tx_id})
-          ORDER BY ${sortColumn} ASC, tx_id ASC
+            AND (${sortColumn}, tx_id) ${prevComparison} (${sortKey(firstResult)}, ${firstResult.tx_id})
+          ORDER BY ${sortColumn} ${prevDirection}, tx_id ${prevDirection}
           LIMIT ${args.limit}
         `;
         prevCursor =

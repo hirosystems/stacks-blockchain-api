@@ -13,6 +13,7 @@ import { MempoolTransactionSummarySchema } from '../../schemas/v3/entities/mempo
 import { MempoolSummarySchema } from '../../schemas/v3/entities/mempool-summary.js';
 import { serializeMempoolSummary } from '../../serializers/v3/mempool-summary.js';
 import {
+  MempoolTransactionOrderSchema,
   MempoolTransactionSortBySchema,
   MempoolTransactionTypeSchema,
   TransactionTypesQuerystringParam,
@@ -69,6 +70,7 @@ export const MempoolRoutes: FastifyPluginAsync<
           Type.Object({
             type: TransactionTypesQuerystringParam(MempoolTransactionTypeSchema),
             sort_by: Type.Optional(MempoolTransactionSortBySchema),
+            order: Type.Optional(MempoolTransactionOrderSchema),
           }),
         ]),
         response: {
@@ -106,6 +108,7 @@ export const MempoolRoutes: FastifyPluginAsync<
         cursor: req.query.cursor,
         typeIds: req.query.type?.flatMap(t => getTxTypeId(t)),
         sortBy,
+        order: req.query.order ?? 'desc',
       });
       await reply.send({
         limit: results.limit,
