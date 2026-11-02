@@ -89,3 +89,26 @@ export async function getCurrentStxBalance(db: PgStore, address: string) {
   const chainTip = await db.getChainTip(db.sql);
   return db.getStxBalanceAtBlock(address, chainTip.block_height);
 }
+
+/**
+ * Asserts that the materialized `tx_type_counts` match a fresh count of canonical txs per type. Run
+ * after re-orgs, which apply delta updates. Not compared against `chain_tip.tx_count`, which
+ * leaves out the genesis boot txs.
+ */
+export async function assertTxTypeCountsConsistent(db: PgStore) {
+  const expected = await db.sql<{ type_id: number; count: number }[]>`
+    SELECT type_id, COUNT(*)::int AS count
+    FROM txs
+    WHERE canonical = true AND microblock_canonical = true
+    GROUP BY type_id
+    ORDER BY type_id
+  `;
+  // Types whose txs were all orphaned keep a zero row.
+  const actual = await db.sql<{ type_id: number; count: number }[]>`
+    SELECT type_id, count FROM tx_type_counts WHERE count != 0 ORDER BY type_id
+  `;
+  assert.deepEqual(
+    actual.map(r => ({ ...r })),
+    expected.map(r => ({ ...r }))
+  );
+}

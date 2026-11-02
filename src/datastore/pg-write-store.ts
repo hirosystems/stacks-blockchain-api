@@ -444,6 +444,10 @@ export class PgWriteStore extends PgStore {
             tx_count = (SELECT tx_count FROM new_tx_count),
             bond_count = (SELECT bond_count FROM new_bond_count)
         `;
+        await this.updateTxTypeCounts(
+          sql,
+          data.txs.map(({ tx }) => tx.type_id)
+        );
         if (this.metrics) {
           this.metrics.blockHeight.set(data.block.block_height);
         }
@@ -1852,6 +1856,25 @@ export class PgWriteStore extends PgStore {
   }
 
   /**
+   * Adds transactions that just became canonical to the per-type `tx_type_counts`: a canonical
+   * block's transactions, or the boot transactions block 1 adopts from block 0. Re-orgs apply the
+   * reverse delta in `markEntitiesCanonical`.
+   * @param typeIds - The `type_id` of each transaction, one entry per transaction
+   */
+  async updateTxTypeCounts(sql: PgSqlClient, typeIds: DbTxTypeId[]): Promise<void> {
+    const counts = new Map<number, number>();
+    for (const typeId of typeIds) {
+      counts.set(typeId, (counts.get(typeId) ?? 0) + 1);
+    }
+    if (counts.size === 0) return;
+    const values = [...counts].map(([type_id, count]) => ({ type_id, count }));
+    await sql`
+      INSERT INTO tx_type_counts ${sql(values)}
+      ON CONFLICT (type_id) DO UPDATE SET count = tx_type_counts.count + EXCLUDED.count
+    `;
+  }
+
+  /**
    * Adds a canonical block's matured miner rewards to each recipient's
    * `principal_miner_reward_totals` row. Zero-value rewards add nothing to the amounts and aren't
    * counted. Re-orgs apply the reverse delta in `markEntitiesCanonical`.
@@ -2062,7 +2085,7 @@ export class PgWriteStore extends PgStore {
 
   async fixBlockZeroData(sql: PgSqlClient, blockOne: DbBlock): Promise<void> {
     const tablesUpdates: Record<string, number> = {};
-    const txsResult = await sql<TxQueryResult[]>`
+    const txsResult = await sql<{ type_id: DbTxTypeId }[]>`
       UPDATE txs
       SET
         canonical = true,
@@ -2074,8 +2097,14 @@ export class PgWriteStore extends PgStore {
         burn_block_time = ${blockOne.burn_block_time},
         parent_block_hash = ${blockOne.parent_block_hash}
       WHERE block_height = 0
+      RETURNING type_id
     `;
     tablesUpdates['txs'] = txsResult.count;
+    // The boot txs only become canonical here, so they were never counted as block 0's.
+    await this.updateTxTypeCounts(
+      sql,
+      txsResult.map(r => r.type_id)
+    );
     for (const table of TX_METADATA_TABLES) {
       // a couple tables have a different name for the 'block_height' column
       const heightCol =
@@ -4526,7 +4555,15 @@ export class PgWriteStore extends PgStore {
           SET canonical = ${canonical}
           WHERE index_block_hash = ${indexBlockHash} AND canonical != ${canonical}
           RETURNING tx_id, sender_address, nonce, sponsor_address, sponsor_nonce, fee_rate, sponsored,
-            canonical
+            canonical, type_id
+        ),
+        -- Mirrors the chain_tip.tx_count delta applied from updatedEntities after the re-org.
+        update_tx_type_counts AS (
+          INSERT INTO tx_type_counts (type_id, count)
+          SELECT type_id, SUM(CASE WHEN canonical THEN 1 ELSE -1 END)
+          FROM updated_txs
+          GROUP BY type_id
+          ON CONFLICT (type_id) DO UPDATE SET count = tx_type_counts.count + EXCLUDED.count
         ),
         affected_addresses AS (
             SELECT 

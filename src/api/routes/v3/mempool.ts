@@ -1,6 +1,6 @@
 import { handleMempoolCache } from '../../controllers/cache-controller.js';
 import { FastifyPluginAsync } from 'fastify';
-import { TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
+import { Type, TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
 import { Server } from 'node:http';
 import { getPagingQueryLimit, ResourceType } from '../../pagination.js';
 import {
@@ -12,6 +12,12 @@ import { serializeDbMempoolTransactionSummary } from '../../serializers/v3/mempo
 import { MempoolTransactionSummarySchema } from '../../schemas/v3/entities/mempool-transaction-summaries.js';
 import { MempoolSummarySchema } from '../../schemas/v3/entities/mempool-summary.js';
 import { serializeMempoolSummary } from '../../serializers/v3/mempool-summary.js';
+import {
+  MempoolTransactionTypeSchema,
+  TransactionTypesQuerystringParam,
+} from '../../schemas/v3/params.js';
+import { getTxTypeId } from '../../controllers/db-controller.js';
+import { splitCommaSeparatedQueryParam } from '../../query-helpers.js';
 
 export const MempoolRoutes: FastifyPluginAsync<
   Record<never, never>,
@@ -46,12 +52,20 @@ export const MempoolRoutes: FastifyPluginAsync<
     '/mempool/transactions',
     {
       preHandler: handleMempoolCache,
+      preValidation: splitCommaSeparatedQueryParam('type'),
       schema: {
         operationId: 'get_mempool_transactions',
         summary: 'Get mempool transactions',
-        description: `Retrieves a list of recently broadcasted transactions`,
+        description:
+          'Retrieves a list of recently broadcasted transactions, optionally restricted to some ' +
+          'transaction types',
         tags: ['Mempool'],
-        querystring: CursorPaginationQuerystring(MempoolTransactionCursorSchema, ResourceType.Tx),
+        querystring: Type.Composite([
+          CursorPaginationQuerystring(MempoolTransactionCursorSchema, ResourceType.Tx),
+          Type.Object({
+            type: TransactionTypesQuerystringParam(MempoolTransactionTypeSchema),
+          }),
+        ]),
         response: {
           200: CursorPaginatedResponse(
             MempoolTransactionSummarySchema,
@@ -65,6 +79,7 @@ export const MempoolRoutes: FastifyPluginAsync<
       const results = await fastify.db.v3.getMempoolTransactionSummaries({
         limit: req.query.limit ?? getPagingQueryLimit(ResourceType.Tx),
         cursor: req.query.cursor,
+        typeIds: req.query.type?.flatMap(t => getTxTypeId(t)),
       });
       await reply.send({
         limit: results.limit,

@@ -321,6 +321,91 @@ describe('v3 mempool', () => {
       assert.equal(body3.cursor.current, `2000:${hex(2)}`);
     });
 
+    test('should filter by transaction type', async () => {
+      await db.update(
+        new TestBlockBuilder({
+          block_height: 1,
+          index_block_hash: hex(1),
+          parent_index_block_hash: hex(0),
+          parent_block_hash: hex(0),
+        })
+          .addTx({ tx_id: hex(0xaa), sender_address: BLOCK_SENDER, nonce: 0 })
+          .build()
+      );
+      // Odd receipt times are contract calls, even ones token transfers.
+      const txs = [];
+      for (let i = 1; i <= 6; i++) {
+        txs.push(
+          i % 2 === 1
+            ? testMempoolTx({
+                tx_id: hex(i),
+                receipt_time: i * 1000,
+                nonce: i,
+                type_id: DbTxTypeId.ContractCall,
+                contract_call_contract_id: 'SP000000000000000000002Q6VF78.pox-4',
+                contract_call_function_name: 'stack-stx',
+              })
+            : testMempoolTx({ tx_id: hex(i), receipt_time: i * 1000, nonce: i })
+        );
+      }
+      await db.updateMempoolTxs({ mempoolTxs: txs });
+
+      const fetch = async (query: Record<string, string>) => {
+        const response = await api.fastifyApp.inject({
+          method: 'GET',
+          url: '/extended/v3/mempool/transactions',
+          query,
+        });
+        assert.equal(response.statusCode, 200);
+        return JSON.parse(response.body);
+      };
+
+      const page1 = await fetch({ type: 'contract_call', limit: '2' });
+      assert.equal(page1.total, 3);
+      assert.deepEqual(
+        page1.results.map((r: { tx_id: string }) => r.tx_id),
+        [hex(5), hex(3)]
+      );
+      assert.deepEqual(page1.cursor, {
+        next: `1000:${hex(1)}`,
+        previous: null,
+        current: `5000:${hex(5)}`,
+      });
+
+      const page2 = await fetch({ type: 'contract_call', limit: '2', cursor: page1.cursor.next });
+      assert.equal(page2.total, 3);
+      assert.deepEqual(
+        page2.results.map((r: { tx_id: string }) => r.tx_id),
+        [hex(1)]
+      );
+      assert.deepEqual(page2.cursor, {
+        next: null,
+        previous: `5000:${hex(5)}`,
+        current: `1000:${hex(1)}`,
+      });
+
+      // A cursor older than every match yields an empty page, but not an empty list.
+      const pastEnd = await fetch({ type: 'contract_call', cursor: `500:${hex(0)}` });
+      assert.equal(pastEnd.total, 3);
+      assert.equal(pastEnd.results.length, 0);
+
+      const both = await fetch({ type: 'contract_call,token_transfer' });
+      assert.equal(both.total, 6);
+      assert.equal(both.results.length, 6);
+
+      const none = await fetch({ type: 'smart_contract' });
+      assert.equal(none.total, 0);
+      assert.equal(none.results.length, 0);
+
+      // Only broadcastable types can be pending.
+      const invalid = await api.fastifyApp.inject({
+        method: 'GET',
+        url: '/extended/v3/mempool/transactions',
+        query: { type: 'coinbase' },
+      });
+      assert.equal(invalid.statusCode, 400);
+    });
+
     test('should return 304 when ETag matches and refresh ETag on mempool changes', async () => {
       const tx1 = hex(0x3001);
       const tx2 = hex(0x3002);

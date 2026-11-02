@@ -27,7 +27,12 @@ import {
   redirectUnprefixedHashParams,
   splitCommaSeparatedQueryParam,
 } from '../../query-helpers.js';
-import { TransactionIdsQuerystringParam } from '../../schemas/v3/params.js';
+import {
+  TransactionIdsQuerystringParam,
+  TransactionTypeSchema,
+  TransactionTypesQuerystringParam,
+} from '../../schemas/v3/params.js';
+import { getTxTypeId } from '../../controllers/db-controller.js';
 
 export const TransactionsRoutes: FastifyPluginAsync<
   Record<never, never>,
@@ -38,12 +43,23 @@ export const TransactionsRoutes: FastifyPluginAsync<
     '/transactions',
     {
       preHandler: handleChainTipCache,
+      preValidation: splitCommaSeparatedQueryParam('type'),
       schema: {
         operationId: 'get_transactions',
         summary: 'Get transactions',
-        description: `Retrieves a list of recently mined transactions`,
+        description:
+          'Retrieves a list of recently mined transactions, optionally restricted to some ' +
+          'transaction types. Cursors are chain positions, so a cursor stays valid when the ' +
+          '`type` filter changes: it resumes the new list at the same point in the chain. A ' +
+          '`height:0:0` cursor with no transaction of a requested type at that exact position ' +
+          'resumes at the top of that block instead.',
         tags: ['Transactions'],
-        querystring: CursorPaginationQuerystring(TransactionCursorSchema, ResourceType.Tx),
+        querystring: Type.Composite([
+          CursorPaginationQuerystring(TransactionCursorSchema, ResourceType.Tx),
+          Type.Object({
+            type: TransactionTypesQuerystringParam(TransactionTypeSchema),
+          }),
+        ]),
         response: {
           200: CursorPaginatedResponse(
             TransactionSummarySchema,
@@ -57,6 +73,7 @@ export const TransactionsRoutes: FastifyPluginAsync<
       const results = await fastify.db.v3.getTransactionSummaries({
         limit: req.query.limit ?? getPagingQueryLimit(ResourceType.Tx),
         cursor: req.query.cursor,
+        typeIds: req.query.type?.flatMap(t => getTxTypeId(t)),
       });
       await reply.send({
         limit: results.limit,
