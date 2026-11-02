@@ -21,6 +21,8 @@ import { getTxTypeId } from '../../controllers/db-controller.js';
 import { splitCommaSeparatedQueryParam } from '../../query-helpers.js';
 import { InvalidRequestError, InvalidRequestErrorType } from '../../../errors.js';
 
+const MAX_BIGINT = 2n ** 63n - 1n;
+
 export const MempoolRoutes: FastifyPluginAsync<
   Record<never, never>,
   Server,
@@ -85,6 +87,17 @@ export const MempoolRoutes: FastifyPluginAsync<
       if (req.query.cursor && req.query.cursor.startsWith('fee:') !== (sortBy === 'fee')) {
         throw new InvalidRequestError(
           `The cursor does not belong to the \`${sortBy}\` sort order`,
+          InvalidRequestErrorType.invalid_query
+        );
+      }
+      // `fee_rate` is a signed bigint, so a larger cursor fee would fail the query's cast.
+      if (
+        sortBy === 'fee' &&
+        req.query.cursor &&
+        BigInt(req.query.cursor.split(':')[1]) > MAX_BIGINT
+      ) {
+        throw new InvalidRequestError(
+          'The cursor fee is out of range',
           InvalidRequestErrorType.invalid_query
         );
       }

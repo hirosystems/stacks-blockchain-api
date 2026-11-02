@@ -494,6 +494,8 @@ describe('v3 mempool', () => {
         { sort_by: 'fee', cursor: byReceipt.cursor.next },
         { cursor: page1.cursor.next },
         { sort_by: 'receipt_time', cursor: page1.cursor.next },
+        // Past the signed bigint maximum of `fee_rate`.
+        { sort_by: 'fee', cursor: `fee:9223372036854775808:${hex(3)}` },
       ];
       for (const query of mismatches) {
         const response = await api.fastifyApp.inject({
@@ -503,6 +505,10 @@ describe('v3 mempool', () => {
         });
         assert.equal(response.statusCode, 400);
       }
+
+      // The signed bigint maximum itself is a valid cursor fee.
+      const maxFee = await fetch({ sort_by: 'fee', cursor: `fee:9223372036854775807:${hex(0)}` });
+      assert.equal(maxFee.results.length, 6);
 
       const invalid = await api.fastifyApp.inject({
         method: 'GET',
