@@ -18,6 +18,29 @@ const UNVERSIONED_DEPLOY_RAW_TX =
   '6566696e652d7075626c6963202868656c6c6f2920286f6b2075312929';
 const TX_ID = '0x93f5d67bbff343245d539033a9bbee22001d4f406f8c80ee5a6a4e0115b409c8';
 const CONTRACT_ID = 'ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM.hello-world';
+const UNVERSIONED_DEPLOY = {
+  txId: TX_ID,
+  rawTx: UNVERSIONED_DEPLOY_RAW_TX,
+  contractId: CONTRACT_ID,
+};
+
+/**
+ * A `VersionedSmartContract` deploy (payload type id 6) declaring Clarity 7, from the
+ * `@stacks/codec` test vectors. Deploys `counter` from ST2NEB84ASENDXKYGJPQW86YXQCEFEX2ZQPG87ND. Its
+ * signature does not verify, which ingestion does not check.
+ */
+const CLARITY_7_DEPLOY = {
+  txId: '0x00e3af90b60567e7b8c79f6d9042e000031fcf84b6c96c96f6a6ecbac0b71740',
+  rawTx:
+    '0x8080000000040005572d04565d56f67e84ad7e20deedd8e7bba2fd00000000000000000000000000000bb8' +
+    '00010c3287ab0587cf952022e079d261baeacc533d8c92b754136271450eb121ba4c0849f3c47f5a6f967dd1088e' +
+    '8242a9f9ed0454bfadaa19c71d25c8812e47160a030200000000060707636f756e7465720000004e28646566696e' +
+    '652d646174612d76617220636f756e742075696e74207530290a28646566696e652d726561642d6f6e6c79202867' +
+    '65742d636f756e742920287661722d67657420636f756e742929',
+  contractId: 'ST2NEB84ASENDXKYGJPQW86YXQCEFEX2ZQPG87ND.counter',
+};
+
+type Deploy = typeof UNVERSIONED_DEPLOY;
 
 /** A contract interface as the node sends it for a deploy it just executed. */
 function contractInterface(clarityVersion: string | null) {
@@ -31,7 +54,7 @@ function contractInterface(clarityVersion: string | null) {
   };
 }
 
-function newBlockPayload(contract_interface: object | null) {
+function newBlockPayload(contract_interface: object | null, deploy: Deploy) {
   return {
     block_height: 1,
     block_hash: '0x9947cef1f6758fd2074aa62189f4daa4dcdae1a46410ef9cb4dd0224aa10814f',
@@ -69,8 +92,8 @@ function newBlockPayload(contract_interface: object | null) {
     },
     transactions: [
       {
-        txid: TX_ID,
-        raw_tx: UNVERSIONED_DEPLOY_RAW_TX,
+        txid: deploy.txId,
+        raw_tx: deploy.rawTx,
         status: 'success',
         tx_index: 0,
         raw_result: '0x0703',
@@ -120,23 +143,23 @@ describe('clarity version ingestion', () => {
     await migrate('down');
   });
 
-  async function ingest(contract_interface: object | null) {
+  async function ingest(contract_interface: object | null, deploy: Deploy = UNVERSIONED_DEPLOY) {
     await httpPostRequest({
       host: '127.0.0.1',
       port: eventServer.serverAddress.port,
       path: '/new_block',
       headers: { 'Content-Type': 'application/json' },
-      body: Buffer.from(JSON.stringify(newBlockPayload(contract_interface)), 'utf8'),
+      body: Buffer.from(JSON.stringify(newBlockPayload(contract_interface, deploy)), 'utf8'),
       throwOnNotOK: true,
     });
   }
 
-  async function storedVersions() {
+  async function storedVersions(deploy: Deploy = UNVERSIONED_DEPLOY) {
     const [contract] = await db.sql<{ clarity_version: number | null }[]>`
-      SELECT clarity_version FROM smart_contracts WHERE contract_id = ${CONTRACT_ID}
+      SELECT clarity_version FROM smart_contracts WHERE contract_id = ${deploy.contractId}
     `;
     const [tx] = await db.sql<{ smart_contract_clarity_version: number | null }[]>`
-      SELECT smart_contract_clarity_version FROM txs WHERE tx_id = ${TX_ID}
+      SELECT smart_contract_clarity_version FROM txs WHERE tx_id = ${deploy.txId}
     `;
     return {
       smartContract: contract?.clarity_version ?? null,
@@ -144,10 +167,10 @@ describe('clarity version ingestion', () => {
     };
   }
 
-  async function endpointVersion() {
+  async function endpointVersion(deploy: Deploy = UNVERSIONED_DEPLOY) {
     const res = await api.fastifyApp.inject({
       method: 'GET',
-      url: `/extended/v3/smart-contracts/${CONTRACT_ID}`,
+      url: `/extended/v3/smart-contracts/${deploy.contractId}`,
     });
     assert.equal(res.statusCode, 200);
     return JSON.parse(res.body).clarity_version;
@@ -160,6 +183,15 @@ describe('clarity version ingestion', () => {
     // the ABI lives.
     assert.deepEqual(await storedVersions(), { smartContract: 2, tx: 2 });
     assert.equal(await endpointVersion(), 2);
+  });
+
+  test('records the declared version of a Clarity 7 versioned deploy', async () => {
+    // The payload's own version wins over the ABI's; decoding it needs @stacks/codec >= 2.2.0, and a
+    // decode failure in `/new_block` would halt ingestion.
+    await ingest(contractInterface('Clarity7'), CLARITY_7_DEPLOY);
+
+    assert.deepEqual(await storedVersions(CLARITY_7_DEPLOY), { smartContract: 7, tx: 7 });
+    assert.equal(await endpointVersion(CLARITY_7_DEPLOY), 7);
   });
 
   test('stays null when the node reports no version', async () => {
