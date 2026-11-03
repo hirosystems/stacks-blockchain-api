@@ -4,7 +4,7 @@ info:
   description: Welcome to the API reference overview for the [Stacks Blockchain
     API](https://docs.hiro.so/stacks-blockchain-api). [Download Postman
     collection](https://hirosystems.github.io/stacks-blockchain-api/collection.json).
-  version: 9.7.1
+  version: 9.8.0
 components:
   schemas: {}
 paths:
@@ -4231,7 +4231,9 @@ paths:
       summary: Get mempool transactions
       tags:
         - Mempool
-      description: Retrieves a list of recently broadcasted transactions
+      description: Retrieves a list of recently broadcasted transactions, optionally
+        restricted to some transaction types and sorted by fee instead of
+        receipt time
       parameters:
         - schema:
             minimum: 1
@@ -4243,13 +4245,68 @@ paths:
           required: false
           description: Number of results per page
         - schema:
-            pattern: ^\d+:(0x)?[a-fA-F0-9]{64}$
+            pattern: ^(fee:)?\d+:(0x)?[a-fA-F0-9]{64}$
             type: string
           in: query
           name: cursor
           required: false
           description: "Cursor for paginating mempool transactions. Format:
-            receipt_time:tx_id"
+            receipt_time:tx_id, or fee:fee_rate:tx_id when sorted by fee"
+        - schema:
+            minItems: 1
+            uniqueItems: true
+            type: array
+            items:
+              anyOf:
+                - type: string
+                  enum:
+                    - token_transfer
+                - type: string
+                  enum:
+                    - smart_contract
+                - type: string
+                  enum:
+                    - contract_call
+          in: query
+          name: type
+          required: false
+          description: Restricts results to these transaction types; `total` counts only
+            the matching transactions. Provide them as repeated querystring
+            values (`?type=coinbase&type=token_transfer`) or as a single
+            comma-separated value (`?type=coinbase,token_transfer`). Defaults to
+            every type. `smart_contract` includes versioned contract
+            deployments, and `coinbase` includes every coinbase variant.
+        - schema:
+            default: receipt_time
+            anyOf:
+              - type: string
+                enum:
+                  - receipt_time
+              - type: string
+                enum:
+                  - fee
+          in: query
+          name: sort_by
+          required: false
+          description: "Field to list pending transactions by, in the direction set by
+            `order`: `receipt_time` is when the transaction was received, `fee`
+            its total fee (not fee per byte). Ties break by `tx_id` in the same
+            direction. A cursor only pages the `sort_by` it was returned for,
+            but pages from its position in either `order`."
+        - schema:
+            default: desc
+            anyOf:
+              - type: string
+                enum:
+                  - asc
+              - type: string
+                enum:
+                  - desc
+          in: query
+          name: order
+          required: false
+          description: "Direction to list pending transactions in: `desc` puts the most
+            recent or highest fee first, `asc` the oldest or lowest fee first."
       responses:
         "200":
           description: Default Response
@@ -4281,23 +4338,26 @@ paths:
                     properties:
                       next:
                         anyOf:
-                          - pattern: ^\d+:(0x)?[a-fA-F0-9]{64}$
+                          - pattern: ^(fee:)?\d+:(0x)?[a-fA-F0-9]{64}$
                             description: "Cursor for paginating mempool transactions. Format:
-                              receipt_time:tx_id"
+                              receipt_time:tx_id, or fee:fee_rate:tx_id when
+                              sorted by fee"
                             type: string
                           - type: "null"
                       previous:
                         anyOf:
-                          - pattern: ^\d+:(0x)?[a-fA-F0-9]{64}$
+                          - pattern: ^(fee:)?\d+:(0x)?[a-fA-F0-9]{64}$
                             description: "Cursor for paginating mempool transactions. Format:
-                              receipt_time:tx_id"
+                              receipt_time:tx_id, or fee:fee_rate:tx_id when
+                              sorted by fee"
                             type: string
                           - type: "null"
                       current:
                         anyOf:
-                          - pattern: ^\d+:(0x)?[a-fA-F0-9]{64}$
+                          - pattern: ^(fee:)?\d+:(0x)?[a-fA-F0-9]{64}$
                             description: "Cursor for paginating mempool transactions. Format:
-                              receipt_time:tx_id"
+                              receipt_time:tx_id, or fee:fee_rate:tx_id when
+                              sorted by fee"
                             type: string
                           - type: "null"
                   results:
@@ -14691,7 +14751,12 @@ paths:
       summary: Get transactions
       tags:
         - Transactions
-      description: Retrieves a list of recently mined transactions
+      description: "Retrieves a list of recently mined transactions, optionally
+        restricted to some transaction types. Cursors are chain positions, so a
+        cursor stays valid when the `type` filter changes: it resumes the new
+        list at the same point in the chain. A `height:0:0` cursor with no
+        transaction of a requested type at that exact position resumes at the
+        top of that block instead."
       parameters:
         - schema:
             minimum: 1
@@ -14710,6 +14775,39 @@ paths:
           required: false
           description: "Cursor for paginating transactions. Format:
             block_height:microblock_sequence:tx_index"
+        - schema:
+            minItems: 1
+            uniqueItems: true
+            type: array
+            items:
+              anyOf:
+                - type: string
+                  enum:
+                    - token_transfer
+                - type: string
+                  enum:
+                    - smart_contract
+                - type: string
+                  enum:
+                    - contract_call
+                - type: string
+                  enum:
+                    - poison_microblock
+                - type: string
+                  enum:
+                    - coinbase
+                - type: string
+                  enum:
+                    - tenure_change
+          in: query
+          name: type
+          required: false
+          description: Restricts results to these transaction types; `total` counts only
+            the matching transactions. Provide them as repeated querystring
+            values (`?type=coinbase&type=token_transfer`) or as a single
+            comma-separated value (`?type=coinbase,token_transfer`). Defaults to
+            every type. `smart_contract` includes versioned contract
+            deployments, and `coinbase` includes every coinbase variant.
       responses:
         "200":
           description: Default Response
