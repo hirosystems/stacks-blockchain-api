@@ -1947,7 +1947,7 @@ export interface paths {
         };
         /**
          * Get mempool transactions
-         * @description Retrieves a list of recently broadcasted transactions
+         * @description Retrieves a list of recently broadcasted transactions, optionally restricted to some transaction types and sorted by fee instead of receipt time
          */
         get: operations["get_mempool_transactions"];
         put?: never;
@@ -2687,7 +2687,7 @@ export interface paths {
         };
         /**
          * Get transactions
-         * @description Retrieves a list of recently mined transactions
+         * @description Retrieves a list of recently mined transactions, optionally restricted to some transaction types. Cursors are chain positions, so a cursor stays valid when the `type` filter changes: it resumes the new list at the same point in the chain. A `height:0:0` cursor with no transaction of a requested type at that exact position resumes at the top of that block instead.
          */
         get: operations["get_transactions"];
         put?: never;
@@ -36803,8 +36803,14 @@ export interface operations {
             query?: {
                 /** @description Number of results per page */
                 limit?: number;
-                /** @description Cursor for paginating mempool transactions. Format: receipt_time:tx_id */
+                /** @description Cursor for paginating mempool transactions. Format: receipt_time:tx_id, or fee:fee_rate:tx_id when sorted by fee */
                 cursor?: string;
+                /** @description Restricts results to these transaction types; `total` counts only the matching transactions. Provide them as repeated querystring values (`?type=coinbase&type=token_transfer`) or as a single comma-separated value (`?type=coinbase,token_transfer`). Defaults to every type. `smart_contract` includes versioned contract deployments, and `coinbase` includes every coinbase variant. */
+                type?: ("token_transfer" | "smart_contract" | "contract_call")[];
+                /** @description Field to list pending transactions by, in the direction set by `order`: `receipt_time` is when the transaction was received, `fee` its total fee (not fee per byte). Ties break by `tx_id` in the same direction. A cursor only pages the `sort_by` it was returned for, but pages from its position in either `order`. */
+                sort_by?: "receipt_time" | "fee";
+                /** @description Direction to list pending transactions in: `desc` puts the most recent or highest fee first, `asc` the oldest or lowest fee first. */
+                order?: "asc" | "desc";
             };
             header?: never;
             path?: never;
@@ -41357,6 +41363,8 @@ export interface operations {
                 limit?: number;
                 /** @description Cursor for paginating transactions. Format: block_height:microblock_sequence:tx_index */
                 cursor?: string;
+                /** @description Restricts results to these transaction types; `total` counts only the matching transactions. Provide them as repeated querystring values (`?type=coinbase&type=token_transfer`) or as a single comma-separated value (`?type=coinbase,token_transfer`). Defaults to every type. `smart_contract` includes versioned contract deployments, and `coinbase` includes every coinbase variant. */
+                type?: ("token_transfer" | "smart_contract" | "contract_call" | "poison_microblock" | "coinbase" | "tenure_change")[];
             };
             header?: never;
             path?: never;
