@@ -110,6 +110,7 @@ import {
   parseFtBalanceCursor,
   parseFtHolderCursor,
   parseMinerRewardCursor,
+  parseEventPositionCursor,
   resolveEventPositionCursor,
   resolveTransactionCursor,
 } from './helpers.js';
@@ -723,19 +724,10 @@ export class PgStoreV3 extends BasePgStoreModule {
       // is re-included here as that page's first result.
       let cursorFilter = sql``;
       if (args.cursor) {
-        const cursor = await resolveEventPositionCursor(args.cursor, async cursor => {
-          const exactCursorQuery = await sql<{ exists: boolean }[]>`
-            SELECT EXISTS (
-              SELECT 1
-              FROM nft_custody
-              WHERE recipient = ${args.principal} ${assetFilter}
-                AND (block_height, microblock_sequence, tx_index, event_index)
-                    = (${cursor.block_height}, ${cursor.microblock_sequence}, ${cursor.tx_index},
-                       ${cursor.event_index})
-            ) AS exists
-          `;
-          return exactCursorQuery[0]?.exists ?? false;
-        });
+        // A plain position, not resolved against a row: custody rows leave the principal on every
+        // transfer, so a `H:0:0:0` cursor whose NFT was sent away must not be read as the top of
+        // block H, which would replay the rows already returned from that block.
+        const cursor = parseEventPositionCursor(args.cursor);
         cursorFilter = sql`
           AND (block_height, microblock_sequence, tx_index, event_index)
               <= (${cursor.block_height}, ${cursor.microblock_sequence}, ${cursor.tx_index},

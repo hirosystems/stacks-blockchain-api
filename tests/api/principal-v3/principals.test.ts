@@ -1547,6 +1547,24 @@ describe('principals', () => {
       assert.deepEqual(back.results, page2.results);
     });
 
+    test('keeps a block-start cursor in place when its NFT is sent away between pages', async () => {
+      await db.update(buildNftBlock());
+      // Page 1 returns `vB1` and `vA2`; the next page starts at `vA1`, the first event of block 3.
+      const page1 = await getNftBalances(nftAddr, { limit: '2' });
+      assert.equal(page1.cursor.next, '3:0:0:0');
+
+      // `vA1` leaves the principal before the next page is requested.
+      await db.update(
+        buildNftTransferBlock(4, [
+          { sender: nftAddr, recipient: testAddr4, asset_identifier: collectionA, value: vA1 },
+        ])
+      );
+
+      // The cursor is a position, so the page is empty rather than block 3 replayed from the top.
+      const page2 = await getNftBalances(nftAddr, { limit: '2', cursor: page1.cursor.next });
+      assert.deepEqual(page2.results, []);
+    });
+
     test('filters to a single asset class and scopes `total` to the filter', async () => {
       await db.update(buildNftBlock());
       const body = await getNftBalances(nftAddr, { asset_identifier: collectionA });

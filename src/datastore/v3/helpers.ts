@@ -61,7 +61,7 @@ export type EventPositionCursorRow = {
   event_index: number;
 };
 
-const parseEventPositionCursor = (cursor: EventPositionCursor): EventPositionCursorRow => {
+export const parseEventPositionCursor = (cursor: EventPositionCursor): EventPositionCursorRow => {
   const [blockHeightStr, microblockSequenceStr, txIndexStr, eventIndexStr] = cursor.split(':');
   const parsed = {
     block_height: parseInt(blockHeightStr, 10),
