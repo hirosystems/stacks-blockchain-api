@@ -1427,20 +1427,94 @@ describe('principals', () => {
       });
     });
 
-    test('lists owned NFT instances sorted by asset identifier then value', async () => {
+    // A block at `height` with one transaction per NFT event, in order.
+    const buildNftTransferBlock = (
+      height: number,
+      events: { sender: string; recipient: string; asset_identifier: string; value: string }[]
+    ) => {
+      const block = new TestBlockBuilder({
+        block_height: height,
+        block_hash: hex(height),
+        index_block_hash: hex(height),
+        parent_index_block_hash: hex(height - 1),
+        parent_block_hash: hex(height - 1),
+        burn_block_height: height,
+      });
+      events.forEach((event, i) => {
+        block
+          .addTx({
+            tx_id: hex(height * 100 + 20 + i),
+            block_hash: hex(height),
+            index_block_hash: hex(height),
+            burn_block_height: height,
+            sender_address: event.sender,
+          })
+          .addTxNftEvent(event);
+      });
+      return block.build();
+    };
+
+    // Positions within block 3: `vA1` is event 0, `vA2` event 1, `vB1` event 2 of tx 0.
+    test('lists owned NFT instances newest first by when they were received', async () => {
       await db.update(buildNftBlock());
       const body = await getNftBalances(nftAddr);
       assert.equal(body.total, 3);
       assert.deepEqual(body.results, [
-        { asset_identifier: collectionA, value: { hex: vA1, repr: 'u1' } },
-        { asset_identifier: collectionA, value: { hex: vA2, repr: 'u2' } },
         { asset_identifier: collectionB, value: { hex: vB1, repr: 'u1' } },
+        { asset_identifier: collectionA, value: { hex: vA2, repr: 'u2' } },
+        { asset_identifier: collectionA, value: { hex: vA1, repr: 'u1' } },
       ]);
-      assert.deepEqual(body.cursor, {
-        next: null,
-        previous: null,
-        current: `${vA1}:${collectionA}`,
-      });
+      assert.deepEqual(body.cursor, { next: null, previous: null, current: '3:0:0:2' });
+    });
+
+    test('orders across blocks and transactions', async () => {
+      await db.update(buildNftBlock());
+      const vA3 = cvHex(3);
+      const vB2 = cvHex(2);
+      await db.update(
+        buildNftTransferBlock(4, [
+          { sender: testAddr4, recipient: nftAddr, asset_identifier: collectionB, value: vB2 },
+          { sender: testAddr4, recipient: nftAddr, asset_identifier: collectionA, value: vA3 },
+        ])
+      );
+      const body = await getNftBalances(nftAddr);
+      assert.equal(body.total, 5);
+      assert.deepEqual(
+        body.results.map((r: { value: { hex: string } }) => r.value.hex),
+        [vA3, vB2, vB1, vA2, vA1]
+      );
+      assert.equal(body.cursor.current, '4:0:1:0');
+    });
+
+    test('moves an instance to the top when it is received again', async () => {
+      await db.update(buildNftBlock());
+      // Block 4: `vA1` leaves the principal.
+      await db.update(
+        buildNftTransferBlock(4, [
+          { sender: nftAddr, recipient: testAddr4, asset_identifier: collectionA, value: vA1 },
+        ])
+      );
+      const afterSend = await getNftBalances(nftAddr);
+      assert.equal(afterSend.total, 2);
+      assert.deepEqual(
+        afterSend.results.map((r: { value: { hex: string } }) => r.value.hex),
+        [vB1, vA2]
+      );
+
+      // Block 5: `vA1` comes back and is now the most recently received.
+      await db.update(
+        buildNftTransferBlock(5, [
+          { sender: testAddr4, recipient: nftAddr, asset_identifier: collectionA, value: vA1 },
+        ])
+      );
+      const afterReturn = await getNftBalances(nftAddr);
+      assert.equal(afterReturn.total, 3);
+      assert.deepEqual(afterReturn.results, [
+        { asset_identifier: collectionA, value: { hex: vA1, repr: 'u1' } },
+        { asset_identifier: collectionB, value: { hex: vB1, repr: 'u1' } },
+        { asset_identifier: collectionA, value: { hex: vA2, repr: 'u2' } },
+      ]);
+      assert.equal(afterReturn.cursor.current, '5:0:0:0');
     });
 
     test('paginates with cursors across pages', async () => {
@@ -1450,35 +1524,27 @@ describe('principals', () => {
       const page1 = await getNftBalances(nftAddr, { limit: '1' });
       assert.equal(page1.total, 3);
       assert.deepEqual(page1.results, [
-        { asset_identifier: collectionA, value: { hex: vA1, repr: 'u1' } },
+        { asset_identifier: collectionB, value: { hex: vB1, repr: 'u1' } },
       ]);
-      assert.deepEqual(page1.cursor, {
-        next: `${vA2}:${collectionA}`,
-        previous: null,
-        current: `${vA1}:${collectionA}`,
-      });
+      assert.deepEqual(page1.cursor, { next: '3:0:0:1', previous: null, current: '3:0:0:2' });
 
       // Page 2.
       const page2 = await getNftBalances(nftAddr, { limit: '1', cursor: page1.cursor.next });
       assert.deepEqual(page2.results, [
         { asset_identifier: collectionA, value: { hex: vA2, repr: 'u2' } },
       ]);
-      assert.deepEqual(page2.cursor, {
-        next: `${vB1}:${collectionB}`,
-        previous: `${vA1}:${collectionA}`,
-        current: `${vA2}:${collectionA}`,
-      });
+      assert.deepEqual(page2.cursor, { next: '3:0:0:0', previous: '3:0:0:2', current: '3:0:0:1' });
 
       // Page 3 (last).
       const page3 = await getNftBalances(nftAddr, { limit: '1', cursor: page2.cursor.next });
       assert.deepEqual(page3.results, [
-        { asset_identifier: collectionB, value: { hex: vB1, repr: 'u1' } },
+        { asset_identifier: collectionA, value: { hex: vA1, repr: 'u1' } },
       ]);
-      assert.deepEqual(page3.cursor, {
-        next: null,
-        previous: `${vA2}:${collectionA}`,
-        current: `${vB1}:${collectionB}`,
-      });
+      assert.deepEqual(page3.cursor, { next: null, previous: '3:0:0:1', current: '3:0:0:0' });
+
+      // Walking back from the last page returns the middle page.
+      const back = await getNftBalances(nftAddr, { limit: '1', cursor: page3.cursor.previous });
+      assert.deepEqual(back.results, page2.results);
     });
 
     test('filters to a single asset class and scopes `total` to the filter', async () => {
@@ -1487,59 +1553,54 @@ describe('principals', () => {
       // `total` must reflect the filter, not the principal's full NFT count (3).
       assert.equal(body.total, 2);
       assert.deepEqual(body.results, [
-        { asset_identifier: collectionA, value: { hex: vA1, repr: 'u1' } },
         { asset_identifier: collectionA, value: { hex: vA2, repr: 'u2' } },
+        { asset_identifier: collectionA, value: { hex: vA1, repr: 'u1' } },
       ]);
     });
 
     test('scopes the previous cursor to the filter', async () => {
       await db.update(buildNftBlock());
-      // Collection B sorts after collection A. Unfiltered, the row before `vB1` is
-      // `vA2` of collection A; under the filter there is no previous row at all.
-      const body = await getNftBalances(nftAddr, { asset_identifier: collectionB });
-      assert.equal(body.total, 1);
-      assert.deepEqual(body.results, [
-        { asset_identifier: collectionB, value: { hex: vB1, repr: 'u1' } },
-      ]);
-      assert.deepEqual(body.cursor, {
-        next: null,
-        previous: null,
-        current: `${vB1}:${collectionB}`,
-      });
+      // Collection B's only instance is newest overall. Filtered to collection A, the row before
+      // `vA2` unfiltered (`vB1`) must not surface as a previous page.
+      const body = await getNftBalances(nftAddr, { asset_identifier: collectionA });
+      assert.deepEqual(body.cursor, { next: null, previous: null, current: '3:0:0:1' });
     });
 
     test('paginates with cursors while filtered', async () => {
       await db.update(buildNftBlock());
 
       const page1 = await getNftBalances(nftAddr, {
-        asset_identifier: collectionA,
+        asset_identifier: collectionB,
         limit: '1',
       });
-      assert.equal(page1.total, 2);
+      assert.equal(page1.total, 1);
       assert.deepEqual(page1.results, [
+        { asset_identifier: collectionB, value: { hex: vB1, repr: 'u1' } },
+      ]);
+      // The only collection B row: the page must not spill into collection A.
+      assert.deepEqual(page1.cursor, { next: null, previous: null, current: '3:0:0:2' });
+
+      const pageA1 = await getNftBalances(nftAddr, { asset_identifier: collectionA, limit: '1' });
+      assert.deepEqual(pageA1.cursor, { next: '3:0:0:0', previous: null, current: '3:0:0:1' });
+      const pageA2 = await getNftBalances(nftAddr, {
+        asset_identifier: collectionA,
+        limit: '1',
+        cursor: pageA1.cursor.next,
+      });
+      assert.equal(pageA2.total, 2);
+      assert.deepEqual(pageA2.results, [
         { asset_identifier: collectionA, value: { hex: vA1, repr: 'u1' } },
       ]);
-      assert.deepEqual(page1.cursor, {
-        next: `${vA2}:${collectionA}`,
-        previous: null,
-        current: `${vA1}:${collectionA}`,
-      });
+      assert.deepEqual(pageA2.cursor, { next: null, previous: '3:0:0:1', current: '3:0:0:0' });
+    });
 
-      // The last page must not spill into collection B.
-      const page2 = await getNftBalances(nftAddr, {
-        asset_identifier: collectionA,
-        limit: '1',
-        cursor: page1.cursor.next,
+    test('rejects a cursor in the old `value:asset_identifier` format', async () => {
+      const res = await api.fastifyApp.inject({
+        method: 'GET',
+        url: `/extended/v3/principals/${nftAddr}/balances/nft`,
+        query: { cursor: `${vA1}:${collectionA}` },
       });
-      assert.equal(page2.total, 2);
-      assert.deepEqual(page2.results, [
-        { asset_identifier: collectionA, value: { hex: vA2, repr: 'u2' } },
-      ]);
-      assert.deepEqual(page2.cursor, {
-        next: null,
-        previous: `${vA1}:${collectionA}`,
-        current: `${vA2}:${collectionA}`,
-      });
+      assert.equal(res.statusCode, 400, res.body);
     });
 
     test('returns an empty page for an asset class the principal does not hold', async () => {

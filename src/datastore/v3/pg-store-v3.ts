@@ -102,7 +102,6 @@ import {
   encodeFtBalanceCursor,
   encodeFtHolderCursor,
   encodeMinerRewardCursor,
-  encodeNftBalanceCursor,
   encodeEventPositionCursor,
   encodeTransactionCursor,
   EventPositionCursorRow,
@@ -111,7 +110,6 @@ import {
   parseFtBalanceCursor,
   parseFtHolderCursor,
   parseMinerRewardCursor,
-  parseNftBalanceCursor,
   resolveEventPositionCursor,
   resolveTransactionCursor,
 } from './helpers.js';
@@ -703,10 +701,11 @@ export class PgStoreV3 extends BasePgStoreModule {
   }
 
   /**
-   * Gets a principal's individually-owned NFT instances, keyset-paginated by
-   * `(asset_identifier, value)` (the unique key for an NFT instance), sorted
-   * ascending. Backed by the `nft_custody` index on
-   * `(recipient, asset_identifier, value)`.
+   * Gets a principal's individually-owned NFT instances, newest first by the position of the event
+   * that gave the principal each instance (its `nft_custody` position), keyset-paginated by
+   * `(block_height, microblock_sequence, tx_index, event_index)`. Each custody row holds exactly one
+   * event's position, so the tuple is unique per row. Backed by the `nft_custody` indexes on
+   * `(recipient, <position> DESC)` and `(recipient, asset_identifier, <position> DESC)`.
    * @param args - The arguments for the query.
    * @returns The principal's NFT positions.
    */
@@ -720,31 +719,46 @@ export class PgStoreV3 extends BasePgStoreModule {
       const assetFilter = args.assetIdentifier
         ? sql`AND asset_identifier = ${args.assetIdentifier}`
         : sql``;
-      // Position the page strictly after the cursor in `(asset_identifier, value)`
-      // ascending order.
+      // Inclusive on the cursor row: `next_cursor` points at the first row of the next page, which
+      // is re-included here as that page's first result.
       let cursorFilter = sql``;
       if (args.cursor) {
-        const cursor = parseNftBalanceCursor(args.cursor);
-        // Inclusive on the cursor row: `next_cursor` points at the first row of
-        // the next page, which is re-included here as that page's first result.
+        const cursor = await resolveEventPositionCursor(args.cursor, async cursor => {
+          const exactCursorQuery = await sql<{ exists: boolean }[]>`
+            SELECT EXISTS (
+              SELECT 1
+              FROM nft_custody
+              WHERE recipient = ${args.principal} ${assetFilter}
+                AND (block_height, microblock_sequence, tx_index, event_index)
+                    = (${cursor.block_height}, ${cursor.microblock_sequence}, ${cursor.tx_index},
+                       ${cursor.event_index})
+            ) AS exists
+          `;
+          return exactCursorQuery[0]?.exists ?? false;
+        });
         cursorFilter = sql`
-          AND (
-            asset_identifier > ${cursor.asset_identifier}
-            OR (asset_identifier = ${cursor.asset_identifier} AND value >= ${cursor.value})
-          )
+          AND (block_height, microblock_sequence, tx_index, event_index)
+              <= (${cursor.block_height}, ${cursor.microblock_sequence}, ${cursor.tx_index},
+                  ${cursor.event_index})
         `;
       }
-      const resultQuery = await sql<(DbPrincipalNftBalance & { total: number })[]>`
+      const resultQuery = await sql<
+        (DbPrincipalNftBalance & EventPositionCursorRow & { total: number })[]
+      >`
         SELECT
           asset_identifier,
           value,
+          block_height,
+          microblock_sequence,
+          tx_index,
+          event_index,
           (
             SELECT COUNT(*)::int FROM nft_custody
             WHERE recipient = ${args.principal} ${assetFilter}
           ) AS total
         FROM nft_custody
         WHERE recipient = ${args.principal} ${assetFilter} ${cursorFilter}
-        ORDER BY asset_identifier ASC, value ASC
+        ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
         LIMIT ${args.limit + 1}
       `;
 
@@ -753,27 +767,27 @@ export class PgStoreV3 extends BasePgStoreModule {
       const total = resultQuery.count > 0 ? resultQuery[0].total : 0;
 
       const nextResult = resultQuery[resultQuery.length - 1];
-      const nextCursor = hasNextPage && nextResult ? encodeNftBalanceCursor(nextResult) : null;
+      const nextCursor = hasNextPage && nextResult ? encodeEventPositionCursor(nextResult) : null;
 
       const firstResult = results[0];
-      const currentCursor = firstResult ? encodeNftBalanceCursor(firstResult) : null;
+      const currentCursor = firstResult ? encodeEventPositionCursor(firstResult) : null;
 
-      // The previous page is the rows strictly before the first result in sort order.
+      // The previous page is the rows strictly newer than the first result, walked oldest first so
+      // the last one read is that page's first row.
       let prevCursor: string | null = null;
       if (firstResult) {
-        const prevPageQuery = await sql<{ asset_identifier: string; value: string }[]>`
-          SELECT asset_identifier, value
+        const prevPageQuery = await sql<EventPositionCursorRow[]>`
+          SELECT block_height, microblock_sequence, tx_index, event_index
           FROM nft_custody
           WHERE recipient = ${args.principal} ${assetFilter}
-            AND (
-              asset_identifier < ${firstResult.asset_identifier}
-              OR (asset_identifier = ${firstResult.asset_identifier} AND value < ${firstResult.value})
-            )
-          ORDER BY asset_identifier DESC, value DESC
+            AND (block_height, microblock_sequence, tx_index, event_index)
+                > (${firstResult.block_height}, ${firstResult.microblock_sequence},
+                   ${firstResult.tx_index}, ${firstResult.event_index})
+          ORDER BY block_height ASC, microblock_sequence ASC, tx_index ASC, event_index ASC
           LIMIT ${args.limit}
         `;
         if (prevPageQuery.length > 0) {
-          prevCursor = encodeNftBalanceCursor(prevPageQuery[prevPageQuery.length - 1]);
+          prevCursor = encodeEventPositionCursor(prevPageQuery[prevPageQuery.length - 1]);
         }
       }
 

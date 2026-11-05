@@ -116,9 +116,9 @@ export const FtHolderCursorSchema = Type.String({
 export type FtHolderCursor = Static<typeof FtHolderCursorSchema>;
 
 export const NftBalanceCursorSchema = Type.String({
-  pattern: '^0x[0-9a-fA-F]*:.+$',
+  pattern: '^[0-9]+:[0-9]+:[0-9]+:[0-9]+$',
   description:
-    'Cursor for paginating NFT balances (sorted by asset identifier then value). Format: value:asset_identifier',
+    'Cursor for paginating NFT balances (sorted by the position of the event that gave the principal each instance, newest first). Format: block_height:microblock_sequence:tx_index:event_index',
 });
 export type NftBalanceCursor = Static<typeof NftBalanceCursorSchema>;
 
