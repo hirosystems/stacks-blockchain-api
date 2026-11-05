@@ -62,6 +62,11 @@ describe('v3 unprefixed hash redirects', () => {
       `/extended/v3/transactions/${TX_1}/events?limit=5`,
     ],
     [
+      'raw transaction',
+      `/extended/v3/transactions/${bare(TX_1)}/raw`,
+      `/extended/v3/transactions/${TX_1}/raw`,
+    ],
+    [
       'principal transaction balance changes',
       `/extended/v3/principals/${PRINCIPAL}/transactions/${bare(TX_1)}/balance-changes`,
       `/extended/v3/principals/${PRINCIPAL}/transactions/${TX_1}/balance-changes`,

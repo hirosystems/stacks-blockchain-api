@@ -4,7 +4,7 @@ import { ApiServer, startApiServer } from '../../../src/api/init.ts';
 import { createClarityValueArray, migrate } from '../../test-helpers.ts';
 import { STACKS_TESTNET } from '@stacks/network';
 import * as assert from 'node:assert/strict';
-import { TestBlockBuilder } from '../test-builders.ts';
+import { TestBlockBuilder, testMempoolTx } from '../test-builders.ts';
 import { DbTxStatus, DbTxTypeId } from '../../../src/datastore/common.ts';
 import { stringAsciiCV, uintCV } from '@stacks/transactions';
 import { bufferToHex } from '@stacks/api-toolkit';
@@ -1027,6 +1027,107 @@ describe('v3 transactions', () => {
         previous: '2',
         current: '4',
       });
+    });
+  });
+
+  describe('/v3/transactions/:tx_id/raw', () => {
+    const SENDER = 'SP466FNC0P7JWTNM2R9T199QRZN1MYEDTAR0KP27';
+    const minedTx = hex(0x6001);
+    const minedRaw = '0x8080000000040012345678deadbeef';
+    const mempoolTx = hex(0x6002);
+    const mempoolRaw = '0x80800000000400abcdef0123456789';
+
+    const getRaw = (txId: string) =>
+      api.fastifyApp.inject({ method: 'GET', url: `/extended/v3/transactions/${txId}/raw` });
+    const getV1Raw = (txId: string) =>
+      api.fastifyApp.inject({ method: 'GET', url: `/extended/v1/tx/${txId}/raw` });
+
+    const seedMinedTx = async (canonical = true) => {
+      await db.update(
+        new TestBlockBuilder({
+          block_height: 1,
+          index_block_hash: hex(1),
+          parent_index_block_hash: hex(0),
+          parent_block_hash: hex(0),
+          canonical,
+        })
+          .addTx({
+            tx_id: minedTx,
+            block_hash: hex(1),
+            index_block_hash: hex(1),
+            sender_address: SENDER,
+            raw_tx: minedRaw,
+            canonical,
+          })
+          .build()
+      );
+    };
+
+    test('should return the raw bytes of a mined transaction', async () => {
+      await seedMinedTx();
+      const response = await getRaw(minedTx);
+      assert.equal(response.statusCode, 200);
+      assert.deepEqual(JSON.parse(response.body), { raw: minedRaw });
+    });
+
+    test('should return the raw bytes of a mempool transaction', async () => {
+      await db.updateMempoolTxs({
+        mempoolTxs: [testMempoolTx({ tx_id: mempoolTx, raw_tx: mempoolRaw, nonce: 1 })],
+      });
+      const response = await getRaw(mempoolTx);
+      assert.equal(response.statusCode, 200);
+      assert.deepEqual(JSON.parse(response.body), { raw: mempoolRaw });
+    });
+
+    test('should match the v1 raw_tx byte for byte', async () => {
+      await seedMinedTx();
+      await db.updateMempoolTxs({
+        mempoolTxs: [testMempoolTx({ tx_id: mempoolTx, raw_tx: mempoolRaw, nonce: 1 })],
+      });
+      for (const txId of [minedTx, mempoolTx]) {
+        const v3 = await getRaw(txId);
+        const v1 = await getV1Raw(txId);
+        assert.equal(v3.statusCode, 200);
+        assert.equal(v1.statusCode, 200);
+        const body = JSON.parse(v3.body);
+        assert.deepEqual(Object.keys(body), ['raw']);
+        assert.equal(body.raw, JSON.parse(v1.body).raw_tx);
+      }
+    });
+
+    test('should return 404 for an unknown tx_id', async () => {
+      const response = await getRaw(hex(0xdead));
+      assert.equal(response.statusCode, 404);
+      assert.equal(JSON.parse(response.body).message, 'Transaction not found');
+    });
+
+    test('should return 404 for a pruned mempool transaction', async () => {
+      await db.updateMempoolTxs({
+        mempoolTxs: [testMempoolTx({ tx_id: mempoolTx, raw_tx: mempoolRaw, nonce: 1 })],
+      });
+      await db.dropMempoolTxs({
+        status: DbTxStatus.DroppedReplaceByFee,
+        txIds: [mempoolTx],
+        new_tx_id: null,
+      });
+      // v1 ignores `pruned`, so it proves the row is still there.
+      assert.equal((await getV1Raw(mempoolTx)).statusCode, 200);
+      const response = await getRaw(mempoolTx);
+      assert.equal(response.statusCode, 404);
+    });
+
+    test('should return 404 for a non-canonical transaction', async () => {
+      await seedMinedTx(false);
+      // v1 ignores `canonical`, so it proves the row is still there.
+      assert.equal((await getV1Raw(minedTx)).statusCode, 200);
+      const response = await getRaw(minedTx);
+      assert.equal(response.statusCode, 404);
+    });
+
+    test('should redirect an unprefixed tx_id', async () => {
+      const response = await getRaw(minedTx.slice(2));
+      assert.equal(response.statusCode, 302);
+      assert.equal(response.headers.location, `/extended/v3/transactions/${minedTx}/raw`);
     });
   });
 });

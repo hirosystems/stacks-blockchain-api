@@ -1687,6 +1687,32 @@ export class PgStoreV3 extends BasePgStoreModule {
     });
   }
 
+  /**
+   * Returns the 0x-prefixed hex serialized bytes of a canonical mined or non-pruned mempool
+   * transaction, or `null` if neither exists. Mined transactions take precedence.
+   */
+  async getRawTransaction(args: { txId: string }): Promise<string | null> {
+    return await this.sqlTransaction(async sql => {
+      const result = await sql<{ raw_tx: string }[]>`
+        SELECT raw_tx
+        FROM txs
+        WHERE tx_id = ${args.txId} AND canonical = true AND microblock_canonical = true
+      `;
+      if (result.count > 0) {
+        return result[0].raw_tx;
+      }
+      const mempoolResult = await sql<{ raw_tx: string }[]>`
+        SELECT raw_tx
+        FROM mempool_txs
+        WHERE tx_id = ${args.txId} AND pruned = false
+      `;
+      if (mempoolResult.count > 0) {
+        return mempoolResult[0].raw_tx;
+      }
+      return null;
+    });
+  }
+
   async getTransactionEvents(args: {
     txId: string;
     limit: number;

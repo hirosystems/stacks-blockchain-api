@@ -192,3 +192,13 @@ export const TransactionIncludeFieldSchema = Type.Union([
   Type.Literal('result'),
 ]);
 export type TransactionIncludeField = Static<typeof TransactionIncludeFieldSchema>;
+
+export const RawTransactionSchema = Type.Object(
+  {
+    raw: Type.String({
+      description: 'Hex-encoded (0x-prefixed) serialized transaction',
+    }),
+  },
+  { title: 'RawTransaction' }
+);
+export type RawTransaction = Static<typeof RawTransactionSchema>;
