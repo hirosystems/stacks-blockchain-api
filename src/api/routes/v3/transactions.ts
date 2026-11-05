@@ -16,6 +16,7 @@ import {
 } from '../../schemas/v3/cursors.js';
 import { TransactionIdSchema } from '../../schemas/v3/entities/common.js';
 import {
+  RawTransactionSchema,
   TransactionIncludeFieldSchema,
   TransactionSchema,
 } from '../../schemas/v3/entities/transactions.js';
@@ -171,6 +172,33 @@ export const TransactionsRoutes: FastifyPluginAsync<
       }
       const result = serializeDbTransactionOrMempoolTransaction(transaction, req.query.include);
       await reply.send(result);
+    }
+  );
+
+  fastify.get(
+    '/transactions/:tx_id/raw',
+    {
+      onRequest: redirectUnprefixedHashParams({ params: ['tx_id'] }),
+      preHandler: handleTransactionCache,
+      schema: {
+        operationId: 'get_raw_transaction',
+        summary: 'Get raw transaction',
+        description: `Retrieves the hex-encoded serialized bytes of a mined or mempool transaction`,
+        tags: ['Transactions'],
+        params: Type.Object({
+          tx_id: TransactionIdSchema,
+        }),
+        response: {
+          200: RawTransactionSchema,
+        },
+      },
+    },
+    async (req, reply) => {
+      const raw = await fastify.db.v3.getRawTransaction({ txId: req.params.tx_id });
+      if (!raw) {
+        throw new NotFoundError('Transaction not found');
+      }
+      await reply.send({ raw });
     }
   );
 
