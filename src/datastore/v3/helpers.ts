@@ -4,7 +4,6 @@ import {
   FtBalanceCursor,
   FtHolderCursor,
   MinerRewardCursor,
-  NftBalanceCursor,
   EventPositionCursor,
   TransactionCursor,
 } from '../../api/schemas/v3/cursors.js';
@@ -62,7 +61,7 @@ export type EventPositionCursorRow = {
   event_index: number;
 };
 
-const parseEventPositionCursor = (cursor: EventPositionCursor): EventPositionCursorRow => {
+export const parseEventPositionCursor = (cursor: EventPositionCursor): EventPositionCursorRow => {
   const [blockHeightStr, microblockSequenceStr, txIndexStr, eventIndexStr] = cursor.split(':');
   const parsed = {
     block_height: parseInt(blockHeightStr, 10),
@@ -207,28 +206,6 @@ export const parseFtHolderCursor = (cursor: FtHolderCursor): FtHolderCursorRow =
 
 export const encodeFtHolderCursor = (row: FtHolderCursorRow): FtHolderCursor =>
   `${row.balance}:${row.principal}`;
-
-export type NftBalanceCursorRow = {
-  /** The NFT instance value as a `0x`-prefixed hex string. */
-  value: string;
-  asset_identifier: string;
-};
-
-/**
- * Parses an NFT balance cursor (`value:asset_identifier`). The value is a
- * `0x`-prefixed hex string and contains no colon, so the cursor is split on the
- * first colon; the remainder is the asset identifier (which may contain `::`).
- */
-export const parseNftBalanceCursor = (cursor: NftBalanceCursor): NftBalanceCursorRow => {
-  const separatorIndex = cursor.indexOf(':');
-  return {
-    value: cursor.slice(0, separatorIndex),
-    asset_identifier: cursor.slice(separatorIndex + 1),
-  };
-};
-
-export const encodeNftBalanceCursor = (row: NftBalanceCursorRow): NftBalanceCursor =>
-  `${row.value}:${row.asset_identifier}`;
 
 /**
  * Normalizes a `bond_registrations.btc_lockup_txs` jsonb value into a parsed

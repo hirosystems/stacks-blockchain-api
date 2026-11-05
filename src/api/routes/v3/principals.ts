@@ -619,7 +619,7 @@ export const PrincipalsRoutes: FastifyPluginAsync<
         operationId: 'get_principal_balances_nft',
         summary: 'Get principal NFT balances',
         description:
-          'Get the non-fungible token instances currently owned by a principal, ordered by asset identifier and value. Optionally filtered to a single asset class via `asset_identifier`.',
+          'Get the non-fungible token instances currently owned by a principal, newest first by when each instance was received (the block position of the mint or transfer that gave it to the principal). Optionally filtered to a single asset class via `asset_identifier`.',
         tags: ['Accounts'],
         params: Type.Object({ principal: PrincipalSchema }),
         querystring: Type.Composite([
