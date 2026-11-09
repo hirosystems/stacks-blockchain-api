@@ -2227,7 +2227,7 @@ export interface paths {
         };
         /**
          * Get principal NFT balances
-         * @description Get the non-fungible token instances currently owned by a principal, ordered by asset identifier and value. Optionally filtered to a single asset class via `asset_identifier`.
+         * @description Get the non-fungible token instances currently owned by a principal, newest first by when each instance was received (the block position of the mint or transfer that gave it to the principal). Optionally filtered to a single asset class via `asset_identifier`.
          */
         get: operations["get_principal_balances_nft"];
         put?: never;
@@ -2730,6 +2730,26 @@ export interface paths {
          * @description Retrieves details for a given transaction, including both mined and mempool transactions
          */
         get: operations["get_transaction"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/extended/v3/transactions/{tx_id}/raw": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get raw transaction
+         * @description Retrieves the hex-encoded serialized bytes of a mined or mempool transaction
+         */
+        get: operations["get_raw_transaction"];
         put?: never;
         post?: never;
         delete?: never;
@@ -38409,7 +38429,7 @@ export interface operations {
             query?: {
                 /** @description Number of results per page */
                 limit?: number;
-                /** @description Cursor for paginating NFT balances (sorted by asset identifier then value). Format: value:asset_identifier */
+                /** @description Cursor for paginating NFT balances (sorted by the position of the event that gave the principal each instance, newest first). Format: block_height:microblock_sequence:tx_index:event_index */
                 cursor?: string;
                 /**
                  * @description Return only the instances of this non-fungible token asset class. For example, BNS names are held as `SP000000000000000000002Q6VF78.bns::names` on mainnet.
@@ -43995,6 +44015,49 @@ export interface operations {
                         /** @enum {string} */
                         type: "coinbase";
                     });
+                };
+            };
+            /** @description Default Response */
+            "4XX": {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        error: string;
+                        message?: string;
+                    } & {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
+    get_raw_transaction: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /**
+                 * @description Transaction ID
+                 * @example 0xf6bd5f4a7b26184a3466340b2e99fd003b4962c0e382a7e4b6a13df3dd7a91c6
+                 */
+                tx_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Hex-encoded (0x-prefixed) serialized transaction */
+                        raw: string;
+                    };
                 };
             };
             /** @description Default Response */

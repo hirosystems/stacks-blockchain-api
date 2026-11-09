@@ -4,7 +4,7 @@ info:
   description: Welcome to the API reference overview for the [Stacks Blockchain
     API](https://docs.hiro.so/stacks-blockchain-api). [Download Postman
     collection](https://hirosystems.github.io/stacks-blockchain-api/collection.json).
-  version: 9.8.0
+  version: 9.9.0
 components:
   schemas: {}
 paths:
@@ -8002,8 +8002,9 @@ paths:
       tags:
         - Accounts
       description: Get the non-fungible token instances currently owned by a
-        principal, ordered by asset identifier and value. Optionally filtered to
-        a single asset class via `asset_identifier`.
+        principal, newest first by when each instance was received (the block
+        position of the mint or transfer that gave it to the principal).
+        Optionally filtered to a single asset class via `asset_identifier`.
       parameters:
         - schema:
             minimum: 1
@@ -8015,13 +8016,14 @@ paths:
           required: false
           description: Number of results per page
         - schema:
-            pattern: ^0x[0-9a-fA-F]*:.+$
+            pattern: ^[0-9]+:[0-9]+:[0-9]+:[0-9]+$
             type: string
           in: query
           name: cursor
           required: false
-          description: "Cursor for paginating NFT balances (sorted by asset identifier
-            then value). Format: value:asset_identifier"
+          description: "Cursor for paginating NFT balances (sorted by the position of the
+            event that gave the principal each instance, newest first). Format:
+            block_height:microblock_sequence:tx_index:event_index"
         - schema:
             pattern: ^[0123456789ABCDEFGHJKMNPQRSTVWXYZ]{28,41}\.[a-zA-Z]([a-zA-Z0-9]|[-_]){0,39}::[a-zA-Z]([a-zA-Z0-9]|[-_!?+<>=/*]){0,127}$
             title: Asset Identifier
@@ -8081,23 +8083,32 @@ paths:
                     properties:
                       next:
                         anyOf:
-                          - pattern: ^0x[0-9a-fA-F]*:.+$
-                            description: "Cursor for paginating NFT balances (sorted by asset identifier
-                              then value). Format: value:asset_identifier"
+                          - pattern: ^[0-9]+:[0-9]+:[0-9]+:[0-9]+$
+                            description: "Cursor for paginating NFT balances (sorted by the position of the
+                              event that gave the principal each instance,
+                              newest first). Format:
+                              block_height:microblock_sequence:tx_index:event_i\
+                              ndex"
                             type: string
                           - type: "null"
                       previous:
                         anyOf:
-                          - pattern: ^0x[0-9a-fA-F]*:.+$
-                            description: "Cursor for paginating NFT balances (sorted by asset identifier
-                              then value). Format: value:asset_identifier"
+                          - pattern: ^[0-9]+:[0-9]+:[0-9]+:[0-9]+$
+                            description: "Cursor for paginating NFT balances (sorted by the position of the
+                              event that gave the principal each instance,
+                              newest first). Format:
+                              block_height:microblock_sequence:tx_index:event_i\
+                              ndex"
                             type: string
                           - type: "null"
                       current:
                         anyOf:
-                          - pattern: ^0x[0-9a-fA-F]*:.+$
-                            description: "Cursor for paginating NFT balances (sorted by asset identifier
-                              then value). Format: value:asset_identifier"
+                          - pattern: ^[0-9]+:[0-9]+:[0-9]+:[0-9]+$
+                            description: "Cursor for paginating NFT balances (sorted by the position of the
+                              event that gave the principal each instance,
+                              newest first). Format:
+                              block_height:microblock_sequence:tx_index:event_i\
+                              ndex"
                             type: string
                           - type: "null"
                   results:
@@ -22766,6 +22777,53 @@ paths:
                             type: string
                             enum:
                               - coinbase
+        4XX:
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                title: Error Response
+                additionalProperties: true
+                type: object
+                required:
+                  - error
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+  /extended/v3/transactions/{tx_id}/raw:
+    get:
+      operationId: get_raw_transaction
+      summary: Get raw transaction
+      tags:
+        - Transactions
+      description: Retrieves the hex-encoded serialized bytes of a mined or mempool
+        transaction
+      parameters:
+        - schema:
+            pattern: ^(0x)?[a-fA-F0-9]{64}$
+            title: Transaction ID
+            type: string
+          example: "0xf6bd5f4a7b26184a3466340b2e99fd003b4962c0e382a7e4b6a13df3dd7a91c6"
+          in: path
+          name: tx_id
+          required: true
+          description: Transaction ID
+      responses:
+        "200":
+          description: Default Response
+          content:
+            application/json:
+              schema:
+                title: RawTransaction
+                type: object
+                required:
+                  - raw
+                properties:
+                  raw:
+                    description: Hex-encoded (0x-prefixed) serialized transaction
+                    type: string
         4XX:
           description: Default Response
           content:
