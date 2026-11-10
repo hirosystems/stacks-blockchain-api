@@ -114,64 +114,13 @@ import {
   parseEventPositionCursor,
   resolveEventPositionCursor,
   resolveTransactionCursor,
+  TRANSACTION_EVENT_TABLES,
+  transactionEventColumns,
 } from './helpers.js';
-import { DbEventTypeId, DbSignerKeyGrantKind, DbTxStatus, DbTxTypeId } from '../common.js';
+import { DbSignerKeyGrantKind, DbTxStatus, DbTxTypeId } from '../common.js';
 
 /** The largest value of a PostgreSQL `integer` column. */
 const PG_INTEGER_MAX = 2_147_483_647;
-
-/** Event table backing each v3 transaction event type. */
-const TRANSACTION_EVENT_TABLES: Record<TransactionEventType, string> = {
-  stx_asset: 'stx_events',
-  ft_asset: 'ft_events',
-  nft_asset: 'nft_events',
-  stx_lock: 'stx_lock_events',
-  contract_log: 'contract_logs',
-};
-
-/**
- * Projects an event table into the common `DbTransactionEvent` row shape so the per-type
- * branches can be combined with `UNION ALL`. Column order must be identical across types.
- */
-function transactionEventColumns(sql: PgSqlClient, type: TransactionEventType) {
-  switch (type) {
-    case 'stx_asset':
-      return sql`
-        sender, recipient, event_index, amount::numeric AS amount,
-        NULL::text as asset_identifier, NULL::text as contract_identifier, NULL::text as topic, NULL::bytea as value,
-        ${DbEventTypeId.StxAsset}::int as event_type_id, asset_event_type_id,
-        memo, NULL::int as unlock_height
-      `;
-    case 'ft_asset':
-      return sql`
-        sender, recipient, event_index, amount::numeric AS amount,
-        asset_identifier, NULL::text as contract_identifier, NULL::text as topic, NULL::bytea as value,
-        ${DbEventTypeId.FungibleTokenAsset}::int as event_type_id, asset_event_type_id,
-        NULL::bytea as memo, NULL::int as unlock_height
-      `;
-    case 'nft_asset':
-      return sql`
-        sender, recipient, event_index, 0::numeric as amount,
-        asset_identifier, NULL::text as contract_identifier, NULL::text as topic, value,
-        ${DbEventTypeId.NonFungibleTokenAsset}::int as event_type_id, asset_event_type_id,
-        NULL::bytea as memo, NULL::int as unlock_height
-      `;
-    case 'stx_lock':
-      return sql`
-        locked_address as sender, NULL::text as recipient, event_index, locked_amount as amount,
-        NULL::text as asset_identifier, NULL::text as contract_identifier, NULL::text as topic, NULL::bytea as value,
-        ${DbEventTypeId.StxLock}::int as event_type_id, 0 as asset_event_type_id,
-        NULL::bytea as memo, unlock_height
-      `;
-    case 'contract_log':
-      return sql`
-        NULL::text as sender, NULL::text as recipient, event_index, 0::numeric as amount,
-        NULL::text as asset_identifier, contract_identifier, topic, value,
-        ${DbEventTypeId.SmartContractLog}::int as event_type_id, 0 as asset_event_type_id,
-        NULL::bytea as memo, NULL::int as unlock_height
-      `;
-  }
-}
 
 export class PgStoreV3 extends BasePgStoreModule {
   /** Cached result of {@link hasTrigramSupport}, resolved at most once per store. */

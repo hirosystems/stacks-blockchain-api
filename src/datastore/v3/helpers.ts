@@ -12,6 +12,8 @@ import { InvalidRequestError, InvalidRequestErrorType } from '../../errors.js';
 import { PgSqlClient, PgSqlQuery } from '@stacks/api-toolkit';
 import { DbBondLockupTx, DbSearchHit } from './types.js';
 import { SearchMatchQuality, SearchTermText } from '../../api/search-term.js';
+import { TransactionEventType } from '../../api/schemas/v3/entities/transaction-events.js';
+import { DbEventTypeId } from '../common.js';
 
 const MAX_TX_INDEX = 0x7fff;
 const MAX_REWARD_INDEX = 0x7fff;
@@ -289,3 +291,56 @@ export const nameRelevance = (
   trigrams
     ? sql`similarity(${sql(column)}, ${term}) DESC`
     : sql`strpos(lower(${sql(column)}), lower(${term})) ASC, length(${sql(column)}) ASC`;
+
+/** Event table backing each v3 transaction event type. */
+export const TRANSACTION_EVENT_TABLES: Record<TransactionEventType, string> = {
+  stx_asset: 'stx_events',
+  ft_asset: 'ft_events',
+  nft_asset: 'nft_events',
+  stx_lock: 'stx_lock_events',
+  contract_log: 'contract_logs',
+};
+
+/**
+ * Projects an event table into the common `DbTransactionEvent` row shape so the per-type
+ * branches can be combined with `UNION ALL`. Column order must be identical across types.
+ */
+export function transactionEventColumns(sql: PgSqlClient, type: TransactionEventType) {
+  switch (type) {
+    case 'stx_asset':
+      return sql`
+        sender, recipient, event_index, amount::numeric AS amount,
+        NULL::text as asset_identifier, NULL::text as contract_identifier, NULL::text as topic, NULL::bytea as value,
+        ${DbEventTypeId.StxAsset}::int as event_type_id, asset_event_type_id,
+        memo, NULL::int as unlock_height
+      `;
+    case 'ft_asset':
+      return sql`
+        sender, recipient, event_index, amount::numeric AS amount,
+        asset_identifier, NULL::text as contract_identifier, NULL::text as topic, NULL::bytea as value,
+        ${DbEventTypeId.FungibleTokenAsset}::int as event_type_id, asset_event_type_id,
+        NULL::bytea as memo, NULL::int as unlock_height
+      `;
+    case 'nft_asset':
+      return sql`
+        sender, recipient, event_index, 0::numeric as amount,
+        asset_identifier, NULL::text as contract_identifier, NULL::text as topic, value,
+        ${DbEventTypeId.NonFungibleTokenAsset}::int as event_type_id, asset_event_type_id,
+        NULL::bytea as memo, NULL::int as unlock_height
+      `;
+    case 'stx_lock':
+      return sql`
+        locked_address as sender, NULL::text as recipient, event_index, locked_amount as amount,
+        NULL::text as asset_identifier, NULL::text as contract_identifier, NULL::text as topic, NULL::bytea as value,
+        ${DbEventTypeId.StxLock}::int as event_type_id, 0 as asset_event_type_id,
+        NULL::bytea as memo, unlock_height
+      `;
+    case 'contract_log':
+      return sql`
+        NULL::text as sender, NULL::text as recipient, event_index, 0::numeric as amount,
+        NULL::text as asset_identifier, contract_identifier, topic, value,
+        ${DbEventTypeId.SmartContractLog}::int as event_type_id, 0 as asset_event_type_id,
+        NULL::bytea as memo, NULL::int as unlock_height
+      `;
+  }
+}
