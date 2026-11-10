@@ -68,7 +68,7 @@
     "@stacks/stacking": "7.5.0",
     "@stacks/transactions": "7.5.0",
     "bignumber.js": "10.0.2",
-    "bitcoinjs-lib": "7.0.1",
+    "bitcoinjs-lib": "7.0.2",
     "c32check": "2.0.0",
     "coinselect": "3.1.13",
     "ecpair": "3.0.1",
