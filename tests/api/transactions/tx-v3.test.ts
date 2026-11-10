@@ -1028,6 +1028,136 @@ describe('v3 transactions', () => {
         current: '4',
       });
     });
+
+    describe('type filter', () => {
+      // Event indexes: 0 ft, 1 stx, 2 ft, 3 contract_log, 4 ft, 5 nft, 6 ft, 7 stx_lock
+      const seedMixedEvents = async (txId: string) => {
+        await db.update(
+          new TestBlockBuilder({
+            block_height: 1,
+            index_block_hash: hex(1),
+            parent_index_block_hash: hex(0),
+            parent_block_hash: hex(0),
+          })
+            .addTx({ tx_id: txId, tx_index: 0, event_count: 8 })
+            .addTxFtEvent({ amount: 10n, sender, recipient })
+            .addTxStxEvent({ amount: 101n })
+            .addTxFtEvent({ amount: 20n, sender, recipient })
+            .addTxContractLogEvent()
+            .addTxFtEvent({ amount: 30n, sender, recipient })
+            .addTxNftEvent({ sender, recipient })
+            .addTxFtEvent({ amount: 40n, sender, recipient })
+            .addTxStxLockEvent({ locked_amount: 303, unlock_height: 555, locked_address: sender })
+            .build()
+        );
+      };
+      const getEvents = async (txId: string, query: string) => {
+        const response = await api.fastifyApp.inject({
+          method: 'GET',
+          url: `/extended/v3/transactions/${txId}/events?${query}`,
+        });
+        return { statusCode: response.statusCode, body: JSON.parse(response.body) };
+      };
+      const indexes = (body: { results: { event_index: number }[] }) =>
+        body.results.map(event => event.event_index);
+
+      test('should filter by a single event type and count only matching events', async () => {
+        const txId = hex(0x7010);
+        await seedMixedEvents(txId);
+
+        const ft = await getEvents(txId, 'type=ft_asset');
+        assert.equal(ft.statusCode, 200);
+        assert.equal(ft.body.total, 4);
+        assert.deepEqual(indexes(ft.body), [0, 2, 4, 6]);
+        assert.ok(ft.body.results.every((e: { type: string }) => e.type === 'ft_asset'));
+        assert.deepEqual(
+          ft.body.results.map((e: { ft_asset: { amount: string } }) => e.ft_asset.amount),
+          ['10', '20', '30', '40']
+        );
+        assert.deepEqual(ft.body.cursor, { next: null, previous: null, current: '0' });
+
+        // Single-type selections must serialize like the full union does.
+        const stx = await getEvents(txId, 'type=stx_asset');
+        assert.equal(stx.body.total, 1);
+        assert.deepEqual(indexes(stx.body), [1]);
+        assert.equal(stx.body.results[0].stx_asset.amount, '101');
+
+        const nft = await getEvents(txId, 'type=nft_asset');
+        assert.equal(nft.body.total, 1);
+        assert.deepEqual(indexes(nft.body), [5]);
+        assert.equal(nft.body.results[0].type, 'nft_asset');
+
+        const lock = await getEvents(txId, 'type=stx_lock');
+        assert.equal(lock.body.total, 1);
+        assert.equal(lock.body.results[0].stx_lock.amount, '303');
+        assert.equal(lock.body.results[0].stx_lock.unlock_bitcoin_height, 555);
+
+        const log = await getEvents(txId, 'type=contract_log');
+        assert.equal(log.body.total, 1);
+        assert.deepEqual(indexes(log.body), [3]);
+      });
+
+      test('should filter by multiple event types as repeated or comma-separated values', async () => {
+        const txId = hex(0x7011);
+        await seedMixedEvents(txId);
+
+        const repeated = await getEvents(txId, 'type=stx_asset&type=contract_log&type=stx_lock');
+        assert.equal(repeated.statusCode, 200);
+        assert.equal(repeated.body.total, 3);
+        assert.deepEqual(indexes(repeated.body), [1, 3, 7]);
+        assert.deepEqual(
+          repeated.body.results.map((e: { type: string }) => e.type),
+          ['stx_asset', 'contract_log', 'stx_lock']
+        );
+
+        const comma = await getEvents(txId, 'type=stx_asset,contract_log,stx_lock');
+        assert.equal(comma.statusCode, 200);
+        assert.deepEqual(comma.body, repeated.body);
+
+        const all = await getEvents(
+          txId,
+          'type=stx_asset,ft_asset,nft_asset,stx_lock,contract_log'
+        );
+        assert.equal(all.body.total, 8);
+        assert.deepEqual(indexes(all.body), [0, 1, 2, 3, 4, 5, 6, 7]);
+      });
+
+      test('should paginate filtered events forward and backward across index gaps', async () => {
+        const txId = hex(0x7012);
+        await seedMixedEvents(txId);
+
+        const page1 = await getEvents(txId, 'type=ft_asset&limit=2');
+        assert.equal(page1.body.total, 4);
+        assert.deepEqual(indexes(page1.body), [0, 2]);
+        assert.deepEqual(page1.body.cursor, { next: '4', previous: null, current: '0' });
+
+        const page2 = await getEvents(txId, 'type=ft_asset&limit=2&cursor=4');
+        assert.equal(page2.body.total, 4);
+        assert.deepEqual(indexes(page2.body), [4, 6]);
+        assert.deepEqual(page2.body.cursor, { next: null, previous: '0', current: '4' });
+
+        const back = await getEvents(
+          txId,
+          `type=ft_asset&limit=2&cursor=${page2.body.cursor.previous}`
+        );
+        assert.deepEqual(back.body, page1.body);
+
+        // A cursor that isn't a matching event resumes at the next match, and `previous` points
+        // at the start of the real previous page rather than `event_index - limit`.
+        const offGrid = await getEvents(txId, 'type=ft_asset&limit=2&cursor=5');
+        assert.deepEqual(indexes(offGrid.body), [6]);
+        assert.deepEqual(offGrid.body.cursor, { next: null, previous: '2', current: '6' });
+      });
+
+      test('should reject unknown, duplicate, or empty event types', async () => {
+        const txId = hex(0x7013);
+        await seedMixedEvents(txId);
+
+        assert.equal((await getEvents(txId, 'type=smart_contract_log')).statusCode, 400);
+        assert.equal((await getEvents(txId, 'type=ft_asset&type=ft_asset')).statusCode, 400);
+        assert.equal((await getEvents(txId, 'type=')).statusCode, 400);
+      });
+    });
   });
 
   describe('/v3/transactions/:tx_id/raw', () => {

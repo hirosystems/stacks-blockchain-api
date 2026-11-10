@@ -22,7 +22,10 @@ import {
 } from '../../schemas/v3/entities/transactions.js';
 import { MempoolTransactionSchema } from '../../schemas/v3/entities/mempool-transactions.js';
 import { NotFoundError } from '../../../errors.js';
-import { TransactionEventSchema } from '../../schemas/v3/entities/transaction-events.js';
+import {
+  TransactionEventSchema,
+  TransactionEventTypeSchema,
+} from '../../schemas/v3/entities/transaction-events.js';
 import { serializeDbTransactionEvent } from '../../serializers/v3/transaction-events.js';
 import {
   redirectUnprefixedHashParams,
@@ -207,15 +210,31 @@ export const TransactionsRoutes: FastifyPluginAsync<
     {
       onRequest: redirectUnprefixedHashParams({ params: ['tx_id'] }),
       preHandler: handleTransactionCache,
+      preValidation: splitCommaSeparatedQueryParam('type'),
       schema: {
         operationId: 'get_transaction_events',
         summary: 'Get transaction events',
-        description: `Retrieves events for a given transaction ID`,
+        description: `Retrieves events for a given transaction ID, optionally filtered by event type`,
         tags: ['Transactions'],
         params: Type.Object({
           tx_id: TransactionIdSchema,
         }),
-        querystring: CursorPaginationQuerystring(TransactionEventCursorSchema, ResourceType.Event),
+        querystring: Type.Composite([
+          CursorPaginationQuerystring(TransactionEventCursorSchema, ResourceType.Event),
+          Type.Object({
+            type: Type.Optional(
+              Type.Array(TransactionEventTypeSchema, {
+                minItems: 1,
+                uniqueItems: true,
+                description:
+                  'Restricts results to these event types; `total` counts only the matching ' +
+                  'events. Provide them as repeated querystring values ' +
+                  '(`?type=ft_asset&type=nft_asset`) or as a single comma-separated value ' +
+                  '(`?type=ft_asset,nft_asset`). Defaults to every type.',
+              })
+            ),
+          }),
+        ]),
         response: {
           200: CursorPaginatedResponse(
             TransactionEventSchema,
@@ -230,6 +249,7 @@ export const TransactionsRoutes: FastifyPluginAsync<
         txId: req.params.tx_id,
         limit: getPagingQueryLimit(ResourceType.Event, req.query.limit),
         cursor: req.query.cursor,
+        types: req.query.type,
       });
       await reply.send({
         total: events.total,
