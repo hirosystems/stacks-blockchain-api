@@ -41,7 +41,7 @@
     "cpx": "1.5.0",
     "http-server": "14.1.1",
     "microbundle": "0.15.1",
-    "rimraf": "6.1.3",
+    "rimraf": "6.1.4",
     "typescript": "5.9.3"
   }
 }
