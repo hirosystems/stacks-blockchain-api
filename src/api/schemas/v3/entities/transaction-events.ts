@@ -9,6 +9,18 @@ import {
 } from './common.js';
 import { Nullable } from '../../v1/util.js';
 
+export const TransactionEventTypeSchema = Type.Union(
+  [
+    Type.Literal('contract_log'),
+    Type.Literal('stx_lock'),
+    Type.Literal('stx_asset'),
+    Type.Literal('ft_asset'),
+    Type.Literal('nft_asset'),
+  ],
+  { title: 'TransactionEventType', description: 'Transaction event type' }
+);
+export type TransactionEventType = Static<typeof TransactionEventTypeSchema>;
+
 const BaseTransactionEventSchema = Type.Object({
   event_index: Type.Integer(),
 });

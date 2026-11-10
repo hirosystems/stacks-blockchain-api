@@ -84,6 +84,7 @@ import {
 import { BlockIdParam } from '../../api/routes/v2/schemas.js';
 import { InvalidRequestError, InvalidRequestErrorType } from '../../errors.js';
 import { TransactionIncludeField } from '../../api/schemas/v3/entities/transactions.js';
+import { TransactionEventType } from '../../api/schemas/v3/entities/transaction-events.js';
 import { SmartContractIncludeField } from '../../api/schemas/v3/entities/smart-contracts.js';
 import type {
   BitcoinBlockCursor,
@@ -113,8 +114,10 @@ import {
   parseEventPositionCursor,
   resolveEventPositionCursor,
   resolveTransactionCursor,
+  TRANSACTION_EVENT_TABLES,
+  transactionEventColumns,
 } from './helpers.js';
-import { DbEventTypeId, DbSignerKeyGrantKind, DbTxStatus, DbTxTypeId } from '../common.js';
+import { DbSignerKeyGrantKind, DbTxStatus, DbTxTypeId } from '../common.js';
 
 /** The largest value of a PostgreSQL `integer` column. */
 const PG_INTEGER_MAX = 2_147_483_647;
@@ -1752,6 +1755,7 @@ export class PgStoreV3 extends BasePgStoreModule {
     txId: string;
     limit: number;
     cursor?: TransactionEventCursor;
+    types?: TransactionEventType[];
   }): Promise<DbCursorPaginatedResult<DbTransactionEvent>> {
     return await this.sqlTransaction(async sql => {
       const limit = args.limit;
@@ -1767,106 +1771,27 @@ export class PgStoreV3 extends BasePgStoreModule {
           InvalidRequestErrorType.invalid_param
         );
 
-      let cursorFilter = sql``;
-      if (args.cursor) {
-        cursorFilter = sql`AND event_index >= ${parseInt(args.cursor, 10)}`;
-      }
+      const allTypes = Object.keys(TRANSACTION_EVENT_TABLES) as TransactionEventType[];
+      const types = args.types?.length ? allTypes.filter(t => args.types?.includes(t)) : allTypes;
+      const isFiltered = types.length < allTypes.length;
 
-      const eventCond = sql`
-        canonical = true AND microblock_canonical = true AND tx_id = ${args.txId} ${cursorFilter}
-      `;
+      const txCond = sql`canonical = true AND microblock_canonical = true AND tx_id = ${args.txId}`;
+      // Every branch reads its table through the partial `(tx_id, event_index)` canonical index.
+      const unionOf = (
+        cond: postgres.PendingQuery<postgres.Row[]>,
+        columns: (type: TransactionEventType) => postgres.PendingQuery<postgres.Row[]>
+      ) =>
+        types
+          .map(
+            t => sql`(SELECT ${columns(t)} FROM ${sql(TRANSACTION_EVENT_TABLES[t])} WHERE ${cond})`
+          )
+          .reduce((acc, branch) => sql`${acc} UNION ALL ${branch}`);
+
+      const cursorCond = args.cursor
+        ? sql`${txCond} AND event_index >= ${parseInt(args.cursor, 10)}`
+        : txCond;
       const resultQuery = await sql<DbTransactionEvent[]>`
-        WITH events AS (
-          (
-            SELECT
-              sender,
-              recipient,
-              event_index,
-              amount,
-              NULL as asset_identifier,
-              NULL as contract_identifier,
-              NULL as topic,
-              NULL::bytea as value,
-              ${DbEventTypeId.StxAsset}::int as event_type_id,
-              asset_event_type_id,
-              memo,
-              NULL::int as unlock_height
-            FROM stx_events
-            WHERE ${eventCond}
-          )
-          UNION ALL
-          (
-            SELECT
-              sender,
-              recipient,
-              event_index,
-              amount,
-              asset_identifier,
-              NULL as contract_identifier,
-              NULL as topic,
-              NULL::bytea as value,
-              ${DbEventTypeId.FungibleTokenAsset}::int as event_type_id,
-              asset_event_type_id,
-              NULL::bytea as memo,
-              NULL::int as unlock_height
-            FROM ft_events
-            WHERE ${eventCond}
-          )
-          UNION ALL
-          (
-            SELECT
-              sender,
-              recipient,
-              event_index,
-              0 as amount,
-              asset_identifier,
-              NULL as contract_identifier,
-              NULL as topic,
-              value,
-              ${DbEventTypeId.NonFungibleTokenAsset}::int as event_type_id,
-              asset_event_type_id,
-              NULL::bytea as memo,
-              NULL::int as unlock_height
-            FROM nft_events
-            WHERE ${eventCond}
-          )
-          UNION ALL
-          (
-            SELECT
-              locked_address as sender,
-              NULL as recipient,
-              event_index,
-              locked_amount as amount,
-              NULL as asset_identifier,
-              NULL as contract_identifier,
-              NULL as topic,
-              NULL::bytea as value,
-              ${DbEventTypeId.StxLock}::int as event_type_id,
-              0 as asset_event_type_id,
-              NULL::bytea as memo,
-              unlock_height
-            FROM stx_lock_events
-            WHERE ${eventCond}
-          )
-          UNION ALL
-          (
-            SELECT
-              NULL as sender,
-              NULL as recipient,
-              event_index,
-              0 as amount,
-              NULL as asset_identifier,
-              contract_identifier,
-              topic,
-              value,
-              ${DbEventTypeId.SmartContractLog}::int as event_type_id,
-              0 as asset_event_type_id,
-              NULL::bytea as memo,
-              NULL::int as unlock_height
-            FROM contract_logs
-            WHERE ${eventCond}
-          )
-        )
+        WITH events AS (${unionOf(cursorCond, t => transactionEventColumns(sql, t))})
         SELECT *
         FROM events
         ORDER BY event_index ASC
@@ -1876,13 +1801,46 @@ export class PgStoreV3 extends BasePgStoreModule {
       const results = hasNextPage ? resultQuery.slice(0, limit) : resultQuery;
       const firstResult = results[0];
       const extraResult = hasNextPage ? resultQuery[limit] : null;
-      const prevCursor =
-        firstResult && firstResult.event_index > 0
-          ? Math.max(firstResult.event_index - limit, 0).toString()
-          : null;
+
+      // Event indexes are not contiguous once filtered by type, so the previous page start is
+      // looked up instead of derived from `event_index - limit`.
+      let prevCursor: string | null = null;
+      if (firstResult) {
+        const prevPageQuery = await sql<{ event_index: number }[]>`
+          WITH events AS (
+            ${unionOf(
+              sql`${txCond} AND event_index < ${firstResult.event_index}`,
+              () => sql`event_index`
+            )}
+          )
+          SELECT event_index
+          FROM events
+          ORDER BY event_index DESC
+          LIMIT ${limit}
+        `;
+        prevCursor =
+          prevPageQuery.count > 0
+            ? prevPageQuery[prevPageQuery.count - 1].event_index.toString()
+            : null;
+      }
+
+      // Unfiltered totals come from `txs.event_count`. Filtered totals are counted at runtime;
+      // the scan is bounded by this single transaction's events via the `(tx_id, event_index)`
+      // partial indexes.
+      let total = txCheck[0].event_count;
+      if (isFiltered) {
+        const countQuery = await sql<{ total: number }[]>`
+          SELECT (${types
+            .map(
+              t => sql`(SELECT COUNT(*) FROM ${sql(TRANSACTION_EVENT_TABLES[t])} WHERE ${txCond})`
+            )
+            .reduce((acc, count) => sql`${acc} + ${count}`)})::int AS total
+        `;
+        total = countQuery[0].total;
+      }
 
       return {
-        total: txCheck[0].event_count,
+        total,
         limit,
         offset: 0,
         next_cursor: extraResult ? extraResult.event_index.toString() : null,
