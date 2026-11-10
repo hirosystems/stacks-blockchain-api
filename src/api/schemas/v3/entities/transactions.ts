@@ -3,6 +3,7 @@ import { BaseTransactionSummarySchema, TenureChangeCauseSchema } from './transac
 import { PostConditionModeSchema, PostConditionSchema } from './post-conditions.js';
 import { Nullable } from '../../v1/util.js';
 import {
+  ContractCallFunctionArgSchema,
   DecodedClarityValueSchema,
   DecodedStxTransferMemoSchema,
   ExecutionCostSchema,
@@ -96,7 +97,7 @@ const ContractCallTransactionSchema = Type.Composite([
         description: 'Function name of the contract call',
       }),
       function_args: Type.Optional(
-        Type.Array(DecodedClarityValueSchema, {
+        Type.Array(ContractCallFunctionArgSchema, {
           description:
             'List of arguments used to invoke the function. Only present when requested ' +
             'via the `include=function_args` query param.',

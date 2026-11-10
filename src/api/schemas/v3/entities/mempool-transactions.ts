@@ -2,7 +2,7 @@ import { Static, Type } from '@sinclair/typebox';
 import { BaseMempoolTransactionSummarySchema } from './mempool-transaction-summaries.js';
 import { PostConditionModeSchema, PostConditionSchema } from './post-conditions.js';
 import { Nullable } from '../../v1/util.js';
-import { DecodedClarityValueSchema, DecodedStxTransferMemoSchema } from './common.js';
+import { ContractCallFunctionArgSchema, DecodedStxTransferMemoSchema } from './common.js';
 
 const BaseMempoolTransactionSchema = Type.Composite([
   BaseMempoolTransactionSummarySchema,
@@ -82,7 +82,7 @@ const ContractCallMempoolTransactionSchema = Type.Composite([
         description: 'Function name of the contract call',
       }),
       function_args: Type.Optional(
-        Type.Array(DecodedClarityValueSchema, {
+        Type.Array(ContractCallFunctionArgSchema, {
           description:
             'List of arguments used to invoke the function. Only present when requested ' +
             'via the `include=function_args` query param.',

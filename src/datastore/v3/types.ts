@@ -7,6 +7,7 @@ import {
   DbTxTypeId,
 } from '../common.js';
 import type { PoxCyclePhase, PoxCycleSchedule } from '../pox-constants.js';
+import type { ClarityAbiType } from '@stacks/transactions';
 
 export type DbCursorPaginatedResult<T> = {
   limit: number;
@@ -54,6 +55,12 @@ export interface DbTransactionSummary extends DbTxLocation {
   event_count: number;
 }
 
+/** One entry of a Clarity ABI function's `args` list, as stored in `smart_contracts.abi`. */
+export interface DbContractCallFunctionAbiArg {
+  name: string;
+  type: ClarityAbiType;
+}
+
 export interface DbTransaction extends DbTransactionSummary {
   post_conditions: string;
   execution_cost_read_count: number;
@@ -65,6 +72,12 @@ export interface DbTransaction extends DbTransactionSummary {
   raw_result: string;
   smart_contract_source_code: string | null;
   contract_call_function_args: string | null;
+  /**
+   * ABI `args` of the called function, looked up from `smart_contracts`. Only selected for
+   * contract calls when `include=function_args` is requested; null when the contract or its
+   * ABI is unavailable. The pg driver returns jsonb as a raw JSON string.
+   */
+  contract_call_function_abi_args?: string | DbContractCallFunctionAbiArg[] | null;
   coinbase_payload: string | null;
   coinbase_vrf_proof: string | null;
   tenure_change_tenure_consensus_hash: string | null;
@@ -158,6 +171,12 @@ export interface DbMempoolTransaction extends DbMempoolTransactionSummary {
   replaced_by_tx_id: string | null;
   smart_contract_source_code: string | null;
   contract_call_function_args: string | null;
+  /**
+   * ABI `args` of the called function, looked up from `smart_contracts`. Only selected for
+   * contract calls when `include=function_args` is requested; null when the contract or its
+   * ABI is unavailable. The pg driver returns jsonb as a raw JSON string.
+   */
+  contract_call_function_abi_args?: string | DbContractCallFunctionAbiArg[] | null;
   coinbase_payload: string | null;
   coinbase_vrf_proof: string | null;
   tenure_change_tenure_consensus_hash: string | null;
