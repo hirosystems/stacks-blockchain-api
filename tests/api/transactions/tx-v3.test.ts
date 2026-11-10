@@ -716,14 +716,232 @@ describe('v3 transactions', () => {
       assert.equal(response.statusCode, 200);
       const body = JSON.parse(response.body);
       assert.equal(body.tx_id, txCall);
+      // No `smart_contracts` row for CONTRACT_ID → names unknown, types inferred from values.
       assert.deepEqual(body.contract_call.function_args, [
-        { hex: '0x010000000000000000000000000001e240', repr: 'u123456' },
-        { hex: '0x0d0000000568656c6c6f', repr: '"hello"' },
+        {
+          hex: '0x010000000000000000000000000001e240',
+          repr: 'u123456',
+          name: null,
+          type: 'uint',
+        },
+        { hex: '0x0d0000000568656c6c6f', repr: '"hello"', name: null, type: '(string-ascii 5)' },
       ]);
       // '0x01f5' → allow mode, empty list.
       assert.equal(body.post_condition_mode, 'allow');
       assert.deepEqual(body.post_conditions, []);
       assert.deepEqual(body.result, { hex: '0x0703', repr: '(ok true)' });
+    });
+
+    describe('named function_args', () => {
+      const DEPLOYER = 'SP3D6PV2ACBPEKYJTCMH7HEN02KP87QSP8KTEH335';
+      const NAMED_CONTRACT_ID = `${DEPLOYER}.named-args`;
+      const txNamedDeploy = hex(0x5101);
+      const txNamedCall = hex(0x5102);
+      // `memo` is declared wider than the value passed so the ABI type is distinguishable
+      // from the one inferred from the value.
+      const NAMED_ABI = {
+        functions: [
+          {
+            name: 'other-fn',
+            access: 'public',
+            args: [{ name: 'flag', type: 'bool' }],
+            outputs: { type: { response: { ok: 'bool', error: 'uint128' } } },
+          },
+          {
+            name: 'stack-stx',
+            access: 'public',
+            args: [
+              { name: 'amount-ustx', type: 'uint128' },
+              { name: 'memo', type: { 'string-ascii': { length: 32 } } },
+            ],
+            outputs: { type: { response: { ok: 'bool', error: 'uint128' } } },
+          },
+        ],
+        variables: [],
+        maps: [],
+        fungible_tokens: [],
+        non_fungible_tokens: [],
+      };
+
+      const seedNamedCall = async (abi: string) => {
+        await db.update(
+          new TestBlockBuilder({
+            block_height: 1,
+            index_block_hash: hex(1),
+            parent_index_block_hash: hex(0),
+            parent_block_hash: hex(0),
+          })
+            .addTx({
+              tx_id: txNamedDeploy,
+              tx_index: 0,
+              type_id: DbTxTypeId.SmartContract,
+              status: DbTxStatus.Success,
+              sender_address: DEPLOYER,
+              smart_contract_contract_id: NAMED_CONTRACT_ID,
+              smart_contract_source_code: SOURCE_CODE,
+            })
+            .addTxSmartContract({ contract_id: NAMED_CONTRACT_ID, abi })
+            .addTx({
+              tx_id: txNamedCall,
+              tx_index: 1,
+              type_id: DbTxTypeId.ContractCall,
+              status: DbTxStatus.Success,
+              sender_address: SENDER,
+              contract_call_contract_id: NAMED_CONTRACT_ID,
+              contract_call_function_name: 'stack-stx',
+              contract_call_function_args: bufferToHex(
+                createClarityValueArray(uintCV(123456), stringAsciiCV('hello'))
+              ),
+            })
+            .build()
+        );
+      };
+
+      test('should name function_args and use ABI types when the contract ABI is known', async () => {
+        await seedNamedCall(JSON.stringify(NAMED_ABI));
+        const response = await api.fastifyApp.inject({
+          method: 'GET',
+          url: `/extended/v3/transactions/${txNamedCall}`,
+          query: { include: 'function_args' },
+        });
+        assert.equal(response.statusCode, 200);
+        const body = JSON.parse(response.body);
+        assert.deepEqual(body.contract_call.function_args, [
+          {
+            hex: '0x010000000000000000000000000001e240',
+            repr: 'u123456',
+            name: 'amount-ustx',
+            type: 'uint',
+          },
+          {
+            hex: '0x0d0000000568656c6c6f',
+            repr: '"hello"',
+            name: 'memo',
+            type: '(string-ascii 32)',
+          },
+        ]);
+      });
+
+      test('should fall back to null names when the stored contract ABI is null', async () => {
+        await seedNamedCall('null');
+        const response = await api.fastifyApp.inject({
+          method: 'GET',
+          url: `/extended/v3/transactions/${txNamedCall}`,
+          query: { include: 'function_args' },
+        });
+        assert.equal(response.statusCode, 200);
+        const body = JSON.parse(response.body);
+        assert.deepEqual(
+          body.contract_call.function_args.map((a: { name: unknown; type: unknown }) => [
+            a.name,
+            a.type,
+          ]),
+          [
+            [null, 'uint'],
+            [null, '(string-ascii 5)'],
+          ]
+        );
+      });
+
+      test('should ignore the ABI of an orphaned contract deployment', async () => {
+        // Fork A deploys the contract with an ABI; fork B (which wins) deploys it without one
+        // and makes the call. The orphaned fork-A ABI must not leak into the canonical call.
+        await db.update(
+          new TestBlockBuilder({
+            block_height: 1,
+            block_hash: hex(0xa1),
+            index_block_hash: hex(0xa1),
+            parent_index_block_hash: hex(0),
+            parent_block_hash: hex(0),
+          })
+            .addTx({
+              tx_id: hex(0x5201),
+              type_id: DbTxTypeId.SmartContract,
+              status: DbTxStatus.Success,
+              sender_address: DEPLOYER,
+              smart_contract_contract_id: NAMED_CONTRACT_ID,
+              smart_contract_source_code: SOURCE_CODE,
+            })
+            .addTxSmartContract({ contract_id: NAMED_CONTRACT_ID, abi: JSON.stringify(NAMED_ABI) })
+            .build()
+        );
+        await db.update(
+          new TestBlockBuilder({
+            block_height: 1,
+            block_hash: hex(0xb1),
+            index_block_hash: hex(0xb1),
+            parent_index_block_hash: hex(0),
+            parent_block_hash: hex(0),
+          })
+            .addTx({
+              tx_id: txNamedDeploy,
+              tx_index: 0,
+              type_id: DbTxTypeId.SmartContract,
+              status: DbTxStatus.Success,
+              sender_address: DEPLOYER,
+              smart_contract_contract_id: NAMED_CONTRACT_ID,
+              smart_contract_source_code: SOURCE_CODE,
+            })
+            .addTxSmartContract({ contract_id: NAMED_CONTRACT_ID, abi: 'null' })
+            .addTx({
+              tx_id: txNamedCall,
+              tx_index: 1,
+              type_id: DbTxTypeId.ContractCall,
+              status: DbTxStatus.Success,
+              sender_address: SENDER,
+              contract_call_contract_id: NAMED_CONTRACT_ID,
+              contract_call_function_name: 'stack-stx',
+              contract_call_function_args: bufferToHex(
+                createClarityValueArray(uintCV(123456), stringAsciiCV('hello'))
+              ),
+            })
+            .build()
+        );
+        await db.update(
+          new TestBlockBuilder({
+            block_height: 2,
+            block_hash: hex(0xb2),
+            index_block_hash: hex(0xb2),
+            parent_index_block_hash: hex(0xb1),
+            parent_block_hash: hex(0xb1),
+          })
+            .addTx({ tx_id: hex(0x5203), sender_address: SENDER, nonce: 1 })
+            .build()
+        );
+        const orphaned = await db.sql<{ canonical: boolean }[]>`
+          SELECT canonical FROM smart_contracts WHERE tx_id = ${hex(0x5201)}
+        `;
+        assert.ok(orphaned.length > 0 && orphaned.every(r => r.canonical === false));
+
+        const response = await api.fastifyApp.inject({
+          method: 'GET',
+          url: `/extended/v3/transactions/${txNamedCall}`,
+          query: { include: 'function_args' },
+        });
+        assert.equal(response.statusCode, 200);
+        const body = JSON.parse(response.body);
+        assert.deepEqual(
+          body.contract_call.function_args.map((a: { name: unknown; type: unknown }) => [
+            a.name,
+            a.type,
+          ]),
+          [
+            [null, 'uint'],
+            [null, '(string-ascii 5)'],
+          ]
+        );
+      });
+
+      test('should not return function_args when not requested', async () => {
+        await seedNamedCall(JSON.stringify(NAMED_ABI));
+        const response = await api.fastifyApp.inject({
+          method: 'GET',
+          url: `/extended/v3/transactions/${txNamedCall}`,
+        });
+        assert.equal(response.statusCode, 200);
+        const body = JSON.parse(response.body);
+        assert.equal(body.contract_call.function_args, undefined);
+      });
     });
 
     test('should serialize the post condition mode alongside the post conditions', async () => {

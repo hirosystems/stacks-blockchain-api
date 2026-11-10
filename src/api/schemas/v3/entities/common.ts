@@ -1,5 +1,6 @@
 import { Static, Type } from '@sinclair/typebox';
 import { I32_MAX } from '../../../../helpers.js';
+import { Nullable } from '../../v1/util.js';
 
 export const AddressSchema = Type.String({
   pattern: '^[0123456789ABCDEFGHJKMNPQRSTVWXYZ]{28,41}$',
@@ -78,6 +79,24 @@ export const DecodedClarityValueSchema = Type.Object({
   repr: Type.String(),
 });
 export type DecodedClarityValue = Static<typeof DecodedClarityValueSchema>;
+
+export const ContractCallFunctionArgSchema = Type.Object({
+  hex: Type.String({ description: 'Hex-encoded (0x-prefixed) Clarity value of the argument' }),
+  repr: Type.String({ description: 'Clarity representation of the argument value' }),
+  name: Nullable(
+    Type.String({
+      description:
+        'Argument name as declared in the contract function signature. Null when the ' +
+        'contract interface is unavailable (e.g. the contract is not yet deployed).',
+    })
+  ),
+  type: Type.String({
+    description:
+      'Clarity type of the argument as declared in the contract function signature, or ' +
+      'inferred from the value when the contract interface is unavailable.',
+  }),
+});
+export type ContractCallFunctionArg = Static<typeof ContractCallFunctionArgSchema>;
 
 export const DecodedStxTransferMemoSchema = Type.Object({
   hex: Type.String(),

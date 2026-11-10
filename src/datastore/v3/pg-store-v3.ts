@@ -1666,10 +1666,39 @@ export class PgStoreV3 extends BasePgStoreModule {
       return extras.length ? [...base, ...extras] : [...base];
     };
 
+    /**
+     * Named function arguments need the called function's ABI `args`. Only looked up when the
+     * caller asked for `function_args`, and only evaluated for contract-call rows (Postgres
+     * skips the `CASE` subquery otherwise). The jsonpath extracts just the called function's
+     * `args` server-side so the rest of the contract ABI never crosses the wire. Only canonical
+     * deployments are considered, so an orphaned deploy's ABI is never used after a re-org;
+     * among those, rows that have an ABI win, then the latest. A missing ABI is stored as the jsonb
+     * string `"null"` (not JSON null), so it is detected by `jsonb_typeof` rather than
+     * `abi != 'null'`.
+     */
+    const includeFunctionAbiArgs = args.include?.includes('function_args') ?? false;
+    const functionAbiArgsColumn = (sql: PgSqlClient, table: 'txs' | 'mempool_txs') =>
+      includeFunctionAbiArgs
+        ? sql`,
+          CASE WHEN ${sql(table)}.type_id = ${DbTxTypeId.ContractCall} THEN (
+            SELECT jsonb_path_query_first(
+              sc.abi,
+              '$.functions[*] ? (@.name == $fn).args',
+              jsonb_build_object('fn', ${sql(table)}.contract_call_function_name)
+            )
+            FROM smart_contracts AS sc
+            WHERE sc.contract_id = ${sql(table)}.contract_call_contract_id
+              AND sc.canonical = true
+              AND sc.microblock_canonical = true
+            ORDER BY jsonb_typeof(sc.abi) = 'object' DESC, sc.block_height DESC
+            LIMIT 1
+          ) END AS contract_call_function_abi_args`
+        : sql``;
+
     return await this.sqlTransaction(async sql => {
       const txColumns = withHeavyColumns(TX_COLUMNS, TX_HEAVY_COLUMNS, args.include);
       const result = await sql<DbTransaction[]>`
-        SELECT ${sql(txColumns)}
+        SELECT ${sql(txColumns)}${functionAbiArgsColumn(sql, 'txs')}
         FROM txs
         WHERE tx_id = ${args.txId} AND canonical = true AND microblock_canonical = true
       `;
@@ -1682,7 +1711,7 @@ export class PgStoreV3 extends BasePgStoreModule {
         args.include
       );
       const mempoolResult = await sql<DbMempoolTransaction[]>`
-        SELECT ${sql(mempoolColumns)}
+        SELECT ${sql(mempoolColumns)}${functionAbiArgsColumn(sql, 'mempool_txs')}
         FROM mempool_txs
         WHERE tx_id = ${args.txId} AND pruned = false
       `;

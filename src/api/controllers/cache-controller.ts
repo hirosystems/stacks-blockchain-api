@@ -90,6 +90,13 @@ function getETagMetrics(): ETagCacheMetrics {
   return _eTagMetrics;
 }
 
+/** Whether the request opted into v3 `include=function_args` (array or comma-separated). */
+function requestsFunctionArgs(req: FastifyRequest): boolean {
+  const include = (req.query as { include?: unknown } | undefined)?.include;
+  const values = Array.isArray(include) ? include : typeof include === 'string' ? [include] : [];
+  return values.some(v => typeof v === 'string' && v.split(',').includes('function_args'));
+}
+
 async function calculateETag(
   db: PgStore,
   etagType: ETagType,
@@ -160,6 +167,16 @@ async function calculateETag(
           status.result.microblock_hash ?? '',
           status.result.status.toString(),
         ];
+        // Named function args (v3 `include=function_args`) depend on the called contract's ABI,
+        // which a pending call can gain when its contract deploy is mined while the call is
+        // still waiting. ABIs only appear (or disappear on re-org) with a new block, so the
+        // chain tip is folded in for that case only. Mined calls need no extra state: a call can
+        // only be mined once its contract exists, and a re-org of the deploy also moves the
+        // call's block.
+        if (!status.result.index_block_hash && requestsFunctionArgs(req)) {
+          const chainTip = await db.getChainTip(db.sql);
+          elements.push(chainTip.index_block_hash);
+        }
         return sha256(elements.join(':'));
       }
 

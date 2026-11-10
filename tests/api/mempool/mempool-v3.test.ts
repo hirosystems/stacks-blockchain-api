@@ -767,13 +767,189 @@ describe('v3 mempool', () => {
       });
       assert.equal(response.statusCode, 200);
       const body = JSON.parse(response.body);
+      // No `smart_contracts` row for pox-4 → names unknown, types inferred from values.
       assert.deepEqual(body.contract_call.function_args, [
-        { hex: '0x010000000000000000000000000001e240', repr: 'u123456' },
-        { hex: '0x0d0000000568656c6c6f', repr: '"hello"' },
+        {
+          hex: '0x010000000000000000000000000001e240',
+          repr: 'u123456',
+          name: null,
+          type: 'uint',
+        },
+        { hex: '0x0d0000000568656c6c6f', repr: '"hello"', name: null, type: '(string-ascii 5)' },
       ]);
       // '0x01f5' → allow mode, empty list.
       assert.equal(body.post_condition_mode, 'allow');
       assert.deepEqual(body.post_conditions, []);
+    });
+
+    test('should refresh the ETag of a pending call once its contract ABI is mined', async () => {
+      const txId = hex(0x4011);
+      const contractId = `${BLOCK_SENDER}.late-deploy`;
+      const abi = {
+        functions: [
+          {
+            name: 'stack-stx',
+            access: 'public',
+            args: [{ name: 'amount-ustx', type: 'uint128' }],
+            outputs: { type: { response: { ok: 'bool', error: 'uint128' } } },
+          },
+        ],
+        variables: [],
+        maps: [],
+        fungible_tokens: [],
+        non_fungible_tokens: [],
+      };
+      await db.update(
+        new TestBlockBuilder({
+          block_height: 1,
+          index_block_hash: hex(1),
+          parent_index_block_hash: hex(0),
+          parent_block_hash: hex(0),
+        })
+          .addTx({ tx_id: hex(0xaa), sender_address: BLOCK_SENDER, nonce: 0 })
+          .build()
+      );
+      await db.updateMempoolTxs({
+        mempoolTxs: [
+          testMempoolTx({
+            tx_id: txId,
+            receipt_time: 3000,
+            type_id: DbTxTypeId.ContractCall,
+            sender_address: SENDER,
+            contract_call_contract_id: contractId,
+            contract_call_function_name: 'stack-stx',
+            contract_call_function_args: bufferToHex(createClarityValueArray(uintCV(1))),
+            fee_rate: 100n,
+            nonce: 7,
+          }),
+        ],
+      });
+      const url = `/extended/v3/transactions/${txId}`;
+      const withArgs = await api.fastifyApp.inject({
+        method: 'GET',
+        url,
+        query: { include: 'function_args' },
+      });
+      assert.equal(withArgs.statusCode, 200);
+      assert.equal(JSON.parse(withArgs.body).contract_call.function_args[0].name, null);
+      const withArgsEtag = withArgs.headers['etag'] as string;
+      assert.ok(withArgsEtag);
+      const lean = await api.fastifyApp.inject({ method: 'GET', url });
+      const leanEtag = lean.headers['etag'] as string;
+      assert.ok(leanEtag);
+
+      // The contract deploy is mined while the call is still pending.
+      await db.update(
+        new TestBlockBuilder({
+          block_height: 2,
+          block_hash: hex(2),
+          index_block_hash: hex(2),
+          parent_index_block_hash: hex(1),
+          parent_block_hash: hex(1),
+        })
+          .addTx({
+            tx_id: hex(0xab),
+            sender_address: BLOCK_SENDER,
+            nonce: 1,
+            type_id: DbTxTypeId.SmartContract,
+            smart_contract_contract_id: contractId,
+            smart_contract_source_code: '(define-public (stack-stx) (ok true))',
+          })
+          .addTxSmartContract({ contract_id: contractId, abi: JSON.stringify(abi) })
+          .build()
+      );
+
+      const refreshed = await api.fastifyApp.inject({
+        method: 'GET',
+        url,
+        query: { include: 'function_args' },
+        headers: { 'if-none-match': withArgsEtag },
+      });
+      assert.equal(refreshed.statusCode, 200);
+      assert.equal(JSON.parse(refreshed.body).status, 'pending');
+      assert.equal(JSON.parse(refreshed.body).contract_call.function_args[0].name, 'amount-ustx');
+      // Responses without function_args don't depend on the ABI, so their ETag is unchanged.
+      const leanAgain = await api.fastifyApp.inject({
+        method: 'GET',
+        url,
+        headers: { 'if-none-match': leanEtag },
+      });
+      assert.equal(leanAgain.statusCode, 304);
+    });
+
+    test('should name function_args from the deployed contract ABI', async () => {
+      const txId = hex(0x4010);
+      const contractId = `${BLOCK_SENDER}.named-args`;
+      const abi = {
+        functions: [
+          {
+            name: 'stack-stx',
+            access: 'public',
+            args: [
+              { name: 'amount-ustx', type: 'uint128' },
+              { name: 'memo', type: { 'string-ascii': { length: 32 } } },
+            ],
+            outputs: { type: { response: { ok: 'bool', error: 'uint128' } } },
+          },
+        ],
+        variables: [],
+        maps: [],
+        fungible_tokens: [],
+        non_fungible_tokens: [],
+      };
+      await db.update(
+        new TestBlockBuilder({
+          block_height: 1,
+          index_block_hash: hex(1),
+          parent_index_block_hash: hex(0),
+          parent_block_hash: hex(0),
+        })
+          .addTx({
+            tx_id: hex(0xaa),
+            sender_address: BLOCK_SENDER,
+            nonce: 0,
+            type_id: DbTxTypeId.SmartContract,
+            smart_contract_contract_id: contractId,
+            smart_contract_source_code: '(define-public (stack-stx) (ok true))',
+          })
+          .addTxSmartContract({ contract_id: contractId, abi: JSON.stringify(abi) })
+          .build()
+      );
+      await db.updateMempoolTxs({
+        mempoolTxs: [
+          testMempoolTx({
+            tx_id: txId,
+            receipt_time: 2000,
+            type_id: DbTxTypeId.ContractCall,
+            sender_address: SENDER,
+            contract_call_contract_id: contractId,
+            contract_call_function_name: 'stack-stx',
+            contract_call_function_args: bufferToHex(
+              createClarityValueArray(uintCV(123456), stringAsciiCV('hello'))
+            ),
+            fee_rate: 100n,
+            nonce: 6,
+          }),
+        ],
+      });
+
+      const response = await api.fastifyApp.inject({
+        method: 'GET',
+        url: `/extended/v3/transactions/${txId}`,
+        query: { include: 'function_args' },
+      });
+      assert.equal(response.statusCode, 200);
+      const body = JSON.parse(response.body);
+      assert.equal(body.status, 'pending');
+      assert.deepEqual(body.contract_call.function_args, [
+        {
+          hex: '0x010000000000000000000000000001e240',
+          repr: 'u123456',
+          name: 'amount-ustx',
+          type: 'uint',
+        },
+        { hex: '0x0d0000000568656c6c6f', repr: '"hello"', name: 'memo', type: '(string-ascii 32)' },
+      ]);
     });
 
     test('should serialize the post condition mode alongside the post conditions', async () => {

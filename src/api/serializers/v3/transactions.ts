@@ -31,13 +31,9 @@ import {
   TransactionIncludeField,
 } from '../../schemas/v3/entities/transactions.js';
 import { MempoolTransaction } from '../../schemas/v3/entities/mempool-transactions.js';
-import {
-  decodeClarityValueList,
-  decodeClarityValueToRepr,
-  decodePostConditions,
-  memoToString,
-} from '@stacks/codec';
+import { decodeClarityValueToRepr, decodePostConditions, memoToString } from '@stacks/codec';
 import { serializePostCondition, serializePostConditionMode } from './post-conditions.js';
+import { serializeContractCallFunctionArgs } from './function-args.js';
 import { serializeDbMempoolTransaction } from './mempool-transactions.js';
 import { serializeStacksBlockTime } from './blocks.js';
 
@@ -306,8 +302,9 @@ export function serializeDbTransaction(
           function_name: transaction.contract_call_function_name!,
           ...(include?.includes('function_args')
             ? {
-                function_args: decodeClarityValueList(transaction.contract_call_function_args!).map(
-                  c => ({ hex: c.hex, repr: c.repr })
+                function_args: serializeContractCallFunctionArgs(
+                  transaction.contract_call_function_args!,
+                  transaction.contract_call_function_abi_args
                 ),
               }
             : {}),
