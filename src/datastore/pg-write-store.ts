@@ -4055,7 +4055,9 @@ export class PgWriteStore extends PgStore {
         LIMIT 1
       `;
       if (namespaceLifetime.length > 0) {
-        expireBlock = registered_at + namespaceLifetime[0].lifetime;
+        // Clamp to the `integer` column's max so a namespace with a large lifetime can't overflow
+        // `names.expire_block` and halt ingestion.
+        expireBlock = Math.min(registered_at + namespaceLifetime[0].lifetime, I32_MAX);
       }
       // If the name was transferred, keep the expiration from the last register/renewal we had (if
       // any).
