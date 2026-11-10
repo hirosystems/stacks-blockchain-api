@@ -843,6 +843,95 @@ describe('v3 transactions', () => {
         );
       });
 
+      test('should ignore the ABI of an orphaned contract deployment', async () => {
+        // Fork A deploys the contract with an ABI; fork B (which wins) deploys it without one
+        // and makes the call. The orphaned fork-A ABI must not leak into the canonical call.
+        await db.update(
+          new TestBlockBuilder({
+            block_height: 1,
+            block_hash: hex(0xa1),
+            index_block_hash: hex(0xa1),
+            parent_index_block_hash: hex(0),
+            parent_block_hash: hex(0),
+          })
+            .addTx({
+              tx_id: hex(0x5201),
+              type_id: DbTxTypeId.SmartContract,
+              status: DbTxStatus.Success,
+              sender_address: DEPLOYER,
+              smart_contract_contract_id: NAMED_CONTRACT_ID,
+              smart_contract_source_code: SOURCE_CODE,
+            })
+            .addTxSmartContract({ contract_id: NAMED_CONTRACT_ID, abi: JSON.stringify(NAMED_ABI) })
+            .build()
+        );
+        await db.update(
+          new TestBlockBuilder({
+            block_height: 1,
+            block_hash: hex(0xb1),
+            index_block_hash: hex(0xb1),
+            parent_index_block_hash: hex(0),
+            parent_block_hash: hex(0),
+          })
+            .addTx({
+              tx_id: txNamedDeploy,
+              tx_index: 0,
+              type_id: DbTxTypeId.SmartContract,
+              status: DbTxStatus.Success,
+              sender_address: DEPLOYER,
+              smart_contract_contract_id: NAMED_CONTRACT_ID,
+              smart_contract_source_code: SOURCE_CODE,
+            })
+            .addTxSmartContract({ contract_id: NAMED_CONTRACT_ID, abi: 'null' })
+            .addTx({
+              tx_id: txNamedCall,
+              tx_index: 1,
+              type_id: DbTxTypeId.ContractCall,
+              status: DbTxStatus.Success,
+              sender_address: SENDER,
+              contract_call_contract_id: NAMED_CONTRACT_ID,
+              contract_call_function_name: 'stack-stx',
+              contract_call_function_args: bufferToHex(
+                createClarityValueArray(uintCV(123456), stringAsciiCV('hello'))
+              ),
+            })
+            .build()
+        );
+        await db.update(
+          new TestBlockBuilder({
+            block_height: 2,
+            block_hash: hex(0xb2),
+            index_block_hash: hex(0xb2),
+            parent_index_block_hash: hex(0xb1),
+            parent_block_hash: hex(0xb1),
+          })
+            .addTx({ tx_id: hex(0x5203), sender_address: SENDER, nonce: 1 })
+            .build()
+        );
+        const orphaned = await db.sql<{ canonical: boolean }[]>`
+          SELECT canonical FROM smart_contracts WHERE tx_id = ${hex(0x5201)}
+        `;
+        assert.ok(orphaned.length > 0 && orphaned.every(r => r.canonical === false));
+
+        const response = await api.fastifyApp.inject({
+          method: 'GET',
+          url: `/extended/v3/transactions/${txNamedCall}`,
+          query: { include: 'function_args' },
+        });
+        assert.equal(response.statusCode, 200);
+        const body = JSON.parse(response.body);
+        assert.deepEqual(
+          body.contract_call.function_args.map((a: { name: unknown; type: unknown }) => [
+            a.name,
+            a.type,
+          ]),
+          [
+            [null, 'uint'],
+            [null, '(string-ascii 5)'],
+          ]
+        );
+      });
+
       test('should not return function_args when not requested', async () => {
         await seedNamedCall(JSON.stringify(NAMED_ABI));
         const response = await api.fastifyApp.inject({

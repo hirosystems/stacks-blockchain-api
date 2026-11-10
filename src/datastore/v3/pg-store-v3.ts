@@ -1670,8 +1670,9 @@ export class PgStoreV3 extends BasePgStoreModule {
      * Named function arguments need the called function's ABI `args`. Only looked up when the
      * caller asked for `function_args`, and only evaluated for contract-call rows (Postgres
      * skips the `CASE` subquery otherwise). The jsonpath extracts just the called function's
-     * `args` server-side so the rest of the contract ABI never crosses the wire. Prefers rows
-     * that have an ABI, then canonical, then latest. A missing ABI is stored as the jsonb
+     * `args` server-side so the rest of the contract ABI never crosses the wire. Only canonical
+     * deployments are considered, so an orphaned deploy's ABI is never used after a re-org;
+     * among those, rows that have an ABI win, then the latest. A missing ABI is stored as the jsonb
      * string `"null"` (not JSON null), so it is detected by `jsonb_typeof` rather than
      * `abi != 'null'`.
      */
@@ -1687,8 +1688,9 @@ export class PgStoreV3 extends BasePgStoreModule {
             )
             FROM smart_contracts AS sc
             WHERE sc.contract_id = ${sql(table)}.contract_call_contract_id
-            ORDER BY jsonb_typeof(sc.abi) = 'object' DESC, sc.canonical DESC, sc.microblock_canonical DESC,
-              sc.block_height DESC
+              AND sc.canonical = true
+              AND sc.microblock_canonical = true
+            ORDER BY jsonb_typeof(sc.abi) = 'object' DESC, sc.block_height DESC
             LIMIT 1
           ) END AS contract_call_function_abi_args`
         : sql``;
