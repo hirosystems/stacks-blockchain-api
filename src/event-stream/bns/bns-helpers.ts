@@ -1,5 +1,5 @@
 import { BufferCV, ClarityType, hexToCV } from '@stacks/transactions';
-import { bnsNameCV, ChainID, getChainIDNetwork } from '../../helpers.js';
+import { bnsNameCV, ChainID, getChainIDNetwork, I32_MAX } from '../../helpers.js';
 import { CoreNodeParsedTxMessage } from '../../event-stream/core-node-message.js';
 import { getCoreNodeEndpoint } from '../../core-rpc.js';
 import { createNetwork, STACKS_MAINNET, STACKS_TESTNET } from '@stacks/network';
@@ -129,7 +129,10 @@ export function parseNamespaceRawValue(
   const launched_at =
     launched_atCV.type_id === ClarityTypeID.OptionalSome ? parseInt(launched_atCV.value.value) : 0;
   const lifetimeCV = properties.data.lifetime;
-  const lifetime = BigInt(lifetimeCV.value);
+  // `lifetime` is an unbounded uint in the BNS contract but is stored in an `integer` column.
+  // Clamp it so a namespace revealed with a huge lifetime can't fail the block's insert and halt
+  // ingestion. A lifetime of I32_MAX blocks is effectively "never expires".
+  const lifetime = BigInt(lifetimeCV.value) > BigInt(I32_MAX) ? I32_MAX : Number(lifetimeCV.value);
   const revealed_atCV = properties.data['revealed-at'];
   const revealed_at = BigInt(revealed_atCV.value);
   const addressCV = properties.data['namespace-import'];
@@ -162,7 +165,7 @@ export function parseNamespaceRawValue(
     base: base,
     coeff: coeff,
     launched_at: launched_at,
-    lifetime: Number(lifetime),
+    lifetime: lifetime,
     no_vowel_discount: no_vowel_discount,
     nonalpha_discount: nonalpha_discount,
     ready_block: readyBlock,
