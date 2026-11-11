@@ -2767,7 +2767,7 @@ export interface paths {
         };
         /**
          * Get transaction events
-         * @description Retrieves events for a given transaction ID
+         * @description Retrieves events for a given transaction ID, optionally filtered by event type
          */
         get: operations["get_transaction_events"];
         put?: never;
@@ -42634,8 +42634,13 @@ export interface operations {
                             function_name: string;
                             /** @description List of arguments used to invoke the function. Only present when requested via the `include=function_args` query param. */
                             function_args?: {
+                                /** @description Hex-encoded (0x-prefixed) Clarity value of the argument */
                                 hex: string;
+                                /** @description Clarity representation of the argument value */
                                 repr: string;
+                                name: string | null;
+                                /** @description Clarity type of the argument as declared in the contract function signature, or inferred from the value when the contract interface is unavailable. */
+                                type: string;
                             }[];
                         };
                     } | {
@@ -43608,8 +43613,13 @@ export interface operations {
                             function_name: string;
                             /** @description List of arguments used to invoke the function. Only present when requested via the `include=function_args` query param. */
                             function_args?: {
+                                /** @description Hex-encoded (0x-prefixed) Clarity value of the argument */
                                 hex: string;
+                                /** @description Clarity representation of the argument value */
                                 repr: string;
+                                name: string | null;
+                                /** @description Clarity type of the argument as declared in the contract function signature, or inferred from the value when the contract interface is unavailable. */
+                                type: string;
                             }[];
                         };
                     } | {
@@ -44083,6 +44093,8 @@ export interface operations {
                 limit?: number;
                 /** @description Cursor for paginating transaction events. Format: event_index */
                 cursor?: string;
+                /** @description Restricts results to these event types; `total` counts only the matching events. Provide them as repeated querystring values (`?type=ft_asset&type=nft_asset`) or as a single comma-separated value (`?type=ft_asset,nft_asset`). Defaults to every type. */
+                type?: ("contract_log" | "stx_lock" | "stx_asset" | "ft_asset" | "nft_asset")[];
             };
             header?: never;
             path: {
