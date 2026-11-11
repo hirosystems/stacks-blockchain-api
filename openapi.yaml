@@ -4,7 +4,7 @@ info:
   description: Welcome to the API reference overview for the [Stacks Blockchain
     API](https://docs.hiro.so/stacks-blockchain-api). [Download Postman
     collection](https://hirosystems.github.io/stacks-blockchain-api/collection.json).
-  version: 9.9.0
+  version: 9.10.0
 components:
   schemas: {}
 paths:
@@ -18299,10 +18299,28 @@ paths:
                                   required:
                                     - hex
                                     - repr
+                                    - name
+                                    - type
                                   properties:
                                     hex:
+                                      description: Hex-encoded (0x-prefixed) Clarity value of the argument
                                       type: string
                                     repr:
+                                      description: Clarity representation of the argument value
+                                      type: string
+                                    name:
+                                      anyOf:
+                                        - description: Argument name as declared in the contract function signature. Null
+                                            when the contract interface is
+                                            unavailable (e.g. the contract is
+                                            not yet deployed).
+                                          type: string
+                                        - type: "null"
+                                    type:
+                                      description: Clarity type of the argument as declared in the contract function
+                                        signature, or inferred from the value
+                                        when the contract interface is
+                                        unavailable.
                                       type: string
                       - type: object
                         required:
@@ -21413,10 +21431,28 @@ paths:
                                   required:
                                     - hex
                                     - repr
+                                    - name
+                                    - type
                                   properties:
                                     hex:
+                                      description: Hex-encoded (0x-prefixed) Clarity value of the argument
                                       type: string
                                     repr:
+                                      description: Clarity representation of the argument value
+                                      type: string
+                                    name:
+                                      anyOf:
+                                        - description: Argument name as declared in the contract function signature. Null
+                                            when the contract interface is
+                                            unavailable (e.g. the contract is
+                                            not yet deployed).
+                                          type: string
+                                        - type: "null"
+                                    type:
+                                      description: Clarity type of the argument as declared in the contract function
+                                        signature, or inferred from the value
+                                        when the contract interface is
+                                        unavailable.
                                       type: string
                       - type: object
                         required:
@@ -22845,7 +22881,8 @@ paths:
       summary: Get transaction events
       tags:
         - Transactions
-      description: Retrieves events for a given transaction ID
+      description: Retrieves events for a given transaction ID, optionally filtered by
+        event type
       parameters:
         - schema:
             minimum: 1
@@ -22863,6 +22900,36 @@ paths:
           name: cursor
           required: false
           description: "Cursor for paginating transaction events. Format: event_index"
+        - schema:
+            minItems: 1
+            uniqueItems: true
+            type: array
+            items:
+              title: TransactionEventType
+              description: Transaction event type
+              anyOf:
+                - type: string
+                  enum:
+                    - contract_log
+                - type: string
+                  enum:
+                    - stx_lock
+                - type: string
+                  enum:
+                    - stx_asset
+                - type: string
+                  enum:
+                    - ft_asset
+                - type: string
+                  enum:
+                    - nft_asset
+          in: query
+          name: type
+          required: false
+          description: Restricts results to these event types; `total` counts only the
+            matching events. Provide them as repeated querystring values
+            (`?type=ft_asset&type=nft_asset`) or as a single comma-separated
+            value (`?type=ft_asset,nft_asset`). Defaults to every type.
         - schema:
             pattern: ^(0x)?[a-fA-F0-9]{64}$
             title: Transaction ID
