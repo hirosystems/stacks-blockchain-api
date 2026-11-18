@@ -667,12 +667,16 @@ export class PgStore extends BasePgStore {
       }
       const detectedMissingNonces: number[] = [];
       let detectedMempoolNonces: number[] = [];
-      if (lastExecutedTxNonce !== null && lastMempoolTxNonce !== null) {
+      if (lastMempoolTxNonce !== null) {
+        // With no confirmed tx the account nonce is still 0, so every mempool nonce below the
+        // highest one is expected — including for a sponsor whose only activity is pending
+        // sponsored txs. Treating "nothing confirmed" as -1 makes the expected range start at 0.
+        const confirmedNonceFloor = lastExecutedTxNonce ?? -1;
         // There's a greater than one difference in the last mempool tx nonce and last executed tx nonce.
         // Check if there are any expected intermediate nonces missing from from the mempool.
-        if (lastMempoolTxNonce - lastExecutedTxNonce > 1) {
+        if (lastMempoolTxNonce - confirmedNonceFloor > 1) {
           const expectedNonces: number[] = [];
-          for (let i = lastMempoolTxNonce - 1; i > lastExecutedTxNonce; i--) {
+          for (let i = lastMempoolTxNonce - 1; i > confirmedNonceFloor; i--) {
             expectedNonces.push(i);
           }
           const mempoolNonces = await sql<{ nonce: number }[]>`
@@ -688,6 +692,7 @@ export class PgStore extends BasePgStore {
               AND sponsored = true
               AND sponsor_nonce IN ${sql(expectedNonces)}
             AND pruned = false
+            ORDER BY nonce DESC
           `;
           detectedMempoolNonces = mempoolNonces.map(r => r.nonce);
           expectedNonces.forEach(nonce => {

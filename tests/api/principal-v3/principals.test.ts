@@ -1727,6 +1727,52 @@ describe('principals', () => {
       assert.deepEqual(body.mempool.pending_nonces, [3]);
       assert.deepEqual(body.mempool.missing_nonces, [4]);
     });
+
+    test('detects mempool gaps for a sender with no confirmed transactions', async () => {
+      // Mempool has nonces 1 and 3; nothing is confirmed, so 0 and 2 are missing.
+      await db.updateMempoolTxs({
+        mempoolTxs: [
+          testMempoolTx({ tx_id: hex(404), sender_address: nonceAddr, nonce: 1 }),
+          testMempoolTx({ tx_id: hex(405), sender_address: nonceAddr, nonce: 3 }),
+        ],
+      });
+      const body = await getNonces(nonceAddr);
+      assert.deepEqual(body, {
+        next_nonce: 4,
+        last_confirmed_nonce: null,
+        mempool: { last_nonce: 3, pending_nonces: [1], missing_nonces: [2, 0] },
+      });
+    });
+
+    test('detects mempool gaps for a sponsor whose only activity is pending sponsored txs', async () => {
+      // `nonceAddr` sends txs at nonces 0-2, all sponsored by `sponsorAddr` at sponsor nonces 2-4.
+      // The sponsor has never confirmed a tx, so its sponsor nonces 0 and 1 are missing and the
+      // sponsored txs are stuck behind them.
+      const sponsorAddr = 'ST2CY5V39NHDPWSXMW9QDT3HC3GD6Q6XX4CFRK9AG';
+      await db.updateMempoolTxs({
+        mempoolTxs: [0, 1, 2].map(nonce =>
+          testMempoolTx({
+            tx_id: hex(410 + nonce),
+            sender_address: nonceAddr,
+            nonce,
+            sponsored: true,
+            sponsor_address: sponsorAddr,
+            sponsor_nonce: nonce + 2,
+          })
+        ),
+      });
+      assert.deepEqual(await getNonces(sponsorAddr), {
+        next_nonce: 5,
+        last_confirmed_nonce: null,
+        mempool: { last_nonce: 4, pending_nonces: [3, 2], missing_nonces: [1, 0] },
+      });
+      // The sender's own nonce sequence has no gap.
+      assert.deepEqual(await getNonces(nonceAddr), {
+        next_nonce: 3,
+        last_confirmed_nonce: null,
+        mempool: { last_nonce: 2, pending_nonces: [1, 0], missing_nonces: [] },
+      });
+    });
   });
 
   describe('/v3/principals/:principal/mempool/transactions', () => {

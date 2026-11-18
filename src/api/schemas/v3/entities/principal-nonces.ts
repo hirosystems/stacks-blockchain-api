@@ -11,11 +11,11 @@ export const PrincipalMempoolNoncesSchema = Type.Object(
     ),
     pending_nonces: Type.Array(Type.Integer(), {
       description:
-        'Intermediate nonces found in the mempool between the last confirmed nonce and the highest mempool nonce.',
+        'Intermediate nonces found in the mempool between the last confirmed nonce (or 0, if none is confirmed) and the highest mempool nonce.',
     }),
     missing_nonces: Type.Array(Type.Integer(), {
       description:
-        'Expected intermediate nonces between the last confirmed nonce and the highest mempool nonce that are absent from the mempool — likely stalling transactions.',
+        'Expected intermediate nonces between the last confirmed nonce (or 0, if none is confirmed) and the highest mempool nonce that are absent from the mempool — likely stalling transactions.',
     }),
   },
   { title: 'PrincipalMempoolNonces' }
