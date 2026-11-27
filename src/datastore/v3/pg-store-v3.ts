@@ -1620,6 +1620,9 @@ export class PgStoreV3 extends BasePgStoreModule {
 
   /**
    * Gets the transaction by ID. Looks up in the canonical chain first, then the mempool.
+   * Pruned mempool rows are included so dropped transactions (e.g. replaced by fee) still
+   * resolve with their `dropped_*` status and `replaced_by_tx_id`; the lookup stays a single-row
+   * probe on the full `unique_tx_id` index either way.
    * Heavy columns (post conditions, contract source, decoded clarity inputs, raw result)
    * are only pulled from Postgres when the caller opts in via `include`, so the DB doesn't
    * pay to read/serialize them when the route is going to drop them anyway.
@@ -1716,7 +1719,7 @@ export class PgStoreV3 extends BasePgStoreModule {
       const mempoolResult = await sql<DbMempoolTransaction[]>`
         SELECT ${sql(mempoolColumns)}${functionAbiArgsColumn(sql, 'mempool_txs')}
         FROM mempool_txs
-        WHERE tx_id = ${args.txId} AND pruned = false
+        WHERE tx_id = ${args.txId}
       `;
       if (mempoolResult.count > 0) {
         return mempoolResult[0];
@@ -1726,8 +1729,8 @@ export class PgStoreV3 extends BasePgStoreModule {
   }
 
   /**
-   * Returns the 0x-prefixed hex serialized bytes of a canonical mined or non-pruned mempool
-   * transaction, or `null` if neither exists. Mined transactions take precedence.
+   * Returns the 0x-prefixed hex serialized bytes of a canonical mined or mempool transaction
+   * (including dropped ones), or `null` if neither exists. Mined transactions take precedence.
    */
   async getRawTransaction(args: { txId: string }): Promise<string | null> {
     return await this.sqlTransaction(async sql => {
@@ -1742,7 +1745,7 @@ export class PgStoreV3 extends BasePgStoreModule {
       const mempoolResult = await sql<{ raw_tx: string }[]>`
         SELECT raw_tx
         FROM mempool_txs
-        WHERE tx_id = ${args.txId} AND pruned = false
+        WHERE tx_id = ${args.txId}
       `;
       if (mempoolResult.count > 0) {
         return mempoolResult[0].raw_tx;

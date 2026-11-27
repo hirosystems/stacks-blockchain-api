@@ -1072,6 +1072,93 @@ describe('v3 transactions', () => {
       assert.ok(otherTx.headers['etag']);
       assert.notEqual(otherTx.headers['etag'], etag);
     });
+
+    describe('dropped mempool transactions', () => {
+      const originalTx = hex(0x7001);
+      const replacementTx = hex(0x7002);
+      const getTx = (txId: string, headers?: Record<string, string>) =>
+        api.fastifyApp.inject({
+          method: 'GET',
+          url: `/extended/v3/transactions/${txId}`,
+          headers,
+        });
+
+      test('should return a transaction replaced by fee with its replacement', async () => {
+        await db.updateMempoolTxs({
+          mempoolTxs: [testMempoolTx({ tx_id: originalTx, nonce: 5, fee_rate: 100n })],
+        });
+        const pending = await getTx(originalTx);
+        assert.equal(pending.statusCode, 200);
+        assert.equal(JSON.parse(pending.body).status, 'pending');
+        const pendingEtag = pending.headers['etag'] as string;
+        assert.ok(pendingEtag);
+
+        // Same sender and nonce with a higher fee: the original loses its nonce slot.
+        await db.updateMempoolTxs({
+          mempoolTxs: [testMempoolTx({ tx_id: replacementTx, nonce: 5, fee_rate: 200n })],
+        });
+
+        // The cached `pending` response must not be served after the replacement.
+        const dropped = await getTx(originalTx, { 'if-none-match': pendingEtag });
+        assert.equal(dropped.statusCode, 200);
+        assert.notEqual(dropped.headers['etag'], pendingEtag);
+        const body = JSON.parse(dropped.body);
+        assert.equal(body.tx_id, originalTx);
+        assert.equal(body.status, 'dropped_replace_by_fee');
+        assert.equal(body.replaced_by_tx_id, replacementTx);
+        assert.equal(body.fee_rate, '100');
+
+        const replacement = await getTx(replacementTx);
+        assert.equal(replacement.statusCode, 200);
+        const replacementBody = JSON.parse(replacement.body);
+        assert.equal(replacementBody.status, 'pending');
+        assert.equal(replacementBody.replaced_by_tx_id, null);
+      });
+
+      test('should report API garbage collection as a stale garbage collect', async () => {
+        await db.updateMempoolTxs({
+          mempoolTxs: [testMempoolTx({ tx_id: originalTx, nonce: 5 })],
+        });
+        await db.dropMempoolTxs({
+          status: DbTxStatus.DroppedApiGarbageCollect,
+          txIds: [originalTx],
+          new_tx_id: null,
+        });
+        const response = await getTx(originalTx);
+        assert.equal(response.statusCode, 200);
+        const body = JSON.parse(response.body);
+        assert.equal(body.status, 'dropped_stale_garbage_collect');
+        assert.equal(body.replaced_by_tx_id, null);
+      });
+
+      test('should prefer the mined transaction over its pruned mempool row', async () => {
+        await db.updateMempoolTxs({
+          mempoolTxs: [testMempoolTx({ tx_id: originalTx, nonce: 0, sender_address: SENDER })],
+        });
+        await db.update(
+          new TestBlockBuilder({
+            block_height: 1,
+            index_block_hash: hex(1),
+            parent_index_block_hash: hex(0),
+            parent_block_hash: hex(0),
+          })
+            .addTx({
+              tx_id: originalTx,
+              block_hash: hex(1),
+              index_block_hash: hex(1),
+              nonce: 0,
+              sender_address: SENDER,
+              status: DbTxStatus.Success,
+            })
+            .build()
+        );
+        const response = await getTx(originalTx);
+        assert.equal(response.statusCode, 200);
+        const body = JSON.parse(response.body);
+        assert.equal(body.status, 'success');
+        assert.equal(body.block.height, 1);
+      });
+    });
   });
 
   describe('/v3/transactions/:tx_id/events', () => {
@@ -1449,7 +1536,7 @@ describe('v3 transactions', () => {
       assert.equal(JSON.parse(response.body).message, 'Transaction not found');
     });
 
-    test('should return 404 for a pruned mempool transaction', async () => {
+    test('should return the raw bytes of a dropped mempool transaction', async () => {
       await db.updateMempoolTxs({
         mempoolTxs: [testMempoolTx({ tx_id: mempoolTx, raw_tx: mempoolRaw, nonce: 1 })],
       });
@@ -1458,10 +1545,11 @@ describe('v3 transactions', () => {
         txIds: [mempoolTx],
         new_tx_id: null,
       });
-      // v1 ignores `pruned`, so it proves the row is still there.
-      assert.equal((await getV1Raw(mempoolTx)).statusCode, 200);
       const response = await getRaw(mempoolTx);
-      assert.equal(response.statusCode, 404);
+      assert.equal(response.statusCode, 200);
+      assert.deepEqual(JSON.parse(response.body), { raw: mempoolRaw });
+      // Matches v1, which also serves dropped transactions.
+      assert.equal(JSON.parse((await getV1Raw(mempoolTx)).body).raw_tx, mempoolRaw);
     });
 
     test('should return 404 for a non-canonical transaction', async () => {
