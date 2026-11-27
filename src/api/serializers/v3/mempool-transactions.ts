@@ -42,7 +42,9 @@ function serializeDbMempoolTransactionStatus(status: DbTxStatus): MempoolTransac
       return 'dropped_replace_across_fork';
     case DbTxStatus.DroppedTooExpensive:
       return 'dropped_too_expensive';
+    // The API's own age-based garbage collection is reported like the node's stale GC, matching v1.
     case DbTxStatus.DroppedStaleGarbageCollect:
+    case DbTxStatus.DroppedApiGarbageCollect:
       return 'dropped_stale_garbage_collect';
     case DbTxStatus.DroppedProblematic:
       return 'dropped_problematic';
